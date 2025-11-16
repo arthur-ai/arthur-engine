@@ -35,6 +35,16 @@ interface Message {
 interface ExperimentResultsTableProps {
   taskId: string;
   experimentId: string;
+  promptSummaries?: Array<{
+    prompt_name: string;
+    prompt_version: string;
+    eval_results: Array<{
+      eval_name: string;
+      eval_version: string;
+      pass_count: number;
+      total_count: number;
+    }>;
+  }>;
 }
 
 interface TestCaseDetailModalProps {
@@ -293,14 +303,27 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   );
 };
 
+interface PromptEvalColumn {
+  promptName: string;
+  promptVersion: string;
+  evalName: string;
+  evalVersion: string;
+}
+
+interface EvalGroup {
+  evalName: string;
+  evalVersion: string;
+  promptVersions: Array<{ promptName: string; promptVersion: string }>;
+}
+
 interface RowProps {
   testCase: TestCase;
-  variableColumns: string[];
-  evalColumns: Array<{ name: string; version: string }>;
+  promptEvalColumns: PromptEvalColumn[];
+  evalGroups: EvalGroup[];
   onClick: () => void;
 }
 
-const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumns, onClick }) => {
+const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick }) => {
 
   const getStatusColor = (
     status: TestCase["status"]
@@ -342,31 +365,6 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
     };
   };
 
-  // Create a map of variables for easy lookup
-  const variableMap = testCase.prompt_input_variables.reduce((acc, variable) => {
-    acc[variable.variable_name] = variable.value;
-    return acc;
-  }, {} as Record<string, string>);
-
-  // Create a map of eval failure counts for easy lookup (count failures across all prompt versions)
-  const evalFailureMap = evalColumns.reduce((acc, evalCol) => {
-    const key = `${evalCol.name}-${evalCol.version}`;
-    let failureCount = 0;
-
-    testCase.prompt_results.forEach((promptResult) => {
-      const evalResult = promptResult.evals.find(
-        (e) => e.eval_name === evalCol.name && e.eval_version === evalCol.version
-      );
-      // A score of 0 indicates a failure (fail), 1 indicates a pass
-      if (evalResult?.eval_results?.score === 0) {
-        failureCount++;
-      }
-    });
-
-    acc[key] = failureCount;
-    return acc;
-  }, {} as Record<string, number>);
-
   return (
     <TableRow
       hover
@@ -380,29 +378,106 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
           sx={getStatusChipSx(getStatusColor(testCase.status))}
         />
       </TableCell>
-      {evalColumns.map((evalCol) => {
-        const key = `${evalCol.name}-${evalCol.version}`;
-        const failureCount = evalFailureMap[key];
+      {promptEvalColumns.map((column) => {
+        const promptResult = testCase.prompt_results.find(
+          (pr) => pr.name === column.promptName && pr.version === column.promptVersion
+        );
+        const evalResult = promptResult?.evals.find(
+          (e) => e.eval_name === column.evalName && e.eval_version === column.evalVersion
+        );
+
+        const score = evalResult?.eval_results?.score;
+        const isPending = !evalResult?.eval_results;
+
         return (
-          <TableCell key={key}>
+          <TableCell
+            key={`${column.promptName}-${column.promptVersion}-${column.evalName}-${column.evalVersion}`}
+            align="center"
+            sx={{ padding: "6px 8px" }}
+          >
+            {isPending ? (
+              <Typography variant="body2" className="text-gray-400" sx={{ fontSize: "0.75rem" }}>
+                -
+              </Typography>
+            ) : score === 1 ? (
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "20px",
+                  height: "20px",
+                  color: "#6b7280",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                }}
+              >
+                ✓
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "20px",
+                  height: "20px",
+                  color: "#ef4444",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                }}
+              >
+                ✕
+              </Box>
+            )}
+          </TableCell>
+        );
+      })}
+      {/* Eval totals columns */}
+      {evalGroups.map((evalGroup) => {
+        let passCount = 0;
+        let totalCount = 0;
+
+        evalGroup.promptVersions.forEach((promptVersion) => {
+          const promptResult = testCase.prompt_results.find(
+            (pr) => pr.name === promptVersion.promptName && pr.version === promptVersion.promptVersion
+          );
+          const evalResult = promptResult?.evals.find(
+            (e) => e.eval_name === evalGroup.evalName && e.eval_version === evalGroup.evalVersion
+          );
+
+          if (evalResult?.eval_results) {
+            totalCount++;
+            if (evalResult.eval_results.score === 1) {
+              passCount++;
+            }
+          }
+        });
+
+        return (
+          <TableCell
+            key={`total-${evalGroup.evalName}-${evalGroup.evalVersion}`}
+            align="center"
+            sx={{
+              backgroundColor: "#f9fafb",
+              fontWeight: 500,
+              fontSize: "0.8rem",
+            }}
+          >
             <Typography
               variant="body2"
-              className="font-medium"
-              sx={{ color: failureCount > 0 ? "#dc2626" : "inherit" }}
+              sx={{
+                fontSize: "0.8rem",
+                fontWeight: 500,
+                color: passCount === 0 && totalCount > 0 ? "#ef4444" : "#6b7280",
+              }}
             >
-              {failureCount}
+              {passCount}/{totalCount}
             </Typography>
           </TableCell>
         );
       })}
-      {variableColumns.map((varName) => (
-        <TableCell key={varName}>
-          <Typography variant="body2" className="truncate max-w-xs">
-            {variableMap[varName] || "-"}
-          </Typography>
-        </TableCell>
-      ))}
-      <TableCell>
+      <TableCell align="right">
         {testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}
       </TableCell>
     </TableRow>
@@ -412,6 +487,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   taskId,
   experimentId,
+  promptSummaries = [],
 }) => {
   const [page, setPage] = useState(0);
   const pageSize = 20;
@@ -467,29 +543,113 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   // Calculate global index for display
   const globalIndex = page * pageSize + selectedTestCaseIndex;
 
-  // Extract unique variable columns and eval columns from test cases
-  const variableColumns = React.useMemo(() => {
-    const variables = new Set<string>();
-    testCases.forEach((tc) => {
-      tc.prompt_input_variables.forEach((v) => variables.add(v.variable_name));
-    });
-    return Array.from(variables);
-  }, [testCases]);
-
-  const evalColumns = React.useMemo(() => {
-    const evals = new Map<string, { name: string; version: string }>();
-    testCases.forEach((tc) => {
-      tc.prompt_results.forEach((pr) => {
-        pr.evals.forEach((e) => {
-          const key = `${e.eval_name}-${e.eval_version}`;
-          if (!evals.has(key)) {
-            evals.set(key, { name: e.eval_name, version: e.eval_version });
-          }
+  // Build prompt-eval columns from promptSummaries (already sorted by performance)
+  // If promptSummaries not provided, fall back to extracting from test cases
+  const promptEvalColumns = React.useMemo(() => {
+    if (promptSummaries.length > 0) {
+      // Use provided sorted summaries
+      const columns: PromptEvalColumn[] = [];
+      promptSummaries.forEach((summary) => {
+        summary.eval_results.forEach((evalResult) => {
+          columns.push({
+            promptName: summary.prompt_name,
+            promptVersion: summary.prompt_version,
+            evalName: evalResult.eval_name,
+            evalVersion: evalResult.eval_version,
+          });
         });
       });
+      return columns;
+    } else {
+      // Fallback: extract from test cases
+      const promptMap = new Map<string, {
+        promptName: string;
+        promptVersion: string;
+        evals: Array<{ evalName: string; evalVersion: string }>;
+      }>();
+
+      testCases.forEach((tc) => {
+        tc.prompt_results.forEach((pr) => {
+          const promptKey = `${pr.name}-${pr.version}`;
+          if (!promptMap.has(promptKey)) {
+            promptMap.set(promptKey, {
+              promptName: pr.name,
+              promptVersion: pr.version,
+              evals: [],
+            });
+          }
+          const promptData = promptMap.get(promptKey)!;
+          pr.evals.forEach((e) => {
+            const evalExists = promptData.evals.some(
+              (ev) => ev.evalName === e.eval_name && ev.evalVersion === e.eval_version
+            );
+            if (!evalExists) {
+              promptData.evals.push({
+                evalName: e.eval_name,
+                evalVersion: e.eval_version,
+              });
+            }
+          });
+        });
+      });
+
+      const columns: PromptEvalColumn[] = [];
+      promptMap.forEach((promptData) => {
+        promptData.evals.forEach((evalData) => {
+          columns.push({
+            promptName: promptData.promptName,
+            promptVersion: promptData.promptVersion,
+            evalName: evalData.evalName,
+            evalVersion: evalData.evalVersion,
+          });
+        });
+      });
+      return columns;
+    }
+  }, [testCases, promptSummaries]);
+
+  // Group columns by prompt for the header
+  const promptGroups = React.useMemo(() => {
+    const groups = new Map<string, { promptName: string; promptVersion: string; evalCount: number }>();
+    promptEvalColumns.forEach((col) => {
+      const key = `${col.promptName}-${col.promptVersion}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          promptName: col.promptName,
+          promptVersion: col.promptVersion,
+          evalCount: 0,
+        });
+      }
+      groups.get(key)!.evalCount++;
     });
-    return Array.from(evals.values());
-  }, [testCases]);
+    return Array.from(groups.values());
+  }, [promptEvalColumns]);
+
+  // Build eval groups for totals columns
+  const evalGroups = React.useMemo(() => {
+    const groups = new Map<string, EvalGroup>();
+    promptEvalColumns.forEach((col) => {
+      const key = `${col.evalName}-${col.evalVersion}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          evalName: col.evalName,
+          evalVersion: col.evalVersion,
+          promptVersions: [],
+        });
+      }
+      const group = groups.get(key)!;
+      const promptExists = group.promptVersions.some(
+        (pv) => pv.promptName === col.promptName && pv.promptVersion === col.promptVersion
+      );
+      if (!promptExists) {
+        group.promptVersions.push({
+          promptName: col.promptName,
+          promptVersion: col.promptVersion,
+        });
+      }
+    });
+    return Array.from(groups.values());
+  }, [promptEvalColumns]);
 
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     // Convert from 1-based MUI Pagination to 0-based internal state
@@ -502,54 +662,117 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
         {isLoading && <LinearProgress />}
         <Table stickyHeader size="small" aria-label="experiment results table">
           <TableHead>
+            {/* Top header row: Prompt versions and Totals */}
             <TableRow>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell
+                rowSpan={2}
+                sx={{ backgroundColor: "grey.50", borderRight: 1, borderColor: "divider" }}
+              >
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
               </TableCell>
-              {evalColumns.map((evalCol) => (
+              {promptGroups.map((group) => (
                 <TableCell
-                  key={`${evalCol.name}-${evalCol.version}`}
+                  key={`${group.promptName}-${group.promptVersion}`}
+                  colSpan={group.evalCount}
+                  align="center"
                   sx={{
-                    backgroundColor: "#eff6ff"
+                    backgroundColor: "#dbeafe",
+                    borderRight: 1,
+                    borderColor: "divider",
                   }}
                 >
                   <Box component="span" className="font-semibold text-blue-900">
-                    Eval: {evalCol.name} (v{evalCol.version}) Failures
+                    {group.promptName} (v{group.promptVersion})
                   </Box>
                 </TableCell>
               ))}
-              {variableColumns.map((varName) => (
-                <TableCell key={varName} sx={{ backgroundColor: "grey.50" }}>
-                  <Box component="span" className="font-semibold">
-                    Input: {varName}
-                  </Box>
-                </TableCell>
-              ))}
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
-                <Box component="span" className="font-semibold">
-                  Total Cost
+              <TableCell
+                colSpan={evalGroups.length}
+                align="center"
+                sx={{
+                  backgroundColor: "#fef3c7",
+                  borderRight: 1,
+                  borderLeft: 1,
+                  borderColor: "divider",
+                }}
+              >
+                <Box component="span" className="font-semibold text-amber-900">
+                  Totals
                 </Box>
               </TableCell>
+              <TableCell
+                rowSpan={2}
+                align="right"
+                sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}
+              >
+                <Box component="span" className="font-semibold">
+                  Cost
+                </Box>
+              </TableCell>
+            </TableRow>
+            {/* Bottom header row: Evaluators */}
+            <TableRow>
+              {promptEvalColumns.map((col, index) => {
+                // Check if this is the last eval in its prompt group
+                const isLastInGroup =
+                  index === promptEvalColumns.length - 1 ||
+                  promptEvalColumns[index + 1].promptName !== col.promptName ||
+                  promptEvalColumns[index + 1].promptVersion !== col.promptVersion;
+
+                return (
+                  <TableCell
+                    key={`${col.promptName}-${col.promptVersion}-${col.evalName}-${col.evalVersion}`}
+                    align="center"
+                    sx={{
+                      backgroundColor: "#eff6ff",
+                      borderRight: isLastInGroup ? 1 : 0,
+                      borderColor: "divider",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    <Box component="span" className="font-medium text-blue-800">
+                      {col.evalName} (v{col.evalVersion})
+                    </Box>
+                  </TableCell>
+                );
+              })}
+              {/* Totals sub-headers */}
+              {evalGroups.map((evalGroup, index) => (
+                <TableCell
+                  key={`total-header-${evalGroup.evalName}-${evalGroup.evalVersion}`}
+                  align="center"
+                  sx={{
+                    backgroundColor: "#fef9c3",
+                    borderRight: index === evalGroups.length - 1 ? 1 : 0,
+                    borderColor: "divider",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <Box component="span" className="font-medium text-amber-800">
+                    {evalGroup.evalName} (v{evalGroup.evalVersion})
+                  </Box>
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={2 + evalColumns.length + variableColumns.length} align="center">
+                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography>Loading results...</Typography>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={2 + evalColumns.length + variableColumns.length} align="center">
+                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography color="error">{error.message}</Typography>
                 </TableCell>
               </TableRow>
             ) : testCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2 + evalColumns.length + variableColumns.length} align="center">
+                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography className="text-gray-600">No test cases found</Typography>
                 </TableCell>
               </TableRow>
@@ -558,8 +781,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                 <TestCaseRow
                   key={testCase.dataset_row_id || index}
                   testCase={testCase}
-                  variableColumns={variableColumns}
-                  evalColumns={evalColumns}
+                  promptEvalColumns={promptEvalColumns}
+                  evalGroups={evalGroups}
                   onClick={() => handleRowClick(index)}
                 />
               ))

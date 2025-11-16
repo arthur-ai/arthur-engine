@@ -296,7 +296,7 @@ export const ExperimentDetailView: React.FC = () => {
               Test Case Results
             </Typography>
             <Tooltip
-              title="This table shows individual test case results. Each row represents one test case from your dataset, showing evaluation failures across all prompt versions and the total cost."
+              title="This table shows individual test case results. Each row represents one test case from your dataset, showing pass/fail for each prompt version and evaluator combination."
               arrow
               placement="right"
             >
@@ -309,7 +309,24 @@ export const ExperimentDetailView: React.FC = () => {
               />
             </Tooltip>
           </Box>
-          {taskId && experimentId && <ExperimentResultsTable taskId={taskId} experimentId={experimentId} />}
+          {taskId && experimentId && (
+            <ExperimentResultsTable
+              taskId={taskId}
+              experimentId={experimentId}
+              promptSummaries={(() => {
+                // Sort prompt summaries the same way as in Overall Prompt Performance
+                const sorted = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {
+                  const totalPassesA = a.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0);
+                  const totalPassesB = b.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0);
+                  if (totalPassesB !== totalPassesA) {
+                    return totalPassesB - totalPassesA;
+                  }
+                  return parseInt(b.prompt_version) - parseInt(a.prompt_version);
+                });
+                return sorted;
+              })()}
+            />
+          )}
         </Box>
       </Box>
 
