@@ -3,7 +3,7 @@ import Chip from "@mui/material/Chip";
 import { styled } from "@mui/material/styles";
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
 
-interface MustacheHighlightedTextFieldProps {
+interface NunjucksHighlightedTextFieldProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   placeholder?: string;
@@ -45,16 +45,23 @@ const EditableDiv = styled("div")(({ theme }) => ({
     color: "rgba(0, 0, 0, 0.38)",
     pointerEvents: "none",
   },
-  "& .mustache-var": {
+  "& .nunjucks-var": {
     color: "#1976d2",
     fontWeight: 400,
     backgroundColor: "rgba(180, 190, 165, 0.2)",
     padding: "2px 4px",
     borderRadius: "3px",
   },
+  "& .nunjucks-tag": {
+    color: "#7c3aed",
+    fontWeight: 400,
+    backgroundColor: "rgba(124, 58, 237, 0.12)",
+    padding: "2px 4px",
+    borderRadius: "3px",
+  },
 }));
 
-const MustacheHighlightedTextField: React.FC<MustacheHighlightedTextFieldProps> = ({
+const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> = ({
   value,
   onChange,
   placeholder,
@@ -68,12 +75,116 @@ const MustacheHighlightedTextField: React.FC<MustacheHighlightedTextFieldProps> 
   const editableRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
 
-  // Extract all mustache variables from the text
-  const mustacheVariables = useMemo(() => {
-    if (!value) return [];
-    const matches = value.match(/\{\{[^}]+\}\}/g);
-    if (!matches) return [];
-    return Array.from(new Set(matches));
+  // Function to find and highlight a specific token in the editor
+  const highlightToken = useCallback((tokenToFind: string) => {
+    if (!editableRef.current) return;
+
+    const text = editableRef.current.innerText || "";
+    const index = text.indexOf(tokenToFind);
+
+    if (index === -1) return;
+
+    // Find the text node and position
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    let charCount = 0;
+    const nodeStack: Node[] = [editableRef.current];
+    let node: Node | undefined;
+    let found = false;
+
+    while ((node = nodeStack.pop()) && !found) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const textLength = node.textContent?.length || 0;
+        if (charCount + textLength >= index) {
+          try {
+            const range = document.createRange();
+            const startOffset = index - charCount;
+            const endOffset = Math.min(startOffset + tokenToFind.length, textLength);
+            range.setStart(node, startOffset);
+            range.setEnd(node, endOffset);
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            // Scroll the selection into view
+            editableRef.current?.scrollTo({
+              top: range.getBoundingClientRect().top - editableRef.current.getBoundingClientRect().top + editableRef.current.scrollTop - 50,
+              behavior: "smooth",
+            });
+
+            found = true;
+          } catch (e) {
+            // Selection failed, ignore
+          }
+          break;
+        }
+        charCount += textLength;
+      } else {
+        for (let i = node.childNodes.length - 1; i >= 0; i--) {
+          nodeStack.push(node.childNodes[i]);
+        }
+      }
+    }
+
+    // Focus the editor
+    editableRef.current?.focus();
+  }, []);
+
+  // Extract all Nunjucks variables and tags from the text
+  const nunjucksTokens = useMemo(() => {
+    if (!value) return { variables: [], tags: [] };
+
+    // Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
+    const jinja2Keywords = new Set([
+      'if', 'elif', 'else', 'endif',
+      'for', 'endfor', 'in',
+      'block', 'endblock',
+      'extends', 'include', 'import', 'from',
+      'macro', 'endmacro', 'call', 'endcall',
+      'filter', 'endfilter',
+      'set', 'endset',
+      'raw', 'endraw',
+      'with', 'endwith',
+      'autoescape', 'endautoescape',
+      'trans', 'endtrans', 'pluralize',
+      'do',
+      'break', 'continue',
+      'scoped',
+      'ignore', 'missing',
+      'and', 'or', 'not',
+      'is', 'in',
+      'true', 'false', 'none',
+      'True', 'False', 'None',
+    ]);
+
+    // Match variables {{ variable }}
+    const variableMatches = value.match(/\{\{[^}]+\}\}/g);
+    const allVariables = variableMatches ? Array.from(new Set(variableMatches)) : [];
+
+    // Filter out variables that are just Jinja2 keywords
+    const variables = allVariables.filter((varToken) => {
+      // Extract the content between {{ and }}
+      const content = varToken.replace(/^\{\{\s*|\s*\}\}$/g, '').trim();
+
+      // Split by spaces, dots, pipes, and other operators to get individual tokens
+      const tokens = content.split(/[\s\.\|\(\)\[\]\,\+\-\*\/\%\=\!\<\>\&\|]+/).filter(t => t.length > 0);
+
+      // Check if the first token (main identifier) is a keyword
+      const mainToken = tokens[0];
+
+      // If it's a pure keyword with no other context, filter it out
+      if (tokens.length === 1 && jinja2Keywords.has(mainToken)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Match control flow tags {% if %}, {% for %}, etc.
+    const tagMatches = value.match(/\{%[^%]+%\}/g);
+    const tags = tagMatches ? Array.from(new Set(tagMatches)) : [];
+
+    return { variables, tags };
   }, [value]);
 
   // Generate highlighted HTML
@@ -91,14 +202,17 @@ const MustacheHighlightedTextField: React.FC<MustacheHighlightedTextFieldProps> 
 
     const escaped = escapeHtml(text);
 
-    // Split by mustache patterns to preserve exact text structure
-    const parts = escaped.split(/(\{\{[^}]+\}\})/g);
+    // Split by both Nunjucks patterns: variables {{ }} and tags {% %}
+    const parts = escaped.split(/(\{\{[^}]+\}\}|\{%[^%]+%\})/g);
 
     return parts
       .map((part) => {
         if (part.match(/\{\{[^}]+\}\}/)) {
-          // This is a mustache variable - highlight it
-          return `<span class="mustache-var">${part}</span>`;
+          // This is a Nunjucks variable - highlight in blue
+          return `<span class="nunjucks-var">${part}</span>`;
+        } else if (part.match(/\{%[^%]+%\}/)) {
+          // This is a Nunjucks tag (control flow) - highlight in purple
+          return `<span class="nunjucks-tag">${part}</span>`;
         }
         // Regular text - no wrapper needed, let parent handle color
         return part;
@@ -216,8 +330,8 @@ const MustacheHighlightedTextField: React.FC<MustacheHighlightedTextFieldProps> 
         }}
       />
 
-      {/* Display found variables as chips below */}
-      {mustacheVariables.length > 0 && (
+      {/* Display found variables and tags as chips below */}
+      {(nunjucksTokens.variables.length > 0 || nunjucksTokens.tags.length > 0) && (
         <Box
           sx={{
             mt: 1,
@@ -227,40 +341,90 @@ const MustacheHighlightedTextField: React.FC<MustacheHighlightedTextFieldProps> 
             alignItems: "center",
           }}
         >
-          <Box
-            component="span"
-            sx={{
-              fontSize: "0.75rem",
-              color: "text.secondary",
-              mr: 0.5,
-            }}
-          >
-            Variables:
-          </Box>
-          {mustacheVariables.map((variable, index) => (
-            <Chip
-              key={index}
-              label={variable}
-              size="small"
-              sx={{
-                height: 20,
-                fontSize: "0.7rem",
-                fontFamily: "monospace",
-                backgroundColor: "rgba(180, 190, 165, 0.2)",
-                color: "#1976d2",
-                fontWeight: 400,
-                "& .MuiChip-label": {
-                  px: 1,
-                  py: 0,
-                  lineHeight: "20px",
-                },
-              }}
-            />
-          ))}
+          {nunjucksTokens.variables.length > 0 && (
+            <>
+              <Box
+                component="span"
+                sx={{
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mr: 0.5,
+                }}
+              >
+                Variables:
+              </Box>
+              {nunjucksTokens.variables.map((variable: string, index: number) => (
+                <Chip
+                  key={`var-${index}`}
+                  label={variable}
+                  size="small"
+                  onClick={() => highlightToken(variable)}
+                  sx={{
+                    height: 20,
+                    fontSize: "0.7rem",
+                    fontFamily: "monospace",
+                    backgroundColor: "rgba(180, 190, 165, 0.2)",
+                    color: "#1976d2",
+                    fontWeight: 400,
+                    cursor: "pointer",
+                    "&:hover": {
+                      backgroundColor: "rgba(180, 190, 165, 0.35)",
+                    },
+                    "& .MuiChip-label": {
+                      px: 1,
+                      py: 0,
+                      lineHeight: "20px",
+                    },
+                  }}
+                />
+              ))}
+            </>
+          )}
+
+          {nunjucksTokens.tags.length > 0 && (
+            <>
+              <Box
+                component="span"
+                sx={{
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mr: 0.5,
+                  ml: nunjucksTokens.variables.length > 0 ? 1 : 0,
+                }}
+              >
+                Tags:
+              </Box>
+              {nunjucksTokens.tags.map((tag: string, index: number) => (
+                <Chip
+                  key={`tag-${index}`}
+                  label={tag}
+                  size="small"
+                  onClick={() => highlightToken(tag)}
+                  sx={{
+                    height: 20,
+                    fontSize: "0.7rem",
+                    fontFamily: "monospace",
+                    backgroundColor: "rgba(124, 58, 237, 0.12)",
+                    color: "#7c3aed",
+                    fontWeight: 400,
+                    cursor: "pointer",
+                    "&:hover": {
+                      backgroundColor: "rgba(124, 58, 237, 0.22)",
+                    },
+                    "& .MuiChip-label": {
+                      px: 1,
+                      py: 0,
+                      lineHeight: "20px",
+                    },
+                  }}
+                />
+              ))}
+            </>
+          )}
         </Box>
       )}
     </Box>
   );
 };
 
-export default MustacheHighlightedTextField;
+export default NunjucksHighlightedTextField;

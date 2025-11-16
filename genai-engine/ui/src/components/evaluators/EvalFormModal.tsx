@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { EvalFormModalProps } from "./types";
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
-import MustacheHighlightedTextField from "./MustacheHighlightedTextField";
+import NunjucksHighlightedTextField from "./MustacheHighlightedTextField";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -395,7 +395,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   Instructions
                 </Typography>
               </FormLabel>
-              <MustacheHighlightedTextField
+              <NunjucksHighlightedTextField
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Enter eval instructions..."
