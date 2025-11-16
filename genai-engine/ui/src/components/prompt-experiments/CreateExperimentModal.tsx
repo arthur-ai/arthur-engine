@@ -15,6 +15,9 @@ import {
   MenuItem,
   Typography,
   IconButton,
+  Stepper,
+  Step,
+  StepLabel,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -28,6 +31,8 @@ import type {
   DatasetVersionMetadataResponse,
   LLMEvalsVersionListResponse,
   LLMVersionResponse,
+  AgenticPrompt,
+  LLMEval,
 } from "@/lib/api-client/api-client";
 
 interface CreateExperimentModalProps {
@@ -46,6 +51,31 @@ export interface EvaluatorSelection {
   version: number;
 }
 
+export type VariableSourceType = "dataset_column" | "experiment_output";
+
+export interface VariableMapping {
+  variableName: string;
+  sourceType: VariableSourceType;
+  datasetColumn?: string;  // For dataset_column source
+  jsonPath?: string;       // For experiment_output source
+}
+
+export interface PromptVariableMappings {
+  [variableName: string]: string; // variable name -> dataset column name
+}
+
+export interface EvalVariableMappings {
+  evalName: string;
+  evalVersion: number;
+  mappings: {
+    [variableName: string]: {
+      sourceType: VariableSourceType;
+      datasetColumn?: string;
+      jsonPath?: string;
+    };
+  };
+}
+
 export interface ExperimentFormData {
   name: string;
   description: string;
@@ -53,6 +83,8 @@ export interface ExperimentFormData {
   datasetId: string;
   datasetVersion: number | "";
   evaluators: EvaluatorSelection[];
+  promptVariableMappings?: PromptVariableMappings;
+  evalVariableMappings?: EvalVariableMappings[];
 }
 
 export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
@@ -63,6 +95,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const { id: taskId } = useParams<{ id: string }>();
   const api = useApi();
 
+  // Step management
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+
   // Form state
   const [formData, setFormData] = useState<ExperimentFormData>({
     name: "",
@@ -71,6 +107,8 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     datasetId: "",
     datasetVersion: "",
     evaluators: [],
+    promptVariableMappings: {},
+    evalVariableMappings: [],
   });
 
   // Prompts state
@@ -84,8 +122,15 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   // Datasets state
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [datasetVersions, setDatasetVersions] = useState<DatasetVersionMetadataResponse[]>([]);
+  const [datasetColumns, setDatasetColumns] = useState<string[]>([]);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [loadingDatasetVersions, setLoadingDatasetVersions] = useState(false);
+
+  // Prompt and eval variable details
+  const [promptVariables, setPromptVariables] = useState<string[]>([]);
+  const [loadingPromptDetails, setLoadingPromptDetails] = useState(false);
+  const [evalVariables, setEvalVariables] = useState<Record<string, { name: string; version: number; variables: string[] }>>({});
+  const [loadingEvalDetails, setLoadingEvalDetails] = useState(false);
 
   // Evaluators state
   const [evaluators, setEvaluators] = useState<LLMGetAllMetadataResponse[]>([]);
@@ -181,6 +226,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           ...prev,
           datasetVersion: maxVersion
         }));
+
+        // Load columns for the latest version
+        const latestVersion = versions.find(v => v.version_number === maxVersion);
+        if (latestVersion) {
+          setDatasetColumns(latestVersion.column_names);
+        }
       }
     } catch (error) {
       console.error("Failed to load dataset versions:", error);
@@ -226,6 +277,53 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       }
     } catch (error) {
       console.error("Failed to load evaluator versions:", error);
+    }
+  };
+
+  const loadPromptVariables = async () => {
+    if (!taskId || !api || !selectedPromptName || formData.promptVersions.length === 0) return;
+    try {
+      setLoadingPromptDetails(true);
+      // Fetch details for the first selected version to get variables
+      const firstVersion = formData.promptVersions[0];
+      const response = await api.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+        firstVersion.promptName,
+        String(firstVersion.version),
+        taskId
+      );
+      if (response.data.variables) {
+        setPromptVariables(response.data.variables);
+      }
+    } catch (error) {
+      console.error("Failed to load prompt variables:", error);
+    } finally {
+      setLoadingPromptDetails(false);
+    }
+  };
+
+  const loadEvalVariablesForEvaluator = async (evalName: string, evalVersion: number) => {
+    if (!taskId || !api) return;
+    try {
+      setLoadingEvalDetails(true);
+      const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
+        evalName,
+        String(evalVersion),
+        taskId
+      );
+      if (response.data.variables) {
+        setEvalVariables(prev => ({
+          ...prev,
+          [`${evalName}-${evalVersion}`]: {
+            name: evalName,
+            version: evalVersion,
+            variables: response.data.variables || [],
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load eval variables:", error);
+    } finally {
+      setLoadingEvalDetails(false);
     }
   };
 
@@ -313,6 +411,8 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
     try {
       setIsSubmitting(true);
+      // Transform formData to match API expectations
+      // The parent component will handle the actual API call
       await onSubmit(formData);
       // Reset form on success
       setFormData({
@@ -322,11 +422,18 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         datasetId: "",
         datasetVersion: "",
         evaluators: [],
+        promptVariableMappings: {},
+        evalVariableMappings: [],
       });
       setSelectedPromptName("");
       setVisibleOlderVersions([]);
       setCurrentEvaluatorName("");
       setCurrentEvaluatorVersion("");
+      setPromptVariables([]);
+      setEvalVariables({});
+      setDatasetColumns([]);
+      setCurrentStep(0);
+      setCompletedSteps(new Set());
       setErrors({});
       onClose();
     } catch (error) {
@@ -346,29 +453,141 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       datasetId: "",
       datasetVersion: "",
       evaluators: [],
+      promptVariableMappings: {},
+      evalVariableMappings: [],
     });
     setSelectedPromptName("");
     setVisibleOlderVersions([]);
     setCurrentEvaluatorName("");
     setCurrentEvaluatorVersion("");
+    setPromptVariables([]);
+    setEvalVariables({});
+    setDatasetColumns([]);
+    setCurrentStep(0);
+    setCompletedSteps(new Set());
     setErrors({});
     onClose();
   };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={handleCancel}
-      maxWidth="md"
-      fullWidth
-      aria-labelledby="create-experiment-dialog-title"
-    >
-      <DialogTitle id="create-experiment-dialog-title">
-        Create New Experiment
-      </DialogTitle>
-      <DialogContent>
-        <Box className="flex flex-col gap-4 mt-2">
-          {/* Basic Info */}
+  // Step navigation
+  const getStepLabels = () => {
+    const labels = ["Experiment Info"];
+    if (formData.promptVersions.length > 0) {
+      labels.push("Configure Prompt Variables");
+    }
+    formData.evaluators.forEach((evaluator) => {
+      labels.push(`Configure ${evaluator.name} (v${evaluator.version})`);
+    });
+    return labels;
+  };
+
+  const canProceedFromStep = (step: number): boolean => {
+    switch (step) {
+      case 0:
+        // Experiment info step - need basic info, prompt versions, dataset, and evaluators
+        return !!(
+          formData.name.trim() &&
+          formData.promptVersions.length > 0 &&
+          formData.datasetId &&
+          formData.datasetVersion &&
+          formData.evaluators.length > 0
+        );
+      case 1:
+        // Configure prompt variables - need all mappings
+        if (!formData.promptVariableMappings) return false;
+        return promptVariables.every(varName => !!formData.promptVariableMappings![varName]);
+      default:
+        // Configure eval variables - need all mappings for the current eval
+        if (step < 2) return false;
+        const evalIndex = step - 2;
+        const evaluator = formData.evaluators[evalIndex];
+        if (!evaluator) return false;
+
+        const evalMappings = formData.evalVariableMappings?.find(
+          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+        );
+        if (!evalMappings) return false;
+
+        const evalKey = `${evaluator.name}-${evaluator.version}`;
+        const evalVars = evalVariables[evalKey]?.variables || [];
+        return evalVars.every(varName => !!evalMappings.mappings[varName]);
+    }
+  };
+
+  const handleNext = async () => {
+    if (currentStep === 0) {
+      // Load prompt variables before moving to step 1
+      if (!taskId || !api || formData.promptVersions.length === 0) return;
+
+      try {
+        setLoadingPromptDetails(true);
+        const firstVersion = formData.promptVersions[0];
+        const response = await api.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+          firstVersion.promptName,
+          String(firstVersion.version),
+          taskId
+        );
+
+        const vars = response.data.variables || [];
+        setPromptVariables(vars);
+
+        // Initialize prompt variable mappings with auto-matching
+        if (datasetColumns.length > 0 && vars.length > 0) {
+          const mappings: PromptVariableMappings = {};
+          vars.forEach(varName => {
+            const matchingColumn = datasetColumns.find(col => col === varName);
+            if (matchingColumn) {
+              mappings[varName] = matchingColumn;
+            }
+          });
+          setFormData(prev => ({ ...prev, promptVariableMappings: mappings }));
+        }
+      } catch (error) {
+        console.error("Failed to load prompt variables:", error);
+      } finally {
+        setLoadingPromptDetails(false);
+      }
+    } else if (currentStep === 1) {
+      // Load eval variables for first evaluator
+      if (formData.evaluators.length > 0) {
+        const firstEval = formData.evaluators[0];
+        await loadEvalVariablesForEvaluator(firstEval.name, firstEval.version);
+      }
+    } else if (currentStep >= 2) {
+      // Load next eval variables if there are more
+      const nextEvalIndex = currentStep - 1;
+      if (nextEvalIndex < formData.evaluators.length) {
+        const nextEval = formData.evaluators[nextEvalIndex];
+        await loadEvalVariablesForEvaluator(nextEval.name, nextEval.version);
+      }
+    }
+    setCompletedSteps(prev => new Set(prev).add(currentStep));
+    setCurrentStep(prev => prev + 1);
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => prev - 1);
+  };
+
+  const isLastStep = () => {
+    return currentStep === getStepLabels().length - 1;
+  };
+
+  // Render step content
+  const renderStepContent = () => {
+    if (currentStep === 0) {
+      return renderExperimentInfoStep();
+    } else if (currentStep === 1) {
+      return renderPromptVariableMappingStep();
+    } else {
+      const evalIndex = currentStep - 2;
+      return renderEvalVariableMappingStep(evalIndex);
+    }
+  };
+
+  const renderExperimentInfoStep = () => (
+    <Box className="flex flex-col gap-4 mt-2">
+      {/* Basic Info */}
           <TextField
             label="Experiment Name"
             value={formData.name}
@@ -555,10 +774,18 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                 <InputLabel>Version</InputLabel>
                 <Select
                   value={formData.datasetVersion}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    datasetVersion: e.target.value as number
-                  }))}
+                  onChange={(e) => {
+                    const versionNumber = e.target.value as number;
+                    setFormData(prev => ({
+                      ...prev,
+                      datasetVersion: versionNumber
+                    }));
+                    // Update columns when version changes
+                    const selectedVersion = datasetVersions.find(v => v.version_number === versionNumber);
+                    if (selectedVersion) {
+                      setDatasetColumns(selectedVersion.column_names);
+                    }
+                  }}
                   label="Version"
                   disabled={!formData.datasetId || loadingDatasetVersions}
                   displayEmpty={false}
@@ -669,26 +896,317 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             )}
           </Box>
 
-          {errors.general && (
-            <Typography variant="body2" className="text-red-600">
-              {errors.general}
-            </Typography>
-          )}
+      {errors.general && (
+        <Typography variant="body2" className="text-red-600">
+          {errors.general}
+        </Typography>
+      )}
+    </Box>
+  );
+
+  const renderPromptVariableMappingStep = () => (
+    <Box className="flex flex-col gap-4 mt-2">
+      <Typography variant="body1" className="text-gray-700">
+        Map each prompt variable to a dataset column. Variables that match column names exactly have been auto-filled.
+      </Typography>
+
+      {loadingPromptDetails ? (
+        <Box className="flex justify-center p-4">
+          <CircularProgress />
         </Box>
+      ) : promptVariables.length === 0 ? (
+        <Typography variant="body2" className="text-gray-600 italic">
+          No variables found for this prompt.
+        </Typography>
+      ) : (
+        <Box className="flex flex-col gap-3">
+          {promptVariables.map((varName) => (
+            <FormControl key={varName} fullWidth>
+              <InputLabel required>{varName}</InputLabel>
+              <Select
+                value={formData.promptVariableMappings?.[varName] || ""}
+                onChange={(e) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    promptVariableMappings: {
+                      ...prev.promptVariableMappings,
+                      [varName]: e.target.value,
+                    },
+                  }));
+                }}
+                label={varName}
+              >
+                <MenuItem value="">
+                  <em>Select a column</em>
+                </MenuItem>
+                {datasetColumns.map((column) => (
+                  <MenuItem key={column} value={column}>
+                    {column}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+
+  const renderEvalVariableMappingStep = (evalIndex: number) => {
+    const evaluator = formData.evaluators[evalIndex];
+    if (!evaluator) return null;
+
+    const evalKey = `${evaluator.name}-${evaluator.version}`;
+    const evalVars = evalVariables[evalKey]?.variables || [];
+    const currentMappings = formData.evalVariableMappings?.find(
+      m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+    );
+
+    return (
+      <Box className="flex flex-col gap-4 mt-2">
+        <Typography variant="body1" className="text-gray-700">
+          Map each variable for <strong>{evaluator.name} (v{evaluator.version})</strong> to either a dataset column or the experiment output.
+        </Typography>
+
+        {loadingEvalDetails ? (
+          <Box className="flex justify-center p-4">
+            <CircularProgress />
+          </Box>
+        ) : evalVars.length === 0 ? (
+          <Typography variant="body2" className="text-gray-600 italic">
+            No variables found for this evaluator.
+          </Typography>
+        ) : (
+          <Box className="flex flex-col gap-4">
+            {evalVars.map((varName) => {
+              const mapping = currentMappings?.mappings[varName];
+              const sourceType = mapping?.sourceType || "dataset_column";
+
+              return (
+                <Box key={varName} className="border border-gray-300 rounded p-3">
+                  <Typography variant="subtitle2" className="font-medium mb-2">
+                    {varName} *
+                  </Typography>
+
+                  <Box className="flex gap-2 mb-2">
+                    <Button
+                      variant={sourceType === "dataset_column" ? "contained" : "outlined"}
+                      size="small"
+                      onClick={() => {
+                        const newMappings = formData.evalVariableMappings || [];
+                        const existingIndex = newMappings.findIndex(
+                          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+                        );
+
+                        const updatedMapping = {
+                          evalName: evaluator.name,
+                          evalVersion: evaluator.version,
+                          mappings: {
+                            ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
+                            [varName]: {
+                              sourceType: "dataset_column" as VariableSourceType,
+                              datasetColumn: mapping?.datasetColumn || "",
+                            },
+                          },
+                        };
+
+                        if (existingIndex >= 0) {
+                          newMappings[existingIndex] = updatedMapping;
+                        } else {
+                          newMappings.push(updatedMapping);
+                        }
+
+                        setFormData(prev => ({
+                          ...prev,
+                          evalVariableMappings: newMappings,
+                        }));
+                      }}
+                    >
+                      Dataset Column
+                    </Button>
+                    <Button
+                      variant={sourceType === "experiment_output" ? "contained" : "outlined"}
+                      size="small"
+                      onClick={() => {
+                        const newMappings = formData.evalVariableMappings || [];
+                        const existingIndex = newMappings.findIndex(
+                          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+                        );
+
+                        const updatedMapping = {
+                          evalName: evaluator.name,
+                          evalVersion: evaluator.version,
+                          mappings: {
+                            ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
+                            [varName]: {
+                              sourceType: "experiment_output" as VariableSourceType,
+                              jsonPath: mapping?.jsonPath || "",
+                            },
+                          },
+                        };
+
+                        if (existingIndex >= 0) {
+                          newMappings[existingIndex] = updatedMapping;
+                        } else {
+                          newMappings.push(updatedMapping);
+                        }
+
+                        setFormData(prev => ({
+                          ...prev,
+                          evalVariableMappings: newMappings,
+                        }));
+                      }}
+                    >
+                      Experiment Output
+                    </Button>
+                  </Box>
+
+                  {sourceType === "dataset_column" ? (
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Dataset Column</InputLabel>
+                      <Select
+                        value={mapping?.datasetColumn || ""}
+                        onChange={(e) => {
+                          const newMappings = formData.evalVariableMappings || [];
+                          const existingIndex = newMappings.findIndex(
+                            m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+                          );
+
+                          const updatedMapping = {
+                            evalName: evaluator.name,
+                            evalVersion: evaluator.version,
+                            mappings: {
+                              ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
+                              [varName]: {
+                                sourceType: "dataset_column" as VariableSourceType,
+                                datasetColumn: e.target.value,
+                              },
+                            },
+                          };
+
+                          if (existingIndex >= 0) {
+                            newMappings[existingIndex] = updatedMapping;
+                          } else {
+                            newMappings.push(updatedMapping);
+                          }
+
+                          setFormData(prev => ({
+                            ...prev,
+                            evalVariableMappings: newMappings,
+                          }));
+                        }}
+                        label="Dataset Column"
+                      >
+                        <MenuItem value="">
+                          <em>Select a column</em>
+                        </MenuItem>
+                        {datasetColumns.map((column) => (
+                          <MenuItem key={column} value={column}>
+                            {column}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="JSON Path (optional)"
+                      placeholder="e.g., .response.data"
+                      value={mapping?.jsonPath || ""}
+                      onChange={(e) => {
+                        const newMappings = formData.evalVariableMappings || [];
+                        const existingIndex = newMappings.findIndex(
+                          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+                        );
+
+                        const updatedMapping = {
+                          evalName: evaluator.name,
+                          evalVersion: evaluator.version,
+                          mappings: {
+                            ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
+                            [varName]: {
+                              sourceType: "experiment_output" as VariableSourceType,
+                              jsonPath: e.target.value,
+                            },
+                          },
+                        };
+
+                        if (existingIndex >= 0) {
+                          newMappings[existingIndex] = updatedMapping;
+                        } else {
+                          newMappings.push(updatedMapping);
+                        }
+
+                        setFormData(prev => ({
+                          ...prev,
+                          evalVariableMappings: newMappings,
+                        }));
+                      }}
+                    />
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleCancel}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="create-experiment-dialog-title"
+    >
+      <DialogTitle id="create-experiment-dialog-title">
+        Create New Experiment
+      </DialogTitle>
+      <DialogContent>
+        <Box className="mb-4">
+          <Stepper activeStep={currentStep} alternativeLabel>
+            {getStepLabels().map((label, index) => (
+              <Step key={label} completed={completedSteps.has(index)}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        </Box>
+
+        {renderStepContent()}
       </DialogContent>
       <DialogActions className="px-6 pb-4">
         <Button onClick={handleCancel} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          color="primary"
-          disabled={isSubmitting}
-          startIcon={isSubmitting ? <CircularProgress size={16} /> : null}
-        >
-          {isSubmitting ? "Creating..." : "Create Experiment"}
-        </Button>
+        {currentStep > 0 && (
+          <Button onClick={handleBack} disabled={isSubmitting}>
+            Back
+          </Button>
+        )}
+        {!isLastStep() ? (
+          <Button
+            onClick={handleNext}
+            variant="contained"
+            color="primary"
+            disabled={!canProceedFromStep(currentStep) || isSubmitting}
+          >
+            {currentStep === 0 ? "Configure Prompts" : "Next"}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            color="primary"
+            disabled={!canProceedFromStep(currentStep) || isSubmitting}
+            startIcon={isSubmitting ? <CircularProgress size={16} /> : null}
+          >
+            {isSubmitting ? "Creating..." : "Create Experiment"}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

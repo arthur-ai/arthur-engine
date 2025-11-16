@@ -14,8 +14,10 @@ export const PromptExperimentsView: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
 
-  const { experiments, isLoading, error } = usePromptExperiments(taskId);
+  const { experiments, totalCount = 0, isLoading, error } = usePromptExperiments(taskId, page, rowsPerPage);
   const createExperiment = useCreateExperiment(taskId);
 
   const handleCreateExperiment = () => {
@@ -33,6 +35,56 @@ export const PromptExperimentsView: React.FC = () => {
     }
 
     try {
+      // Transform prompt variable mappings to API format
+      const promptVariableMapping = Object.entries(data.promptVariableMappings || {}).map(([varName, columnName]) => ({
+        variable_name: varName,
+        source: {
+          type: "dataset_column" as const,
+          dataset_column: {
+            name: columnName,
+          },
+        },
+      }));
+
+      // Transform eval variable mappings to API format
+      const evalList = data.evaluators.map(evaluator => {
+        const evalMapping = data.evalVariableMappings?.find(
+          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+        );
+
+        const variableMapping = evalMapping
+          ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
+              if (mapping.sourceType === "dataset_column") {
+                return {
+                  variable_name: varName,
+                  source: {
+                    type: "dataset_column" as const,
+                    dataset_column: {
+                      name: mapping.datasetColumn || "",
+                    },
+                  },
+                };
+              } else {
+                return {
+                  variable_name: varName,
+                  source: {
+                    type: "experiment_output" as const,
+                    experiment_output: {
+                      json_path: mapping.jsonPath || null,
+                    },
+                  },
+                };
+              }
+            })
+          : [];
+
+        return {
+          name: evaluator.name,
+          version: evaluator.version,
+          variable_mapping: variableMapping,
+        };
+      });
+
       await createExperiment.mutateAsync({
         name: data.name,
         description: data.description,
@@ -43,13 +95,9 @@ export const PromptExperimentsView: React.FC = () => {
         prompt_ref: {
           name: data.promptVersions[0].promptName,
           version_list: data.promptVersions.map(pv => pv.version),
-          variable_mapping: [],
+          variable_mapping: promptVariableMapping,
         },
-        eval_list: data.evaluators.map(evaluator => ({
-          name: evaluator.name,
-          version: evaluator.version,
-          variable_mapping: [],
-        })),
+        eval_list: evalList,
       });
       handleCloseModal();
     } catch (err) {
@@ -60,6 +108,15 @@ export const PromptExperimentsView: React.FC = () => {
 
   const handleRowClick = (experiment: PromptExperiment) => {
     navigate(`/tasks/${taskId}/prompt-experiments/${experiment.id}`);
+  };
+
+  const handlePageChange = (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
   return (
@@ -87,6 +144,12 @@ export const PromptExperimentsView: React.FC = () => {
             <PromptExperimentsTable
               experiments={experiments}
               onRowClick={handleRowClick}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              totalCount={totalCount}
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              loading={isLoading}
             />
           )}
         </Box>

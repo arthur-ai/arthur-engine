@@ -8,9 +8,11 @@ import {
   Paper,
   Box,
   Chip,
+  TablePagination,
+  LinearProgress,
 } from "@mui/material";
 import React from "react";
-import { formatUTCTimestamp } from "@/utils/formatters";
+import { formatUTCTimestamp, formatTimestampDuration } from "@/utils/formatters";
 
 export interface PromptExperiment {
   id: string;
@@ -34,11 +36,23 @@ export interface PromptExperimentsApiResponse {
 interface PromptExperimentsTableProps {
   experiments: PromptExperiment[];
   onRowClick: (experiment: PromptExperiment) => void;
+  page: number;
+  rowsPerPage: number;
+  totalCount: number;
+  onPageChange: (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
+  onRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  loading?: boolean;
 }
 
 export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   experiments,
   onRowClick,
+  page,
+  rowsPerPage,
+  totalCount,
+  onPageChange,
+  onRowsPerPageChange,
+  loading = false,
 }) => {
 
   const getStatusColor = (
@@ -66,32 +80,49 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
 
   return (
     <>
-      <TableContainer
-        component={Paper}
-        elevation={1}
-        className="overflow-auto h-full"
-      >
-        <Table className="min-w-[650px]" aria-label="experiments table" stickyHeader>
+      <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }}>
+        {loading && <LinearProgress />}
+        <Table stickyHeader size="small" aria-label="experiments table">
           <TableHead>
             <TableRow>
-              <TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
                   Experiment Name
                 </Box>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
+                  Description
+                </Box>
+              </TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
+                  Prompt
+                </Box>
+              </TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
+                  Rows
+                </Box>
+              </TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
                   Created At
                 </Box>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
                   Finished At
+                </Box>
+              </TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
+                  Duration
                 </Box>
               </TableCell>
             </TableRow>
@@ -102,20 +133,18 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                 key={experiment.id}
                 hover
                 onClick={() => onRowClick(experiment)}
-                className="cursor-pointer hover:bg-gray-50"
+                sx={{ cursor: "pointer" }}
               >
                 <TableCell component="th" scope="row">
                   <Box className="font-medium">{experiment.name}</Box>
-                  {experiment.description && (
-                    <Box component="div" className="text-sm text-gray-600 mt-1">
-                      {experiment.description}
-                    </Box>
-                  )}
-                  <Box component="div" className="text-xs text-gray-500 mt-1 flex gap-4">
-                    <span>Prompt: {experiment.prompt_name}</span>
-                    <span>Rows: {experiment.total_rows}</span>
+                </TableCell>
+                <TableCell>
+                  <Box className="text-sm text-gray-600">
+                    {experiment.description || "-"}
                   </Box>
                 </TableCell>
+                <TableCell>{experiment.prompt_name}</TableCell>
+                <TableCell>{experiment.total_rows}</TableCell>
                 <TableCell>
                   <Chip
                     label={getStatusLabel(experiment.status)}
@@ -125,11 +154,26 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                 </TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
+                <TableCell>
+                  {experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination
+        component="div"
+        count={totalCount}
+        onPageChange={onPageChange}
+        onRowsPerPageChange={onRowsPerPageChange}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        rowsPerPageOptions={[10, 25, 50, 100]}
+        sx={{
+          overflow: "visible",
+        }}
+      />
     </>
   );
 };
