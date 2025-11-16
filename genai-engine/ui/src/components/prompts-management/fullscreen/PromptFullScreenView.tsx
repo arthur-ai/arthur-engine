@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
 
+import { useDeletePromptVersionMutation } from "../hooks/useDeletePromptVersionMutation";
 import { usePrompt } from "../hooks/usePrompt";
 import { usePromptVersions } from "../hooks/usePromptVersions";
 import type { PromptFullScreenViewProps } from "../types";
@@ -19,6 +20,8 @@ const PromptFullScreenView = ({ promptName, initialVersion, onClose }: PromptFul
     sort: "desc",
     pageSize: 1,
   });
+
+  const deleteMutation = useDeletePromptVersionMutation(task?.id, promptName);
 
   useEffect(() => {
     if (selectedVersion === null && versions.length > 0) {
@@ -41,6 +44,7 @@ const PromptFullScreenView = ({ promptName, initialVersion, onClose }: PromptFul
         promptName={promptName}
         selectedVersion={selectedVersion}
         onSelectVersion={handleSelectVersion}
+        onDelete={deleteMutation.mutateAsync}
       />
       <Box
         sx={{

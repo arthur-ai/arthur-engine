@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
 
+import { useDeleteEvalVersionMutation } from "../hooks/useDeleteEvalVersionMutation";
 import { useEval } from "../hooks/useEval";
 import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalFullScreenViewProps } from "../types";
@@ -15,9 +16,13 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
   const [selectedVersion, setSelectedVersion] = useState<number | null>(initialVersion ?? null);
 
   // Fetch versions to get the latest if no version is selected
-  const { versions } = useEvalVersions(task?.id, evalName, {
+  const { versions, refetch } = useEvalVersions(task?.id, evalName, {
     sort: "desc",
     pageSize: 1,
+  });
+
+  const deleteVersionMutation = useDeleteEvalVersionMutation(task?.id, evalName, () => {
+    refetch();
   });
 
   useEffect(() => {
@@ -41,6 +46,7 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
         evalName={evalName}
         selectedVersion={selectedVersion}
         onSelectVersion={handleSelectVersion}
+        onDelete={deleteVersionMutation.mutateAsync}
       />
       <Box
         sx={{
