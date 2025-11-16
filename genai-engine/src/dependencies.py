@@ -13,7 +13,7 @@ from cachetools import TTLCache
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Query
 from psycopg2 import OperationalError as Psycopg2OperationalError
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -130,14 +130,16 @@ def get_db_session():
     session_maker = sessionmaker(get_db_engine(db_config))
     try:
         session = session_maker()
-        session.execute(text("SELECT 1"))
-        return session
+        yield session
     except (OperationalError, Psycopg2OperationalError) as e:
         logger.error(f"Error connecting to database: {db_config.url}")
         raise HTTPException(
             status_code=500,
             detail=f"Error connecting to database: {db_config.url}",
         ) from None
+    finally:
+        if session:
+            session.close()
 
 
 def get_application_config(session=Depends(get_db_session)) -> ApplicationConfiguration:
