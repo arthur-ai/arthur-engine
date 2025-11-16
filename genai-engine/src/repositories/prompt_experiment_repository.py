@@ -117,15 +117,42 @@ class PromptExperimentRepository:
             InputVariable.model_validate(var) for var in db_test_case.prompt_input_variables
         ]
 
-        # Convert JSON prompt results to Pydantic models
-        # model_validate handles nested models (PromptOutput, EvalExecution, EvalResults) automatically
-        prompt_results = [
-            PromptResult.model_validate(result) for result in db_test_case.prompt_results
-        ]
+        # Convert nested prompt results from database models to Pydantic models
+        prompt_results = []
+        for db_prompt_result in db_test_case.prompt_results:
+            # Convert eval scores for this prompt result
+            eval_executions = []
+            for db_eval_score in db_prompt_result.eval_scores:
+                eval_input_variables = [
+                    InputVariable.model_validate(var)
+                    for var in db_eval_score.eval_input_variables
+                ]
+
+                from schemas.prompt_experiment_schemas import EvalExecution, EvalResults
+                eval_execution = EvalExecution(
+                    eval_name=db_eval_score.eval_name,
+                    eval_version=str(db_eval_score.eval_version),
+                    eval_input_variables=eval_input_variables,
+                    eval_results=EvalResults.model_validate(db_eval_score.eval_results),
+                )
+                eval_executions.append(eval_execution)
+
+            # Convert prompt output
+            from schemas.prompt_experiment_schemas import PromptOutput
+            prompt_output = PromptOutput.model_validate(db_prompt_result.output)
+
+            # Build the full prompt result
+            prompt_result = PromptResult(
+                name=db_prompt_result.name,
+                version=str(db_prompt_result.version),
+                rendered_prompt=db_prompt_result.rendered_prompt,
+                output=prompt_output,
+                evals=eval_executions,
+            )
+            prompt_results.append(prompt_result)
 
         return TestCase(
             status=db_test_case.status,
-            retries=db_test_case.retries,
             dataset_row_id=db_test_case.dataset_row_id,
             prompt_input_variables=input_variables,
             prompt_results=prompt_results,
@@ -282,7 +309,6 @@ class PromptExperimentRepository:
                 status=TestCaseStatus.QUEUED,
                 retries=0,
                 prompt_input_variables=prompt_input_variables,
-                prompt_results=[],  # Will be populated during execution
             )
             test_cases.append(test_case)
 

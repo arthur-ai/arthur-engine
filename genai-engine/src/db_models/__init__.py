@@ -54,6 +54,8 @@ from db_models.llm_eval_models import DatabaseLLMEval
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
+    DatabasePromptExperimentTestCasePromptResult,
+    DatabasePromptExperimentTestCasePromptResultEvalScore,
 )
 
 __all__ = [
@@ -114,4 +116,6 @@ __all__ = [
     # Prompt Experiment models
     "DatabasePromptExperiment",
     "DatabasePromptExperimentTestCase",
+    "DatabasePromptExperimentTestCasePromptResult",
+    "DatabasePromptExperimentTestCasePromptResultEvalScore",
 ]

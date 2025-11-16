@@ -260,7 +260,6 @@ class TestCase(BaseModel):
     """Individual test case result"""
 
     status: TestCaseStatus = Field(description="Status of the test case")
-    retries: int = Field(description="Number of retries attempted")
     dataset_row_id: str = Field(description="ID of the dataset row")
     prompt_input_variables: list[InputVariable] = Field(
         description="Input variables for the prompt"

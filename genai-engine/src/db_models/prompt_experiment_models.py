@@ -114,8 +114,6 @@ class DatabasePromptExperimentTestCase(Base):
         index=True,
     )
 
-    retries: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
     # Dataset row reference
     dataset_row_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
@@ -124,25 +122,6 @@ class DatabasePromptExperimentTestCase(Base):
     prompt_input_variables: Mapped[List[Dict[str, Any]]] = mapped_column(
         JSON, nullable=False
     )
-
-    # Results for each prompt version tested
-    # Structure: [
-    #   {
-    #     "name": str,
-    #     "version": str,
-    #     "rendered_input": str,
-    #     "output": {"content": str, "tool_calls": [], "cost": str},
-    #     "evals": [
-    #       {
-    #         "eval_name": str,
-    #         "eval_version": str,
-    #         "eval_input_variables": [...],
-    #         "eval_results": {"score": float, "explanation": str, "cost": float}
-    #       }
-    #     ]
-    #   }
-    # ]
-    prompt_results: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -160,4 +139,97 @@ class DatabasePromptExperimentTestCase(Base):
     # Relationships
     experiment: Mapped["DatabasePromptExperiment"] = relationship(
         back_populates="test_cases"
+    )
+    prompt_results: Mapped[List["DatabasePromptExperimentTestCasePromptResult"]] = relationship(
+        back_populates="test_case",
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
+
+
+class DatabasePromptExperimentTestCasePromptResult(Base):
+    """Database model for prompt execution results within a test case"""
+
+    __tablename__ = "prompt_experiment_test_case_prompt_results"
+
+    # Primary key
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+
+    # Foreign key to test case
+    test_case_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("prompt_experiment_test_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Prompt information
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Rendered prompt with variables replaced
+    rendered_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Output from the prompt
+    # Structure: {"content": str, "tool_calls": [], "cost": str}
+    output: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+
+    # Relationships
+    test_case: Mapped["DatabasePromptExperimentTestCase"] = relationship(
+        back_populates="prompt_results"
+    )
+    eval_scores: Mapped[List["DatabasePromptExperimentTestCasePromptResultEvalScore"]] = relationship(
+        back_populates="prompt_result",
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
+
+
+class DatabasePromptExperimentTestCasePromptResultEvalScore(Base):
+    """Database model for eval scores for a prompt result"""
+
+    __tablename__ = "prompt_experiment_test_case_prompt_result_eval_scores"
+
+    # Primary key
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+
+    # Foreign key to prompt result
+    prompt_result_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("prompt_experiment_test_case_prompt_results.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Eval information
+    eval_name: Mapped[str] = mapped_column(String, nullable=False)
+    eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Eval input variables
+    # Structure: [{"variable_name": str, "value": Any}, ...]
+    eval_input_variables: Mapped[List[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=False
+    )
+
+    # Eval results
+    # Structure: {"score": float, "explanation": str, "cost": float}
+    eval_results: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+
+    # Relationships
+    prompt_result: Mapped["DatabasePromptExperimentTestCasePromptResult"] = relationship(
+        back_populates="eval_scores"
     )
