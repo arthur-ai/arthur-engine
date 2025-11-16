@@ -6,7 +6,7 @@ import { getContentHeight } from "@/constants/layout";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { usePromptExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
-import { formatUTCTimestamp, formatTimestampDuration } from "@/utils/formatters";
+import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
@@ -104,6 +104,11 @@ export const ExperimentDetailView: React.FC = () => {
             <Box>
               <span className="font-medium">Prompt:</span> {experiment.prompt_name}
             </Box>
+            {experiment.total_cost && (
+              <Box>
+                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost))}
+              </Box>
+            )}
           </Box>
         </Box>
 

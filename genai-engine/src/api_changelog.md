@@ -3,6 +3,17 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/16/2025
+- **CHANGE** for Component/Schema:  removed the schema 'EvalResult'
+- **CHANGE** for Component/Schema:  removed the schema 'EvalResults'
+- **CHANGE** for Component/Schema:  removed the schema 'PromptEvalSummary'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'total_cost' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the optional property 'data/items/total_cost' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added '#/components/schemas/EvalExecutionResult' to the 'data/items/prompt_results/items/evals/items/eval_results' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed '#/components/schemas/EvalResults' from the 'data/items/prompt_results/items/evals/items/eval_results' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the optional property 'data/items/total_cost' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the optional property 'total_cost' to the response with the '200' status
+
+# 11/16/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the 'prompt_ref/variable_mapping/items/source' response's property type/format changed from ''/'' to 'object'/'' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/evals/items/eval_results' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/output' became optional for the status '200'

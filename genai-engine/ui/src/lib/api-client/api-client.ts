@@ -974,12 +974,34 @@ export interface EvalExecution {
    */
   eval_name: string;
   /** Results from the eval (None if not yet executed) */
-  eval_results?: EvalResults | null;
+  eval_results?: EvalExecutionResult | null;
   /**
    * Eval Version
    * Version of the evaluation
    */
   eval_version: string;
+}
+
+/**
+ * EvalExecutionResult
+ * Results from an eval execution
+ */
+export interface EvalExecutionResult {
+  /**
+   * Cost
+   * Cost of the evaluation
+   */
+  cost: string;
+  /**
+   * Explanation
+   * Explanation of the score
+   */
+  explanation: string;
+  /**
+   * Score
+   * Score from the evaluation
+   */
+  score: number;
 }
 
 /**
@@ -1027,10 +1049,10 @@ export interface EvalRefOutput {
 }
 
 /**
- * EvalResult
+ * EvalResultSummary
  * Results for a single eval
  */
-export interface EvalResult {
+export interface EvalResultSummary {
   /**
    * Eval Name
    * Name of the evaluation
@@ -1051,28 +1073,6 @@ export interface EvalResult {
    * Total number of test cases evaluated
    */
   total_count: number;
-}
-
-/**
- * EvalResults
- * Results from an eval execution
- */
-export interface EvalResults {
-  /**
-   * Cost
-   * Cost of the evaluation
-   */
-  cost: string;
-  /**
-   * Explanation
-   * Explanation of the score
-   */
-  explanation: string;
-  /**
-   * Score
-   * Score from the evaluation
-   */
-  score: number;
 }
 
 /**
@@ -3983,15 +3983,15 @@ export interface PromptCompletionRequest {
 }
 
 /**
- * PromptEvalSummary
+ * PromptEvalResultSummaries
  * Summary of evaluation results for a prompt version
  */
-export interface PromptEvalSummary {
+export interface PromptEvalResultSummaries {
   /**
    * Eval Results
    * Results for each evaluation run on this prompt version
    */
-  eval_results: EvalResult[];
+  eval_results: EvalResultSummary[];
   /**
    * Prompt Name
    * Name of the prompt
@@ -4062,6 +4062,11 @@ export interface PromptExperimentDetail {
   status: ExperimentStatus;
   /** Summary of results across all test cases */
   summary_results: SummaryResults;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
   /**
    * Total Rows
    * Total number of test rows in the experiment
@@ -4148,6 +4153,11 @@ export interface PromptExperimentSummary {
   prompt_name: string;
   /** Current status of the experiment */
   status: ExperimentStatus;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
   /**
    * Total Rows
    * Total number of test rows in the experiment
@@ -5985,7 +5995,7 @@ export interface SummaryResults {
    * Prompt Eval Summaries
    * Summary for each prompt version tested
    */
-  prompt_eval_summaries: PromptEvalSummary[];
+  prompt_eval_summaries: PromptEvalResultSummaries[];
 }
 
 /** TaskResponse */
@@ -6049,6 +6059,11 @@ export interface TestCase {
   prompt_results: PromptResult[];
   /** Status of the test case */
   status: TestCaseStatus;
+  /**
+   * Total Cost
+   * Total cost for this test case
+   */
+  total_cost?: string | null;
 }
 
 /**

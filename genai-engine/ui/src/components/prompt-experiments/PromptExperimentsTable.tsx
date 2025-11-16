@@ -12,7 +12,7 @@ import {
   LinearProgress,
 } from "@mui/material";
 import React from "react";
-import { formatUTCTimestamp, formatTimestampDuration } from "@/utils/formatters";
+import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
 export interface PromptExperiment {
   id: string;
@@ -23,6 +23,7 @@ export interface PromptExperiment {
   status: "queued" | "running" | "evaluating" | "failed" | "completed";
   prompt_name: string;
   total_rows: number;
+  total_cost?: string | null;
 }
 
 export interface PromptExperimentsApiResponse {
@@ -125,6 +126,11 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                   Duration
                 </Box>
               </TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
+                  Total Cost
+                </Box>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -156,6 +162,9 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                 <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
                 <TableCell>
                   {experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}
+                </TableCell>
+                <TableCell>
+                  {experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost)) : "-"}
                 </TableCell>
               </TableRow>
             ))}

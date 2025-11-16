@@ -22,6 +22,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import React, { useEffect, useState } from "react";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import type { TestCase } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
 
 interface Message {
   role: "system" | "user" | "assistant";
@@ -392,6 +393,9 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
           size="small"
         />
       </TableCell>
+      <TableCell>
+        {testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}
+      </TableCell>
       {evalColumns.map((evalCol) => {
         const key = `${evalCol.name}-${evalCol.version}`;
         const score = evalScoreMap[key];
@@ -524,6 +528,11 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Status
                 </Box>
               </TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
+                  Total Cost
+                </Box>
+              </TableCell>
               {evalColumns.map((evalCol) => (
                 <TableCell
                   key={`${evalCol.name}-${evalCol.version}`}
@@ -548,19 +557,19 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={1 + evalColumns.length + variableColumns.length} align="center">
+                <TableCell colSpan={2 + evalColumns.length + variableColumns.length} align="center">
                   <Typography>Loading results...</Typography>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={1 + evalColumns.length + variableColumns.length} align="center">
+                <TableCell colSpan={2 + evalColumns.length + variableColumns.length} align="center">
                   <Typography color="error">{error.message}</Typography>
                 </TableCell>
               </TableRow>
             ) : testCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={1 + evalColumns.length + variableColumns.length} align="center">
+                <TableCell colSpan={2 + evalColumns.length + variableColumns.length} align="center">
                   <Typography className="text-gray-600">No test cases found</Typography>
                 </TableCell>
               </TableRow>
