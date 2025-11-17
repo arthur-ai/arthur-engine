@@ -140,25 +140,53 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
 
     // Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
     const jinja2Keywords = new Set([
-      'if', 'elif', 'else', 'endif',
-      'for', 'endfor', 'in',
-      'block', 'endblock',
-      'extends', 'include', 'import', 'from',
-      'macro', 'endmacro', 'call', 'endcall',
-      'filter', 'endfilter',
-      'set', 'endset',
-      'raw', 'endraw',
-      'with', 'endwith',
-      'autoescape', 'endautoescape',
-      'trans', 'endtrans', 'pluralize',
-      'do',
-      'break', 'continue',
-      'scoped',
-      'ignore', 'missing',
-      'and', 'or', 'not',
-      'is', 'in',
-      'true', 'false', 'none',
-      'True', 'False', 'None',
+      "if",
+      "elif",
+      "else",
+      "endif",
+      "for",
+      "endfor",
+      "in",
+      "block",
+      "endblock",
+      "extends",
+      "include",
+      "import",
+      "from",
+      "macro",
+      "endmacro",
+      "call",
+      "endcall",
+      "filter",
+      "endfilter",
+      "set",
+      "endset",
+      "raw",
+      "endraw",
+      "with",
+      "endwith",
+      "autoescape",
+      "endautoescape",
+      "trans",
+      "endtrans",
+      "pluralize",
+      "do",
+      "break",
+      "continue",
+      "scoped",
+      "ignore",
+      "missing",
+      "and",
+      "or",
+      "not",
+      "is",
+      "in",
+      "true",
+      "false",
+      "none",
+      "True",
+      "False",
+      "None",
     ]);
 
     // Match variables {{ variable }}
@@ -168,10 +196,10 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     // Filter out variables that are just Jinja2 keywords
     const variables = allVariables.filter((varToken) => {
       // Extract the content between {{ and }}
-      const content = varToken.replace(/^\{\{\s*|\s*\}\}$/g, '').trim();
+      const content = varToken.replace(/^\{\{\s*|\s*\}\}$/g, "").trim();
 
       // Split by spaces, dots, pipes, and other operators to get individual tokens
-      const tokens = content.split(/[\s\.\|\(\)\[\]\,\+\-\*\/\%\=\!\<\>\&\|]+/).filter(t => t.length > 0);
+      const tokens = content.split(/[\s\.\|\(\)\[\]\,\+\-\*\/\%\=\!\<\>\&\|]+/).filter((t) => t.length > 0);
 
       // Check if the first token (main identifier) is a keyword
       const mainToken = tokens[0];
@@ -196,12 +224,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     if (!text) return "";
 
     const escapeHtml = (str: string) => {
-      return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     };
 
     const escaped = escapeHtml(text);
@@ -297,7 +320,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       onChange(syntheticEvent);
 
       // Update highlighting after a short delay to allow the change to propagate
-      setTimeout(() => updateHighlighting(), 0);
+      setTimeout(() => updateHighlighting(), 500);
     }
   }, [onChange, updateHighlighting, readOnly]);
 
@@ -305,6 +328,14 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, text);
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle Enter key to ensure proper new line insertion
+    if (e.key === "Enter") {
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+    }
   }, []);
 
   // Initialize content when value changes externally
@@ -326,6 +357,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         contentEditable={!disabled && !readOnly}
         onInput={handleInput}
         onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         data-placeholder={placeholder}
         suppressContentEditableWarning
         style={{
