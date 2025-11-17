@@ -11,7 +11,10 @@ from pydantic import Field, create_model
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.agentic_prompt_models import (
+    DatabaseAgenticPrompt,
+    DatabaseAgenticPromptVersionTag,
+)
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.common_schemas import JsonSchema
@@ -1579,3 +1582,489 @@ def test_run_saved_agentic_prompt_with_pydantic_response_format(
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == '{"city": "New York", "temperature": 70}'
     assert result.cost == "0.002345"
+
+
+@pytest.mark.unit_tests
+def test_save_agentic_prompt_with_empty_model_name_spawns_error(agentic_prompt_repo):
+    """Test saving an agentic prompt with an empty model name spawns an error"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+    prompt = CreateAgenticPromptRequest(
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        model_name="",
+        model_provider="openai",
+    )
+    with pytest.raises(ValueError, match="Model name cannot be empty."):
+        agentic_prompt_repo.save_llm_item(task_id, prompt_name, prompt)
+
+
+@pytest.mark.unit_tests
+def test_get_agentic_prompt_by_tag_success(agentic_prompt_repo, sample_agentic_prompt):
+    """Test getting an agentic prompt by tag successfully"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    try:
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            "latest",
+            "test_tag",
+        )
+        result = agentic_prompt_repo.get_llm_item_by_tag(
+            task_id,
+            prompt_name,
+            "test_tag",
+        )
+
+        assert isinstance(result, AgenticPrompt)
+        assert result.name == prompt_name
+        assert result.tags == ["test_tag"]
+        assert result.version == created_prompt.version
+    finally:
+        # Cleanup
+        agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_get_agentic_prompt_by_empty_tag_error(agentic_prompt_repo):
+    """Test getting an agentic prompt by empty tag raises an error"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.get_llm_item_by_tag(task_id, prompt_name, "")
+    assert "Tag cannot be empty" in str(exc_info.value)
+
+
+@pytest.mark.unit_tests
+def test_get_agentic_prompt_by_tag_not_found_error(
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """Test getting an agentic prompt by tag that doesn't exist raises an error"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.get_llm_item_by_tag(task_id, prompt_name, "test_tag")
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}' and item '{prompt_name}'"
+        in str(exc_info.value)
+    )
+
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_agentic_prompt_success(agentic_prompt_repo, sample_agentic_prompt):
+    """Test adding a tag to an agentic prompt successfully"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    try:
+        result = agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            "latest",
+            "test_tag",
+        )
+
+        assert isinstance(result, AgenticPrompt)
+        assert result.name == prompt_name
+        assert result.tags == ["test_tag"]
+        assert result.version == created_prompt.version
+    finally:
+        # Cleanup
+        agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_add_duplicate_tags_does_not_error(agentic_prompt_repo, sample_agentic_prompt):
+    """
+    Test adding a tag of the same name to the same prompt does not error it should
+    just move that tag to the version being added to.
+    """
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    for i in range(2):
+        agentic_prompt_repo.save_llm_item(task_id, prompt_name, sample_agentic_prompt)
+
+    try:
+        # add tag to version 2
+        result = agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            "2",
+            "test_tag",
+        )
+
+        assert isinstance(result, AgenticPrompt)
+        assert result.name == prompt_name
+        assert result.tags == ["test_tag"]
+        assert result.version == 2
+
+        # verify version 1 has no tags
+        result = agentic_prompt_repo.get_llm_item(task_id, prompt_name, "1")
+
+        assert isinstance(result, AgenticPrompt)
+        assert result.name == prompt_name
+        assert result.tags == []
+        assert result.version == 1
+
+        # move tag to version 1
+        result = agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            "1",
+            "test_tag",
+        )
+
+        assert isinstance(result, AgenticPrompt)
+        assert result.name == prompt_name
+        assert result.tags == ["test_tag"]
+        assert result.version == 1
+
+        # verify that tag was removed from version 2
+        result = agentic_prompt_repo.get_llm_item(task_id, prompt_name, "2")
+
+        assert isinstance(result, AgenticPrompt)
+        assert result.name == prompt_name
+        assert result.tags == []
+        assert result.version == 2
+    finally:
+        # Cleanup
+        agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_add_duplicate_tags_errors_in_db(agentic_prompt_repo, sample_agentic_prompt):
+    """
+    Test that the database does not allow duplicate tags for the same prompt version
+    """
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+    db_session = override_get_db_session()
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    duplicate_tag = DatabaseAgenticPromptVersionTag(
+        task_id=task_id,
+        name=prompt_name,
+        version=created_prompt.version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+    db_session.commit()
+
+    # try to add a duplicate tag
+    duplicate_tag = DatabaseAgenticPromptVersionTag(
+        task_id=task_id,
+        name=prompt_name,
+        version=created_prompt.version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+    # Cleanup
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_add_duplicate_tags_errors_in_db_with_different_versions(
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """
+    Test that the database does not allow duplicate tags for the same prompt name but different versions
+    """
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+    db_session = override_get_db_session()
+
+    # save a prompt
+    created_prompts = []
+    for i in range(2):
+        created_prompts.append(
+            agentic_prompt_repo.save_llm_item(
+                task_id,
+                prompt_name,
+                sample_agentic_prompt,
+            ),
+        )
+
+    duplicate_tag = DatabaseAgenticPromptVersionTag(
+        task_id=task_id,
+        name=prompt_name,
+        version=created_prompts[0].version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+    db_session.commit()
+
+    # try to add a duplicate tag
+    duplicate_tag = DatabaseAgenticPromptVersionTag(
+        task_id=task_id,
+        name=prompt_name,
+        version=created_prompts[1].version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+    # Cleanup
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_agentic_prompt_malformed_tag_error(
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """Test adding a tag to an agentic prompt with a malformed tag raises an error"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            "latest",
+            "",
+        )
+
+    assert "Tag cannot be empty" in str(exc_info.value)
+
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            "latest",
+            "latest",
+        )
+
+    assert "'latest' is a reserved tag" in str(exc_info.value)
+
+    # Cleanup
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_agentic_prompt_to_nonexistent_version_error(agentic_prompt_repo):
+    """Test adding a tag to an agentic prompt to a nonexistent version raises an error"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            "latest",
+            "test_tag",
+        )
+
+    assert f"'{prompt_name}' (version 'latest') not found for task '{task_id}'" in str(
+        exc_info.value,
+    )
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_agentic_prompt_to_soft_deleted_version_error(
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """Test adding a tag to an agentic prompt to a soft deleted version raises an error"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    # soft delete the version
+    agentic_prompt_repo.soft_delete_llm_item_version(task_id, prompt_name, "latest")
+
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            prompt_name,
+            str(created_prompt.version),
+            "test_tag",
+        )
+
+    assert f"Cannot add tag to a deleted version of '{prompt_name}'" in str(
+        exc_info.value,
+    )
+
+    # Cleanup
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_soft_delete_agentic_prompt_version_removes_tags_from_db(
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """Test soft deleting an agentic prompt version removes all tags associated with that version"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    # add a tag to the version
+    agentic_prompt_repo.add_tag_to_llm_item_version(
+        task_id,
+        prompt_name,
+        str(created_prompt.version),
+        "test_tag",
+    )
+
+    # soft delete the version
+    agentic_prompt_repo.soft_delete_llm_item_version(task_id, prompt_name, "latest")
+
+    # verify that the tag was removed from the version
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.get_llm_item_by_tag(task_id, prompt_name, "test_tag")
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}' and item '{prompt_name}'"
+        in str(exc_info.value)
+    )
+
+    # Cleanup
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_remove_tag_from_agentic_prompt_version_success(
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """Test removing a tag from an agentic prompt version successfully"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    # add a tag to the version
+    agentic_prompt_repo.add_tag_to_llm_item_version(
+        task_id,
+        prompt_name,
+        str(created_prompt.version),
+        "test_tag",
+    )
+
+    # remove the tag from the version
+    agentic_prompt_repo.delete_llm_item_tag_from_version(
+        task_id,
+        prompt_name,
+        str(created_prompt.version),
+        "test_tag",
+    )
+
+    # verify that the tag was removed from the version
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.get_llm_item_by_tag(task_id, prompt_name, "test_tag")
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}' and item '{prompt_name}'"
+        in str(exc_info.value)
+    )
+
+    # verify that the version still exists
+    result = agentic_prompt_repo.get_llm_item(
+        task_id,
+        prompt_name,
+        str(created_prompt.version),
+    )
+    assert isinstance(result, AgenticPrompt)
+    assert result.name == prompt_name
+    assert result.tags == []
+    assert result.version == created_prompt.version
+
+    # Cleanup
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_remove_tag_from_agentic_prompt_version_dne_error(
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """Test removing a tag from an agentic prompt version that does not exist raises an error"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # save a prompt
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    # remove the tag from the version
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.delete_llm_item_tag_from_version(
+            task_id,
+            prompt_name,
+            str(created_prompt.version),
+            "test_tag",
+        )
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}', item '{prompt_name}' and version '{created_prompt.version}'."
+        in str(exc_info.value)
+    )
+
+    # Cleanup
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)

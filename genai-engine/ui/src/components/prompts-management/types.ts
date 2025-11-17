@@ -15,6 +15,7 @@ interface PromptVersionDrawerProps {
   taskId: string;
   promptName: string;
   selectedVersion: number | null;
+  latestVersion: number | null;
   onSelectVersion: (version: number) => void;
   onDelete?: (version: number) => Promise<void>;
 }
@@ -30,7 +31,10 @@ interface PromptDetailViewProps {
   error: Error | null;
   promptName: string;
   version: number | null;
+  latestVersion: number | null;
+  taskId: string;
   onClose?: () => void;
+  onRefetch?: () => void;
 }
 
 interface FiltersBase {

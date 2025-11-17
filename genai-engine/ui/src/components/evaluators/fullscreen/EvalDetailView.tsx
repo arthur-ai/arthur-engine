@@ -1,18 +1,103 @@
 import CloseIcon from "@mui/icons-material/Close";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
+import Popover from "@mui/material/Popover";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { useState, useCallback } from "react";
 
+import { useAddTagToEvalVersionMutation } from "../hooks/useAddTagToEvalVersionMutation";
+import { useDeleteTagFromEvalVersionMutation } from "../hooks/useDeleteTagFromEvalVersionMutation";
 import type { EvalDetailViewProps } from "../types";
 import NunjucksHighlightedTextField from "../MustacheHighlightedTextField";
 
 import { formatDate } from "@/utils/formatters";
 
-const EvalDetailView = ({ evalData, isLoading, error, evalName, version, onClose }: EvalDetailViewProps) => {
+const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {
+  const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [newTag, setNewTag] = useState("");
+  const [tagError, setTagError] = useState("");
+
+  const addTagMutation = useAddTagToEvalVersionMutation();
+  const deleteTagMutation = useDeleteTagFromEvalVersionMutation();
+
+  const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    setTagAnchorEl(event.currentTarget);
+    setNewTag("");
+    setTagError("");
+  }, []);
+
+  const handleAddTagClose = useCallback(() => {
+    setTagAnchorEl(null);
+    setNewTag("");
+    setTagError("");
+  }, []);
+
+  const handleAddTagConfirm = useCallback(async () => {
+    // Check if user entered a tag
+    if (!newTag.trim()) {
+      setTagError("Please enter a tag");
+      return;
+    }
+
+    // Check for reserved tag name
+    if (newTag.trim().toLowerCase() === "latest") {
+      setTagError("'latest' is a reserved keyword and cannot be used as a tag");
+      return;
+    }
+
+    // Check for duplicate tag
+    if (evalData?.tags?.includes(newTag.trim())) {
+      setTagError("This tag already exists");
+      return;
+    }
+
+    if (!taskId || version === null) return;
+
+    try {
+      await addTagMutation.mutateAsync({
+        evalName,
+        evalVersion: version.toString(),
+        taskId,
+        data: { tag: newTag.trim() },
+      });
+
+      setTagAnchorEl(null);
+      setNewTag("");
+      setTagError("");
+      onRefetch?.();
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : "Failed to add tag");
+    }
+  }, [newTag, evalData?.tags, taskId, version, evalName, addTagMutation, onRefetch]);
+
+  const tagPopoverOpen = Boolean(tagAnchorEl);
+
+  const handleDeleteTag = useCallback(
+    async (tag: string) => {
+      if (!taskId || version === null) return;
+
+      try {
+        await deleteTagMutation.mutateAsync({
+          evalName,
+          evalVersion: version.toString(),
+          tag,
+          taskId,
+        });
+        onRefetch?.();
+      } catch (err) {
+        console.error("Failed to delete tag:", err);
+      }
+    },
+    [taskId, version, evalName, deleteTagMutation, onRefetch]
+  );
   if (isLoading) {
     return (
       <Box
@@ -47,10 +132,33 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, onClose
   return (
     <Box sx={{ p: 3, height: "100%", overflow: "auto" }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>
-          {evalName}
-          {version !== null && <Chip label={`Version ${version}`} size="small" sx={{ ml: 2, height: 24 }} />}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            {evalName}
+          </Typography>
+          {version !== null && <Chip label={`Version ${version}`} size="small" sx={{ height: 24 }} />}
+          {version !== null && version === latestVersion && <Chip label="Latest" size="small" color="default" sx={{ height: 24 }} />}
+          {evalData.tags && evalData.tags.length > 0 && (
+            <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+              {evalData.tags.map((tag) => (
+                <Chip
+                  key={tag}
+                  label={tag}
+                  size="small"
+                  onDelete={() => handleDeleteTag(tag)}
+                  sx={{ height: 24 }}
+                  color="primary"
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+          )}
+          {version !== null && (
+            <IconButton size="small" onClick={handleAddTagClick} aria-label="Add tag">
+              <LocalOfferIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
         {onClose && (
           <IconButton onClick={onClose} aria-label="Close">
             <CloseIcon />
@@ -135,6 +243,75 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, onClose
           </Box>
         </Paper>
       )}
+
+      <Popover
+        open={tagPopoverOpen}
+        anchorEl={tagAnchorEl}
+        onClose={handleAddTagClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+      >
+        <Box sx={{ p: 2, minWidth: 300 }}>
+          <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
+            Evaluator Tags
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+            Tags to easily identify your evaluators.
+          </Typography>
+
+          <Divider sx={{ mb: 2 }} />
+
+          <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
+            Add Tag
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+            Add a tag to this evaluator version
+          </Typography>
+
+          <TextField
+            autoFocus
+            size="small"
+            label="Tag Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={newTag}
+            onChange={(e) => {
+              setNewTag(e.target.value);
+              setTagError("");
+            }}
+            error={!!tagError}
+            helperText={tagError}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleAddTagConfirm();
+              }
+            }}
+            sx={{ mb: 1.5 }}
+          />
+
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            <Button size="small" onClick={handleAddTagClose} disabled={addTagMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              size="small"
+              onClick={handleAddTagConfirm}
+              variant="contained"
+              disabled={addTagMutation.isPending}
+              startIcon={addTagMutation.isPending ? <CircularProgress size={14} /> : null}
+            >
+              {addTagMutation.isPending ? "Adding..." : "Save"}
+            </Button>
+          </Box>
+        </Box>
+      </Popover>
     </Box>
   );
 };

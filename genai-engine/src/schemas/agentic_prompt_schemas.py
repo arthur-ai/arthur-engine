@@ -32,6 +32,10 @@ class AgenticPrompt(BaseModel):
         default_factory=list,
         description="List of variable names for the agentic prompt",
     )
+    tags: List[str] = Field(
+        default_factory=list,
+        description="List of tags for this agentic prompt version",
+    )
     config: Optional[LLMConfigSettings] = Field(
         default=None,
         description="LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)",

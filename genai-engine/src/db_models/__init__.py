@@ -48,9 +48,12 @@ from db_models.telemetry_models import (
     DatabaseTaskToMetrics,
     DatabaseTraceMetadata,
 )
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.agentic_prompt_models import (
+    DatabaseAgenticPrompt,
+    DatabaseAgenticPromptVersionTag,
+)
 from db_models.secret_storage_models import DatabaseSecretStorage
-from db_models.llm_eval_models import DatabaseLLMEval
+from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
@@ -103,6 +106,7 @@ __all__ = [
     "DatabaseMetricResult",
     # Agentic Prompt models
     "DatabaseAgenticPrompt",
+    "DatabaseAgenticPromptVersionTag",
     # Dataset models
     "DatabaseDataset",
     "DatabaseDatasetTransform",
@@ -113,6 +117,7 @@ __all__ = [
     "DatabaseApiKeyRagProviderConfiguration",
     # LLM Eval models
     "DatabaseLLMEval",
+    "DatabaseLLMEvalVersionTag",
     # Prompt Experiment models
     "DatabasePromptExperiment",
     "DatabasePromptExperimentTestCase",

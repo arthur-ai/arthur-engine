@@ -5420,6 +5420,233 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}": {
+            "get": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Get an agentic prompt by name and tag",
+                "description": "Get an agentic prompt by name and tag",
+                "operationId": "get_agentic_prompt_by_tag_api_v1_tasks__task_id__prompts__prompt_name__versions_tags__tag__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to retrieve."
+                        },
+                        "description": "The name of the prompt to retrieve."
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag",
+                            "description": "The tag of the prompt to retrieve."
+                        },
+                        "description": "The tag of the prompt to retrieve."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticPrompt"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags": {
+            "put": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Add a tag to an agentic prompt version",
+                "description": "Add a tag to an agentic prompt version",
+                "operationId": "add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to retrieve."
+                        },
+                        "description": "The name of the prompt to retrieve."
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticPrompt"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags/{tag}": {
+            "delete": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Remove a tag from an agentic prompt version",
+                "description": "Remove a tag from an agentic prompt version",
+                "operationId": "delete_tag_from_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags__tag__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to retrieve."
+                        },
+                        "description": "The name of the prompt to retrieve."
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag",
+                            "description": "The tag to remove from the prompt version."
+                        },
+                        "description": "The tag to remove from the prompt version."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Prompt version deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/datasets": {
             "post": {
                 "tags": [
@@ -8615,6 +8842,233 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}": {
+            "get": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "Get an llm eval by name and tag",
+                "description": "Get an llm eval by name and tag",
+                "operationId": "get_llm_eval_by_tag_api_v1_tasks__task_id__llm_evals__eval_name__versions_tags__tag__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to retrieve."
+                        },
+                        "description": "The name of the llm eval to retrieve."
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag",
+                            "description": "The tag of the llm eval to retrieve."
+                        },
+                        "description": "The tag of the llm eval to retrieve."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMEval"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags": {
+            "put": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "Add a tag to an llm eval version",
+                "description": "Add a tag to an llm eval version",
+                "operationId": "add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to retrieve."
+                        },
+                        "description": "The name of the llm eval to retrieve."
+                    },
+                    {
+                        "name": "eval_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Version",
+                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMEval"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags/{tag}": {
+            "delete": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "Remove a tag from an llm eval version",
+                "description": "Remove a tag from an llm eval version",
+                "operationId": "delete_tag_from_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags__tag__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to retrieve."
+                        },
+                        "description": "The name of the llm eval to retrieve."
+                    },
+                    {
+                        "name": "eval_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Version",
+                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag",
+                            "description": "The tag to remove from the llm eval version."
+                        },
+                        "description": "The tag to remove from the llm eval version."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "LLM eval version deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/prompt_experiments": {
             "get": {
                 "tags": [
@@ -9801,6 +10255,14 @@
                         "title": "Variables",
                         "description": "List of variable names for the agentic prompt"
                     },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for this agentic prompt version"
+                    },
                     "config": {
                         "anyOf": [
                             {
@@ -9908,13 +10370,13 @@
                     "version": {
                         "type": "integer",
                         "title": "Version",
-                        "description": "Version number of the prompt"
+                        "description": "Version number of the llm eval"
                     },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
                         "title": "Created At",
-                        "description": "Timestamp when the prompt version was created"
+                        "description": "Timestamp when the llm eval version was created"
                     },
                     "deleted_at": {
                         "anyOf": [
@@ -9927,16 +10389,24 @@
                             }
                         ],
                         "title": "Deleted At",
-                        "description": "Timestamp when the prompt version was deleted"
+                        "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
                         "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Model provider of the prompt"
+                        "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {
                         "type": "string",
                         "title": "Model Name",
-                        "description": "Model name of the prompt"
+                        "description": "Model name chosen for this version of the llm eval"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for the llm asset"
                     },
                     "num_messages": {
                         "type": "integer",
@@ -10257,6 +10727,34 @@
                 },
                 "type": "object",
                 "title": "BaseDetailsResponse"
+            },
+            "Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put": {
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "title": "Tag",
+                        "description": "Tag to add to this prompt version"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tag"
+                ],
+                "title": "Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put"
+            },
+            "Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put": {
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "title": "Tag",
+                        "description": "Tag to add to this llm eval version"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tag"
+                ],
+                "title": "Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put"
             },
             "Body_upload_embeddings_file_api_chat_files_post": {
                 "properties": {
@@ -12736,6 +13234,14 @@
                         "title": "Variables",
                         "description": "List of variable names for the llm eval"
                     },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for this llm eval version"
+                    },
                     "config": {
                         "anyOf": [
                             {
@@ -12866,6 +13372,14 @@
                         "type": "integer",
                         "title": "Versions",
                         "description": "Number of versions of the llm asset"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for the llm asset"
                     },
                     "created_at": {
                         "type": "string",
@@ -13526,6 +14040,14 @@
                         "type": "string",
                         "title": "Model Name",
                         "description": "Model name chosen for this version of the llm eval"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for the llm asset"
                     }
                 },
                 "type": "object",

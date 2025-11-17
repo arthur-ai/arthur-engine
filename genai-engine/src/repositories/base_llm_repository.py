@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from pydantic import BaseModel
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 from sqlalchemy.sql import or_
@@ -24,11 +24,14 @@ from services.prompt.chat_completion_service import ChatCompletionService
 class BaseLLMRepository(ABC):
     # subclasses must set these parameters
     db_model: Type[Base] = None
+    tag_db_model: Type[Base] = None
     version_list_response_model: Type[BaseModel] = None
 
     def __init__(self, db_session: Session):
         if self.db_model is None:
             raise ValueError("Subclasses must define a db_model class attribute.")
+        if self.tag_db_model is None:
+            raise ValueError("Subclasses must define a tag_db_model class attribute.")
         if self.version_list_response_model is None:
             raise ValueError(
                 "Subclasses must define a version_list_response_model class attribute.",
@@ -36,6 +39,31 @@ class BaseLLMRepository(ABC):
 
         self.db_session = db_session
         self.chat_completion_service = ChatCompletionService()
+
+    def _get_all_tags_for_item_version(self, db_item: Base) -> List[str]:
+        tags = (
+            self.db_session.query(self.tag_db_model.tag)
+            .filter(
+                self.tag_db_model.task_id == db_item.task_id,
+                self.tag_db_model.name == db_item.name,
+                self.tag_db_model.version == db_item.version,
+            )
+            .order_by(self.tag_db_model.tag.asc())
+            .all()
+        )
+        return [t for (t,) in tags]
+
+    def _get_all_tags_for_item(self, task_id: str, item_name: str) -> List[str]:
+        tags = (
+            self.db_session.query(self.tag_db_model.tag)
+            .filter(
+                self.tag_db_model.task_id == task_id,
+                self.tag_db_model.name == item_name,
+            )
+            .order_by(self.tag_db_model.tag.asc())
+            .all()
+        )
+        return [t for (t,) in tags]
 
     @abstractmethod
     def from_db_model(self, db_item: Base) -> BaseModel:
@@ -293,6 +321,44 @@ class BaseLLMRepository(ABC):
 
         return self.from_db_model(db_item)
 
+    def get_llm_item_by_tag(
+        self,
+        task_id: str,
+        item_name: str,
+        tag: str,
+    ) -> BaseModel:
+        """
+        Get an llm item by task_id, name, and tag
+
+        Parameters:
+            task_id: str - the id of the task
+            item_name: str - the name of the llm item
+            tag: str - the tag of the llm item to retrieve
+
+        Returns:
+            BaseModel - the llm item object
+        """
+        if tag == "":
+            raise ValueError("Tag cannot be empty.")
+
+        db_item = (
+            self.db_session.query(self.db_model)
+            .join(self.tag_db_model)
+            .filter(
+                self.db_model.task_id == task_id,
+                self.db_model.name == item_name,
+                self.tag_db_model.tag == tag,
+            )
+            .one_or_none()
+        )
+
+        if db_item is None:
+            raise ValueError(
+                f"Tag '{tag}' not found for task '{task_id}' and item '{item_name}'.",
+            )
+
+        return self.from_db_model(db_item)
+
     def get_llm_item_versions(
         self,
         task_id: str,
@@ -414,6 +480,8 @@ class BaseLLMRepository(ABC):
             )
             deleted_versions = [v for (v,) in deleted_versions]
 
+            tags = self._get_all_tags_for_item(task_id, row.name)
+
             # set the metadata
             llm_metadata.append(
                 LLMGetAllMetadataResponse(
@@ -422,6 +490,7 @@ class BaseLLMRepository(ABC):
                     created_at=row.created_at,
                     latest_version_created_at=row.latest_version_created_at,
                     deleted_versions=deleted_versions,
+                    tags=tags,
                 ),
             )
 
@@ -441,6 +510,9 @@ class BaseLLMRepository(ABC):
         If a llm item with the same name exists, increment version.
         Otherwise, start at version 1.
         """
+        if item.model_name == "":
+            raise ValueError("Model name cannot be empty.")
+
         # Check for existing versions of this item
         latest_version = (
             self.db_session.query(sa.func.max(self.db_model.version))
@@ -474,6 +546,72 @@ class BaseLLMRepository(ABC):
             raise ValueError(
                 f"Failed to save '{item_name}' for task '{task_id}' — possible duplicate constraint.",
             )
+
+    def add_tag_to_llm_item_version(
+        self,
+        task_id: str,
+        item_name: str,
+        item_version: str,
+        tag: str,
+    ) -> None:
+        """
+        Add a tag to a specific version of an llm item.
+        If the tag exists on a different version, remove it from that version
+        and add it to this version.
+        """
+        if tag == "":
+            raise ValueError("Tag cannot be empty")
+        elif tag.casefold().strip() == "latest":
+            raise ValueError("'latest' is a reserved tag")
+
+        # Get the llm item by version
+        base_query = self.db_session.query(self.db_model).filter(
+            self.db_model.task_id == task_id,
+            self.db_model.name == item_name,
+        )
+
+        retrieved_db_item = self._get_db_item_by_version(
+            base_query,
+            item_version,
+            err_message=f"'{item_name}' (version '{item_version}') not found for task '{task_id}'",
+        )
+
+        if retrieved_db_item.deleted_at is not None:
+            raise ValueError(f"Cannot add tag to a deleted version of '{item_name}'")
+
+        # Check if this tag already exists on any version for this (task_id, name) combo
+        existing_tag_row = self.db_session.execute(
+            select(self.tag_db_model).where(
+                self.tag_db_model.task_id == task_id,
+                self.tag_db_model.name == item_name,
+                self.tag_db_model.tag == tag,
+            ),
+        ).scalar_one_or_none()
+
+        # Case 1: Tag exists on the SAME version → do nothing
+        if existing_tag_row and existing_tag_row.version == retrieved_db_item.version:
+            self.db_session.refresh(retrieved_db_item)
+            return self.from_db_model(retrieved_db_item)
+
+        # Case 2: Tag exists on a DIFFERENT version → delete old row
+        if existing_tag_row and existing_tag_row.version != retrieved_db_item.version:
+            self.db_session.delete(existing_tag_row)
+            self.db_session.commit()
+
+        # Case 3: Add tag to this version
+        new_tag = self.tag_db_model(
+            task_id=task_id,
+            name=item_name,
+            version=retrieved_db_item.version,
+            tag=tag,
+        )
+        self.db_session.add(new_tag)
+        self.db_session.commit()
+
+        # refresh so the version tags and tags relationships reload
+        self.db_session.refresh(retrieved_db_item)
+
+        return self.from_db_model(retrieved_db_item)
 
     def soft_delete_llm_item_version(
         self,
@@ -515,6 +653,15 @@ class BaseLLMRepository(ABC):
         db_item.deleted_at = datetime.now()
         self._clear_db_item_data(db_item)
 
+        # Delete all tags for this (task_id, name, version)
+        self.db_session.execute(
+            delete(self.tag_db_model).where(
+                self.tag_db_model.task_id == task_id,
+                self.tag_db_model.name == item_name,
+                self.tag_db_model.version == db_item.version,
+            ),
+        )
+
         self.db_session.commit()
 
     def delete_llm_item(self, task_id: str, item_name: str) -> None:
@@ -540,4 +687,58 @@ class BaseLLMRepository(ABC):
         for item in db_items:
             self.db_session.delete(item)
 
+        self.db_session.commit()
+
+    def delete_llm_item_tag_from_version(
+        self,
+        task_id: str,
+        item_name: str,
+        item_version: str,
+        tag: str,
+    ) -> None:
+        """
+        Deletes a tag from an llm item for a given task and name
+
+        Parameters:
+            task_id: str - the id of the task
+            item_name: str - the name of the llm item to delete the tag from
+            item_version: str - the version of the llm item to delete the tag from
+            tag: str - the tag to delete
+
+        * Note - Supports:
+            - item_version='latest' -> deletes a specific tag from the latest version
+            - item_version=<string number> (e.g. '1', '2', etc.) -> deletes a specific tag from that version number
+            - item_version=<datetime> (YYYY-MM-DDTHH:MM:SS, checks to the second) -> deletes a specific tag from the version created at that time
+        """
+        # Base query used for version lookup
+        base_query = self.db_session.query(self.db_model).filter(
+            self.db_model.task_id == task_id,
+            self.db_model.name == item_name,
+        )
+
+        # Resolve version using the same helper used everywhere else
+        db_item = self._get_db_item_by_version(
+            base_query,
+            item_version,
+            err_message=(
+                f"No matching version of '{item_name}' found for task '{task_id}'"
+            ),
+        )
+
+        # Now delete the specific tag for the resolved version
+        existing_tag_row = self.db_session.execute(
+            select(self.tag_db_model).where(
+                self.tag_db_model.task_id == task_id,
+                self.tag_db_model.name == item_name,
+                self.tag_db_model.version == db_item.version,
+                self.tag_db_model.tag == tag,
+            ),
+        ).scalar_one_or_none()
+
+        if existing_tag_row is None:
+            raise ValueError(
+                f"Tag '{tag}' not found for task '{task_id}', item '{item_name}' and version '{item_version}'.",
+            )
+
+        self.db_session.delete(existing_tag_row)
         self.db_session.commit()

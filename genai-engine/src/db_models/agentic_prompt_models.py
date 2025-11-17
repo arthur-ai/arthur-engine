@@ -3,7 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String
+from sqlalchemy import (
+    TIMESTAMP,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,5 +59,46 @@ class DatabaseAgenticPrompt(SoftDeletedModel, Base):
     # prompt configurations
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
+    @property
+    def tags(self) -> List[str]:
+        return [t.tag for t in self.version_tags]
+
     # Relationships
     task: Mapped["DatabaseTask"] = relationship(back_populates="agentic_prompts")
+    version_tags: Mapped[List["DatabaseAgenticPromptVersionTag"]] = relationship(
+        back_populates="agentic_prompt",
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
+
+
+class DatabaseAgenticPromptVersionTag(Base):
+    __tablename__ = "agentic_prompt_version_tags"
+
+    # Composite primary key: task_id + name + version + tag
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        primary_key=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String, primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    tag: Mapped[str] = mapped_column(String, primary_key=True)
+
+    agentic_prompt: Mapped["DatabaseAgenticPrompt"] = relationship(
+        back_populates="version_tags",
+        lazy="select",
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "name", "version"],
+            [
+                "agentic_prompts.task_id",
+                "agentic_prompts.name",
+                "agentic_prompts.version",
+            ],
+        ),
+        UniqueConstraint("task_id", "name", "tag", name="uq_task_name_tag"),
+    )

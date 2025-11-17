@@ -11,7 +11,7 @@ from litellm.types.utils import ModelResponse
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
-from db_models.llm_eval_models import DatabaseLLMEval
+from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.llm_evals_repository import LLMEvalsRepository
 from schemas.enums import ModelProvider
 from schemas.llm_eval_schemas import LLMEval
@@ -70,6 +70,7 @@ def sample_db_llm_eval():
         model_name="gpt-4o",
         model_provider="openai",
         instructions="test_instructions",
+        variables=[],
         config=LLMBaseConfigSettings(temperature=0.5, max_tokens=100),
         created_at=datetime.now(),
         deleted_at=None,
@@ -884,4 +885,477 @@ def test_run_saved_llm_eval_malformed_response_errors(
         llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
     assert f"Structured output is not a ReasonedScore instance" in str(exc_info.value)
 
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_save_llm_eval_with_empty_model_name_spawns_error(llm_evals_repo):
+    """Test saving an llm eval with an empty model name spawns an error"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+    llm_eval = CreateEvalRequest(
+        model_name="",
+        model_provider="openai",
+        instructions="Hello, world!",
+    )
+    with pytest.raises(ValueError, match="Model name cannot be empty."):
+        llm_evals_repo.save_llm_item(task_id, eval_name, llm_eval)
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_by_tag_success(llm_evals_repo, sample_create_eval_request):
+    """Test getting an llm eval by tag successfully"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    try:
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            eval_name,
+            "latest",
+            "test_tag",
+        )
+        result = llm_evals_repo.get_llm_item_by_tag(task_id, eval_name, "test_tag")
+
+        assert isinstance(result, LLMEval)
+        assert result.name == eval_name
+        assert result.tags == ["test_tag"]
+        assert result.version == created_eval.version
+    finally:
+        # Cleanup
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_by_empty_tag_error(llm_evals_repo):
+    """Test getting an llm eval by empty tag raises an error"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.get_llm_item_by_tag(task_id, eval_name, "")
+    assert "Tag cannot be empty" in str(exc_info.value)
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_by_tag_not_found_error(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Test getting an llm eval by tag that doesn't exist raises an error"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.get_llm_item_by_tag(task_id, eval_name, "test_tag")
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}' and item '{eval_name}'"
+        in str(exc_info.value)
+    )
+
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_llm_eval_success(llm_evals_repo, sample_create_eval_request):
+    """Test adding a tag to an llm eval successfully"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    try:
+        result = llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            eval_name,
+            "latest",
+            "test_tag",
+        )
+
+        assert isinstance(result, LLMEval)
+        assert result.name == eval_name
+        assert result.tags == ["test_tag"]
+        assert result.version == created_eval.version
+    finally:
+        # Cleanup
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_add_duplicate_tags_does_not_error(llm_evals_repo, sample_create_eval_request):
+    """
+    Test adding a tag of the same name to the same eval does not error it should
+    just move that tag to the version being added to.
+    """
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    for i in range(2):
+        llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
+
+    try:
+        # add tag to version 2
+        result = llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            eval_name,
+            "2",
+            "test_tag",
+        )
+
+        assert isinstance(result, LLMEval)
+        assert result.name == eval_name
+        assert result.tags == ["test_tag"]
+        assert result.version == 2
+
+        # verify version 1 has no tags
+        result = llm_evals_repo.get_llm_item(task_id, eval_name, "1")
+
+        assert isinstance(result, LLMEval)
+        assert result.name == eval_name
+        assert result.tags == []
+        assert result.version == 1
+
+        # move tag to version 1
+        result = llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            eval_name,
+            "1",
+            "test_tag",
+        )
+
+        assert isinstance(result, LLMEval)
+        assert result.name == eval_name
+        assert result.tags == ["test_tag"]
+        assert result.version == 1
+
+        # verify that tag was removed from version 2
+        result = llm_evals_repo.get_llm_item(task_id, eval_name, "2")
+
+        assert isinstance(result, LLMEval)
+        assert result.name == eval_name
+        assert result.tags == []
+        assert result.version == 2
+    finally:
+        # Cleanup
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_add_duplicate_tags_errors_in_db(llm_evals_repo, sample_create_eval_request):
+    """
+    Test that the database does not allow duplicate tags for the same eval version
+    """
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+    db_session = override_get_db_session()
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    duplicate_tag = DatabaseLLMEvalVersionTag(
+        task_id=task_id,
+        name=eval_name,
+        version=created_eval.version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+    db_session.commit()
+
+    # try to add a duplicate tag
+    duplicate_tag = DatabaseLLMEvalVersionTag(
+        task_id=task_id,
+        name=eval_name,
+        version=created_eval.version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+    # Cleanup
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_add_duplicate_tags_errors_in_db_with_different_versions(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """
+    Test that the database does not allow duplicate tags for the same eval name but different versions
+    """
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+    db_session = override_get_db_session()
+
+    # save an eval
+    created_evals = []
+    for i in range(2):
+        created_evals.append(
+            llm_evals_repo.save_llm_item(
+                task_id,
+                eval_name,
+                sample_create_eval_request,
+            ),
+        )
+
+    duplicate_tag = DatabaseLLMEvalVersionTag(
+        task_id=task_id,
+        name=eval_name,
+        version=created_evals[0].version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+    db_session.commit()
+
+    # try to add a duplicate tag
+    duplicate_tag = DatabaseLLMEvalVersionTag(
+        task_id=task_id,
+        name=eval_name,
+        version=created_evals[1].version,
+        tag="test_tag",
+    )
+    db_session.add(duplicate_tag)
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+    # Cleanup
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_llm_eval_malformed_tag_error(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Test adding a tag to an llm eval with a malformed tag raises an error"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.add_tag_to_llm_item_version(task_id, eval_name, "latest", "")
+
+    assert "Tag cannot be empty" in str(exc_info.value)
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            eval_name,
+            "latest",
+            "latest",
+        )
+
+    assert "'latest' is a reserved tag" in str(exc_info.value)
+
+    # Cleanup
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_llm_eval_to_nonexistent_version_error(llm_evals_repo):
+    """Test adding a tag to an llm eval to a nonexistent version raises an error"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            eval_name,
+            "latest",
+            "test_tag",
+        )
+
+    assert f"'{eval_name}' (version 'latest') not found for task '{task_id}'" in str(
+        exc_info.value,
+    )
+
+
+@pytest.mark.unit_tests
+def test_add_tag_to_llm_eval_to_soft_deleted_version_error(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Test adding a tag to an llm eval to a soft deleted version raises an error"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    # soft delete the version
+    llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            eval_name,
+            str(created_eval.version),
+            "test_tag",
+        )
+
+    assert f"Cannot add tag to a deleted version of '{eval_name}'" in str(
+        exc_info.value,
+    )
+
+    # Cleanup
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_soft_delete_llm_eval_version_removes_tags_from_db(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Test soft deleting an llm eval version removes all tags associated with that version"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    # add a tag to the version
+    llm_evals_repo.add_tag_to_llm_item_version(
+        task_id,
+        eval_name,
+        str(created_eval.version),
+        "test_tag",
+    )
+
+    # soft delete the version
+    llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
+
+    # verify that the tag was removed from the version
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.get_llm_item_by_tag(task_id, eval_name, "test_tag")
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}' and item '{eval_name}'"
+        in str(exc_info.value)
+    )
+
+    # Cleanup
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_remove_tag_from_llm_eval_version_success(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Test removing a tag from an llm eval version successfully"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    # add a tag to the version
+    llm_evals_repo.add_tag_to_llm_item_version(
+        task_id,
+        eval_name,
+        str(created_eval.version),
+        "test_tag",
+    )
+
+    # remove the tag from the version
+    llm_evals_repo.delete_llm_item_tag_from_version(
+        task_id,
+        eval_name,
+        str(created_eval.version),
+        "test_tag",
+    )
+
+    # verify that the tag was removed from the version
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.get_llm_item_by_tag(task_id, eval_name, "test_tag")
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}' and item '{eval_name}'"
+        in str(exc_info.value)
+    )
+
+    # verify that the version still exists
+    result = llm_evals_repo.get_llm_item(task_id, eval_name, str(created_eval.version))
+    assert isinstance(result, LLMEval)
+    assert result.name == eval_name
+    assert result.tags == []
+    assert result.version == created_eval.version
+
+    # Cleanup
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_remove_tag_from_llm_eval_version_dne_error(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Test removing a tag from an llm eval version that does not exist raises an error"""
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # save an eval
+    created_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
+
+    # remove the tag from the version
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.delete_llm_item_tag_from_version(
+            task_id,
+            eval_name,
+            str(created_eval.version),
+            "test_tag",
+        )
+    assert (
+        f"Tag 'test_tag' not found for task '{task_id}', item '{eval_name}' and version '{created_eval.version}'."
+        in str(exc_info.value)
+    )
+
+    # Cleanup
     llm_evals_repo.delete_llm_item(task_id, eval_name)

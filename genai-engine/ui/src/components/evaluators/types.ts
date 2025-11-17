@@ -15,6 +15,7 @@ interface EvalVersionDrawerProps {
   taskId: string;
   evalName: string;
   selectedVersion: number | null;
+  latestVersion: number | null;
   onSelectVersion: (version: number) => void;
   onDelete?: (version: number) => Promise<void>;
 }
@@ -30,7 +31,10 @@ interface EvalDetailViewProps {
   error: Error | null;
   evalName: string;
   version: number | null;
+  latestVersion: number | null;
+  taskId: string;
   onClose?: () => void;
+  onRefetch?: () => void;
 }
 
 interface FiltersBase {

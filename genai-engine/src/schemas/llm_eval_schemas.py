@@ -22,6 +22,10 @@ class LLMEval(BaseModel):
         default_factory=list,
         description="List of variable names for the llm eval",
     )
+    tags: List[str] = Field(
+        default_factory=list,
+        description="List of tags for this llm eval version",
+    )
     config: Optional[LLMBaseConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
