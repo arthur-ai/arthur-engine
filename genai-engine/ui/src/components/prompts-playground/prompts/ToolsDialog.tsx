@@ -17,10 +17,10 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Tooltip from "@mui/material/Tooltip";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
-import { PromptType } from "../types";
+import { PromptType, FrontendTool } from "../types";
 import getToolChoiceDisplayValue from "../utils/getToolChoiceDisplayValue";
 
 import { ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
@@ -53,6 +53,60 @@ const renderToolChoiceOption = (value: string, toolName?: string) => {
     </Box>
   );
 };
+
+// Separate component for individual tool editor to maintain independent state
+interface ToolEditorProps {
+  tool: FrontendTool;
+  onToolChange: (toolId: string, newValue: string) => void;
+}
+
+const ToolEditor = React.memo(({ tool, onToolChange }: ToolEditorProps) => {
+  // Use a ref to track the current editor value to avoid re-renders
+  const editorValueRef = useRef(
+    JSON.stringify(
+      {
+        function: {
+          name: tool.function.name,
+          description: tool.function.description,
+          parameters: tool.function.parameters,
+        },
+        strict: tool.strict,
+        type: tool.type,
+      },
+      null,
+      2
+    )
+  );
+
+  const handleChange = useCallback(
+    (value: string | undefined) => {
+      if (value !== undefined) {
+        editorValueRef.current = value;
+        onToolChange(tool.id, value);
+      }
+    },
+    [tool.id, onToolChange]
+  );
+
+  return (
+    <div style={{ height: "300px", width: "100%" }}>
+      <Editor
+        height="300px"
+        defaultLanguage="json"
+        theme="light"
+        defaultValue={editorValueRef.current}
+        onChange={handleChange}
+        options={{
+          minimap: { enabled: false },
+          lineNumbers: "on",
+          fontSize: 12,
+          tabSize: 2,
+          automaticLayout: true,
+        }}
+      />
+    </div>
+  );
+});
 
 interface ToolsDialogProps {
   open: boolean;
@@ -240,38 +294,7 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
                 </div>
               </AccordionSummary>
               <AccordionDetails sx={{ padding: 0 }}>
-                <div style={{ height: "300px", width: "100%" }}>
-                  <Editor
-                    height="300px"
-                    defaultLanguage="json"
-                    theme="light"
-                    value={JSON.stringify(
-                      {
-                        function: {
-                          name: tool.function.name,
-                          description: tool.function.description,
-                          parameters: tool.function.parameters,
-                        },
-                        strict: tool.strict,
-                        type: tool.type,
-                      },
-                      null,
-                      2
-                    )}
-                    onChange={(value) => {
-                      if (value) {
-                        handleToolChange(tool.id, value);
-                      }
-                    }}
-                    options={{
-                      minimap: { enabled: false },
-                      lineNumbers: "on",
-                      fontSize: 12,
-                      tabSize: 2,
-                      automaticLayout: true,
-                    }}
-                  />
-                </div>
+                <ToolEditor tool={tool} onToolChange={handleToolChange} />
               </AccordionDetails>
             </Accordion>
           ))}
