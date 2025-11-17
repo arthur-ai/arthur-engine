@@ -26,6 +26,7 @@ from schemas.enums import (
     RagProviderEnum,
     RagSearchKind,
 )
+from schemas.llm_schemas import OpenAIMessage
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -713,3 +714,9 @@ class LLMEvalRunResponse(BaseModel):
     )
     score: int = Field(..., description="Score for this llm eval")
     cost: str = Field(..., description="Cost of this llm completion")
+
+
+class RenderedPromptResponse(BaseModel):
+    messages: List[OpenAIMessage] = Field(
+        description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
+    )

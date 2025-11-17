@@ -729,19 +729,6 @@ class BaseCompletionRequest(BaseModel):
         default=[],
     )
 
-
-class PromptCompletionRequest(BaseCompletionRequest):
-    """Request schema for running an agentic prompt"""
-
-    stream: Optional[bool] = Field(
-        description="Whether to stream the response",
-        default=False,
-    )
-    strict: Optional[bool] = Field(
-        description="Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
-        default=False,
-    )
-
     _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
 
     @model_validator(mode="after")
@@ -752,10 +739,43 @@ class PromptCompletionRequest(BaseCompletionRequest):
         return self
 
 
+class VariableRenderingRequest(BaseCompletionRequest):
+    strict: Optional[bool] = Field(
+        description="Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
+        default=False,
+    )
+
+
+class PromptCompletionRequest(VariableRenderingRequest):
+    """Request schema for running an agentic prompt"""
+
+    stream: Optional[bool] = Field(
+        description="Whether to stream the response",
+        default=False,
+    )
+
+
 class CompletionRequest(CreateAgenticPromptRequest):
     """Request schema for running an unsaved agentic prompt"""
 
     completion_request: PromptCompletionRequest = Field(
         default_factory=PromptCompletionRequest,
         description="Run configuration for the unsaved prompt",
+    )
+
+
+class SavedPromptRenderingRequest(BaseModel):
+    """Request schema for rendering an unsaved agentic prompt with variables"""
+
+    completion_request: VariableRenderingRequest = Field(
+        default_factory=VariableRenderingRequest,
+        description="Rendering configuration for the unsaved prompt",
+    )
+
+
+class UnsavedPromptRenderingRequest(SavedPromptRenderingRequest):
+    """Request schema for rendering an unsaved agentic prompt with variables"""
+
+    messages: List[OpenAIMessage] = Field(
+        description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
