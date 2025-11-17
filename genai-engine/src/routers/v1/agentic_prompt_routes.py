@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import jinja2
 import litellm
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
@@ -376,6 +377,10 @@ def save_agentic_prompt(
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return agentic_prompt_service.save_llm_item(task.id, prompt_name, prompt_config)
+    except jinja2.exceptions.TemplateSyntaxError as e:
+        # Handle Jinja2 template syntax errors with a helpful message
+        error_msg = f"Invalid Jinja2 template syntax in prompt messages: {str(e)}"
+        raise HTTPException(status_code=400, detail=error_msg)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

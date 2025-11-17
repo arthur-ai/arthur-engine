@@ -3,7 +3,6 @@ import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
-import { styled } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -11,17 +10,6 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import React, { useRef, useState, useEffect } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
-
-import { vsThemeColors } from "@/components/prompts-playground/prismTheme";
-
-// Styled spans to match Prism VS theme syntax highlighting
-const PunctuationSpan = styled("span")({
-  color: vsThemeColors.punctuation,
-});
-
-const VariableSpan = styled("span")({
-  color: vsThemeColors.variable,
-});
 
 const VariableInputs = () => {
   const { state, dispatch } = usePromptContext();
@@ -56,19 +44,19 @@ const VariableInputs = () => {
   }, [variables.length]);
 
   const tooltipContent = (
-    <Typography variant="body2">
-      Variables allow you to create reusable templates by using double curly (mustache) braces like{" "}
-      <PunctuationSpan>{"{"}</PunctuationSpan>
-      <PunctuationSpan>{"{"}</PunctuationSpan>
-      <VariableSpan>variable</VariableSpan>
-      <PunctuationSpan>{"}"}</PunctuationSpan>
-      <PunctuationSpan>{"}"}</PunctuationSpan>. When you define a variable below, it will automatically replace all instances of{" "}
-      <PunctuationSpan>{"{"}</PunctuationSpan>
-      <PunctuationSpan>{"{"}</PunctuationSpan>
-      <VariableSpan>variable</VariableSpan>
-      <PunctuationSpan>{"}"}</PunctuationSpan>
-      <PunctuationSpan>{"}"}</PunctuationSpan> in your prompt messages. This lets you quickly test different values without editing each message individually.
-    </Typography>
+    <Box>
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        Variables allow you to create reusable templates by using double curly braces like{" "}
+        <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600 }}>
+          {"{{variable}}"}
+        </Box>
+        .
+      </Typography>
+      <Typography variant="body2">
+        When you define a variable below, it will automatically replace all instances in your prompt messages. This lets
+        you quickly test different values without editing each message individually.
+      </Typography>
+    </Box>
   );
 
   return (
@@ -83,13 +71,9 @@ const VariableInputs = () => {
             slotProps={{
               tooltip: {
                 sx: {
-                  bgcolor: "#1e1e1e",
-                  color: "#d4d4d4",
-                  maxWidth: 500,
+                  maxWidth: 400,
                   fontSize: "0.875rem",
-                  "& .MuiTooltip-arrow": {
-                    color: "#1e1e1e",
-                  },
+                  p: 1.5,
                 },
               },
             }}
@@ -99,6 +83,13 @@ const VariableInputs = () => {
             </IconButton>
           </Tooltip>
         </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mb: 1 }}>
+          Variable names must use only letters, numbers, and underscores (e.g.,{" "}
+          <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600 }}>
+            last_name
+          </Box>
+          )
+        </Typography>
         <Divider className="my-2" />
       </Box>
 
@@ -115,11 +106,10 @@ const VariableInputs = () => {
         {variables.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ padding: 2, textAlign: "center" }}>
             There are no variables present in any of your prompts. Add a variable like{" "}
-            <PunctuationSpan>{"{"}</PunctuationSpan>
-            <PunctuationSpan>{"{"}</PunctuationSpan>
-            <VariableSpan>variable_name</VariableSpan>
-            <PunctuationSpan>{"}"}</PunctuationSpan>
-            <PunctuationSpan>{"}"}</PunctuationSpan> in one of your prompts to manage it here.
+            <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600 }}>
+              {"{{variable_name}}"}
+            </Box>{" "}
+            in one of your prompts to manage it here.
           </Typography>
         ) : (
           <Stack spacing={2}>

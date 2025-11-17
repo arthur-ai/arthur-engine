@@ -132,6 +132,20 @@ def test_save_llm_eval_with_malformed_data(
     )
     assert response.status_code == 400
 
+    # Test save llm eval with invalid template syntax - should return 400, not 500
+    eval_data_invalid_template = {
+        "instructions": "{% end %}",
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{agentic_task.id}/llm_evals/invalid_template_eval",
+        json=eval_data_invalid_template,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
 
 @pytest.mark.unit_tests
 def test_delete_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task: Task):

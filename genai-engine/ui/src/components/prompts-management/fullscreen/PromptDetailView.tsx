@@ -6,12 +6,22 @@ import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
+import { useMemo } from "react";
 
 import type { PromptDetailViewProps } from "../types";
 
+import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { formatDate } from "@/utils/formatters";
 
 const PromptDetailView = ({ promptData, isLoading, error, promptName, version, onClose }: PromptDetailViewProps) => {
+  // Format messages as JSON string for display
+  const messagesJson = useMemo(() => {
+    if (!promptData?.messages) {
+      return "";
+    }
+    return JSON.stringify(promptData.messages, null, 2);
+  }, [promptData?.messages]);
+
   if (isLoading) {
     return (
       <Box
@@ -103,21 +113,15 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, o
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
           Messages
         </Typography>
-        <Box
-          component="pre"
-          sx={{
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontFamily: "monospace",
-            backgroundColor: "grey.50",
-            p: 2,
-            borderRadius: 1,
-            overflow: "auto",
-            fontSize: "0.875rem",
-          }}
-        >
-          {JSON.stringify(promptData.messages, null, 2)}
-        </Box>
+        <NunjucksHighlightedTextField
+          value={messagesJson}
+          onChange={() => {}} // Read-only, no-op
+          disabled
+          multiline
+          minRows={4}
+          maxRows={20}
+          size="small"
+        />
       </Paper>
 
       {promptData.config && (

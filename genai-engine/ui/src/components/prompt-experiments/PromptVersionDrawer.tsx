@@ -24,12 +24,12 @@ import {
   CircularProgress,
   Link,
 } from "@mui/material";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import { PromptResultDetailModal } from "./PromptResultDetailModal";
-import { MessageDisplay } from "./PromptResultComponents";
 
+import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { formatUTCTimestamp } from "@/utils/formatters";
@@ -144,6 +144,14 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
 
   // Calculate global index for display
   const globalIndex = page * rowsPerPage + selectedResultIndex;
+
+  // Format messages as JSON for display in template modal
+  const messagesJson = useMemo(() => {
+    if (!prompt?.messages) {
+      return "";
+    }
+    return JSON.stringify(prompt.messages, null, 2);
+  }, [prompt?.messages]);
 
   if (!promptDetails) {
     return null;
@@ -516,15 +524,15 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   Messages
                 </Typography>
                 <Box>
-                  {prompt.messages.map((message, idx) => (
-                    <MessageDisplay
-                      key={idx}
-                      message={{
-                        role: message.role as "system" | "user" | "assistant",
-                        content: typeof message.content === "string" ? message.content : JSON.stringify(message.content, null, 2)
-                      }}
-                    />
-                  ))}
+                  <NunjucksHighlightedTextField
+                    value={messagesJson}
+                    onChange={() => {}} // Read-only, no-op
+                    disabled
+                    multiline
+                    minRows={4}
+                    maxRows={30}
+                    size="small"
+                  />
                 </Box>
               </Box>
             </>

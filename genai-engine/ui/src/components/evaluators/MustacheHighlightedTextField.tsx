@@ -5,7 +5,7 @@ import React, { useMemo, useRef, useCallback, useEffect } from "react";
 
 interface NunjucksHighlightedTextFieldProps {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
@@ -13,6 +13,8 @@ interface NunjucksHighlightedTextFieldProps {
   minRows?: number;
   maxRows?: number;
   size?: "small" | "medium";
+  readOnly?: boolean;
+  hideTokens?: boolean;
 }
 
 const EditableDiv = styled("div")(({ theme }) => ({
@@ -71,6 +73,8 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   minRows = 4,
   maxRows = 10,
   size = "small",
+  readOnly = false,
+  hideTokens = false,
 }) => {
   const editableRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
@@ -130,9 +134,9 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     editableRef.current?.focus();
   }, []);
 
-  // Extract all Nunjucks variables and tags from the text
+  // Extract all Nunjucks variables and statements from the text
   const nunjucksTokens = useMemo(() => {
-    if (!value) return { variables: [], tags: [] };
+    if (!value) return { variables: [], statements: [] };
 
     // Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
     const jinja2Keywords = new Set([
@@ -180,11 +184,11 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       return true;
     });
 
-    // Match control flow tags {% if %}, {% for %}, etc.
-    const tagMatches = value.match(/\{%[^%]+%\}/g);
-    const tags = tagMatches ? Array.from(new Set(tagMatches)) : [];
+    // Match control flow statements {% if %}, {% for %}, etc.
+    const statementMatches = value.match(/\{%[^%]+%\}/g);
+    const statements = statementMatches ? Array.from(new Set(statementMatches)) : [];
 
-    return { variables, tags };
+    return { variables, statements };
   }, [value]);
 
   // Generate highlighted HTML
@@ -202,7 +206,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
 
     const escaped = escapeHtml(text);
 
-    // Split by both Nunjucks patterns: variables {{ }} and tags {% %}
+    // Split by both Nunjucks patterns: variables {{ }} and statements {% %}
     const parts = escaped.split(/(\{\{[^}]+\}\}|\{%[^%]+%\})/g);
 
     return parts
@@ -211,7 +215,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
           // This is a Nunjucks variable - highlight in blue
           return `<span class="nunjucks-var">${part}</span>`;
         } else if (part.match(/\{%[^%]+%\}/)) {
-          // This is a Nunjucks tag (control flow) - highlight in purple
+          // This is a Nunjucks statement (control flow) - highlight in purple
           return `<span class="nunjucks-tag">${part}</span>`;
         }
         // Regular text - no wrapper needed, let parent handle color
@@ -281,7 +285,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   }, [generateHighlightedHtml, saveCursorPosition, restoreCursorPosition]);
 
   const handleInput = useCallback(() => {
-    if (editableRef.current && !isUpdatingRef.current) {
+    if (editableRef.current && !isUpdatingRef.current && !readOnly && onChange) {
       const newValue = editableRef.current.innerText || "";
 
       // Create a synthetic event
@@ -295,7 +299,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       // Update highlighting after a short delay to allow the change to propagate
       setTimeout(() => updateHighlighting(), 0);
     }
-  }, [onChange, updateHighlighting]);
+  }, [onChange, updateHighlighting, readOnly]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
@@ -319,19 +323,21 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     <Box sx={{ width: "100%" }}>
       <EditableDiv
         ref={editableRef}
-        contentEditable={!disabled}
+        contentEditable={!disabled && !readOnly}
         onInput={handleInput}
         onPaste={handlePaste}
         data-placeholder={placeholder}
         suppressContentEditableWarning
         style={{
-          cursor: disabled ? "not-allowed" : "text",
-          opacity: disabled ? 0.6 : 1,
+          cursor: disabled || readOnly ? "default" : "text",
+          backgroundColor: disabled ? "#f5f5f5" : readOnly ? "transparent" : "white",
+          border: readOnly ? "none" : undefined,
+          padding: readOnly ? "0" : undefined,
         }}
       />
 
-      {/* Display found variables and tags as chips below */}
-      {(nunjucksTokens.variables.length > 0 || nunjucksTokens.tags.length > 0) && (
+      {/* Display found variables and statements as chips below */}
+      {!hideTokens && (nunjucksTokens.variables.length > 0 || nunjucksTokens.statements.length > 0) && (
         <Box
           sx={{
             mt: 1,
@@ -381,7 +387,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
             </>
           )}
 
-          {nunjucksTokens.tags.length > 0 && (
+          {nunjucksTokens.statements.length > 0 && (
             <>
               <Box
                 component="span"
@@ -392,14 +398,14 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
                   ml: nunjucksTokens.variables.length > 0 ? 1 : 0,
                 }}
               >
-                Tags:
+                Statements:
               </Box>
-              {nunjucksTokens.tags.map((tag: string, index: number) => (
+              {nunjucksTokens.statements.map((statement: string, index: number) => (
                 <Chip
-                  key={`tag-${index}`}
-                  label={tag}
+                  key={`statement-${index}`}
+                  label={statement}
                   size="small"
-                  onClick={() => highlightToken(tag)}
+                  onClick={() => highlightToken(statement)}
                   sx={{
                     height: 20,
                     fontSize: "0.7rem",

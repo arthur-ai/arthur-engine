@@ -7,7 +7,7 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { styled, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import React, { useCallback, useReducer, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -21,16 +21,6 @@ import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
-import { vsThemeColors } from "@/components/prompts-playground/prismTheme";
-
-// Styled spans to match Prism VS theme syntax highlighting
-const PunctuationSpan = styled("span")({
-  color: vsThemeColors.punctuation,
-});
-
-const VariableSpan = styled("span")({
-  color: vsThemeColors.variable,
-});
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -217,6 +207,38 @@ const PromptsPlayground = () => {
     setVariablesDrawerOpen((prev) => !prev);
   };
 
+  // Handle click outside to close variables drawer
+  useEffect(() => {
+    if (!variablesDrawerOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const variablesPanel = document.querySelector('[data-variables-panel]');
+      const variablesButton = variablesButtonRef.current;
+
+      // Don't close if clicking on the variables panel itself or the button
+      if (
+        (variablesPanel && variablesPanel.contains(target)) ||
+        (variablesButton && variablesButton.contains(target))
+      ) {
+        return;
+      }
+
+      // Close the drawer
+      setVariablesDrawerOpen(false);
+    };
+
+    // Add listener after a small delay to avoid immediate closure
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [variablesDrawerOpen]);
+
   // Calculate position for variables popup
   const getPopupPosition = () => {
     if (!variablesButtonRef.current) {
@@ -269,6 +291,7 @@ const PromptsPlayground = () => {
         {/* Popup Variables panel */}
         {variablesDrawerOpen && (
           <Box
+            data-variables-panel
             sx={{
               position: "absolute",
               top: popupPosition.top,

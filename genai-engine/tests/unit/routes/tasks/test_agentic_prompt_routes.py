@@ -520,6 +520,18 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
     )
     assert response.status_code == 400
 
+    # Test save prompt with invalid template syntax - should return 400, not 500
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/invalid_template_prompt",
+        json={
+            "messages": [{"role": "user", "content": "{% end %}"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+        },
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
 
 @pytest.mark.unit_tests
 @patch("services.prompt.chat_completion_service.completion_cost")
