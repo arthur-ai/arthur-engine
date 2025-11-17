@@ -647,6 +647,10 @@ class AgenticPromptMetadataResponse(BaseModel):
 class LLMGetAllMetadataResponse(BaseModel):
     name: str = Field(description="Name of the llm asset")
     versions: int = Field(description="Number of versions of the llm asset")
+    tags: List[str] = Field(
+        default_factory=list,
+        description="List of tags for the llm asset",
+    )
     created_at: datetime = Field(description="Timestamp when the llm asset was created")
     latest_version_created_at: datetime = Field(
         description="Timestamp when the last version of the llm asset was created",
@@ -677,18 +681,13 @@ class LLMVersionResponse(BaseModel):
     model_name: str = Field(
         description="Model name chosen for this version of the llm eval",
     )
+    tags: List[str] = Field(
+        default_factory=list,
+        description="List of tags for the llm asset",
+    )
 
 
 class AgenticPromptVersionResponse(LLMVersionResponse):
-    version: int = Field(description="Version number of the prompt")
-    created_at: datetime = Field(
-        description="Timestamp when the prompt version was created",
-    )
-    deleted_at: Optional[datetime] = Field(
-        description="Timestamp when the prompt version was deleted",
-    )
-    model_provider: ModelProvider = Field(description="Model provider of the prompt")
-    model_name: str = Field(description="Model name of the prompt")
     num_messages: int = Field(description="Number of messages in the prompt")
     num_tools: int = Field(description="Number of tools in the prompt")
 

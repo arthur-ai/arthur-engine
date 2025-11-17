@@ -12,6 +12,14 @@
 /** APIKeysRolesEnum */
 export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION-USER" | "ORG-AUDITOR" | "ORG-ADMIN";
 
+export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutData = AgenticPrompt;
+
+export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutError = HTTPValidationError;
+
+export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData = LLMEval;
+
+export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
+
 /** AgenticPrompt */
 export interface AgenticPrompt {
   /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
@@ -44,6 +52,11 @@ export interface AgenticPrompt {
    * Name of the agentic prompt
    */
   name: string;
+  /**
+   * Tags
+   * List of tags for this agentic prompt version
+   */
+  tags?: string[];
   /**
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
@@ -90,21 +103,21 @@ export interface AgenticPromptVersionListResponse {
 export interface AgenticPromptVersionResponse {
   /**
    * Created At
-   * Timestamp when the prompt version was created
+   * Timestamp when the llm eval version was created
    * @format date-time
    */
   created_at: string;
   /**
    * Deleted At
-   * Timestamp when the prompt version was deleted
+   * Timestamp when the llm eval version was deleted (None if not deleted)
    */
   deleted_at: string | null;
   /**
    * Model Name
-   * Model name of the prompt
+   * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider of the prompt */
+  /** Model provider chosen for this version of the llm eval */
   model_provider: ModelProvider;
   /**
    * Num Messages
@@ -117,8 +130,13 @@ export interface AgenticPromptVersionResponse {
    */
   num_tools: number;
   /**
+   * Tags
+   * List of tags for the llm asset
+   */
+  tags?: string[];
+  /**
    * Version
-   * Version number of the prompt
+   * Version number of the llm eval
    */
   version: number;
 }
@@ -284,6 +302,24 @@ export interface BaseDetailsResponse {
   message?: string | null;
   /** Score */
   score?: boolean | null;
+}
+
+/** Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put */
+export interface BodyAddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut {
+  /**
+   * Tag
+   * Tag to add to this prompt version
+   */
+  tag: string;
+}
+
+/** Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put */
+export interface BodyAddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut {
+  /**
+   * Tag
+   * Tag to add to this llm eval version
+   */
+  tag: string;
 }
 
 /** Body_upload_embeddings_file_api_chat_files_post */
@@ -951,6 +987,14 @@ export type DeleteRagSearchSettingVersionData = any;
 
 export type DeleteRagSearchSettingVersionError = HTTPValidationError;
 
+export type DeleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDeleteData = any;
+
+export type DeleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDeleteError = HTTPValidationError;
+
+export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteData = any;
+
+export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
+
 export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError = HTTPValidationError;
@@ -1353,6 +1397,10 @@ export interface FileUploadResult {
 export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
 
 export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
+
+export type GetAgenticPromptByTagApiV1TasksTaskIdPromptsPromptNameVersionsTagsTagGetData = AgenticPrompt;
+
+export type GetAgenticPromptByTagApiV1TasksTaskIdPromptsPromptNameVersionsTagsTagGetError = HTTPValidationError;
 
 /** Response Get All Active Api Keys Auth Api Keys  Get */
 export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
@@ -1786,6 +1834,10 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPV
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
 
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
+
+export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData = LLMEval;
+
+export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError = HTTPValidationError;
 
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
@@ -2442,6 +2494,11 @@ export interface LLMEval {
    */
   name: string;
   /**
+   * Tags
+   * List of tags for this llm eval version
+   */
+  tags?: string[];
+  /**
    * Variables
    * List of variable names for the llm eval
    */
@@ -2525,6 +2582,11 @@ export interface LLMGetAllMetadataResponse {
    * Name of the llm asset
    */
   name: string;
+  /**
+   * Tags
+   * List of tags for the llm asset
+   */
+  tags?: string[];
   /**
    * Versions
    * Number of versions of the llm asset
@@ -2798,6 +2860,11 @@ export interface LLMVersionResponse {
   model_name: string;
   /** Model provider chosen for this version of the llm eval */
   model_provider: ModelProvider;
+  /**
+   * Tags
+   * List of tags for the llm asset
+   */
+  tags?: string[];
   /**
    * Version
    * Version number of the llm eval
@@ -7741,10 +7808,68 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.178
+ * @version 2.1.181
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
+    /**
+     * @description Add a tag to an agentic prompt version
+     *
+     * @tags Prompts
+     * @name AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut
+     * @summary Add a tag to an agentic prompt version
+     * @request PUT:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags
+     * @secure
+     */
+    addTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      data: BodyAddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutData,
+        AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/tags`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Add a tag to an llm eval version
+     *
+     * @tags LLMEvals
+     * @name AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut
+     * @summary Add a tag to an llm eval version
+     * @request PUT:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+     * @secure
+     */
+    addTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut: (
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      data: BodyAddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData,
+        AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/tags`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
     /**
      * @description Archive existing default rule.
      *
@@ -8346,6 +8471,58 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Remove a tag from an agentic prompt version
+     *
+     * @tags Prompts
+     * @name DeleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDelete
+     * @summary Remove a tag from an agentic prompt version
+     * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags/{tag}
+     * @secure
+     */
+    deleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDelete: (
+      promptName: string,
+      promptVersion: string,
+      tag: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DeleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDeleteData,
+        DeleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDeleteError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/tags/${tag}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Remove a tag from an llm eval version
+     *
+     * @tags LLMEvals
+     * @name DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete
+     * @summary Remove a tag from an llm eval version
+     * @request DELETE:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags/{tag}
+     * @secure
+     */
+    deleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete: (
+      evalName: string,
+      evalVersion: string,
+      tag: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteData,
+        DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/tags/${tag}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Delete a transform.
      *
      * @tags Datasets
@@ -8466,6 +8643,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError
       >({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get an agentic prompt by name and tag
+     *
+     * @tags Prompts
+     * @name GetAgenticPromptByTagApiV1TasksTaskIdPromptsPromptNameVersionsTagsTagGet
+     * @summary Get an agentic prompt by name and tag
+     * @request GET:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}
+     * @secure
+     */
+    getAgenticPromptByTagApiV1TasksTaskIdPromptsPromptNameVersionsTagsTagGet: (
+      promptName: string,
+      tag: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetAgenticPromptByTagApiV1TasksTaskIdPromptsPromptNameVersionsTagsTagGetData,
+        GetAgenticPromptByTagApiV1TasksTaskIdPromptsPromptNameVersionsTagsTagGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/tags/${tag}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -8794,6 +8997,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError
       >({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get an llm eval by name and tag
+     *
+     * @tags LLMEvals
+     * @name GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGet
+     * @summary Get an llm eval by name and tag
+     * @request GET:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+     * @secure
+     */
+    getLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGet: (evalName: string, tag: string, taskId: string, params: RequestParams = {}) =>
+      this.request<
+        GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData,
+        GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/tags/${tag}`,
         method: "GET",
         secure: true,
         format: "json",

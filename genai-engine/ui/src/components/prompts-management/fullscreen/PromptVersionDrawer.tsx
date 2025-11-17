@@ -11,6 +11,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -23,7 +24,16 @@ import type { PromptVersionDrawerProps } from "../types";
 
 import { formatDate } from "@/utils/formatters";
 
-const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersion, onSelectVersion, onDelete }: PromptVersionDrawerProps) => {
+const PromptVersionDrawer = ({
+  open,
+  onClose,
+  taskId,
+  promptName,
+  selectedVersion,
+  latestVersion,
+  onSelectVersion,
+  onDelete,
+}: PromptVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
@@ -50,14 +60,11 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
     [onSelectVersion]
   );
 
-  const handleDeleteClick = useCallback(
-    (e: React.MouseEvent, version: number) => {
-      e.stopPropagation();
-      setVersionToDelete(version);
-      setDeleteDialogOpen(true);
-    },
-    []
-  );
+  const handleDeleteClick = useCallback((e: React.MouseEvent, version: number) => {
+    e.stopPropagation();
+    setVersionToDelete(version);
+    setDeleteDialogOpen(true);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (versionToDelete === null || !onDelete) return;
@@ -146,6 +153,27 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
             {sortedAndFilteredVersions.map((version) => {
               const isSelected = selectedVersion === version.version;
               const isDeleted = !!version.deleted_at;
+              const isLatest = version.version === latestVersion && !isDeleted;
+
+              // Prioritize tags: production, then others
+              const tags = version.tags || [];
+              const hasProduction = tags.some((tag) => tag.toLowerCase() === "production");
+              const otherTags = tags.filter((tag) => tag.toLowerCase() !== "production");
+
+              // Build display tags: Production tag first, then Latest badge, then other tags up to max 3 total
+              // Don't show any tags for deleted versions
+              const displayTags: Array<{ label: string; type: "latest" | "production" | "other" }> = [];
+
+              if (!isDeleted) {
+                if (hasProduction) displayTags.push({ label: "production", type: "production" });
+                if (isLatest) displayTags.push({ label: "Latest", type: "latest" });
+
+                // Add other tags up to max of 3 total
+                const remainingSlots = 3 - displayTags.length;
+                otherTags.slice(0, remainingSlots).forEach((tag) => {
+                  displayTags.push({ label: tag, type: "other" });
+                });
+              }
 
               return (
                 <ListItem key={version.version} disablePadding>
@@ -166,28 +194,78 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
                   >
                     <ListItemText
                       primary={
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography variant="body2" sx={{
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
                               fontWeight: 500,
                               color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.primary",
-                            }}>
+                              textDecoration: isDeleted ? "line-through" : "none",
+                            }}
+                          >
                             Version {version.version}
                           </Typography>
-                          {isDeleted && <Chip label="Deleted" size="small" color="error" sx={{ height: 18, fontSize: "0.7rem" }} />}
+                          {displayTags.map((tag, idx) => {
+                            let color: "default" | "primary" | "success" = "default";
+                            let variant: "filled" | "outlined" = "filled";
+
+                            if (tag.type === "latest") {
+                              color = "default";
+                            } else if (tag.type === "production") {
+                              color = "success";
+                            } else if (tag.type === "other") {
+                              color = "primary";
+                              variant = "outlined";
+                            }
+
+                            return (
+                              <Chip
+                                key={`${tag.label}-${idx}`}
+                                label={tag.label}
+                                size="small"
+                                color={color}
+                                variant={variant}
+                                sx={{ height: 18, fontSize: "0.7rem" }}
+                              />
+                            );
+                          })}
                         </Box>
                       }
                       secondary={
                         <Box component="span" sx={{ mt: 0.5, display: "block" }}>
-                          <Typography variant="caption" color="text.secondary" component="span" sx={{ color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary" }}>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            component="span"
+                            sx={{ color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary" }}
+                          >
                             {version.model_provider} / {version.model_name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary" component="span" sx={{
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            component="span"
+                            sx={{
                               display: "block",
                               mt: 0.5,
                               color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary",
-                            }}>
+                            }}
+                          >
                             {formatDate(version.created_at)}
                           </Typography>
+                          {isDeleted && version.deleted_at && (
+                            <Typography
+                              variant="caption"
+                              component="span"
+                              sx={{
+                                display: "block",
+                                mt: 0.5,
+                                color: "rgba(0, 0, 0, 0.55)",
+                              }}
+                            >
+                              Deleted at: {formatDate(version.deleted_at)}
+                            </Typography>
+                          )}
                         </Box>
                       }
                     />
@@ -218,8 +296,7 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
         <DialogTitle id="delete-version-dialog-title">Delete Version?</DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-version-dialog-description">
-            Are you sure you want to delete <strong>Version {versionToDelete}</strong> of{" "}
-            <strong>{promptName}</strong>?
+            Are you sure you want to delete <strong>Version {versionToDelete}</strong> of <strong>{promptName}</strong>?
           </DialogContentText>
           <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
             <strong>Warning:</strong> This version and all of its contents will be deleted. This action cannot be undone.
