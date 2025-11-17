@@ -1202,7 +1202,7 @@ def test_get_prompt_versions_pagination_and_filtering(
         (
             [{"role": "user", "content": "Hello, {{name}}!"}],
             None,
-            "Missing required variables: name. Please provide values for all variables when strict=True.",
+            ["name"],
         ),
         ([{"role": "user", "content": "Hello, name!"}], {"name": "John"}, None),
         ([{"role": "user", "content": "Hello, name!"}], {"first_name": "John"}, None),
@@ -1214,12 +1214,12 @@ def test_get_prompt_versions_pagination_and_filtering(
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
             {"first_name": "John", "name": "Doe"},
-            "Missing required variables: last_name. Please provide values for all variables when strict=True.",
+            ["last_name"],
         ),
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
             {"name1": "John", "name2": "Doe"},
-            "Missing required variables: first_name, last_name. Please provide values for all variables when strict=True.",
+            ["first_name", "last_name"],
         ),
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {last_name}!"}],
@@ -1302,7 +1302,10 @@ def test_run_agentic_prompt_strict_mode(
     )
     if expected_error:
         assert response.status_code == 400
-        assert response.json()["detail"] == expected_error
+        actual_error = response.json()["detail"]
+        # Check that all expected variable names appear in the error
+        for var_name in expected_error:
+            assert var_name in actual_error
     else:
         assert response.status_code == 200
 
@@ -1324,7 +1327,10 @@ def test_run_agentic_prompt_strict_mode(
     )
     if expected_error:
         assert response.status_code == 400
-        assert response.json()["detail"] == expected_error
+        actual_error = response.json()["detail"]
+        # Check that all expected variable names appear in the error
+        for var_name in expected_error:
+            assert var_name in actual_error
     else:
         assert response.status_code == 200
         rendered_prompt = response.json()

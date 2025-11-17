@@ -12,7 +12,6 @@ import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
 import MessageComponent from "../messages/MessageComponent";
 
-import { useRenderPrompt } from "@/hooks/useRenderPrompt";
 import { useRenderUnsavedPrompt } from "@/hooks/useRenderUnsavedPrompt";
 import type { OpenAIMessageOutput } from "@/lib/api-client/api-client";
 
@@ -28,7 +27,6 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const renderPromptMutation = useRenderPrompt();
   const renderUnsavedPromptMutation = useRenderUnsavedPrompt();
 
   useEffect(() => {
@@ -51,23 +49,12 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
           value,
         }));
 
-        let rendered;
-
-        // If prompt has name and version, use saved prompt endpoint
-        // Otherwise, use unsaved prompt endpoint
-        if (prompt.name && prompt.version) {
-          rendered = await renderPromptMutation.mutateAsync({
-            promptName: prompt.name,
-            promptVersion: prompt.version?.toString() || "latest",
-            variables,
-          });
-        } else {
-          // For unsaved prompts, send the messages directly
-          rendered = await renderUnsavedPromptMutation.mutateAsync({
-            messages: prompt.messages,
-            variables,
-          });
-        }
+        // Always use the unsaved prompt rendering endpoint
+        // Send the messages directly from the current prompt state
+        const rendered = await renderUnsavedPromptMutation.mutateAsync({
+          messages: prompt.messages,
+          variables,
+        });
 
         setRenderedMessages(rendered.messages || []);
       } catch (err) {
@@ -129,6 +116,7 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
                   id={`preview-${index}`}
                   parentId={`preview-parent`}
                   role={message.role}
+                  defaultContent={message.content ?? ""}
                   content={message.content ?? ""}
                   toolCalls={message.tool_calls}
                 />
