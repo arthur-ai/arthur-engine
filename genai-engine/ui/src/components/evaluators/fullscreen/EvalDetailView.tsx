@@ -47,6 +47,12 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
       return;
     }
 
+    // Check for reserved tag name
+    if (newTag.trim().toLowerCase() === "latest") {
+      setTagError("'latest' is a reserved keyword and cannot be used as a tag");
+      return;
+    }
+
     // Check for duplicate tag
     if (evalData?.tags?.includes(newTag.trim())) {
       setTagError("This tag already exists");
