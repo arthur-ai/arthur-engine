@@ -6,9 +6,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
-import React, { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
@@ -33,20 +31,6 @@ const PromptsPlayground = () => {
 
   const apiClient = useApi();
   const spanId = searchParams.get("spanId");
-
-  const theme = useTheme();
-  const isXLScreen = useMediaQuery(theme.breakpoints.up("xl")); // xl breakpoint = 1536px
-  const isLargeScreen = useMediaQuery(theme.breakpoints.up("lg")); // lg breakpoint = 1280px
-  const isMediumScreen = useMediaQuery(theme.breakpoints.up("md")); // md breakpoint = 960px
-
-  // Calculate prompt width based on screen size
-  // XL screens: fit 5 prompts, Large screens: fit 4 prompts, Medium: fit 3 prompts, Small: fit 2 prompts
-  const promptsPerScreen = isXLScreen ? 5 : isLargeScreen ? 4 : isMediumScreen ? 3 : 2;
-  const spacing = 8; // 1 * 8px (MUI spacing unit)
-  const padding = 8; // Container padding
-
-  // Calculate dynamic width: (100vw - total spacing - padding) / number of prompts
-  const promptWidth = `calc((100vw - ${(promptsPerScreen - 1) * spacing + padding * 2}px) / ${promptsPerScreen})`;
 
   // Pass false to let each prompt determine its own icon-only mode based on container width
   // This enables true container query behavior - each prompt measures its own width
@@ -323,16 +307,13 @@ const PromptsPlayground = () => {
         {/* Main content area */}
         <Box component="main" className="flex-1 flex flex-col">
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
-            <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
+            <Stack direction="row" spacing={1} sx={{ height: "100%" }}>
               {state.prompts.map((prompt) => (
                 <Box
                   key={prompt.id}
                   className="flex-1 h-full"
                   sx={{
-                    width: promptWidth,
-                    minWidth: promptWidth,
-                    flexShrink: 0,
-                    containerType: "inline-size",
+                    minWidth: 400,
                   }}
                 >
                   <PromptComponent prompt={prompt} useIconOnlyMode={useIconOnlyMode} />
