@@ -4,6 +4,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import ClickAwayListener from "@mui/material/ClickAwayListener";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
@@ -191,35 +192,6 @@ const PromptsPlayground = () => {
     setVariablesDrawerOpen((prev) => !prev);
   };
 
-  // Handle click outside to close variables drawer
-  useEffect(() => {
-    if (!variablesDrawerOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const variablesPanel = document.querySelector("[data-variables-panel]");
-      const variablesButton = variablesButtonRef.current;
-
-      // Don't close if clicking on the variables panel itself or the button
-      if ((variablesPanel && variablesPanel.contains(target)) || (variablesButton && variablesButton.contains(target))) {
-        return;
-      }
-
-      // Close the drawer
-      setVariablesDrawerOpen(false);
-    };
-
-    // Add listener after a small delay to avoid immediate closure
-    const timeoutId = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 0);
-
-    return () => {
-      clearTimeout(timeoutId);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [variablesDrawerOpen]);
-
   // Calculate position for variables popup
   const getPopupPosition = () => {
     if (!variablesButtonRef.current) {
@@ -296,23 +268,25 @@ const PromptsPlayground = () => {
 
         {/* Popup Variables panel */}
         {variablesDrawerOpen && (
-          <Box
-            data-variables-panel
-            sx={{
-              position: "absolute",
-              top: popupPosition.top,
-              left: popupPosition.left,
-              right: popupPosition.right,
-              width: "400px",
-              maxHeight: "500px",
-              zIndex: 1200,
-              boxShadow: 3,
-              borderRadius: 1,
-              overflow: "hidden",
-            }}
-          >
-            <VariableInputs />
-          </Box>
+          <ClickAwayListener onClickAway={() => setVariablesDrawerOpen(false)}>
+            <Box
+              data-variables-panel
+              sx={{
+                position: "absolute",
+                top: popupPosition.top,
+                left: popupPosition.left,
+                right: popupPosition.right,
+                width: "400px",
+                maxHeight: "500px",
+                zIndex: 1200,
+                boxShadow: 3,
+                borderRadius: 1,
+                overflow: "hidden",
+              }}
+            >
+              <VariableInputs />
+            </Box>
+          </ClickAwayListener>
         )}
 
         {/* Main content area */}
