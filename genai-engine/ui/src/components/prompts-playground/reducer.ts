@@ -380,26 +380,39 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     case "updateKeywords": {
       const { id, messageKeywords } = action.payload;
 
-      if (messageKeywords.length === 0) {
-        // Remove message id from keyword tracker
-        state.keywordTracker.delete(id);
-      } else {
-        // Add or replace keyword array tied to new or existing message id
-        state.keywordTracker.set(id, messageKeywords);
-      }
-
-      // Create new keywords map. Delete keywords by omitting a copy.
-      const newKeywords = new Map<string, string>();
+      // Create new keyword tracker without mutating state
       const newKeywordTracker = new Map<string, Array<string>>(state.keywordTracker);
 
-      // For each keyword array
+      if (messageKeywords.length === 0) {
+        // Remove message id from keyword tracker
+        newKeywordTracker.delete(id);
+      } else {
+        // Add or replace keyword array tied to new or existing message id
+        newKeywordTracker.set(id, messageKeywords);
+      }
+
+      // Collect all keywords that are currently in use across all messages
+      const inUseKeywords = new Set<string>();
       newKeywordTracker.forEach((keywords) => {
-        // For each keyword in the array
-        keywords.forEach((keyword) => {
-          // Copy existing value if is exists, otherwise set to empty string
-          newKeywords.set(keyword, state.keywords.get(keyword) || "");
-        });
+        keywords.forEach((keyword) => inUseKeywords.add(keyword));
       });
+
+      // Build new keywords map starting with existing keywords to preserve all values
+      const newKeywords = new Map<string, string>(state.keywords);
+
+      // Add any new keywords from messages that don't exist yet
+      inUseKeywords.forEach((keyword) => {
+        if (!newKeywords.has(keyword)) {
+          newKeywords.set(keyword, "");
+        }
+      });
+
+      // Remove keywords that are not in use in any message
+      for (const keyword of newKeywords.keys()) {
+        if (!inUseKeywords.has(keyword)) {
+          newKeywords.delete(keyword);
+        }
+      }
 
       return {
         ...state,
