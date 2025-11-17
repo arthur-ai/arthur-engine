@@ -1202,7 +1202,7 @@ def test_get_prompt_versions_pagination_and_filtering(
         (
             [{"role": "user", "content": "Hello, {{name}}!"}],
             None,
-            ["name"],
+            "Missing values for the following variables: name",
         ),
         ([{"role": "user", "content": "Hello, name!"}], {"name": "John"}, None),
         ([{"role": "user", "content": "Hello, name!"}], {"first_name": "John"}, None),
@@ -1214,12 +1214,12 @@ def test_get_prompt_versions_pagination_and_filtering(
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
             {"first_name": "John", "name": "Doe"},
-            ["last_name"],
+            "Missing values for the following variables: last_name",
         ),
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
             {"name1": "John", "name2": "Doe"},
-            ["first_name", "last_name"],
+            "Missing values for the following variables: first_name, last_name",
         ),
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {last_name}!"}],
@@ -1302,10 +1302,7 @@ def test_run_agentic_prompt_strict_mode(
     )
     if expected_error:
         assert response.status_code == 400
-        actual_error = response.json()["detail"]
-        # Check that all expected variable names appear in the error
-        for var_name in expected_error:
-            assert var_name in actual_error
+        assert response.json()["detail"] == expected_error
     else:
         assert response.status_code == 200
 
@@ -1327,10 +1324,7 @@ def test_run_agentic_prompt_strict_mode(
     )
     if expected_error:
         assert response.status_code == 400
-        actual_error = response.json()["detail"]
-        # Check that all expected variable names appear in the error
-        for var_name in expected_error:
-            assert var_name in actual_error
+        assert response.json()["detail"] == expected_error
     else:
         assert response.status_code == 200
         rendered_prompt = response.json()
@@ -1428,7 +1422,7 @@ def test_render_endpoints(client: GenaiEngineTestClientBase):
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
-    assert "Missing required variables: age" in response.json()["detail"]
+    assert response.json()["detail"] == "Missing values for the following variables: age"
 
     # Test 3: Render unsaved prompt with strict mode - all variables provided
     strict_render_request["completion_request"]["variables"].append(

@@ -294,7 +294,7 @@ def render_unsaved_agentic_prompt(
             )
             if missing_vars:
                 raise ValueError(
-                    f"Missing required variables: {', '.join(sorted(missing_vars))}"
+                    f"Missing values for the following variables: {', '.join(sorted(missing_vars))}"
                 )
 
         # Deep copy messages to avoid mutating the request

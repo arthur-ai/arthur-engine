@@ -172,8 +172,7 @@ class AgenticPromptRepository(BaseLLMRepository):
             )
             if missing_vars:
                 raise ValueError(
-                    f"Missing required variables: {', '.join(sorted(missing_vars))}. "
-                    f"Please provide values for all variables when strict=True."
+                    f"Missing values for the following variables: {', '.join(sorted(missing_vars))}"
                 )
 
         # Create a copy of messages and render them

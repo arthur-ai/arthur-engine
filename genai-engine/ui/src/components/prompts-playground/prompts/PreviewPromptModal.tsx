@@ -1,5 +1,7 @@
 import CloseIcon from "@mui/icons-material/Close";
 import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
@@ -10,7 +12,6 @@ import { useEffect, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
-import MessageComponent from "../messages/MessageComponent";
 
 import { useRenderUnsavedPrompt } from "@/hooks/useRenderUnsavedPrompt";
 import type { OpenAIMessageOutput } from "@/lib/api-client/api-client";
@@ -101,26 +102,54 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
         )}
 
         {!isLoading && !error && renderedMessages.length > 0 && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {renderedMessages.map((message, index) => (
-              <Box
-                key={index}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  backgroundColor: "background.paper",
-                }}
-              >
-                <MessageComponent
-                  id={`preview-${index}`}
-                  parentId={`preview-parent`}
-                  role={message.role}
-                  defaultContent={message.content ?? ""}
-                  content={message.content ?? ""}
-                  toolCalls={message.tool_calls}
-                />
-              </Box>
+              <Card key={index} variant="outlined">
+                <CardContent>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    sx={{ mb: 1, textTransform: "capitalize" }}
+                  >
+                    {message.role}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    component="pre"
+                    sx={{
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      fontFamily: "inherit",
+                      margin: 0,
+                    }}
+                  >
+                    {typeof message.content === "string" ? message.content : JSON.stringify(message.content, null, 2)}
+                  </Typography>
+                  {message.tool_calls && message.tool_calls.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                        Tool Calls
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        component="pre"
+                        sx={{
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          fontFamily: "monospace",
+                          fontSize: "0.875rem",
+                          backgroundColor: "action.hover",
+                          padding: 1,
+                          borderRadius: 1,
+                          margin: 0,
+                        }}
+                      >
+                        {JSON.stringify(message.tool_calls, null, 2)}
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
             ))}
           </Box>
         )}
