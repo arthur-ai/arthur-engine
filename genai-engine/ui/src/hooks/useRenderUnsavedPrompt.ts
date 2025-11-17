@@ -14,7 +14,7 @@ export const useRenderUnsavedPrompt = () => {
   const apiClient = useApi();
 
   return useMutation<RenderedPromptResponse, Error, RenderUnsavedPromptParams>({
-    mutationFn: async ({ messages, variables, strict = false }) => {
+    mutationFn: async ({ messages, variables, strict = true }) => {
       if (!apiClient) {
         throw new Error("API client not available");
       }

@@ -17,7 +17,7 @@ export const useRenderPrompt = () => {
   const apiClient = useApi();
 
   return useMutation<RenderedPromptResponse, Error, RenderPromptParams>({
-    mutationFn: async ({ promptName, promptVersion, variables, strict = false }) => {
+    mutationFn: async ({ promptName, promptVersion, variables, strict = true }) => {
       if (!task?.id) {
         throw new Error("Task ID not found");
       }

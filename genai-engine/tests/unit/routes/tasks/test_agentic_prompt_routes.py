@@ -1202,7 +1202,7 @@ def test_get_prompt_versions_pagination_and_filtering(
         (
             [{"role": "user", "content": "Hello, {{name}}!"}],
             None,
-            "Missing values for the following variables: name",
+            "Missing required variables: name. Please provide values for all variables when strict=True.",
         ),
         ([{"role": "user", "content": "Hello, name!"}], {"name": "John"}, None),
         ([{"role": "user", "content": "Hello, name!"}], {"first_name": "John"}, None),
@@ -1214,12 +1214,12 @@ def test_get_prompt_versions_pagination_and_filtering(
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
             {"first_name": "John", "name": "Doe"},
-            "Missing values for the following variables: last_name",
+            "Missing required variables: last_name. Please provide values for all variables when strict=True.",
         ),
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
             {"name1": "John", "name2": "Doe"},
-            "Missing values for the following variables: first_name, last_name",
+            "Missing required variables: first_name, last_name. Please provide values for all variables when strict=True.",
         ),
         (
             [{"role": "user", "content": "Hello, {{ first_name }} {last_name}!"}],
@@ -1391,7 +1391,7 @@ def test_render_endpoints(client: GenaiEngineTestClientBase):
     }
 
     response = client.base_client.post(
-        "/api/v1/renders",
+        "/api/v1/prompt_renders",
         json=render_request,
         headers=client.authorized_user_api_key_headers,
     )
@@ -1417,7 +1417,7 @@ def test_render_endpoints(client: GenaiEngineTestClientBase):
     }
 
     response = client.base_client.post(
-        "/api/v1/renders",
+        "/api/v1/prompt_renders",
         json=strict_render_request,
         headers=client.authorized_user_api_key_headers,
     )
@@ -1430,7 +1430,7 @@ def test_render_endpoints(client: GenaiEngineTestClientBase):
     )
 
     response = client.base_client.post(
-        "/api/v1/renders",
+        "/api/v1/prompt_renders",
         json=strict_render_request,
         headers=client.authorized_user_api_key_headers,
     )
