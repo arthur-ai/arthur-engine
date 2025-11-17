@@ -107,17 +107,57 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
             const endOffset = Math.min(startOffset + tokenToFind.length, textLength);
             range.setStart(node, startOffset);
             range.setEnd(node, endOffset);
+
+            // Add the range to selection
             selection.removeAllRanges();
             selection.addRange(range);
 
-            // Scroll the selection into view
-            editableRef.current?.scrollTo({
-              top: range.getBoundingClientRect().top - editableRef.current.getBoundingClientRect().top + editableRef.current.scrollTop - 50,
-              behavior: "smooth",
+            // Prevent default scroll-into-view behavior by using preventScroll option on focus
+            editableRef.current.focus({ preventScroll: true });
+
+            // Use scrollIntoView with block: 'center' on the selection
+            // This is the simplest and most reliable approach
+            requestAnimationFrame(() => {
+              if (!selection.rangeCount) return;
+
+              const currentRange = selection.getRangeAt(0);
+
+              // Create a temporary element to scroll to
+              const tempElement = document.createElement('span');
+              currentRange.insertNode(tempElement);
+
+              // Scroll the element into the center of the view
+              tempElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+              });
+
+              // Clean up the temp element and restore selection
+              setTimeout(() => {
+                if (tempElement.parentNode) {
+                  const parentNode = tempElement.parentNode;
+                  const textNode = node;
+                  parentNode.removeChild(tempElement);
+
+                  // Restore the selection if we still have the node
+                  if (editableRef.current && textNode) {
+                    try {
+                      const newRange = document.createRange();
+                      newRange.setStart(textNode, startOffset);
+                      newRange.setEnd(textNode, endOffset);
+                      selection.removeAllRanges();
+                      selection.addRange(newRange);
+                    } catch {
+                      // Selection restoration failed, ignore
+                    }
+                  }
+                }
+              }, 10);
             });
 
             found = true;
-          } catch (e) {
+          } catch {
             // Selection failed, ignore
           }
           break;
@@ -129,9 +169,6 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         }
       }
     }
-
-    // Focus the editor
-    editableRef.current?.focus();
   }, []);
 
   // Extract all Nunjucks variables and statements from the text
