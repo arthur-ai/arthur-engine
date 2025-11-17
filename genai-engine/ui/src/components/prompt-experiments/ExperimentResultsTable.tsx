@@ -18,6 +18,7 @@ import {
   Modal,
   IconButton,
   LinearProgress,
+  CircularProgress,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 
@@ -45,6 +46,7 @@ interface ExperimentResultsTableProps {
       total_count: number;
     }>;
   }>;
+  refreshTrigger?: number;
 }
 
 interface TestCaseDetailModalProps {
@@ -406,9 +408,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
             }}
           >
             {isPending ? (
-              <Typography variant="body2" className="text-gray-400" sx={{ fontSize: "0.75rem" }}>
-                -
-              </Typography>
+              <CircularProgress size={16} sx={{ color: "text.secondary" }} />
             ) : score === 1 ? (
               <Box
                 sx={{
@@ -500,13 +500,21 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   taskId,
   experimentId,
   promptSummaries = [],
+  refreshTrigger,
 }) => {
   const [page, setPage] = useState(0);
   const pageSize = 20;
-  const { testCases, totalPages, totalCount, isLoading, error } = useExperimentTestCases(experimentId, page, pageSize);
+  const { testCases, totalPages, totalCount, isLoading, error, refetch } = useExperimentTestCases(experimentId, page, pageSize);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(-1);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
+
+  // Refetch test cases when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      refetch();
+    }
+  }, [refreshTrigger, refetch]);
 
   // Effect to handle index after page load
   useEffect(() => {

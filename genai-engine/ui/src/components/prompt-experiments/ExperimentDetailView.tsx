@@ -34,6 +34,7 @@ export const ExperimentDetailView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptVersionDetails | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handlePromptClick = (promptSummary: PromptVersionDetails) => {
     setSelectedPrompt(promptSummary);
@@ -55,6 +56,27 @@ export const ExperimentDetailView: React.FC = () => {
       window.removeEventListener("focus", handleFocus);
     };
   }, [refetch]);
+
+  // Auto-refresh when experiment is running
+  useEffect(() => {
+    // Check if experiment is in a running state (queued or running)
+    const isExperimentRunning = experiment?.status === "running" || experiment?.status === "queued";
+
+    if (!isExperimentRunning) {
+      return;
+    }
+
+    // Set up interval to refresh every 1 second
+    const intervalId = setInterval(() => {
+      refetch();
+      setRefreshTrigger((prev) => prev + 1);
+    }, 1000);
+
+    // Clean up interval when component unmounts or experiment stops running
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [experiment?.status, refetch]);
 
   const getStatusColor = (status: PromptExperimentDetail["status"]): "default" | "primary" | "info" | "success" | "error" => {
     switch (status) {
@@ -219,7 +241,7 @@ export const ExperimentDetailView: React.FC = () => {
               <Chip label={getStatusLabel(experiment.status)} size="small" sx={getStatusChipSx(getStatusColor(experiment.status))} />
             </Box>
             <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCreateFromExisting}>
-              Create from Existing
+              Copy to new experiment
             </Button>
           </Box>
           {experiment.description && (
@@ -401,6 +423,7 @@ export const ExperimentDetailView: React.FC = () => {
             <ExperimentResultsTable
               taskId={taskId}
               experimentId={experimentId}
+              refreshTrigger={refreshTrigger}
               promptSummaries={(() => {
                 // Sort prompt summaries the same way as in Overall Prompt Performance
                 const sorted = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {

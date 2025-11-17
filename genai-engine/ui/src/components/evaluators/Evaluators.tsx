@@ -31,12 +31,14 @@ const Evaluators: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Initialize fullScreenEval from URL parameter
+  // Sync fullScreenEval with URL parameter
   useEffect(() => {
-    if (urlEvaluatorName && !fullScreenEval) {
+    if (urlEvaluatorName) {
       setFullScreenEval(urlEvaluatorName);
+    } else if (!urlEvaluatorName && fullScreenEval) {
+      setFullScreenEval(null);
     }
-  }, [urlEvaluatorName, fullScreenEval]);
+  }, [urlEvaluatorName]);
 
   const filters = useMemo(
     () => ({

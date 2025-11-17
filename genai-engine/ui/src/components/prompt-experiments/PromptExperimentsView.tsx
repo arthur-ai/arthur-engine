@@ -72,6 +72,28 @@ export const PromptExperimentsView: React.FC = () => {
     };
   }, [refetch]);
 
+  // Auto-refresh when any experiment is running
+  useEffect(() => {
+    // Check if any experiment is in a running state (queued or running)
+    const hasRunningExperiments = experiments.some(
+      (exp) => exp.status === "running" || exp.status === "queued"
+    );
+
+    if (!hasRunningExperiments) {
+      return;
+    }
+
+    // Set up interval to refresh every 1 second
+    const intervalId = setInterval(() => {
+      refetch();
+    }, 1000);
+
+    // Clean up interval when component unmounts or no experiments are running
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [experiments, refetch]);
+
   const handleCreateExperiment = () => {
     setSelectedExperimentId(null);
     setIsModalOpen(true);
