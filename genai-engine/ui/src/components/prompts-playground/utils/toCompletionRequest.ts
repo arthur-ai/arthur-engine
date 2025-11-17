@@ -1,22 +1,20 @@
 import { PromptType } from "../types";
 
-import { replaceKeywords } from "./mustacheExtractor";
-
 import { convertToolChoiceForBackend, filterNullParams } from ".";
 
 import { CompletionRequest, ModelProvider, OpenAIMessageItem } from "@/lib/api-client/api-client";
 
 const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>): CompletionRequest => {
-  // Replace keywords in all message content
-  const messages = prompt.messages.map((msg) => {
-    // Handle content replacement: only replace if content is a string
-    // The API accepts: string | OpenAIMessageItem[] | null | undefined
-    let processedContent: string | OpenAIMessageItem[] | null | undefined = msg.content;
-    if (typeof msg.content === "string") {
-      processedContent = replaceKeywords(msg.content, keywords);
-    }
-    // If content is null/undefined or an array, keep it as is (API accepts these)
+  // Convert keywords Map to variables array for backend templating, filtering out empty values
+  const variables = Array.from(keywords.entries())
+    .filter(([name, value]) => value.trim() !== "") // Filter out empty or whitespace-only values
+    .map(([name, value]) => ({
+      name,
+      value,
+    }));
 
+  // Keep messages as-is with template variables - backend will handle replacement
+  const messages = prompt.messages.map((msg) => {
     // Transform tool_calls from OpenInference format to OpenAI format
     // OpenInference stores: { tool_call: { id, function } }
     // OpenAI expects: { id, type: "function", function }
@@ -34,7 +32,7 @@ const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>):
 
     return {
       role: msg.role,
-      content: processedContent,
+      content: msg.content,
       name: msg.name || null,
       tool_call_id: msg.tool_call_id || null,
       tool_calls: processedToolCalls,
@@ -59,6 +57,8 @@ const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>):
         : undefined,
     completion_request: {
       stream: prompt.modelParameters.stream ?? false,
+      variables: variables.length > 0 ? variables : undefined,
+      strict: true, // Enforce strict validation - error if required variables are missing
     },
     config: filterNullParams({
       tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
