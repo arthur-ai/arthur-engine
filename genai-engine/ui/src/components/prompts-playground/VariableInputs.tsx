@@ -84,11 +84,7 @@ const VariableInputs = () => {
           </Tooltip>
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mb: 1 }}>
-          Variable names must use only letters, numbers, and underscores (e.g.,{" "}
-          <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600 }}>
-            last_name
-          </Box>
-          )
+          Fill in the values for your prompt variables below
         </Typography>
         <Divider className="my-2" />
       </Box>
