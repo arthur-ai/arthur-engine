@@ -5,8 +5,9 @@ import os
 import re
 import traceback
 import urllib
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, List, Union
+from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import datetime
+from typing import Any, Callable
 
 from arthur_common.models.common_schemas import (
     LLMTokenConsumption,
@@ -15,6 +16,7 @@ from arthur_common.models.common_schemas import (
 from arthur_common.models.enums import PaginationSortMethod
 from dotenv import load_dotenv
 from fastapi import HTTPException, Query
+from langchain_community.callbacks import OpenAICallbackHandler
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.sdk.trace import Tracer
@@ -33,7 +35,7 @@ load_dotenv()
 list_indicator_regex = re.compile(r"^[\-\•\*]|\d+\)|\d+\.")
 
 
-def new_relic_enabled():
+def new_relic_enabled() -> bool:
     return (
         get_env_var(
             constants.NEWRELIC_ENABLED_ENV_VAR,
@@ -44,19 +46,21 @@ def new_relic_enabled():
     )
 
 
-def relevance_models_enabled():
+def relevance_models_enabled() -> bool:
     """Check if relevance models (BERT scorer and reranker) are enabled."""
-    return (
-        get_env_var(
-            constants.ENABLE_RELEVANCE_MODELS_ENV_VAR,
-            none_on_missing=False,
-            default="false",
-        ).lower()
-        == "true"
-    )
+    if enable_relevance_models := get_env_var(
+        constants.ENABLE_RELEVANCE_MODELS_ENV_VAR,
+        none_on_missing=False,
+        default="false",
+    ):
+        return enable_relevance_models.lower() == "true"
+    return False
 
 
-def log_llm_metrics(operation: str, openai_callback):
+def log_llm_metrics(
+    operation: str,
+    openai_callback: OpenAICallbackHandler,
+) -> LLMTokenConsumption:
     prompt_tokens, completion_tokens = (
         openai_callback.prompt_tokens,
         openai_callback.completion_tokens,
@@ -74,15 +78,26 @@ def log_llm_metrics(operation: str, openai_callback):
 class TracedThreadPoolExecutor(ThreadPoolExecutor):
     """Implementation of :class:`ThreadPoolExecutor` that will pass context into sub tasks."""
 
-    def __init__(self, tracer: Tracer, *args, **kwargs):
+    def __init__(self, tracer: Tracer, *args: Any, **kwargs: Any) -> None:
         self.tracer = tracer
         super().__init__(*args, **kwargs)
 
-    def with_otel_context(self, context: otel_context.Context, fn: Callable):
+    def with_otel_context(
+        self,
+        context: otel_context.Context,
+        fn: Callable[..., T],
+    ) -> T:
         otel_context.attach(context)
         return fn()
 
-    def submit(self, fn, *args, **kwargs):
+    # "/" marker in function signature is to enforce positional-only arguments
+    def submit(
+        self,
+        fn: Callable[P, T],
+        /,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Future[T]:
         """Submit a new task to the thread pool."""
 
         # get the current otel context
@@ -122,7 +137,7 @@ def get_postgres_connection_string(
     return connection_string
 
 
-def get_jwks_uri():
+def get_jwks_uri() -> str:
     KEYCLOAK_HOST_URI = get_env_var(constants.GENAI_ENGINE_KEYCLOAK_HOST_URI_ENV_VAR)
     KEYCLOAK_REALM = get_env_var(constants.GENAI_ENGINE_KEYCLOAK_REALM_ENV_VAR)
     jwks_uri: str = (
@@ -131,7 +146,7 @@ def get_jwks_uri():
     return jwks_uri
 
 
-def get_auth_metadata_uri():
+def get_auth_metadata_uri() -> str:
     KEYCLOAK_HOST_URI = get_env_var(constants.GENAI_ENGINE_KEYCLOAK_HOST_URI_ENV_VAR)
     KEYCLOAK_REALM = get_env_var(constants.GENAI_ENGINE_KEYCLOAK_REALM_ENV_VAR)
     auth_metadata_url: str = (
@@ -140,7 +155,7 @@ def get_auth_metadata_uri():
     return auth_metadata_url
 
 
-def get_auth_logout_uri(redirect_uri: str, id_token: str):
+def get_auth_logout_uri(redirect_uri: str, id_token: str) -> str:
     KEYCLOAK_HOST_URI = get_env_var(constants.GENAI_ENGINE_KEYCLOAK_HOST_URI_ENV_VAR)
     KEYCLOAK_REALM = get_env_var(constants.GENAI_ENGINE_KEYCLOAK_REALM_ENV_VAR)
     AUTH_CLIENT_ID = get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR)
@@ -152,14 +167,18 @@ def get_auth_logout_uri(redirect_uri: str, id_token: str):
     return auth_logout_uri
 
 
-def seed_database(db_session: Session):
-    rows = []
+def seed_database(db_session: Session) -> None:
+    rows: list[Any] = []
 
     db_session.add_all(rows)
     db_session.commit()
 
 
-def get_env_var(env_var: str, none_on_missing=False, default=None):
+def get_env_var(
+    env_var: str,
+    none_on_missing: bool = False,
+    default: str | None = None,
+) -> str | None:
     value = os.environ.get(env_var, default)
     logger.debug(f"Environment variable {env_var} has value {value}")
     if none_on_missing and not value:
@@ -186,7 +205,7 @@ def get_genai_engine_version() -> str:
     return _genai_engine_version
 
 
-def get_version_file_path():
+def get_version_file_path() -> str:
     version_file_backend_dir_path = f"{_root_dir}/version"
     version_file_genai_engine_dir_path = f"{os.path.dirname(_root_dir)}/version"
     if os.path.exists(version_file_backend_dir_path):
@@ -197,7 +216,7 @@ def get_version_file_path():
         raise Exception("The genai-engine version file not found")
 
 
-def is_local_environment():
+def is_local_environment() -> bool:
     return (
         get_env_var(constants.GENAI_ENGINE_ENVIRONMENT_ENV_VAR, none_on_missing=True)
         == "local"
@@ -226,7 +245,7 @@ def is_agentic_ui_enabled() -> bool:
     return agentic_ui_enabled
 
 
-def internal_features_enabled():
+def internal_features_enabled() -> bool:
     ingress_url = get_env_var(
         constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
         none_on_missing=True,
@@ -253,20 +272,25 @@ async def common_pagination_parameters(
 
 
 def pad_text(
-    text: Union[str, List[str]],
+    text: str | list[str],
     min_length: int = 20,
     delim: str = " ",
-    type: str = "whitespace",
-) -> Union[str, List[str]]:
+    pad_type: str = "whitespace",
+) -> str | list[str]:
     """
     Returns the text (as a string or list of strings) padded to extend the string to a minimum length
     """
     if isinstance(text, list):
-        return [pad_text(t, min_length=min_length, type=type) for t in text]
+        result: list[str] = []
+        for element in text:
+            padded = pad_text(element, min_length=min_length, pad_type=pad_type)
+            assert isinstance(padded, str)  # element is str, so result must be str
+            result.append(padded)
+        return result
     while len(text) < min_length:
-        if type == "whitespace":
+        if pad_type == "whitespace":
             text = text + delim
-        elif type == "repetition":
+        elif pad_type == "repetition":
             text = text + text + delim
     return text
 
@@ -280,7 +304,7 @@ def alphanumericize(text: str) -> str:
     return re.sub(r"\W+", "", text).lower()
 
 
-def calculate_duration_ms(start_time, end_time) -> float:
+def calculate_duration_ms(start_time: datetime, end_time: datetime) -> float:
     """
     Calculate duration between two datetime objects in milliseconds.
 

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Union
+from typing import Any, Optional, Union
 
 import tiktoken
 from pydantic import BaseModel
@@ -36,7 +36,7 @@ class TokenCounter:
         """
         self.encoder = tiktoken.get_encoding(model)
 
-    def count(self, query: str):
+    def count(self, query: str) -> int:
         """Returns token count of the query using chunking for long texts.
 
         :param query: string query sent to LLM
@@ -110,13 +110,13 @@ def compute_cost_from_tokens(
 def count_tokens_from_string(
     text: str,
     model_name: Optional[str] = None,
-) -> Optional[int]:
+) -> int | None:
     """Calculate token count from string using tokencost or fallback to tiktoken."""
     if not text:
         return None
     try:
         if model_name:
-            return count_string_tokens(prompt=text, model=model_name)
+            return int(count_string_tokens(prompt=text, model=model_name))
         else:
             # Fallback: use default tiktoken encoder
             counter = TokenCounter(TIKTOKEN_ENCODER)
@@ -127,9 +127,9 @@ def count_tokens_from_string(
 
 
 def count_tokens_from_messages(
-    messages: List[dict],
+    messages: list[dict[str, Any]],
     model_name: Optional[str] = None,
-) -> Optional[int]:
+) -> int | None:
     """Calculate token count from messages using tokencost or fallback to tiktoken.
 
     Expects OpenInference normalized format where each message has nested structure:
@@ -159,7 +159,7 @@ def count_tokens_from_messages(
 
         if model_name:
             # Use tokencost for model-specific counting
-            return count_message_tokens(formatted, model=model_name)
+            return int(count_message_tokens(messages=formatted, model=model_name))
         else:
             # Fallback: concatenate message content and use string counter
             combined_text = "\n".join(
