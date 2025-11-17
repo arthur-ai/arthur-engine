@@ -1670,13 +1670,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/pacer@npm:0.16.2":
-  version: 0.16.2
-  resolution: "@tanstack/pacer@npm:0.16.2"
+"@tanstack/pacer@npm:0.16.3":
+  version: 0.16.3
+  resolution: "@tanstack/pacer@npm:0.16.3"
   dependencies:
     "@tanstack/devtools-event-client": "npm:^0.3.5"
     "@tanstack/store": "npm:^0.8.0"
-  checksum: 10c0/b754cddcd645c12622ec1d779075dd99eb41cbe83fcf1127140eac7f28da185f7117149e6e8d1f90aa616c1768b32be0eb0e61ea34c651237f4c0333130d0ce6
+  checksum: 10c0/85b901ab055ecc231a0b4384fa810514dbcf9c68a3265b76a8e8f2915ae112830acacdb29233f7119d4011132ac8c31d7a8f018fa453e9b876e501b2fc0e133a
   languageName: node
   linkType: hard
 
@@ -1723,15 +1723,15 @@ __metadata:
   linkType: hard
 
 "@tanstack/react-pacer@npm:^0.17.0":
-  version: 0.17.2
-  resolution: "@tanstack/react-pacer@npm:0.17.2"
+  version: 0.17.3
+  resolution: "@tanstack/react-pacer@npm:0.17.3"
   dependencies:
-    "@tanstack/pacer": "npm:0.16.2"
+    "@tanstack/pacer": "npm:0.16.3"
     "@tanstack/react-store": "npm:^0.8.0"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 10c0/c43958387c602acec4d0e37c4c4335cacd9fee7e67d7cb53edadf8db676034e92872d82570c7ba6a06f6eed2db4fee3c85119dcd79d806f26d901b2318bc4244
+  checksum: 10c0/31c19510f6fd0584017a385e34d3e7c045576126c634b163ea70e1e65c867586bca87132d6d6b3cf2e708f2a5c239c41cc89ac9c207ef01d69b9ccadc309378b
   languageName: node
   linkType: hard
 
