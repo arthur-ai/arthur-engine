@@ -158,8 +158,20 @@ export function streamCompletions(
                     reader.cancel();
                     return;
                   } else if (eventType === "error") {
-                    const errorMessage = JSON.parse(dataStr);
-                    callbacks.onError(typeof errorMessage === "string" ? errorMessage : errorMessage.detail || "Unknown error");
+                    // Try to parse error data as JSON, but fall back to raw string if it fails
+                    let errorMessage = "Unknown error";
+                    try {
+                      const errorData = JSON.parse(dataStr);
+                      if (typeof errorData === "string") {
+                        errorMessage = errorData;
+                      } else if (errorData && typeof errorData === "object") {
+                        errorMessage = errorData.detail || errorData.message || errorData.error || JSON.stringify(errorData);
+                      }
+                    } catch {
+                      // If parsing fails, use the raw string as the error message
+                      errorMessage = dataStr || "Unknown error";
+                    }
+                    callbacks.onError(errorMessage);
                     reader.cancel();
                     return;
                   }
