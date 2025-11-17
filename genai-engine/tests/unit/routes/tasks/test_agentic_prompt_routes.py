@@ -1369,122 +1369,138 @@ def test_run_agentic_prompt_strict_mode(
 
 
 @pytest.mark.unit_tests
-def test_render_endpoints(client: GenaiEngineTestClientBase):
-    """Test rendering both saved and unsaved agentic prompts with variables and strict mode"""
-    # Test 1: Render unsaved prompt with variables
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant named {{assistant_name}}."},
-        {"role": "user", "content": "Hello {{user_name}}, how can I help you?"},
-    ]
-
-    variables = [
-        {"name": "assistant_name", "value": "Claude"},
-        {"name": "user_name", "value": "John"},
-    ]
-
-    render_request = {
-        "messages": messages,
-        "completion_request": {
-            "variables": variables,
-            "strict": False,
-        }
-    }
-
-    response = client.base_client.post(
-        "/api/v1/prompt_renders",
-        json=render_request,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-    rendered_prompt = response.json()
-    assert rendered_prompt["messages"] is not None
-    assert len(rendered_prompt["messages"]) == 2
-    assert "Claude" in rendered_prompt["messages"][0]["content"]
-    assert "John" in rendered_prompt["messages"][1]["content"]
-    assert "{{" not in rendered_prompt["messages"][0]["content"]
-
-    # Test 2: Render unsaved prompt with strict mode - missing variables
-    strict_messages = [
-        {"role": "user", "content": "Hello {{name}}, your age is {{age}}."},
-    ]
-
-    strict_render_request = {
-        "messages": strict_messages,
-        "completion_request": {
-            "variables": [{"name": "name", "value": "John"}],
-            "strict": True,
-        }
-    }
-
-    response = client.base_client.post(
-        "/api/v1/prompt_renders",
-        json=strict_render_request,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Missing values for the following variables: age"
-
-    # Test 3: Render unsaved prompt with strict mode - all variables provided
-    strict_render_request["completion_request"]["variables"].append(
-        {"name": "age", "value": "30"}
-    )
-
-    response = client.base_client.post(
-        "/api/v1/prompt_renders",
-        json=strict_render_request,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-    rendered_prompt = response.json()
-    assert "John" in rendered_prompt["messages"][0]["content"]
-    assert "30" in rendered_prompt["messages"][0]["content"]
-    assert "{{" not in rendered_prompt["messages"][0]["content"]
-
-    # Test 4: Render saved prompt with variables
-    task_name = f"agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=True)
-    assert status_code == 200
-
-    prompt_name = "greeting_prompt"
-    prompt_data = {
-        "messages": [
-            {"role": "system", "content": "You are {{bot_name}}."},
-            {"role": "user", "content": "Hello, I'm {{user_name}}."},
-        ],
-        "model_name": "gpt-4",
-        "model_provider": "openai",
-    }
-
-    response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
-        json=prompt_data,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-
-    saved_render_request = {
-        "completion_request": {
-            "variables": [
-                {"name": "bot_name", "value": "Assistant"},
-                {"name": "user_name", "value": "Alice"},
+@pytest.mark.parametrize(
+    "endpoint_type,messages,variables,strict,expected_status,expected_error,expected_content",
+    [
+        # Unsaved endpoint: successful render with all variables
+        (
+            "unsaved",
+            [
+                {"role": "system", "content": "You are a helpful assistant named {{assistant_name}}."},
+                {"role": "user", "content": "Hello {{user_name}}, how can I help you?"},
             ],
-            "strict": False,
-        }
-    }
+            [{"name": "assistant_name", "value": "Claude"}, {"name": "user_name", "value": "John"}],
+            False,
+            200,
+            None,
+            ["Claude", "John"],
+        ),
+        # Unsaved endpoint: strict mode with missing variables
+        (
+            "unsaved",
+            [{"role": "user", "content": "Hello {{name}}, your age is {{age}}."}],
+            [{"name": "name", "value": "John"}],
+            True,
+            400,
+            "Missing values for the following variables: age",
+            None,
+        ),
+        # Unsaved endpoint: strict mode with all variables provided
+        (
+            "unsaved",
+            [{"role": "user", "content": "Hello {{name}}, your age is {{age}}."}],
+            [{"name": "name", "value": "John"}, {"name": "age", "value": "30"}],
+            True,
+            200,
+            None,
+            ["John", "30"],
+        ),
+        # Saved endpoint: successful render with all variables
+        (
+            "saved",
+            [
+                {"role": "system", "content": "You are {{bot_name}}."},
+                {"role": "user", "content": "Hello, I'm {{user_name}}."},
+            ],
+            [{"name": "bot_name", "value": "Assistant"}, {"name": "user_name", "value": "Alice"}],
+            False,
+            200,
+            None,
+            ["Assistant", "Alice"],
+        ),
+    ],
+)
+def test_render_endpoints(
+    client: GenaiEngineTestClientBase,
+    endpoint_type: str,
+    messages: list,
+    variables: list,
+    strict: bool,
+    expected_status: int,
+    expected_error: str | None,
+    expected_content: list | None,
+):
+    """Test rendering both saved and unsaved agentic prompts with variables and strict mode"""
 
-    response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/renders",
-        json=saved_render_request,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-    rendered_prompt = response.json()
-    assert rendered_prompt["messages"] is not None
-    assert len(rendered_prompt["messages"]) == 2
-    assert "Assistant" in rendered_prompt["messages"][0]["content"]
-    assert "Alice" in rendered_prompt["messages"][1]["content"]
-    assert "{{" not in rendered_prompt["messages"][0]["content"]
-    assert "{{" not in rendered_prompt["messages"][1]["content"]
+    if endpoint_type == "unsaved":
+        # Test unsaved render endpoint
+        render_request = {
+            "messages": messages,
+            "completion_request": {
+                "variables": variables,
+                "strict": strict,
+            }
+        }
+
+        response = client.base_client.post(
+            "/api/v1/prompt_renders",
+            json=render_request,
+            headers=client.authorized_user_api_key_headers,
+        )
+    else:
+        # Test saved render endpoint - create a task and prompt first
+        task_name = f"agentic_task_{random.random()}"
+        status_code, task = client.create_task(task_name, is_agentic=True)
+        assert status_code == 200
+
+        prompt_name = "test_prompt"
+        prompt_data = {
+            "messages": messages,
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+        }
+
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+            json=prompt_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+        render_request = {
+            "completion_request": {
+                "variables": variables,
+                "strict": strict,
+            }
+        }
+
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/renders",
+            json=render_request,
+            headers=client.authorized_user_api_key_headers,
+        )
+
+    # Verify response
+    assert response.status_code == expected_status
+
+    if expected_error:
+        assert response.json()["detail"] == expected_error
+    else:
+        rendered_prompt = response.json()
+        assert rendered_prompt["messages"] is not None
+
+        # Check that expected content is in the rendered messages
+        if expected_content:
+            for content_str in expected_content:
+                assert any(
+                    content_str in msg.get("content", "")
+                    for msg in rendered_prompt["messages"]
+                )
+
+            # Verify no template syntax remains
+            for msg in rendered_prompt["messages"]:
+                assert "{{" not in msg.get("content", "")
+                assert "}}" not in msg.get("content", "")
 
 
 @pytest.mark.unit_tests
