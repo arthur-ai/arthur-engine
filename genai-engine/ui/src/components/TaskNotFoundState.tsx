@@ -18,7 +18,7 @@ export const TaskNotFoundState: React.FC<TaskNotFoundStateProps> = ({
   activeSection = 'task-details'
 }) => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
@@ -36,15 +36,15 @@ export const TaskNotFoundState: React.FC<TaskNotFoundStateProps> = ({
           </div>
         </div>
       </header>
-      
-      <div className="flex">
-        <SidebarNavigation 
+
+      <div className="flex flex-1 overflow-hidden">
+        <SidebarNavigation
           onBackToDashboard={onBackToDashboard}
           onNavigate={onNavigate}
           activeSection={activeSection}
         />
 
-        <main className="flex-1 py-6 px-6">
+        <main className="flex-1 overflow-auto py-6 px-6">
           <div className="bg-white shadow rounded-lg p-6">
             <div className="text-center">
               <div className="text-gray-600 text-lg font-medium mb-2">
