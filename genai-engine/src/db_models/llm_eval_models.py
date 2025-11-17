@@ -85,7 +85,7 @@ class DatabaseLLMEvalVersionTag(Base):
     name: Mapped[str] = mapped_column(String, primary_key=True)
     version: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
 
-    tag: Mapped[str] = mapped_column(String, nullable=False)
+    tag: Mapped[str] = mapped_column(String, primary_key=True)
 
     llm_eval: Mapped["DatabaseLLMEval"] = relationship(
         back_populates="version_tags",

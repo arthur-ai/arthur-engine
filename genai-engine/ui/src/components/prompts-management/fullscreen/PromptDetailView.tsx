@@ -1,13 +1,22 @@
 import CloseIcon from "@mui/icons-material/Close";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
+import Popover from "@mui/material/Popover";
+import Radio from "@mui/material/Radio";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 
+import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVersionMutation";
+import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
 import type { PromptDetailViewProps } from "../types";
 
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
@@ -56,10 +65,36 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, o
   return (
     <Box sx={{ p: 3, height: "100%", overflow: "auto" }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>
-          {promptName}
-          {version !== null && <Chip label={`Version ${version}`} size="small" sx={{ ml: 2, height: 24 }} />}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            {promptName}
+          </Typography>
+          {version !== null && <Chip label={`Version ${version}`} size="small" sx={{ height: 24 }} />}
+          {version !== null && version === latestVersion && <Chip label="Latest" size="small" color="default" sx={{ height: 24 }} />}
+          {promptData.tags && promptData.tags.length > 0 && (
+            <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+              {promptData.tags.map((tag) => {
+                const isProduction = tag.toLowerCase() === "production";
+                return (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    size="small"
+                    onDelete={() => handleDeleteTag(tag)}
+                    sx={{ height: 24 }}
+                    color={isProduction ? "success" : "primary"}
+                    variant={isProduction ? "filled" : "outlined"}
+                  />
+                );
+              })}
+            </Box>
+          )}
+          {version !== null && (
+            <IconButton size="small" onClick={handleAddTagClick} aria-label="Add tag">
+              <LocalOfferIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
         {onClose && (
           <IconButton onClick={onClose} aria-label="Close">
             <CloseIcon />
@@ -144,6 +179,83 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, o
           </Box>
         </Paper>
       )}
+
+      <Popover
+        open={tagPopoverOpen}
+        anchorEl={tagAnchorEl}
+        onClose={handleAddTagClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+      >
+        <Box sx={{ p: 2, minWidth: 300 }}>
+          <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 600 }}>
+            Prompt Tags
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+            Production status and tags to easily identify your prompts.
+          </Typography>
+
+          <Divider sx={{ mb: 2 }} />
+
+          <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            Promote to Production
+          </Typography>
+          <Box sx={{ mb: 2 }}>
+            <FormControlLabel
+              control={<Radio checked={promoteToProduction} onChange={(e) => setPromoteToProduction(e.target.checked)} size="small" />}
+              label={<Typography variant="caption">Mark this version as production</Typography>}
+            />
+          </Box>
+
+          <Divider sx={{ mb: 2 }} />
+
+          <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            Custom Tag (Optional)
+          </Typography>
+          <TextField
+            autoFocus
+            size="small"
+            label="Tag Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={newTag}
+            onChange={(e) => {
+              setNewTag(e.target.value);
+              setTagError("");
+            }}
+            error={!!tagError}
+            helperText={tagError}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleAddTagConfirm();
+              }
+            }}
+            sx={{ mb: 1.5 }}
+          />
+
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            <Button size="small" onClick={handleAddTagClose} disabled={addTagMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              size="small"
+              onClick={handleAddTagConfirm}
+              variant="contained"
+              disabled={addTagMutation.isPending}
+              startIcon={addTagMutation.isPending ? <CircularProgress size={14} /> : null}
+            >
+              {addTagMutation.isPending ? "Adding..." : "Save"}
+            </Button>
+          </Box>
+        </Box>
+      </Popover>
     </Box>
   );
 };

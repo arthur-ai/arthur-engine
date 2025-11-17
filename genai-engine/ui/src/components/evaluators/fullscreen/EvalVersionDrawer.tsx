@@ -23,7 +23,16 @@ import type { EvalVersionDrawerProps } from "../types";
 
 import { formatDate } from "@/utils/formatters";
 
-const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, onSelectVersion, onDelete }: EvalVersionDrawerProps) => {
+const EvalVersionDrawer = ({
+  open,
+  onClose,
+  taskId,
+  evalName,
+  selectedVersion,
+  latestVersion,
+  onSelectVersion,
+  onDelete,
+}: EvalVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
@@ -50,14 +59,11 @@ const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, o
     [onSelectVersion]
   );
 
-  const handleDeleteClick = useCallback(
-    (e: React.MouseEvent, version: number) => {
-      e.stopPropagation();
-      setVersionToDelete(version);
-      setDeleteDialogOpen(true);
-    },
-    []
-  );
+  const handleDeleteClick = useCallback((e: React.MouseEvent, version: number) => {
+    e.stopPropagation();
+    setVersionToDelete(version);
+    setDeleteDialogOpen(true);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (versionToDelete === null || !onDelete) return;
@@ -146,6 +152,22 @@ const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, o
             {sortedAndFilteredVersions.map((version) => {
               const isSelected = selectedVersion === version.version;
               const isDeleted = !!version.deleted_at;
+              const isLatest = version.version === latestVersion && !isDeleted;
+
+              // Build display tags: Latest badge first, then other tags up to max 3 total
+              // Don't show any tags for deleted versions
+              const displayTags: Array<{ label: string; type: "latest" | "other" }> = [];
+
+              if (!isDeleted) {
+                if (isLatest) displayTags.push({ label: "Latest", type: "latest" });
+
+                // Add other tags up to max of 3 total
+                const tags = version.tags || [];
+                const remainingSlots = 3 - displayTags.length;
+                tags.slice(0, remainingSlots).forEach((tag) => {
+                  displayTags.push({ label: tag, type: "other" });
+                });
+              }
 
               return (
                 <ListItem key={version.version} disablePadding>
@@ -166,28 +188,69 @@ const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, o
                   >
                     <ListItemText
                       primary={
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography variant="body2" sx={{ 
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
                               fontWeight: 500,
                               color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.primary",
-                            }}>
+                              textDecoration: isDeleted ? "line-through" : "none",
+                            }}
+                          >
                             Version {version.version}
                           </Typography>
-                          {isDeleted && <Chip label="Deleted" size="small" color="error" sx={{ height: 18, fontSize: "0.7rem" }} />}
+                          {displayTags.map((tag, idx) => {
+                            const color: "default" | "primary" = tag.type === "latest" ? "default" : "primary";
+                            const variant: "filled" | "outlined" = tag.type === "latest" ? "filled" : "outlined";
+
+                            return (
+                              <Chip
+                                key={`${tag.label}-${idx}`}
+                                label={tag.label}
+                                size="small"
+                                color={color}
+                                variant={variant}
+                                sx={{ height: 18, fontSize: "0.7rem" }}
+                              />
+                            );
+                          })}
                         </Box>
                       }
                       secondary={
                         <Box component="span" sx={{ mt: 0.5, display: "block" }}>
-                          <Typography variant="caption" color="text.secondary" component="span" sx={{ color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary" }}>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            component="span"
+                            sx={{ color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary" }}
+                          >
                             {version.model_provider} / {version.model_name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary" component="span" sx={{ 
-                              display: "block", 
-                              mt: 0.5, 
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            component="span"
+                            sx={{
+                              display: "block",
+                              mt: 0.5,
                               color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary",
-                            }}>
+                            }}
+                          >
                             {formatDate(version.created_at)}
                           </Typography>
+                          {isDeleted && version.deleted_at && (
+                            <Typography
+                              variant="caption"
+                              component="span"
+                              sx={{
+                                display: "block",
+                                mt: 0.5,
+                                color: "rgba(0, 0, 0, 0.55)",
+                              }}
+                            >
+                              Deleted at: {formatDate(version.deleted_at)}
+                            </Typography>
+                          )}
                         </Box>
                       }
                     />
@@ -218,8 +281,7 @@ const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, o
         <DialogTitle id="delete-version-dialog-title">Delete Version?</DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-version-dialog-description">
-            Are you sure you want to delete <strong>Version {versionToDelete}</strong> of{" "}
-            <strong>{evalName}</strong>?
+            Are you sure you want to delete <strong>Version {versionToDelete}</strong> of <strong>{evalName}</strong>?
           </DialogContentText>
           <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
             <strong>Warning:</strong> This version and all of its contents will be deleted. This action cannot be undone.

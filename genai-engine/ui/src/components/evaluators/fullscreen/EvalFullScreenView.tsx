@@ -1,10 +1,9 @@
 import Box from "@mui/material/Box";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useDeleteEvalVersionMutation } from "../hooks/useDeleteEvalVersionMutation";
 import { useEval } from "../hooks/useEval";
-import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalFullScreenViewProps } from "../types";
 
 import EvalDetailView from "./EvalDetailView";
@@ -18,28 +17,48 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
   const navigate = useNavigate();
   const [selectedVersion, setSelectedVersion] = useState<number | null>(initialVersion ?? null);
 
-  // Fetch versions to get the latest if no version is selected
-  const { versions, refetch } = useEvalVersions(task?.id, evalName, {
-    sort: "desc",
-    pageSize: 1,
-  });
+  // Fetch the latest non-deleted version from the backend by passing "latest" as the version
+  const { eval: latestEval, refetch: refetchLatest } = useEval(task?.id, evalName, "latest");
+  const latestVersion = latestEval?.version ?? null;
 
-  const deleteVersionMutation = useDeleteEvalVersionMutation(task?.id, evalName, () => {
-    refetch();
-  });
+  const deleteMutation = useDeleteEvalVersionMutation(task?.id, evalName);
 
+  // When no version is selected initially, use the latest non-deleted version
   useEffect(() => {
-    if (selectedVersion === null && versions.length > 0) {
-      setSelectedVersion(versions[0].version);
+    if (selectedVersion === null && latestVersion !== null) {
+      setSelectedVersion(latestVersion);
     }
-  }, [versions, selectedVersion]);
+  }, [latestVersion, selectedVersion]);
 
-  const { eval: evalData, isLoading, error } = useEval(task?.id, evalName, selectedVersion !== null ? selectedVersion.toString() : undefined);
+  const {
+    eval: evalData,
+    isLoading,
+    error,
+    refetch,
+  } = useEval(task?.id, evalName, selectedVersion !== null ? selectedVersion.toString() : undefined);
 
   const handleSelectVersion = (version: number) => {
     setSelectedVersion(version);
     // Update URL to reflect the selected version
     navigate(`/tasks/${taskId}/evaluators/${evalName}/versions/${version}`);
+  };
+
+  const handleDeleteVersion = async (version: number) => {
+    const wasSelectedVersion = version === selectedVersion;
+
+    // Delete the version
+    await deleteMutation.mutateAsync(version);
+
+    // If we just deleted the currently selected version, navigate to the new latest version
+    if (wasSelectedVersion) {
+      // Refetch the latest version to get the updated latest after deletion
+      const refetchResult = await refetchLatest();
+      const newLatestVersion = refetchResult.data?.version;
+
+      if (newLatestVersion && newLatestVersion !== version) {
+        handleSelectVersion(newLatestVersion);
+      }
+    }
   };
 
   return (
@@ -50,8 +69,9 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
         taskId={task?.id ?? ""}
         evalName={evalName}
         selectedVersion={selectedVersion}
+        latestVersion={latestVersion}
         onSelectVersion={handleSelectVersion}
-        onDelete={deleteVersionMutation.mutateAsync}
+        onDelete={handleDeleteVersion}
       />
       <Box
         sx={{
@@ -61,7 +81,17 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
           minWidth: 0,
         }}
       >
-        <EvalDetailView evalData={evalData} isLoading={isLoading} error={error} evalName={evalName} version={selectedVersion} onClose={onClose} />
+        <EvalDetailView
+          evalData={evalData}
+          isLoading={isLoading}
+          error={error}
+          evalName={evalName}
+          version={selectedVersion}
+          latestVersion={latestVersion}
+          taskId={task?.id ?? ""}
+          onClose={onClose}
+          onRefetch={refetch}
+        />
       </Box>
     </Box>
   );
