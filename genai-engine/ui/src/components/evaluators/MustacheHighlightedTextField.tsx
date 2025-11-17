@@ -107,17 +107,57 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
             const endOffset = Math.min(startOffset + tokenToFind.length, textLength);
             range.setStart(node, startOffset);
             range.setEnd(node, endOffset);
+
+            // Add the range to selection
             selection.removeAllRanges();
             selection.addRange(range);
 
-            // Scroll the selection into view
-            editableRef.current?.scrollTo({
-              top: range.getBoundingClientRect().top - editableRef.current.getBoundingClientRect().top + editableRef.current.scrollTop - 50,
-              behavior: "smooth",
+            // Prevent default scroll-into-view behavior by using preventScroll option on focus
+            editableRef.current.focus({ preventScroll: true });
+
+            // Use scrollIntoView with block: 'center' on the selection
+            // This is the simplest and most reliable approach
+            requestAnimationFrame(() => {
+              if (!selection.rangeCount) return;
+
+              const currentRange = selection.getRangeAt(0);
+
+              // Create a temporary element to scroll to
+              const tempElement = document.createElement('span');
+              currentRange.insertNode(tempElement);
+
+              // Scroll the element into the center of the view
+              tempElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+              });
+
+              // Clean up the temp element and restore selection
+              setTimeout(() => {
+                if (tempElement.parentNode) {
+                  const parentNode = tempElement.parentNode;
+                  const textNode = node;
+                  parentNode.removeChild(tempElement);
+
+                  // Restore the selection if we still have the node
+                  if (editableRef.current && textNode) {
+                    try {
+                      const newRange = document.createRange();
+                      newRange.setStart(textNode, startOffset);
+                      newRange.setEnd(textNode, endOffset);
+                      selection.removeAllRanges();
+                      selection.addRange(newRange);
+                    } catch {
+                      // Selection restoration failed, ignore
+                    }
+                  }
+                }
+              }, 10);
             });
 
             found = true;
-          } catch (e) {
+          } catch {
             // Selection failed, ignore
           }
           break;
@@ -129,9 +169,6 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         }
       }
     }
-
-    // Focus the editor
-    editableRef.current?.focus();
   }, []);
 
   // Extract all Nunjucks variables and statements from the text
@@ -140,25 +177,53 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
 
     // Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
     const jinja2Keywords = new Set([
-      'if', 'elif', 'else', 'endif',
-      'for', 'endfor', 'in',
-      'block', 'endblock',
-      'extends', 'include', 'import', 'from',
-      'macro', 'endmacro', 'call', 'endcall',
-      'filter', 'endfilter',
-      'set', 'endset',
-      'raw', 'endraw',
-      'with', 'endwith',
-      'autoescape', 'endautoescape',
-      'trans', 'endtrans', 'pluralize',
-      'do',
-      'break', 'continue',
-      'scoped',
-      'ignore', 'missing',
-      'and', 'or', 'not',
-      'is', 'in',
-      'true', 'false', 'none',
-      'True', 'False', 'None',
+      "if",
+      "elif",
+      "else",
+      "endif",
+      "for",
+      "endfor",
+      "in",
+      "block",
+      "endblock",
+      "extends",
+      "include",
+      "import",
+      "from",
+      "macro",
+      "endmacro",
+      "call",
+      "endcall",
+      "filter",
+      "endfilter",
+      "set",
+      "endset",
+      "raw",
+      "endraw",
+      "with",
+      "endwith",
+      "autoescape",
+      "endautoescape",
+      "trans",
+      "endtrans",
+      "pluralize",
+      "do",
+      "break",
+      "continue",
+      "scoped",
+      "ignore",
+      "missing",
+      "and",
+      "or",
+      "not",
+      "is",
+      "in",
+      "true",
+      "false",
+      "none",
+      "True",
+      "False",
+      "None",
     ]);
 
     // Match variables {{ variable }}
@@ -168,10 +233,10 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     // Filter out variables that are just Jinja2 keywords
     const variables = allVariables.filter((varToken) => {
       // Extract the content between {{ and }}
-      const content = varToken.replace(/^\{\{\s*|\s*\}\}$/g, '').trim();
+      const content = varToken.replace(/^\{\{\s*|\s*\}\}$/g, "").trim();
 
       // Split by spaces, dots, pipes, and other operators to get individual tokens
-      const tokens = content.split(/[\s\.\|\(\)\[\]\,\+\-\*\/\%\=\!\<\>\&\|]+/).filter(t => t.length > 0);
+      const tokens = content.split(/[\s\.\|\(\)\[\]\,\+\-\*\/\%\=\!\<\>\&\|]+/).filter((t) => t.length > 0);
 
       // Check if the first token (main identifier) is a keyword
       const mainToken = tokens[0];
@@ -196,12 +261,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     if (!text) return "";
 
     const escapeHtml = (str: string) => {
-      return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     };
 
     const escaped = escapeHtml(text);
@@ -297,14 +357,58 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       onChange(syntheticEvent);
 
       // Update highlighting after a short delay to allow the change to propagate
-      setTimeout(() => updateHighlighting(), 0);
+      setTimeout(() => updateHighlighting(), 500);
     }
   }, [onChange, updateHighlighting, readOnly]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
-    document.execCommand("insertText", false, text);
+
+    // Split text by newlines and insert using insertLineBreak for proper handling
+    const lines = text.split('\n');
+
+    lines.forEach((line, index) => {
+      if (index > 0) {
+        // Insert a line break before each line except the first
+        document.execCommand("insertLineBreak");
+      }
+      if (line.length > 0) {
+        // Insert the text content
+        document.execCommand("insertText", false, line);
+      }
+    });
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle Enter key to ensure proper new line insertion
+    if (e.key === "Enter") {
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+
+      // Scroll cursor into view after inserting line break
+      requestAnimationFrame(() => {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+
+          // Insert a temporary span at cursor position to measure and scroll
+          const tempSpan = document.createElement('span');
+          tempSpan.innerHTML = '&nbsp;'; // Use non-breaking space so it has height
+          range.insertNode(tempSpan);
+
+          // Scroll the temp span into view
+          tempSpan.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+
+          // Remove the temp span and restore cursor position
+          const parent = tempSpan.parentNode;
+          if (parent) {
+            parent.removeChild(tempSpan);
+            // Cursor should already be in the right place after removing the span
+          }
+        }
+      });
+    }
   }, []);
 
   // Initialize content when value changes externally
@@ -326,6 +430,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         contentEditable={!disabled && !readOnly}
         onInput={handleInput}
         onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         data-placeholder={placeholder}
         suppressContentEditableWarning
         style={{
