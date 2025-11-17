@@ -4,8 +4,8 @@ import TuneIcon from "@mui/icons-material/Tune";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import ClickAwayListener from "@mui/material/ClickAwayListener";
 import Container from "@mui/material/Container";
+import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
@@ -192,30 +192,6 @@ const PromptsPlayground = () => {
     setVariablesDrawerOpen((prev) => !prev);
   };
 
-  // Calculate position for variables popup
-  const getPopupPosition = () => {
-    if (!variablesButtonRef.current) {
-      return { top: "60px", left: "auto", right: "16px" };
-    }
-
-    const buttonRect = variablesButtonRef.current.getBoundingClientRect();
-    const containerRect = variablesButtonRef.current.closest(".bg-gray-300")?.getBoundingClientRect();
-
-    if (!containerRect) {
-      return { top: "60px", left: "auto", right: "16px" };
-    }
-
-    const leftPosition = buttonRect.left - containerRect.left;
-
-    return {
-      top: `${buttonRect.bottom - containerRect.top + 8}px`,
-      left: `${leftPosition}px`,
-      right: "auto",
-    };
-  };
-
-  const popupPosition = variablesDrawerOpen ? getPopupPosition() : { top: "60px", left: "auto", right: "16px" };
-
   // Count blank variables
   const blankVariablesCount = useMemo(() => {
     let count = 0;
@@ -245,6 +221,22 @@ const PromptsPlayground = () => {
                 >
                   Variables
                 </Button>
+                <Popover
+                  open={variablesDrawerOpen}
+                  onClose={toggleVariablesDrawer}
+                  anchorEl={variablesButtonRef.current}
+                  anchorOrigin={{
+                    vertical: "bottom",
+                    horizontal: "left",
+                  }}
+                  slotProps={{
+                    paper: {
+                      sx: { width: "400px", maxHeight: "500px" },
+                    },
+                  }}
+                >
+                  <VariableInputs />
+                </Popover>
               </Badge>
             </Box>
             <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
@@ -265,29 +257,6 @@ const PromptsPlayground = () => {
             </Tooltip>
           </Stack>
         </Container>
-
-        {/* Popup Variables panel */}
-        {variablesDrawerOpen && (
-          <ClickAwayListener onClickAway={() => setVariablesDrawerOpen(false)}>
-            <Box
-              data-variables-panel
-              sx={{
-                position: "absolute",
-                top: popupPosition.top,
-                left: popupPosition.left,
-                right: popupPosition.right,
-                width: "400px",
-                maxHeight: "500px",
-                zIndex: 1200,
-                boxShadow: 3,
-                borderRadius: 1,
-                overflow: "hidden",
-              }}
-            >
-              <VariableInputs />
-            </Box>
-          </ClickAwayListener>
-        )}
 
         {/* Main content area */}
         <Box component="main" className="flex-1 flex flex-col">
