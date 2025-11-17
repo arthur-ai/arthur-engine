@@ -36,6 +36,9 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
     const section = pathSegments[taskIndex + 1];
     if (section === "playgrounds" && pathSegments[taskIndex + 2]) {
       activeSection = `playgrounds/${pathSegments[taskIndex + 2]}`;
+    } else if (section === "prompts") {
+      // Map /tasks/:id/prompts/:promptName to prompts-management
+      activeSection = "prompts-management";
     } else {
       activeSection = section;
     }

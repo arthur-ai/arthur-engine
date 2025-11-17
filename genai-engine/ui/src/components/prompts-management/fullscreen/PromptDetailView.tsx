@@ -20,6 +20,7 @@ import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVers
 import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
 
 import { formatDate } from "@/utils/formatters";
+import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 
 const PromptDetailView = ({ promptData, isLoading, error, promptName, version, latestVersion, taskId, onClose, onRefetch }: PromptDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -231,21 +232,15 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
           Messages
         </Typography>
-        <Box
-          component="pre"
-          sx={{
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontFamily: "monospace",
-            backgroundColor: "grey.50",
-            p: 2,
-            borderRadius: 1,
-            overflow: "auto",
-            fontSize: "0.875rem",
-          }}
-        >
-          {JSON.stringify(promptData.messages, null, 2)}
-        </Box>
+        <MustacheHighlightedTextField
+          value={JSON.stringify(promptData.messages, null, 2)}
+          onChange={() => {}} // Read-only, no-op
+          disabled
+          multiline
+          minRows={4}
+          maxRows={20}
+          size="small"
+        />
       </Paper>
 
       {promptData.config && (
