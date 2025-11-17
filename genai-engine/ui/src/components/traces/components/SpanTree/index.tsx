@@ -110,7 +110,7 @@ const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; le
             <Typography variant="body2" fontWeight={500} fontSize={12}>
               {span.span_name}
             </Typography>
-            {duration ? <DurationCell duration={duration} /> : null}
+            {typeof duration === "number" ? <DurationCell duration={duration} /> : null}
           </Stack>
         </Stack>
       </Accordion.Header>

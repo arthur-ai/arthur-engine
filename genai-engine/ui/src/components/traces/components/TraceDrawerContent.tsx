@@ -74,6 +74,10 @@ export const TraceDrawerContent = ({ id }: Props) => {
     if (!selectedSpanId) {
       select("span", rootSpan.span_id);
     }
+
+    if (flatSpans.findIndex((span) => span.span_id === selectedSpanId) === -1) {
+      select("span", rootSpan.span_id);
+    }
   });
 
   useEffect(onOpenDrawer, []);

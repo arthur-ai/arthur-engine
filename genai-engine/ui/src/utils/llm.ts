@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getNestedValue } from "@/components/traces/utils/spans";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { Message } from "@/schemas/llm";
+import { LLMToolsField, Message, Tool } from "@/schemas/llm";
 
 const Messages = z.array(z.object({ message: Message }));
 
@@ -71,5 +71,18 @@ export function tryFormatJson(content: any) {
     return JSON.stringify(JSON.parse(content), null, 2);
   } catch {
     return JSON.stringify(content, null, 2);
+  }
+}
+
+export function getTools(span: NestedSpanWithMetricsResponse) {
+  const raw = getNestedValue(span.raw_data.attributes, SemanticConventions.LLM_TOOLS) ?? [];
+  try {
+    const rawTools = LLMToolsField.parse(raw).map(({ tool }) => JSON.parse(tool.json_schema));
+
+    return rawTools.map((tool) => Tool.parse(tool));
+  } catch (error) {
+    console.log(JSON.stringify(raw, null, 2));
+    console.error(error);
+    return [];
   }
 }
