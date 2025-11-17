@@ -5,7 +5,7 @@ import { getNestedValue } from "@/components/traces/utils/spans";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { Message } from "@/schemas/llm";
 
-const Messages = z.array(z.record(z.enum(["message"]), Message));
+const Messages = z.array(z.object({ message: Message }));
 
 export function getMessages(span: NestedSpanWithMetricsResponse) {
   const messages = getNestedValue(span.raw_data.attributes, SemanticConventions.LLM_INPUT_MESSAGES);
