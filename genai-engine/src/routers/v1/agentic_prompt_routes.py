@@ -3,7 +3,7 @@ from typing import Annotated
 import jinja2
 import litellm
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -454,6 +454,136 @@ def delete_agentic_prompt_version(
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "no matching version" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.get(
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}",
+    summary="Get an agentic prompt by name and tag",
+    description="Get an agentic prompt by name and tag",
+    response_model=AgenticPrompt,
+    response_model_exclude_none=True,
+    tags=["Prompts"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_agentic_prompt_by_tag(
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to retrieve.",
+        title="Prompt Name",
+    ),
+    tag: str = Path(
+        ...,
+        description="The tag of the prompt to retrieve.",
+        title="Tag",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+) -> AgenticPrompt:
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        return agentic_prompt_service.get_llm_item_by_tag(
+            task.id,
+            prompt_name,
+            tag,
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.put(
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags",
+    summary="Add a tag to an agentic prompt version",
+    description="Add a tag to an agentic prompt version",
+    response_model=AgenticPrompt,
+    response_model_exclude_none=True,
+    tags=["Prompts"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def add_tag_to_agentic_prompt_version(
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to retrieve.",
+        title="Prompt Name",
+    ),
+    prompt_version: str = Path(
+        ...,
+        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        title="Prompt Version",
+    ),
+    tag: str = Body(..., embed=True, description="Tag to add to this prompt version"),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+) -> AgenticPrompt:
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        return agentic_prompt_service.add_tag_to_llm_item_version(
+            task.id,
+            prompt_name,
+            prompt_version,
+            tag,
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        elif "deleted version" in str(e).lower():
+            raise HTTPException(status_code=409, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.delete(
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags/{tag}",
+    summary="Remove a tag from an agentic prompt version",
+    description="Remove a tag from an agentic prompt version",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_204_NO_CONTENT: {"description": "Prompt version deleted."}},
+    tags=["Prompts"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_tag_from_agentic_prompt_version(
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to retrieve.",
+        title="Prompt Name",
+    ),
+    prompt_version: str = Path(
+        ...,
+        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        title="Prompt Version",
+    ),
+    tag: str = Path(
+        ...,
+        description="The tag to remove from the prompt version.",
+        title="Tag",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+) -> None:
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        agentic_prompt_service.delete_llm_item_tag_from_version(
+            task.id,
+            prompt_name,
+            prompt_version,
+            tag,
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
         else:
             raise HTTPException(status_code=400, detail=str(e))

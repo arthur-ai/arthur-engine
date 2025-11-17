@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String
+from sqlalchemy import (
+    TIMESTAMP,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,5 +59,43 @@ class DatabaseLLMEval(Base):
 
     version: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
 
+    @property
+    def tags(self) -> List[str]:
+        return [t.tag for t in self.version_tags]
+
     # Relationships
     task: Mapped["DatabaseTask"] = relationship(back_populates="llm_evals")
+    version_tags: Mapped[List["DatabaseLLMEvalVersionTag"]] = relationship(
+        back_populates="llm_eval",
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
+
+
+class DatabaseLLMEvalVersionTag(Base):
+    __tablename__ = "llm_eval_version_tags"
+
+    # Composite primary key: task_id + name + version
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        primary_key=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String, primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+
+    tag: Mapped[str] = mapped_column(String, primary_key=True)
+
+    llm_eval: Mapped["DatabaseLLMEval"] = relationship(
+        back_populates="version_tags",
+        lazy="select",
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "name", "version"],
+            ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
+        ),
+        UniqueConstraint("task_id", "name", "tag", name="uq_llm_eval_name_tag"),
+    )

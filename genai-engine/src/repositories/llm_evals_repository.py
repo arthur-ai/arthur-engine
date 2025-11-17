@@ -4,7 +4,8 @@ from litellm import supports_response_schema
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from db_models.llm_eval_models import Base, DatabaseLLMEval
+from db_models.base import Base
+from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -25,6 +26,7 @@ from services.prompt.chat_completion_service import ChatCompletionService
 
 class LLMEvalsRepository(BaseLLMRepository):
     db_model: Type[Base] = DatabaseLLMEval
+    tag_db_model: Type[Base] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
 
     def __init__(self, db_session: Session):
@@ -33,15 +35,35 @@ class LLMEvalsRepository(BaseLLMRepository):
         self.chat_completion_service = ChatCompletionService()
 
     def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
-        return LLMEval.model_validate(db_eval.__dict__)
+        tags = self._get_all_tags_for_item_version(db_eval)
 
-    def _to_versions_reponse_item(self, db_item: Base) -> LLMVersionResponse:
+        return LLMEval(
+            name=db_eval.name,
+            model_name=db_eval.model_name,
+            model_provider=db_eval.model_provider,
+            instructions=db_eval.instructions,
+            variables=db_eval.variables,
+            tags=tags,
+            config=db_eval.config,
+            created_at=db_eval.created_at,
+            deleted_at=db_eval.deleted_at,
+            version=db_eval.version,
+        )
+
+    def _to_versions_reponse_item(
+        self,
+        db_item: Base,
+        tags: Optional[List[str]] = None,
+    ) -> LLMVersionResponse:
+        tags = self._get_all_tags_for_item_version(db_item)
+
         return LLMVersionResponse(
             version=db_item.version,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             model_provider=db_item.model_provider,
             model_name=db_item.model_name,
+            tags=tags,
         )
 
     def _clear_db_item_data(self, db_item: Base) -> None:
