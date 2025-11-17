@@ -364,7 +364,20 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
-    document.execCommand("insertText", false, text);
+
+    // Split text by newlines and insert using insertLineBreak for proper handling
+    const lines = text.split('\n');
+
+    lines.forEach((line, index) => {
+      if (index > 0) {
+        // Insert a line break before each line except the first
+        document.execCommand("insertLineBreak");
+      }
+      if (line.length > 0) {
+        // Insert the text content
+        document.execCommand("insertText", false, line);
+      }
+    });
   }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
