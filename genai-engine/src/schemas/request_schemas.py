@@ -766,6 +766,7 @@ class CompletionRequest(CreateAgenticPromptRequest):
 
 class SavedPromptRenderingRequest(BaseModel):
     """Request schema for rendering an unsaved agentic prompt with variables"""
+
     completion_request: VariableRenderingRequest = Field(
         default_factory=VariableRenderingRequest,
         description="Rendering configuration for the unsaved prompt",
@@ -774,6 +775,7 @@ class SavedPromptRenderingRequest(BaseModel):
 
 class UnsavedPromptRenderingRequest(SavedPromptRenderingRequest):
     """Request schema for rendering an unsaved agentic prompt with variables"""
+
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )

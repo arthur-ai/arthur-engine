@@ -166,9 +166,11 @@ class AgenticPromptRepository(BaseLLMRepository):
 
         # Check for missing variables if strict mode is enabled
         if render_request.strict:
-            missing_vars = self.chat_completion_service.find_missing_variables_in_messages(
-                variable_map,
-                prompt.messages,
+            missing_vars = (
+                self.chat_completion_service.find_missing_variables_in_messages(
+                    variable_map,
+                    prompt.messages,
+                )
             )
             if missing_vars:
                 raise ValueError(
