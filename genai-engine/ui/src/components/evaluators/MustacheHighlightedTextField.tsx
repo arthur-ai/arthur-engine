@@ -385,6 +385,29 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     if (e.key === "Enter") {
       e.preventDefault();
       document.execCommand("insertLineBreak");
+
+      // Scroll cursor into view after inserting line break
+      requestAnimationFrame(() => {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+
+          // Insert a temporary span at cursor position to measure and scroll
+          const tempSpan = document.createElement('span');
+          tempSpan.innerHTML = '&nbsp;'; // Use non-breaking space so it has height
+          range.insertNode(tempSpan);
+
+          // Scroll the temp span into view
+          tempSpan.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+
+          // Remove the temp span and restore cursor position
+          const parent = tempSpan.parentNode;
+          if (parent) {
+            parent.removeChild(tempSpan);
+            // Cursor should already be in the right place after removing the span
+          }
+        }
+      });
     }
   }, []);
 
