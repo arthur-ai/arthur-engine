@@ -35,26 +35,35 @@ class LLMEvalsRepository(BaseLLMRepository):
         self.chat_completion_service = ChatCompletionService()
 
     def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
+        tags = self._get_all_tags_for_item_version(db_eval)
+
         return LLMEval(
             name=db_eval.name,
             model_name=db_eval.model_name,
             model_provider=db_eval.model_provider,
             instructions=db_eval.instructions,
             variables=db_eval.variables,
-            tags=[t.tag for t in db_eval.version_tags],
+            tags=tags,
             config=db_eval.config,
             created_at=db_eval.created_at,
             deleted_at=db_eval.deleted_at,
             version=db_eval.version,
         )
 
-    def _to_versions_reponse_item(self, db_item: Base) -> LLMVersionResponse:
+    def _to_versions_reponse_item(
+        self,
+        db_item: Base,
+        tags: Optional[List[str]] = None,
+    ) -> LLMVersionResponse:
+        tags = self._get_all_tags_for_item_version(db_item)
+
         return LLMVersionResponse(
             version=db_item.version,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             model_provider=db_item.model_provider,
             model_name=db_item.model_name,
+            tags=tags,
         )
 
     def _clear_db_item_data(self, db_item: Base) -> None:

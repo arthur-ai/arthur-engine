@@ -10370,13 +10370,13 @@
                     "version": {
                         "type": "integer",
                         "title": "Version",
-                        "description": "Version number of the prompt"
+                        "description": "Version number of the llm eval"
                     },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
                         "title": "Created At",
-                        "description": "Timestamp when the prompt version was created"
+                        "description": "Timestamp when the llm eval version was created"
                     },
                     "deleted_at": {
                         "anyOf": [
@@ -10389,16 +10389,24 @@
                             }
                         ],
                         "title": "Deleted At",
-                        "description": "Timestamp when the prompt version was deleted"
+                        "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
                         "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Model provider of the prompt"
+                        "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {
                         "type": "string",
                         "title": "Model Name",
-                        "description": "Model name of the prompt"
+                        "description": "Model name chosen for this version of the llm eval"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for the llm asset"
                     },
                     "num_messages": {
                         "type": "integer",
@@ -13365,6 +13373,14 @@
                         "title": "Versions",
                         "description": "Number of versions of the llm asset"
                     },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for the llm asset"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -14024,6 +14040,14 @@
                         "type": "string",
                         "title": "Model Name",
                         "description": "Model name chosen for this version of the llm eval"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags for the llm asset"
                     }
                 },
                 "type": "object",

@@ -40,6 +40,31 @@ class BaseLLMRepository(ABC):
         self.db_session = db_session
         self.chat_completion_service = ChatCompletionService()
 
+    def _get_all_tags_for_item_version(self, db_item: Base) -> List[str]:
+        tags = (
+            self.db_session.query(self.tag_db_model.tag)
+            .filter(
+                self.tag_db_model.task_id == db_item.task_id,
+                self.tag_db_model.name == db_item.name,
+                self.tag_db_model.version == db_item.version,
+            )
+            .order_by(self.tag_db_model.tag.asc())
+            .all()
+        )
+        return [t for (t,) in tags]
+
+    def _get_all_tags_for_item(self, task_id: str, item_name: str) -> List[str]:
+        tags = (
+            self.db_session.query(self.tag_db_model.tag)
+            .filter(
+                self.tag_db_model.task_id == task_id,
+                self.tag_db_model.name == item_name,
+            )
+            .order_by(self.tag_db_model.tag.asc())
+            .all()
+        )
+        return [t for (t,) in tags]
+
     @abstractmethod
     def from_db_model(self, db_item: Base) -> BaseModel:
         raise NotImplementedError("Subclasses must implement this method.")
@@ -455,6 +480,8 @@ class BaseLLMRepository(ABC):
             )
             deleted_versions = [v for (v,) in deleted_versions]
 
+            tags = self._get_all_tags_for_item(task_id, row.name)
+
             # set the metadata
             llm_metadata.append(
                 LLMGetAllMetadataResponse(
@@ -463,6 +490,7 @@ class BaseLLMRepository(ABC):
                     created_at=row.created_at,
                     latest_version_created_at=row.latest_version_created_at,
                     deleted_versions=deleted_versions,
+                    tags=tags,
                 ),
             )
 

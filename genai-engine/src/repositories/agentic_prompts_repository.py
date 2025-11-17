@@ -34,6 +34,8 @@ class AgenticPromptRepository(BaseLLMRepository):
         self.model_provider_repo = ModelProviderRepository(db_session)
 
     def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:
+        tags = self._get_all_tags_for_item_version(db_prompt)
+
         return AgenticPrompt(
             name=db_prompt.name,
             messages=db_prompt.messages,
@@ -42,7 +44,7 @@ class AgenticPromptRepository(BaseLLMRepository):
             version=db_prompt.version,
             tools=db_prompt.tools,
             variables=db_prompt.variables,
-            tags=[t.tag for t in db_prompt.version_tags],
+            tags=tags or [],
             config=db_prompt.config,
             created_at=db_prompt.created_at,
             deleted_at=db_prompt.deleted_at,
@@ -62,6 +64,7 @@ class AgenticPromptRepository(BaseLLMRepository):
     def _to_versions_reponse_item(self, db_item: Base) -> AgenticPromptVersionResponse:
         num_messages = len(db_item.messages or [])
         num_tools = len(db_item.tools or [])
+        tags = self._get_all_tags_for_item_version(db_item)
 
         return AgenticPromptVersionResponse(
             version=db_item.version,
@@ -71,6 +74,7 @@ class AgenticPromptRepository(BaseLLMRepository):
             model_name=db_item.model_name,
             num_messages=num_messages,
             num_tools=num_tools,
+            tags=tags or [],
         )
 
     def _clear_db_item_data(self, db_item: Base) -> None:
