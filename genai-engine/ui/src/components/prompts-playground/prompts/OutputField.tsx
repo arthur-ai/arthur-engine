@@ -144,7 +144,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
           {showSkeletons ? <>{skeletons()}</> : <div className="flex flex-col h-full">{renderContent}</div>}
         </div>
         <Divider />
-        <div className="flex gap-3 flex-shrink-0">
+        <div className="flex gap-3 shrink-0">
           {/* eslint-disable-next-line no-constant-condition */}
           {false ? (
             <div className="flex items-center">

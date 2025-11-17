@@ -88,7 +88,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
   return (
     <div ref={outerRef} className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
       <Container component="div" ref={containerRef} className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
-        <div className="flex justify-between items-center gap-1 mb-2 flex-shrink-0">
+        <div className="flex justify-between items-center gap-1 mb-2 shrink-0">
           <div className="flex justify-start items-center gap-1 min-w-0">
             {useIconOnlyMode ? (
               <>
@@ -142,11 +142,11 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
               </>
             )}
           </div>
-          <div className="flex justify-end items-center gap-1 flex-shrink-0">
+          <div className="flex justify-end items-center gap-1 shrink-0">
             <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
           </div>
         </div>
-        <div className="flex-shrink-0 min-w-0">
+        <div className="shrink-0 min-w-0">
           <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
         </div>
         <div className="mt-1 flex-1 min-h-0 flex flex-col">
