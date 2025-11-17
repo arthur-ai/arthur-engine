@@ -234,6 +234,7 @@ const PromptsPlayground = () => {
                       sx: { width: "400px", maxHeight: "500px" },
                     },
                   }}
+                  sx={{ marginTop: "6px" }}
                 >
                   <VariableInputs />
                 </Popover>
