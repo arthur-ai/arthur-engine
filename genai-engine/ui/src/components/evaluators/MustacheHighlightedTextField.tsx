@@ -14,6 +14,7 @@ interface NunjucksHighlightedTextFieldProps {
   maxRows?: number;
   size?: "small" | "medium";
   readOnly?: boolean;
+  hideTokens?: boolean;
 }
 
 const EditableDiv = styled("div")(({ theme }) => ({
@@ -73,6 +74,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   maxRows = 10,
   size = "small",
   readOnly = false,
+  hideTokens = false,
 }) => {
   const editableRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
@@ -335,7 +337,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       />
 
       {/* Display found variables and statements as chips below */}
-      {(nunjucksTokens.variables.length > 0 || nunjucksTokens.statements.length > 0) && (
+      {!hideTokens && (nunjucksTokens.variables.length > 0 || nunjucksTokens.statements.length > 0) && (
         <Box
           sx={{
             mt: 1,
