@@ -175,9 +175,22 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create eval:", err);
-      setError(err instanceof Error ? err.message : "Failed to create eval. Please try again.");
+
+      // Extract error message from API response
+      let errorMessage = "Failed to create eval. Please try again.";
+
+      if (err?.response?.data?.detail) {
+        // FastAPI HTTPException detail
+        errorMessage = err.response.data.detail;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      } else if (typeof err === "string") {
+        errorMessage = err;
+      }
+
+      setError(errorMessage);
     }
   };
 

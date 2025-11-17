@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import jinja2
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
@@ -216,6 +217,10 @@ def save_llm_eval(
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
         return llm_eval_service.save_llm_item(task.id, eval_name, eval_config)
+    except jinja2.exceptions.TemplateSyntaxError as e:
+        # Handle Jinja2 template syntax errors with a helpful message
+        error_msg = f"Invalid Jinja2 template syntax in evaluator messages: {str(e)}"
+        raise HTTPException(status_code=400, detail=error_msg)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

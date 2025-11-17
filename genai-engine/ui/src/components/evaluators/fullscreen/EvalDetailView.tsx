@@ -8,6 +8,7 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 
 import type { EvalDetailViewProps } from "../types";
+import NunjucksHighlightedTextField from "../MustacheHighlightedTextField";
 
 import { formatDate } from "@/utils/formatters";
 
@@ -103,19 +104,15 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, onClose
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
           Instructions
         </Typography>
-        <Typography
-          variant="body1"
-          sx={{
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontFamily: "monospace",
-            backgroundColor: "grey.50",
-            p: 2,
-            borderRadius: 1,
-          }}
-        >
-          {evalData.instructions}
-        </Typography>
+        <NunjucksHighlightedTextField
+          value={evalData.instructions}
+          onChange={() => {}} // Read-only, no-op
+          disabled
+          multiline
+          minRows={4}
+          maxRows={20}
+          size="small"
+        />
       </Paper>
 
       {evalData.config && (
