@@ -148,20 +148,12 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
 
     const extractedKeywords = Array.from(allKeywords);
 
-    if (extractedKeywords.length > 0) {
-      dispatch({
-        type: "updateKeywords",
-        payload: { id, messageKeywords: extractedKeywords },
-      });
-    }
+    // Always update keywords, even if empty (for cleanup)
+    dispatch({
+      type: "updateKeywords",
+      payload: { id, messageKeywords: extractedKeywords },
+    });
 
-    // Handle keyword tracking cleanup when message or prompt is deleted
-    return () => {
-      dispatch({
-        type: "updateKeywords",
-        payload: { id, messageKeywords: [] },
-      });
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, content]);
 
