@@ -277,9 +277,19 @@ const PromptsPlayground = () => {
             <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
               Add Prompt
             </Button>
-            <Button variant="contained" size="small" onClick={handleRunAllPrompts} startIcon={<PlayArrowIcon />}>
-              Run All Prompts
-            </Button>
+            <Tooltip title={blankVariablesCount > 0 ? "Please fill in all variable values before running" : "Run All Prompts"} arrow>
+              <span>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleRunAllPrompts}
+                  startIcon={<PlayArrowIcon />}
+                  disabled={blankVariablesCount > 0}
+                >
+                  Run All Prompts
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         </Container>
 

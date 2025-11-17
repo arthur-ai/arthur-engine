@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.189"
+version = "2.1.190"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -27,7 +27,7 @@ fsspec = "2025.9.0"
 datasketches = "5.2.0"
 numpy = "2.3.2"
 types-croniter = "6.0.0.20250809"
-types-psutil = "7.0.0.20251001"
+types-psutil = "7.0.0.20251116"
 types-requests = "2.32.4.20250913"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
