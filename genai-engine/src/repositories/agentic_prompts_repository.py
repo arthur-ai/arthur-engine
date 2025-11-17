@@ -1,3 +1,4 @@
+import copy
 from typing import List, Type
 
 from pydantic import BaseModel
@@ -15,6 +16,7 @@ from schemas.request_schemas import (
     CompletionRequest,
     CreateAgenticPromptRequest,
     PromptCompletionRequest,
+    VariableRenderingRequest,
 )
 from schemas.response_schemas import (
     AgenticPromptRunResponse,
@@ -126,4 +128,72 @@ class AgenticPromptRepository(BaseLLMRepository):
             llm_client,
             prompt,
             completion_request,
+        )
+
+    def render_saved_prompt(
+        self,
+        task_id: str,
+        prompt_name: str,
+        prompt_version: str,
+        render_request: VariableRenderingRequest,
+    ) -> AgenticPrompt:
+        """
+        Render a saved prompt by replacing template variables with provided values.
+
+        Args:
+            task_id: The task ID
+            prompt_name: The name of the prompt
+            prompt_version: The version identifier ('latest', version number, or ISO datetime)
+            render_request: VariableRenderingRequest containing variables for template substitution
+
+        Returns:
+            AgenticPrompt with rendered messages
+
+        Raises:
+            ValueError: If prompt not found or required variables are missing
+            jinja2.exceptions.TemplateSyntaxError: If template syntax is invalid
+            jinja2.exceptions.UndefinedError: If required variables are not provided
+        """
+        # Get the prompt from the database
+        prompt = self.get_llm_item(
+            task_id,
+            prompt_name,
+            prompt_version,
+        )
+
+        # Build variable map from the request
+        variable_map = render_request._variable_map if render_request.variables else {}
+
+        # Check for missing variables if strict mode is enabled
+        if render_request.strict:
+            missing_vars = self.chat_completion_service.find_missing_variables_in_messages(
+                variable_map,
+                prompt.messages,
+            )
+            if missing_vars:
+                raise ValueError(
+                    f"Missing required variables: {', '.join(sorted(missing_vars))}. "
+                    f"Please provide values for all variables when strict=True."
+                )
+
+        # Create a copy of messages and render them
+        rendered_messages = copy.deepcopy(prompt.messages)
+        rendered_messages = self.chat_completion_service.replace_variables(
+            variable_map,
+            rendered_messages,
+        )
+
+        # Return a new AgenticPrompt with rendered messages
+        return AgenticPrompt(
+            name=prompt.name,
+            messages=rendered_messages,
+            model_name=prompt.model_name,
+            model_provider=prompt.model_provider,
+            version=prompt.version,
+            tools=prompt.tools,
+            variables=prompt.variables,
+            tags=prompt.tags,
+            config=prompt.config,
+            created_at=prompt.created_at,
+            deleted_at=prompt.deleted_at,
         )

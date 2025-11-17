@@ -1,3 +1,4 @@
+import copy
 from typing import Annotated
 
 import jinja2
@@ -27,12 +28,16 @@ from schemas.request_schemas import (
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
     PromptCompletionRequest,
+    SavedPromptRenderingRequest,
+    UnsavedPromptRenderingRequest,
 )
 from schemas.response_schemas import (
     AgenticPromptRunResponse,
     AgenticPromptVersionListResponse,
     LLMGetAllMetadataListResponse,
+    RenderedPromptResponse,
 )
+from services.prompt.chat_completion_service import ChatCompletionService
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -248,6 +253,81 @@ async def run_agentic_prompt(
 
 
 @agentic_prompt_routes.post(
+    "/prompt_renders",
+    summary="Render an unsaved prompt with variables",
+    description="Render an unsaved prompt by replacing template variables with provided values. Accepts messages directly in the request body instead of loading from database.",
+    response_model=RenderedPromptResponse,
+    response_model_exclude_none=True,
+    tags=["Prompts"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def render_unsaved_agentic_prompt(
+    rendering_request: UnsavedPromptRenderingRequest,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RenderedPromptResponse:
+    """
+    Render an unsaved agentic prompt with template variable substitution.
+
+    Args:
+        rendering_request: UnsavedPromptRenderingRequest containing messages and completion_request with variables
+        current_user: User
+
+    Returns:
+        RenderedPromptResponse with rendered messages
+    """
+    try:
+        # Extract completion_request and messages from the request
+        completion_request = rendering_request.completion_request
+        messages = rendering_request.messages
+
+        # Get variable map from completion_request
+        variable_map = (
+            completion_request._variable_map if completion_request.variables else {}
+        )
+
+        # If strict mode, validate that all variables in messages are provided
+        if completion_request.strict:
+            chat_service = ChatCompletionService()
+            missing_vars = chat_service.find_missing_variables_in_messages(
+                variable_map, messages
+            )
+            if missing_vars:
+                raise ValueError(
+                    f"Missing required variables: {', '.join(sorted(missing_vars))}"
+                )
+
+        # Deep copy messages to avoid mutating the request
+        rendered_messages = copy.deepcopy(messages)
+
+        # Replace variables in messages
+        chat_service = ChatCompletionService()
+        rendered_messages = chat_service.replace_variables(
+            variable_map, rendered_messages
+        )
+
+        # Return a RenderedPromptResponse with rendered messages
+        return RenderedPromptResponse(
+            messages=rendered_messages,
+        )
+    except HTTPException:
+        # propagate HTTP exceptions
+        raise
+    except jinja2.exceptions.TemplateSyntaxError as e:
+        # Handle Jinja2 template syntax errors
+        error_msg = f"Invalid Jinja2 template syntax in prompt messages: {str(e)}"
+        raise HTTPException(status_code=400, detail=error_msg)
+    except jinja2.exceptions.UndefinedError as e:
+        # Handle missing variable errors
+        error_msg = f"Template rendering error: {str(e)}"
+        raise HTTPException(status_code=400, detail=error_msg)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.post(
     "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions",
     summary="Run/Stream a specific version of an agentic prompt",
     description="Run or stream a specific version of an existing agentic prompt",
@@ -348,6 +428,73 @@ async def run_saved_agentic_prompt(
         raise
     except litellm.AuthenticationError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.post(
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders",
+    summary="Render a specific version of an agentic prompt with variables",
+    description="Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the rendered messages.",
+    response_model=RenderedPromptResponse,
+    response_model_exclude_none=True,
+    tags=["Prompts"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def render_saved_agentic_prompt(
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to render.",
+        title="Prompt Name",
+    ),
+    prompt_version: str = Path(
+        ...,
+        description="The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        title="Prompt Version",
+    ),
+    rendering_request: SavedPromptRenderingRequest = SavedPromptRenderingRequest(),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+) -> RenderedPromptResponse:
+    """
+    Render an agentic prompt with template variable substitution.
+
+    Args:
+        prompt_name: str
+        prompt_version: str
+        rendering_request: SavedPromptRenderingRequest containing completion_request with variables for template substitution
+        current_user: User
+        task: Task
+
+    Returns:
+        RenderedPromptResponse with rendered messages
+    """
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        rendered_prompt = agentic_prompt_service.render_saved_prompt(
+            task.id,
+            prompt_name,
+            prompt_version,
+            rendering_request.completion_request,
+        )
+        # Convert AgenticPrompt to RenderedPromptResponse
+        return RenderedPromptResponse(
+            messages=rendered_prompt.messages,
+        )
+    except HTTPException:
+        # propagate HTTP exceptions
+        raise
+    except jinja2.exceptions.TemplateSyntaxError as e:
+        # Handle Jinja2 template syntax errors
+        error_msg = f"Invalid Jinja2 template syntax in prompt messages: {str(e)}"
+        raise HTTPException(status_code=400, detail=error_msg)
+    except jinja2.exceptions.UndefinedError as e:
+        # Handle missing variable errors
+        error_msg = f"Template rendering error: {str(e)}"
+        raise HTTPException(status_code=400, detail=error_msg)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

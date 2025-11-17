@@ -5490,6 +5490,23 @@ export interface RelevanceMetricConfig {
   use_llm_judge?: boolean;
 }
 
+export type RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPostData = RenderedPromptResponse;
+
+export type RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPostError = HTTPValidationError;
+
+export type RenderUnsavedAgenticPromptApiV1PromptRendersPostData = RenderedPromptResponse;
+
+export type RenderUnsavedAgenticPromptApiV1PromptRendersPostError = HTTPValidationError;
+
+/** RenderedPromptResponse */
+export interface RenderedPromptResponse {
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: OpenAIMessageOutput[];
+}
+
 export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
 
 export type ResetUserPasswordUsersUserIdResetPasswordPostError = HTTPValidationError;
@@ -5598,6 +5615,15 @@ export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPVa
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
 
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
+
+/**
+ * SavedPromptRenderingRequest
+ * Request schema for rendering an unsaved agentic prompt with variables
+ */
+export interface SavedPromptRenderingRequest {
+  /** Rendering configuration for the unsaved prompt */
+  completion_request?: VariableRenderingRequest;
+}
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -6745,6 +6771,20 @@ export interface TraceUserMetadataResponse {
   user_id: string;
 }
 
+/**
+ * UnsavedPromptRenderingRequest
+ * Request schema for rendering an unsaved agentic prompt with variables
+ */
+export interface UnsavedPromptRenderingRequest {
+  /** Rendering configuration for the unsaved prompt */
+  completion_request?: VariableRenderingRequest;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: OpenAIMessageInput[];
+}
+
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchError = HTTPValidationError;
@@ -6871,6 +6911,22 @@ export interface ValidationResult {
    * The user ID this prompt belongs to
    */
   user_id?: string | null;
+}
+
+/** VariableRenderingRequest */
+export interface VariableRenderingRequest {
+  /**
+   * Strict
+   * Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.
+   * @default false
+   */
+  strict?: boolean | null;
+  /**
+   * Variables
+   * List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt
+   * @default []
+   */
+  variables?: VariableTemplateValue[] | null;
 }
 
 /** VariableTemplateValue */
@@ -7808,7 +7864,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.181
+ * @version 2.1.188
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -9632,6 +9688,55 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<RedirectToTasksApiV2TaskPostData, any>({
         path: `/api/v2/task`,
         method: "POST",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the rendered messages.
+     *
+     * @tags Prompts
+     * @name RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPost
+     * @summary Render a specific version of an agentic prompt with variables
+     * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
+     * @secure
+     */
+    renderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPost: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      data: SavedPromptRenderingRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPostData,
+        RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/renders`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Render an unsaved prompt by replacing template variables with provided values. Accepts messages directly in the request body instead of loading from database.
+     *
+     * @tags Prompts
+     * @name RenderUnsavedAgenticPromptApiV1PromptRendersPost
+     * @summary Render an unsaved prompt with variables
+     * @request POST:/api/v1/prompt_renders
+     * @secure
+     */
+    renderUnsavedAgenticPromptApiV1PromptRendersPost: (data: UnsavedPromptRenderingRequest, params: RequestParams = {}) =>
+      this.request<RenderUnsavedAgenticPromptApiV1PromptRendersPostData, RenderUnsavedAgenticPromptApiV1PromptRendersPostError>({
+        path: `/api/v1/prompt_renders`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),

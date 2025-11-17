@@ -3,6 +3,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SaveIcon from "@mui/icons-material/Save";
 import TuneIcon from "@mui/icons-material/Tune";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import React, { memo, useCallback, useState } from "react";
@@ -11,6 +12,7 @@ import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
 
 import ModelParamsDialog from "./ModelParamsDialog";
+import PreviewPromptModal from "./PreviewPromptModal";
 
 interface ManagementButtonsProps {
   prompt: PromptType;
@@ -19,6 +21,7 @@ interface ManagementButtonsProps {
 
 const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps) => {
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
   const { dispatch, state } = usePromptContext();
 
   const handleRunPrompt = useCallback(() => {
@@ -39,6 +42,10 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
     setParamsModelOpen(true);
   }, []);
 
+  const handlePreviewOpen = useCallback(() => {
+    setPreviewModalOpen(true);
+  }, []);
+
   const handleSavePromptOpen = useCallback(() => {
     setSavePromptOpen(true);
   }, [setSavePromptOpen]);
@@ -54,6 +61,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   const hasUnsetVariables = Array.from(state.keywords.values()).some((value) => !value || value.trim() === "");
 
   const runDisabled = prompt.running || prompt.modelName === "" || hasUnsetVariables;
+  const previewDisabled = hasUnsetVariables;
   const isDirty = prompt.isDirty;
   const saveTooltip = isDirty ? "Save unsaved changes" : "Save Prompt";
 
@@ -67,12 +75,22 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
     runTooltip = "Prompt is currently running";
   }
 
+  // Determine the preview button tooltip
+  const previewTooltip = hasUnsetVariables ? "Please fill in all variable values before previewing" : "Preview Rendered Prompt";
+
   return (
     <>
       <Tooltip title={runTooltip} placement="top-start" arrow>
         <span>
           <IconButton aria-label="run prompt" onClick={handleRunPrompt} disabled={runDisabled} loading={prompt.running}>
             <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Tooltip title={previewTooltip} placement="top-start" arrow>
+        <span>
+          <IconButton aria-label="preview prompt" onClick={handlePreviewOpen} disabled={previewDisabled}>
+            <VisibilityIcon color={previewDisabled ? "disabled" : "info"} />
           </IconButton>
         </span>
       </Tooltip>
@@ -93,6 +111,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
         name={prompt.name}
         modelParameters={prompt.modelParameters}
       />
+      <PreviewPromptModal open={previewModalOpen} setOpen={setPreviewModalOpen} prompt={prompt} />
       <Tooltip title={saveTooltip} placement="top-start" arrow>
         <IconButton
           aria-label="save"
