@@ -1,4 +1,5 @@
 import { Collapsible } from "@base-ui-components/react/collapsible";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, Button, ButtonGroup, Paper, Stack, Typography } from "@mui/material";
 import { useState } from "react";
@@ -15,6 +16,58 @@ const MAX_HEIGHT = 350;
 // ============================================================================
 // Value Rendering Components
 // ============================================================================
+
+/**
+ * Renders a single key-value pair with proper formatting
+ */
+const KeyValueItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <Box component="li" sx={{ mb: 0.5, fontSize: 11 }}>
+    <Typography component="span" fontWeight={600} fontSize={11} color="text.secondary">
+      {label}:
+    </Typography>{" "}
+    <Typography component="span" fontSize={11} sx={{ fontFamily: "monospace" }}>
+      {value}
+    </Typography>
+  </Box>
+);
+
+/**
+ * Renders a collapsible list of items (used by ArrayValue and ObjectValue)
+ */
+const CollapsibleList = ({
+  label,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  label: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) => (
+  <Box component="span">
+    <Box
+      component="span"
+      onClick={onToggle}
+      sx={{
+        cursor: "pointer",
+        userSelect: "none",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.5,
+        "&:hover": { opacity: 0.7 },
+      }}
+    >
+      {isOpen ? <KeyboardArrowDownIcon sx={{ fontSize: 12 }} /> : <KeyboardArrowRightIcon sx={{ fontSize: 12 }} />}
+      {label}
+    </Box>
+    {isOpen && (
+      <Box component="ul" sx={{ m: 0, mt: 0.5, p: 0, pl: 3, listStyle: "none" }}>
+        {children}
+      </Box>
+    )}
+  </Box>
+);
 
 const renderValue = (value: any): React.ReactNode => {
   if (value === null) return "null";
@@ -35,33 +88,13 @@ const ArrayValue = ({ array }: { array: any[] }) => {
   if (array.length === 0) return <>[]</>;
 
   return (
-    <Box component="span">
-      <Box
-        component="span"
-        onClick={() => setIsOpen(!isOpen)}
-        sx={{
-          cursor: "pointer",
-          userSelect: "none",
-          "&:hover": { opacity: 0.7 },
-        }}
-      >
-        {isOpen ? "▼" : "▶"} Array[{array.length}]
-      </Box>
-      {isOpen && (
-        <Box component="ul" sx={{ m: 0, mt: 0.5, p: 0, pl: 3, listStyle: "none" }}>
-          {array.map((item, index) => (
-            <Box component="li" key={index} sx={{ mb: 0.5, fontSize: 11 }}>
-              <Typography component="span" fontWeight={600} fontSize={11} color="text.secondary">
-                [{index}]:
-              </Typography>{" "}
-              <Typography component="span" fontSize={11} sx={{ fontFamily: "monospace" }}>
-                {renderValue(item)}
-              </Typography>
-            </Box>
-          ))}
+    <CollapsibleList label={`Array[${array.length}]`} isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)}>
+      {array.map((item, index) => (
+        <Box component="li" key={index} sx={{ mb: 0.5, fontSize: 11, fontFamily: "monospace" }}>
+          {renderValue(item)}
         </Box>
-      )}
-    </Box>
+      ))}
+    </CollapsibleList>
   );
 };
 
@@ -72,47 +105,18 @@ const ObjectValue = ({ obj }: { obj: Record<string, any> }) => {
   if (keys.length === 0) return <>{"{}"}</>;
 
   return (
-    <Box component="span">
-      <Box
-        component="span"
-        onClick={() => setIsOpen(!isOpen)}
-        sx={{
-          cursor: "pointer",
-          userSelect: "none",
-          "&:hover": { opacity: 0.7 },
-        }}
-      >
-        {isOpen ? "▼" : "▶"} Object
-      </Box>
-      {isOpen && (
-        <Box component="ul" sx={{ m: 0, mt: 0.5, p: 0, pl: 3, listStyle: "none" }}>
-          {Object.entries(obj).map(([key, value]) => (
-            <Box component="li" key={key} sx={{ mb: 0.5, fontSize: 11 }}>
-              <Typography component="span" fontWeight={600} fontSize={11} color="text.secondary">
-                {key}:
-              </Typography>{" "}
-              <Typography component="span" fontSize={11} sx={{ fontFamily: "monospace" }}>
-                {renderValue(value)}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      )}
-    </Box>
+    <CollapsibleList label="Object" isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)}>
+      {Object.entries(obj).map(([key, value]) => (
+        <KeyValueItem key={key} label={key} value={renderValue(value)} />
+      ))}
+    </CollapsibleList>
   );
 };
 
 const KeyValueList = ({ data }: { data: Record<string, any> }) => (
   <Box component="ul" sx={{ m: 0, p: 0, pl: 2, listStyle: "none" }}>
     {Object.entries(data).map(([key, value]) => (
-      <Box component="li" key={key} sx={{ mb: 0.5, fontSize: 11 }}>
-        <Typography component="span" fontWeight={600} fontSize={11} color="text.secondary">
-          {key}:
-        </Typography>{" "}
-        <Typography component="span" fontSize={11} sx={{ fontFamily: "monospace" }}>
-          {renderValue(value)}
-        </Typography>
-      </Box>
+      <KeyValueItem key={key} label={key} value={renderValue(value)} />
     ))}
   </Box>
 );
@@ -169,6 +173,25 @@ const parseJson = (content: string): any | null => {
 };
 
 /**
+ * Renders formatted JSON content (handles both objects and arrays)
+ */
+const FormattedJsonContent = ({ data }: { data: any }) => {
+  if (Array.isArray(data)) {
+    return (
+      <Box component="ul" sx={{ m: 0, p: 0, pl: 0, listStyle: "none" }}>
+        {data.map((item, index) => (
+          <Box component="li" key={index} sx={{ mb: 1, fontSize: 11, fontFamily: "monospace" }}>
+            {renderValue(item)}
+          </Box>
+        ))}
+      </Box>
+    );
+  }
+
+  return <KeyValueList data={data} />;
+};
+
+/**
  * Renders tool result content with automatic JSON detection and formatting
  */
 const ToolContentRenderer = ({ content }: { content: string }) => {
@@ -184,7 +207,7 @@ const ToolContentRenderer = ({ content }: { content: string }) => {
         <>
           <ViewToggle view={view} setView={setView} />
           {view === "formatted" ? (
-            <KeyValueList data={parsedContent} />
+            <FormattedJsonContent data={parsedContent} />
           ) : (
             <Highlight code={tryFormatJson(content)} language="json" unwrapped />
           )}
@@ -209,7 +232,7 @@ const ToolCallItem = ({ toolCall }: { toolCall: ToolCall }) => {
       </Typography>
       <Box sx={{ pl: 2 }}>
         {parsedArgs && typeof parsedArgs === "object" ? (
-          <KeyValueList data={parsedArgs} />
+          <FormattedJsonContent data={parsedArgs} />
         ) : (
           <Typography fontSize={11} color="text.secondary">
             (no arguments)
