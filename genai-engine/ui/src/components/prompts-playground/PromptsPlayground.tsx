@@ -1,16 +1,15 @@
 import AddIcon from "@mui/icons-material/Add";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import TuneIcon from "@mui/icons-material/Tune";
-import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import React, { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
+import React, { useCallback, useReducer, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
@@ -214,11 +213,14 @@ const PromptsPlayground = () => {
 
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      const variablesPanel = document.querySelector("[data-variables-panel]");
+      const variablesPanel = document.querySelector('[data-variables-panel]');
       const variablesButton = variablesButtonRef.current;
 
       // Don't close if clicking on the variables panel itself or the button
-      if ((variablesPanel && variablesPanel.contains(target)) || (variablesButton && variablesButton.contains(target))) {
+      if (
+        (variablesPanel && variablesPanel.contains(target)) ||
+        (variablesButton && variablesButton.contains(target))
+      ) {
         return;
       }
 
@@ -228,12 +230,12 @@ const PromptsPlayground = () => {
 
     // Add listener after a small delay to avoid immediate closure
     const timeoutId = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }, 0);
 
     return () => {
       clearTimeout(timeoutId);
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [variablesDrawerOpen]);
 
@@ -244,7 +246,7 @@ const PromptsPlayground = () => {
     }
 
     const buttonRect = variablesButtonRef.current.getBoundingClientRect();
-    const containerRect = variablesButtonRef.current.closest(".bg-gray-300")?.getBoundingClientRect();
+    const containerRect = variablesButtonRef.current.closest('.bg-gray-300')?.getBoundingClientRect();
 
     if (!containerRect) {
       return { top: "60px", left: "auto", right: "16px" };
@@ -261,58 +263,22 @@ const PromptsPlayground = () => {
 
   const popupPosition = variablesDrawerOpen ? getPopupPosition() : { top: "60px", left: "auto", right: "16px" };
 
-  // Count blank variables
-  const blankVariablesCount = useMemo(() => {
-    let count = 0;
-    state.keywords.forEach((value) => {
-      if (!value || value.trim() === "") {
-        count++;
-      }
-    });
-    return count;
-  }, [state.keywords]);
-
   return (
     <PromptProvider state={state} dispatch={dispatch}>
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
         {/* Header with action buttons */}
         <Container component="div" maxWidth={false} disableGutters className="p-2 bg-gray-300 flex-shrink-0">
           <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
-            <Box sx={{ position: "relative" }}>
-              <Button
-                ref={variablesButtonRef}
-                variant={variablesDrawerOpen ? "contained" : "outlined"}
-                color={variablesDrawerOpen ? "primary" : "primary"}
-                size="small"
-                onClick={toggleVariablesDrawer}
-                startIcon={<TuneIcon />}
-              >
-                Variables
-              </Button>
-              {blankVariablesCount > 0 && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: -8,
-                    right: -8,
-                    backgroundColor: "error.main",
-                    color: "white",
-                    borderRadius: "10px",
-                    minWidth: "20px",
-                    height: "20px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "0.75rem",
-                    fontWeight: "bold",
-                    padding: "0 6px",
-                    pointerEvents: "none",
-                  }}
-                >
-                  {blankVariablesCount}
-                </Box>
-              )}
-            </Box>
+            <Button
+              ref={variablesButtonRef}
+              variant={variablesDrawerOpen ? "contained" : "outlined"}
+              color={variablesDrawerOpen ? "primary" : "primary"}
+              size="small"
+              onClick={toggleVariablesDrawer}
+              startIcon={<TuneIcon />}
+            >
+              Variables
+            </Button>
             <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
               Add Prompt
             </Button>
@@ -355,7 +321,7 @@ const PromptsPlayground = () => {
                     width: promptWidth,
                     minWidth: promptWidth,
                     flexShrink: 0,
-                    containerType: "inline-size",
+                    containerType: 'inline-size',
                   }}
                 >
                   <PromptComponent prompt={prompt} useIconOnlyMode={useIconOnlyMode} />
