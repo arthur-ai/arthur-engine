@@ -68,8 +68,8 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
   ];
 
   return (
-    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col" style={{ height: "100vh" }}>
-      <div className="p-4 overflow-y-scroll" style={{ flex: 1 }}>
+    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col h-full">
+      <div className="p-4 overflow-y-auto flex-1 min-h-0">
         <div className="mb-4">
           <button
             onClick={onBackToDashboard}
@@ -109,7 +109,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
 
       {/* Logout button at the bottom */}
       {onLogout && (
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <button
             onClick={onLogout}
             className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
