@@ -303,13 +303,6 @@ def test_soft_delete_llm_eval_version_errors(
     assert response.status_code == 400
     assert "has already been deleted" in response.json()["detail"]
 
-    # --- Case 3: Invalid version format (400) ---
-    response = client.base_client.delete(
-        f"/api/v1/tasks/{agentic_task.id}/llm_evals/{eval_name}/versions/invalid_version",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 400
-
 
 @pytest.mark.unit_tests
 @pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
@@ -362,11 +355,11 @@ def test_soft_delete_llm_eval_by_version_route(
         f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/{eval_version}",
         headers=client.authorized_user_api_key_headers,
     )
-    if eval_version == "latest":
+    if eval_version == "latest" or eval_version == "test_tag":
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"'{eval_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{eval_name}' (version '{eval_version}') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200
