@@ -1613,11 +1613,11 @@ def test_soft_delete_agentic_prompt_by_version_route(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
         headers=client.authorized_user_api_key_headers,
     )
-    if prompt_version == "latest":
+    if prompt_version == "latest" or prompt_version == "test_tag":
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"'{prompt_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{prompt_name}' (version '{prompt_version}') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200
