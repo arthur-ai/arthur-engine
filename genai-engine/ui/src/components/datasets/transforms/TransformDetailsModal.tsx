@@ -1,4 +1,3 @@
-import DownloadIcon from "@mui/icons-material/Download";
 import {
   Dialog,
   DialogTitle,
@@ -23,29 +22,6 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({
   transform,
 }) => {
   if (!transform) return null;
-
-  const handleDownload = () => {
-    // Create the export object with name, description, and definition
-    const exportData = {
-      name: transform.name,
-      description: transform.description,
-      definition: transform.definition,
-    };
-
-    // Convert to JSON string
-    const jsonString = JSON.stringify(exportData, null, 2);
-
-    // Create a blob and download link
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${transform.name.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_transform.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -116,9 +92,6 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleDownload} startIcon={<DownloadIcon />}>
-          Download JSON
-        </Button>
         <Button onClick={onClose} variant="contained">
           Close
         </Button>

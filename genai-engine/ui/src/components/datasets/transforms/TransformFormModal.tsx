@@ -1,6 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
   Dialog,
   DialogTitle,
@@ -14,14 +14,19 @@ import {
   Box,
   IconButton,
   Autocomplete,
+  Divider,
+  CircularProgress,
 } from "@mui/material";
 import { useState, useEffect } from "react";
 
+import { useTransforms } from "./hooks/useTransforms";
 import { TransformFormModalProps } from "./types";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
+import { useApi } from "@/hooks/useApi";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
+import type { DatasetResponse } from "@/lib/api-client/api-client";
 
 
 interface ColumnMapping {
@@ -45,10 +50,39 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     { column_name: "", span_name: "", attribute_path: "", fallback: "" },
   ]);
   const [errors, setErrors] = useState<string[]>([]);
-  const [importError, setImportError] = useState<string | null>(null);
 
+  // State for copying from existing transform
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
+  const [selectedTransformId, setSelectedTransformId] = useState<string | null>(null);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [loadingDatasets, setLoadingDatasets] = useState(false);
+
+  const api = useApi();
   const { latestVersion } = useDatasetLatestVersion(datasetId);
   const datasetColumns = latestVersion?.column_names || [];
+
+  // Fetch transforms for the selected dataset
+  const { data: availableTransforms, isLoading: isLoadingTransforms } = useTransforms(selectedDatasetId || undefined);
+
+  // Fetch datasets when modal opens (only for create mode, not edit)
+  useEffect(() => {
+    if (open && !initialTransform && api) {
+      const fetchDatasets = async () => {
+        try {
+          setLoadingDatasets(true);
+          const response = await api.api.getDatasetsApiV2DatasetsSearchGet({
+            page_size: 100,
+          });
+          setDatasets(response.data.datasets || []);
+        } catch (error) {
+          console.error("Failed to load datasets:", error);
+        } finally {
+          setLoadingDatasets(false);
+        }
+      };
+      fetchDatasets();
+    }
+  }, [open, initialTransform, api]);
 
   useEffect(() => {
     if (initialTransform) {
@@ -66,6 +100,8 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       setName("");
       setDescription("");
       setColumns([{ column_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+      setSelectedDatasetId(null);
+      setSelectedTransformId(null);
     }
     setErrors([]);
   }, [initialTransform, open]);
@@ -162,64 +198,25 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleTransformSelect = (transformId: string | null) => {
+    setSelectedTransformId(transformId);
+    if (!transformId || !availableTransforms) return;
 
-    setImportError(null);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const importedData = JSON.parse(content);
-
-        // Validate the imported data structure
-        if (!importedData.name || typeof importedData.name !== "string") {
-          setImportError("Invalid JSON: 'name' field is required and must be a string");
-          return;
-        }
-
-        if (!importedData.definition || !importedData.definition.columns || !Array.isArray(importedData.definition.columns)) {
-          setImportError("Invalid JSON: 'definition.columns' must be an array");
-          return;
-        }
-
-        // Validate each column
-        for (const col of importedData.definition.columns) {
-          if (!col.column_name || !col.span_name || !col.attribute_path) {
-            setImportError("Invalid JSON: Each column must have column_name, span_name, and attribute_path");
-            return;
-          }
-        }
-
-        // Populate the form with imported data
-        setName(importedData.name);
-        setDescription(importedData.description || "");
-        setColumns(
-          importedData.definition.columns.map(
-            (col: { column_name: string; span_name: string; attribute_path: string; fallback?: unknown }) => ({
-              column_name: col.column_name,
-              span_name: col.span_name,
-              attribute_path: col.attribute_path,
-              fallback: col.fallback !== undefined && col.fallback !== null ? JSON.stringify(col.fallback) : "",
-            })
-          )
-        );
-        setErrors([]);
-      } catch (err) {
-        setImportError(err instanceof Error ? err.message : "Failed to parse JSON file");
-      }
-    };
-
-    reader.onerror = () => {
-      setImportError("Failed to read file");
-    };
-
-    reader.readAsText(file);
-
-    // Reset the input so the same file can be uploaded again
-    event.target.value = "";
+    const selectedTransform = availableTransforms.find((t) => t.id === transformId);
+    if (selectedTransform) {
+      // Populate form fields with the selected transform's data
+      setName(selectedTransform.name);
+      setDescription(selectedTransform.description || "");
+      setColumns(
+        selectedTransform.definition.columns.map((col) => ({
+          column_name: col.column_name,
+          span_name: col.span_name,
+          attribute_path: col.attribute_path,
+          fallback: col.fallback !== undefined && col.fallback !== null ? JSON.stringify(col.fallback) : "",
+        }))
+      );
+      setErrors([]);
+    }
   };
 
   return (
@@ -237,30 +234,78 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
             </Alert>
           )}
 
-          {importError && (
-            <Alert severity="error" onClose={() => setImportError(null)}>
-              {importError}
-            </Alert>
-          )}
-
           {!initialTransform && (
-            <Box>
-              <input
-                accept=".json"
-                style={{ display: "none" }}
-                id="transform-upload-file"
-                type="file"
-                onChange={handleFileUpload}
-              />
-              <label htmlFor="transform-upload-file">
-                <Button component="span" startIcon={<UploadFileIcon />} variant="outlined" fullWidth>
-                  Import from JSON File
-                </Button>
-              </label>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                Upload a previously exported transform JSON file to populate this form
-              </Typography>
-            </Box>
+            <>
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                  <ContentCopyIcon fontSize="small" color="action" />
+                  <Typography variant="subtitle2" fontWeight="medium">
+                    Copy from Existing Transform (Optional)
+                  </Typography>
+                </Box>
+                <Stack spacing={2}>
+                  <Autocomplete
+                    options={datasets}
+                    getOptionLabel={(option) => option.name || option.id}
+                    value={datasets.find((d) => d.id === selectedDatasetId) || null}
+                    onChange={(_, newValue) => {
+                      setSelectedDatasetId(newValue?.id || null);
+                      setSelectedTransformId(null); // Reset transform selection when dataset changes
+                    }}
+                    loading={loadingDatasets}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Dataset"
+                        placeholder="Choose a dataset to copy a transform from"
+                        size="small"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {loadingDatasets ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
+
+                  {selectedDatasetId && (
+                    <Autocomplete
+                      options={availableTransforms || []}
+                      getOptionLabel={(option) => option.name}
+                      value={availableTransforms?.find((t) => t.id === selectedTransformId) || null}
+                      onChange={(_, newValue) => handleTransformSelect(newValue?.id || null)}
+                      loading={isLoadingTransforms}
+                      disabled={!selectedDatasetId || isLoadingTransforms}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Select Transform to Copy"
+                          placeholder="Choose a transform"
+                          size="small"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {isLoadingTransforms ? <CircularProgress color="inherit" size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                </Stack>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                  Select a dataset and transform to pre-fill the form below. You can modify the values as needed.
+                </Typography>
+              </Box>
+              <Divider />
+            </>
           )}
 
           <TextField
