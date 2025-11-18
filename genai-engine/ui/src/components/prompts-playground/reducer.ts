@@ -231,11 +231,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 responseFormat: prompt.responseFormat ?? p.responseFormat,
                 // Explicit isDirty in payload takes precedence, otherwise detect backend load, otherwise preserve existing
                 isDirty:
-                  prompt.isDirty !== undefined
-                    ? prompt.isDirty
-                    : prompt.version !== undefined && prompt.messages !== undefined
-                      ? false
-                      : p.isDirty,
+                  prompt.isDirty !== undefined ? prompt.isDirty : prompt.version !== undefined && prompt.messages !== undefined ? false : p.isDirty,
               }
             : p
         ),
@@ -267,9 +263,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === parentId
-            ? { ...prompt, messages: [...prompt.messages, newMessage()], isDirty: prompt.version ? true : false }
-            : prompt
+          prompt.id === parentId ? { ...prompt, messages: [...prompt.messages, newMessage()], isDirty: prompt.version ? true : false } : prompt
         ),
       };
     }
@@ -389,6 +383,75 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       } else {
         // Add or replace keyword array tied to new or existing message id
         newKeywordTracker.set(id, messageKeywords);
+      }
+
+      // Collect all keywords that are currently in use across all messages
+      const inUseKeywords = new Set<string>();
+      newKeywordTracker.forEach((keywords) => {
+        keywords.forEach((keyword) => inUseKeywords.add(keyword));
+      });
+
+      // Build new keywords map starting with existing keywords to preserve all values
+      const newKeywords = new Map<string, string>(state.keywords);
+
+      // Add any new keywords from messages that don't exist yet
+      inUseKeywords.forEach((keyword) => {
+        if (!newKeywords.has(keyword)) {
+          newKeywords.set(keyword, "");
+        }
+      });
+
+      // Remove keywords that are not in use in any message
+      for (const keyword of newKeywords.keys()) {
+        if (!inUseKeywords.has(keyword)) {
+          newKeywords.delete(keyword);
+        }
+      }
+
+      return {
+        ...state,
+        keywords: newKeywords,
+        keywordTracker: newKeywordTracker,
+      };
+    }
+    case "extractPromptVariables": {
+      const { promptId, variables } = action.payload;
+
+      // Find the prompt to get its message IDs
+      const prompt = state.prompts.find((p) => p.id === promptId);
+      if (!prompt) {
+        return state;
+      }
+
+      // Create new keyword tracker without mutating state
+      const newKeywordTracker = new Map<string, Array<string>>(state.keywordTracker);
+
+      // Get all message IDs from this prompt
+      const messageIds = prompt.messages.map((msg) => msg.id);
+
+      // Get all message IDs from all prompts to identify which messages still exist
+      const allCurrentMessageIds = new Set<string>();
+      state.prompts.forEach((p) => {
+        p.messages.forEach((msg) => allCurrentMessageIds.add(msg.id));
+      });
+
+      // Remove keywordTracker entries for message IDs that no longer exist in any prompt
+      // This cleans up entries for deleted messages
+      for (const [messageId] of newKeywordTracker.entries()) {
+        if (!allCurrentMessageIds.has(messageId)) {
+          newKeywordTracker.delete(messageId);
+        }
+      }
+
+      if (variables.length === 0) {
+        // Remove all message IDs from this prompt from keyword tracker
+        messageIds.forEach((id) => newKeywordTracker.delete(id));
+      } else {
+        // Map all variables to all message IDs in this prompt
+        // (Backend doesn't provide per-message mapping, so we associate all variables with all messages)
+        messageIds.forEach((id) => {
+          newKeywordTracker.set(id, variables);
+        });
       }
 
       // Collect all keywords that are currently in use across all messages

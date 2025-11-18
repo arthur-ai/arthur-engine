@@ -1,12 +1,12 @@
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import React, { useRef, useState, useEffect } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
@@ -53,8 +53,8 @@ const VariableInputs = () => {
         .
       </Typography>
       <Typography variant="body2">
-        When you define a variable below, it will automatically replace all instances in your prompt messages. This lets
-        you quickly test different values without editing each message individually.
+        When you define a variable below, it will automatically replace all instances in your prompt messages. This lets you quickly test different
+        values without editing each message individually.
       </Typography>
     </Box>
   );

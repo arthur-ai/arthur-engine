@@ -17,4 +17,3 @@ export const convertMessagesToApiFormat = (messages: MessageType[]): OpenAIMessa
     return apiMessage;
   });
 };
-

@@ -12,7 +12,6 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
-import extractMustacheKeywords from "../utils/mustacheExtractor";
 
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
 
@@ -24,9 +23,7 @@ const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
 const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultContent = "", content, toolCalls, dragHandleProps }) => {
   const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
-  const [toolCallsValue, setToolCallsValue] = useState(
-    toolCalls && toolCalls.length > 0 ? JSON.stringify(toolCalls, null, 2) : ""
-  );
+  const [toolCallsValue, setToolCallsValue] = useState(toolCalls && toolCalls.length > 0 ? JSON.stringify(toolCalls, null, 2) : "");
 
   const handleRoleChange = useCallback(
     (event: SelectChangeEvent) => {
@@ -126,37 +123,6 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
     }
   }, [toolCalls, toolCallsValue]);
 
-  // When the content changes, whether by user or hydration, update the keyword values
-  useEffect(() => {
-    const allKeywords = new Set<string>();
-
-    if (typeof content === "string") {
-      // Extract mustache keywords from string content
-      const keywords = extractMustacheKeywords(content).keywords;
-      keywords.forEach((keyword) => allKeywords.add(keyword));
-    } else if (Array.isArray(content)) {
-      // Extract mustache keywords from each OpenAIMessageItem with string text field
-      content.forEach((item) => {
-        // Only extract keywords if the item has a text field that is a string
-        if (item.text && typeof item.text === "string") {
-          const keywords = extractMustacheKeywords(item.text).keywords;
-          keywords.forEach((keyword) => allKeywords.add(keyword));
-        }
-        // Skip items without text or with non-string text (e.g., image_url items)
-      });
-    }
-
-    const extractedKeywords = Array.from(allKeywords);
-
-    // Always update keywords, even if empty (for cleanup)
-    dispatch({
-      type: "updateKeywords",
-      payload: { id, messageKeywords: extractedKeywords },
-    });
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, content]);
-
   return (
     <div className="p-2">
       <div className="grid grid-cols-2 gap-1">
@@ -192,11 +158,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
       </div>
       <div className="mt-2">
         {toolCalls && toolCalls.length > 0 && (!content || content === "") ? (
-          <HighlightedInputComponent 
-            value={toolCallsValue} 
-            onChange={handleToolCallsChange} 
-            label="Tool Calls (JSON)"
-          />
+          <HighlightedInputComponent value={toolCallsValue} onChange={handleToolCallsChange} label="Tool Calls (JSON)" />
         ) : (
           <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" />
         )}
