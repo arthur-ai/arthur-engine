@@ -68,6 +68,12 @@ interface NunjucksHighlightedTextFieldProps {
   hideTokens?: boolean;
 }
 
+interface SelectionPosition {
+  start: number;
+  end: number;
+  isCollapsed: boolean;
+}
+
 const EditableDiv = styled("div")(() => ({
   width: "100%",
   minHeight: "80px",
@@ -124,6 +130,8 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
 }) => {
   const editableRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isEditingRef = useRef(false);
 
   // Function to find and highlight a specific token in the editor
   const highlightToken = useCallback((tokenToFind: string) => {
@@ -279,23 +287,34 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       .join("");
   }, []);
 
-  // Save and restore cursor position
-  const saveCursorPosition = useCallback(() => {
+  // Save and restore cursor/selection position
+  const saveCursorPosition = useCallback((): SelectionPosition | null => {
     const selection = window.getSelection();
-    if (!selection || !editableRef.current || selection.rangeCount === 0) return 0;
+    if (!selection || !editableRef.current || selection.rangeCount === 0) {
+      return null;
+    }
 
     const range = selection.getRangeAt(0);
-    const preCaretRange = range.cloneRange();
-    preCaretRange.selectNodeContents(editableRef.current);
-    preCaretRange.setEnd(range.endContainer, range.endOffset);
-    return preCaretRange.toString().length;
+    const isCollapsed = range.collapsed;
+
+    // Calculate start position
+    const startRange = range.cloneRange();
+    startRange.selectNodeContents(editableRef.current);
+    startRange.setEnd(range.startContainer, range.startOffset);
+    const start = startRange.toString().length;
+
+    // Calculate end position
+    const endRange = range.cloneRange();
+    endRange.selectNodeContents(editableRef.current);
+    endRange.setEnd(range.endContainer, range.endOffset);
+    const end = endRange.toString().length;
+
+    return { start, end, isCollapsed };
   }, []);
 
-  const restoreCursorPosition = useCallback((position: number) => {
-    if (!editableRef.current || position === 0) return;
-
-    const selection = window.getSelection();
-    if (!selection) return;
+  // Helper function to find text node and offset at a given character position
+  const findTextNodeAtPosition = useCallback((position: number): { node: Text; offset: number } | null => {
+    if (!editableRef.current) return null;
 
     let charCount = 0;
     const nodeStack: Node[] = [editableRef.current];
@@ -305,16 +324,10 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       if (node.nodeType === Node.TEXT_NODE) {
         const textLength = node.textContent?.length || 0;
         if (charCount + textLength >= position) {
-          try {
-            const range = document.createRange();
-            range.setStart(node, Math.min(position - charCount, textLength));
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-          } catch {
-            // Cursor restoration failed, ignore
-          }
-          break;
+          return {
+            node: node as Text,
+            offset: Math.min(position - charCount, textLength),
+          };
         }
         charCount += textLength;
       } else {
@@ -323,11 +336,51 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         }
       }
     }
+    return null;
   }, []);
+
+  const restoreCursorPosition = useCallback(
+    (position: SelectionPosition | null, forceCollapseToStart: boolean = false) => {
+      if (!editableRef.current || !position) return;
+
+      const selection = window.getSelection();
+      if (!selection) return;
+
+      const startResult = findTextNodeAtPosition(position.start);
+      if (!startResult) return;
+
+      try {
+        const range = document.createRange();
+
+        // If collapsed or force collapse, just set start position
+        if (position.isCollapsed || forceCollapseToStart) {
+          range.setStart(startResult.node, startResult.offset);
+          range.collapse(true);
+        } else {
+          // Restore selection range
+          const endResult = findTextNodeAtPosition(position.end);
+          if (endResult) {
+            range.setStart(startResult.node, startResult.offset);
+            range.setEnd(endResult.node, endResult.offset);
+          } else {
+            // Fallback to collapsed if end position not found
+            range.setStart(startResult.node, startResult.offset);
+            range.collapse(true);
+          }
+        }
+
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } catch {
+        // Cursor restoration failed, ignore
+      }
+    },
+    [findTextNodeAtPosition]
+  );
 
   // Update highlighting
   const updateHighlighting = useCallback(() => {
-    if (!editableRef.current || isUpdatingRef.current) return;
+    if (!editableRef.current || isUpdatingRef.current || isEditingRef.current) return;
 
     isUpdatingRef.current = true;
     const cursorPos = saveCursorPosition();
@@ -335,7 +388,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     const newHtml = generateHighlightedHtml(currentText);
 
     editableRef.current.innerHTML = newHtml;
-    restoreCursorPosition(cursorPos);
+    restoreCursorPosition(cursorPos, false);
     isUpdatingRef.current = false;
   }, [generateHighlightedHtml, saveCursorPosition, restoreCursorPosition]);
 
@@ -351,8 +404,17 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
 
       onChange(syntheticEvent);
 
-      // Update highlighting after a short delay to allow the change to propagate
-      setTimeout(() => updateHighlighting(), 500);
+      // Clear any pending highlighting update
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+
+      // Debounce highlighting update with shorter delay for better responsiveness
+      debounceTimeoutRef.current = setTimeout(() => {
+        isEditingRef.current = false;
+        updateHighlighting();
+        debounceTimeoutRef.current = null;
+      }, 150);
     }
   }, [onChange, updateHighlighting, readOnly]);
 
@@ -376,6 +438,11 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Detect deletion keys to prevent highlighting updates during active deletion
+    if (e.key === "Backspace" || e.key === "Delete") {
+      isEditingRef.current = true;
+    }
+
     // Handle Enter key to ensure proper new line insertion
     if (e.key === "Enter") {
       e.preventDefault();
@@ -413,10 +480,19 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
       if (currentText !== value) {
         const cursorPos = saveCursorPosition();
         editableRef.current.innerHTML = generateHighlightedHtml(value);
-        restoreCursorPosition(cursorPos);
+        restoreCursorPosition(cursorPos, false);
       }
     }
   }, [value, generateHighlightedHtml, saveCursorPosition, restoreCursorPosition]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Box sx={{ width: "100%" }}>
