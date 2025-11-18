@@ -2,7 +2,7 @@ import { debounce } from "@mui/material/utils";
 import { useCallback, useRef, useMemo } from "react";
 
 import { MessageType } from "../types";
-import { convertMessagesToApiFormat } from "../utils/messageUtils";
+import { convertMessagesToApiFormat, hasTemplateVariables } from "../utils/messageUtils";
 
 import { useApi } from "@/hooks/useApi";
 
@@ -11,6 +11,7 @@ const DEBOUNCE_TIME = 500;
 /**
  * Hook that extracts variables from prompt messages using the backend API.
  * Debounces API calls to avoid excessive requests.
+ * Optimizes by skipping API calls when no template patterns are detected.
  *
  * @returns Object with extractVariables and debouncedExtractVariables functions
  */
@@ -21,6 +22,11 @@ export const useExtractPromptVariables = () => {
   const extractVariables = useCallback(
     async (messages: MessageType[]): Promise<string[]> => {
       if (!apiClient || messages.length === 0) {
+        return [];
+      }
+
+      // Optimization: Skip API call if no template patterns are detected
+      if (!hasTemplateVariables(messages)) {
         return [];
       }
 
