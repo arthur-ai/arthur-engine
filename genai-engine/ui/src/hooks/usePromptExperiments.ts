@@ -45,11 +45,11 @@ export function usePromptExperiments(
 /**
  * Hook to fetch a single prompt experiment by ID
  */
-export function usePromptExperiment(experimentId: string | undefined) {
+export function usePromptExperiment(experimentId: string | undefined, enabled: boolean = true) {
   const { data, error, isLoading, refetch } = useApiQuery<"getPromptExperimentApiV1PromptExperimentsExperimentIdGet">({
     method: "getPromptExperimentApiV1PromptExperimentsExperimentIdGet",
     args: [experimentId!] as const,
-    enabled: !!experimentId,
+    enabled: !!experimentId && enabled,
     queryOptions: {
       staleTime: 5000,
       refetchOnWindowFocus: true,
@@ -144,6 +144,25 @@ export function useCreateExperiment(taskId: string | undefined) {
     },
     invalidateQueries: [
       { queryKey: ["listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet"] },
+    ],
+  });
+}
+
+/**
+ * Hook to delete a prompt experiment
+ */
+export function useDeleteExperiment() {
+  const api = useApi();
+
+  return useApiMutation<void, string>({
+    mutationFn: async (experimentId: string) => {
+      if (!api) throw new Error("API client not available");
+
+      await api.api.deletePromptExperimentApiV1PromptExperimentsExperimentIdDelete(experimentId);
+    },
+    invalidateQueries: [
+      { queryKey: ["listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet"] },
+      { queryKey: ["getPromptExperimentApiV1PromptExperimentsExperimentIdGet"] },
     ],
   });
 }

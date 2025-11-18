@@ -1,8 +1,9 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button } from "@mui/material";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -11,7 +12,7 @@ import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
-import { usePromptExperiment, useCreateExperiment } from "@/hooks/usePromptExperiments";
+import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
@@ -29,12 +30,17 @@ interface PromptVersionDetails {
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
-  const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId);
-  const createExperiment = useCreateExperiment(taskId);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptVersionDetails | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Disable query when deleting to prevent refetch attempts
+  const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId, !isDeleting);
+  const createExperiment = useCreateExperiment(taskId);
+  const deleteExperiment = useDeleteExperiment();
 
   const handlePromptClick = (promptSummary: PromptVersionDetails) => {
     setSelectedPrompt(promptSummary);
@@ -45,38 +51,42 @@ export const ExperimentDetailView: React.FC = () => {
     setDrawerOpen(false);
   };
 
-  // Refetch data when window gains focus
+  // Refetch data when window gains focus (but not if we're deleting)
   useEffect(() => {
     const handleFocus = () => {
-      refetch();
+      if (!isDeleting) {
+        refetch();
+      }
     };
 
     window.addEventListener("focus", handleFocus);
     return () => {
       window.removeEventListener("focus", handleFocus);
     };
-  }, [refetch]);
+  }, [refetch, isDeleting]);
 
-  // Auto-refresh when experiment is running
+  // Auto-refresh when experiment is running (but not if we're deleting)
   useEffect(() => {
     // Check if experiment is in a running state (queued or running)
     const isExperimentRunning = experiment?.status === "running" || experiment?.status === "queued";
 
-    if (!isExperimentRunning) {
+    if (!isExperimentRunning || isDeleting) {
       return;
     }
 
     // Set up interval to refresh every 1 second
     const intervalId = setInterval(() => {
-      refetch();
-      setRefreshTrigger((prev) => prev + 1);
+      if (!isDeleting) {
+        refetch();
+        setRefreshTrigger((prev) => prev + 1);
+      }
     }, 1000);
 
     // Clean up interval when component unmounts or experiment stops running
     return () => {
       clearInterval(intervalId);
     };
-  }, [experiment?.status, refetch]);
+  }, [experiment?.status, refetch, isDeleting]);
 
   const getStatusColor = (status: PromptExperimentDetail["status"]): "default" | "primary" | "info" | "success" | "error" => {
     switch (status) {
@@ -103,6 +113,30 @@ export const ExperimentDetailView: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+  };
+
+  const handleDeleteClick = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteDialogOpen(false);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!experimentId) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteExperiment.mutateAsync(experimentId);
+      setIsDeleteDialogOpen(false);
+      // Navigate back to experiments list after successful deletion
+      navigate(`/tasks/${taskId}/prompt-experiments`);
+    } catch (err) {
+      console.error("Failed to delete experiment:", err);
+      setIsDeleting(false);
+      // Keep dialog open on error so user can see the error
+    }
   };
 
   const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
@@ -240,9 +274,14 @@ export const ExperimentDetailView: React.FC = () => {
               </Typography>
               <Chip label={getStatusLabel(experiment.status)} size="small" sx={getStatusChipSx(getStatusColor(experiment.status))} />
             </Box>
-            <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCreateFromExisting}>
-              Copy to new experiment
-            </Button>
+            <Box className="flex items-center gap-2">
+              <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCreateFromExisting}>
+                Copy to new experiment
+              </Button>
+              <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleDeleteClick}>
+                Delete
+              </Button>
+            </Box>
           </Box>
           {experiment.description && (
             <Typography variant="body1" className="text-gray-600 mb-4">
@@ -454,6 +493,24 @@ export const ExperimentDetailView: React.FC = () => {
           experimentId={experimentId}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onClose={handleDeleteCancel}>
+        <DialogTitle>Delete Experiment</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the experiment "{experiment?.name}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} disabled={deleteExperiment.isPending}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteExperiment.isPending}>
+            {deleteExperiment.isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
