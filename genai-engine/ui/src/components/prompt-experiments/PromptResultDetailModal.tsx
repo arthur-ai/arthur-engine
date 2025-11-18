@@ -1,14 +1,20 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Box,
   IconButton,
   Typography,
   Chip,
   Modal,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
-import React from "react";
+import React, { useState } from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 
@@ -32,6 +38,7 @@ interface PromptResultDetailModalProps {
   totalCount: number;
   onPrevious?: () => void;
   onNext?: () => void;
+  onViewEvalInputs?: (evalExecution: EvalExecution) => void;
 }
 
 export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = ({
@@ -47,6 +54,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
   totalCount,
   onPrevious,
   onNext,
+  onViewEvalInputs,
 }) => {
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
@@ -230,29 +238,41 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
               <Box className="space-y-2">
                 {evals.map((evalItem, evalIndex) => (
                   <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
-                    <Box className="flex items-center gap-2 mb-2">
-                      <Typography variant="body2" className="font-medium text-gray-900">
-                        {evalItem.eval_name} v{evalItem.eval_version}
-                      </Typography>
-                      {evalItem.eval_results ? (
-                        <>
+                    <Box className="flex items-center justify-between mb-2">
+                      <Box className="flex items-center gap-2">
+                        <Typography variant="body2" className="font-medium text-gray-900">
+                          {evalItem.eval_name} v{evalItem.eval_version}
+                        </Typography>
+                        {evalItem.eval_results ? (
+                          <>
+                            <Chip
+                              label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
+                              size="small"
+                              sx={getEvalChipSx(evalItem.eval_results.score === 1)}
+                            />
+                            <Chip
+                              label={`Cost: $${evalItem.eval_results.cost}`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          </>
+                        ) : (
                           <Chip
-                            label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
+                            label="Pending"
                             size="small"
-                            sx={getEvalChipSx(evalItem.eval_results.score === 1)}
+                            sx={getPendingChipSx()}
                           />
-                          <Chip
-                            label={`Cost: $${evalItem.eval_results.cost}`}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </>
-                      ) : (
-                        <Chip
-                          label="Pending"
+                        )}
+                      </Box>
+                      {onViewEvalInputs && (
+                        <Button
                           size="small"
-                          sx={getPendingChipSx()}
-                        />
+                          variant="outlined"
+                          startIcon={<InfoOutlinedIcon />}
+                          onClick={() => onViewEvalInputs(evalItem)}
+                        >
+                          View Inputs
+                        </Button>
                       )}
                     </Box>
                     {evalItem.eval_results?.explanation && (
@@ -268,5 +288,60 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
         </Box>
       </Box>
     </Modal>
+  );
+};
+
+// Separate component for eval inputs dialog - must be rendered as a sibling to Modal, not nested
+interface EvalInputsDialogProps {
+  open: boolean;
+  onClose: () => void;
+  evalExecution: EvalExecution | null;
+}
+
+export const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClose, evalExecution }) => {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle>
+        <Box className="flex justify-between items-center">
+          <Typography variant="h6">
+            Evaluation Inputs: {evalExecution?.eval_name} v{evalExecution?.eval_version}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            sx={{ color: "text.secondary" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent dividers>
+        {evalExecution && evalExecution.eval_input_variables.length > 0 ? (
+          <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {evalExecution.eval_input_variables.map((variable) => (
+              <VariableTile
+                key={variable.variable_name}
+                variableName={variable.variable_name}
+                value={variable.value}
+              />
+            ))}
+          </Box>
+        ) : (
+          <Typography variant="body2" className="text-gray-600 italic">
+            No input variables for this evaluation.
+          </Typography>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained">
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
