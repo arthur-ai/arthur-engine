@@ -7,7 +7,7 @@ import traceback
 import urllib
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, overload
 
 from arthur_common.models.common_schemas import (
     LLMTokenConsumption,
@@ -271,6 +271,24 @@ async def common_pagination_parameters(
     return PaginationParameters(sort=sort, page_size=page_size, page=page)
 
 
+@overload
+def pad_text(
+    text: str,
+    min_length: int = 20,
+    delim: str = " ",
+    pad_type: str = "whitespace",
+) -> str: ...
+
+
+@overload
+def pad_text(
+    text: list[str],
+    min_length: int = 20,
+    delim: str = " ",
+    pad_type: str = "whitespace",
+) -> list[str]: ...
+
+
 def pad_text(
     text: str | list[str],
     min_length: int = 20,
@@ -284,7 +302,6 @@ def pad_text(
         result: list[str] = []
         for element in text:
             padded = pad_text(element, min_length=min_length, pad_type=pad_type)
-            assert isinstance(padded, str)  # element is str, so result must be str
             result.append(padded)
         return result
     while len(text) < min_length:
