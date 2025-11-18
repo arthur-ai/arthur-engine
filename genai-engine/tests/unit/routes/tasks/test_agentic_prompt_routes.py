@@ -1513,14 +1513,15 @@ def test_render_endpoints(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime", "tag"])
 def test_get_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
     create_agentic_task: TaskResponse,
     create_agentic_prompt: AgenticPrompt,
+    agentic_prompt_repo,
     prompt_version,
 ):
-    """Test getting an agentic prompt with different version formats (latest, version number, datetime)"""
+    """Test getting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     task = create_agentic_task
@@ -1529,6 +1530,16 @@ def test_get_agentic_prompt_by_version_route(
 
     if prompt_version == "datetime":
         prompt_version = prompt.created_at.strftime("%Y-%m-%dT%H:%M:%S")
+    elif prompt_version == "tag":
+        # Add a tag to the prompt version
+        test_tag = "test_tag"
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task.id,
+            prompt.name,
+            "1",
+            test_tag,
+        )
+        prompt_version = test_tag
 
     # Get the prompt using different version formats
     status_code, prompt_response = client.get_agentic_prompt(
@@ -1549,12 +1560,13 @@ def test_get_agentic_prompt_by_version_route(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime", "tag"])
 def test_soft_delete_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
+    agentic_prompt_repo,
     prompt_version,
 ):
-    """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime)"""
+    """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -1580,6 +1592,17 @@ def test_soft_delete_agentic_prompt_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
+
+    # Add a tag if testing tag-based version
+    if prompt_version == "tag":
+        test_tag = "test_tag"
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task.id,
+            prompt_name,
+            "1",
+            test_tag,
+        )
+        prompt_version = test_tag
 
     # Get the prompt using different version formats
     response = client.base_client.delete(

@@ -312,12 +312,13 @@ def test_soft_delete_llm_eval_version_errors(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
 def test_soft_delete_llm_eval_by_version_route(
     client: GenaiEngineTestClientBase,
+    llm_evals_repo,
     eval_version,
 ):
-    """Test soft deleting an llm eval with different version formats (latest, version number, datetime)"""
+    """Test soft deleting an llm eval with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -340,6 +341,16 @@ def test_soft_delete_llm_eval_by_version_route(
 
     if eval_version == "datetime":
         eval_version = save_response.json()["created_at"]
+    elif eval_version == "tag":
+        # Add a tag to the eval version
+        test_tag = "test_tag"
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task.id,
+            eval_name,
+            "1",
+            test_tag,
+        )
+        eval_version = test_tag
 
     # Soft-delete the eval using different version formats
     response = client.base_client.delete(
@@ -518,12 +529,13 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
 def test_get_llm_eval_by_version_route(
     client: GenaiEngineTestClientBase,
+    llm_evals_repo,
     eval_version,
 ):
-    """Test getting an llm eval with different version formats (latest, version number, datetime)"""
+    """Test getting an llm eval with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -545,6 +557,17 @@ def test_get_llm_eval_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
+
+    # Add a tag if testing tag-based version
+    if eval_version == "tag":
+        test_tag = "test_tag"
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task.id,
+            eval_name,
+            "1",
+            test_tag,
+        )
+        eval_version = test_tag
 
     # Get the llm eval using different version formats
     response = client.base_client.get(

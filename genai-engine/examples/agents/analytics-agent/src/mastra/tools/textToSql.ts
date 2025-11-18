@@ -1,6 +1,8 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { AISpanType, TracingContext } from "@mastra/core/ai-tracing";
+import { getArthurApiClient } from "@/mastra/lib/arthur-api-client/client";
+import type { MessageInput } from "@mastra/core/agent/message-list";
 
 export type TextToSqlToolResult = z.infer<typeof TextToSqlToolResultSchema>;
 
@@ -97,7 +99,44 @@ export const textToSqlTool = createTool({
         throw new Error("Text to sql agent not found");
       }
 
-      const messages = [{ role: "user" as const, content: context.userQuery }];
+      // fetch templated prompt from arthur for mastra-agent-text-to-sql prompt
+      // the prompt requires the 'database' and 'investigationTask' variables to be set
+      // investigation task should be the user query
+      // pick a random database from postgres trino snowflake or redshift
+      const databases = ["postgres", "trino", "snowflake", "redshift"];
+      const database = databases[Math.floor(Math.random() * databases.length)];
+      const investigationTask = context.userQuery;
+
+      // Initialize the Arthur API client
+      const api = getArthurApiClient();
+
+      // Fetch and template the prompt with variables
+      const promptResponse =
+        await api.api.renderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPost(
+          "mastra-agent-text-to-sql", // promptName
+          "production", // promptVersion tag
+          process.env.ARTHUR_TASK_ID!, // taskId
+          {
+            completion_request: {
+              strict: true,
+              variables: [
+                { name: "database", value: database },
+                { name: "investigationTask", value: investigationTask },
+                {
+                  name: "golden_queries",
+                  value: JSON.stringify(MOCK_RAG_RESULTS),
+                },
+              ],
+            },
+          }
+        );
+
+      console.log("template prompt response", promptResponse.data.messages);
+
+      // Cast the messages to the expected format for Mastra agent
+      // OpenAIMessageOutput from Arthur's API is compatible with Mastra's MessageInput
+      const messages = promptResponse.data.messages as MessageInput[];
+
       const response = await agent.generate(messages, {
         output: TextToSqlToolResultSchema,
         runtimeContext,
