@@ -20,6 +20,7 @@ import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
+import { track } from "@/services/amplitude";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -155,6 +156,16 @@ const PromptsPlayground = () => {
   };
 
   const handleRunAllPrompts = () => {
+    // Calculate tracking properties
+    const nonRunningPrompts = state.prompts.filter((prompt) => !prompt.running);
+    const promptCount = nonRunningPrompts.length;
+
+    // Track the event
+    track("Run All Prompts", {
+      prompt_count: promptCount,
+    });
+
+    // Run all non-running prompts
     state.prompts.forEach((prompt) => {
       if (!prompt.running) {
         // Only run prompts that are not already running
