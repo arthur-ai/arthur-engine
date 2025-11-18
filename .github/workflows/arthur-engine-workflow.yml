@@ -319,6 +319,8 @@ jobs:
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
             ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+            METICULOUS_RECORDING_TOKEN=${{ secrets.METICULOUS_RECORDING_TOKEN }}
+            METICULOUS_API_TOKEN=${{ secrets.METICULOUS_API_TOKEN }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}

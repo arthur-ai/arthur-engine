@@ -8,10 +8,6 @@ import type { PluginOption } from "vite";
 const injectMeticulousRecordingScript = (mode: string, recordingToken: string | undefined): PluginOption => ({
   name: "inject-meticulous-script",
   transformIndexHtml(html) {
-    if (mode === "production") {
-      return html.replace(/<script\s+id="meticulous"><\/script>/, "");
-    }
-
     if (!recordingToken) {
       console.warn("METICULOUS_RECORDING_TOKEN not set. Meticulous recording will be disabled.");
       return html.replace(/<script\s+id="meticulous"><\/script>/, "");
@@ -23,7 +19,7 @@ const injectMeticulousRecordingScript = (mode: string, recordingToken: string | 
         if (window.location.hostname === "engine.development.arthur.ai") {
           var script = document.createElement('script');
           script.setAttribute('data-recording-token', '${recordingToken}');
-          script.setAttribute('data-is-production-environment', 'false');
+          script.setAttribute('data-is-production-environment', '${mode === "production"}');
           script.src = 'https://snippet.meticulous.ai/v1/meticulous.js';
           document.head.appendChild(script);
         }
