@@ -10,7 +10,7 @@ import {
   PromptType,
   FrontendTool,
 } from "./types";
-import { generateId, arrayUtils } from "./utils";
+import { generateId, arrayUtils, cleanupAndRecalculateKeywords } from "./utils";
 
 import { LLMGetAllMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
@@ -144,9 +144,32 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     case "deletePrompt": {
       const { id } = action.payload;
       const index = state.prompts.findIndex((prompt) => prompt.id === id);
+
+      // Get message IDs from the prompt being deleted before removing it
+      const promptToDelete = state.prompts[index];
+      const messageIdsToRemove = promptToDelete ? promptToDelete.messages.map((msg) => msg.id) : [];
+
+      // Create new state with prompt removed
+      const newPrompts = [...state.prompts.slice(0, index), ...state.prompts.slice(index + 1)];
+
+      // Clean up keywordTracker by removing entries for deleted message IDs and recalculate keywords
+      const { keywordTracker: newKeywordTracker, keywords: newKeywords } = cleanupAndRecalculateKeywords(
+        newPrompts,
+        state.keywordTracker,
+        state.keywords,
+        (tracker) => {
+          // Remove keywordTracker entries for message IDs from the deleted prompt
+          messageIdsToRemove.forEach((messageId) => {
+            tracker.delete(messageId);
+          });
+        }
+      );
+
       return {
         ...state,
-        prompts: [...state.prompts.slice(0, index), ...state.prompts.slice(index + 1)],
+        prompts: newPrompts,
+        keywords: newKeywords,
+        keywordTracker: newKeywordTracker,
       };
     }
     case "duplicatePrompt": {
@@ -423,59 +446,27 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         return state;
       }
 
-      // Create new keyword tracker without mutating state
-      const newKeywordTracker = new Map<string, Array<string>>(state.keywordTracker);
-
       // Get all message IDs from this prompt
       const messageIds = prompt.messages.map((msg) => msg.id);
 
-      // Get all message IDs from all prompts to identify which messages still exist
-      const allCurrentMessageIds = new Set<string>();
-      state.prompts.forEach((p) => {
-        p.messages.forEach((msg) => allCurrentMessageIds.add(msg.id));
-      });
-
-      // Remove keywordTracker entries for message IDs that no longer exist in any prompt
-      // This cleans up entries for deleted messages
-      for (const [messageId] of newKeywordTracker.entries()) {
-        if (!allCurrentMessageIds.has(messageId)) {
-          newKeywordTracker.delete(messageId);
+      // Clean up keywordTracker and update with new variables, then recalculate keywords
+      const { keywordTracker: newKeywordTracker, keywords: newKeywords } = cleanupAndRecalculateKeywords(
+        state.prompts,
+        state.keywordTracker,
+        state.keywords,
+        (tracker) => {
+          if (variables.length === 0) {
+            // Remove all message IDs from this prompt from keyword tracker
+            messageIds.forEach((id) => tracker.delete(id));
+          } else {
+            // Map all variables to all message IDs in this prompt
+            // (Backend doesn't provide per-message mapping, so we associate all variables with all messages)
+            messageIds.forEach((id) => {
+              tracker.set(id, variables);
+            });
+          }
         }
-      }
-
-      if (variables.length === 0) {
-        // Remove all message IDs from this prompt from keyword tracker
-        messageIds.forEach((id) => newKeywordTracker.delete(id));
-      } else {
-        // Map all variables to all message IDs in this prompt
-        // (Backend doesn't provide per-message mapping, so we associate all variables with all messages)
-        messageIds.forEach((id) => {
-          newKeywordTracker.set(id, variables);
-        });
-      }
-
-      // Collect all keywords that are currently in use across all messages
-      const inUseKeywords = new Set<string>();
-      newKeywordTracker.forEach((keywords) => {
-        keywords.forEach((keyword) => inUseKeywords.add(keyword));
-      });
-
-      // Build new keywords map starting with existing keywords to preserve all values
-      const newKeywords = new Map<string, string>(state.keywords);
-
-      // Add any new keywords from messages that don't exist yet
-      inUseKeywords.forEach((keyword) => {
-        if (!newKeywords.has(keyword)) {
-          newKeywords.set(keyword, "");
-        }
-      });
-
-      // Remove keywords that are not in use in any message
-      for (const keyword of newKeywords.keys()) {
-        if (!inUseKeywords.has(keyword)) {
-          newKeywords.delete(keyword);
-        }
-      }
+      );
 
       return {
         ...state,

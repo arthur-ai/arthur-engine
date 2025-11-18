@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
+import cleanupAndRecalculateKeywords from "./cleanUpAndRecalculateKeywords";
 import convertToolChoiceForBackend from "./convertToolChoiceForBackend";
 import extractContext from "./extractContext";
 import extractStatusCode from "./extractStatusCode";
@@ -38,6 +39,7 @@ export {
   toBackendPrompt,
   toCompletionRequest,
   toFrontendPrompt,
+  cleanupAndRecalculateKeywords,
   generateId,
   arrayUtils,
   convertToolChoiceForBackend,
