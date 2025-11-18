@@ -12,3 +12,11 @@ export function getArthurApiClient(): Api {
     },
   });
 }
+
+// Re-export prompt templating utilities
+export { getTemplatedPrompt } from "./prompt-templating";
+export type {
+  PromptVariable,
+  GetTemplatedPromptOptions,
+  TemplatedPromptResult,
+} from "./prompt-templating";

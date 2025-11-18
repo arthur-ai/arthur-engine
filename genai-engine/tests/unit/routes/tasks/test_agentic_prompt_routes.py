@@ -1518,7 +1518,6 @@ def test_get_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
     create_agentic_task: TaskResponse,
     create_agentic_prompt: AgenticPrompt,
-    agentic_prompt_repo,
     prompt_version,
 ):
     """Test getting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
@@ -1531,14 +1530,14 @@ def test_get_agentic_prompt_by_version_route(
     if prompt_version == "datetime":
         prompt_version = prompt.created_at.strftime("%Y-%m-%dT%H:%M:%S")
     elif prompt_version == "tag":
-        # Add a tag to the prompt version
+        # Add a tag to the prompt version using the API
         test_tag = "test_tag"
-        agentic_prompt_repo.add_tag_to_llm_item_version(
-            task.id,
-            prompt.name,
-            "1",
-            test_tag,
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt.name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
         )
+        assert tag_response.status_code == 200
         prompt_version = test_tag
 
     # Get the prompt using different version formats
@@ -1563,7 +1562,6 @@ def test_get_agentic_prompt_by_version_route(
 @pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime", "tag"])
 def test_soft_delete_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
-    agentic_prompt_repo,
     prompt_version,
 ):
     """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
@@ -1596,12 +1594,12 @@ def test_soft_delete_agentic_prompt_by_version_route(
     # Add a tag if testing tag-based version
     if prompt_version == "tag":
         test_tag = "test_tag"
-        agentic_prompt_repo.add_tag_to_llm_item_version(
-            task.id,
-            prompt_name,
-            "1",
-            test_tag,
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
         )
+        assert tag_response.status_code == 200
         prompt_version = test_tag
 
     # Get the prompt using different version formats

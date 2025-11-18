@@ -315,7 +315,6 @@ def test_soft_delete_llm_eval_version_errors(
 @pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
 def test_soft_delete_llm_eval_by_version_route(
     client: GenaiEngineTestClientBase,
-    llm_evals_repo,
     eval_version,
 ):
     """Test soft deleting an llm eval with different version formats (latest, version number, datetime, tag)"""
@@ -342,14 +341,14 @@ def test_soft_delete_llm_eval_by_version_route(
     if eval_version == "datetime":
         eval_version = save_response.json()["created_at"]
     elif eval_version == "tag":
-        # Add a tag to the eval version
+        # Add a tag to the eval version using the API
         test_tag = "test_tag"
-        llm_evals_repo.add_tag_to_llm_item_version(
-            task.id,
-            eval_name,
-            "1",
-            test_tag,
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
         )
+        assert tag_response.status_code == 200
         eval_version = test_tag
 
     # Soft-delete the eval using different version formats
@@ -532,7 +531,6 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
 @pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
 def test_get_llm_eval_by_version_route(
     client: GenaiEngineTestClientBase,
-    llm_evals_repo,
     eval_version,
 ):
     """Test getting an llm eval with different version formats (latest, version number, datetime, tag)"""
@@ -561,12 +559,12 @@ def test_get_llm_eval_by_version_route(
     # Add a tag if testing tag-based version
     if eval_version == "tag":
         test_tag = "test_tag"
-        llm_evals_repo.add_tag_to_llm_item_version(
-            task.id,
-            eval_name,
-            "1",
-            test_tag,
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
         )
+        assert tag_response.status_code == 200
         eval_version = test_tag
 
     # Get the llm eval using different version formats
