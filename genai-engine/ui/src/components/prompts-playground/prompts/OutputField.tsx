@@ -20,8 +20,31 @@ import { OutputFieldProps } from "../types";
 
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   {
-    type: "json_schema",
-    schema: {},
+    "type": "json_schema",
+    "json_schema": {
+      "name": "schema_name_here",
+      "description": "description of the response schema",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "field1": {
+            "type": "string",
+            "description": "Describe what this string should contain"
+          },
+          "field2": {
+            "type": "number",
+            "description": "Describe what this number represents"
+          },
+          "field3": {
+            "type": "boolean",
+            "description": "Explain what true/false means in this context"
+          }
+        },
+        "required": ["field1", "field2"],
+        "additionalProperties": false
+      }
+    }
   },
   null,
   2

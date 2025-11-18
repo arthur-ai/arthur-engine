@@ -1310,7 +1310,7 @@ def test_run_agentic_prompt_strict_mode(
     render_request = {
         "completion_request": {
             "strict": True,
-        }
+        },
     }
     if variables:
         render_request["completion_request"]["variables"] = [
@@ -1376,10 +1376,16 @@ def test_run_agentic_prompt_strict_mode(
         (
             "unsaved",
             [
-                {"role": "system", "content": "You are a helpful assistant named {{assistant_name}}."},
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant named {{assistant_name}}.",
+                },
                 {"role": "user", "content": "Hello {{user_name}}, how can I help you?"},
             ],
-            [{"name": "assistant_name", "value": "Claude"}, {"name": "user_name", "value": "John"}],
+            [
+                {"name": "assistant_name", "value": "Claude"},
+                {"name": "user_name", "value": "John"},
+            ],
             False,
             200,
             None,
@@ -1412,7 +1418,10 @@ def test_run_agentic_prompt_strict_mode(
                 {"role": "system", "content": "You are {{bot_name}}."},
                 {"role": "user", "content": "Hello, I'm {{user_name}}."},
             ],
-            [{"name": "bot_name", "value": "Assistant"}, {"name": "user_name", "value": "Alice"}],
+            [
+                {"name": "bot_name", "value": "Assistant"},
+                {"name": "user_name", "value": "Alice"},
+            ],
             False,
             200,
             None,
@@ -1439,7 +1448,7 @@ def test_render_endpoints(
             "completion_request": {
                 "variables": variables,
                 "strict": strict,
-            }
+            },
         }
 
         response = client.base_client.post(
@@ -1471,7 +1480,7 @@ def test_render_endpoints(
             "completion_request": {
                 "variables": variables,
                 "strict": strict,
-            }
+            },
         }
 
         response = client.base_client.post(
@@ -1962,4 +1971,82 @@ def test_soft_delete_agentic_prompt_deletes_tags_successfully(
     assert (
         response.json()["detail"]
         == f"Tag 'test_tag' not found for task '{task.id}' and item '{prompt_name}'."
+    )
+
+
+@pytest.mark.unit_tests
+def test_malformed_response_format_errors_on_creation(
+    client: GenaiEngineTestClientBase,
+):
+    """Test saving a prompt with a malformed response format errors"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    prompt_name = "test_prompt"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Test"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {},
+    }
+
+    json_schema = {
+        "name": "test_schema",
+        "description": "test schema description",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "test_prop": {"type": "string", "description": "test prop description"},
+            },
+            "required": ["test_prop"],
+            "additionalProperties": False,
+        },
+    }
+
+    # test saving a prompt with a json_schema response format without a json_schema object raises an error
+    prompt_data["config"]["response_format"] = {"type": "json_schema"}
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 400
+    assert (
+        "json_schema object is required when using type='json_schema'"
+        in save_response.json()["detail"]
+    )
+
+    # test saving a prompt with a JSON mode response format errors if json_schema is provided
+    prompt_data["config"]["response_format"] = {
+        "type": "json_object",
+        "json_schema": json_schema,
+    }
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 400
+    assert (
+        f'response format must only be {{"type": "json_object"}} when using type="json_object"'
+        in save_response.json()["detail"]
+    )
+
+    # test saving a prompt with a text mode response format errors if json_schema is provided
+    prompt_data["config"]["response_format"] = {
+        "type": "text",
+        "json_schema": json_schema,
+    }
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 400
+    assert (
+        f'response format must only be {{"type": "text"}} when using type="text"'
+        in save_response.json()["detail"]
     )
