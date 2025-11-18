@@ -30,12 +30,14 @@ from schemas.request_schemas import (
     PromptCompletionRequest,
     SavedPromptRenderingRequest,
     UnsavedPromptRenderingRequest,
+    UnsavedPromptVariablesRequest,
 )
 from schemas.response_schemas import (
     AgenticPromptRunResponse,
     AgenticPromptVersionListResponse,
     LLMGetAllMetadataListResponse,
     RenderedPromptResponse,
+    UnsavedPromptVariablesListResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils.users import permission_checker
@@ -290,11 +292,12 @@ def render_unsaved_agentic_prompt(
         if completion_request.strict:
             chat_service = ChatCompletionService()
             missing_vars = chat_service.find_missing_variables_in_messages(
-                variable_map, messages
+                variable_map,
+                messages,
             )
             if missing_vars:
                 raise ValueError(
-                    f"Missing values for the following variables: {', '.join(sorted(missing_vars))}"
+                    f"Missing values for the following variables: {', '.join(sorted(missing_vars))}",
                 )
 
         # Deep copy messages to avoid mutating the request
@@ -303,7 +306,8 @@ def render_unsaved_agentic_prompt(
         # Replace variables in messages
         chat_service = ChatCompletionService()
         rendered_messages = chat_service.replace_variables(
-            variable_map, rendered_messages
+            variable_map,
+            rendered_messages,
         )
 
         # Return a RenderedPromptResponse with rendered messages
@@ -320,6 +324,52 @@ def render_unsaved_agentic_prompt(
     except jinja2.exceptions.UndefinedError as e:
         # Handle missing variable errors
         error_msg = f"Template rendering error: {str(e)}"
+        raise HTTPException(status_code=400, detail=error_msg)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.post(
+    "/prompt_variables",
+    summary="Gets the list of variables needed from an unsaved prompt's messages",
+    description="Gets the list of variables needed from an unsaved prompt's messages",
+    response_model=UnsavedPromptVariablesListResponse,
+    response_model_exclude_none=True,
+    tags=["Prompts"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_unsaved_prompt_variables_list(
+    unsaved_messages: UnsavedPromptVariablesRequest,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> UnsavedPromptVariablesListResponse:
+    """
+    Gets the list of variables needed from an unsaved prompt's messages.
+
+    Args:
+        unsaved_messages: UnsavedPromptVariablesRequest containing messages
+        current_user: User
+
+    Returns:
+        UnsavedPromptVariablesListResponse - the list of variables needed to run an unsaved prompt
+    """
+    try:
+        # Get the list of variables needed from the messages
+        chat_service = ChatCompletionService()
+        variables = chat_service.find_missing_variables_in_messages(
+            variable_map={},
+            messages=unsaved_messages.messages,
+        )
+
+        # Return the list of variables needed to run an unsaved prompt
+        return UnsavedPromptVariablesListResponse(
+            variables=list(variables),
+        )
+    except jinja2.exceptions.TemplateSyntaxError as e:
+        # Handle Jinja2 template syntax errors
+        error_msg = f"Invalid Jinja2 template syntax in prompt messages: {str(e)}"
         raise HTTPException(status_code=400, detail=error_msg)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
