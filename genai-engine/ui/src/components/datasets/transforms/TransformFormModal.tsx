@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
   Dialog,
   DialogTitle,
@@ -13,12 +15,14 @@ import {
   IconButton,
   Autocomplete,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { useState, useEffect } from "react";
+
 import { TransformFormModalProps } from "./types";
+
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
+
 
 interface ColumnMapping {
   column_name: string;
@@ -41,6 +45,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     { column_name: "", span_name: "", attribute_path: "", fallback: "" },
   ]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const { latestVersion } = useDatasetLatestVersion(datasetId);
   const datasetColumns = latestVersion?.column_names || [];
@@ -132,7 +137,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       const transformDef = buildTransformDefinition();
       const defErrors = validateTransform(transformDef);
       validationErrors.push(...defErrors);
-    } catch (err) {
+    } catch {
       validationErrors.push("Invalid transform definition");
     }
 
@@ -157,6 +162,66 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportError(null);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importedData = JSON.parse(content);
+
+        // Validate the imported data structure
+        if (!importedData.name || typeof importedData.name !== "string") {
+          setImportError("Invalid JSON: 'name' field is required and must be a string");
+          return;
+        }
+
+        if (!importedData.definition || !importedData.definition.columns || !Array.isArray(importedData.definition.columns)) {
+          setImportError("Invalid JSON: 'definition.columns' must be an array");
+          return;
+        }
+
+        // Validate each column
+        for (const col of importedData.definition.columns) {
+          if (!col.column_name || !col.span_name || !col.attribute_path) {
+            setImportError("Invalid JSON: Each column must have column_name, span_name, and attribute_path");
+            return;
+          }
+        }
+
+        // Populate the form with imported data
+        setName(importedData.name);
+        setDescription(importedData.description || "");
+        setColumns(
+          importedData.definition.columns.map(
+            (col: { column_name: string; span_name: string; attribute_path: string; fallback?: unknown }) => ({
+              column_name: col.column_name,
+              span_name: col.span_name,
+              attribute_path: col.attribute_path,
+              fallback: col.fallback !== undefined && col.fallback !== null ? JSON.stringify(col.fallback) : "",
+            })
+          )
+        );
+        setErrors([]);
+      } catch (err) {
+        setImportError(err instanceof Error ? err.message : "Failed to parse JSON file");
+      }
+    };
+
+    reader.onerror = () => {
+      setImportError("Failed to read file");
+    };
+
+    reader.readAsText(file);
+
+    // Reset the input so the same file can be uploaded again
+    event.target.value = "";
+  };
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>{initialTransform ? "Edit Transform" : "Create Transform"}</DialogTitle>
@@ -170,6 +235,32 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                 ))}
               </ul>
             </Alert>
+          )}
+
+          {importError && (
+            <Alert severity="error" onClose={() => setImportError(null)}>
+              {importError}
+            </Alert>
+          )}
+
+          {!initialTransform && (
+            <Box>
+              <input
+                accept=".json"
+                style={{ display: "none" }}
+                id="transform-upload-file"
+                type="file"
+                onChange={handleFileUpload}
+              />
+              <label htmlFor="transform-upload-file">
+                <Button component="span" startIcon={<UploadFileIcon />} variant="outlined" fullWidth>
+                  Import from JSON File
+                </Button>
+              </label>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                Upload a previously exported transform JSON file to populate this form
+              </Typography>
+            </Box>
           )}
 
           <TextField
