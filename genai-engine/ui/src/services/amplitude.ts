@@ -36,6 +36,10 @@ export function track(eventName: string, eventProperties?: Record<string, unknow
   }
 
   try {
+    // Log in development mode only
+    if (import.meta.env.DEV) {
+      console.log("[Amplitude] Track:", eventName, eventProperties);
+    }
     amplitude.track(eventName, eventProperties);
   } catch (error) {
     console.error("Failed to track Amplitude event:", error);
@@ -55,6 +59,11 @@ export function identify(userId?: string, userProperties?: Record<string, unknow
   }
 
   try {
+    // Log in development mode only
+    if (import.meta.env.DEV) {
+      console.log("[Amplitude] Identify:", userId, userProperties);
+    }
+
     if (userId) {
       amplitude.setUserId(userId);
     }
@@ -86,6 +95,10 @@ export function clearUser(): void {
   }
 
   try {
+    // Log in development mode only
+    if (import.meta.env.DEV) {
+      console.log("[Amplitude] Clear User");
+    }
     amplitude.setUserId(undefined);
   } catch (error) {
     console.error("Failed to clear user in Amplitude:", error);
