@@ -720,3 +720,9 @@ class RenderedPromptResponse(BaseModel):
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
+
+
+class UnsavedPromptVariablesListResponse(BaseModel):
+    variables: List[str] = Field(
+        description="List of variables needed to run an unsaved prompt",
+    )

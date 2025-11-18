@@ -1571,8 +1571,6 @@ def test_soft_delete_agentic_prompt_by_version_route(
             "max_tokens": 100,
         },
     }
-    if prompt_version == "datetime":
-        prompt_version = datetime.now().isoformat()
 
     save_response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
@@ -1580,6 +1578,9 @@ def test_soft_delete_agentic_prompt_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
+
+    if prompt_version == "datetime":
+        prompt_version = save_response.json()["created_at"]
 
     # Get the prompt using different version formats
     response = client.base_client.delete(
@@ -2049,4 +2050,155 @@ def test_malformed_response_format_errors_on_creation(
     assert (
         f'response format must only be {{"type": "text"}} when using type="text"'
         in save_response.json()["detail"]
+    )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "messages, expected_variables",
+    [
+        ([{"role": "user", "content": "Hello, world!"}], []),
+        ([{"role": "user", "content": "Hello, {{name}}!"}], ["name"]),
+        (
+            [
+                {
+                    "role": "user",
+                    "content": "Hello, {{name}}! What is the capital of {{country}}?",
+                },
+            ],
+            ["name", "country"],
+        ),
+        (
+            [
+                {"role": "system", "content": "Hello, {{name}}!"},
+                {"role": "user", "content": "What is the capital of {{country}}?"},
+            ],
+            ["name", "country"],
+        ),
+        (
+            [
+                {"role": "system", "content": "Hello, {name}!"},
+                {"role": "user", "content": "What is the capital of {{country}}?"},
+            ],
+            ["country"],
+        ),
+        (
+            [
+                {
+                    "role": "user",
+                    "content": "{% if product %}Interested in {{product}}{% endif %}",
+                },
+            ],
+            ["product"],
+        ),
+        (
+            [
+                {
+                    "role": "system",
+                    "content": [{"type": "text", "text": "Hello, {{name}}!"}],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "What is the capital of {{country}}?"},
+                    ],
+                },
+            ],
+            ["name", "country"],
+        ),
+        (
+            [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": "{{image_url}}"}},
+                    ],
+                },
+            ],
+            [],
+        ),
+        (
+            [
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_audio",
+                            "input_audio": {
+                                "data": "{{audio_data}}",
+                                "format": "{{audio_format}}",
+                            },
+                        },
+                    ],
+                },
+            ],
+            [],
+        ),
+    ],
+)
+def test_get_unsaved_prompt_variables_list_route_success(
+    client: GenaiEngineTestClientBase,
+    messages: list,
+    expected_variables: list,
+):
+    """Test getting the list of variables needed from an unsaved prompt's messages route successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    message_request = {
+        "messages": messages,
+    }
+
+    response = client.base_client.post(
+        "/api/v1/prompt_variables",
+        json=message_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    response_variables = response.json()["variables"].sort()
+    expected_variables = expected_variables.sort()
+
+    assert response_variables == expected_variables
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "messages",
+    [
+        ([{"role": "user", "content": "Hello {{ user"}]),
+        ([{"role": "user", "content": "{% if user %}Hi {{ user }}"}]),
+        ([{"role": "user", "content": "Hello {% user }}"}]),
+        ([{"role": "user", "content": "{{ for item in list }}"}]),
+        ([{"role": "user", "content": "{{ name | }}"}]),
+        ([{"role": "user", "content": "{{ 1 + }}"}]),
+    ],
+)
+def test_get_unsaved_prompt_variables_list_jinja_syntax_errors(
+    client: GenaiEngineTestClientBase,
+    messages: list,
+):
+    """
+    Test getting the list of variables needed from an unsaved prompt's messages
+    raises jinja2 template syntax errors for malformed messages
+    """
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    message_request = {
+        "messages": messages,
+    }
+
+    response = client.base_client.post(
+        "/api/v1/prompt_variables",
+        json=message_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert (
+        "Invalid Jinja2 template syntax in prompt messages" in response.json()["detail"]
     )
