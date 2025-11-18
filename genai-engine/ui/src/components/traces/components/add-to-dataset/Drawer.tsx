@@ -10,15 +10,15 @@ import { AddColumnDialog } from "./AddColumnDialog";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
 import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
+import { useTransforms } from "./hooks/useTransforms";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
-import { useTransforms } from "./hooks/useTransforms";
 import { executeTransform } from "./utils/transformExecutor";
 
 import { Drawer } from "@/components/common/Drawer";
+import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
-import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDatasets } from "@/hooks/useDatasets";
 import useSnackbar from "@/hooks/useSnackbar";
@@ -118,12 +118,23 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
   const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
 
   const { latestVersion } = useDatasetLatestVersion(selectedDataset?.id);
-  // Use pending columns if available, otherwise use columns from latest version
-  const datasetColumns = selectedDataset?.id
+  const transformsQuery = useTransforms(selectedDataset?.id);
+
+  // Get the selected transform ID from form state
+  const selectedTransformId = useStore(form.store, (state) => state.values.transform);
+
+  // Get columns from the selected transform
+  const selectedTransform = transformsQuery.data?.find((t) => t.id === selectedTransformId);
+  const transformColumns = selectedTransform?.definition.columns.map((col) => col.column_name) || [];
+
+  // Merge dataset columns with transform columns to get union of all columns
+  const datasetOnlyColumns = selectedDataset?.id
     ? (pendingColumns[selectedDataset.id] || latestVersion?.column_names || [])
     : [];
 
-  const transformsQuery = useTransforms(selectedDataset?.id);
+  // Create union of dataset columns and transform columns
+  const allColumnNames = new Set([...datasetOnlyColumns, ...transformColumns]);
+  const datasetColumns = Array.from(allColumnNames);
 
   const createDatasetMutation = useCreateDatasetMutation(task?.id, (newDataset) => {
     datasetsQuery.refetch();

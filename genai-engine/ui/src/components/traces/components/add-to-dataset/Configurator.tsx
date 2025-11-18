@@ -1,22 +1,23 @@
-import { Alert, Autocomplete, Badge, Button, Skeleton, TextField, Tooltip, Typography } from "@mui/material";
-import { Stack } from "@mui/material";
-import { useField } from "@tanstack/react-form";
-import { useEffect, useRef } from "react";
+import AddIcon from "@mui/icons-material/Add";
 import CircleNotificationsOutlinedIcon from "@mui/icons-material/CircleNotificationsOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import AddIcon from "@mui/icons-material/Add";
+import { Alert, Autocomplete, Badge, Button, Skeleton, TextField, Tooltip, Typography } from "@mui/material";
+import { Stack } from "@mui/material";
+import { Link } from "@mui/material";
+import { useField } from "@tanstack/react-form";
+import { useEffect, useRef } from "react";
+import { Link as RouterLink } from "react-router-dom";
 
 import { withForm } from "../filtering/hooks/form";
 
 import { addToDatasetFormOptions } from "./form/shared";
 import { SpanSelector } from "./SpanSelector";
 
-import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
-import { DatasetResponse, NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
-import { Link as RouterLink } from "react-router-dom";
-import { Link } from "@mui/material";
+import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useTask } from "@/hooks/useTask";
+import { DatasetResponse, NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
+
 
 export const Configurator = withForm({
   ...addToDatasetFormOptions,
@@ -33,14 +34,21 @@ export const Configurator = withForm({
     useEffect(() => {
       if (!version) return;
 
-      form.setFieldValue(
-        "columns",
-        version.column_names.map((columnName) => ({
+      // Get existing columns (from transform or previous state)
+      const existingColumns = form.state.values.columns || [];
+      const existingColumnNames = new Set(existingColumns.map((col) => col.name));
+
+      // Add dataset columns that don't exist yet
+      const newColumns = version.column_names
+        .filter((columnName) => !existingColumnNames.has(columnName))
+        .map((columnName) => ({
           name: columnName,
           value: "",
           path: "",
-        }))
-      );
+        }));
+
+      // Merge existing columns with new dataset columns
+      form.setFieldValue("columns", [...existingColumns, ...newColumns]);
     }, [form, version]);
 
     const field = useField({ form, name: "columns" as const });

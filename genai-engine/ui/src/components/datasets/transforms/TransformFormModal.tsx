@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteIcon from "@mui/icons-material/Delete";
 import {
   Dialog,
   DialogTitle,
@@ -12,13 +14,20 @@ import {
   Box,
   IconButton,
   Autocomplete,
+  Divider,
+  CircularProgress,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { useState, useEffect } from "react";
+
+import { useTransforms } from "./hooks/useTransforms";
 import { TransformFormModalProps } from "./types";
+
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
+import { useApi } from "@/hooks/useApi";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
+import type { DatasetResponse } from "@/lib/api-client/api-client";
+
 
 interface ColumnMapping {
   column_name: string;
@@ -42,8 +51,38 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
   ]);
   const [errors, setErrors] = useState<string[]>([]);
 
+  // State for copying from existing transform
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
+  const [selectedTransformId, setSelectedTransformId] = useState<string | null>(null);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [loadingDatasets, setLoadingDatasets] = useState(false);
+
+  const api = useApi();
   const { latestVersion } = useDatasetLatestVersion(datasetId);
   const datasetColumns = latestVersion?.column_names || [];
+
+  // Fetch transforms for the selected dataset
+  const { data: availableTransforms, isLoading: isLoadingTransforms } = useTransforms(selectedDatasetId || undefined);
+
+  // Fetch datasets when modal opens (only for create mode, not edit)
+  useEffect(() => {
+    if (open && !initialTransform && api) {
+      const fetchDatasets = async () => {
+        try {
+          setLoadingDatasets(true);
+          const response = await api.api.getDatasetsApiV2DatasetsSearchGet({
+            page_size: 100,
+          });
+          setDatasets(response.data.datasets || []);
+        } catch (error) {
+          console.error("Failed to load datasets:", error);
+        } finally {
+          setLoadingDatasets(false);
+        }
+      };
+      fetchDatasets();
+    }
+  }, [open, initialTransform, api]);
 
   useEffect(() => {
     if (initialTransform) {
@@ -61,6 +100,8 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       setName("");
       setDescription("");
       setColumns([{ column_name: "", span_name: "", attribute_path: "", fallback: "" }]);
+      setSelectedDatasetId(null);
+      setSelectedTransformId(null);
     }
     setErrors([]);
   }, [initialTransform, open]);
@@ -132,7 +173,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       const transformDef = buildTransformDefinition();
       const defErrors = validateTransform(transformDef);
       validationErrors.push(...defErrors);
-    } catch (err) {
+    } catch {
       validationErrors.push("Invalid transform definition");
     }
 
@@ -157,6 +198,27 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     }
   };
 
+  const handleTransformSelect = (transformId: string | null) => {
+    setSelectedTransformId(transformId);
+    if (!transformId || !availableTransforms) return;
+
+    const selectedTransform = availableTransforms.find((t) => t.id === transformId);
+    if (selectedTransform) {
+      // Populate form fields with the selected transform's data
+      setName(selectedTransform.name);
+      setDescription(selectedTransform.description || "");
+      setColumns(
+        selectedTransform.definition.columns.map((col) => ({
+          column_name: col.column_name,
+          span_name: col.span_name,
+          attribute_path: col.attribute_path,
+          fallback: col.fallback !== undefined && col.fallback !== null ? JSON.stringify(col.fallback) : "",
+        }))
+      );
+      setErrors([]);
+    }
+  };
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>{initialTransform ? "Edit Transform" : "Create Transform"}</DialogTitle>
@@ -170,6 +232,80 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                 ))}
               </ul>
             </Alert>
+          )}
+
+          {!initialTransform && (
+            <>
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                  <ContentCopyIcon fontSize="small" color="action" />
+                  <Typography variant="subtitle2" fontWeight="medium">
+                    Copy from Existing Transform (Optional)
+                  </Typography>
+                </Box>
+                <Stack spacing={2}>
+                  <Autocomplete
+                    options={datasets}
+                    getOptionLabel={(option) => option.name || option.id}
+                    value={datasets.find((d) => d.id === selectedDatasetId) || null}
+                    onChange={(_, newValue) => {
+                      setSelectedDatasetId(newValue?.id || null);
+                      setSelectedTransformId(null); // Reset transform selection when dataset changes
+                    }}
+                    loading={loadingDatasets}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Dataset"
+                        placeholder="Choose a dataset to copy a transform from"
+                        size="small"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {loadingDatasets ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
+
+                  {selectedDatasetId && (
+                    <Autocomplete
+                      options={availableTransforms || []}
+                      getOptionLabel={(option) => option.name}
+                      value={availableTransforms?.find((t) => t.id === selectedTransformId) || null}
+                      onChange={(_, newValue) => handleTransformSelect(newValue?.id || null)}
+                      loading={isLoadingTransforms}
+                      disabled={!selectedDatasetId || isLoadingTransforms}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Select Transform to Copy"
+                          placeholder="Choose a transform"
+                          size="small"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {isLoadingTransforms ? <CircularProgress color="inherit" size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                </Stack>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                  Select a dataset and transform to pre-fill the form below. You can modify the values as needed.
+                </Typography>
+              </Box>
+              <Divider />
+            </>
           )}
 
           <TextField
