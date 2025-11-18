@@ -346,21 +346,39 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                 getOptionDisabled={(option) => option === "__NO_OPTIONS__"}
                 renderOption={(props, option) => {
                   const { key, ...otherProps } = props;
-                  const isTemplate = evaluatorTemplates.some((t) => t.name === option);
+                  const template = evaluatorTemplates.find((t) => t.name === option);
                   return (
-                    <li key={key} {...otherProps} style={option === "__NO_OPTIONS__" ? { cursor: "default" } : undefined}>
+                    <li key={key} {...otherProps} style={option === "__NO_OPTIONS__" ? { cursor: "default", padding: "6px 16px" } : { padding: "6px 16px" }}>
                       {option === "__NO_OPTIONS__" ? "No matching evals or templates" : (
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <span>{option}</span>
-                          {isTemplate && (
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, flex: 1 }}>
+                            <span>{option}</span>
+                            {template?.attribution && (
+                              <Typography
+                                variant="caption"
+                                component="span"
+                                sx={{
+                                  color: "rgba(0, 0, 0, 0.3)",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 400,
+                                  fontStyle: "italic",
+                                  display: "inline"
+                                }}
+                              >
+                                {template.attribution}
+                              </Typography>
+                            )}
+                          </Box>
+                          {template && (
                             <Chip
-                              label="Built-in"
+                              label="Template"
                               size="small"
                               color="primary"
                               sx={{
                                 height: 20,
                                 fontSize: "0.7rem",
                                 fontWeight: 500,
+                                ml: 1,
                               }}
                             />
                           )}
