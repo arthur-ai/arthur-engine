@@ -350,34 +350,37 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   return (
                     <li key={key} {...otherProps} style={option === "__NO_OPTIONS__" ? { cursor: "default", padding: "6px 16px" } : { padding: "6px 16px" }}>
                       {option === "__NO_OPTIONS__" ? "No matching evals or templates" : (
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, flex: 1 }}>
                             <span>{option}</span>
-                            {template && (
-                              <Chip
-                                label="Built-in"
-                                size="small"
-                                color="primary"
+                            {template?.attribution && (
+                              <Typography
+                                variant="caption"
+                                component="span"
                                 sx={{
-                                  height: 20,
-                                  fontSize: "0.7rem",
-                                  fontWeight: 500,
+                                  color: "rgba(0, 0, 0, 0.3)",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 400,
+                                  fontStyle: "italic",
+                                  display: "inline"
                                 }}
-                              />
+                              >
+                                {template.attribution}
+                              </Typography>
                             )}
                           </Box>
                           {template && (
-                            <Typography
-                              variant="caption"
+                            <Chip
+                              label="Template"
+                              size="small"
+                              color="primary"
                               sx={{
-                                color: "rgba(0, 0, 0, 0.3)",
-                                fontSize: "0.75rem",
-                                fontWeight: 400,
-                                fontStyle: "italic"
+                                height: 20,
+                                fontSize: "0.7rem",
+                                fontWeight: 500,
+                                ml: 1,
                               }}
-                            >
-                              {template.attribution}
-                            </Typography>
+                            />
                           )}
                         </Box>
                       )}
