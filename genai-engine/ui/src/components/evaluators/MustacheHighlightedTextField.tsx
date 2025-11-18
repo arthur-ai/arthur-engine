@@ -17,7 +17,58 @@ interface NunjucksHighlightedTextFieldProps {
   hideTokens?: boolean;
 }
 
-const EditableDiv = styled("div")(({ theme }) => ({
+// Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
+const JINJA_2_KEYWORDS = new Set([
+  "if",
+  "elif",
+  "else",
+  "endif",
+  "for",
+  "endfor",
+  "in",
+  "block",
+  "endblock",
+  "extends",
+  "include",
+  "import",
+  "from",
+  "macro",
+  "endmacro",
+  "call",
+  "endcall",
+  "filter",
+  "endfilter",
+  "set",
+  "endset",
+  "raw",
+  "endraw",
+  "with",
+  "endwith",
+  "autoescape",
+  "endautoescape",
+  "trans",
+  "endtrans",
+  "pluralize",
+  "do",
+  "break",
+  "continue",
+  "scoped",
+  "ignore",
+  "missing",
+  "and",
+  "or",
+  "not",
+  "is",
+  "in",
+  "true",
+  "false",
+  "none",
+  "True",
+  "False",
+  "None",
+]);
+
+const EditableDiv = styled("div")(() => ({
   width: "100%",
   minHeight: "80px",
   maxHeight: "250px",
@@ -68,11 +119,6 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   onChange,
   placeholder,
   disabled = false,
-  required = false,
-  multiline = true,
-  minRows = 4,
-  maxRows = 10,
-  size = "small",
   readOnly = false,
   hideTokens = false,
 }) => {
@@ -123,14 +169,14 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
               const currentRange = selection.getRangeAt(0);
 
               // Create a temporary element to scroll to
-              const tempElement = document.createElement('span');
+              const tempElement = document.createElement("span");
               currentRange.insertNode(tempElement);
 
               // Scroll the element into the center of the view
               tempElement.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-                inline: 'nearest'
+                behavior: "smooth",
+                block: "center",
+                inline: "nearest",
               });
 
               // Clean up the temp element and restore selection
@@ -171,90 +217,88 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     }
   }, []);
 
+  // Extract variable names from Jinja2/Nunjucks statement content
+  const extractVariablesFromJinja2Statement = useCallback((content: string): string[] => {
+    const variables: string[] = [];
+    const trimmed = content.trim();
+
+    // Skip if empty or just keywords
+    if (!trimmed) return variables;
+
+    // Split by operators and whitespace to get tokens
+    const tokens = trimmed.split(/[\s.|\-()[\]+,*/%=!<>&|]+/).filter((t) => t.length > 0);
+
+    for (const token of tokens) {
+      // Skip keywords
+      if (JINJA_2_KEYWORDS.has(token)) {
+        continue;
+      }
+
+      // Skip string literals (quoted strings)
+      if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) {
+        continue;
+      }
+
+      // Skip numeric literals
+      if (/^-?\d+(\.\d+)?$/.test(token)) {
+        continue;
+      }
+
+      // This looks like a variable name
+      // Valid variable names: start with letter or underscore, followed by letters, digits, underscores
+      if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(token)) {
+        variables.push(token);
+      }
+    }
+
+    return variables;
+  }, []);
+
   // Extract all Nunjucks variables and statements from the text
   const nunjucksTokens = useMemo(() => {
     if (!value) return { variables: [], statements: [] };
 
-    // Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
-    const jinja2Keywords = new Set([
-      "if",
-      "elif",
-      "else",
-      "endif",
-      "for",
-      "endfor",
-      "in",
-      "block",
-      "endblock",
-      "extends",
-      "include",
-      "import",
-      "from",
-      "macro",
-      "endmacro",
-      "call",
-      "endcall",
-      "filter",
-      "endfilter",
-      "set",
-      "endset",
-      "raw",
-      "endraw",
-      "with",
-      "endwith",
-      "autoescape",
-      "endautoescape",
-      "trans",
-      "endtrans",
-      "pluralize",
-      "do",
-      "break",
-      "continue",
-      "scoped",
-      "ignore",
-      "missing",
-      "and",
-      "or",
-      "not",
-      "is",
-      "in",
-      "true",
-      "false",
-      "none",
-      "True",
-      "False",
-      "None",
-    ]);
+    const allVariableNames = new Set<string>();
 
     // Match variables {{ variable }}
     const variableMatches = value.match(/\{\{[^}]+\}\}/g);
-    const allVariables = variableMatches ? Array.from(new Set(variableMatches)) : [];
+    if (variableMatches) {
+      variableMatches.forEach((varToken) => {
+        // Extract the content between {{ and }}
+        const content = varToken.replace(/^\{\{\s*|\s*\}\}$/g, "").trim();
 
-    // Filter out variables that are just Jinja2 keywords
-    const variables = allVariables.filter((varToken) => {
-      // Extract the content between {{ and }}
-      const content = varToken.replace(/^\{\{\s*|\s*\}\}$/g, "").trim();
+        // Split by spaces, dots, pipes, and other operators to get individual tokens
+        const tokens = content.split(/[\s.|\-()[\]+,*/%=!<>&|]+/).filter((t) => t.length > 0);
 
-      // Split by spaces, dots, pipes, and other operators to get individual tokens
-      const tokens = content.split(/[\s\.\|\(\)\[\]\,\+\-\*\/\%\=\!\<\>\&\|]+/).filter((t) => t.length > 0);
+        // Check if the first token (main identifier) is a keyword
+        const mainToken = tokens[0];
 
-      // Check if the first token (main identifier) is a keyword
-      const mainToken = tokens[0];
-
-      // If it's a pure keyword with no other context, filter it out
-      if (tokens.length === 1 && jinja2Keywords.has(mainToken)) {
-        return false;
-      }
-
-      return true;
-    });
+        // If it's a pure keyword with no other context, filter it out
+        if (!(tokens.length === 1 && JINJA_2_KEYWORDS.has(mainToken))) {
+          // Add the full variable expression as a variable
+          allVariableNames.add(varToken);
+        }
+      });
+    }
 
     // Match control flow statements {% if %}, {% for %}, etc.
     const statementMatches = value.match(/\{%[^%]+%\}/g);
     const statements = statementMatches ? Array.from(new Set(statementMatches)) : [];
 
+    // Extract variable names from Jinja2 statements
+    statementMatches?.forEach((statement) => {
+      const content = statement.replace(/^\{%\s*|\s*%\}$/g, "");
+      const variables = extractVariablesFromJinja2Statement(content);
+      variables.forEach((varName) => {
+        // Add as {{ variable }} format for consistency
+        allVariableNames.add(`{{ ${varName} }}`);
+      });
+    });
+
+    const variables = Array.from(allVariableNames);
+
     return { variables, statements };
-  }, [value]);
+  }, [value, extractVariablesFromJinja2Statement]);
 
   // Generate highlighted HTML
   const generateHighlightedHtml = useCallback((text: string) => {
@@ -316,7 +360,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
             range.collapse(true);
             selection.removeAllRanges();
             selection.addRange(range);
-          } catch (e) {
+          } catch {
             // Cursor restoration failed, ignore
           }
           break;
@@ -366,7 +410,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     const text = e.clipboardData.getData("text/plain");
 
     // Split text by newlines and insert using insertLineBreak for proper handling
-    const lines = text.split('\n');
+    const lines = text.split("\n");
 
     lines.forEach((line, index) => {
       if (index > 0) {
@@ -393,12 +437,12 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
           const range = selection.getRangeAt(0);
 
           // Insert a temporary span at cursor position to measure and scroll
-          const tempSpan = document.createElement('span');
-          tempSpan.innerHTML = '&nbsp;'; // Use non-breaking space so it has height
+          const tempSpan = document.createElement("span");
+          tempSpan.innerHTML = "&nbsp;"; // Use non-breaking space so it has height
           range.insertNode(tempSpan);
 
           // Scroll the temp span into view
-          tempSpan.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+          tempSpan.scrollIntoView({ behavior: "auto", block: "nearest" });
 
           // Remove the temp span and restore cursor position
           const parent = tempSpan.parentNode;
