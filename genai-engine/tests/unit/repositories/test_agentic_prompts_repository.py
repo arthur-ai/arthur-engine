@@ -2068,3 +2068,64 @@ def test_remove_tag_from_agentic_prompt_version_dne_error(
 
     # Cleanup
     agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
+
+
+@pytest.mark.unit_tests
+def test_malformed_response_format_errors_on_creation(agentic_prompt_repo):
+    """Test creating a CreateAgenticPromptRequest object with a malformed response format errors"""
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    """Test saving a prompt with a malformed response format errors"""
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Test"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {},
+    }
+
+    json_schema = {
+        "name": "test_schema",
+        "description": "test schema description",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "test_prop": {"type": "string", "description": "test prop description"},
+            },
+            "required": ["test_prop"],
+            "additionalProperties": False,
+        },
+    }
+
+    # test creating a prompt request with a json_schema response format without a json_schema object raises an error
+    prompt_data["config"]["response_format"] = {"type": "json_schema"}
+    with pytest.raises(ValueError) as exc_info:
+        CreateAgenticPromptRequest(**prompt_data)
+    assert "json_schema object is required when using type='json_schema'" in str(
+        exc_info.value,
+    )
+
+    # test creating a prompt request with a JSON mode response format errors if json_schema is provided
+    prompt_data["config"]["response_format"] = {
+        "type": "json_object",
+        "json_schema": json_schema,
+    }
+    with pytest.raises(ValueError) as exc_info:
+        CreateAgenticPromptRequest(**prompt_data)
+    assert (
+        f'response format must only be {{"type": "json_object"}} when using type="json_object"'
+        in str(exc_info.value)
+    )
+
+    # test creating a prompt request with a text mode response format errors if json_schema is provided
+    prompt_data["config"]["response_format"] = {
+        "type": "text",
+        "json_schema": json_schema,
+    }
+    with pytest.raises(ValueError) as exc_info:
+        prompt_request = CreateAgenticPromptRequest(**prompt_data)
+    assert (
+        f'response format must only be {{"type": "text"}} when using type="text"'
+        in str(exc_info.value)
+    )
