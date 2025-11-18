@@ -21,6 +21,7 @@ export function useRagProviders(taskId: string | undefined): UseRagProvidersResu
   const api = useApi();
 
   const queryResult: UseQueryResult<RagProvidersResponse, Error> = useQuery<RagProvidersResponse, Error>({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.ragProviders.list(taskId || ""),
     queryFn: async () => {
       if (!taskId || !api) {
