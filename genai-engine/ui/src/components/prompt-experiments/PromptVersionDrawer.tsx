@@ -27,7 +27,7 @@ import {
 import React, { useState, useEffect, useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
-import { PromptResultDetailModal } from "./PromptResultDetailModal";
+import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailModal";
 
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
@@ -68,6 +68,8 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState<number>(-1);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
+  const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
 
   // Fetch prompt version details
   const { prompt, isLoading: isPromptLoading } = usePrompt(
@@ -118,6 +120,16 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const handleCloseDetailModal = () => {
     setDetailModalOpen(false);
     setSelectedResultIndex(-1);
+  };
+
+  const handleViewEvalInputs = (evalExecution: any) => {
+    setSelectedEvalExecution(evalExecution);
+    setEvalInputsDialogOpen(true);
+  };
+
+  const handleCloseEvalInputsDialog = () => {
+    setEvalInputsDialogOpen(false);
+    setSelectedEvalExecution(null);
   };
 
   const handlePrevious = () => {
@@ -564,8 +576,16 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
           totalCount={totalCount}
           onPrevious={handlePrevious}
           onNext={handleNext}
+          onViewEvalInputs={handleViewEvalInputs}
         />
       )}
+
+      {/* Eval Inputs Dialog - rendered as sibling to avoid nesting in Modal */}
+      <EvalInputsDialog
+        open={evalInputsDialogOpen}
+        onClose={handleCloseEvalInputsDialog}
+        evalExecution={selectedEvalExecution}
+      />
     </Drawer>
   );
 };

@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Box,
   Table,
@@ -19,10 +20,12 @@ import {
   IconButton,
   LinearProgress,
   CircularProgress,
+  Button,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
+import { EvalInputsDialog } from "./PromptResultDetailModal";
 
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import type { TestCase } from "@/lib/api-client/api-client";
@@ -57,6 +60,7 @@ interface TestCaseDetailModalProps {
   totalCount: number;
   onPrevious: () => void;
   onNext: () => void;
+  onViewEvalInputs?: (evalExecution: any) => void;
 }
 
 const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
@@ -67,6 +71,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   totalCount,
   onPrevious,
   onNext,
+  onViewEvalInputs,
 }) => {
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
@@ -259,29 +264,41 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                         <Box className="space-y-2">
                           {promptResult.evals.map((evalItem, evalIndex) => (
                             <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
-                              <Box className="flex items-center gap-2 mb-2">
-                                <Typography variant="body2" className="font-medium text-gray-900">
-                                  {evalItem.eval_name} v{evalItem.eval_version}
-                                </Typography>
-                                {evalItem.eval_results ? (
-                                  <>
+                              <Box className="flex items-center justify-between mb-2">
+                                <Box className="flex items-center gap-2">
+                                  <Typography variant="body2" className="font-medium text-gray-900">
+                                    {evalItem.eval_name} v{evalItem.eval_version}
+                                  </Typography>
+                                  {evalItem.eval_results ? (
+                                    <>
+                                      <Chip
+                                        label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
+                                        size="small"
+                                        sx={getEvalChipSx(evalItem.eval_results.score === 1)}
+                                      />
+                                      <Chip
+                                        label={`Cost: $${evalItem.eval_results.cost}`}
+                                        size="small"
+                                        variant="outlined"
+                                      />
+                                    </>
+                                  ) : (
                                     <Chip
-                                      label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
+                                      label="Pending"
                                       size="small"
-                                      sx={getEvalChipSx(evalItem.eval_results.score === 1)}
+                                      sx={getPendingChipSx()}
                                     />
-                                    <Chip
-                                      label={`Cost: $${evalItem.eval_results.cost}`}
-                                      size="small"
-                                      variant="outlined"
-                                    />
-                                  </>
-                                ) : (
-                                  <Chip
-                                    label="Pending"
+                                  )}
+                                </Box>
+                                {onViewEvalInputs && (
+                                  <Button
                                     size="small"
-                                    sx={getPendingChipSx()}
-                                  />
+                                    variant="outlined"
+                                    startIcon={<InfoOutlinedIcon />}
+                                    onClick={() => onViewEvalInputs(evalItem)}
+                                  >
+                                    View Inputs
+                                  </Button>
                                 )}
                               </Box>
                               {evalItem.eval_results?.explanation && (
@@ -508,6 +525,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(-1);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
+  const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
 
   // Refetch test cases when refreshTrigger changes
   useEffect(() => {
@@ -536,6 +555,16 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const handleCloseModal = () => {
     setModalOpen(false);
     setSelectedTestCaseIndex(-1);
+  };
+
+  const handleViewEvalInputs = (evalExecution: any) => {
+    setSelectedEvalExecution(evalExecution);
+    setEvalInputsDialogOpen(true);
+  };
+
+  const handleCloseEvalInputsDialog = () => {
+    setEvalInputsDialogOpen(false);
+    setSelectedEvalExecution(null);
   };
 
   const handlePrevious = async () => {
@@ -829,6 +858,14 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
         totalCount={totalCount}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onViewEvalInputs={handleViewEvalInputs}
+      />
+
+      {/* Eval Inputs Dialog - rendered as sibling to avoid nesting in Modal */}
+      <EvalInputsDialog
+        open={evalInputsDialogOpen}
+        onClose={handleCloseEvalInputsDialog}
+        evalExecution={selectedEvalExecution}
       />
     </Box>
   );
