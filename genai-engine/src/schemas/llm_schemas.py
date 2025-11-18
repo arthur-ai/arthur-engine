@@ -2,7 +2,7 @@ import warnings
 from typing import List, Optional, Type, Union
 
 from litellm.types.llms.anthropic import AnthropicThinkingParam
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from schemas.common_schemas import JsonSchema
 from schemas.enums import (
@@ -168,8 +168,24 @@ class LLMResponseFormat(BaseModel):
         description="JSON schema definition (required when type is 'json_schema')",
     )
 
+    @model_validator(mode="after")
+    def validate_schema_requirement(self):
+        if self.type == LLMResponseFormatEnum.JSON_SCHEMA and not self.json_schema:
+            raise ValueError(
+                "json_schema object is required when using type='json_schema'",
+            )
+        if (
+            self.type != LLMResponseFormatEnum.JSON_SCHEMA
+            and self.json_schema is not None
+        ):
+            raise ValueError(
+                f'response format must only be {{"type": "{self.type}"}} when using type="{self.type}"',
+            )
+        return self
+
     class Config:
         use_enum_values = True
+        extra = "forbid"
 
 
 class ToolChoiceFunction(BaseModel):
