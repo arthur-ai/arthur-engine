@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/18/2025
+- **CHANGE** for **URL**: /api/v1/prompt_variables  endpoint added
+
 # 11/17/2025
 - **CHANGE** for **URL**: /api/v1/prompt_renders  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  endpoint added

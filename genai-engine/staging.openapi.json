@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.197"
+        "version": "2.1.198"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -5233,6 +5233,53 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/RenderedPromptResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/prompt_variables": {
+            "post": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Gets the list of variables needed from an unsaved prompt's messages",
+                "description": "Gets the list of variables needed from an unsaved prompt's messages",
+                "operationId": "get_unsaved_prompt_variables_list_api_v1_prompt_variables_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UnsavedPromptVariablesRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnsavedPromptVariablesListResponse"
                                 }
                             }
                         }
@@ -13951,6 +13998,7 @@
                         "description": "JSON schema definition (required when type is 'json_schema')"
                     }
                 },
+                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "type"
@@ -13976,6 +14024,7 @@
                         "description": "JSON schema definition (required when type is 'json_schema')"
                     }
                 },
+                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "type"
@@ -14930,7 +14979,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.197"
+                                "version": "2.1.198"
                             }
                         ]
                     }
@@ -19478,6 +19527,41 @@
                 ],
                 "title": "UnsavedPromptRenderingRequest",
                 "description": "Request schema for rendering an unsaved agentic prompt with variables"
+            },
+            "UnsavedPromptVariablesListResponse": {
+                "properties": {
+                    "variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of variables needed to run an unsaved prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variables"
+                ],
+                "title": "UnsavedPromptVariablesListResponse"
+            },
+            "UnsavedPromptVariablesRequest": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages"
+                ],
+                "title": "UnsavedPromptVariablesRequest",
+                "description": "Request schema for getting the list of variables needed from an unsaved prompt's messages"
             },
             "UpdateMetricRequest": {
                 "properties": {

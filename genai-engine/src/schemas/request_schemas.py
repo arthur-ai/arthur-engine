@@ -779,3 +779,11 @@ class UnsavedPromptRenderingRequest(SavedPromptRenderingRequest):
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
+
+
+class UnsavedPromptVariablesRequest(BaseModel):
+    """Request schema for getting the list of variables needed from an unsaved prompt's messages"""
+
+    messages: List[OpenAIMessage] = Field(
+        description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
+    )
