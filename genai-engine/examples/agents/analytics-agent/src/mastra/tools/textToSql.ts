@@ -1,6 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { AISpanType, TracingContext } from "@mastra/core/ai-tracing";
+import { getTemplatedPrompt } from "@/mastra/lib/arthur-api-client/client";
 
 export type TextToSqlToolResult = z.infer<typeof TextToSqlToolResultSchema>;
 
@@ -97,7 +98,32 @@ export const textToSqlTool = createTool({
         throw new Error("Text to sql agent not found");
       }
 
-      const messages = [{ role: "user" as const, content: context.userQuery }];
+      // fetch templated prompt from arthur for mastra-agent-text-to-sql prompt
+      // the prompt requires the 'database' and 'investigationTask' variables to be set
+      // investigation task should be the user query
+      // pick a random database from postgres trino snowflake or redshift
+      const databases = ["postgres", "trino", "snowflake", "redshift"];
+      const database = databases[Math.floor(Math.random() * databases.length)];
+      const investigationTask = context.userQuery;
+
+      // Fetch and template the prompt with variables
+      const { messages } = await getTemplatedPrompt({
+        promptName: "mastra-agent-text-to-sql",
+        promptVersion: "production",
+        taskId: process.env.ARTHUR_TASK_ID!,
+        variables: [
+          { name: "database", value: database },
+          { name: "investigationTask", value: investigationTask },
+          {
+            name: "golden_queries",
+            value: JSON.stringify(MOCK_RAG_RESULTS),
+          },
+        ],
+        tracingContext: tracingContext as TracingContext,
+      });
+
+      console.log("template prompt response", messages);
+
       const response = await agent.generate(messages, {
         output: TextToSqlToolResultSchema,
         runtimeContext,
