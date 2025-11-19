@@ -1195,7 +1195,7 @@ class InferencePrompt(BaseModel):
             tokens=x.tokens,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> ExternalInferencePrompt:
         return ExternalInferencePrompt(
             id=self.id,
             inference_id=self.inference_id,

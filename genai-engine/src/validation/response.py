@@ -30,7 +30,7 @@ def validate_response(
     inference_response = inference_repo.save_response(
         inference_id,
         body.response,
-        body.context,
+        body.context or "",
         rule_results,
         model_name=body.model_name,
     )
