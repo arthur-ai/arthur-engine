@@ -245,7 +245,7 @@ def timestamp_ns_to_datetime(timestamp_ns: int) -> datetime:
     return datetime.fromtimestamp(timestamp_s)
 
 
-def value_dict_to_value(value: dict[str, Any]) -> Any:
+def value_dict_to_value(value: dict[str, Any]) -> str | int | float | bool | Any:
     """
     Convert a OpenTelemetry-standard value dictionary from string to a value
     """
@@ -348,7 +348,7 @@ def validate_span_version(raw_data: Dict[str, Any]) -> bool:
 
 def extract_token_cost_from_span(
     span_raw_data: dict[str, Any],
-    span_kind: str,
+    span_kind: str | None = None,
 ) -> TokenCountCost:
     """
     Extract token counts and costs from span attributes.
@@ -358,7 +358,7 @@ def extract_token_cost_from_span(
         TokenCountCost object with token_count and token_cost
     """
 
-    if span_kind != SPAN_KIND_LLM:
+    if span_kind is None or span_kind != SPAN_KIND_LLM:
         return TokenCountCost(
             prompt_token_count=None,
             completion_token_count=None,

@@ -145,7 +145,10 @@ def test_secret_rotation(mock_completion_cost, client: GenaiEngineTestClientBase
             # Configure the mock to return a successful response
             mock_response = MagicMock(spec=ModelResponse)
             mock_response.choices = [MagicMock()]
-            mock_response.choices[0].message = {"content": "test response"}
+            mock_message = MagicMock()
+            mock_message.content = "test response"
+            mock_message.tool_calls = None
+            mock_response.choices[0].message = mock_message
             mock_litellm_completion.return_value = mock_response
 
             # run a completion to verify the api key is retrieved as key1
@@ -197,9 +200,10 @@ def test_secret_rotation(mock_completion_cost, client: GenaiEngineTestClientBase
             # Configure the mock to return a successful response
             mock_response = MagicMock(spec=ModelResponse)
             mock_response.choices = [MagicMock()]
-            mock_response.choices[0].message = {
-                "content": "test response after rotation",
-            }
+            mock_message = MagicMock()
+            mock_message.content = "test response after rotation"
+            mock_message.tool_calls = None
+            mock_response.choices[0].message = mock_message
             mock_litellm_completion_after_rotation.return_value = mock_response
 
             # run a completion to verify the api key is still retrieved as key1 after rotation

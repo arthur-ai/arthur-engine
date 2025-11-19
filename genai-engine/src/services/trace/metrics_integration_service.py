@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Union
+from typing import Any, Union
 
 from arthur_common.models.metric_schemas import MetricRequest
 from sqlalchemy import insert
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from db_models import DatabaseMetricResult
 from dependencies import get_metrics_engine
+from metrics_engine import MetricsEngine
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import MetricResult, Span
@@ -109,7 +110,7 @@ class MetricsIntegrationService:
         )
 
         # Group by span_id
-        results_by_span = {}
+        results_by_span: dict[str, list[MetricResult]] = {}
         for db_result in metric_results:
             span_id = db_result.span_id
             if span_id not in results_by_span:
@@ -176,7 +177,7 @@ class MetricsIntegrationService:
     def _compute_metrics_for_single_span(
         self,
         span: Span,
-        metrics_engine,
+        metrics_engine: MetricsEngine,
     ) -> list[MetricResult]:
         """Compute metrics for a single span."""
         # Convert span to MetricRequest format
@@ -205,7 +206,11 @@ class MetricsIntegrationService:
         logger.debug(f"Computed {len(results)} metrics for span {span.id}")
         return metric_results
 
-    def _store_metric_results_for_span(self, span_id: str, results: list[MetricResult]):
+    def _store_metric_results_for_span(
+        self,
+        span_id: str,
+        results: list[MetricResult],
+    ) -> None:
         """Store individual metric results for a specific span."""
         if not results:
             return
@@ -264,7 +269,10 @@ class MetricsIntegrationService:
             response=response,
         )
 
-    def _extract_response_content(self, response_data: Union[str, dict]) -> str:
+    def _extract_response_content(
+        self,
+        response_data: Union[str, dict[str, str], Any],
+    ) -> str:
         """Extract response content from span features."""
         if isinstance(response_data, str):
             return response_data

@@ -1,13 +1,16 @@
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union
+from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
 
 from fastapi.responses import StreamingResponse
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import (
+    CustomStreamWrapper,
+    Message,
     completion_cost,
     stream_chunk_builder,
 )
+from litellm.types.utils import ModelResponse
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -20,7 +23,7 @@ from schemas.response_schemas import AgenticPromptRunResponse
 class ChatCompletionService:
     """Service for running a chat completion"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # autoescape=False because Jinja automatically HTML-escapes items by default. Ex:
         #   if text = "{{ name }}" and variables = {"name": "<Bob>"}
         #   autoescape=False "{{ name }}" -> "<Bob>"
@@ -132,7 +135,7 @@ class ChatCompletionService:
     ) -> Tuple[str, Dict[str, Any]]:
         model = prompt.model_provider + "/" + prompt.model_name
 
-        completion_params = {
+        completion_params: dict[str, Any] = {
             "messages": [
                 message.model_dump(exclude_none=True) for message in prompt.messages
             ],
@@ -166,9 +169,10 @@ class ChatCompletionService:
             if prompt.config.top_logprobs:
                 completion_params["top_logprobs"] = prompt.config.top_logprobs
             if prompt.config.logit_bias:
-                completion_params["logit_bias"] = prompt.config.logit_bias.model_dump(
-                    exclude_none=True,
-                )
+                completion_params["logit_bias"] = [
+                    logit_bias.model_dump(exclude_none=True)
+                    for logit_bias in prompt.config.logit_bias
+                ]
             if prompt.config.max_completion_tokens:
                 completion_params["max_completion_tokens"] = (
                     prompt.config.max_completion_tokens
@@ -260,13 +264,21 @@ class ChatCompletionService:
             llm_client,
             completion_request,
         )
-        msg = llm_model_response.response.choices[0].message
-
-        return AgenticPromptRunResponse(
-            content=msg.get("content"),
-            tool_calls=msg.get("tool_calls"),
-            cost=llm_model_response.cost,
-        )
+        if not isinstance(llm_model_response.response, ModelResponse):
+            raise ValueError("Response is not a ModelResponse")
+        if hasattr(llm_model_response.response.choices[0], "message"):
+            msg: Message = cast(
+                Message,
+                getattr(llm_model_response.response.choices[0], "message"),
+            )
+            return AgenticPromptRunResponse(
+                content=msg.content,
+                tool_calls=msg.tool_calls,
+                cost=llm_model_response.cost
+                or "",  # TODO: what should we put here when cost is None in the response?
+            )
+        else:
+            raise ValueError("No message from model")
 
     async def stream_chat_completion(
         self,
@@ -286,10 +298,13 @@ class ChatCompletionService:
             )
             response = await llm_client.acompletion(model=model, **completion_params)
 
-            collected_chunks = []
-            async for chunk in response:
-                collected_chunks.append(chunk)
-                yield f"event: chunk\ndata: {chunk.model_dump_json()}\n\n"
+            collected_chunks: list[ModelResponse | CustomStreamWrapper] = []
+            if isinstance(response, CustomStreamWrapper):
+                async for chunk in response:
+                    collected_chunks.append(chunk)
+                    yield f"event: chunk\ndata: {chunk.model_dump_json()}\n\n"
+            elif isinstance(response, ModelResponse):
+                collected_chunks.append(response)
 
             complete_response = stream_chunk_builder(
                 collected_chunks,
@@ -297,15 +312,22 @@ class ChatCompletionService:
             )
 
             cost = completion_cost(complete_response)
-            msg = complete_response.choices[0].message
-
-            yield f"event: final_response\ndata: {
-                AgenticPromptRunResponse(
-                    content=msg.get("content"),
-                    tool_calls=msg.get("tool_calls"),
+            if not complete_response:
+                yield f"event: error\ndata: No response from model\n\n"
+            elif not complete_response.choices:
+                yield f"event: error\ndata: No choices from model\n\n"
+            elif hasattr(complete_response.choices[0], "message"):
+                msg: Message = cast(
+                    Message,
+                    getattr(complete_response.choices[0], "message"),
+                )
+                data = AgenticPromptRunResponse(
+                    content=msg.content,
+                    tool_calls=msg.tool_calls,
                     cost=f"{cost:.6f}",
                 ).model_dump_json()
-            }\n\n"
+
+                yield f"event: final_response\ndata: {data}\n\n"
         except Exception as e:
             yield f"event: error\ndata: {str(e)}\n\n"
 

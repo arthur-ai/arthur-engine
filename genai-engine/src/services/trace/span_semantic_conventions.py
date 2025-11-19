@@ -147,7 +147,7 @@ class SpanSemanticConventions:
     MIME_TYPE_JSON = "application/json"
 
     @classmethod
-    def should_deserialize_as_json(cls, key: str, mime_type: str = None) -> bool:
+    def should_deserialize_as_json(cls, key: str, mime_type: str | None = None) -> bool:
         """
         Determine if an attribute should be deserialized as JSON.
 

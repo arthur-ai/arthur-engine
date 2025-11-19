@@ -13,7 +13,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict
+from typing import Generator
 
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def db_session_context():
+def db_session_context() -> Generator[Session, None, None]:
     """
     Context manager for database sessions using the FastAPI dependency.
 
@@ -66,7 +66,7 @@ class ExperimentExecutor:
 
     MAX_WORKERS = 5
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.chat_completion_service = ChatCompletionService()
 
     def execute_experiment_async(self, experiment_id: str) -> None:
@@ -119,7 +119,7 @@ class ExperimentExecutor:
                 logger.error(f"Experiment {experiment_id} not found")
                 return
 
-            experiment.status = ExperimentStatus.RUNNING.value
+            experiment.status = ExperimentStatus.RUNNING
             db_session.commit()
             logger.info(f"Marked experiment {experiment_id} as running")
 
@@ -132,7 +132,7 @@ class ExperimentExecutor:
 
             if not test_cases:
                 logger.warning(f"No test cases found for experiment {experiment_id}")
-                experiment.status = ExperimentStatus.COMPLETED.value
+                experiment.status = ExperimentStatus.COMPLETED
                 experiment.total_cost = "0.0"
                 db_session.commit()
                 return
@@ -181,6 +181,9 @@ class ExperimentExecutor:
                 .filter_by(id=experiment_id)
                 .first()
             )
+            if not experiment:
+                logger.error(f"Experiment {experiment_id} not found")
+                return
 
             # Calculate total cost across all test cases
             total_experiment_cost = 0.0
@@ -203,14 +206,14 @@ class ExperimentExecutor:
             total_cost_str = f"{total_experiment_cost:.6f}"
 
             if failed_count > 0:
-                experiment.status = ExperimentStatus.FAILED.value
+                experiment.status = ExperimentStatus.FAILED
                 experiment.finished_at = datetime.now()
                 experiment.total_cost = total_cost_str
                 logger.warning(
                     f"Experiment {experiment_id} completed with {failed_count} failed test cases. Total cost: ${total_cost_str}",
                 )
             else:
-                experiment.status = ExperimentStatus.COMPLETED.value
+                experiment.status = ExperimentStatus.COMPLETED
                 experiment.finished_at = datetime.now()
                 experiment.total_cost = total_cost_str
                 logger.info(
@@ -231,7 +234,7 @@ class ExperimentExecutor:
                     .first()
                 )
                 if experiment:
-                    experiment.status = ExperimentStatus.FAILED.value
+                    experiment.status = ExperimentStatus.FAILED
                     experiment.finished_at = datetime.now()
                     db_session.commit()
             except Exception as commit_error:
@@ -279,7 +282,7 @@ class ExperimentExecutor:
                 logger.error(f"Test case {test_case_id} not found")
                 return False
 
-            test_case.status = TestCaseStatus.RUNNING.value
+            test_case.status = TestCaseStatus.RUNNING
             db_session.commit()
             logger.info(f"Marked test case {test_case_id} as running")
 
@@ -295,7 +298,7 @@ class ExperimentExecutor:
 
             # If any prompts failed, mark test case as failed and return
             if any_prompt_failed:
-                test_case.status = TestCaseStatus.FAILED.value
+                test_case.status = TestCaseStatus.FAILED
                 db_session.commit()
                 logger.error(
                     f"Test case {test_case_id} failed due to prompt execution failures",
@@ -303,7 +306,7 @@ class ExperimentExecutor:
                 return False
 
             # All prompts executed successfully, now run evaluations
-            test_case.status = TestCaseStatus.EVALUATING.value
+            test_case.status = TestCaseStatus.EVALUATING
             db_session.commit()
             logger.info(f"Test case {test_case_id} moving to evaluation phase")
 
@@ -319,7 +322,7 @@ class ExperimentExecutor:
 
             # If any evaluations failed, mark test case as failed and return
             if any_eval_failed:
-                test_case.status = TestCaseStatus.FAILED.value
+                test_case.status = TestCaseStatus.FAILED
                 db_session.commit()
                 logger.error(
                     f"Test case {test_case_id} failed due to evaluation failures",
@@ -349,7 +352,7 @@ class ExperimentExecutor:
                             )
 
             # Mark test case as completed and store total cost (truncated to 6 decimal places)
-            test_case.status = TestCaseStatus.COMPLETED.value
+            test_case.status = TestCaseStatus.COMPLETED
             test_case.total_cost = f"{total_cost:.6f}"
             db_session.commit()
             logger.info(
@@ -369,7 +372,7 @@ class ExperimentExecutor:
                     .first()
                 )
                 if test_case:
-                    test_case.status = TestCaseStatus.FAILED.value
+                    test_case.status = TestCaseStatus.FAILED
                     db_session.commit()
             except Exception as commit_error:
                 logger.error(
@@ -382,7 +385,7 @@ class ExperimentExecutor:
         self,
         db_session: Session,
         experiment_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, list[dict[str, str | list[dict[str, str | int]]]]]:
         """
         Calculate summary results for an experiment based on completed test cases.
 
@@ -411,7 +414,10 @@ class ExperimentExecutor:
                 )
 
             # Build a structure to aggregate results: {prompt_key: {(eval_name, eval_version): [scores]}}
-            results_by_prompt: Dict[str, Dict[tuple, list]] = {}
+            results_by_prompt: dict[
+                str[str, int],
+                dict[tuple[str, int], list[float]],
+            ] = {}
 
             for test_case in test_cases:
                 for prompt_result in test_case.prompt_results:

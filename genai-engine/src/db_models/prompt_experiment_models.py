@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import UUID
 
+from litellm import ChatCompletionMessageToolCall
 from sqlalchemy import (
     TIMESTAMP,
     Float,
@@ -112,10 +113,9 @@ class DatabasePromptExperiment(Base):
 
     # Summary results stored as JSON (computed after experiment completes)
     # Structure: {"prompt_eval_summaries": [{"prompt_name": str, "prompt_version": str, "eval_results": [...]}]}
-    summary_results: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSON,
-        nullable=True,
-    )
+    summary_results: Mapped[
+        Optional[dict[str, list[dict[str, str | list[dict[str, str | int]]]]]]
+    ] = mapped_column(JSON, nullable=True)
 
     # Relationships
     notebook: Mapped[Optional["DatabaseNotebook"]] = relationship(
@@ -242,9 +242,8 @@ class DatabasePromptExperimentTestCasePromptResult(Base):
 
     # Output from the prompt (broken into separate columns)
     output_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    output_tool_calls: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
-        JSON,
-        nullable=True,
+    output_tool_calls: Mapped[Optional[List[ChatCompletionMessageToolCall]]] = (
+        mapped_column(JSON, nullable=True)
     )
     output_cost: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 

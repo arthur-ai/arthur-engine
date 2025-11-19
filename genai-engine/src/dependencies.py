@@ -124,7 +124,7 @@ def get_db_engine(db_config: DatabaseConfig | None = None):
 
 
 # Access singletons via these functions so test framework can override these via DI
-def get_db_session():
+def get_db_session() -> Generator[Session, None, None]:
     db_config = get_db_config()
     # Make unique session for each request thread
     session_maker = sessionmaker(get_db_engine(db_config))
@@ -184,7 +184,7 @@ def get_scorer_client():
     return SINGLETON_SCORER_CLIENT
 
 
-def get_metrics_engine():
+def get_metrics_engine() -> MetricsEngine:
     global SINGLETON_METRICS_ENGINE
     if not SINGLETON_METRICS_ENGINE:
         scorer_client = get_scorer_client()

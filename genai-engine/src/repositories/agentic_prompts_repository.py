@@ -1,5 +1,5 @@
 import copy
-from typing import List, Type
+from typing import List, Type, cast
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -174,7 +174,7 @@ class AgenticPromptRepository(BaseLLMRepository):
             )
             if missing_vars:
                 raise ValueError(
-                    f"Missing values for the following variables: {', '.join(sorted(missing_vars))}"
+                    f"Missing values for the following variables: {', '.join(sorted(missing_vars))}",
                 )
 
         # Create a copy of messages and render them
@@ -197,4 +197,15 @@ class AgenticPromptRepository(BaseLLMRepository):
             config=prompt.config,
             created_at=prompt.created_at,
             deleted_at=prompt.deleted_at,
+        )
+
+    def get_llm_item(
+        self,
+        task_id: str,
+        item_name: str,
+        item_version: str = "latest",
+    ) -> AgenticPrompt:
+        return cast(
+            AgenticPrompt,
+            super().get_llm_item(task_id, item_name, item_version),
         )
