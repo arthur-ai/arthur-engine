@@ -5,8 +5,8 @@ import { Box, Button, ButtonGroup, Stack, Typography } from "@mui/material";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
+import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
-import { useTracesHistoryStore } from "../stores/history.store";
 import { isSpanOfType } from "../utils/spans";
 
 import { DrawerPagination } from "./DrawerPagination";
@@ -27,7 +27,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
   const [, select] = useSelection("span");
 
   const { data: span } = useSuspenseQuery({
@@ -51,10 +51,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
 
   const onOpenTraceDrawer = () => {
     select(span.span_id);
-    push({
-      type: "trace",
-      id: span.trace_id,
-    });
+    setDrawerTarget({ target: "trace", id: span.trace_id });
   };
 
   const handleOpenInPlayground = () => {

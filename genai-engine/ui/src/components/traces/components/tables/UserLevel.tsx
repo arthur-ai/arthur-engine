@@ -4,8 +4,8 @@ import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from 
 import { useState } from "react";
 
 import { userLevelColumns } from "../../data/user-level-columns";
+import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
-import { useTracesHistoryStore } from "../../stores/history.store";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
 
@@ -19,7 +19,7 @@ import { getUsers } from "@/services/tracing";
 export const UserLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
@@ -67,10 +67,7 @@ export const UserLevel = () => {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              push({
-                type: "user",
-                id: row.original.user_id,
-              });
+              setDrawerTarget({ target: "user", id: row.original.user_id });
             }}
           />
           <TablePagination

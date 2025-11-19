@@ -12,7 +12,6 @@ import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
 import { TimeRangeSelect } from "./traces/components/TimeRangeSelect";
 import { Level, TIME_RANGES, TimeRange } from "./traces/constants";
-import { useSyncUrlState } from "./traces/hooks/useSyncUrlState";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
 
 export const TracesView: React.FC = () => {
@@ -24,8 +23,6 @@ export const TracesView: React.FC = () => {
   const handleLevelChange = (newValue: Level) => {
     setSearchParams({ target: newValue });
   };
-
-  useSyncUrlState({ onLevelChange: handleLevelChange });
 
   return (
     <>
