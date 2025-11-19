@@ -2,7 +2,7 @@ import { debounce } from "@mui/material/utils";
 import { useCallback, useRef, useMemo } from "react";
 
 import { MessageType } from "../types";
-import { convertMessagesToApiFormat, hasTemplateVariables } from "../utils/messageUtils";
+import { convertMessagesToApiFormat } from "../utils/messageUtils";
 
 import { useApi } from "@/hooks/useApi";
 
@@ -26,9 +26,9 @@ export const useExtractPromptVariables = () => {
       }
 
       // Optimization: Skip API call if no template patterns are detected
-      if (!hasTemplateVariables(messages)) {
-        return [];
-      }
+      // if (!hasTemplateVariables(messages)) {
+      //   return [];
+      // }
 
       // Cancel any pending request
       if (abortControllerRef.current) {
