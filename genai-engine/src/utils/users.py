@@ -10,8 +10,8 @@ from custom_types.custom_types import FunctionT
 from schemas.internal_schemas import User
 
 
-def get_user_info_from_payload(payload: dict) -> User:
-    roles_from_payload = payload.get("realm_access", {}).get("roles", [])
+def get_user_info_from_payload(payload: dict[str, Any]) -> User:
+    roles_from_payload: list[str] = payload.get("realm_access", {}).get("roles", [])
     loaded_roles: list[AuthUserRole] = []
     for i, role in enumerate(roles_from_payload):
         loaded_roles.append(

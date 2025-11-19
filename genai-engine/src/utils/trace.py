@@ -93,7 +93,7 @@ def clean_extracted_text(text: str) -> str:
     return cleaned.strip()
 
 
-def extract_span_features(span_dict):
+def extract_span_features(span_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Extract LLM-specific features from a normalized span dictionary.
 
@@ -245,7 +245,7 @@ def timestamp_ns_to_datetime(timestamp_ns: int) -> datetime:
     return datetime.fromtimestamp(timestamp_s)
 
 
-def value_dict_to_value(value: dict):
+def value_dict_to_value(value: dict[str, Any]) -> Any:
     """
     Convert a OpenTelemetry-standard value dictionary from string to a value
     """
@@ -282,7 +282,11 @@ def clean_status_code(status_code: str) -> str:
         return status_code
 
 
-def get_nested_value(obj, path, default=None):
+def get_nested_value(
+    obj: dict[str, Any],
+    path: str,
+    default: Optional[Any] = None,
+) -> Any:
     """
     Safely navigate nested dictionary structure using dot-separated path.
 
@@ -343,7 +347,7 @@ def validate_span_version(raw_data: Dict[str, Any]) -> bool:
 
 
 def extract_token_cost_from_span(
-    span_raw_data: dict,
+    span_raw_data: dict[str, Any],
     span_kind: str,
 ) -> TokenCountCost:
     """
@@ -443,7 +447,7 @@ def extract_token_cost_from_span(
     )
 
 
-def value_to_string(value) -> Optional[str]:
+def value_to_string(value: Any) -> Optional[str]:
     """Convert a value to string, handling dicts/lists by JSON serialization.
 
     This is used to ensure consistent string representation for input/output

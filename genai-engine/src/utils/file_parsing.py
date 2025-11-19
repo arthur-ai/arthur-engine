@@ -12,7 +12,7 @@ from schemas.internal_schemas import Document
 logger = logging.getLogger()
 
 
-def parse_file_words(document: Document, file_content: BytesIO | BinaryIO):
+def parse_file_words(document: Document, file_content: BytesIO | BinaryIO) -> list[str]:
     if document.type == DocumentType.CSV:
         return parse_csv(file_content)
     elif document.type == DocumentType.PDF:
@@ -23,7 +23,7 @@ def parse_file_words(document: Document, file_content: BytesIO | BinaryIO):
         raise NotImplementedError("File upload for %s is not supported" % document.name)
 
 
-def parse_pdf(pdf_file):
+def parse_pdf(pdf_file: BinaryIO) -> list[str]:
     words = []
     try:
         reader = PdfReader(pdf_file)
@@ -37,7 +37,7 @@ def parse_pdf(pdf_file):
     return words
 
 
-def parse_csv(csv_file) -> list[str]:
+def parse_csv(csv_file: BinaryIO) -> list[str]:
     words = []
     try:
         csv_text = TextIOWrapper(csv_file, encoding="utf-8")

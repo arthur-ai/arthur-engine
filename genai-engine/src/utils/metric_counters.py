@@ -3,6 +3,7 @@ from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExp
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.util.types import Attributes
 
 from utils.utils import get_env_var, new_relic_enabled
 
@@ -12,8 +13,9 @@ RULE_FAILURE_COUNTER = None
 METRIC_FAILURE_COUNTER = None
 
 if new_relic_enabled():
-    OTEL_RESOURCE_ATTRIBUTES = {
-        "service.name": get_env_var(constants.NEWRELIC_APP_NAME_ENV_VAR),
+    service_name: str = get_env_var(constants.NEWRELIC_APP_NAME_ENV_VAR) or ""
+    OTEL_RESOURCE_ATTRIBUTES: Attributes = {
+        "service.name": service_name,
     }
     metrics.set_meter_provider(
         MeterProvider(

@@ -2,7 +2,7 @@ import os
 from functools import wraps
 from logging import getLogger
 from multiprocessing import Pool
-from typing import Optional
+from typing import Callable
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -22,6 +22,7 @@ from transformers import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
+from custom_types import P, T
 from utils import constants
 from utils.classifiers import get_device
 from utils.utils import get_env_var, relevance_models_enabled
@@ -40,28 +41,31 @@ USE_PII_MODEL_V2 = (
 )
 
 CLAIM_CLASSIFIER_EMBEDDING_MODEL = None
-PROMPT_INJECTION_MODEL = None
-PROMPT_INJECTION_TOKENIZER = None
-PROMPT_INJECTION_CLASSIFIER = None
-TOXICITY_MODEL = None
-TOXICITY_TOKENIZER = None
-RELEVANCE_MODEL = None
-RELEVANCE_TOKENIZER = None
-TOXICITY_CLASSIFIER = None
+PROMPT_INJECTION_MODEL: PreTrainedModel | None = None
+PROMPT_INJECTION_TOKENIZER: PreTrainedTokenizerBase | None = None
+PROMPT_INJECTION_CLASSIFIER: TextClassificationPipeline | None = None
+TOXICITY_MODEL: AutoModelForSequenceClassification | None = None
+TOXICITY_TOKENIZER: AutoTokenizer | None = None
+RELEVANCE_MODEL: AutoModelForSequenceClassification | None = None
+RELEVANCE_TOKENIZER: AutoTokenizer | None = None
+TOXICITY_CLASSIFIER: TextClassificationPipeline | None = None
 PROFANITY_CLASSIFIER = None
-BERT_SCORER = None
-RELEVANCE_RERANKER = None
+BERT_SCORER: BERTScorer | None = None
+RELEVANCE_RERANKER: TextClassificationPipeline | None = None
 PII_GLINER_MODEL = None
-PII_GLINER_TOKENIZER = None
+PII_GLINER_TOKENIZER: AutoTokenizer | None = None
 PII_PRESIDIO_ANALYZER = None
 
 
-def log_model_loading(model_name: str, global_var_name: Optional[str] = None):
+def log_model_loading(
+    model_name: str,
+    global_var_name: str | None = None,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to add logging around model loading functions"""
 
-    def decorator(func):
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Check if model is already loaded
             if global_var_name and globals().get(global_var_name) is not None:
                 logger.info(f"{model_name} already loaded.")
@@ -81,7 +85,7 @@ def log_model_loading(model_name: str, global_var_name: Optional[str] = None):
     return decorator
 
 
-def download_file(args):
+def download_file(args: tuple[str, str]) -> None:
     model_name, filename = args
     try:
         hf_hub_download(model_name, filename)
@@ -90,7 +94,7 @@ def download_file(args):
         logger.info(f"Failed to download {filename} from {model_name}: {e}")
 
 
-def download_models(num_of_process: int):
+def download_models(num_of_process: int) -> None:
     models_to_download = {
         "sentence-transformers/all-MiniLM-L12-v2": [
             "1_Pooling/config.json",
@@ -156,7 +160,7 @@ def download_models(num_of_process: int):
     "claim classifier embedding model",
     "CLAIM_CLASSIFIER_EMBEDDING_MODEL",
 )
-def get_claim_classifier_embedding_model():
+def get_claim_classifier_embedding_model() -> SentenceTransformer | None:
     global CLAIM_CLASSIFIER_EMBEDDING_MODEL
     if not CLAIM_CLASSIFIER_EMBEDDING_MODEL:
 
@@ -167,7 +171,7 @@ def get_claim_classifier_embedding_model():
 
 
 @log_model_loading("prompt injection model", "PROMPT_INJECTION_MODEL")
-def get_prompt_injection_model():
+def get_prompt_injection_model() -> PreTrainedModel | None:
     global PROMPT_INJECTION_MODEL
     if PROMPT_INJECTION_MODEL is None:
 
@@ -180,10 +184,10 @@ def get_prompt_injection_model():
 
 
 @log_model_loading("prompt injection tokenizer", "PROMPT_INJECTION_TOKENIZER")
-def get_prompt_injection_tokenizer():
+def get_prompt_injection_tokenizer() -> PreTrainedTokenizerBase | None:
     global PROMPT_INJECTION_TOKENIZER
     if PROMPT_INJECTION_TOKENIZER is None:
-        PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(
+        PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
             "ProtectAI/deberta-v3-base-prompt-injection-v2",
             weights_only=False,
         )
@@ -203,7 +207,7 @@ def get_prompt_injection_classifier(
 
     global PROMPT_INJECTION_CLASSIFIER
     if PROMPT_INJECTION_CLASSIFIER is None:
-        PROMPT_INJECTION_CLASSIFIER = TextClassificationPipeline(
+        PROMPT_INJECTION_CLASSIFIER = TextClassificationPipeline(  # type: ignore[no-untyped-call]
             model=model,
             tokenizer=tokenizer,
             max_length=512,
@@ -214,7 +218,7 @@ def get_prompt_injection_classifier(
 
 
 @log_model_loading("toxicity model", "TOXICITY_MODEL")
-def get_toxicity_model():
+def get_toxicity_model() -> AutoModelForSequenceClassification | None:
     global TOXICITY_MODEL
     if not TOXICITY_MODEL:
         TOXICITY_MODEL = AutoModelForSequenceClassification.from_pretrained(
@@ -225,10 +229,10 @@ def get_toxicity_model():
 
 
 @log_model_loading("toxicity tokenizer", "TOXICITY_TOKENIZER")
-def get_toxicity_tokenizer():
+def get_toxicity_tokenizer() -> AutoTokenizer | None:
     global TOXICITY_TOKENIZER
     if not TOXICITY_TOKENIZER:
-        TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(
+        TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
             "s-nlp/roberta_toxicity_classifier",
             weights_only=False,
             model_max_length=None,
@@ -240,7 +244,7 @@ def get_toxicity_tokenizer():
 def get_toxicity_classifier(
     model: AutoModelForSequenceClassification | None,
     tokenizer: AutoTokenizer | None,
-):
+) -> TextClassificationPipeline | None:
     if not model:
         model = get_toxicity_model()
     if not tokenizer:
@@ -248,7 +252,7 @@ def get_toxicity_classifier(
 
     global TOXICITY_CLASSIFIER
     if TOXICITY_CLASSIFIER is None:
-        TOXICITY_CLASSIFIER = pipeline(
+        TOXICITY_CLASSIFIER = pipeline(  # type: ignore[call-overload]
             "text-classification",
             model=model,
             tokenizer=tokenizer,
@@ -261,7 +265,7 @@ def get_toxicity_classifier(
 
 
 @log_model_loading("profanity classifier", "PROFANITY_CLASSIFIER")
-def get_profanity_classifier():
+def get_profanity_classifier() -> TextClassificationPipeline | None:
     global PROFANITY_CLASSIFIER
     if PROFANITY_CLASSIFIER is None:
         PROFANITY_CLASSIFIER = pipeline(
@@ -278,13 +282,13 @@ def get_profanity_classifier():
 def get_harmful_request_classifier(
     model: PreTrainedModel | None,
     tokenizer: PreTrainedTokenizerBase | None,
-):
+) -> None:
     if not model or not tokenizer:
         return None
 
 
 @log_model_loading("relevance model", "RELEVANCE_MODEL")
-def get_relevance_model():
+def get_relevance_model() -> AutoModelForSequenceClassification | None:
     global RELEVANCE_MODEL
     if not RELEVANCE_MODEL:
         RELEVANCE_MODEL = AutoModelForSequenceClassification.from_pretrained(
@@ -296,10 +300,10 @@ def get_relevance_model():
 
 
 @log_model_loading("relevance tokenizer", "RELEVANCE_TOKENIZER")
-def get_relevance_tokenizer():
+def get_relevance_tokenizer() -> AutoTokenizer | None:
     global RELEVANCE_TOKENIZER
     if not RELEVANCE_TOKENIZER:
-        RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(
+        RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
             "microsoft/deberta-v2-xlarge-mnli",
             weights_only=False,
         )
@@ -307,7 +311,7 @@ def get_relevance_tokenizer():
 
 
 @log_model_loading("BERT scorer model", "BERT_SCORER")
-def get_bert_scorer():
+def get_bert_scorer() -> BERTScorer | None:
     """Get or create a shared BERT scorer instance for relevance metrics"""
     global BERT_SCORER
 
@@ -327,7 +331,7 @@ def get_bert_scorer():
 
 
 @log_model_loading("relevance reranker pipeline", "RELEVANCE_RERANKER")
-def get_relevance_reranker():
+def get_relevance_reranker() -> TextClassificationPipeline | None:
     """Get or create a shared relevance reranker pipeline instance"""
     global RELEVANCE_RERANKER
 
@@ -340,7 +344,7 @@ def get_relevance_reranker():
 
         model = get_relevance_model()
         tokenizer = get_relevance_tokenizer()
-        RELEVANCE_RERANKER = TextClassificationPipeline(
+        RELEVANCE_RERANKER = TextClassificationPipeline(  # type: ignore[no-untyped-call]
             model=model,
             tokenizer=tokenizer,
             device=torch.device(get_device()),
@@ -350,7 +354,7 @@ def get_relevance_reranker():
 
 
 @log_model_loading("gliner tokenizer")
-def get_gliner_tokenizer():
+def get_gliner_tokenizer() -> AutoTokenizer | None:
     global PII_GLINER_TOKENIZER
 
     # Check if Gliner is enabled
@@ -360,12 +364,14 @@ def get_gliner_tokenizer():
 
     if USE_PII_MODEL_V2 and PII_GLINER_TOKENIZER is None:
         config = GLiNERConfig.from_json_file(GLINER_CONFIG_PATH)
-        PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(config.model_name)
+        PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+            config.model_name,
+        )
     return PII_GLINER_TOKENIZER
 
 
 @log_model_loading("gliner model")
-def get_gliner_model():
+def get_gliner_model() -> GLiNER | None:
     global PII_GLINER_MODEL
 
     # Check if Gliner is enabled
@@ -386,7 +392,7 @@ def get_gliner_model():
 
 
 @log_model_loading("presidio analyzer")
-def get_presidio_analyzer():
+def get_presidio_analyzer() -> AnalyzerEngine:
     global PII_PRESIDIO_ANALYZER
     if PII_PRESIDIO_ANALYZER is None:
         PII_PRESIDIO_ANALYZER = AnalyzerEngine()

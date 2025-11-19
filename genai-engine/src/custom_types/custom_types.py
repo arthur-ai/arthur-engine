@@ -21,3 +21,9 @@ P = ParamSpec("P")
 # Used in decorators to ensure the return type of the decorated function remains
 # unchanged, maintaining type safety when applying decorators that don't modify outputs.
 T = TypeVar("T")
+
+
+# PadTextT: A bounded TypeVar for text strings or lists of strings.
+# Used in the pad_text function to ensure the input type is either a string or a list of strings,
+# and the output type is a string or a list of strings.
+PadTextT = TypeVar("PadTextT", str, list[str])

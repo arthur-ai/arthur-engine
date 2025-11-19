@@ -3,6 +3,7 @@ import re
 import string
 
 import commonmark
+from commonmark.node import Node
 from nltk.tokenize.punkt import PunktSentenceTokenizer
 
 from utils.abbreviations import ABBREVIATIONS
@@ -13,7 +14,7 @@ LOGGER = logging.getLogger()
 
 
 class ClaimParser:
-    def __init__(self):
+    def __init__(self) -> None:
         self.parser = commonmark.Parser()
 
     def _deduplicate(self, seq: list[str]) -> list[str]:
@@ -22,14 +23,14 @@ class ClaimParser:
         """
 
         seen = set()
-        return [x for x in seq if not (x in seen or seen.add(x))]
+        return [x for x in seq if not (x in seen or seen.add(x))]  # type: ignore[func-returns-value]
 
     def _strip_markdown(self, text: str) -> str:
         """
         Strip Markdown from a LLM Response
         """
 
-        def ast2text(astNode):
+        def ast2text(astNode: Node) -> str:
             """
             Returns the text from markdown, stripped of the markdown syntax itself
             """
@@ -90,12 +91,14 @@ class ClaimParser:
 
         return parsed
 
-    def process_and_extract_claims(self, text) -> list[str]:
+    def process_and_extract_claims(self, text: str | None) -> list[str]:
         """
         Returns a list of texts that should contain sentences & list items from an LLM response
         """
         # check for the edge case where the text is just a singular digit or letter and skip strip_markdown
         # if it is to avoid the function from mistaking it for a list item
+        if text is None:
+            return []
         if not re.match(r"^(?:\d+|[A-Za-z])\.?\s*$", text.strip()):
             text = self._strip_markdown(text)
 
