@@ -10633,6 +10633,36 @@
                 ],
                 "title": "AgenticAnnotationRequest"
             },
+            "AgenticAnnotationResponse": {
+                "properties": {
+                    "annotation_score": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Score",
+                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)."
+                    },
+                    "annotation_description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Description",
+                        "description": "Description of the annotation."
+                    }
+                },
+                "type": "object",
+                "title": "AgenticAnnotationResponse"
+            },
             "AgenticPrompt": {
                 "properties": {
                     "name": {
@@ -19490,29 +19520,16 @@
                         "title": "Output Content",
                         "description": "Root span output value from trace metadata"
                     },
-                    "annotation_score": {
+                    "annotation": {
                         "anyOf": [
                             {
-                                "type": "integer"
+                                "$ref": "#/components/schemas/AgenticAnnotationResponse"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Annotation Score",
-                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)"
-                    },
-                    "annotation_description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Annotation Description",
-                        "description": "Description of the annotation"
+                        "description": "Annotation for the trace."
                     }
                 },
                 "type": "object",
@@ -19653,29 +19670,16 @@
                         "description": "Root spans (spans with no parent) in this trace, with children nested",
                         "default": []
                     },
-                    "annotation_score": {
+                    "annotation": {
                         "anyOf": [
                             {
-                                "type": "integer"
+                                "$ref": "#/components/schemas/AgenticAnnotationResponse"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Annotation Score",
-                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)"
-                    },
-                    "annotation_description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Annotation Description",
-                        "description": "Description of the annotation"
+                        "description": "Annotation for the trace."
                     }
                 },
                 "type": "object",

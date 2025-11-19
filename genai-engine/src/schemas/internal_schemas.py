@@ -32,6 +32,7 @@ from arthur_common.models.request_schemas import (
     TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
+    AgenticAnnotationResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
     ChatDocumentContext,
@@ -641,8 +642,7 @@ class TraceMetadata(TokenCountCostSchema):
     output_content: Optional[str] = None
 
     # Annotation information (separate table only used for response model conversion)
-    annotation_score: Optional[int] = None
-    annotation_description: Optional[str] = None
+    annotation: Optional[AgenticAnnotation] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
@@ -690,6 +690,14 @@ class TraceMetadata(TokenCountCostSchema):
     def _to_metadata_response_model(self) -> TraceMetadataResponse:
         """Convert to lightweight metadata response"""
         duration_ms = calculate_duration_ms(self.start_time, self.end_time)
+
+        annotation_response = None
+        if self.annotation:
+            annotation_response = AgenticAnnotationResponse(
+                annotation_score=self.annotation.annotation_score,
+                annotation_description=self.annotation.annotation_description,
+            )
+
         return TraceMetadataResponse(
             trace_id=self.trace_id,
             task_id=self.task_id,
@@ -709,8 +717,7 @@ class TraceMetadata(TokenCountCostSchema):
             total_token_cost=self.total_token_cost,
             input_content=self.input_content,
             output_content=self.output_content,
-            annotation_score=self.annotation_score,
-            annotation_description=self.annotation_description,
+            annotation=annotation_response,
         )
 
 

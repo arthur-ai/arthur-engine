@@ -2,7 +2,10 @@ import uuid
 from datetime import datetime
 from typing import List
 
-from arthur_common.models.response_schemas import TraceResponse
+from arthur_common.models.response_schemas import (
+    AgenticAnnotationResponse,
+    TraceResponse,
+)
 from sqlalchemy.orm import Session
 
 from db_models.telemetry_models import DatabaseAgenticAnnotation, DatabaseTraceMetadata
@@ -92,9 +95,13 @@ class TraceAnnotationService:
         for trace_metadata in trace_metadata_list:
             annotation = self.get_annotation_by_trace_id(trace_metadata.trace_id)
             if annotation:
-                trace_metadata.annotation_score = annotation.annotation_score
-                trace_metadata.annotation_description = (
-                    annotation.annotation_description
+                trace_metadata.annotation = AgenticAnnotation(
+                    id=annotation.id,
+                    trace_id=annotation.trace_id,
+                    annotation_score=annotation.annotation_score,
+                    annotation_description=annotation.annotation_description,
+                    created_at=annotation.created_at,
+                    updated_at=annotation.updated_at,
                 )
 
         return trace_metadata_list
@@ -105,8 +112,10 @@ class TraceAnnotationService:
     ) -> TraceResponse:
         annotation = self.get_annotation_by_trace_id(trace_response.trace_id)
         if annotation:
-            trace_response.annotation_score = annotation.annotation_score
-            trace_response.annotation_description = annotation.annotation_description
+            trace_response.annotation = AgenticAnnotationResponse(
+                annotation_score=annotation.annotation_score,
+                annotation_description=annotation.annotation_description,
+            )
 
         return trace_response
 

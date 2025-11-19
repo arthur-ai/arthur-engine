@@ -68,7 +68,7 @@ def test_adding_an_annotation_to_a_trace(
     assert isinstance(response, AgenticAnnotation)
     assert response.trace_id == trace_id
     assert response.annotation_score == 0
-    assert response.annotation_description == None
+    assert response.annotation_description is None
 
     annotation_request = {
         "annotation_description": "Updated annotation",
@@ -162,8 +162,8 @@ def test_get_trace_requests_return_annotation_info(
     assert data.count == 1
     assert len(data.traces) == 1
     assert data.traces[0].trace_id == trace_id
-    assert data.traces[0].annotation_score == 1
-    assert data.traces[0].annotation_description == "Test annotation"
+    assert data.traces[0].annotation.annotation_score == 1
+    assert data.traces[0].annotation.annotation_description == "Test annotation"
 
     # Verify the response object after computing trace metrics has annotation info
     status_code, data = client.trace_api_compute_trace_metrics(
@@ -172,8 +172,8 @@ def test_get_trace_requests_return_annotation_info(
     assert status_code == 200
     assert isinstance(data, TraceResponse)
     assert data.trace_id == trace_id
-    assert data.annotation_score == 1
-    assert data.annotation_description == "Test annotation"
+    assert data.annotation.annotation_score == 1
+    assert data.annotation.annotation_description == "Test annotation"
 
     # Verify the response object after computing trace metrics has annotation info
     status_code, data = client.trace_api_compute_trace_metrics(
@@ -182,8 +182,8 @@ def test_get_trace_requests_return_annotation_info(
     assert status_code == 200
     assert isinstance(data, TraceResponse)
     assert data.trace_id == trace_id
-    assert data.annotation_score == 1
-    assert data.annotation_description == "Test annotation"
+    assert data.annotation.annotation_score == 1
+    assert data.annotation.annotation_description == "Test annotation"
 
     # Verify the response object after getting the session by id has annotation info
     status_code, data = client.trace_api_get_session_traces(
@@ -194,8 +194,8 @@ def test_get_trace_requests_return_annotation_info(
     found_trace = False
     for trace in data.traces:
         if trace.trace_id == trace_id:
-            assert trace.annotation_score == 1
-            assert trace.annotation_description == "Test annotation"
+            assert trace.annotation.annotation_score == 1
+            assert trace.annotation.annotation_description == "Test annotation"
             found_trace = True
             break
     assert found_trace
@@ -209,8 +209,8 @@ def test_get_trace_requests_return_annotation_info(
     found_trace = False
     for trace in data.traces:
         if trace.trace_id == trace_id:
-            assert trace.annotation_score == 1
-            assert trace.annotation_description == "Test annotation"
+            assert trace.annotation.annotation_score == 1
+            assert trace.annotation.annotation_description == "Test annotation"
             found_trace = True
             break
     assert found_trace
@@ -234,8 +234,7 @@ def test_get_trace_requests_return_annotation_info(
     assert data.count == 1
     assert len(data.traces) == 1
     assert data.traces[0].trace_id == trace_id
-    assert data.traces[0].annotation_score is None
-    assert data.traces[0].annotation_description is None
+    assert data.traces[0].annotation is None
 
     # Verify the response object after computing trace metrics has annotation info
     status_code, data = client.trace_api_compute_trace_metrics(
@@ -244,8 +243,7 @@ def test_get_trace_requests_return_annotation_info(
     assert status_code == 200
     assert isinstance(data, TraceResponse)
     assert data.trace_id == trace_id
-    assert data.annotation_score is None
-    assert data.annotation_description is None
+    assert data.annotation is None
 
     # Verify the response object after computing trace metrics has annotation info
     status_code, data = client.trace_api_compute_trace_metrics(
@@ -254,8 +252,7 @@ def test_get_trace_requests_return_annotation_info(
     assert status_code == 200
     assert isinstance(data, TraceResponse)
     assert data.trace_id == trace_id
-    assert data.annotation_score is None
-    assert data.annotation_description is None
+    assert data.annotation is None
 
     # Verify the response object after getting the session by id has annotation info
     status_code, data = client.trace_api_get_session_traces(
@@ -267,8 +264,7 @@ def test_get_trace_requests_return_annotation_info(
     for trace in data.traces:
         if trace.trace_id == trace_id:
             found_trace = True
-        assert trace.annotation_score is None
-        assert trace.annotation_description is None
+        assert trace.annotation is None
     assert found_trace
 
     # Verify the response object after computing session metrics has annotation info
@@ -281,6 +277,5 @@ def test_get_trace_requests_return_annotation_info(
     for trace in data.traces:
         if trace.trace_id == trace_id:
             found_trace = True
-        assert trace.annotation_score is None
-        assert trace.annotation_description is None
+        assert trace.annotation is None
     assert found_trace
