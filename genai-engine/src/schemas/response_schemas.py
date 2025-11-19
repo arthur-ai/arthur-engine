@@ -11,8 +11,6 @@ from arthur_common.models.response_schemas import (
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
-
-from schemas.common_schemas import NewDatasetVersionRowRequest
 from weaviate.collections.classes.grpc import (
     METADATA,
     HybridFusion,
@@ -20,6 +18,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.common_schemas import NewDatasetVersionRowRequest
 from schemas.enums import (
     ConnectionCheckOutcome,
     ModelProvider,
