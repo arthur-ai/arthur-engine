@@ -8,7 +8,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import { useEffect, useEffectEvent, useMemo } from "react";
 
 import { BucketProvider } from "../context/bucket-context";
-import { useSelectionStore } from "../stores/selection.store";
+import { useSelection } from "../hooks/useSelection";
 import { buildThresholdsFromSample } from "../utils/duration";
 import { flattenSpans, getSpanDuration } from "../utils/spans";
 
@@ -31,8 +31,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const queryClient = useQueryClient();
 
   const api = useApi();
-  const select = useSelectionStore((state) => state.select);
-  const selectedSpanId = useSelectionStore((state) => state.selection.span);
+  const [selectedSpanId, select] = useSelection("span");
 
   const { data: trace } = useSuspenseQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -62,11 +61,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
     if (!rootSpan) return;
 
     if (!selectedSpanId) {
-      select("span", rootSpan.span_id);
+      select(rootSpan.span_id);
     }
 
     if (flatSpans.findIndex((span) => span.span_id === selectedSpanId) === -1) {
-      select("span", rootSpan.span_id);
+      select(rootSpan.span_id);
     }
   });
 

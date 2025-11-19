@@ -37,6 +37,7 @@
     "dayjs": "^1.11.18",
     "framer-motion": "^12.23.21",
     "monaco-editor": "^0.54.0",
+    "nuqs": "^2.8.0",
     "papaparse": "^5.5.3",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.1.1",

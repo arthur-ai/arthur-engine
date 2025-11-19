@@ -5,12 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { lazy, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
-import {
-  HistoryEntry,
-  TargetBase,
-  useTracesHistoryStore,
-} from "../stores/history.store";
-import { useSelectionStore } from "../stores/selection.store";
+import { useSelection } from "../hooks/useSelection";
+import { HistoryEntry, TargetBase, useTracesHistoryStore } from "../stores/history.store";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
@@ -45,20 +41,18 @@ export const CommonDrawer = () => {
   const history = useTracesHistoryStore((state) => state.entries);
   const reset = useTracesHistoryStore((state) => state.reset);
   const popUntil = useTracesHistoryStore((state) => state.popUntil);
-  const resetSelection = useSelectionStore((state) => state.reset);
+  const [, select] = useSelection("span");
 
   const handleClose = () => {
     reset();
-    resetSelection();
+    select(null, { history: "replace" });
   };
 
   const handleBreadcrumbNavigation = (entry: HistoryEntry<TargetBase>) => {
     popUntil(entry);
   };
 
-  const Content = current?.target.type
-    ? CONTENT_MAP[current?.target.type]
-    : null;
+  const Content = current?.target.type ? CONTENT_MAP[current?.target.type] : null;
 
   const shouldRender = !!Content;
 
@@ -85,11 +79,7 @@ export const CommonDrawer = () => {
         >
           <Breadcrumbs aria-label="Drawer history">
             {history.slice(0, history.length - 1).map((entry) => (
-              <Button
-                key={entry.ts}
-                variant="text"
-                onClick={() => handleBreadcrumbNavigation(entry)}
-              >
+              <Button key={entry.ts} variant="text" onClick={() => handleBreadcrumbNavigation(entry)}>
                 {entry.target.type} ({entry.target.id})
               </Button>
             ))}
@@ -111,11 +101,7 @@ export const CommonDrawer = () => {
             {Content && current && (
               <QueryErrorResetBoundary>
                 {({ reset }) => (
-                  <ErrorBoundary
-                    key={current.key}
-                    onReset={reset}
-                    FallbackComponent={ErrorFallback}
-                  >
+                  <ErrorBoundary key={current.key} onReset={reset} FallbackComponent={ErrorFallback}>
                     <Suspense fallback={<TraceContentSkeleton />}>
                       <Content id={current.target.id.toString()} />
                     </Suspense>
