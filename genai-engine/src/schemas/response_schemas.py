@@ -11,6 +11,8 @@ from arthur_common.models.response_schemas import (
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
+
+from schemas.common_schemas import NewDatasetVersionRowRequest
 from weaviate.collections.classes.grpc import (
     METADATA,
     HybridFusion,
@@ -165,6 +167,12 @@ class DatasetTransformResponse(BaseModel):
 class ListDatasetTransformsResponse(BaseModel):
     transforms: List[DatasetTransformResponse] = Field(
         description="List of transforms for the dataset.",
+    )
+
+
+class ExecuteTransformResponse(BaseModel):
+    rows_extracted: List[NewDatasetVersionRowRequest] = Field(
+        description="List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.",
     )
 
 

@@ -2,13 +2,16 @@ from typing import Annotated, List, Optional
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import get_db_session
 from repositories.datasets_repository import DatasetRepository
+from repositories.metrics_repository import MetricRepository
+from repositories.span_repository import SpanRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
@@ -16,18 +19,22 @@ from schemas.internal_schemas import Dataset, DatasetTransform, User
 from schemas.request_schemas import (
     DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
+    ExecuteTransformRequest,
     NewDatasetRequest,
     NewDatasetTransformRequest,
     NewDatasetVersionRequest,
+    NewDatasetVersionRowRequest,
 )
 from schemas.response_schemas import (
     DatasetResponse,
     DatasetTransformResponse,
     DatasetVersionResponse,
+    ExecuteTransformResponse,
     ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
+from utils.transform_executor import execute_transform, flatten_spans
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -360,5 +367,84 @@ def delete_transform(
         dataset_repo = DatasetRepository(db_session)
         dataset_repo.delete_transform(dataset_id, transform_id)
         return Response(status_code=HTTP_204_NO_CONTENT)
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.post(
+    "/datasets/{dataset_id}/transforms/{transform_id}/extractions",
+    description="Execute a transform against a trace to extract data for dataset rows. "
+    "Returns data in the format expected by the create dataset version API's rows_to_add parameter.",
+    response_model=ExecuteTransformResponse,
+    tags=[datasets_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def execute_transform_endpoint(
+    request: ExecuteTransformRequest,
+    dataset_id: UUID = Path(description="ID of the dataset."),
+    transform_id: UUID = Path(description="ID of the transform to execute."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ExecuteTransformResponse:
+    """Execute a transform against a trace to extract dataset rows.
+
+    This endpoint:
+    1. Fetches the specified trace for the given task
+    2. Fetches the transform definition
+    3. Executes the transform against the trace spans
+    4. Returns the extracted data formatted for the create dataset version API
+    """
+    try:
+        # Fetch the transform
+        dataset_repo = DatasetRepository(db_session)
+        transform = dataset_repo.get_transform(dataset_id, transform_id)
+
+        if not transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform with ID {transform_id} not found for dataset {dataset_id}",
+            )
+
+        # Fetch the trace
+        tasks_metrics_repo = TasksMetricsRepository(db_session)
+        metrics_repo = MetricRepository(db_session)
+        span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+        trace = span_repo.get_trace_by_id(
+            trace_id=request.trace_id,
+            include_metrics=False,
+            compute_new_metrics=False,
+        )
+
+        if not trace:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trace with ID {request.trace_id} not found",
+            )
+
+        # Verify the trace belongs to the specified task
+        if trace.task_id != str(request.task_id):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Trace {request.trace_id} does not belong to task {request.task_id}",
+            )
+
+        # Flatten the nested span structure into a flat list
+        flat_spans = []
+        if trace.spans:
+            for span in trace.spans:
+                flat_spans.extend(flatten_spans(span))
+
+        # Execute the transform
+        columns = execute_transform(
+            spans=flat_spans,
+            transform_definition=transform.definition,
+        )
+
+        # Create the row for the response
+        row = NewDatasetVersionRowRequest(data=columns)
+
+        return ExecuteTransformResponse(rows_extracted=[row])
+
     finally:
         db_session.close()
