@@ -422,13 +422,6 @@ def execute_transform_endpoint(
                 detail=f"Trace with ID {request.trace_id} not found",
             )
 
-        # Verify the trace belongs to the specified task
-        if trace.task_id != str(request.task_id):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Trace {request.trace_id} does not belong to task {request.task_id}",
-            )
-
         # Flatten the nested span structure into a flat list
         flat_spans = []
         if trace.spans:

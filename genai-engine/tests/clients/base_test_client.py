@@ -1126,14 +1126,12 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         dataset_id: str,
         transform_id: str,
-        task_id: str,
         trace_id: str,
     ) -> tuple[int, Any]:
         """Execute a transform against a trace to extract dataset rows."""
         resp = self.base_client.post(
             f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions",
             json={
-                "task_id": str(task_id),
                 "trace_id": str(trace_id),
             },
             headers=self.authorized_user_api_key_headers,

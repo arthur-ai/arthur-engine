@@ -247,7 +247,6 @@ def test_execute_transform_success(
         status_code, result = client.execute_transform_extraction(
             dataset_id=dataset.id,
             transform_id=transform.id,
-            task_id=test_data["task_id"],
             trace_id=test_data["trace_id"],
         )
 
@@ -323,7 +322,6 @@ def test_execute_transform_with_fallback_values(
         status_code, result = client.execute_transform_extraction(
             dataset_id=dataset.id,
             transform_id=transform.id,
-            task_id=test_data["task_id"],
             trace_id=test_data["trace_id"],
         )
 
@@ -366,7 +364,6 @@ def test_execute_transform_missing_transform(
         status_code, error = client.execute_transform_extraction(
             dataset_id=dataset.id,
             transform_id=fake_transform_id,
-            task_id=test_data["task_id"],
             trace_id=test_data["trace_id"],
         )
 
@@ -420,67 +417,12 @@ def test_execute_transform_missing_trace(
         status_code, error = client.execute_transform_extraction(
             dataset_id=dataset.id,
             transform_id=transform.id,
-            task_id=test_data["task_id"],
             trace_id=fake_trace_id,
         )
 
         assert status_code == 404
         assert error is not None
         assert "not found" in error.get("detail", "").lower()
-
-    finally:
-        client.delete_dataset(dataset.id)
-
-
-@pytest.mark.unit_tests
-def test_execute_transform_task_mismatch(
-    client: GenaiEngineTestClientBase,
-    setup_test_data,
-) -> None:
-    """Test transform execution when trace doesn't belong to specified task."""
-    test_data = setup_test_data
-
-    # Create a dataset
-    status_code, dataset = client.create_dataset(
-        name="Test Dataset for Task Mismatch",
-        description="Testing task mismatch error",
-    )
-    assert status_code == 200
-
-    try:
-        # Create a transform
-        transform_definition = {
-            "version": "1.0",
-            "columns": [
-                {
-                    "column_name": "test_column",
-                    "span_name": "test-span",
-                    "attribute_path": "attributes.test",
-                    "fallback": None,
-                },
-            ],
-        }
-
-        status_code, transform = client.create_transform(
-            dataset_id=dataset.id,
-            name="Test Transform",
-            definition=transform_definition,
-        )
-        assert status_code == 200
-
-        wrong_task_id = str(uuid.uuid4())
-
-        # Try to execute with wrong task ID
-        status_code, error = client.execute_transform_extraction(
-            dataset_id=dataset.id,
-            transform_id=transform.id,
-            task_id=wrong_task_id,
-            trace_id=test_data["trace_id"],
-        )
-
-        assert status_code == 400
-        assert error is not None
-        assert "does not belong to task" in error.get("detail", "").lower()
 
     finally:
         client.delete_dataset(dataset.id)
@@ -532,7 +474,6 @@ def test_execute_transform_complex_nested_data(
         status_code, result = client.execute_transform_extraction(
             dataset_id=dataset.id,
             transform_id=transform.id,
-            task_id=test_data["task_id"],
             trace_id=test_data["trace_id"],
         )
 

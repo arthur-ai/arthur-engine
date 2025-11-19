@@ -165,9 +165,6 @@ class DatasetTransformUpdateRequest(BaseModel):
 
 
 class ExecuteTransformRequest(BaseModel):
-    task_id: UUID = Field(
-        description="ID of the task associated with the trace.",
-    )
     trace_id: str = Field(
         description="ID of the trace to execute the transform against.",
     )
