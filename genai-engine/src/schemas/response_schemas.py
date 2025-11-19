@@ -18,6 +18,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.common_schemas import NewDatasetVersionRowRequest
 from schemas.enums import (
     ConnectionCheckOutcome,
     ModelProvider,
@@ -165,6 +166,12 @@ class DatasetTransformResponse(BaseModel):
 class ListDatasetTransformsResponse(BaseModel):
     transforms: List[DatasetTransformResponse] = Field(
         description="List of transforms for the dataset.",
+    )
+
+
+class ExecuteTransformResponse(BaseModel):
+    rows_extracted: List[NewDatasetVersionRowRequest] = Field(
+        description="List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.",
     )
 
 

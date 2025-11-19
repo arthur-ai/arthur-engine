@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -6,7 +7,11 @@ import {
   Button,
   Box,
   Typography,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CheckIcon from "@mui/icons-material/Check";
 
 import { DatasetTransform } from "./types";
 
@@ -21,13 +26,67 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({
   onClose,
   transform,
 }) => {
+  const [copied, setCopied] = useState(false);
+
   if (!transform) return null;
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(transform.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy transform ID:", err);
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Transform Details: {transform.name}</DialogTitle>
       <DialogContent>
         <Box sx={{ mt: 1 }}>
+          {/* Transform ID Section */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+              Transform ID
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                p: 1.5,
+                backgroundColor: "grey.50",
+                borderRadius: 1,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                  flex: 1,
+                  wordBreak: "break-all",
+                }}
+              >
+                {transform.id}
+              </Typography>
+              <Tooltip title={copied ? "Copied!" : "Copy ID"}>
+                <IconButton
+                  size="small"
+                  onClick={handleCopyId}
+                  sx={{
+                    color: copied ? "success.main" : "text.secondary",
+                  }}
+                >
+                  {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+
           {transform.description && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" fontWeight="medium" gutterBottom>

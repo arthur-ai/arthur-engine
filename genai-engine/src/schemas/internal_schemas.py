@@ -2237,6 +2237,19 @@ class DatasetVersion(DatasetVersionMetadata):
         :param: latest_version: DatabaseBDatasetVersion of the latest version of the dataset before the new one.
         :param: new_version: NewDatasetVersionRequest with the diff changes for the new dataset version
         """
+
+        # Helper function to check if a row matches all filter conditions (AND logic)
+        def _row_matches_delete_filter(db_row: DatabaseDatasetVersionRow) -> bool:
+            if not new_version.rows_to_delete_filter:
+                return False
+
+            # Row must match ALL filter conditions to be deleted
+            for filter_condition in new_version.rows_to_delete_filter:
+                row_value = db_row.data.get(filter_condition.column_name)
+                if row_value != filter_condition.column_value:
+                    return False
+            return True
+
         # assemble data rows
         ids_rows_to_update = set(row.id for row in new_version.rows_to_update)
         if latest_version is not None:
@@ -2245,6 +2258,7 @@ class DatasetVersion(DatasetVersionMetadata):
                 for db_row in latest_version.version_rows
                 if db_row.id not in new_version.rows_to_delete
                 and db_row.id not in ids_rows_to_update
+                and not _row_matches_delete_filter(db_row)
             ]
             existing_row_id_to_row = {
                 db_row.id: db_row for db_row in latest_version.version_rows
