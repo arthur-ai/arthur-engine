@@ -6,6 +6,8 @@ from openinference.semconv.trace import (
     SpanAttributes,
 )
 
+cpu_count = os.cpu_count()
+
 ##################################################################
 # Application Server
 GENAI_ENGINE_INGRESS_URI_ENV_VAR = "GENAI_ENGINE_INGRESS_URI"
@@ -18,7 +20,9 @@ GENAI_ENGINE_API_ONLY_MODE_ENABLED_ENV_VAR = "GENAI_ENGINE_API_ONLY_MODE_ENABLED
 GENAI_ENGINE_AGENTIC_UI_ENABLED_ENV_VAR = "GENAI_ENGINE_AGENTIC_UI_ENABLED"
 GENAI_ENGINE_ENABLE_PERSISTENCE_ENV_VAR = "GENAI_ENGINE_ENABLE_PERSISTENCE"
 GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR = "GENAI_ENGINE_THREAD_POOL_MAX_WORKERS"
-DEFAULT_THREAD_POOL_MAX_WORKERS = math.floor(os.cpu_count() / 2) + 1
+DEFAULT_THREAD_POOL_MAX_WORKERS = (
+    1 if cpu_count is None else math.floor(cpu_count / 2) + 1
+)
 DEFAULT_PAGE_SIZE = 5  # Reduced for trace-level pagination
 MAX_PAGE_SIZE = 5000
 

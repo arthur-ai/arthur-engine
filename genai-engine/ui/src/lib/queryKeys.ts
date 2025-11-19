@@ -36,4 +36,12 @@ export const queryKeys = {
     listPaginated: (params: GetUsersParams) => ["listUsersMetadataApiV1TracesUsersGet", params] as const,
     byId: (userId: string) => ["getUserDetailsApiV1TracesUsersUserIdGet", userId] as const,
   },
+  ragProviders: {
+    all: () => ["getRagProvidersApiV1TasksTaskIdRagProvidersGet"] as const,
+    list: (taskId: string) => ["getRagProvidersApiV1TasksTaskIdRagProvidersGet", { taskId }] as const,
+  },
+  ragCollections: {
+    all: () => ["listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet"] as const,
+    list: (providerId: string) => ["listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet", { providerId }] as const,
+  },
 } as const;

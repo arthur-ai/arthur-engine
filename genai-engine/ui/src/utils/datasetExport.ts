@@ -1,11 +1,9 @@
 import Papa from "papaparse";
 
 import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
+import { downloadFile } from "@/utils/fileDownload";
 
-export function exportDatasetToCSV(
-  datasetName: string,
-  rows: DatasetVersionRowResponse[]
-): void {
+export function exportDatasetToCSV(datasetName: string, rows: DatasetVersionRowResponse[]): void {
   const csvData = rows.map((row) => {
     const obj: Record<string, string> = {};
     row.data.forEach((col) => {
@@ -15,15 +13,6 @@ export function exportDatasetToCSV(
   });
 
   const csv = Papa.unparse(csvData);
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${datasetName}-${Date.now()}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  const timestamp = new Date().toISOString().split("T")[0];
+  downloadFile(csv, `${datasetName}-${timestamp}.csv`, "text/csv;charset=utf-8;");
 }
-
