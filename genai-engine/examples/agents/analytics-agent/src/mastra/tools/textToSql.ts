@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { AISpanType, TracingContext } from "@mastra/core/ai-tracing";
-import { getTemplatedPrompt } from "@/mastra/lib/arthur-api-client/client";
+import { getTemplatedPrompt } from "@/mastra/lib/arthur-api-client";
 
 export type TextToSqlToolResult = z.infer<typeof TextToSqlToolResultSchema>;
 

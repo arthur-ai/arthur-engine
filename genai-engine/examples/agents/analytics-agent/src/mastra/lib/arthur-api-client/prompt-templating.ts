@@ -14,8 +14,8 @@ export interface GetTemplatedPromptOptions {
   promptVersion: string;
   /** The Arthur task ID */
   taskId: string;
-  /** Variables to template into the prompt */
-  variables: PromptVariable[];
+  /** Variables to template into the prompt - can be an object or array of PromptVariable */
+  variables: Record<string, any> | PromptVariable[];
   /** Optional tracing context for creating spans */
   tracingContext?: TracingContext;
 }
@@ -33,6 +33,20 @@ export interface TemplatedPromptResult {
  *
  * @example
  * ```typescript
+ * // Using an object (recommended)
+ * const result = await getTemplatedPrompt({
+ *   promptName: "text-to-sql",
+ *   promptVersion: "production",
+ *   taskId: process.env.ARTHUR_TASK_ID!,
+ *   variables: {
+ *     database: "postgres",
+ *     query: "Show me all users",
+ *     schema: { tables: ["users", "orders"] }
+ *   },
+ *   tracingContext
+ * });
+ *
+ * // Or using an array of PromptVariable
  * const result = await getTemplatedPrompt({
  *   promptName: "text-to-sql",
  *   promptVersion: "production",
@@ -51,6 +65,21 @@ export async function getTemplatedPrompt(
   const { promptName, promptVersion, taskId, variables, tracingContext } =
     options;
 
+  // Convert variables object to PromptVariable array if needed
+  const promptVariables: PromptVariable[] = Array.isArray(variables)
+    ? variables
+    : Object.entries(variables).map(([name, value]) => ({
+        name,
+        value:
+          value === undefined
+            ? ""
+            : typeof value === "object"
+            ? JSON.stringify(value)
+            : typeof value === "string"
+            ? value
+            : String(value),
+      }));
+
   // Create a span for prompt templating if tracing context is provided
   const promptSpan = tracingContext?.currentSpan?.createChildSpan({
     type: AISpanType.GENERIC,
@@ -59,7 +88,7 @@ export async function getTemplatedPrompt(
       promptName,
       promptVersion,
       taskId,
-      variables: variables.reduce(
+      variables: promptVariables.reduce(
         (acc, v) => ({ ...acc, [v.name]: v.value }),
         {}
       ),
@@ -81,7 +110,7 @@ export async function getTemplatedPrompt(
         {
           completion_request: {
             strict: true,
-            variables,
+            variables: promptVariables,
           },
         }
       );
