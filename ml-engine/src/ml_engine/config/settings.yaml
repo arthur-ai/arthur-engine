@@ -17,6 +17,7 @@ GENAI_ENGINE_INTERNAL_INGRESS_HOST: ""
 # Aggregation Config settings
 SEGMENTATION_COL_COUNT_LIMIT: 3
 SEGMENTATION_COL_UNIQUE_VALUE_LIMIT: 100
-ML_ENGINE_AGGREGATION_TIMEOUT: 180
+# Timeout increased to 10 minutes to allow for larger datasets and more complex aggregations
+ML_ENGINE_AGGREGATION_TIMEOUT: 600
 ###############################################
 KEYCLOAK_SSL_VERIFY: true
