@@ -196,6 +196,14 @@ class TraceMetadataResponse(TokenCountCostSchema):
         None,
         description="Root span output value from trace metadata",
     )
+    annotation_score: Optional[int] = Field(
+        default=None,
+        description="Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)",
+    )
+    annotation_description: Optional[str] = Field(
+        default=None,
+        description="Description of the annotation",
+    )
 
 
 class SpanMetadataResponse(TokenCountCostSchema):

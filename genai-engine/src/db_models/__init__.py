@@ -42,6 +42,7 @@ from db_models.rule_result_models import (
 )
 from db_models.task_models import DatabaseTask, DatabaseTaskToRules
 from db_models.telemetry_models import (
+    DatabaseAgenticAnnotation,
     DatabaseMetric,
     DatabaseMetricResult,
     DatabaseSpan,
@@ -104,6 +105,8 @@ __all__ = [
     "DatabaseMetric",
     "DatabaseTaskToMetrics",
     "DatabaseMetricResult",
+    # Annotation models
+    "DatabaseAgenticAnnotation",
     # Agentic Prompt models
     "DatabaseAgenticPrompt",
     "DatabaseAgenticPromptVersionTag",

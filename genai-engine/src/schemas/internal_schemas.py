@@ -72,6 +72,7 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from db_models import (
+    DatabaseAgenticAnnotation,
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
@@ -578,6 +579,54 @@ class Task(BaseModel):
         )
 
 
+class AgenticAnnotation(BaseModel):
+    id: uuid.UUID = Field(..., description="Unique identifier for the annotation")
+
+    # NOTE: Make this optional in the future when expanding to other annotation types (e.g. span annotations)
+    trace_id: str = Field(..., description="Trace ID this annotation belongs to")
+
+    annotation_score: int = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)",
+    )
+    annotation_description: Optional[str] = Field(
+        default=None,
+        description="Description of the annotation",
+    )
+
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        description="When the annotation was created",
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        description="When the annotation was last updated",
+    )
+
+    @staticmethod
+    def from_db_model(db_annotation: DatabaseAgenticAnnotation) -> "AgenticAnnotation":
+        return AgenticAnnotation(
+            id=db_annotation.id,
+            trace_id=db_annotation.trace_id,
+            annotation_score=db_annotation.annotation_score,
+            annotation_description=db_annotation.annotation_description,
+            created_at=db_annotation.created_at,
+            updated_at=db_annotation.updated_at,
+        )
+
+    def to_db_model(self) -> DatabaseAgenticAnnotation:
+        return DatabaseAgenticAnnotation(
+            id=self.id,
+            trace_id=self.trace_id,
+            annotation_score=self.annotation_score,
+            annotation_description=self.annotation_description,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+
 class TraceMetadata(TokenCountCostSchema):
     trace_id: str
     task_id: str
@@ -590,6 +639,10 @@ class TraceMetadata(TokenCountCostSchema):
     updated_at: datetime
     input_content: Optional[str] = None
     output_content: Optional[str] = None
+
+    # Annotation information (separate table only used for response model conversion)
+    annotation_score: Optional[int] = None
+    annotation_description: Optional[str] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
@@ -656,6 +709,8 @@ class TraceMetadata(TokenCountCostSchema):
             total_token_cost=self.total_token_cost,
             input_content=self.input_content,
             output_content=self.output_content,
+            annotation_score=self.annotation_score,
+            annotation_description=self.annotation_description,
         )
 
 

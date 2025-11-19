@@ -5,6 +5,22 @@ The intention of this changelog is to document API changes as they happen to eff
 # 11/19/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotation_score' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotation_score' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotation_score' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotation_score' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotation_score' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotation_score' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotation_score' to the response with the '200' status
 
 # 11/18/2025
 - **CHANGE** for **URL**: /api/v1/prompt_variables  endpoint added

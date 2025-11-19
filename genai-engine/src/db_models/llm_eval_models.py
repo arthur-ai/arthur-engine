@@ -96,6 +96,7 @@ class DatabaseLLMEvalVersionTag(Base):
         ForeignKeyConstraint(
             ["task_id", "name", "version"],
             ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
+            name="fk_llm_eval_version_tags_eval",
         ),
-        UniqueConstraint("task_id", "name", "tag", name="uq_llm_eval_name_tag"),
+        UniqueConstraint("task_id", "name", "tag", name="uq_llm_eval_task_name_tag"),
     )
