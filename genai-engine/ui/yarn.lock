@@ -308,7 +308,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@base-ui-components/react@npm:^1.0.0-beta.4":
+"@base-ui-components/react@npm:^1.0.0-beta.6":
   version: 1.0.0-beta.6
   resolution: "@base-ui-components/react@npm:1.0.0-beta.6"
   dependencies:
@@ -2862,6 +2862,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"clsx@npm:^1.1.0":
+  version: 1.2.1
+  resolution: "clsx@npm:1.2.1"
+  checksum: 10c0/34dead8bee24f5e96f6e7937d711978380647e936a22e76380290e35486afd8634966ce300fc4b74a32f3762c7d4c0303f442c3e259f4ce02374eb0c82834f27
+  languageName: node
+  linkType: hard
+
 "clsx@npm:^2.0.0, clsx@npm:^2.1.1":
   version: 2.1.1
   resolution: "clsx@npm:2.1.1"
@@ -2980,6 +2987,13 @@ __metadata:
     shebang-command: "npm:^2.0.0"
     which: "npm:^2.0.1"
   checksum: 10c0/053ea8b2135caff68a9e81470e845613e374e7309a47731e81639de3eaeb90c3d01af0e0b44d2ab9d50b43467223b88567dfeb3262db942dc063b9976718ffc1
+  languageName: node
+  linkType: hard
+
+"csstype@npm:^3.0.10":
+  version: 3.2.3
+  resolution: "csstype@npm:3.2.3"
+  checksum: 10c0/cd29c51e70fa822f1cecd8641a1445bed7063697469d35633b516e60fe8c1bde04b08f6c5b6022136bb669b64c63d4173af54864510fbb4ee23281801841a3ce
   languageName: node
   linkType: hard
 
@@ -4104,6 +4118,15 @@ __metadata:
     define-properties: "npm:^1.2.1"
     gopd: "npm:^1.0.1"
   checksum: 10c0/9d156f313af79d80b1566b93e19285f481c591ad6d0d319b4be5e03750d004dde40a39a0f26f7e635f9007a3600802f53ecd85a759b86f109e80a5f705e01846
+  languageName: node
+  linkType: hard
+
+"goober@npm:^2.0.33":
+  version: 2.1.18
+  resolution: "goober@npm:2.1.18"
+  peerDependencies:
+    csstype: ^3.0.10
+  checksum: 10c0/de9bf7b6f57417900afac81a479b85d8c0bcb0322ba8b174f9287d10e7891ba7e33db5fe2b0cdd75281c69130e76eb0c694345acf45ea57e4e4a2db8e4c4f021
   languageName: node
   linkType: hard
 
@@ -5949,6 +5972,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"notistack@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "notistack@npm:3.0.2"
+  dependencies:
+    clsx: "npm:^1.1.0"
+    goober: "npm:^2.0.33"
+  peerDependencies:
+    react: ^17.0.0 || ^18.0.0 || ^19.0.0
+    react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/82a0270ee1b9e70bc1dfad4d7e1d2bbb6dc08ac887b920986dcfa58cc2aa975bd48b71f7cf3afc2e11badd142ba9ade5f708c858ee2080b9d4cd950b80c43811
+  languageName: node
+  linkType: hard
+
 "nuqs@npm:^2.8.0":
   version: 2.8.0
   resolution: "nuqs@npm:2.8.0"
@@ -7626,7 +7662,7 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@base-ui-components/react": "npm:^1.0.0-beta.4"
+    "@base-ui-components/react": "npm:^1.0.0-beta.6"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -7660,6 +7696,7 @@ __metadata:
     framer-motion: "npm:^12.23.21"
     globals: "npm:^16.4.0"
     monaco-editor: "npm:^0.54.0"
+    notistack: "npm:^3.0.2"
     nuqs: "npm:^2.8.0"
     papaparse: "npm:^5.5.3"
     prettier: "npm:3.6.2"

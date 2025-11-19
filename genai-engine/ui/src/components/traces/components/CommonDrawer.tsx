@@ -41,7 +41,7 @@ export const CommonDrawer = () => {
   const [current, setDrawerTarget] = useDrawerTarget();
 
   const handleClose = () => {
-    setDrawerTarget(null);
+    setDrawerTarget({ id: null });
     select(null, { history: "replace" });
   };
 

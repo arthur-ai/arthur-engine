@@ -92,7 +92,7 @@ export const DurationCell = ({ duration }: { duration: number }) => {
       direction="row"
       alignItems="center"
       color={color}
-      className="px-1 bg-[color-mix(in_oklab,var(--bucket-color)_20%,white)] w-fit border border-(--bucket-color)/50 rounded-md"
+      className="px-1 bg-[color-mix(in_oklab,var(--bucket-color)_20%,white)] w-fit border border-(--bucket-color)/50 rounded-md text-nowrap"
       style={{ "--bucket-color": color } as React.CSSProperties}
     >
       <AccessTimeOutlinedIcon sx={{ fontSize: 12 }} />
