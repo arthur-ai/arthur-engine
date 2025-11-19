@@ -317,3 +317,184 @@ def test_dataset_versions_basic_functionality(
         version_number=1,
     )
     assert status_code == 404
+
+
+@pytest.mark.unit_tests
+def test_dataset_versions_with_rows_to_delete_filter(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Test the rows_to_delete_filter functionality with AND condition logic."""
+    # Create a dataset
+    dataset_name = "Dataset for Filter Delete Test"
+    dataset_description = "Testing rows_to_delete_filter parameter"
+
+    status_code, created_dataset = client.create_dataset(
+        name=dataset_name,
+        description=dataset_description,
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    # Test 1: Create initial version with diverse rows
+    # Create rows with different combinations of status and category
+    rows_to_add = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User1"),
+                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="active"),
+                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User2"),
+                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
+                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User3"),
+                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
+                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User4"),
+                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="active"),
+                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User5"),
+                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
+                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+            ],
+        ),
+    ]
+
+    status_code, version_1 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=rows_to_add,
+    )
+    assert status_code == 200
+    assert version_1.version_number == 1
+    assert version_1.total_count == 5
+    assert len(version_1.rows) == 5
+
+    # Test 2: Create version 2 using rows_to_delete_filter to delete rows with status='inactive' AND category='test'
+    # This should delete User2 and User5 (both have status='inactive' AND category='test')
+    # User3 should NOT be deleted (status='inactive' but category='production')
+    rows_to_delete_filter = [
+        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
+        NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+    ]
+
+    status_code, version_2 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete_filter=rows_to_delete_filter,
+    )
+    assert status_code == 200
+    assert version_2.version_number == 2
+    assert version_2.total_count == 3  # 5 - 2 (User2 and User5) = 3
+
+    # Verify the remaining rows
+    row_data = _extract_row_data(version_2.rows)
+    # These should remain: User1 (active/test), User3 (inactive/production), User4 (active/production)
+    assert "User1" in row_data
+    assert "User3" in row_data
+    assert "User4" in row_data
+    # These should be deleted: User2 and User5 (both inactive/test)
+    assert "User2" not in row_data
+    assert "User5" not in row_data
+
+    # Test 3: Combine rows_to_delete (by ID) with rows_to_delete_filter
+    # Delete User1 by ID and all active/production rows by filter (User4)
+    user1_id = _get_id_by_row_name(version_2.rows, "User1")
+
+    rows_to_delete_filter_2 = [
+        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="active"),
+        NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+    ]
+
+    status_code, version_3 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete=[user1_id],
+        rows_to_delete_filter=rows_to_delete_filter_2,
+    )
+    assert status_code == 200
+    assert version_3.version_number == 3
+    assert version_3.total_count == 1  # Only User3 should remain
+
+    # Verify only User3 remains
+    row_data = _extract_row_data(version_3.rows)
+    assert "User3" in row_data
+    assert "User1" not in row_data
+    assert "User4" not in row_data
+
+    # Test 4: Test with filter that matches no rows
+    rows_to_delete_filter_3 = [
+        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="pending"),
+        NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+    ]
+
+    status_code, version_4 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete_filter=rows_to_delete_filter_3,
+    )
+    assert status_code == 200
+    assert version_4.version_number == 4
+    assert version_4.total_count == 1  # User3 should still remain
+
+    row_data = _extract_row_data(version_4.rows)
+    assert "User3" in row_data
+
+    # Test 5: Test with single filter condition
+    # Add back some rows first
+    new_rows = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User6"),
+                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="archived"),
+                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User7"),
+                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="archived"),
+                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+            ],
+        ),
+    ]
+
+    status_code, version_5 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=new_rows,
+    )
+    assert status_code == 200
+    assert version_5.total_count == 3  # User3, User6, User7
+
+    # Now delete all 'archived' rows using a single condition filter
+    rows_to_delete_filter_4 = [
+        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="archived"),
+    ]
+
+    status_code, version_6 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete_filter=rows_to_delete_filter_4,
+    )
+    assert status_code == 200
+    assert version_6.version_number == 6
+    assert version_6.total_count == 1  # Only User3 should remain
+
+    row_data = _extract_row_data(version_6.rows)
+    assert "User3" in row_data
+    assert "User6" not in row_data
+    assert "User7" not in row_data
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204

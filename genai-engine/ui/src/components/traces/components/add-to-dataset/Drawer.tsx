@@ -340,7 +340,23 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
                           if (transformId && value) {
                             const executedColumns = executeTransform(flatSpans, value.definition);
                             if (executedColumns) {
-                              form.setFieldValue("columns", executedColumns);
+                              // Get existing dataset columns
+                              const existingDatasetColumns = latestVersion?.column_names || [];
+                              const executedColumnNames = new Set(executedColumns.map(col => col.name));
+
+                              // Create columns for dataset columns that aren't in the transform
+                              const datasetOnlyColumns = existingDatasetColumns
+                                .filter(columnName => !executedColumnNames.has(columnName))
+                                .map(columnName => ({
+                                  name: columnName,
+                                  value: "",
+                                  path: "",
+                                  span_name: "",
+                                  attribute_path: "",
+                                }));
+
+                              // Merge transform columns with dataset-only columns (union)
+                              form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
                             }
                           } else {
                             form.setFieldValue("columns", []);

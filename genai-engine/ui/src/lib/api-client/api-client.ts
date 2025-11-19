@@ -1212,6 +1212,28 @@ export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityText
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
 
+export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData = ExecuteTransformResponse;
+
+export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError = HTTPValidationError;
+
+/** ExecuteTransformRequest */
+export interface ExecuteTransformRequest {
+  /**
+   * Trace Id
+   * ID of the trace to execute the transform against.
+   */
+  trace_id: string;
+}
+
+/** ExecuteTransformResponse */
+export interface ExecuteTransformResponse {
+  /**
+   * Rows Extracted
+   * List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.
+   */
+  rows_extracted: NewDatasetVersionRowRequest[];
+}
+
 /**
  * ExperimentOutputSource
  * Reference to experiment output
@@ -3778,13 +3800,21 @@ export interface NewDatasetVersionRequest {
    */
   rows_to_delete: string[];
   /**
+   * Rows To Delete Filter
+   * Optional list of column name and value filters. Rows matching ALL specified column name-value pairs (AND condition) will be deleted from the new dataset version. This filter is applied in addition to rows_to_delete.
+   */
+  rows_to_delete_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
    * Rows To Update
    * List of IDs of rows to be updated in the new dataset version with their new values. Should include the value in the row for every column in the dataset, not just the updated column values.
    */
   rows_to_update: NewDatasetVersionUpdateRowRequest[];
 }
 
-/** NewDatasetVersionRowColumnItemRequest */
+/**
+ * NewDatasetVersionRowColumnItemRequest
+ * Represents a single column-value pair in a dataset row.
+ */
 export interface NewDatasetVersionRowColumnItemRequest {
   /**
    * Column Name
@@ -3798,7 +3828,10 @@ export interface NewDatasetVersionRowColumnItemRequest {
   column_value: string;
 }
 
-/** NewDatasetVersionRowRequest */
+/**
+ * NewDatasetVersionRowRequest
+ * Represents a row to be added to a dataset version.
+ */
 export interface NewDatasetVersionRowRequest {
   /**
    * Data
@@ -3807,7 +3840,10 @@ export interface NewDatasetVersionRowRequest {
   data: NewDatasetVersionRowColumnItemRequest[];
 }
 
-/** NewDatasetVersionUpdateRowRequest */
+/**
+ * NewDatasetVersionUpdateRowRequest
+ * Represents a row to be updated in a dataset version.
+ */
 export interface NewDatasetVersionUpdateRowRequest {
   /**
    * Data
@@ -7889,7 +7925,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.198
+ * @version 2.1.202
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -8696,6 +8732,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError
       >({
         path: `/api/v1/rag_providers/${providerId}/similarity_text_search`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Execute a transform against a trace to extract data for dataset rows. Returns data in the format expected by the create dataset version API's rows_to_add parameter.
+     *
+     * @tags Datasets
+     * @name ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost
+     * @summary Execute Transform Endpoint
+     * @request POST:/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions
+     * @secure
+     */
+    executeTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost: (
+      datasetId: string,
+      transformId: string,
+      data: ExecuteTransformRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData,
+        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}/extractions`,
         method: "POST",
         body: data,
         secure: true,

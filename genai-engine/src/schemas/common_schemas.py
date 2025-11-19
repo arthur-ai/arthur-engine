@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from arthur_common.models.enums import (
     UserPermissionAction,
@@ -72,4 +73,28 @@ class JsonSchema(BaseModel):
     additionalProperties: Optional[bool] = Field(
         default=None,
         description="Whether the function definition should allow additional properties",
+    )
+
+
+class NewDatasetVersionRowColumnItemRequest(BaseModel):
+    """Represents a single column-value pair in a dataset row."""
+
+    column_name: str = Field(description="Name of column.")
+    column_value: str = Field(description="Value of column for the row.")
+
+
+class NewDatasetVersionRowRequest(BaseModel):
+    """Represents a row to be added to a dataset version."""
+
+    data: List[NewDatasetVersionRowColumnItemRequest] = Field(
+        description="List of column-value pairs in the new dataset row.",
+    )
+
+
+class NewDatasetVersionUpdateRowRequest(BaseModel):
+    """Represents a row to be updated in a dataset version."""
+
+    id: UUID = Field(description="UUID of row to be updated.")
+    data: List[NewDatasetVersionRowColumnItemRequest] = Field(
+        description="List of column-value pairs in the updated row.",
     )
