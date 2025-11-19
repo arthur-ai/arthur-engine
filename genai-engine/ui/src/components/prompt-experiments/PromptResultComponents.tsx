@@ -91,13 +91,25 @@ export const VariableTile: React.FC<VariableTileProps> = ({ variableName, value 
       <Box
         className="p-3 bg-gray-50 border border-gray-200 rounded relative"
         onClick={isTruncated ? () => setIsModalOpen(true) : undefined}
-        sx={{ cursor: isTruncated ? "pointer" : "default" }}
+        sx={{
+          cursor: isTruncated ? "pointer" : "default",
+          minWidth: 0,
+          overflow: "hidden"
+        }}
       >
         <Typography variant="caption" className="font-medium text-gray-700">
           {variableName}:
         </Typography>
-        <Box className="flex items-start gap-1 mt-1">
-          <Typography variant="body2" className="text-gray-900 flex-1 break-words">
+        <Box className="flex items-start gap-1 mt-1" sx={{ minWidth: 0 }}>
+          <Typography
+            variant="body2"
+            className="text-gray-900 flex-1"
+            sx={{
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              minWidth: 0
+            }}
+          >
             {displayValue}
           </Typography>
           {isTruncated && (

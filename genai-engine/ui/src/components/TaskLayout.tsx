@@ -150,7 +150,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        <div className="flex flex-1">
+        <div className="flex flex-1 overflow-hidden">
           <SidebarNavigation
             onBackToDashboard={handleBack}
             onNavigate={handleNavigate}

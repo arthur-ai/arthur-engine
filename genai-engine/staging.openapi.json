@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.188"
+        "version": "2.1.200"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -5208,6 +5208,100 @@
                 ]
             }
         },
+        "/api/v1/prompt_renders": {
+            "post": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Render an unsaved prompt with variables",
+                "description": "Render an unsaved prompt by replacing template variables with provided values. Accepts messages directly in the request body instead of loading from database.",
+                "operationId": "render_unsaved_agentic_prompt_api_v1_prompt_renders_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UnsavedPromptRenderingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RenderedPromptResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/prompt_variables": {
+            "post": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Gets the list of variables needed from an unsaved prompt's messages",
+                "description": "Gets the list of variables needed from an unsaved prompt's messages",
+                "operationId": "get_unsaved_prompt_variables_list_api_v1_prompt_variables_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UnsavedPromptVariablesRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnsavedPromptVariablesListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions": {
             "post": {
                 "tags": [
@@ -5262,8 +5356,8 @@
                                 "$ref": "#/components/schemas/PromptCompletionRequest",
                                 "default": {
                                     "variables": [],
-                                    "stream": false,
-                                    "strict": false
+                                    "strict": false,
+                                    "stream": false
                                 }
                             }
                         }
@@ -5282,6 +5376,92 @@
                                 "schema": {
                                     "type": "string",
                                     "example": "# Chunk event\nevent: chunk\ndata: {\n  \"id\": \"string\",\n  \"created\": 1760636425,\n  \"model\": \"string\",\n  \"object\": \"string\",\n  \"system_fingerprint\": \"string\",\n  \"choices\": [\n    {\n      \"finish_reason\": null,\n      \"index\": 0,\n      \"delta\": {\n        \"provider_specific_fields\": null,\n        \"refusal\": null,\n        \"content\": \"string\",\n        \"role\": null,\n        \"function_call\": null,\n        \"tool_calls\": null,\n        \"audio\": null\n      },\n      \"logprobs\": null\n    }\n  ],\n  \"provider_specific_fields\": null\n}\n\n# Final response event\nevent: final_response\ndata: {\n  \"content\": \"string\",\n  \"tool_calls\": [\n    \"string\"\n  ],\n  \"cost\": \"string\"\n}\n\n"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders": {
+            "post": {
+                "tags": [
+                    "Prompts"
+                ],
+                "summary": "Render a specific version of an agentic prompt with variables",
+                "description": "Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the rendered messages.",
+                "operationId": "render_saved_agentic_prompt_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__renders_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to render."
+                        },
+                        "description": "The name of the prompt to render."
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SavedPromptRenderingRequest",
+                                "default": {
+                                    "completion_request": {
+                                        "variables": [],
+                                        "strict": false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RenderedPromptResponse"
                                 }
                             }
                         }
@@ -13818,6 +13998,7 @@
                         "description": "JSON schema definition (required when type is 'json_schema')"
                     }
                 },
+                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "type"
@@ -13843,6 +14024,7 @@
                         "description": "JSON schema definition (required when type is 'json_schema')"
                     }
                 },
+                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "type"
@@ -14797,7 +14979,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.188"
+                                "version": "2.1.200"
                             }
                         ]
                     }
@@ -15618,19 +15800,6 @@
                         "description": "List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
                         "default": []
                     },
-                    "stream": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stream",
-                        "description": "Whether to stream the response",
-                        "default": false
-                    },
                     "strict": {
                         "anyOf": [
                             {
@@ -15642,6 +15811,19 @@
                         ],
                         "title": "Strict",
                         "description": "Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
+                        "default": false
+                    },
+                    "stream": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stream",
+                        "description": "Whether to stream the response",
                         "default": false
                     }
                 },
@@ -17173,6 +17355,23 @@
                 "title": "RelevanceMetricConfig",
                 "description": "Configuration for relevance metrics including QueryRelevance and ResponseRelevance"
             },
+            "RenderedPromptResponse": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Output"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages"
+                ],
+                "title": "RenderedPromptResponse"
+            },
             "ResponseValidationRequest": {
                 "properties": {
                     "response": {
@@ -17333,6 +17532,17 @@
                     "ToxicityRule"
                 ],
                 "title": "RuleType"
+            },
+            "SavedPromptRenderingRequest": {
+                "properties": {
+                    "completion_request": {
+                        "$ref": "#/components/schemas/VariableRenderingRequest",
+                        "description": "Rendering configuration for the unsaved prompt"
+                    }
+                },
+                "type": "object",
+                "title": "SavedPromptRenderingRequest",
+                "description": "Request schema for rendering an unsaved agentic prompt with variables"
             },
             "SearchDatasetsResponse": {
                 "properties": {
@@ -19296,6 +19506,63 @@
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
             },
+            "UnsavedPromptRenderingRequest": {
+                "properties": {
+                    "completion_request": {
+                        "$ref": "#/components/schemas/VariableRenderingRequest",
+                        "description": "Rendering configuration for the unsaved prompt"
+                    },
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages"
+                ],
+                "title": "UnsavedPromptRenderingRequest",
+                "description": "Request schema for rendering an unsaved agentic prompt with variables"
+            },
+            "UnsavedPromptVariablesListResponse": {
+                "properties": {
+                    "variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of variables needed to run an unsaved prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variables"
+                ],
+                "title": "UnsavedPromptVariablesListResponse"
+            },
+            "UnsavedPromptVariablesRequest": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages"
+                ],
+                "title": "UnsavedPromptVariablesRequest",
+                "description": "Request schema for getting the list of variables needed from an unsaved prompt's messages"
+            },
             "UpdateMetricRequest": {
                 "properties": {
                     "enabled": {
@@ -19494,6 +19761,41 @@
                         }
                     ]
                 }
+            },
+            "VariableRenderingRequest": {
+                "properties": {
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/VariableTemplateValue"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
+                        "default": []
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "title": "VariableRenderingRequest"
             },
             "VariableTemplateValue": {
                 "properties": {

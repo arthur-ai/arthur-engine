@@ -29,7 +29,7 @@ export const LLMOutputMessage = z.object({
 
 export const ToolCall = z.object({
   tool_call: z.object({
-    id: z.string(),
+    id: z.string().optional(),
     function: z.object({
       name: z.string(),
       arguments: z.string().optional(),
@@ -48,12 +48,12 @@ export const Message = z.discriminatedUnion("role", [
   }),
   z.object({
     role: z.literal("assistant"),
-    content: z.string(),
+    content: z.string().optional(),
     tool_calls: z.array(ToolCall).optional(),
   }),
   z.object({
     role: z.literal("tool"),
-    content: z.string(),
+    content: z.string().optional(),
     tool_call_id: z.string().optional(),
   }),
 ]);

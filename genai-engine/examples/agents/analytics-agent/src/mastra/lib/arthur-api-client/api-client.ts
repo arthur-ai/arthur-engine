@@ -2099,10 +2099,6 @@ export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData = Dat
 
 export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError = HTTPValidationError;
 
-export type GetUnsavedPromptVariablesListApiV1PromptVariablesPostData = UnsavedPromptVariablesListResponse;
-
-export type GetUnsavedPromptVariablesListApiV1PromptVariablesPostError = HTTPValidationError;
-
 export type GetUserDetailsApiV1TracesUsersUserIdGetData = TraceUserMetadataResponse;
 
 export type GetUserDetailsApiV1TracesUsersUserIdGetError = HTTPValidationError;
@@ -6789,27 +6785,6 @@ export interface UnsavedPromptRenderingRequest {
   messages: OpenAIMessageInput[];
 }
 
-/** UnsavedPromptVariablesListResponse */
-export interface UnsavedPromptVariablesListResponse {
-  /**
-   * Variables
-   * List of variables needed to run an unsaved prompt
-   */
-  variables: string[];
-}
-
-/**
- * UnsavedPromptVariablesRequest
- * Request schema for getting the list of variables needed from an unsaved prompt's messages
- */
-export interface UnsavedPromptVariablesRequest {
-  /**
-   * Messages
-   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
-   */
-  messages: OpenAIMessageInput[];
-}
-
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchError = HTTPValidationError;
@@ -7889,7 +7864,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.198
+ * @version 2.1.189
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -9445,26 +9420,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
         method: "GET",
         secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Gets the list of variables needed from an unsaved prompt's messages
-     *
-     * @tags Prompts
-     * @name GetUnsavedPromptVariablesListApiV1PromptVariablesPost
-     * @summary Gets the list of variables needed from an unsaved prompt's messages
-     * @request POST:/api/v1/prompt_variables
-     * @secure
-     */
-    getUnsavedPromptVariablesListApiV1PromptVariablesPost: (data: UnsavedPromptVariablesRequest, params: RequestParams = {}) =>
-      this.request<GetUnsavedPromptVariablesListApiV1PromptVariablesPostData, GetUnsavedPromptVariablesListApiV1PromptVariablesPostError>({
-        path: `/api/v1/prompt_variables`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),

@@ -20,8 +20,31 @@ import { OutputFieldProps } from "../types";
 
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   {
-    type: "json_schema",
-    schema: {},
+    "type": "json_schema",
+    "json_schema": {
+      "name": "schema_name_here",
+      "description": "description of the response schema",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "field1": {
+            "type": "string",
+            "description": "Describe what this string should contain"
+          },
+          "field2": {
+            "type": "number",
+            "description": "Describe what this number represents"
+          },
+          "field3": {
+            "type": "boolean",
+            "description": "Explain what true/false means in this context"
+          }
+        },
+        "required": ["field1", "field2"],
+        "additionalProperties": false
+      }
+    }
   },
   null,
   2
@@ -144,7 +167,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
           {showSkeletons ? <>{skeletons()}</> : <div className="flex flex-col h-full">{renderContent}</div>}
         </div>
         <Divider />
-        <div className="flex gap-3 flex-shrink-0">
+        <div className="flex gap-3 shrink-0">
           {/* eslint-disable-next-line no-constant-condition */}
           {false ? (
             <div className="flex items-center">

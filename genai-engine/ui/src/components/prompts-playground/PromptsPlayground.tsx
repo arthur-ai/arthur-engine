@@ -5,12 +5,10 @@ import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
+import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
-import useMediaQuery from "@mui/material/useMediaQuery";
-import React, { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
@@ -35,20 +33,6 @@ const PromptsPlayground = () => {
 
   const apiClient = useApi();
   const spanId = searchParams.get("spanId");
-
-  const theme = useTheme();
-  const isXLScreen = useMediaQuery(theme.breakpoints.up("xl")); // xl breakpoint = 1536px
-  const isLargeScreen = useMediaQuery(theme.breakpoints.up("lg")); // lg breakpoint = 1280px
-  const isMediumScreen = useMediaQuery(theme.breakpoints.up("md")); // md breakpoint = 960px
-
-  // Calculate prompt width based on screen size
-  // XL screens: fit 5 prompts, Large screens: fit 4 prompts, Medium: fit 3 prompts, Small: fit 2 prompts
-  const promptsPerScreen = isXLScreen ? 5 : isLargeScreen ? 4 : isMediumScreen ? 3 : 2;
-  const spacing = 8; // 1 * 8px (MUI spacing unit)
-  const padding = 8; // Container padding
-
-  // Calculate dynamic width: (100vw - total spacing - padding) / number of prompts
-  const promptWidth = `calc((100vw - ${(promptsPerScreen - 1) * spacing + padding * 2}px) / ${promptsPerScreen})`;
 
   // Pass false to let each prompt determine its own icon-only mode based on container width
   // This enables true container query behavior - each prompt measures its own width
@@ -208,59 +192,6 @@ const PromptsPlayground = () => {
     setVariablesDrawerOpen((prev) => !prev);
   };
 
-  // Handle click outside to close variables drawer
-  useEffect(() => {
-    if (!variablesDrawerOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const variablesPanel = document.querySelector("[data-variables-panel]");
-      const variablesButton = variablesButtonRef.current;
-
-      // Don't close if clicking on the variables panel itself or the button
-      if ((variablesPanel && variablesPanel.contains(target)) || (variablesButton && variablesButton.contains(target))) {
-        return;
-      }
-
-      // Close the drawer
-      setVariablesDrawerOpen(false);
-    };
-
-    // Add listener after a small delay to avoid immediate closure
-    const timeoutId = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 0);
-
-    return () => {
-      clearTimeout(timeoutId);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [variablesDrawerOpen]);
-
-  // Calculate position for variables popup
-  const getPopupPosition = () => {
-    if (!variablesButtonRef.current) {
-      return { top: "60px", left: "auto", right: "16px" };
-    }
-
-    const buttonRect = variablesButtonRef.current.getBoundingClientRect();
-    const containerRect = variablesButtonRef.current.closest(".bg-gray-300")?.getBoundingClientRect();
-
-    if (!containerRect) {
-      return { top: "60px", left: "auto", right: "16px" };
-    }
-
-    const leftPosition = buttonRect.left - containerRect.left;
-
-    return {
-      top: `${buttonRect.bottom - containerRect.top + 8}px`,
-      left: `${leftPosition}px`,
-      right: "auto",
-    };
-  };
-
-  const popupPosition = variablesDrawerOpen ? getPopupPosition() : { top: "60px", left: "auto", right: "16px" };
-
   // Count blank variables
   const blankVariablesCount = useMemo(() => {
     let count = 0;
@@ -276,86 +207,68 @@ const PromptsPlayground = () => {
     <PromptProvider state={state} dispatch={dispatch}>
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
         {/* Header with action buttons */}
-        <Container component="div" maxWidth={false} disableGutters className="p-2 bg-gray-300 flex-shrink-0">
+        <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 shrink-0">
           <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
             <Box sx={{ position: "relative" }}>
-              <Button
-                ref={variablesButtonRef}
-                variant={variablesDrawerOpen ? "contained" : "outlined"}
-                color={variablesDrawerOpen ? "primary" : "primary"}
-                size="small"
-                onClick={toggleVariablesDrawer}
-                startIcon={<TuneIcon />}
-              >
-                Variables
-              </Button>
-              {blankVariablesCount > 0 && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: -8,
-                    right: -8,
-                    backgroundColor: "error.main",
-                    color: "white",
-                    borderRadius: "10px",
-                    minWidth: "20px",
-                    height: "20px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "0.75rem",
-                    fontWeight: "bold",
-                    padding: "0 6px",
-                    pointerEvents: "none",
-                  }}
+              <Badge badgeContent={blankVariablesCount} color="error" overlap="rectangular">
+                <Button
+                  ref={variablesButtonRef}
+                  variant={variablesDrawerOpen ? "contained" : "outlined"}
+                  color={variablesDrawerOpen ? "primary" : "primary"}
+                  size="small"
+                  onClick={toggleVariablesDrawer}
+                  startIcon={<TuneIcon />}
                 >
-                  {blankVariablesCount}
-                </Box>
-              )}
+                  Variables
+                </Button>
+                <Popover
+                  open={variablesDrawerOpen}
+                  onClose={toggleVariablesDrawer}
+                  anchorEl={variablesButtonRef.current}
+                  anchorOrigin={{
+                    vertical: "bottom",
+                    horizontal: "left",
+                  }}
+                  slotProps={{
+                    paper: {
+                      sx: { width: "400px", maxHeight: "500px" },
+                    },
+                  }}
+                  sx={{ marginTop: "6px" }}
+                >
+                  <VariableInputs />
+                </Popover>
+              </Badge>
             </Box>
             <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
               Add Prompt
             </Button>
-            <Button variant="contained" size="small" onClick={handleRunAllPrompts} startIcon={<PlayArrowIcon />}>
-              Run All Prompts
-            </Button>
+            <Tooltip title={blankVariablesCount > 0 ? "Please fill in all variable values before running" : "Run All Prompts"} arrow>
+              <span>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleRunAllPrompts}
+                  startIcon={<PlayArrowIcon />}
+                  disabled={blankVariablesCount > 0}
+                >
+                  Run All Prompts
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         </Container>
-
-        {/* Popup Variables panel */}
-        {variablesDrawerOpen && (
-          <Box
-            data-variables-panel
-            sx={{
-              position: "absolute",
-              top: popupPosition.top,
-              left: popupPosition.left,
-              right: popupPosition.right,
-              width: "400px",
-              maxHeight: "500px",
-              zIndex: 1200,
-              boxShadow: 3,
-              borderRadius: 1,
-              overflow: "hidden",
-            }}
-          >
-            <VariableInputs />
-          </Box>
-        )}
 
         {/* Main content area */}
         <Box component="main" className="flex-1 flex flex-col">
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
-            <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
+            <Stack direction="row" spacing={1} sx={{ height: "100%" }}>
               {state.prompts.map((prompt) => (
                 <Box
                   key={prompt.id}
                   className="flex-1 h-full"
                   sx={{
-                    width: promptWidth,
-                    minWidth: promptWidth,
-                    flexShrink: 0,
-                    containerType: "inline-size",
+                    minWidth: 400,
                   }}
                 >
                   <PromptComponent prompt={prompt} useIconOnlyMode={useIconOnlyMode} />

@@ -1306,6 +1306,36 @@ def test_run_agentic_prompt_strict_mode(
     else:
         assert response.status_code == 200
 
+    # Test the renders endpoint with strict=True
+    render_request = {
+        "completion_request": {
+            "strict": True,
+        },
+    }
+    if variables:
+        render_request["completion_request"]["variables"] = [
+            {"name": name, "value": value} for name, value in variables.items()
+        ]
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/renders",
+        json=render_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    if expected_error:
+        assert response.status_code == 400
+        assert response.json()["detail"] == expected_error
+    else:
+        assert response.status_code == 200
+        rendered_prompt = response.json()
+        assert rendered_prompt["messages"] is not None
+        # Verify the template was actually rendered if we have variables
+        if variables:
+            for message in rendered_prompt["messages"]:
+                # Make sure no template syntax remains in the content
+                assert "{{" not in message.get("content", "")
+                assert "}}" not in message.get("content", "")
+
     # set strict=False
     completion_request["strict"] = False
     prompt_data["completion_request"] = completion_request
@@ -1326,16 +1356,171 @@ def test_run_agentic_prompt_strict_mode(
     )
     assert response.status_code == 200
 
+    # Test the renders endpoint with strict=False (should never raise an error)
+    render_request["completion_request"]["strict"] = False
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/renders",
+        json=render_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    rendered_prompt = response.json()
+    assert rendered_prompt["messages"] is not None
+
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize(
+    "endpoint_type,messages,variables,strict,expected_status,expected_error,expected_content",
+    [
+        # Unsaved endpoint: successful render with all variables
+        (
+            "unsaved",
+            [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant named {{assistant_name}}.",
+                },
+                {"role": "user", "content": "Hello {{user_name}}, how can I help you?"},
+            ],
+            [
+                {"name": "assistant_name", "value": "Claude"},
+                {"name": "user_name", "value": "John"},
+            ],
+            False,
+            200,
+            None,
+            ["Claude", "John"],
+        ),
+        # Unsaved endpoint: strict mode with missing variables
+        (
+            "unsaved",
+            [{"role": "user", "content": "Hello {{name}}, your age is {{age}}."}],
+            [{"name": "name", "value": "John"}],
+            True,
+            400,
+            "Missing values for the following variables: age",
+            None,
+        ),
+        # Unsaved endpoint: strict mode with all variables provided
+        (
+            "unsaved",
+            [{"role": "user", "content": "Hello {{name}}, your age is {{age}}."}],
+            [{"name": "name", "value": "John"}, {"name": "age", "value": "30"}],
+            True,
+            200,
+            None,
+            ["John", "30"],
+        ),
+        # Saved endpoint: successful render with all variables
+        (
+            "saved",
+            [
+                {"role": "system", "content": "You are {{bot_name}}."},
+                {"role": "user", "content": "Hello, I'm {{user_name}}."},
+            ],
+            [
+                {"name": "bot_name", "value": "Assistant"},
+                {"name": "user_name", "value": "Alice"},
+            ],
+            False,
+            200,
+            None,
+            ["Assistant", "Alice"],
+        ),
+    ],
+)
+def test_render_endpoints(
+    client: GenaiEngineTestClientBase,
+    endpoint_type: str,
+    messages: list,
+    variables: list,
+    strict: bool,
+    expected_status: int,
+    expected_error: str | None,
+    expected_content: list | None,
+):
+    """Test rendering both saved and unsaved agentic prompts with variables and strict mode"""
+
+    if endpoint_type == "unsaved":
+        # Test unsaved render endpoint
+        render_request = {
+            "messages": messages,
+            "completion_request": {
+                "variables": variables,
+                "strict": strict,
+            },
+        }
+
+        response = client.base_client.post(
+            "/api/v1/prompt_renders",
+            json=render_request,
+            headers=client.authorized_user_api_key_headers,
+        )
+    else:
+        # Test saved render endpoint - create a task and prompt first
+        task_name = f"agentic_task_{random.random()}"
+        status_code, task = client.create_task(task_name, is_agentic=True)
+        assert status_code == 200
+
+        prompt_name = "test_prompt"
+        prompt_data = {
+            "messages": messages,
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+        }
+
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+            json=prompt_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+        render_request = {
+            "completion_request": {
+                "variables": variables,
+                "strict": strict,
+            },
+        }
+
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/renders",
+            json=render_request,
+            headers=client.authorized_user_api_key_headers,
+        )
+
+    # Verify response
+    assert response.status_code == expected_status
+
+    if expected_error:
+        assert response.json()["detail"] == expected_error
+    else:
+        rendered_prompt = response.json()
+        assert rendered_prompt["messages"] is not None
+
+        # Check that expected content is in the rendered messages
+        if expected_content:
+            for content_str in expected_content:
+                assert any(
+                    content_str in msg.get("content", "")
+                    for msg in rendered_prompt["messages"]
+                )
+
+            # Verify no template syntax remains
+            for msg in rendered_prompt["messages"]:
+                assert "{{" not in msg.get("content", "")
+                assert "}}" not in msg.get("content", "")
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime", "tag"])
 def test_get_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
     create_agentic_task: TaskResponse,
     create_agentic_prompt: AgenticPrompt,
     prompt_version,
 ):
-    """Test getting an agentic prompt with different version formats (latest, version number, datetime)"""
+    """Test getting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     task = create_agentic_task
@@ -1344,6 +1529,16 @@ def test_get_agentic_prompt_by_version_route(
 
     if prompt_version == "datetime":
         prompt_version = prompt.created_at.strftime("%Y-%m-%dT%H:%M:%S")
+    elif prompt_version == "tag":
+        # Add a tag to the prompt version using the API
+        test_tag = "test_tag"
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt.name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert tag_response.status_code == 200
+        prompt_version = test_tag
 
     # Get the prompt using different version formats
     status_code, prompt_response = client.get_agentic_prompt(
@@ -1364,12 +1559,12 @@ def test_get_agentic_prompt_by_version_route(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime", "tag"])
 def test_soft_delete_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
     prompt_version,
 ):
-    """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime)"""
+    """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -1386,8 +1581,6 @@ def test_soft_delete_agentic_prompt_by_version_route(
             "max_tokens": 100,
         },
     }
-    if prompt_version == "datetime":
-        prompt_version = datetime.now().isoformat()
 
     save_response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
@@ -1395,6 +1588,19 @@ def test_soft_delete_agentic_prompt_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
+
+    if prompt_version == "datetime":
+        prompt_version = save_response.json()["created_at"]
+    # Add a tag if testing tag-based version
+    elif prompt_version == "tag":
+        test_tag = "test_tag"
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert tag_response.status_code == 200
+        prompt_version = test_tag
 
     # Get the prompt using different version formats
     response = client.base_client.delete(
@@ -1407,11 +1613,11 @@ def test_soft_delete_agentic_prompt_by_version_route(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
         headers=client.authorized_user_api_key_headers,
     )
-    if prompt_version == "latest":
+    if prompt_version == "latest" or prompt_version == "test_tag":
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"'{prompt_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{prompt_name}' (version '{prompt_version}') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200
@@ -1786,4 +1992,233 @@ def test_soft_delete_agentic_prompt_deletes_tags_successfully(
     assert (
         response.json()["detail"]
         == f"Tag 'test_tag' not found for task '{task.id}' and item '{prompt_name}'."
+    )
+
+
+@pytest.mark.unit_tests
+def test_malformed_response_format_errors_on_creation(
+    client: GenaiEngineTestClientBase,
+):
+    """Test saving a prompt with a malformed response format errors"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    prompt_name = "test_prompt"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Test"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {},
+    }
+
+    json_schema = {
+        "name": "test_schema",
+        "description": "test schema description",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "test_prop": {"type": "string", "description": "test prop description"},
+            },
+            "required": ["test_prop"],
+            "additionalProperties": False,
+        },
+    }
+
+    # test saving a prompt with a json_schema response format without a json_schema object raises an error
+    prompt_data["config"]["response_format"] = {"type": "json_schema"}
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 400
+    assert (
+        "json_schema object is required when using type='json_schema'"
+        in save_response.json()["detail"]
+    )
+
+    # test saving a prompt with a JSON mode response format errors if json_schema is provided
+    prompt_data["config"]["response_format"] = {
+        "type": "json_object",
+        "json_schema": json_schema,
+    }
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 400
+    assert (
+        f'response format must only be {{"type": "json_object"}} when using type="json_object"'
+        in save_response.json()["detail"]
+    )
+
+    # test saving a prompt with a text mode response format errors if json_schema is provided
+    prompt_data["config"]["response_format"] = {
+        "type": "text",
+        "json_schema": json_schema,
+    }
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 400
+    assert (
+        f'response format must only be {{"type": "text"}} when using type="text"'
+        in save_response.json()["detail"]
+    )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "messages, expected_variables",
+    [
+        ([{"role": "user", "content": "Hello, world!"}], []),
+        ([{"role": "user", "content": "Hello, {{name}}!"}], ["name"]),
+        (
+            [
+                {
+                    "role": "user",
+                    "content": "Hello, {{name}}! What is the capital of {{country}}?",
+                },
+            ],
+            ["name", "country"],
+        ),
+        (
+            [
+                {"role": "system", "content": "Hello, {{name}}!"},
+                {"role": "user", "content": "What is the capital of {{country}}?"},
+            ],
+            ["name", "country"],
+        ),
+        (
+            [
+                {"role": "system", "content": "Hello, {name}!"},
+                {"role": "user", "content": "What is the capital of {{country}}?"},
+            ],
+            ["country"],
+        ),
+        (
+            [
+                {
+                    "role": "user",
+                    "content": "{% if product %}Interested in {{product}}{% endif %}",
+                },
+            ],
+            ["product"],
+        ),
+        (
+            [
+                {
+                    "role": "system",
+                    "content": [{"type": "text", "text": "Hello, {{name}}!"}],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "What is the capital of {{country}}?"},
+                    ],
+                },
+            ],
+            ["name", "country"],
+        ),
+        (
+            [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": "{{image_url}}"}},
+                    ],
+                },
+            ],
+            [],
+        ),
+        (
+            [
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_audio",
+                            "input_audio": {
+                                "data": "{{audio_data}}",
+                                "format": "{{audio_format}}",
+                            },
+                        },
+                    ],
+                },
+            ],
+            [],
+        ),
+    ],
+)
+def test_get_unsaved_prompt_variables_list_route_success(
+    client: GenaiEngineTestClientBase,
+    messages: list,
+    expected_variables: list,
+):
+    """Test getting the list of variables needed from an unsaved prompt's messages route successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    message_request = {
+        "messages": messages,
+    }
+
+    response = client.base_client.post(
+        "/api/v1/prompt_variables",
+        json=message_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    response_variables = response.json()["variables"].sort()
+    expected_variables = expected_variables.sort()
+
+    assert response_variables == expected_variables
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "messages",
+    [
+        ([{"role": "user", "content": "Hello {{ user"}]),
+        ([{"role": "user", "content": "{% if user %}Hi {{ user }}"}]),
+        ([{"role": "user", "content": "Hello {% user }}"}]),
+        ([{"role": "user", "content": "{{ for item in list }}"}]),
+        ([{"role": "user", "content": "{{ name | }}"}]),
+        ([{"role": "user", "content": "{{ 1 + }}"}]),
+    ],
+)
+def test_get_unsaved_prompt_variables_list_jinja_syntax_errors(
+    client: GenaiEngineTestClientBase,
+    messages: list,
+):
+    """
+    Test getting the list of variables needed from an unsaved prompt's messages
+    raises jinja2 template syntax errors for malformed messages
+    """
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    message_request = {
+        "messages": messages,
+    }
+
+    response = client.base_client.post(
+        "/api/v1/prompt_variables",
+        json=message_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert (
+        "Invalid Jinja2 template syntax in prompt messages" in response.json()["detail"]
     )

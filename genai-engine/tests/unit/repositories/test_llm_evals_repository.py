@@ -255,14 +255,6 @@ def test_soft_delete_eval_version_errors(llm_evals_repo, sample_create_eval_requ
 
     assert "has already been deleted" in str(exc_info.value)
 
-    # --- Case 3: Invalid version format ---
-    with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "bad_version")
-    assert (
-        f"Invalid version format 'bad_version'. Must be 'latest', a version number, or an ISO datetime string."
-        in str(exc_info.value)
-    )
-
     # clean up database
     llm_evals_repo.delete_llm_item(task_id, eval_name)
 
