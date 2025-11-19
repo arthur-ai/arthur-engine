@@ -622,7 +622,6 @@ def test_execute_transform_with_multiple_matching_spans(
         status_code, result = client.execute_transform_extraction(
             dataset_id=dataset.id,
             transform_id=transform.id,
-            task_id=task_id,
             trace_id=trace_id,
         )
 

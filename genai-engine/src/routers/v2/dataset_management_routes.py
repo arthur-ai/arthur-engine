@@ -424,9 +424,8 @@ def execute_transform_endpoint(
 
         # Flatten the nested span structure into a flat list
         flat_spans = []
-        if trace.spans:
-            for span in trace.spans:
-                flat_spans.extend(flatten_spans(span))
+        for span in trace.root_spans:
+            flat_spans.extend(flatten_spans(span))
 
         # Execute the transform
         columns = execute_transform(

@@ -5,11 +5,13 @@ matching the behavior of the frontend transform executor in
 genai-engine/ui/src/components/traces/components/add-to-dataset/utils/transformExecutor.ts
 """
 
-from typing import Any, Dict, List, Optional
+import json
+from typing import Any, Dict, List
 
 from arthur_common.models.response_schemas import NestedSpanWithMetricsResponse
 
-from schemas.request_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from utils.trace import get_nested_value
 
 
 def stringify_value(value: Any) -> str:
@@ -27,36 +29,9 @@ def stringify_value(value: Any) -> str:
         return str(value)
 
     try:
-        import json
-
         return json.dumps(value)
     except Exception:
         return str(value)
-
-
-def get_nested_value(obj: Any, path: str) -> Any:
-    """Extract value from nested object using dot-notation path.
-
-    Args:
-        obj: The object to extract value from
-        path: Dot-separated path (e.g., "attributes.input.value")
-
-    Returns:
-        The value at the path, or None if not found
-    """
-    if not obj or not path:
-        return None
-
-    keys = path.split(".")
-    current = obj
-
-    for key in keys:
-        if current and isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return None
-
-    return current
 
 
 def execute_transform(
