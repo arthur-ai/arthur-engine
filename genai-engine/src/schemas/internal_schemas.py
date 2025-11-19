@@ -2237,6 +2237,7 @@ class DatasetVersion(DatasetVersionMetadata):
         :param: latest_version: DatabaseBDatasetVersion of the latest version of the dataset before the new one.
         :param: new_version: NewDatasetVersionRequest with the diff changes for the new dataset version
         """
+
         # Helper function to check if a row matches all filter conditions (AND logic)
         def _row_matches_delete_filter(db_row: DatabaseDatasetVersionRow) -> bool:
             if not new_version.rows_to_delete_filter:

@@ -34,7 +34,7 @@ from schemas.response_schemas import (
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
-from utils.transform_executor import execute_transform, flatten_spans
+from utils.transform_executor import execute_transform
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -422,14 +422,9 @@ def execute_transform_endpoint(
                 detail=f"Trace with ID {request.trace_id} not found",
             )
 
-        # Flatten the nested span structure into a flat list
-        flat_spans = []
-        for span in trace.root_spans:
-            flat_spans.extend(flatten_spans(span))
-
         # Execute the transform
         columns = execute_transform(
-            spans=flat_spans,
+            trace=trace,
             transform_definition=transform.definition,
         )
 

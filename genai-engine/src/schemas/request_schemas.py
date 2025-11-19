@@ -111,11 +111,13 @@ class NewDatasetVersionRequest(BaseModel):
     rows_to_delete: list[UUID] = Field(
         description="List of IDs of rows to be deleted from the new dataset version.",
     )
-    rows_to_delete_filter: Optional[list[NewDatasetVersionRowColumnItemRequest]] = Field(
-        default=None,
-        description="Optional list of column name and value filters. "
-        "Rows matching ALL specified column name-value pairs (AND condition) will be deleted from the new dataset version. "
-        "This filter is applied in addition to rows_to_delete.",
+    rows_to_delete_filter: Optional[list[NewDatasetVersionRowColumnItemRequest]] = (
+        Field(
+            default=None,
+            description="Optional list of column name and value filters. "
+            "Rows matching ALL specified column name-value pairs (AND condition) will be deleted from the new dataset version. "
+            "This filter is applied in addition to rows_to_delete.",
+        )
     )
     rows_to_update: list[NewDatasetVersionUpdateRowRequest] = Field(
         description="List of IDs of rows to be updated in the new dataset version with their new values. "

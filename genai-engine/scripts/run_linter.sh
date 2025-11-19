@@ -22,6 +22,6 @@ export PYTHONPATH="src:$PYTHONPATH"
 
 export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 
-poetry run isort src --profile black
+poetry run black src
 poetry run autoflake --remove-all-unused-imports --in-place --recursive --quiet src
 poetry run isort src --profile black
