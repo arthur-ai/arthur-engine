@@ -3,6 +3,27 @@ import * as amplitude from "@amplitude/analytics-browser";
 let isInitialized = false;
 
 /**
+ * Logs a message only in development mode.
+ * @param category - Optional category prefix (e.g., "Amplitude", "API", "Auth")
+ * @param message - The message to log
+ * @param data - Optional additional data to log
+ * @param warn - Whether to log as a warning
+ */
+export function devLog(category: string, message = "", data?: unknown, warn = false): void {
+  if (import.meta.env.DEV) {
+    const prefix = category ? `[${category}] ` : "";
+    const formattedMessage = `${prefix}${message}`;
+    const showData = data !== undefined;
+
+    if (warn) {
+      console.warn(formattedMessage, showData ? data : undefined);
+    } else {
+      console.log(formattedMessage, showData ? data : undefined);
+    }
+  }
+}
+
+/**
  * Initialize Amplitude SDK with API key from environment variables.
  * This should be called once at app startup.
  */
@@ -36,13 +57,10 @@ export function track(eventName: string, eventProperties?: Record<string, unknow
   }
 
   try {
-    // Log in development mode only
-    if (import.meta.env.DEV) {
-      console.log("[Amplitude] Track:", eventName, eventProperties);
-    }
     amplitude.track(eventName, eventProperties);
+    devLog("Amplitude Track", eventName, eventProperties);
   } catch (error) {
-    console.error("Failed to track Amplitude event:", error);
+    devLog("Amplitude Track", "Failed to track Amplitude event:", error, true);
   }
 }
 
@@ -59,10 +77,7 @@ export function identify(userId?: string, userProperties?: Record<string, unknow
   }
 
   try {
-    // Log in development mode only
-    if (import.meta.env.DEV) {
-      console.log("[Amplitude] Identify:", userId, userProperties);
-    }
+    devLog("Amplitude Identify", userId, userProperties);
 
     if (userId) {
       amplitude.setUserId(userId);
@@ -95,11 +110,8 @@ export function clearUser(): void {
   }
 
   try {
-    // Log in development mode only
-    if (import.meta.env.DEV) {
-      console.log("[Amplitude] Clear User");
-    }
     amplitude.setUserId(undefined);
+    devLog("Amplitude Clear User");
   } catch (error) {
     console.error("Failed to clear user in Amplitude:", error);
   }
