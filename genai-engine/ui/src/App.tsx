@@ -10,20 +10,19 @@ import TransformsManagement from "./components/datasets/transforms/TransformsMan
 import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
-import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
+import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
 import "./App.css";
 import { TracesView } from "./components/TracesView";
-import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetrievalsPlayground";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
 
-// Component to redirect /tasks/:id to /tasks/:id/task-details
 const TaskRedirect = () => {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/tasks/${id}/task-details`} replace />;
@@ -37,10 +36,8 @@ function App() {
         <Router>
           <div className="min-h-screen bg-gray-50">
             <Routes>
-              {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
 
-              {/* Protected routes */}
               <Route
                 path="/"
                 element={
@@ -50,7 +47,6 @@ function App() {
                 }
               />
 
-              {/* Task routes with layout */}
               <Route path="/tasks/:id" element={<TaskRedirect />} />
 
               <Route
@@ -201,7 +197,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TaskLayout>
-                      <WeaviateRetrievalsPlayground />
+                      <RagRetrievalsPlayground />
                     </TaskLayout>
                   </ProtectedRoute>
                 }
@@ -265,7 +261,6 @@ function App() {
                 }
               />
 
-              {/* Redirect root to tasks */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

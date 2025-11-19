@@ -5,35 +5,28 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import type { PluginOption } from "vite";
 
-
-const injectMeticulousRecordingScript = (
-  mode: string,
-  recordingToken: string | undefined
-): PluginOption => ({
+const injectMeticulousRecordingScript = (mode: string, recordingToken: string | undefined): PluginOption => ({
   name: "inject-meticulous-script",
   transformIndexHtml(html) {
-    if (mode === "production") {
-      return html.replace(/<script\s+id="meticulous"><\/script>/, "");
-    }
-
     if (!recordingToken) {
-      console.warn(
-        "METICULOUS_RECORDING_TOKEN not set. Meticulous recording will be disabled."
-      );
+      console.warn("METICULOUS_RECORDING_TOKEN not set. Meticulous recording will be disabled.");
       return html.replace(/<script\s+id="meticulous"><\/script>/, "");
     }
 
-    const meticulousScript = `<script
-      id="meticulous"
-      data-recording-token="${recordingToken}"
-      data-is-production-environment="false"
-      src="https://snippet.meticulous.ai/v1/meticulous.js"
-    ></script>`;
+    // Inject conditional loader: only loads Meticulous on the target hostname
+    const meticulousScript = `<script id="meticulous">
+      (function() {
+        if (window.location.hostname === "engine.development.arthur.ai") {
+          var script = document.createElement('script');
+          script.setAttribute('data-recording-token', '${recordingToken}');
+          script.setAttribute('data-is-production-environment', '${mode === "production"}');
+          script.src = 'https://snippet.meticulous.ai/v1/meticulous.js';
+          document.head.appendChild(script);
+        }
+      })();
+    </script>`;
 
-    return html.replace(
-      /<script\s+id="meticulous"><\/script>/,
-      meticulousScript
-    );
+    return html.replace(/<script\s+id="meticulous"><\/script>/, meticulousScript);
   },
 });
 
@@ -44,11 +37,7 @@ export default defineConfig(({ mode }) => {
   const amplitudeApiKey = env.AMPLITUDE_API_KEY;
 
   return {
-    plugins: [
-      injectMeticulousRecordingScript(mode, recordingToken),
-      react(),
-      tailwindcss(),
-    ],
+    plugins: [injectMeticulousRecordingScript(mode, recordingToken), react(), tailwindcss()],
     define: {
       // Map AMPLITUDE_API_KEY from .env.local to VITE_AMPLITUDE_TOKEN for client-side access
       "import.meta.env.VITE_AMPLITUDE_TOKEN": JSON.stringify(amplitudeApiKey || ""),

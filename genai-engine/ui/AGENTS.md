@@ -22,7 +22,8 @@ This is a React 19 + TypeScript + Vite application for the Arthur Engine GenAI p
 src/
 ├── components/          # Reusable UI components
 │   ├── prompts/        # Prompt-specific components
-│   └── weaviate/       # Weaviate-specific components
+│   ├── rag/            # RAG provider management
+│   └── retrievals/     # Retrievals playground
 ├── contexts/           # React Context providers
 ├── hooks/              # Custom React hooks
 ├── lib/                # Utilities and API client
