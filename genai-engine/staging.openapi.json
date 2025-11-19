@@ -11509,7 +11509,14 @@
                         "title": "Tool Calls"
                     },
                     "cost": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Cost"
                     }
                 },

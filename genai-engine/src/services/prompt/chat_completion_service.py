@@ -274,8 +274,7 @@ class ChatCompletionService:
             return AgenticPromptRunResponse(
                 content=msg.content,
                 tool_calls=msg.tool_calls,
-                cost=llm_model_response.cost
-                or "",  # TODO: what should we put here when cost is None in the response?
+                cost=llm_model_response.cost,
             )
         else:
             raise ValueError("No message from model")

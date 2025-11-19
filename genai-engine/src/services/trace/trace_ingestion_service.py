@@ -198,7 +198,7 @@ class TraceIngestionService:
             if isinstance(status[0], (str, int)):
                 status_code = str(
                     status[0],
-                )  # TODO: Clarify how to handle int value of the status code
+                )
             elif isinstance(status[0], dict):
                 status_code = status[0].get("code", "Unset")
             else:
