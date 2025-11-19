@@ -20,7 +20,7 @@ import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
-import { track } from "@/services/amplitude";
+import { track, EVENT_NAMES } from "@/services/amplitude";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -161,7 +161,7 @@ const PromptsPlayground = () => {
     const promptCount = nonRunningPrompts.length;
 
     // Track the event
-    track("Run All Prompts", {
+    track(EVENT_NAMES.RUN_ALL_PROMPTS, {
       prompt_count: promptCount,
     });
 

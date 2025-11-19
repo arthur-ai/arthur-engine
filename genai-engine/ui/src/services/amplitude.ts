@@ -2,6 +2,18 @@ import * as amplitude from "@amplitude/analytics-browser";
 
 let isInitialized = false;
 
+export const EVENT_NAMES = {
+  // Authentication events
+  SESSION_RESTORED: "Session Restored",
+  TOKEN_VALIDATION_FAILED: "Token Validation Failed",
+  AUTH_INITIALIZATION_FAILED: "Auth Initialization Failed",
+  LOGIN: "Login",
+  LOGIN_FAILED: "Login Failed",
+  LOGOUT: "Logout",
+  // Prompts Playground events
+  RUN_ALL_PROMPTS: "Run All Prompts",
+} as const;
+
 /**
  * Logs a message only in development mode.
  * @param category - Optional category prefix (e.g., "Amplitude", "API", "Auth")

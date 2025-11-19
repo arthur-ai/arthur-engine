@@ -1,14 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
 import { AuthService, AuthState } from "@/lib/auth";
-import { track, clearUser } from "@/services/amplitude";
+import { track, clearUser, EVENT_NAMES } from "@/services/amplitude";
 
 interface AuthContextType extends AuthState {
   login: (token: string) => Promise<boolean>;
@@ -58,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               error: null,
             });
             // Track successful token validation on app load
-            track("Session Restored", {
+            track(EVENT_NAMES.SESSION_RESTORED, {
               authentication_method: "api_key",
             });
           } else {
@@ -69,7 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               error: "Token is invalid or expired",
             });
             // Track token validation failure
-            track("Token Validation Failed", {
+            track(EVENT_NAMES.TOKEN_VALIDATION_FAILED, {
               authentication_method: "api_key",
               error: "Token is invalid or expired",
             });
@@ -90,7 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           error: "Failed to initialize authentication",
         });
         // Track initialization error
-        track("Auth Initialization Failed", {
+        track(EVENT_NAMES.AUTH_INITIALIZATION_FAILED, {
           authentication_method: "api_key",
           error: "Failed to initialize authentication",
         });
@@ -113,7 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           error: null,
         });
         // Track successful login with API key authentication
-        track("Login", {
+        track(EVENT_NAMES.LOGIN, {
           authentication_method: "api_key",
         });
         return true;
@@ -124,7 +118,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           error: "Invalid token or authentication failed",
         }));
         // Track failed login attempt
-        track("Login Failed", {
+        track(EVENT_NAMES.LOGIN_FAILED, {
           authentication_method: "api_key",
           error: "Invalid token or authentication failed",
         });
@@ -137,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: "Login failed",
       }));
       // Track login error
-      track("Login Failed", {
+      track(EVENT_NAMES.LOGIN_FAILED, {
         authentication_method: "api_key",
         error: "Login failed",
       });
@@ -151,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     queryClient.clear();
 
     // Track logout event
-    track("Logout", {
+    track(EVENT_NAMES.LOGOUT, {
       authentication_method: "api_key",
     });
     // Clear user identification in Amplitude
@@ -178,7 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           error: "Token validation failed",
         }));
         // Track token validation failure
-        track("Token Validation Failed", {
+        track(EVENT_NAMES.TOKEN_VALIDATION_FAILED, {
           authentication_method: "api_key",
           error: "Token validation failed",
         });
@@ -196,7 +190,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: "Token validation failed",
       }));
       // Track token validation error
-      track("Token Validation Failed", {
+      track(EVENT_NAMES.TOKEN_VALIDATION_FAILED, {
         authentication_method: "api_key",
         error: "Token validation failed",
       });
