@@ -7,7 +7,7 @@ import traceback
 import urllib
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Callable, overload
+from typing import Any, Callable
 
 from arthur_common.models.common_schemas import (
     LLMTokenConsumption,
@@ -23,7 +23,7 @@ from opentelemetry.sdk.trace import Tracer
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
-from custom_types import P, T
+from custom_types import P, PadTextT, T
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _genai_engine_version = None
@@ -271,30 +271,12 @@ async def common_pagination_parameters(
     return PaginationParameters(sort=sort, page_size=page_size, page=page)
 
 
-@overload
 def pad_text(
-    text: str,
+    text: PadTextT,
     min_length: int = 20,
     delim: str = " ",
     pad_type: str = "whitespace",
-) -> str: ...
-
-
-@overload
-def pad_text(
-    text: list[str],
-    min_length: int = 20,
-    delim: str = " ",
-    pad_type: str = "whitespace",
-) -> list[str]: ...
-
-
-def pad_text(
-    text: str | list[str],
-    min_length: int = 20,
-    delim: str = " ",
-    pad_type: str = "whitespace",
-) -> str | list[str]:
+) -> PadTextT:
     """
     Returns the text (as a string or list of strings) padded to extend the string to a minimum length
     """
