@@ -303,21 +303,14 @@ def test_soft_delete_llm_eval_version_errors(
     assert response.status_code == 400
     assert "has already been deleted" in response.json()["detail"]
 
-    # --- Case 3: Invalid version format (400) ---
-    response = client.base_client.delete(
-        f"/api/v1/tasks/{agentic_task.id}/llm_evals/{eval_name}/versions/invalid_version",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 400
-
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
 def test_soft_delete_llm_eval_by_version_route(
     client: GenaiEngineTestClientBase,
     eval_version,
 ):
-    """Test soft deleting an llm eval with different version formats (latest, version number, datetime)"""
+    """Test soft deleting an llm eval with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -340,6 +333,16 @@ def test_soft_delete_llm_eval_by_version_route(
 
     if eval_version == "datetime":
         eval_version = save_response.json()["created_at"]
+    elif eval_version == "tag":
+        # Add a tag to the eval version using the API
+        test_tag = "test_tag"
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert tag_response.status_code == 200
+        eval_version = test_tag
 
     # Soft-delete the eval using different version formats
     response = client.base_client.delete(
@@ -352,11 +355,11 @@ def test_soft_delete_llm_eval_by_version_route(
         f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/{eval_version}",
         headers=client.authorized_user_api_key_headers,
     )
-    if eval_version == "latest":
+    if eval_version == "latest" or eval_version == "test_tag":
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"'{eval_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{eval_name}' (version '{eval_version}') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200
@@ -518,12 +521,12 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
 def test_get_llm_eval_by_version_route(
     client: GenaiEngineTestClientBase,
     eval_version,
 ):
-    """Test getting an llm eval with different version formats (latest, version number, datetime)"""
+    """Test getting an llm eval with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -545,6 +548,17 @@ def test_get_llm_eval_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
+
+    # Add a tag if testing tag-based version
+    if eval_version == "tag":
+        test_tag = "test_tag"
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert tag_response.status_code == 200
+        eval_version = test_tag
 
     # Get the llm eval using different version formats
     response = client.base_client.get(

@@ -54,7 +54,7 @@ def get_llm_eval(
     ),
     eval_version: str = Path(
         ...,
-        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="LLM Eval Version",
     ),
     db_session: Session = Depends(get_db_session),
@@ -173,7 +173,7 @@ def run_saved_llm_eval(
     ),
     eval_version: str = Path(
         ...,
-        description="The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="LLM Eval Version",
     ),
     db_session: Session = Depends(get_db_session),
@@ -278,7 +278,7 @@ def soft_delete_llm_eval_version(
     ),
     eval_version: str = Path(
         ...,
-        description="The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="LLM Eval Version",
     ),
     db_session: Session = Depends(get_db_session),
@@ -362,7 +362,7 @@ def add_tag_to_llm_eval_version(
     ),
     eval_version: str = Path(
         ...,
-        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="LLM Eval Version",
     ),
     tag: str = Body(..., embed=True, description="Tag to add to this llm eval version"),
@@ -408,7 +408,7 @@ def delete_tag_from_llm_eval_version(
     ),
     eval_version: str = Path(
         ...,
-        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="LLM Eval Version",
     ),
     tag: str = Path(

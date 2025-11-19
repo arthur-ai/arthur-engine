@@ -116,10 +116,30 @@ class BaseLLMRepository(ABC):
                 .first()
             )
         except ValueError:
-            raise ValueError(
-                f"Invalid version format '{item_version}'. Must be 'latest', "
-                f"a version number, or an ISO datetime string.",
-            )
+            return None
+
+    def _get_db_item_by_tag(
+        self,
+        base_query: Query,
+        item_version: str,
+    ) -> Optional[Base]:
+        """
+        Get a database item by tag.
+
+        Parameters:
+            base_query: Query - base query with task_id and name filters
+            item_version: str - the tag to look up
+
+        Returns:
+            Optional[Base] - the database item if found, None otherwise
+        """
+        # Extract task_id and name from the base query filters
+        # We need to join with the tag table to find the version
+        return (
+            base_query.join(self.tag_db_model)
+            .filter(self.tag_db_model.tag == item_version)
+            .one_or_none()
+        )
 
     def _get_db_item_by_version(
         self,
@@ -137,7 +157,12 @@ class BaseLLMRepository(ABC):
                 item_version,
             )
         else:
+            # Try to parse as datetime first
             db_item = self._get_db_item_by_datetime(base_query, item_version)
+
+            # If not a valid datetime, try to get by tag
+            if db_item is None:
+                db_item = self._get_db_item_by_tag(base_query, item_version)
 
         if not db_item:
             raise ValueError(err_message)
@@ -300,6 +325,7 @@ class BaseLLMRepository(ABC):
             - item_version = 'latest' -> gets the latest version
             - item_version = <string number> (e.g. '1', '2', etc.) -> gets that version
             - item_version = <datetime> (i.e. YYYY-MM-DDTHH:MM:SS, checks to the second) -> gets the version created at that time
+            - item_version = <tag> (any other string) -> gets the version with that tag
 
         Returns:
             BaseModel - the llm item object
@@ -341,16 +367,14 @@ class BaseLLMRepository(ABC):
         if tag == "":
             raise ValueError("Tag cannot be empty.")
 
-        db_item = (
-            self.db_session.query(self.db_model)
-            .join(self.tag_db_model)
-            .filter(
-                self.db_model.task_id == task_id,
-                self.db_model.name == item_name,
-                self.tag_db_model.tag == tag,
-            )
-            .one_or_none()
+        # Build base query with task_id and name filters
+        base_query = self.db_session.query(self.db_model).filter(
+            self.db_model.task_id == task_id,
+            self.db_model.name == item_name,
         )
+
+        # Use the helper function to get by tag
+        db_item = self._get_db_item_by_tag(base_query, tag)
 
         if db_item is None:
             raise ValueError(

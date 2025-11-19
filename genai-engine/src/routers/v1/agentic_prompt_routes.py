@@ -66,7 +66,7 @@ def get_agentic_prompt(
     ),
     prompt_version: str = Path(
         ...,
-        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="Prompt Version",
     ),
     db_session: Session = Depends(get_db_session),
@@ -443,7 +443,7 @@ async def run_saved_agentic_prompt(
     ),
     prompt_version: str = Path(
         ...,
-        description="The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="Prompt Version",
     ),
     completion_request: PromptCompletionRequest = PromptCompletionRequest(),
@@ -501,7 +501,7 @@ def render_saved_agentic_prompt(
     ),
     prompt_version: str = Path(
         ...,
-        description="The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="Prompt Version",
     ),
     rendering_request: SavedPromptRenderingRequest = SavedPromptRenderingRequest(),
@@ -633,7 +633,7 @@ def delete_agentic_prompt_version(
     ),
     prompt_version: str = Path(
         ...,
-        description="The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="Prompt Version",
     ),
     db_session: Session = Depends(get_db_session),
@@ -715,7 +715,7 @@ def add_tag_to_agentic_prompt_version(
     ),
     prompt_version: str = Path(
         ...,
-        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="Prompt Version",
     ),
     tag: str = Body(..., embed=True, description="Tag to add to this prompt version"),
@@ -759,7 +759,7 @@ def delete_tag_from_agentic_prompt_version(
     ),
     prompt_version: str = Path(
         ...,
-        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
         title="Prompt Version",
     ),
     tag: str = Path(

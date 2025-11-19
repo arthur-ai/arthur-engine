@@ -1513,14 +1513,14 @@ def test_render_endpoints(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime", "tag"])
 def test_get_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
     create_agentic_task: TaskResponse,
     create_agentic_prompt: AgenticPrompt,
     prompt_version,
 ):
-    """Test getting an agentic prompt with different version formats (latest, version number, datetime)"""
+    """Test getting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     task = create_agentic_task
@@ -1529,6 +1529,16 @@ def test_get_agentic_prompt_by_version_route(
 
     if prompt_version == "datetime":
         prompt_version = prompt.created_at.strftime("%Y-%m-%dT%H:%M:%S")
+    elif prompt_version == "tag":
+        # Add a tag to the prompt version using the API
+        test_tag = "test_tag"
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt.name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert tag_response.status_code == 200
+        prompt_version = test_tag
 
     # Get the prompt using different version formats
     status_code, prompt_response = client.get_agentic_prompt(
@@ -1549,12 +1559,12 @@ def test_get_agentic_prompt_by_version_route(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime", "tag"])
 def test_soft_delete_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
     prompt_version,
 ):
-    """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime)"""
+    """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime, tag)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -1581,6 +1591,16 @@ def test_soft_delete_agentic_prompt_by_version_route(
 
     if prompt_version == "datetime":
         prompt_version = save_response.json()["created_at"]
+    # Add a tag if testing tag-based version
+    elif prompt_version == "tag":
+        test_tag = "test_tag"
+        tag_response = client.base_client.put(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/1/tags",
+            json={"tag": test_tag},
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert tag_response.status_code == 200
+        prompt_version = test_tag
 
     # Get the prompt using different version formats
     response = client.base_client.delete(
@@ -1593,11 +1613,11 @@ def test_soft_delete_agentic_prompt_by_version_route(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
         headers=client.authorized_user_api_key_headers,
     )
-    if prompt_version == "latest":
+    if prompt_version == "latest" or prompt_version == "test_tag":
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"'{prompt_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{prompt_name}' (version '{prompt_version}') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200
