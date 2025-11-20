@@ -18,11 +18,14 @@ const NAME_TO_LABEL = {
   query_relevance: "Query Relevance",
   tool_selection: "Tool Selection",
   span_types: "Span Types",
+  span_ids: "Span IDs",
+  span_name: "Span Name",
   response_relevance: "Response Relevance",
   trace_duration: "Trace Duration",
   tool_usage: "Tool Usage",
   trace_ids: "Trace IDs",
   user_ids: "User IDs",
+  session_ids: "Session IDs",
   annotation_score: "Annotation Score",
 } as const;
 

@@ -24,11 +24,8 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
   filters.forEach((filter) => {
     let key = filter.name;
 
-    if (key === "span_types") {
-      return (request[key] = [filter.value].flat());
-    }
-
-    if (key === "trace_ids") {
+    // Handle array fields that should always be arrays
+    if (key === "span_types" || key === "trace_ids" || key === "span_ids" || key === "session_ids" || key === "user_ids") {
       return (request[key] = [filter.value].flat());
     }
 
