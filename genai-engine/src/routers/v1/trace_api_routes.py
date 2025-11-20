@@ -99,10 +99,6 @@ def list_traces_metadata(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
-    user_ids: list[str] = Query(
-        None,
-        description="User IDs to filter on. Optional.",
-    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceListResponse:
@@ -112,7 +108,7 @@ def list_traces_metadata(
         count, trace_metadata_list = span_repo.get_traces_metadata(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
-            user_ids=user_ids,
+            user_ids=trace_query.user_ids,
         )
 
         traces = [
