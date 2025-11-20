@@ -95,14 +95,7 @@ class TraceAnnotationService:
         for trace_metadata in trace_metadata_list:
             annotation = self.get_annotation_by_trace_id(trace_metadata.trace_id)
             if annotation:
-                trace_metadata.annotation = AgenticAnnotation(
-                    id=annotation.id,
-                    trace_id=annotation.trace_id,
-                    annotation_score=annotation.annotation_score,
-                    annotation_description=annotation.annotation_description,
-                    created_at=annotation.created_at,
-                    updated_at=annotation.updated_at,
-                )
+                trace_metadata.annotation = annotation
 
         return trace_metadata_list
 
