@@ -58,7 +58,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
     },
   });
 
-  const { debouncedExtractVariables } = useExtractPromptVariables();
+  const variablesQuery = useExtractPromptVariables(prompt.messages);
 
   const handleAddMessage = () => {
     dispatch({
@@ -86,17 +86,17 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
 
   // Extract variables from prompt messages when they change
   useEffect(() => {
-    // Debounce the extraction to avoid excessive API calls
-    debouncedExtractVariables(prompt.messages, (variables) => {
+    // React Query handles debouncing and caching automatically
+    if (variablesQuery.data !== undefined) {
       dispatch({
         type: "extractPromptVariables",
         payload: {
           promptId: prompt.id,
-          variables,
+          variables: variablesQuery.data,
         },
       });
-    });
-  }, [prompt.id, prompt.messages, debouncedExtractVariables, dispatch]);
+    }
+  }, [prompt.id, variablesQuery.data, dispatch]);
 
   const handleResize = useCallback((newRatio: number) => {
     setMessagesHeightRatio(newRatio);

@@ -1,8 +1,8 @@
-import { debounce } from "@mui/material/utils";
-import { useCallback, useRef, useMemo } from "react";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { MessageType } from "../types";
-import { convertMessagesToApiFormat } from "../utils/messageUtils";
+import { convertMessagesToApiFormat, hasTemplateVariables } from "../utils/messageUtils";
 
 import { useApi } from "@/hooks/useApi";
 
@@ -11,68 +11,54 @@ const DEBOUNCE_TIME = 500;
 /**
  * Hook that extracts variables from prompt messages using the backend API.
  * Debounces API calls to avoid excessive requests.
+ * Uses React Query for caching, request cancellation, and error handling.
  * Optimizes by skipping API calls when no template patterns are detected.
  *
- * @returns Object with extractVariables and debouncedExtractVariables functions
+ * @param messages - Array of messages to extract variables from
+ * @returns React Query result object with variables data
  */
-export const useExtractPromptVariables = () => {
+export const useExtractPromptVariables = (messages: MessageType[]): UseQueryResult<string[], Error> => {
   const apiClient = useApi();
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [debouncedMessages, setDebouncedMessages] = useState<MessageType[]>(messages);
 
-  const extractVariables = useCallback(
-    async (messages: MessageType[]): Promise<string[]> => {
-      if (!apiClient || messages.length === 0) {
+  // Debounce messages to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedMessages(messages);
+    }, DEBOUNCE_TIME);
+
+    return () => clearTimeout(timer);
+  }, [messages]);
+
+  return useQuery<string[], Error>({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
+    queryKey: ["extractPromptVariables", debouncedMessages],
+    queryFn: async () => {
+      if (!apiClient || debouncedMessages.length === 0) {
         return [];
       }
 
-      // Optimization: Skip API call if no template patterns are detected
-      // if (!hasTemplateVariables(messages)) {
-      //   return [];
-      // }
-
-      // Cancel any pending request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      // Create new abort controller for this request
-      abortControllerRef.current = new AbortController();
-
       try {
         // Convert messages to API format
-        const apiMessages = convertMessagesToApiFormat(messages);
+        const apiMessages = convertMessagesToApiFormat(debouncedMessages);
 
         // Call the backend API
-        const response = await apiClient.api.getUnsavedPromptVariablesListApiV1PromptVariablesPost(
-          { messages: apiMessages },
-          { signal: abortControllerRef.current.signal }
-        );
+        const response = await apiClient.api.getUnsavedPromptVariablesListApiV1PromptVariablesPost({
+          messages: apiMessages,
+        });
 
         return response.data.variables || [];
       } catch (error: unknown) {
         // Handle errors gracefully - return empty array
-        // Don't log aborted requests (they're expected when debouncing)
-        if (error instanceof Error && error.name !== "AbortError") {
+        if (error instanceof Error) {
           console.error("Failed to extract prompt variables:", error);
         }
         return [];
       }
     },
-    [apiClient]
-  );
-
-  // Debounce the extraction function with callback
-  // Use useMemo to recreate when extractVariables changes
-  const debouncedExtractVariables = useMemo(
-    () =>
-      debounce((messages: MessageType[], callback: (variables: string[]) => void) => {
-        extractVariables(messages).then(callback);
-      }, DEBOUNCE_TIME),
-    [extractVariables]
-  );
-
-  return {
-    extractVariables,
-    debouncedExtractVariables,
-  };
+    enabled: !!apiClient && debouncedMessages.length > 0 && hasTemplateVariables(debouncedMessages),
+    retry: false,
+    // Default to empty array
+    placeholderData: [],
+  });
 };
