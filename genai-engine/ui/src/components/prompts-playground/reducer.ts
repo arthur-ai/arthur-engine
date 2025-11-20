@@ -87,7 +87,7 @@ const createModelParameters = (overrides: Partial<ModelParametersType> = {}): Mo
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: "-" + uuidv4(), // New prompts get a default id
+  id: uuidv4().slice(0, 8), // New prompts get a short 8-character id
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   created_at: undefined, // created on BE
@@ -108,7 +108,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
 const newPrompt = (): PromptType => createPrompt();
 
 const duplicatePrompt = (original: PromptType): PromptType => {
-  const newId = "-" + uuidv4(); // TODO: overwrite on save
+  const newId = uuidv4().slice(0, 8); // Short 8-character id for duplicates
 
   return createPrompt({
     ...original,
