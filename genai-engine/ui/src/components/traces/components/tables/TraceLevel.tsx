@@ -69,6 +69,7 @@ export function TraceLevel() {
     () =>
       createFilterRow(TRACE_FIELDS, {
         trace_ids: { taskId: task?.id ?? "", api },
+        session_ids: { taskId: task?.id ?? "", api },
       }),
     [task?.id, api]
   );
