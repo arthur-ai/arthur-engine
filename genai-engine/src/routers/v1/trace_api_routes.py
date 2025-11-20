@@ -8,7 +8,7 @@ from arthur_common.models.response_schemas import (
     SpanWithMetricsResponse,
     TraceResponse,
 )
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -21,7 +21,8 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v1.legacy_span_routes import _create_response, trace_query_parameters
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import User
+from schemas.internal_schemas import AgenticAnnotation, User
+from schemas.request_schemas import AgenticAnnotationRequest
 from schemas.response_schemas import (
     SessionListResponse,
     SessionTracesResponse,
@@ -590,3 +591,70 @@ def compute_trace_metrics(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
+
+
+@trace_api_routes.post(
+    "/traces/{trace_id}/annotations",
+    summary="Annotate a Trace",
+    description="Annotate a trace with a score and description (1 = liked, 0 = disliked)",
+    response_model=AgenticAnnotation,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+def annotate_trace(
+    trace_id: str,
+    annotation_request: AgenticAnnotationRequest,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> AgenticAnnotation:
+    """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        return span_repo.annotate_trace(
+            trace_id=trace_id,
+            annotation_request=annotation_request,
+        )
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error annotating trace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@trace_api_routes.delete(
+    "/traces/{trace_id}/annotations",
+    summary="Delete an annotation from a trace",
+    description="Delete an annotation from a trace",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_204_NO_CONTENT: {"description": "Annotation deleted from trace."},
+    },
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+def delete_annotation_from_trace(
+    trace_id: str,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    """Delete an annotation from a trace."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        span_repo.delete_annotation_from_trace(
+            trace_id=trace_id,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error annotating trace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

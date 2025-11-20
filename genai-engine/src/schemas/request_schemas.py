@@ -788,3 +788,16 @@ class UnsavedPromptVariablesRequest(BaseModel):
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
+
+
+class AgenticAnnotationRequest(BaseModel):
+    annotation_score: int = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)",
+    )
+    annotation_description: Optional[str] = Field(
+        default=None,
+        description="Description of the annotation",
+    )

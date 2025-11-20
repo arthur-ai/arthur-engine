@@ -2,7 +2,7 @@ import os
 import random
 import urllib
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, Union
 
 import httpx
 from arthur_common.models.common_schemas import (
@@ -62,7 +62,9 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
+from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
+    AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
     CreateAgenticPromptRequest,
@@ -2478,6 +2480,46 @@ class GenaiEngineTestClientBase(httpx.Client):
                 else resp.text
             ),
         )
+
+    def trace_api_annotate_trace(
+        self,
+        trace_id: str,
+        annotation_request: Union[Dict[str, Any], AgenticAnnotationRequest],
+    ) -> tuple[int, AgenticAnnotation | str]:
+        """Annotate a trace with a score and optional description (1 = liked, 0 = disliked)."""
+        if isinstance(annotation_request, AgenticAnnotationRequest):
+            data = annotation_request.model_dump()
+        else:
+            data = annotation_request
+
+        resp = self.base_client.post(
+            f"/api/v1/traces/{trace_id}/annotations",
+            json=data,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                AgenticAnnotation.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_delete_annotation_from_trace(
+        self,
+        trace_id: str,
+    ) -> tuple[int, None | str]:
+        """Delete an annotation from a trace."""
+        resp = self.base_client.delete(
+            f"/api/v1/traces/{trace_id}/annotations",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (resp.status_code, resp.text)
 
     def create_dataset_version(
         self,
