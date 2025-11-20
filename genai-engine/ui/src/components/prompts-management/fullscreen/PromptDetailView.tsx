@@ -1,5 +1,6 @@
 import CloseIcon from "@mui/icons-material/Close";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SettingsIcon from "@mui/icons-material/Settings";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -120,6 +121,12 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
     }
   }, [taskId, version, promptName, deleteTagMutation, onRefetch]);
 
+  const handleEditInPlayground = useCallback(() => {
+    if (!taskId || version === null) return;
+    const url = `/tasks/${taskId}/playgrounds/prompts?promptName=${encodeURIComponent(promptName)}&version=${version}`;
+    window.open(url, '_blank');
+  }, [taskId, promptName, version]);
+
   if (isLoading) {
     return (
       <Box
@@ -184,11 +191,24 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
             </IconButton>
           )}
         </Box>
-        {onClose && (
-          <IconButton onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </IconButton>
-        )}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {!promptData.deleted_at && version !== null && (
+            <Button
+              variant="outlined"
+              size="small"
+              endIcon={<OpenInNewIcon />}
+              onClick={handleEditInPlayground}
+              sx={{ minWidth: 80 }}
+            >
+              Edit in Playground
+            </Button>
+          )}
+          {onClose && (
+            <IconButton onClick={onClose} aria-label="Close">
+              <CloseIcon />
+            </IconButton>
+          )}
+        </Box>
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3, flex: 1, minHeight: 0, overflow: "auto" }}>
