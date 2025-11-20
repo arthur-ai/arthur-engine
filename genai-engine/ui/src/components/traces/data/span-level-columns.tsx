@@ -4,12 +4,12 @@ import { createColumnHelper } from "@tanstack/react-table";
 
 import { isValidStatusCode, StatusCode } from "../components/StatusCode";
 
-import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
+import { DurationCell, TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { TypeChip } from "@/components/common/span/TypeChip";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
-import { formatDate, formatDuration } from "@/utils/formatters";
+import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<SpanMetadataResponse>();
 
@@ -91,7 +91,7 @@ export const spanLevelColumns = [
   }),
   columnHelper.accessor("duration_ms", {
     header: "Latency",
-    cell: ({ getValue }) => formatDuration(getValue()),
+    cell: ({ getValue }) => <DurationCell duration={getValue()} />,
   }),
   columnHelper.accessor("trace_id", {
     header: "Trace ID",

@@ -4,10 +4,13 @@ import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Suspense, useMemo, useRef, useState } from "react";
 
 import { TIME_RANGES, TimeRange } from "../constants";
+import { BucketProvider } from "../context/bucket-context";
 import { columns } from "../data/columns";
+import { TokenCostTooltip, TokenCountTooltip } from "../data/common";
 import { sessionLevelColumns } from "../data/session-level-columns";
 import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
 import { useTracesHistoryStore } from "../stores/history.store";
+import { buildThresholdsFromSample } from "../utils/duration";
 
 import { filterFields } from "./filtering/fields";
 import { createFilterRow } from "./filtering/filters-row";
@@ -43,6 +46,10 @@ export const UserDrawerContent = ({ id }: Props) => {
     queryFn: () => getUser(api, { taskId: task?.id ?? "", userId: id }),
   });
 
+  // prompt, completion, total
+  const tokens = [user.prompt_token_count, user.completion_token_count, user.total_token_count] as const;
+  const costs = [user.prompt_token_cost, user.completion_token_cost, user.total_token_cost] as const;
+
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
       <Stack
@@ -65,6 +72,11 @@ export const UserDrawerContent = ({ id }: Props) => {
             {user.user_id}
           </Typography>
         </Stack>
+      </Stack>
+
+      <Stack direction="row" alignItems="center" gap={2} sx={{ px: 4, py: 2 }}>
+        <TokenCountTooltip prompt={tokens[0] ?? 0} completion={tokens[1] ?? 0} total={tokens[2] ?? 0} />
+        <TokenCostTooltip prompt={costs[0] ?? 0} completion={costs[1] ?? 0} total={costs[2] ?? 0} />
       </Stack>
 
       <Box sx={{ px: 4, py: 2 }}>
@@ -91,7 +103,7 @@ export const UserDrawerContent = ({ id }: Props) => {
             <Tabs.Panel value="sessions">
               <Suspense fallback={<Skeleton variant="rectangular" height={100} />}>
                 <FilterStoreProvider timeRange={timeRange}>
-                  <UserSessionsTable ids={user.session_ids} taskId={task?.id ?? ""} />
+                  <UserSessionsTable ids={[user.user_id]} taskId={task?.id ?? ""} />
                 </FilterStoreProvider>
               </Suspense>
             </Tabs.Panel>
@@ -142,6 +154,8 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
+
   const { FiltersRow } = useMemo(() => createFilterRow(USER_FILTERS, {}), []);
 
   return (
@@ -149,17 +163,19 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
       <FiltersRow />
       {traces.data?.count ? (
         <>
-          <TracesTable
-            table={table}
-            ref={ref}
-            loading={traces.isFetching}
-            onRowClick={(row) => {
-              push({
-                type: "trace",
-                id: row.original.trace_id,
-              });
-            }}
-          />
+          <BucketProvider thresholds={thresholds}>
+            <TracesTable
+              table={table}
+              ref={ref}
+              loading={traces.isFetching}
+              onRowClick={(row) => {
+                push({
+                  type: "trace",
+                  id: row.original.trace_id,
+                });
+              }}
+            />
+          </BucketProvider>
           <TablePagination
             component="div"
             count={traces.data?.count ?? 0}
@@ -191,7 +207,7 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
-  const filters: IncomingFilter[] = useMemo(() => [{ name: "session_ids", operator: Operators.IN, value: ids }], [ids]);
+  const filters: IncomingFilter[] = useMemo(() => [{ name: "user_ids", operator: Operators.IN, value: ids }], [ids]);
 
   const params = {
     taskId,

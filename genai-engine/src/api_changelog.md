@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/19/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'
+
 # 11/18/2025
 - **CHANGE** for **URL**: /api/v1/prompt_variables  endpoint added
 
