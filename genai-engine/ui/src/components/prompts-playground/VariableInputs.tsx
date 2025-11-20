@@ -22,11 +22,21 @@ const VariableInputs = () => {
 
   const variables = Array.from(state.keywords.keys());
 
-  // Create a map of variable names to their dataset column mappings
-  const variableMappings = new Map<string, string>();
-  if (experimentConfig?.prompt_ref?.variable_mapping) {
-    experimentConfig.prompt_ref.variable_mapping.forEach((mapping: any) => {
-      variableMappings.set(mapping.variable_name, mapping.source?.dataset_column?.name || "");
+  // Create a map of variable names to their source mappings (dataset column or experiment output)
+  const variableMappings = new Map<string, { type: 'dataset' | 'experiment'; value: string }>();
+  if (experimentConfig?.prompt_variable_mapping) {
+    experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
+      if (mapping.source?.type === 'dataset_column' && mapping.source?.dataset_column?.name) {
+        variableMappings.set(mapping.variable_name, {
+          type: 'dataset',
+          value: mapping.source.dataset_column.name,
+        });
+      } else if (mapping.source?.type === 'experiment_output' && mapping.source?.experiment_output?.json_path) {
+        variableMappings.set(mapping.variable_name, {
+          type: 'experiment',
+          value: mapping.source.experiment_output.json_path,
+        });
+      }
     });
   }
 
@@ -118,10 +128,20 @@ const VariableInputs = () => {
         ) : (
           <Stack spacing={1}>
             {variables.map((variable) => {
-              const mappedColumn = variableMappings.get(variable);
-              const isMapped = !!mappedColumn;
+              const mapping = variableMappings.get(variable);
+              const isMapped = !!mapping;
               const value = state.keywords.get(variable) || "";
               const isMissing = !isMapped && value.trim() === "";
+
+              // Construct helper text based on mapping type
+              let helperText: string | undefined = undefined;
+              if (isMapped) {
+                if (mapping.type === 'dataset') {
+                  helperText = `Mapped to dataset column: ${mapping.value}`;
+                } else if (mapping.type === 'experiment') {
+                  helperText = `Mapped to experiment output (path: ${mapping.value})`;
+                }
+              }
 
               return (
                 <TextField
@@ -135,11 +155,7 @@ const VariableInputs = () => {
                   variant="standard"
                   fullWidth
                   disabled={isMapped}
-                  helperText={
-                    isMapped
-                      ? `Mapped to dataset column: ${mappedColumn}`
-                      : undefined
-                  }
+                  helperText={helperText}
                   sx={{
                     "& .MuiInputBase-input.Mui-disabled": {
                       WebkitTextFillColor: "rgba(0, 0, 0, 0.5)",

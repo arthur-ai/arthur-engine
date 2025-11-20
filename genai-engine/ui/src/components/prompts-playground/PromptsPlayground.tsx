@@ -25,6 +25,7 @@ import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
 import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
 import toFrontendPrompt from "./utils/toFrontendPrompt";
+import { toExperimentPromptConfig } from "./utils/toExperimentPromptConfig";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
@@ -60,6 +61,12 @@ const PromptsPlayground = () => {
   const [experimentRuns, setExperimentRuns] = useState<any[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [runDetails, setRunDetails] = useState<Map<string, any>>(new Map());
+
+  // Track the currently running experiment for this session
+  const [runningExperimentId, setRunningExperimentId] = useState<string | null>(null);
+  const [isRunningExperiment, setIsRunningExperiment] = useState(false);
+  const [lastCompletedExperimentId, setLastCompletedExperimentId] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Pass false to let each prompt determine its own icon-only mode based on container width
   // This enables true container query behavior - each prompt measures its own width
@@ -211,6 +218,22 @@ const PromptsPlayground = () => {
           payload: { promptData: frontendPrompt },
         });
       }
+
+      // Initialize variable values from the experiment config
+      // The variable mappings tell us which variables exist in the prompt
+      if (configData.prompt_variable_mapping && configData.prompt_variable_mapping.length > 0) {
+        configData.prompt_variable_mapping.forEach((mapping: any) => {
+          // Initialize each variable with empty string
+          // User will need to fill these in or they'll be replaced by dataset values when running
+          dispatch({
+            type: "updateKeywordValue",
+            payload: {
+              keyword: mapping.variable_name,
+              value: "",
+            },
+          });
+        });
+      }
     } catch (error) {
       console.error("Failed to fetch experiment config:", error);
     }
@@ -243,7 +266,214 @@ const PromptsPlayground = () => {
     dispatch({ type: "addPrompt" });
   };
 
+  /**
+   * Refresh experiment runs list
+   */
+  const refreshExperimentRuns = useCallback(async () => {
+    if (!experimentConfig || !task?.id || !apiClient) return;
+
+    try {
+      const experimentsListResponse = await apiClient.api.listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet({
+        taskId: task.id,
+        page: 0,
+        page_size: 100,
+      });
+
+      const matchingExperiments = experimentsListResponse.data.data.filter(
+        (exp: any) => exp.name === experimentConfig.name
+      );
+      setExperimentRuns(matchingExperiments);
+    } catch (error) {
+      console.error("Failed to refresh experiment runs:", error);
+    }
+  }, [experimentConfig, task?.id, apiClient]);
+
+  /**
+   * Poll experiment status until completion
+   */
+  const pollExperimentStatus = useCallback(
+    async (expId: string) => {
+      if (!apiClient) return;
+
+      try {
+        const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(expId);
+        const experiment = response.data;
+
+        // Check if experiment is still running, queued, or evaluating
+        // Keep polling while status is not completed or failed
+        if (experiment.status === "running" || experiment.status === "queued" || experiment.status === "evaluating") {
+          // Continue polling
+          return;
+        }
+
+        // Experiment completed or failed - stop polling
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        setIsRunningExperiment(false);
+        // Keep the experiment ID so results persist, but store in lastCompleted
+        setLastCompletedExperimentId(expId);
+        setRunningExperimentId(null);
+
+        // Refresh the runs list to show the completed experiment
+        await refreshExperimentRuns();
+
+        // Auto-expand the completed run details
+        setExpandedRunId(expId);
+        setRunDetails((prev) => new Map(prev).set(expId, experiment));
+      } catch (error) {
+        console.error("Failed to poll experiment status:", error);
+        // Stop polling on error
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        setIsRunningExperiment(false);
+        setRunningExperimentId(null);
+      }
+    },
+    [apiClient, refreshExperimentRuns]
+  );
+
+  /**
+   * Start polling for experiment completion
+   */
+  const startPolling = useCallback(
+    (expId: string) => {
+      // Clear any existing polling
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+
+      // Poll every 2 seconds
+      pollingIntervalRef.current = setInterval(() => {
+        pollExperimentStatus(expId);
+      }, 2000);
+
+      // Also do an immediate poll
+      pollExperimentStatus(expId);
+    },
+    [pollExperimentStatus]
+  );
+
+  /**
+   * Run experiment with all prompts in config mode
+   */
+  const handleRunAllWithConfig = useCallback(async () => {
+    if (!experimentConfig || !task?.id || !apiClient) {
+      console.error("Missing config, task, or API client");
+      return;
+    }
+
+    if (isRunningExperiment) {
+      console.warn("An experiment is already running");
+      return;
+    }
+
+    try {
+      setIsRunningExperiment(true);
+
+      // Convert all playground prompts to experiment prompt configs
+      const promptConfigs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
+
+      // Create experiment request using the same config as the original
+      // Use the original prompt_variable_mapping from experimentConfig
+      const experimentRequest = {
+        name: experimentConfig.name,
+        description: experimentConfig.description,
+        dataset_ref: experimentConfig.dataset_ref,
+        eval_list: experimentConfig.eval_list,
+        prompt_configs: promptConfigs,
+        prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
+      };
+
+      // Create and run the experiment
+      const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(
+        task.id,
+        experimentRequest
+      );
+
+      const newExperimentId = response.data.id;
+      setRunningExperimentId(newExperimentId);
+
+      // Start polling for results
+      startPolling(newExperimentId);
+
+      // Track the event
+      track(EVENT_NAMES.RUN_ALL_PROMPTS, {
+        prompt_count: promptConfigs.length,
+        config_mode: true,
+      });
+    } catch (error) {
+      console.error("Failed to create experiment:", error);
+      setIsRunningExperiment(false);
+      setRunningExperimentId(null);
+    }
+  }, [experimentConfig, task?.id, apiClient, state.prompts, isRunningExperiment, startPolling]);
+
+  /**
+   * Run experiment with a single prompt in config mode
+   */
+  const handleRunSingleWithConfig = useCallback(async (promptId: string) => {
+    if (!experimentConfig || !task?.id || !apiClient) {
+      console.error("Missing config, task, or API client");
+      return;
+    }
+
+    if (isRunningExperiment) {
+      console.warn("An experiment is already running");
+      return;
+    }
+
+    const prompt = state.prompts.find((p) => p.id === promptId);
+    if (!prompt) {
+      console.error("Prompt not found");
+      return;
+    }
+
+    try {
+      setIsRunningExperiment(true);
+
+      // Convert the single prompt to experiment prompt config
+      const promptConfig = toExperimentPromptConfig(prompt);
+
+      // Create experiment request with just this prompt
+      const experimentRequest = {
+        name: experimentConfig.name,
+        description: experimentConfig.description,
+        dataset_ref: experimentConfig.dataset_ref,
+        eval_list: experimentConfig.eval_list,
+        prompt_configs: [promptConfig],
+        prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
+      };
+
+      // Create and run the experiment
+      const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(
+        task.id,
+        experimentRequest
+      );
+
+      const newExperimentId = response.data.id;
+      setRunningExperimentId(newExperimentId);
+
+      // Start polling for results
+      startPolling(newExperimentId);
+    } catch (error) {
+      console.error("Failed to create experiment:", error);
+      setIsRunningExperiment(false);
+      setRunningExperimentId(null);
+    }
+  }, [experimentConfig, task?.id, apiClient, state.prompts, isRunningExperiment, startPolling]);
+
   const handleRunAllPrompts = () => {
+    // If in config mode, run with experiment
+    if (configModeActive && experimentConfig) {
+      handleRunAllWithConfig();
+      return;
+    }
+
+    // Otherwise, run in normal playground mode
     // Calculate tracking properties
     const nonRunningPrompts = state.prompts.filter((prompt) => !prompt.running);
     const promptCount = nonRunningPrompts.length;
@@ -314,8 +544,38 @@ const PromptsPlayground = () => {
     }
   }, [expandedRunId, runDetails, apiClient]);
 
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
   // Count blank variables
+  // In config mode, only count variables that are NOT mapped to dataset columns
   const blankVariablesCount = useMemo(() => {
+    if (experimentConfig?.prompt_variable_mapping) {
+      // Build a set of mapped variable names
+      const mappedVariables = new Set<string>();
+      experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
+        mappedVariables.add(mapping.variable_name);
+      });
+
+      // Only count unmapped variables that are blank
+      let count = 0;
+      state.keywords.forEach((value, key) => {
+        const isMapped = mappedVariables.has(key);
+        const isEmpty = !value || value.trim() === "";
+        if (!isMapped && isEmpty) {
+          count++;
+        }
+      });
+      return count;
+    }
+
+    // Normal mode: count all blank variables
     let count = 0;
     state.keywords.forEach((value) => {
       if (!value || value.trim() === "") {
@@ -323,10 +583,18 @@ const PromptsPlayground = () => {
       }
     });
     return count;
-  }, [state.keywords]);
+  }, [state.keywords, experimentConfig]);
 
   return (
-    <PromptProvider state={state} dispatch={dispatch} experimentConfig={experimentConfig}>
+    <PromptProvider
+      state={state}
+      dispatch={dispatch}
+      experimentConfig={experimentConfig}
+      handleRunSingleWithConfig={handleRunSingleWithConfig}
+      isRunningExperiment={isRunningExperiment}
+      runningExperimentId={runningExperimentId}
+      lastCompletedExperimentId={lastCompletedExperimentId}
+    >
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
         {/* Config Mode Indicator */}
         {configModeActive && experimentConfig && (

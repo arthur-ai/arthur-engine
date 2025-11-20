@@ -7,12 +7,20 @@ interface PromptProviderProps {
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
   experimentConfig?: any;
+  handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
+  isRunningExperiment?: boolean;
+  runningExperimentId?: string | null;
+  lastCompletedExperimentId?: string | null;
 }
 
 const PromptContext = createContext<{
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
   experimentConfig?: any;
+  handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
+  isRunningExperiment?: boolean;
+  runningExperimentId?: string | null;
+  lastCompletedExperimentId?: string | null;
 } | null>(null);
 
 export const usePromptContext = () => {
@@ -21,6 +29,29 @@ export const usePromptContext = () => {
   return context;
 };
 
-export const PromptProvider = ({ children, state, dispatch, experimentConfig }: PromptProviderProps) => {
-  return <PromptContext.Provider value={{ state, dispatch, experimentConfig }}>{children}</PromptContext.Provider>;
+export const PromptProvider = ({
+  children,
+  state,
+  dispatch,
+  experimentConfig,
+  handleRunSingleWithConfig,
+  isRunningExperiment,
+  runningExperimentId,
+  lastCompletedExperimentId
+}: PromptProviderProps) => {
+  return (
+    <PromptContext.Provider
+      value={{
+        state,
+        dispatch,
+        experimentConfig,
+        handleRunSingleWithConfig,
+        isRunningExperiment,
+        runningExperimentId,
+        lastCompletedExperimentId
+      }}
+    >
+      {children}
+    </PromptContext.Provider>
+  );
 };

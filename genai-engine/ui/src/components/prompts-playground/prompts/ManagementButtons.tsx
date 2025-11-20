@@ -22,14 +22,21 @@ interface ManagementButtonsProps {
 const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps) => {
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
-  const { dispatch, state } = usePromptContext();
+  const { dispatch, state, experimentConfig, handleRunSingleWithConfig, isRunningExperiment } = usePromptContext();
 
   const handleRunPrompt = useCallback(() => {
+    // If in config mode, run with experiment
+    if (experimentConfig && handleRunSingleWithConfig) {
+      handleRunSingleWithConfig(prompt.id);
+      return;
+    }
+
+    // Otherwise, run in normal playground mode
     dispatch({
       type: "runPrompt",
       payload: { promptId: prompt.id },
     });
-  }, [dispatch, prompt.id]);
+  }, [dispatch, prompt.id, experimentConfig, handleRunSingleWithConfig]);
 
   const handleDuplicatePrompt = useCallback(() => {
     dispatch({
@@ -58,19 +65,44 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   }, [dispatch, prompt.id]);
 
   // Check if there are any unset variables
-  const hasUnsetVariables = Array.from(state.keywords.values()).some((value) => !value || value.trim() === "");
+  // In config mode, variables can be empty if they're mapped to dataset columns
+  const hasUnsetVariables = React.useMemo(() => {
+    if (experimentConfig?.prompt_variable_mapping) {
+      // Build a set of mapped variable names
+      const mappedVariables = new Set<string>();
+      experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
+        mappedVariables.add(mapping.variable_name);
+      });
 
-  const runDisabled = prompt.running || prompt.modelName === "" || hasUnsetVariables;
+      // Check if any unmapped variables are empty
+      return Array.from(state.keywords.entries()).some(([key, value]) => {
+        const isMapped = mappedVariables.has(key);
+        const isEmpty = !value || value.trim() === "";
+        return !isMapped && isEmpty; // Only fail if unmapped AND empty
+      });
+    }
+
+    // Normal mode: all variables must have values
+    return Array.from(state.keywords.values()).some((value) => !value || value.trim() === "");
+  }, [state.keywords, experimentConfig]);
+
+  // In config mode, disable if experiment is running. In normal mode, disable if prompt is running
+  const runDisabled =
+    prompt.modelName === "" ||
+    hasUnsetVariables ||
+    (experimentConfig ? isRunningExperiment : prompt.running);
   const previewDisabled = hasUnsetVariables;
   const isDirty = prompt.isDirty;
   const saveTooltip = isDirty ? "Save unsaved changes" : "Save Prompt";
 
   // Determine the run button tooltip based on disabled state
-  let runTooltip = "Run Prompt";
+  let runTooltip = experimentConfig ? "Run Experiment with this Prompt" : "Run Prompt";
   if (hasUnsetVariables) {
     runTooltip = "Please fill in all variable values before running";
   } else if (prompt.modelName === "") {
     runTooltip = "Please select a model before running";
+  } else if (experimentConfig && isRunningExperiment) {
+    runTooltip = "An experiment is currently running";
   } else if (prompt.running) {
     runTooltip = "Prompt is currently running";
   }

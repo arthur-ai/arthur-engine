@@ -18,9 +18,10 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 
 interface ResultsTableProps {
   promptId: string;
@@ -72,8 +73,13 @@ interface TestCaseDetailModalProps {
   onClose: () => void;
 }
 
-const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({ testCase, open, onClose }) => {
+const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: string }> = ({ testCase, open, onClose, promptKey }) => {
   if (!testCase) return null;
+
+  // Get the prompt result for this specific prompt using the prompt key
+  const promptResult = promptKey
+    ? testCase.prompt_results?.find((pr: any) => pr.prompt_key === promptKey)
+    : testCase.prompt_results?.[0];
 
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
@@ -144,23 +150,17 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({ testCase, ope
                       Input Messages:
                     </Typography>
                     <Box className="max-h-96 overflow-auto">
-                      {(() => {
-                        try {
-                          const messages = JSON.parse(testCase.rendered_prompt) as Message[];
-                          return messages.map((message, msgIndex) => (
-                            <MessageDisplay key={msgIndex} message={message} />
-                          ));
-                        } catch {
-                          // If not JSON, display as plain text
-                          return (
-                            <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                              <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
-                                {testCase.rendered_prompt}
-                              </Typography>
-                            </Box>
-                          );
-                        }
-                      })()}
+                      {promptResult?.input?.messages ? (
+                        promptResult.input.messages.map((message: any, msgIndex: number) => (
+                          <MessageDisplay key={msgIndex} message={message} />
+                        ))
+                      ) : (
+                        <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
+                          <Typography variant="body2" className="text-gray-500 italic">
+                            No input messages available
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
                   </Box>
 
@@ -170,8 +170,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({ testCase, ope
                       Output Message:
                     </Typography>
                     <Box className="max-h-96 overflow-auto">
-                      {testCase.response ? (
-                        <MessageDisplay message={{ role: "assistant", content: testCase.response }} />
+                      {promptResult?.output?.content ? (
+                        <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
                       ) : (
                         <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
                           <Typography variant="body2" className="text-gray-500 italic">
@@ -184,46 +184,42 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({ testCase, ope
                 </Box>
 
                 {/* Evals */}
-                {testCase.eval_results.length > 0 && (
+                {promptResult?.evals && promptResult.evals.length > 0 && (
                   <Box>
                     <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
                       Evaluations:
                     </Typography>
                     <Box className="space-y-2">
-                      {testCase.eval_results.map((evalResult, evalIndex) => (
-                        <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
-                          <Box className="flex items-center justify-between mb-2">
-                            <Box className="flex items-center gap-2">
-                              <Typography variant="body2" className="font-medium text-gray-900">
-                                {evalResult.eval_name} v{evalResult.eval_version}
-                              </Typography>
-                              {evalResult.score !== undefined ? (
-                                <>
-                                  <Chip
-                                    label={evalResult.score === 1 ? "Pass" : "Fail"}
-                                    size="small"
-                                    sx={getEvalChipSx(evalResult.score === 1)}
-                                  />
-                                  {evalResult.cost && (
+                      {promptResult.evals.map((evalData: any, evalIndex: number) => {
+                        const evalResult = evalData.eval_results;
+                        return (
+                          <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
+                            <Box className="flex items-center justify-between mb-2">
+                              <Box className="flex items-center gap-2">
+                                <Typography variant="body2" className="font-medium text-gray-900">
+                                  {evalData.eval_name} v{evalData.eval_version}
+                                </Typography>
+                                {evalResult?.score !== undefined ? (
+                                  <>
                                     <Chip
-                                      label={`Cost: $${evalResult.cost}`}
+                                      label={evalResult.score === 1 ? "Pass" : "Fail"}
                                       size="small"
-                                      variant="outlined"
+                                      sx={getEvalChipSx(evalResult.score === 1)}
                                     />
-                                  )}
-                                </>
-                              ) : (
-                                <Chip label="Pending" size="small" sx={getPendingChipSx()} />
-                              )}
+                                  </>
+                                ) : (
+                                  <Chip label="Pending" size="small" sx={getPendingChipSx()} />
+                                )}
+                              </Box>
                             </Box>
+                            {evalResult?.explanation && (
+                              <Typography variant="body2" className="text-gray-700 mt-1">
+                                {evalResult.explanation}
+                              </Typography>
+                            )}
                           </Box>
-                          {evalResult.explanation && (
-                            <Typography variant="body2" className="text-gray-700 mt-1">
-                              {evalResult.explanation}
-                            </Typography>
-                          )}
-                        </Box>
-                      ))}
+                        );
+                      })}
                     </Box>
                   </Box>
                 )}
@@ -237,76 +233,47 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({ testCase, ope
 };
 
 const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
-  const { experimentConfig } = usePromptContext();
-  const [selectedTestCase, setSelectedTestCase] = useState<TestCaseResult | null>(null);
+  const { experimentConfig, runningExperimentId, lastCompletedExperimentId, state } = usePromptContext();
+  const [selectedTestCase, setSelectedTestCase] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Mock data for now - this will be replaced with actual data from experiment runs
-  const mockResults: TestCaseResult[] = [
-    {
-      row_index: 0,
-      status: "completed",
-      rendered_prompt: JSON.stringify([
-        { role: "system", content: "You are a helpful assistant." },
-        { role: "user", content: "What is the capital of France?" },
-      ]),
-      response: "The capital of France is Paris.",
-      eval_results: [
-        { eval_name: "correctness", eval_version: "1", score: 1, explanation: "Answer is accurate and correct" },
-        { eval_name: "relevance", eval_version: "1", score: 1, explanation: "Response is directly relevant to the question" },
-      ],
-    },
-    {
-      row_index: 1,
-      status: "completed",
-      rendered_prompt: JSON.stringify([
-        { role: "system", content: "You are a helpful assistant." },
-        { role: "user", content: "What is 2 + 2?" },
-      ]),
-      response: "2 + 2 equals 4.",
-      eval_results: [
-        { eval_name: "correctness", eval_version: "1", score: 1, explanation: "Mathematical answer is correct" },
-        { eval_name: "relevance", eval_version: "1", score: 0, explanation: "Response is too verbose for a simple math question" },
-      ],
-    },
-    {
-      row_index: 2,
-      status: "completed",
-      rendered_prompt: JSON.stringify([
-        { role: "user", content: "Explain quantum physics" },
-      ]),
-      response: "Quantum physics is the study of matter and energy at the most fundamental level.",
-      eval_results: [
-        { eval_name: "correctness", eval_version: "1", score: 1, explanation: "Provides a correct high-level explanation" },
-        { eval_name: "relevance", eval_version: "1", score: 0, explanation: "Explanation is too brief and lacks depth" },
-      ],
-    },
-    {
-      row_index: 3,
-      status: "completed",
-      rendered_prompt: JSON.stringify([
-        { role: "system", content: "You are a helpful assistant." },
-        { role: "user", content: "What is the meaning of life?" },
-      ]),
-      response: "The meaning of life varies for each person and can include finding happiness, making connections, and contributing to society.",
-      eval_results: [
-        { eval_name: "correctness", eval_version: "1", score: 1, explanation: "Provides a thoughtful and balanced answer" },
-        { eval_name: "relevance", eval_version: "1", score: 1, explanation: "Directly addresses the philosophical question asked" },
-      ],
-    },
-    {
-      row_index: 4,
-      status: "failed",
-      rendered_prompt: JSON.stringify([
-        { role: "user", content: "Translate 'hello' to Spanish" },
-      ]),
-      response: "Bonjour",
-      eval_results: [
-        { eval_name: "correctness", eval_version: "1", score: 0, explanation: "Translation is in French, not Spanish" },
-        { eval_name: "relevance", eval_version: "1", score: 0, explanation: "Wrong language provided" },
-      ],
-    },
-  ];
+  // Find the prompt to get its key for filtering results
+  const prompt = state.prompts.find((p) => p.id === promptId);
+
+  // Generate the prompt key (same logic as toExperimentPromptConfig)
+  const promptKey = prompt
+    ? prompt.name && prompt.version !== null && prompt.version !== undefined
+      ? `saved:${prompt.name}:${prompt.version}`
+      : `unsaved:${prompt.name || 'prompt'}`
+    : undefined;
+
+  // Use running experiment ID if available, otherwise use last completed
+  const experimentIdToShow = runningExperimentId || lastCompletedExperimentId;
+
+  // Fetch test cases from the running or completed experiment
+  const { testCases, isLoading, refetch } = useExperimentTestCases(
+    experimentIdToShow || undefined,
+    0,
+    100 // Fetch all results for now
+  );
+
+  // Refetch test cases when runningExperimentId changes
+  useEffect(() => {
+    if (runningExperimentId) {
+      refetch();
+    }
+  }, [runningExperimentId, refetch]);
+
+  // Poll for test case updates while experiment is running
+  useEffect(() => {
+    if (!runningExperimentId) return;
+
+    const pollInterval = setInterval(() => {
+      refetch();
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [runningExperimentId, refetch]);
 
   const evals = experimentConfig?.eval_list || [];
 
@@ -337,7 +304,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
     }
   };
 
-  const getStatusLabel = (status: TestCaseResult["status"]): string => {
+  const getStatusLabel = (status: string): string => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
@@ -363,118 +330,167 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
         Results
       </Typography>
-      <TableContainer
-        component={Paper}
-        sx={{
-          flex: 1,
-          overflow: "auto",
-          backgroundColor: "#f8f9fa",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)"
-        }}
-      >
-        <Table stickyHeader size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
-          <TableHead>
-            <TableRow>
-              <TableCell
-                sx={{
-                  fontWeight: 600,
-                  width: `${100 / (2 + evals.length)}%`,
-                  backgroundColor: "#e9ecef",
-                  borderBottom: "2px solid #dee2e6"
-                }}
-              >
-                Dataset Row
-              </TableCell>
-              <TableCell
-                sx={{
-                  fontWeight: 600,
-                  width: `${100 / (2 + evals.length)}%`,
-                  backgroundColor: "#e9ecef",
-                  borderBottom: "2px solid #dee2e6"
-                }}
-              >
-                Status
-              </TableCell>
-              {evals.map((evalRef: any) => (
+      {isLoading ? (
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#f8f9fa",
+            borderRadius: 1,
+            border: "1px solid #e9ecef",
+          }}
+        >
+          <CircularProgress size={40} />
+        </Box>
+      ) : testCases.length === 0 ? (
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#f8f9fa",
+            borderRadius: 1,
+            border: "1px solid #e9ecef",
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {runningExperimentId
+              ? "Experiment is running. Results will appear here..."
+              : experimentIdToShow
+              ? "No test cases found for this experiment."
+              : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
+          </Typography>
+        </Box>
+      ) : (
+        <TableContainer
+          component={Paper}
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            backgroundColor: "#f8f9fa",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)",
+          }}
+        >
+          <Table stickyHeader size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
+            <TableHead>
+              <TableRow>
                 <TableCell
-                  key={`${evalRef.name}-${evalRef.version}`}
-                  align="center"
                   sx={{
                     fontWeight: 600,
                     width: `${100 / (2 + evals.length)}%`,
-                    padding: "6px 8px",
                     backgroundColor: "#e9ecef",
-                    borderBottom: "2px solid #dee2e6"
+                    borderBottom: "2px solid #dee2e6",
                   }}
                 >
-                  {evalRef.name} (v{evalRef.version})
+                  Dataset Row
                 </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {mockResults.map((result) => (
-              <TableRow
-                key={result.row_index}
-                hover
-                onClick={() => handleRowClick(result)}
-                sx={{
-                  cursor: "pointer",
-                  backgroundColor: "#f8f9fa",
-                  "&:hover": {
-                    backgroundColor: "#e9ecef"
-                  }
-                }}
-              >
-                <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {result.row_index + 1}
-                  </Typography>
+                <TableCell
+                  sx={{
+                    fontWeight: 600,
+                    width: `${100 / (2 + evals.length)}%`,
+                    backgroundColor: "#e9ecef",
+                    borderBottom: "2px solid #dee2e6",
+                  }}
+                >
+                  Status
                 </TableCell>
-                <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
-                  <Chip
-                    label={getStatusLabel(result.status)}
-                    size="small"
-                    sx={getStatusChipSx(getStatusColor(result.status))}
-                  />
-                </TableCell>
-                {evals.map((evalRef: any) => {
-                  const evalResult = result.eval_results.find(
-                    (er) => er.eval_name === evalRef.name && er.eval_version === evalRef.version
-                  );
-                  const score = evalResult?.score;
-
-                  return (
-                    <TableCell
-                      key={`${evalRef.name}-${evalRef.version}`}
-                      align="center"
-                      sx={{ padding: "6px 8px", borderBottom: "1px solid #e9ecef" }}
-                    >
-                      {score === 1 ? (
-                        <CheckCircleOutlinedIcon
-                          sx={{
-                            color: "#10b981",
-                            fontSize: "1.25rem",
-                          }}
-                        />
-                      ) : (
-                        <ClearOutlinedIcon
-                          sx={{
-                            color: "#ef4444",
-                            fontSize: "1.25rem",
-                          }}
-                        />
-                      )}
-                    </TableCell>
-                  );
-                })}
+                {evals.map((evalRef: any) => (
+                  <TableCell
+                    key={`${evalRef.name}-${evalRef.version}`}
+                    align="center"
+                    sx={{
+                      fontWeight: 600,
+                      width: `${100 / (2 + evals.length)}%`,
+                      padding: "6px 8px",
+                      backgroundColor: "#e9ecef",
+                      borderBottom: "2px solid #dee2e6",
+                    }}
+                  >
+                    {evalRef.name} (v{evalRef.version})
+                  </TableCell>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {testCases.map((testCase, index) => (
+                <TableRow
+                  key={testCase.id || testCase.row_index || index}
+                  hover
+                  onClick={() => handleRowClick(testCase)}
+                  sx={{
+                    cursor: "pointer",
+                    backgroundColor: "#f8f9fa",
+                    "&:hover": {
+                      backgroundColor: "#e9ecef",
+                    },
+                  }}
+                >
+                  <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {testCase.row_index !== undefined ? testCase.row_index + 1 : index + 1}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
+                    <Chip
+                      label={getStatusLabel(testCase.status)}
+                      size="small"
+                      sx={getStatusChipSx(getStatusColor(testCase.status))}
+                    />
+                  </TableCell>
+                  {evals.map((evalRef: any) => {
+                    // Find the result for THIS specific prompt using the prompt key
+                    const promptResult = testCase.prompt_results?.find(
+                      (pr: any) => pr.prompt_key === promptKey
+                    );
+                    // Compare eval version as strings since API returns them as strings
+                    const evalResult = promptResult?.evals?.find(
+                      (e: any) => e.eval_name === evalRef.name && String(e.eval_version) === String(evalRef.version)
+                    );
+                    const score = evalResult?.eval_results?.score;
 
-      <TestCaseDetailModal testCase={selectedTestCase} open={modalOpen} onClose={handleCloseModal} />
+                    return (
+                      <TableCell
+                        key={`${evalRef.name}-${evalRef.version}`}
+                        align="center"
+                        sx={{ padding: "6px 8px", borderBottom: "1px solid #e9ecef" }}
+                      >
+                        {score === 1 ? (
+                          <CheckCircleOutlinedIcon
+                            sx={{
+                              color: "#10b981",
+                              fontSize: "1.25rem",
+                            }}
+                          />
+                        ) : score === 0 ? (
+                          <ClearOutlinedIcon
+                            sx={{
+                              color: "#ef4444",
+                              fontSize: "1.25rem",
+                            }}
+                          />
+                        ) : score === null || score === undefined ? (
+                          <Typography variant="caption" color="text.secondary">
+                            -
+                          </Typography>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            ?
+                          </Typography>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      <TestCaseDetailModal testCase={selectedTestCase} open={modalOpen} onClose={handleCloseModal} promptKey={promptKey} />
     </Box>
   );
 };
