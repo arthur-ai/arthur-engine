@@ -99,6 +99,12 @@ class DatabaseAgenticPromptVersionTag(Base):
                 "agentic_prompts.name",
                 "agentic_prompts.version",
             ],
+            name="fk_agentic_prompt_version_tags_prompt",
         ),
-        UniqueConstraint("task_id", "name", "tag", name="uq_task_name_tag"),
+        UniqueConstraint(
+            "task_id",
+            "name",
+            "tag",
+            name="uq_agentic_prompt_task_name_tag",
+        ),
     )

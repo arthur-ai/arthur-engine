@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.response_schemas import (
+    AgenticAnnotationResponse,
     ExternalInference,
     TokenCountCostSchema,
     TraceResponse,
@@ -195,6 +196,10 @@ class TraceMetadataResponse(TokenCountCostSchema):
     output_content: Optional[str] = Field(
         None,
         description="Root span output value from trace metadata",
+    )
+    annotation: Optional[AgenticAnnotationResponse] = Field(
+        default=None,
+        description="Annotation for the trace.",
     )
 
 

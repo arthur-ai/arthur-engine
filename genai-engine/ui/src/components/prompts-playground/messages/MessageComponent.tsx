@@ -158,9 +158,9 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
       </div>
       <div className="mt-2">
         {toolCalls && toolCalls.length > 0 && (!content || content === "") ? (
-          <HighlightedInputComponent value={toolCallsValue} onChange={handleToolCallsChange} label="Tool Calls (JSON)" />
+          <HighlightedInputComponent value={toolCallsValue} onChange={handleToolCallsChange} />
         ) : (
-          <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" />
+          <HighlightedInputComponent value={inputValue} onChange={handleContentChange} />
         )}
       </div>
     </div>

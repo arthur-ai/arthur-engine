@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.205"
+        "version": "2.1.208"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -4614,6 +4614,103 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/{trace_id}/annotations": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Annotate a Trace",
+                "description": "Annotate a trace with a score and description (1 = liked, 0 = disliked)",
+                "operationId": "annotate_trace_api_v1_traces__trace_id__annotations_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Trace Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgenticAnnotationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticAnnotation"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Delete an annotation from a trace",
+                "description": "Delete an annotation from a trace",
+                "operationId": "delete_annotation_from_trace_api_v1_traces__trace_id__annotations_delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Trace Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Annotation deleted from trace."
                     },
                     "422": {
                         "description": "Validation Error",
@@ -10455,6 +10552,117 @@
                 ],
                 "title": "APIKeysRolesEnum"
             },
+            "AgenticAnnotation": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "Unique identifier for the annotation"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "Trace ID this annotation belongs to"
+                    },
+                    "annotation_score": {
+                        "type": "integer",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Annotation Score",
+                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)"
+                    },
+                    "annotation_description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Description",
+                        "description": "Description of the annotation"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the annotation was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "When the annotation was last updated"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "trace_id",
+                    "annotation_score"
+                ],
+                "title": "AgenticAnnotation"
+            },
+            "AgenticAnnotationRequest": {
+                "properties": {
+                    "annotation_score": {
+                        "type": "integer",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Annotation Score",
+                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)"
+                    },
+                    "annotation_description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Description",
+                        "description": "Description of the annotation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "annotation_score"
+                ],
+                "title": "AgenticAnnotationRequest"
+            },
+            "AgenticAnnotationResponse": {
+                "properties": {
+                    "annotation_score": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Score",
+                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)."
+                    },
+                    "annotation_description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Annotation Description",
+                        "description": "Description of the annotation."
+                    }
+                },
+                "type": "object",
+                "title": "AgenticAnnotationResponse"
+            },
             "AgenticPrompt": {
                 "properties": {
                     "name": {
@@ -15083,7 +15291,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.205"
+                                "version": "2.1.208"
                             }
                         ]
                     }
@@ -19311,6 +19519,17 @@
                         ],
                         "title": "Output Content",
                         "description": "Root span output value from trace metadata"
+                    },
+                    "annotation": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Annotation for the trace."
                     }
                 },
                 "type": "object",
@@ -19450,6 +19669,17 @@
                         "title": "Root Spans",
                         "description": "Root spans (spans with no parent) in this trace, with children nested",
                         "default": []
+                    },
+                    "annotation": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Annotation for the trace."
                     }
                 },
                 "type": "object",
