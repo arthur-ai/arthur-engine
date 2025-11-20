@@ -40,8 +40,10 @@ interface ExperimentResultsTableProps {
   taskId: string;
   experimentId: string;
   promptSummaries?: Array<{
-    prompt_name: string;
-    prompt_version: string;
+    prompt_key?: string | null;
+    prompt_type?: string | null;
+    prompt_name: string | null;
+    prompt_version: string | null;
     eval_results: Array<{
       eval_name: string;
       eval_version: string;
@@ -179,21 +181,26 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
               Prompt Results
             </Typography>
             <Box className="space-y-4">
-              {testCase.prompt_results.map((promptResult, index) => (
-                <Card key={index} elevation={2}>
-                  {/* Prompt Header */}
-                  <Box className="bg-indigo-100 border-b border-indigo-200 px-4 py-3 flex items-center justify-between">
-                    <Typography variant="h6" className="font-semibold text-indigo-900">
-                      {promptResult.name} v{promptResult.version}
-                    </Typography>
-                    {promptResult.output && (
-                      <Chip
-                        label={`Cost: $${promptResult.output.cost}`}
-                        size="small"
-                        className="bg-white"
-                      />
-                    )}
-                  </Box>
+              {testCase.prompt_results.map((promptResult, index) => {
+                const promptDisplayName = promptResult.name && promptResult.version
+                  ? `${promptResult.name} v${promptResult.version}`
+                  : promptResult.name || "Unsaved Prompt";
+
+                return (
+                  <Card key={index} elevation={2}>
+                    {/* Prompt Header */}
+                    <Box className="bg-indigo-100 border-b border-indigo-200 px-4 py-3 flex items-center justify-between">
+                      <Typography variant="h6" className="font-semibold text-indigo-900">
+                        {promptDisplayName}
+                      </Typography>
+                      {promptResult.output && (
+                        <Chip
+                          label={`Cost: $${promptResult.output.cost}`}
+                          size="small"
+                          className="bg-white"
+                        />
+                      )}
+                    </Box>
 
                   <CardContent>
 
@@ -313,7 +320,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                     )}
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </Box>
           </Box>
         </Box>
@@ -323,8 +331,9 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 };
 
 interface PromptEvalColumn {
-  promptName: string;
-  promptVersion: string;
+  promptKey: string;
+  promptName: string | null;
+  promptVersion: string | null;
   evalName: string;
   evalVersion: string;
 }
@@ -332,7 +341,7 @@ interface PromptEvalColumn {
 interface EvalGroup {
   evalName: string;
   evalVersion: string;
-  promptVersions: Array<{ promptName: string; promptVersion: string }>;
+  promptVersions: Array<{ promptKey: string }>;
 }
 
 interface RowProps {
@@ -399,7 +408,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
       </TableCell>
       {promptEvalColumns.map((column, index) => {
         const promptResult = testCase.prompt_results.find(
-          (pr) => pr.name === column.promptName && pr.version === column.promptVersion
+          (pr) => pr.prompt_key === column.promptKey
         );
         const evalResult = promptResult?.evals.find(
           (e) => e.eval_name === column.evalName && e.eval_version === column.evalVersion
@@ -411,8 +420,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
         // Check if this is the last eval in its prompt group
         const isLastInGroup =
           index === promptEvalColumns.length - 1 ||
-          promptEvalColumns[index + 1].promptName !== column.promptName ||
-          promptEvalColumns[index + 1].promptVersion !== column.promptVersion;
+          promptEvalColumns[index + 1].promptKey !== column.promptKey;
 
         return (
           <TableCell
@@ -467,7 +475,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
 
         evalGroup.promptVersions.forEach((promptVersion) => {
           const promptResult = testCase.prompt_results.find(
-            (pr) => pr.name === promptVersion.promptName && pr.version === promptVersion.promptVersion
+            (pr) => pr.prompt_key === promptVersion.promptKey
           );
           const evalResult = promptResult?.evals.find(
             (e) => e.eval_name === evalGroup.evalName && e.eval_version === evalGroup.evalVersion
@@ -599,8 +607,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       // Use provided sorted summaries
       const columns: PromptEvalColumn[] = [];
       promptSummaries.forEach((summary) => {
+        const promptKey = summary.prompt_key ||
+          (summary.prompt_name && summary.prompt_version
+            ? `saved:${summary.prompt_name}:${summary.prompt_version}`
+            : `unknown`);
         summary.eval_results.forEach((evalResult) => {
           columns.push({
+            promptKey: promptKey,
             promptName: summary.prompt_name,
             promptVersion: summary.prompt_version,
             evalName: evalResult.eval_name,
@@ -612,22 +625,23 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     } else {
       // Fallback: extract from test cases
       const promptMap = new Map<string, {
-        promptName: string;
-        promptVersion: string;
+        promptKey: string;
+        promptName: string | null;
+        promptVersion: string | null;
         evals: Array<{ evalName: string; evalVersion: string }>;
       }>();
 
       testCases.forEach((tc) => {
         tc.prompt_results.forEach((pr) => {
-          const promptKey = `${pr.name}-${pr.version}`;
-          if (!promptMap.has(promptKey)) {
-            promptMap.set(promptKey, {
+          if (!promptMap.has(pr.prompt_key)) {
+            promptMap.set(pr.prompt_key, {
+              promptKey: pr.prompt_key,
               promptName: pr.name,
               promptVersion: pr.version,
               evals: [],
             });
           }
-          const promptData = promptMap.get(promptKey)!;
+          const promptData = promptMap.get(pr.prompt_key)!;
           pr.evals.forEach((e) => {
             const evalExists = promptData.evals.some(
               (ev) => ev.evalName === e.eval_name && ev.evalVersion === e.eval_version
@@ -646,6 +660,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       promptMap.forEach((promptData) => {
         promptData.evals.forEach((evalData) => {
           columns.push({
+            promptKey: promptData.promptKey,
             promptName: promptData.promptName,
             promptVersion: promptData.promptVersion,
             evalName: evalData.evalName,
@@ -659,17 +674,17 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
 
   // Group columns by prompt for the header
   const promptGroups = React.useMemo(() => {
-    const groups = new Map<string, { promptName: string; promptVersion: string; evalCount: number }>();
+    const groups = new Map<string, { promptKey: string; promptName: string | null; promptVersion: string | null; evalCount: number }>();
     promptEvalColumns.forEach((col) => {
-      const key = `${col.promptName}-${col.promptVersion}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
+      if (!groups.has(col.promptKey)) {
+        groups.set(col.promptKey, {
+          promptKey: col.promptKey,
           promptName: col.promptName,
           promptVersion: col.promptVersion,
           evalCount: 0,
         });
       }
-      groups.get(key)!.evalCount++;
+      groups.get(col.promptKey)!.evalCount++;
     });
     return Array.from(groups.values());
   }, [promptEvalColumns]);
@@ -688,12 +703,11 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       }
       const group = groups.get(key)!;
       const promptExists = group.promptVersions.some(
-        (pv) => pv.promptName === col.promptName && pv.promptVersion === col.promptVersion
+        (pv) => pv.promptKey === col.promptKey
       );
       if (!promptExists) {
         group.promptVersions.push({
-          promptName: col.promptName,
-          promptVersion: col.promptVersion,
+          promptKey: col.promptKey,
         });
       }
     });
@@ -721,22 +735,28 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Status
                 </Box>
               </TableCell>
-              {promptGroups.map((group, index) => (
-                <TableCell
-                  key={`${group.promptName}-${group.promptVersion}`}
-                  colSpan={group.evalCount}
-                  align="center"
-                  sx={{
-                    backgroundColor: "grey.50",
-                    borderRight: index === promptGroups.length - 1 ? 3 : 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <Box component="span" className="font-semibold">
-                    {group.promptName} (v{group.promptVersion})
-                  </Box>
-                </TableCell>
-              ))}
+              {promptGroups.map((group, index) => {
+                const displayName = group.promptName && group.promptVersion
+                  ? `${group.promptName} (v${group.promptVersion})`
+                  : group.promptName || "Unsaved Prompt";
+
+                return (
+                  <TableCell
+                    key={group.promptKey}
+                    colSpan={group.evalCount}
+                    align="center"
+                    sx={{
+                      backgroundColor: "grey.50",
+                      borderRight: index === promptGroups.length - 1 ? 3 : 1,
+                      borderColor: "divider",
+                    }}
+                  >
+                    <Box component="span" className="font-semibold">
+                      {displayName}
+                    </Box>
+                  </TableCell>
+                );
+              })}
               <TableCell
                 colSpan={evalGroups.length}
                 align="center"

@@ -18,8 +18,10 @@ import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
 interface PromptVersionDetails {
-  prompt_name: string;
-  prompt_version: string;
+  prompt_key?: string | null; // Format: "saved:name:version" or "unsaved:auto_name"
+  prompt_type?: string | null; // "saved" or "unsaved"
+  prompt_name?: string | null; // For saved prompts or auto_name for unsaved
+  prompt_version?: string | null; // For saved prompts only
   eval_results: Array<{
     eval_name: string;
     eval_version: string;
@@ -315,7 +317,7 @@ export const ExperimentDetailView: React.FC = () => {
                 ) : null;
               })()}
             <Box>
-              <span className="font-medium">Prompt:</span> {experiment.prompt_name}
+              <span className="font-medium">Prompts:</span> {experiment.prompt_configs.length} prompt{experiment.prompt_configs.length > 1 ? 's' : ''}
             </Box>
             {experiment.total_cost && (
               <Box>
@@ -379,9 +381,14 @@ export const ExperimentDetailView: React.FC = () => {
                   const totalPasses = promptSummary.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0);
                   const isBestPerforming = totalPasses === maxTotalPasses;
 
+                  // Get display name for prompt
+                  const promptDisplayName = (promptSummary.prompt_type === "saved" || !promptSummary.prompt_type)
+                    ? `${promptSummary.prompt_name} (v${promptSummary.prompt_version})`
+                    : promptSummary.prompt_name || "Unsaved Prompt";
+
                   return (
                     <Card
-                      key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`}
+                      key={promptSummary.prompt_key || `${promptSummary.prompt_name}-${promptSummary.prompt_version}`}
                       elevation={1}
                       onClick={() => handlePromptClick(promptSummary)}
                       sx={{ cursor: "pointer", "&:hover": { boxShadow: 3 }, position: "relative" }}
@@ -389,8 +396,11 @@ export const ExperimentDetailView: React.FC = () => {
                       <CardContent sx={{ position: "relative", paddingBottom: "40px !important", minHeight: "200px" }}>
                         <Box className="flex items-center gap-2 mb-3">
                           <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
-                            Prompt: {promptSummary.prompt_name} (v{promptSummary.prompt_version})
+                            Prompt: {promptDisplayName}
                           </Typography>
+                          {promptSummary.prompt_type === "unsaved" && (
+                            <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} className="shrink-0" />
+                          )}
                           {isBestPerforming && <Chip label="Best" size="small" color="success" sx={{ fontWeight: 600 }} className="shrink-0" />}
                         </Box>
 
@@ -427,25 +437,27 @@ export const ExperimentDetailView: React.FC = () => {
                           })}
                         </Box>
 
-                        {/* Open in Notebook button in lower left corner */}
-                        <Button
-                          size="small"
-                          startIcon={<LaunchIcon />}
-                          onClick={(e) => handleOpenInNotebook(promptSummary.prompt_name, promptSummary.prompt_version, e)}
-                          sx={{
-                            position: "absolute",
-                            bottom: 8,
-                            left: 8,
-                            textTransform: 'none',
-                            fontSize: '0.75rem',
-                            color: 'text.secondary',
-                            '&:hover': {
-                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                            },
-                          }}
-                        >
-                          Open in Notebook
-                        </Button>
+                        {/* Open in Notebook button in lower left corner - only for saved prompts */}
+                        {(promptSummary.prompt_type === "saved" || !promptSummary.prompt_type) && promptSummary.prompt_name && promptSummary.prompt_version && (
+                          <Button
+                            size="small"
+                            startIcon={<LaunchIcon />}
+                            onClick={(e) => handleOpenInNotebook(promptSummary.prompt_name!, promptSummary.prompt_version!, e)}
+                            sx={{
+                              position: "absolute",
+                              bottom: 8,
+                              left: 8,
+                              textTransform: 'none',
+                              fontSize: '0.75rem',
+                              color: 'text.secondary',
+                              '&:hover': {
+                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                              },
+                            }}
+                          >
+                            Open in Notebook
+                          </Button>
+                        )}
 
                         {/* Expand icon in lower right corner */}
                         <Box
@@ -521,6 +533,7 @@ export const ExperimentDetailView: React.FC = () => {
           promptDetails={selectedPrompt}
           taskId={taskId}
           experimentId={experimentId}
+          experimentPromptConfigs={experiment.prompt_configs}
         />
       )}
 

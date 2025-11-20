@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Discriminator, Field
+from pydantic import BaseModel, Discriminator, Field, model_validator
 
 from schemas.enums import ModelProvider
 
@@ -212,11 +212,46 @@ class EvalResultSummary(BaseModel):
 class PromptEvalResultSummaries(BaseModel):
     """Summary of evaluation results for a prompt version"""
 
-    prompt_name: str = Field(description="Name of the prompt")
-    prompt_version: str = Field(description="Version of the prompt")
+    prompt_key: str | None = Field(
+        default=None,
+        description="Prompt key: 'saved:name:version' or 'unsaved:auto_name'",
+    )
+    prompt_type: str | None = Field(
+        default=None,
+        description="Type: 'saved' or 'unsaved'",
+    )
+    prompt_name: str | None = Field(
+        default=None,
+        description="Name of the prompt (for saved prompts, or auto_name for unsaved)",
+    )
+    prompt_version: str | None = Field(
+        default=None,
+        description="Version of the prompt (for saved prompts only)",
+    )
     eval_results: list[EvalResultSummary] = Field(
         description="Results for each evaluation run on this prompt version",
     )
+
+    @model_validator(mode="after")
+    def populate_key_and_type(self) -> "PromptEvalResultSummaries":
+        """
+        Populate prompt_key and prompt_type from prompt_name/version if missing.
+        This provides backward compatibility for existing experiments.
+        """
+        # If we already have prompt_key and prompt_type, nothing to do
+        if self.prompt_key and self.prompt_type:
+            return self
+
+        # If we have prompt_name and prompt_version, construct key and type
+        if self.prompt_name and self.prompt_version:
+            self.prompt_key = f"saved:{self.prompt_name}:{self.prompt_version}"
+            self.prompt_type = "saved"
+        elif self.prompt_name:
+            # Fallback for edge cases
+            self.prompt_key = f"saved:{self.prompt_name}:1"
+            self.prompt_type = "saved"
+
+        return self
 
 
 class SummaryResults(BaseModel):

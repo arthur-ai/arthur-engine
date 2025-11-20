@@ -20,6 +20,75 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
+/** AgenticAnnotation */
+export interface AgenticAnnotation {
+  /**
+   * Annotation Description
+   * Description of the annotation
+   */
+  annotation_description?: string | null;
+  /**
+   * Annotation Score
+   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)
+   * @min 0
+   * @max 1
+   */
+  annotation_score: number;
+  /**
+   * Created At
+   * When the annotation was created
+   * @format date-time
+   */
+  created_at?: string;
+  /**
+   * Id
+   * Unique identifier for the annotation
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Trace Id
+   * Trace ID this annotation belongs to
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * When the annotation was last updated
+   * @format date-time
+   */
+  updated_at?: string;
+}
+
+/** AgenticAnnotationRequest */
+export interface AgenticAnnotationRequest {
+  /**
+   * Annotation Description
+   * Description of the annotation
+   */
+  annotation_description?: string | null;
+  /**
+   * Annotation Score
+   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)
+   * @min 0
+   * @max 1
+   */
+  annotation_score: number;
+}
+
+/** AgenticAnnotationResponse */
+export interface AgenticAnnotationResponse {
+  /**
+   * Annotation Description
+   * Description of the annotation.
+   */
+  annotation_description?: string | null;
+  /**
+   * Annotation Score
+   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked).
+   */
+  annotation_score?: number | null;
+}
+
 /** AgenticPrompt */
 export interface AgenticPrompt {
   /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
@@ -140,6 +209,10 @@ export interface AgenticPromptVersionResponse {
    */
   version: number;
 }
+
+export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotation;
+
+export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
 /** AnthropicThinkingParam */
 export interface AnthropicThinkingParam {
@@ -608,8 +681,23 @@ export interface CreatePromptExperimentRequest {
    * Name for the experiment
    */
   name: string;
-  /** Reference to the prompt configuration */
-  prompt_ref: PromptRefInput;
+  /**
+   * Prompt Configs
+   * List of prompt configurations (saved or unsaved)
+   */
+  prompt_configs: (
+    | ({
+        type: "saved";
+      } & SavedPromptConfig)
+    | ({
+        type: "unsaved";
+      } & UnsavedPromptConfig)
+  )[];
+  /**
+   * Prompt Variable Mapping
+   * Shared variable mapping for all prompts
+   */
+  prompt_variable_mapping: PromptVariableMappingInput[];
 }
 
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
@@ -954,6 +1042,10 @@ export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HT
 export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData = any;
 
 export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError = HTTPValidationError;
+
+export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteData = any;
+
+export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError = HTTPValidationError;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
@@ -1871,12 +1963,11 @@ export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetData = Promp
 
 export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetError = HTTPValidationError;
 
-export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData =
-  PromptVersionResultListResponse;
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetData = PromptVersionResultListResponse;
 
-export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError = HTTPValidationError;
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetError = HTTPValidationError;
 
-export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams {
+export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetParams {
   /**
    * Experiment ID
    * The ID of the experiment
@@ -1895,15 +1986,10 @@ export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPrompt
    */
   page_size?: number;
   /**
-   * Prompt Name
-   * The name of the prompt
+   * Prompt Key
+   * The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A
    */
-  promptName: string;
-  /**
-   * Prompt Version
-   * The version of the prompt
-   */
-  promptVersion: number;
+  promptKey: string;
   /**
    * Sort the results (asc/desc)
    * @default "desc"
@@ -4206,12 +4292,22 @@ export interface PromptExperimentDetail {
    */
   name: string;
   /**
-   * Prompt Name
-   * Name of the prompt being tested
+   * Prompt Configs
+   * List of prompts being tested
    */
-  prompt_name: string;
-  /** Reference to the prompt configuration */
-  prompt_ref: PromptRefOutput;
+  prompt_configs: (
+    | ({
+        type: "saved";
+      } & SavedPromptConfig)
+    | ({
+        type: "unsaved";
+      } & UnsavedPromptConfig)
+  )[];
+  /**
+   * Prompt Variable Mapping
+   * Shared variable mapping for all prompts
+   */
+  prompt_variable_mapping: PromptVariableMappingOutput[];
   /** Current status of the experiment */
   status: ExperimentStatus;
   /** Summary of results across all test cases */
@@ -4301,10 +4397,17 @@ export interface PromptExperimentSummary {
    */
   name: string;
   /**
-   * Prompt Name
-   * Name of the prompt being tested
+   * Prompt Configs
+   * List of prompts being tested
    */
-  prompt_name: string;
+  prompt_configs: (
+    | ({
+        type: "saved";
+      } & SavedPromptConfig)
+    | ({
+        type: "unsaved";
+      } & UnsavedPromptConfig)
+  )[];
   /** Current status of the experiment */
   status: ExperimentStatus;
   /**
@@ -4342,50 +4445,6 @@ export interface PromptOutput {
 }
 
 /**
- * PromptRef
- * Reference to a prompt configuration
- */
-export interface PromptRefInput {
-  /**
-   * Name
-   * Name of the prompt
-   */
-  name: string;
-  /**
-   * Variable Mapping
-   * Mapping of prompt variables to dataset columns
-   */
-  variable_mapping: PromptVariableMappingInput[];
-  /**
-   * Version List
-   * List of prompt versions to test in the experiment
-   */
-  version_list: number[];
-}
-
-/**
- * PromptRef
- * Reference to a prompt configuration
- */
-export interface PromptRefOutput {
-  /**
-   * Name
-   * Name of the prompt
-   */
-  name: string;
-  /**
-   * Variable Mapping
-   * Mapping of prompt variables to dataset columns
-   */
-  variable_mapping: PromptVariableMappingOutput[];
-  /**
-   * Version List
-   * List of prompt versions to test in the experiment
-   */
-  version_list: number[];
-}
-
-/**
  * PromptResult
  * Results from a prompt execution with evals
  */
@@ -4397,11 +4456,21 @@ export interface PromptResult {
   evals: EvalExecution[];
   /**
    * Name
-   * Name of the prompt
+   * Name of the prompt (for saved prompts)
    */
-  name: string;
+  name?: string | null;
   /** Output from the prompt (None if not yet executed) */
   output?: PromptOutput | null;
+  /**
+   * Prompt Key
+   * Prompt key: 'saved:name:version' or 'unsaved:auto_name'
+   */
+  prompt_key: string;
+  /**
+   * Prompt Type
+   * Type: 'saved' or 'unsaved'
+   */
+  prompt_type: string;
   /**
    * Rendered Prompt
    * Prompt with variables replaced
@@ -4409,9 +4478,9 @@ export interface PromptResult {
   rendered_prompt: string;
   /**
    * Version
-   * Version of the prompt
+   * Version of the prompt (for saved prompts)
    */
-  version: string;
+  version?: string | null;
 }
 
 /** PromptValidationRequest */
@@ -5657,6 +5726,28 @@ export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
 
 /**
+ * SavedPromptConfig
+ * Configuration for a saved prompt
+ */
+export interface SavedPromptConfig {
+  /**
+   * Name
+   * Name of the saved prompt
+   */
+  name: string;
+  /**
+   * Type
+   * @default "saved"
+   */
+  type?: "saved";
+  /**
+   * Version
+   * Version of the saved prompt
+   */
+  version: number;
+}
+
+/**
  * SavedPromptRenderingRequest
  * Request schema for rendering an unsaved agentic prompt with variables
  */
@@ -6544,6 +6635,8 @@ export interface TraceListResponse {
  * Lightweight trace metadata for list operations
  */
 export interface TraceMetadataResponse {
+  /** Annotation for the trace. */
+  annotation?: AgenticAnnotationResponse | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -6645,6 +6738,8 @@ export interface TraceMetadataResponse {
  * Response model for a single trace containing nested spans
  */
 export interface TraceResponse {
+  /** Annotation for this trace. */
+  annotation?: AgenticAnnotationResponse | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -6809,6 +6904,50 @@ export interface TraceUserMetadataResponse {
    * User identifier
    */
   user_id: string;
+}
+
+/**
+ * UnsavedPromptConfig
+ * Configuration for an unsaved prompt
+ */
+export interface UnsavedPromptConfig {
+  /**
+   * Auto Name
+   * Auto-generated name (set by backend)
+   */
+  auto_name?: string | null;
+  /**
+   * Config
+   * LLM config settings
+   */
+  config?: Record<string, any> | null;
+  /**
+   * Messages
+   * Prompt messages
+   */
+  messages: Record<string, any>[];
+  /**
+   * Model Name
+   * LLM model name
+   */
+  model_name: string;
+  /** LLM provider */
+  model_provider: ModelProvider;
+  /**
+   * Tools
+   * Available tools
+   */
+  tools?: Record<string, any>[] | null;
+  /**
+   * Type
+   * @default "unsaved"
+   */
+  type?: "unsaved";
+  /**
+   * Variables
+   * Variables (auto-detected if not provided)
+   */
+  variables?: string[] | null;
 }
 
 /**
@@ -7925,7 +8064,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.203
+ * @version 2.1.209
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -7980,6 +8119,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/tags`,
         method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Annotate a trace with a score and description (1 = liked, 0 = disliked)
+     *
+     * @tags Traces
+     * @name AnnotateTraceApiV1TracesTraceIdAnnotationsPost
+     * @summary Annotate a Trace
+     * @request POST:/api/v1/traces/{trace_id}/annotations
+     * @secure
+     */
+    annotateTraceApiV1TracesTraceIdAnnotationsPost: (traceId: string, data: AgenticAnnotationRequest, params: RequestParams = {}) =>
+      this.request<AnnotateTraceApiV1TracesTraceIdAnnotationsPostData, AnnotateTraceApiV1TracesTraceIdAnnotationsPostError>({
+        path: `/api/v1/traces/${traceId}/annotations`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,
@@ -8444,6 +8603,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError
       >({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete an annotation from a trace
+     *
+     * @tags Traces
+     * @name DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDelete
+     * @summary Delete an annotation from a trace
+     * @request DELETE:/api/v1/traces/{trace_id}/annotations
+     * @secure
+     */
+    deleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDelete: (traceId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteData,
+        DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError
+      >({
+        path: `/api/v1/traces/${traceId}/annotations`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -9227,28 +9406,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get paginated list of results for a specific prompt version within an experiment
+     * @description Get paginated list of results for a specific prompt within an experiment (supports both saved and unsaved prompts)
      *
      * @tags Prompt Experiments
-     * @name GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet
-     * @summary Get prompt version results
-     * @request GET:/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results
+     * @name GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet
+     * @summary Get prompt results
+     * @request GET:/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results
      * @secure
      */
-    getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet: (
-      {
-        experimentId,
-        promptName,
-        promptVersion,
-        ...query
-      }: GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams,
+    getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet: (
+      { experimentId, promptKey, ...query }: GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetParams,
       params: RequestParams = {}
     ) =>
       this.request<
-        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData,
-        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetData,
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetError
       >({
-        path: `/api/v1/prompt_experiments/${experimentId}/prompts/${promptName}/versions/${promptVersion}/results`,
+        path: `/api/v1/prompt_experiments/${experimentId}/prompts/${promptKey}/results`,
         method: "GET",
         query: query,
         secure: true,

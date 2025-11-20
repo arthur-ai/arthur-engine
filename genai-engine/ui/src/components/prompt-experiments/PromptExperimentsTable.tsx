@@ -15,6 +15,25 @@ import {
 import React from "react";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
+export interface SavedPromptConfig {
+  type: "saved";
+  name: string;
+  version: number;
+}
+
+export interface UnsavedPromptConfig {
+  type: "unsaved";
+  auto_name?: string | null;
+  messages: Record<string, any>[];
+  model_name: string;
+  model_provider: string;
+  tools?: Record<string, any>[] | null;
+  config?: Record<string, any> | null;
+  variables?: string[] | null;
+}
+
+export type PromptConfig = SavedPromptConfig | UnsavedPromptConfig;
+
 export interface PromptExperiment {
   id: string;
   name: string;
@@ -22,7 +41,7 @@ export interface PromptExperiment {
   created_at: string;
   finished_at?: string | null;
   status: "queued" | "running" | "evaluating" | "failed" | "completed";
-  prompt_name: string;
+  prompt_configs: PromptConfig[];
   total_rows: number;
   total_cost?: string | null;
 }
@@ -56,6 +75,14 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   onRowsPerPageChange,
   loading = false,
 }) => {
+
+  const formatPromptName = (config: PromptConfig): string => {
+    if (config.type === "saved") {
+      return `${config.name} (v${config.version})`;
+    } else {
+      return config.auto_name || "Unsaved Prompt";
+    }
+  };
 
   const getStatusColor = (
     status: PromptExperiment["status"]
@@ -116,7 +143,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
               </TableCell>
               <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
-                  Prompt
+                  Prompts
                 </Box>
               </TableCell>
               <TableCell sx={{ backgroundColor: "grey.50" }}>
@@ -167,7 +194,22 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                     {experiment.description || "-"}
                   </Box>
                 </TableCell>
-                <TableCell>{experiment.prompt_name}</TableCell>
+                <TableCell>
+                  <Box className="flex flex-wrap gap-1">
+                    {experiment.prompt_configs.map((config, idx) => (
+                      <Chip
+                        key={idx}
+                        label={formatPromptName(config)}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          backgroundColor: config.type === "saved" ? "primary.50" : "warning.50",
+                          borderColor: config.type === "saved" ? "primary.200" : "warning.200",
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </TableCell>
                 <TableCell>{experiment.total_rows}</TableCell>
                 <TableCell>
                   <Box className="flex items-center gap-2">

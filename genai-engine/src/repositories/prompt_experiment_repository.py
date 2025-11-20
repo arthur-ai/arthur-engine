@@ -289,7 +289,7 @@ class PromptExperimentRepository:
         all_prompt_variables = set()
 
         for config in request.prompt_configs:
-            if isinstance(config, SavedPromptConfig):
+            if config.type == "saved":
                 # Validate saved prompt exists in database
                 prompt = (
                     self.db_session.query(DatabaseAgenticPrompt)
@@ -308,7 +308,7 @@ class PromptExperimentRepository:
                 all_prompt_variables.update(prompt.variables)
                 validated_prompt_configs.append(config)
 
-            elif isinstance(config, UnsavedPromptConfig):
+            elif config.type == "unsaved":
                 # Validate unsaved prompt configuration
                 if not config.messages or len(config.messages) == 0:
                     raise ValueError("Unsaved prompt must have non-empty messages")
@@ -498,7 +498,8 @@ class PromptExperimentRepository:
 
             # Create prompt results for each prompt config in this test case
             for config in prompt_configs:
-                if isinstance(config, SavedPromptConfig):
+                # Check type using the discriminator field instead of isinstance
+                if config.type == "saved":
                     # Create result for saved prompt
                     prompt_result = DatabasePromptExperimentTestCasePromptResult(
                         id=str(uuid4()),
@@ -513,7 +514,7 @@ class PromptExperimentRepository:
                         output_tool_calls=None,
                         output_cost=None,
                     )
-                else:  # UnsavedPromptConfig
+                else:  # type == "unsaved"
                     # Create result for unsaved prompt
                     prompt_result = DatabasePromptExperimentTestCasePromptResult(
                         id=str(uuid4()),

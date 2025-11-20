@@ -42,8 +42,10 @@ interface EvalResult {
 }
 
 interface PromptVersionDetails {
-  prompt_name: string;
-  prompt_version: string;
+  prompt_key?: string | null; // Format: "saved:name:version" or "unsaved:auto_name"
+  prompt_type?: string | null; // "saved" or "unsaved"
+  prompt_name?: string | null; // For saved prompts or auto_name for unsaved
+  prompt_version?: string | null; // For saved prompts only
   eval_results: EvalResult[];
 }
 
@@ -53,6 +55,18 @@ interface PromptVersionDrawerProps {
   promptDetails: PromptVersionDetails | null;
   taskId: string;
   experimentId: string;
+  experimentPromptConfigs?: Array<{
+    type: "saved" | "unsaved";
+    name?: string;
+    version?: number;
+    auto_name?: string;
+    messages?: any[];
+    model_name?: string;
+    model_provider?: string;
+    tools?: any[];
+    config?: any;
+    variables?: string[];
+  }>;
 }
 
 export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
@@ -60,7 +74,8 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   onClose,
   promptDetails,
   taskId,
-  experimentId
+  experimentId,
+  experimentPromptConfigs,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -71,12 +86,51 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
 
-  // Fetch prompt version details
-  const { prompt, isLoading: isPromptLoading } = usePrompt(
+  // Find unsaved prompt config if this is an unsaved prompt
+  const unsavedPromptConfig = useMemo(() => {
+    if (promptDetails?.prompt_type === "unsaved" && experimentPromptConfigs) {
+      return experimentPromptConfigs.find(config =>
+        config.type === "unsaved" &&
+        (config.auto_name === promptDetails.prompt_name ||
+         `unsaved:${config.auto_name}` === promptDetails.prompt_key)
+      );
+    }
+    return null;
+  }, [promptDetails, experimentPromptConfigs]);
+
+  // Fetch prompt version details (only for saved prompts)
+  const shouldFetchPrompt = promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) && !!promptDetails.prompt_name && !!promptDetails.prompt_version;
+  const { prompt: fetchedPrompt, isLoading: isPromptLoading } = usePrompt(
     taskId,
-    promptDetails?.prompt_name,
-    promptDetails?.prompt_version
+    shouldFetchPrompt && promptDetails ? promptDetails.prompt_name : undefined,
+    shouldFetchPrompt && promptDetails ? promptDetails.prompt_version : undefined
   );
+
+  // Use either fetched prompt (for saved) or construct from config (for unsaved)
+  const prompt = useMemo(() => {
+    if (fetchedPrompt) {
+      return fetchedPrompt;
+    }
+    if (unsavedPromptConfig) {
+      // Construct a prompt object from the unsaved config
+      return {
+        messages: unsavedPromptConfig.messages || [],
+        model_name: unsavedPromptConfig.model_name || "",
+        model_provider: unsavedPromptConfig.model_provider || "",
+        config: unsavedPromptConfig.config || {},
+        tools: unsavedPromptConfig.tools,
+        variables: unsavedPromptConfig.variables,
+        created_at: null, // Unsaved prompts don't have timestamps
+      };
+    }
+    return null;
+  }, [fetchedPrompt, unsavedPromptConfig]);
+
+  // Use prompt_key directly from prompt details, or construct it from old format
+  const promptKey = promptDetails?.prompt_key ||
+    (promptDetails && promptDetails.prompt_name && promptDetails.prompt_version
+      ? `saved:${promptDetails.prompt_name}:${promptDetails.prompt_version}`
+      : undefined);
 
   // Fetch prompt version results from the experiment
   const {
@@ -85,8 +139,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
     isLoading: isResultsLoading,
   } = usePromptVersionResults(
     experimentId,
-    promptDetails?.prompt_name,
-    promptDetails?.prompt_version,
+    promptKey,
     page,
     rowsPerPage
   );
@@ -187,21 +240,28 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
             <Box className="flex-1">
               <Box className="flex items-center gap-2 mb-1">
                 <Typography variant="h5" className="font-semibold text-gray-900">
-                  {promptDetails.prompt_name} (v{promptDetails.prompt_version})
+                  {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type)
+                    ? `${promptDetails.prompt_name || 'Unknown'} (v${promptDetails.prompt_version || '?'})`
+                    : promptDetails?.prompt_name || "Unsaved Prompt"}
                 </Typography>
-                <Link
-                  component={RouterLink}
-                  to={`/tasks/${taskId}/prompts/${promptDetails.prompt_name}/versions/${promptDetails.prompt_version}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-sm"
-                  sx={{ textDecoration: "none" }}
-                >
-                  <OpenInNewIcon sx={{ fontSize: 16 }} />
-                  <Typography variant="caption" className="font-medium">
-                    View in Prompt Management
-                  </Typography>
-                </Link>
+                {promptDetails?.prompt_type === "unsaved" && (
+                  <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} />
+                )}
+                {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) && promptDetails.prompt_name && promptDetails.prompt_version && (
+                  <Link
+                    component={RouterLink}
+                    to={`/tasks/${taskId}/prompts/${promptDetails.prompt_name}/versions/${promptDetails.prompt_version}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-sm"
+                    sx={{ textDecoration: "none" }}
+                  >
+                    <OpenInNewIcon sx={{ fontSize: 16 }} />
+                    <Typography variant="caption" className="font-medium">
+                      View in Prompt Management
+                    </Typography>
+                  </Link>
+                )}
               </Box>
             </Box>
             <IconButton onClick={onClose} size="small">
@@ -209,7 +269,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
             </IconButton>
           </Box>
 
-          {isPromptLoading ? (
+          {isPromptLoading && !unsavedPromptConfig ? (
             <Box className="flex justify-center py-4">
               <CircularProgress size={24} />
             </Box>
@@ -471,7 +531,9 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
         <DialogTitle>
           <Box className="flex items-center justify-between">
             <Typography variant="h6" className="font-semibold">
-              Prompt Template - {promptDetails.prompt_name} (v{promptDetails.prompt_version})
+              Prompt Template - {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type)
+                ? `${promptDetails.prompt_name || 'Unknown'} (v${promptDetails.prompt_version || '?'})`
+                : promptDetails?.prompt_name || "Unsaved Prompt"}
             </Typography>
             <IconButton onClick={() => setTemplateModalOpen(false)} size="small">
               <CloseIcon />
@@ -479,7 +541,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
           </Box>
         </DialogTitle>
         <DialogContent dividers>
-          {isPromptLoading ? (
+          {isPromptLoading && !unsavedPromptConfig ? (
             <Box className="flex justify-center py-8">
               <CircularProgress />
             </Box>
@@ -562,12 +624,12 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
       </Dialog>
 
       {/* Prompt Result Detail Modal */}
-      {selectedResultIndex >= 0 && selectedResultIndex < results.length && (
+      {selectedResultIndex >= 0 && selectedResultIndex < results.length && promptDetails && (
         <PromptResultDetailModal
           open={detailModalOpen}
           onClose={handleCloseDetailModal}
-          promptName={promptDetails.prompt_name}
-          promptVersion={promptDetails.prompt_version}
+          promptName={promptDetails.prompt_name || undefined}
+          promptVersion={promptDetails.prompt_version || undefined}
           inputVariables={results[selectedResultIndex].prompt_input_variables}
           renderedPrompt={results[selectedResultIndex].rendered_prompt}
           output={results[selectedResultIndex].output}

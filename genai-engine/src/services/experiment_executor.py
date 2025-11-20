@@ -435,17 +435,21 @@ class ExperimentExecutor:
             # Build the summary structure using Pydantic models
             prompt_eval_summaries = []
             for prompt_key, eval_results in sorted(results_by_prompt.items()):
-                # Parse prompt_key to get display name/version
+                # Parse prompt_key to get type and display name/version
                 # Format: "saved:name:version" or "unsaved:auto_name"
                 if prompt_key.startswith("saved:"):
+                    prompt_type = "saved"
                     parts = prompt_key.split(":", 2)
                     prompt_name = parts[1] if len(parts) > 1 else prompt_key
                     prompt_version = parts[2] if len(parts) > 2 else "1"
                 elif prompt_key.startswith("unsaved:"):
+                    prompt_type = "unsaved"
                     parts = prompt_key.split(":", 1)
                     prompt_name = parts[1] if len(parts) > 1 else prompt_key
-                    prompt_version = "1"  # Unsaved prompts don't have versions
+                    prompt_version = None  # Unsaved prompts don't have versions
                 else:
+                    # Fallback for legacy format
+                    prompt_type = "saved"
                     prompt_name = prompt_key
                     prompt_version = "1"
 
@@ -466,6 +470,8 @@ class ExperimentExecutor:
 
                 prompt_eval_summaries.append(
                     PromptEvalResultSummaries(
+                        prompt_key=prompt_key,
+                        prompt_type=prompt_type,
                         prompt_name=prompt_name,
                         prompt_version=prompt_version,
                         eval_results=eval_result_list,
