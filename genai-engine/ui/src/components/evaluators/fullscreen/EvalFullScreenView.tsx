@@ -16,6 +16,7 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [selectedVersion, setSelectedVersion] = useState<number | null>(initialVersion ?? null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   // Fetch the latest non-deleted version from the backend by passing "latest" as the version
   const { eval: latestEval, refetch: refetchLatest } = useEval(task?.id, evalName, "latest");
@@ -61,6 +62,19 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
     }
   };
 
+  const handleRefetch = async (newVersion?: number) => {
+    // Refetch both the selected version and the latest version
+    await Promise.all([refetch(), refetchLatest()]);
+
+    // Trigger the version drawer to refetch
+    setRefetchTrigger((prev) => prev + 1);
+
+    // If a new version was created, select it
+    if (newVersion !== undefined) {
+      handleSelectVersion(newVersion);
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", height: "100%", position: "relative" }}>
       <EvalVersionDrawer
@@ -72,6 +86,7 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
         latestVersion={latestVersion}
         onSelectVersion={handleSelectVersion}
         onDelete={handleDeleteVersion}
+        onRefetchTrigger={refetchTrigger}
       />
       <Box
         sx={{
@@ -90,7 +105,7 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
           latestVersion={latestVersion}
           taskId={task?.id ?? ""}
           onClose={onClose}
-          onRefetch={refetch}
+          onRefetch={handleRefetch}
         />
       </Box>
     </Box>

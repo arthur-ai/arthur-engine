@@ -1,4 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -13,20 +14,25 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
 
+import EvalEditModal from "../EvalEditModal";
 import { useAddTagToEvalVersionMutation } from "../hooks/useAddTagToEvalVersionMutation";
+import { useCreateEvalMutation } from "../hooks/useCreateEvalMutation";
 import { useDeleteTagFromEvalVersionMutation } from "../hooks/useDeleteTagFromEvalVersionMutation";
-import type { EvalDetailViewProps } from "../types";
 import NunjucksHighlightedTextField from "../MustacheHighlightedTextField";
+import type { EvalDetailViewProps } from "../types";
 
+import type { CreateEvalRequest } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
 
 const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const addTagMutation = useAddTagToEvalVersionMutation();
   const deleteTagMutation = useDeleteTagFromEvalVersionMutation();
+  const createEvalMutation = useCreateEvalMutation(taskId);
 
   const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setTagAnchorEl(event.currentTarget);
@@ -98,6 +104,27 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
     },
     [taskId, version, evalName, deleteTagMutation, onRefetch]
   );
+
+  const handleEditClick = useCallback(() => {
+    setIsEditModalOpen(true);
+  }, []);
+
+  const handleEditModalClose = useCallback(() => {
+    setIsEditModalOpen(false);
+  }, []);
+
+  const handleEditSubmit = useCallback(
+    async (data: CreateEvalRequest) => {
+      const result = await createEvalMutation.mutateAsync({
+        evalName,
+        data,
+      });
+      setIsEditModalOpen(false);
+      // Trigger refetch to get the new version and pass the new version number
+      onRefetch?.(result.version);
+    },
+    [evalName, createEvalMutation, onRefetch]
+  );
   if (isLoading) {
     return (
       <Box
@@ -159,11 +186,24 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             </IconButton>
           )}
         </Box>
-        {onClose && (
-          <IconButton onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </IconButton>
-        )}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {!evalData.deleted_at && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon />}
+              onClick={handleEditClick}
+              sx={{ minWidth: 80 }}
+            >
+              Edit
+            </Button>
+          )}
+          {onClose && (
+            <IconButton onClick={onClose} aria-label="Close">
+              <CloseIcon />
+            </IconButton>
+          )}
+        </Box>
       </Box>
 
       <Paper sx={{ p: 3, mb: 3 }}>
@@ -312,6 +352,19 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           </Box>
         </Box>
       </Popover>
+
+      {evalData && (
+        <EvalEditModal
+          open={isEditModalOpen}
+          onClose={handleEditModalClose}
+          onSubmit={handleEditSubmit}
+          isLoading={createEvalMutation.isPending}
+          evalName={evalName}
+          initialInstructions={evalData.instructions}
+          initialModelProvider={evalData.model_provider}
+          initialModelName={evalData.model_name}
+        />
+      )}
     </Box>
   );
 };
