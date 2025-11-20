@@ -12,7 +12,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { usePromptContext } from "./PromptsPlaygroundContext";
 
 const VariableInputs = () => {
-  const { state, dispatch } = usePromptContext();
+  const { state, dispatch, experimentConfig } = usePromptContext();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
 
@@ -21,6 +21,14 @@ const VariableInputs = () => {
   };
 
   const variables = Array.from(state.keywords.keys());
+
+  // Create a map of variable names to their dataset column mappings
+  const variableMappings = new Map<string, string>();
+  if (experimentConfig?.prompt_ref?.variable_mapping) {
+    experimentConfig.prompt_ref.variable_mapping.forEach((mapping: any) => {
+      variableMappings.set(mapping.variable_name, mapping.source?.dataset_column?.name || "");
+    });
+  }
 
   // Check if content is scrollable
   useEffect(() => {
@@ -108,20 +116,48 @@ const VariableInputs = () => {
             in one of your prompts to manage it here.
           </Typography>
         ) : (
-          <Stack spacing={2}>
-            {variables.map((variable) => (
-              <TextField
-                key={variable}
-                id={`variable-${variable}`}
-                label={variable}
-                value={state.keywords.get(variable)}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  handleKeywordValueChange(variable, e.target.value);
-                }}
-                variant="standard"
-                fullWidth
-              />
-            ))}
+          <Stack spacing={1}>
+            {variables.map((variable) => {
+              const mappedColumn = variableMappings.get(variable);
+              const isMapped = !!mappedColumn;
+              const value = state.keywords.get(variable) || "";
+              const isMissing = !isMapped && value.trim() === "";
+
+              return (
+                <TextField
+                  key={variable}
+                  id={`variable-${variable}`}
+                  label={variable}
+                  value={value}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    handleKeywordValueChange(variable, e.target.value);
+                  }}
+                  variant="standard"
+                  fullWidth
+                  disabled={isMapped}
+                  helperText={
+                    isMapped
+                      ? `Mapped to dataset column: ${mappedColumn}`
+                      : undefined
+                  }
+                  sx={{
+                    "& .MuiInputBase-input.Mui-disabled": {
+                      WebkitTextFillColor: "rgba(0, 0, 0, 0.5)",
+                      color: "rgba(0, 0, 0, 0.5)",
+                    },
+                    "& .MuiInputLabel-root.Mui-disabled": {
+                      color: "rgba(0, 0, 0, 0.5)",
+                    },
+                    ...(isMissing && {
+                      "& .MuiInputLabel-root": {
+                        fontWeight: 600,
+                        color: "rgba(0, 0, 0, 0.87)",
+                      },
+                    }),
+                  }}
+                />
+              );
+            })}
           </Stack>
         )}
       </Box>

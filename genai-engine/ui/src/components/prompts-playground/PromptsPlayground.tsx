@@ -1,13 +1,21 @@
 import AddIcon from "@mui/icons-material/Add";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import TuneIcon from "@mui/icons-material/Tune";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -16,23 +24,41 @@ import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
 import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
+import toFrontendPrompt from "./utils/toFrontendPrompt";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
+import { useNavigate } from "react-router-dom";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
+  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const variablesButtonRef = useRef<HTMLButtonElement>(null);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
   const hasFetchedSpan = useRef(false);
+  const hasFetchedConfig = useRef(false);
   const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
+  const { task } = useTask();
   const spanId = searchParams.get("spanId");
+  const experimentId = searchParams.get("experimentId");
+  const promptName = searchParams.get("promptName");
+  const promptVersion = searchParams.get("promptVersion");
+
+  // Track if playground is opened with config from "Open in Notebook"
+  const isConfigMode = !!(experimentId && promptName && promptVersion);
+  const [configModeActive, setConfigModeActive] = useState(isConfigMode);
+  const [experimentConfig, setExperimentConfig] = useState<any>(null);
+  const [experimentRuns, setExperimentRuns] = useState<any[]>([]);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [runDetails, setRunDetails] = useState<Map<string, any>>(new Map());
 
   // Pass false to let each prompt determine its own icon-only mode based on container width
   // This enables true container query behavior - each prompt measures its own width
@@ -133,6 +159,68 @@ const PromptsPlayground = () => {
     }
   }, [fetchSpanData, spanId]);
 
+  /**
+   * Fetch experiment config and populate the first prompt with the selected prompt version
+   * Triggered when URL has experimentId, promptName, and promptVersion parameters
+   */
+  const fetchExperimentConfig = useCallback(async () => {
+    if (hasFetchedConfig.current || !experimentId || !promptName || !promptVersion || !apiClient || !task?.id) {
+      return;
+    }
+
+    hasFetchedConfig.current = true;
+
+    try {
+      // Fetch the experiment details to get config info
+      const experimentResponse = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(experimentId);
+      const configData = experimentResponse.data;
+      setExperimentConfig(configData);
+
+      // Fetch all experiments with the same name to show runs history
+      const experimentsListResponse = await apiClient.api.listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet({
+        taskId: task.id,
+        page: 0,
+        pageSize: 100, // Fetch up to 100 experiments
+      });
+
+      // Filter experiments with the same name as the current config
+      const matchingExperiments = experimentsListResponse.data.data.filter(
+        (exp: any) => exp.name === configData.name
+      );
+      setExperimentRuns(matchingExperiments);
+
+      // Fetch the specific prompt version using the correct API endpoint
+      const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+        promptName,
+        promptVersion,
+        task.id
+      );
+
+      // Convert backend prompt to frontend format
+      const frontendPrompt = toFrontendPrompt(promptResponse.data);
+
+      if (state.prompts.length > 0) {
+        dispatch({
+          type: "updatePrompt",
+          payload: { promptId: state.prompts[0].id, prompt: frontendPrompt },
+        });
+      } else {
+        dispatch({
+          type: "hydratePrompt",
+          payload: { promptData: frontendPrompt },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch experiment config:", error);
+    }
+  }, [experimentId, promptName, promptVersion, apiClient, task, state.prompts]);
+
+  useEffect(() => {
+    if (isConfigMode) {
+      fetchExperimentConfig();
+    }
+  }, [fetchExperimentConfig, isConfigMode]);
+
   // Fetch backend prompts on mount
   useEffect(() => {
     fetchPrompts(dispatch);
@@ -192,6 +280,29 @@ const PromptsPlayground = () => {
     setVariablesDrawerOpen((prev) => !prev);
   };
 
+  const toggleConfigDrawer = () => {
+    setConfigDrawerOpen((prev) => !prev);
+  };
+
+  const handleExpandRun = useCallback(async (runId: string) => {
+    if (expandedRunId === runId) {
+      setExpandedRunId(null);
+      return;
+    }
+
+    setExpandedRunId(runId);
+
+    // Fetch details if not already cached
+    if (!runDetails.has(runId) && apiClient) {
+      try {
+        const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(runId);
+        setRunDetails((prev) => new Map(prev).set(runId, response.data));
+      } catch (error) {
+        console.error("Failed to fetch run details:", error);
+      }
+    }
+  }, [expandedRunId, runDetails, apiClient]);
+
   // Count blank variables
   const blankVariablesCount = useMemo(() => {
     let count = 0;
@@ -204,11 +315,35 @@ const PromptsPlayground = () => {
   }, [state.keywords]);
 
   return (
-    <PromptProvider state={state} dispatch={dispatch}>
+    <PromptProvider state={state} dispatch={dispatch} experimentConfig={experimentConfig}>
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
+        {/* Config Mode Indicator */}
+        {configModeActive && (
+          <Box className="bg-blue-100 border-b border-blue-300 px-4 py-2">
+            <Box className="flex items-center justify-between">
+              <Box className="flex items-center gap-2">
+                <Box className="w-2 h-2 bg-blue-600 rounded-full" />
+                <span className="text-sm font-medium text-blue-900">
+                  Config Mode: Loaded from experiment with {promptName} v{promptVersion}
+                </span>
+              </Box>
+            </Box>
+          </Box>
+        )}
+
         {/* Header with action buttons */}
         <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 shrink-0">
           <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
+            {configModeActive && (
+              <Button
+                variant={configDrawerOpen ? "contained" : "outlined"}
+                size="small"
+                onClick={toggleConfigDrawer}
+                startIcon={<InfoOutlinedIcon />}
+              >
+                Config
+              </Button>
+            )}
             <Box sx={{ position: "relative" }}>
               <Badge badgeContent={blankVariablesCount} color="error" overlap="rectangular">
                 <Button
@@ -277,6 +412,373 @@ const PromptsPlayground = () => {
             </Stack>
           </Box>
         </Box>
+
+        {/* Config Drawer */}
+        <Drawer
+          anchor="right"
+          open={configDrawerOpen}
+          onClose={toggleConfigDrawer}
+          variant="temporary"
+          sx={{
+            zIndex: (theme) => theme.zIndex.drawer + 2,
+            "& .MuiDrawer-paper": {
+              width: 480,
+              boxSizing: "border-box",
+            },
+          }}
+        >
+          <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+            {/* Drawer Header */}
+            <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider" }}>
+              <Typography variant="h6">Experiment Configuration</Typography>
+              <IconButton onClick={toggleConfigDrawer} size="small">
+                <ChevronLeftIcon />
+              </IconButton>
+            </Box>
+
+            {/* Drawer Content */}
+            <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
+              {experimentConfig ? (
+                <Stack spacing={3}>
+                  {/* Experiment Name Section */}
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
+                      EXPERIMENT
+                    </Typography>
+                    <Box sx={{ pl: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {experimentConfig.name}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => navigate(`/tasks/${task.id}/prompt-experiments/${experimentConfig.id}`)}
+                        sx={{
+                          padding: 0.5,
+                          color: "#9ca3af",
+                          "&:hover": {
+                            color: "#6b7280",
+                            backgroundColor: "rgba(0, 0, 0, 0.04)",
+                          },
+                        }}
+                      >
+                        <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  <Divider />
+
+                  {/* Dataset Section */}
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
+                      DATASET
+                    </Typography>
+                    <Box sx={{ pl: 2 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {experimentConfig.dataset_ref?.name?.trim() || experimentConfig.dataset_ref?.id || "Unknown"}
+                        </Typography>
+                        {experimentConfig.dataset_ref?.id && (
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/tasks/${task.id}/datasets/${experimentConfig.dataset_ref.id}`)}
+                            sx={{
+                              padding: 0.5,
+                              color: "#9ca3af",
+                              "&:hover": {
+                                color: "#6b7280",
+                                backgroundColor: "rgba(0, 0, 0, 0.04)",
+                              },
+                            }}
+                          >
+                            <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
+                          </IconButton>
+                        )}
+                      </Box>
+                      {experimentConfig.dataset_ref?.version && (
+                        <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.813rem" }}>
+                          Version {experimentConfig.dataset_ref.version}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+
+                  <Divider />
+
+                  {/* Prompt Variable Mappings Section */}
+                  {experimentConfig.prompt_ref?.variable_mapping && experimentConfig.prompt_ref.variable_mapping.length > 0 && (
+                    <>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
+                          PROMPT VARIABLE MAPPINGS
+                        </Typography>
+                        <Stack spacing={1}>
+                          {experimentConfig.prompt_ref.variable_mapping.map((mapping: any, idx: number) => (
+                            <Box
+                              key={idx}
+                              sx={{
+                                backgroundColor: "#e3f2fd",
+                                borderLeft: "3px solid #2196f3",
+                                px: 1.5,
+                                py: 1,
+                                borderRadius: 0.5,
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontSize: "0.813rem",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                <Box component="span" sx={{ fontWeight: 600 }}>
+                                  {mapping.variable_name}
+                                </Box>
+                                {" → Dataset column: "}
+                                <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
+                                  {mapping.source?.dataset_column?.name}
+                                </Box>
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Box>
+                      <Divider />
+                    </>
+                  )}
+
+                  {/* Eval Variable Mappings Section */}
+                  {experimentConfig.eval_list && experimentConfig.eval_list.length > 0 && (
+                    <>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
+                          EVAL VARIABLE MAPPINGS
+                        </Typography>
+                        <Stack spacing={2}>
+                          {experimentConfig.eval_list.map((evalRef: any, evalIdx: number) => (
+                            <Box key={evalIdx}>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
+                                  {evalRef.name} <Box component="span" sx={{ fontWeight: 400, color: "text.secondary" }}>(v{evalRef.version})</Box>
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => navigate(`/tasks/${task.id}/evaluators/${encodeURIComponent(evalRef.name)}`)}
+                                  sx={{
+                                    padding: 0.25,
+                                    color: "#9ca3af",
+                                    "&:hover": {
+                                      color: "#6b7280",
+                                      backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                    },
+                                  }}
+                                >
+                                  <OpenInNewIcon sx={{ fontSize: "0.75rem" }} />
+                                </IconButton>
+                              </Box>
+                              <Stack spacing={1}>
+                                {evalRef.variable_mapping?.map((mapping: any, mapIdx: number) => {
+                                  const isDatasetColumn = mapping.source?.type === "dataset_column";
+                                  return (
+                                    <Box
+                                      key={mapIdx}
+                                      sx={{
+                                        backgroundColor: isDatasetColumn ? "#e3f2fd" : "#fff3e0",
+                                        borderLeft: isDatasetColumn ? "3px solid #2196f3" : "3px solid #ff9800",
+                                        px: 1.5,
+                                        py: 1,
+                                        borderRadius: 0.5,
+                                      }}
+                                    >
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          fontSize: "0.813rem",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        <Box component="span" sx={{ fontWeight: 600 }}>
+                                          {mapping.variable_name}
+                                        </Box>
+                                        {" → "}
+                                        {isDatasetColumn ? (
+                                          <>
+                                            Dataset column: <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>{mapping.source?.dataset_column?.name}</Box>
+                                          </>
+                                        ) : (
+                                          <>
+                                            Experiment output
+                                            {mapping.source?.experiment_output?.json_path && (
+                                              <>
+                                                {" "}(path: <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#f57c00" }}>{mapping.source.experiment_output.json_path}</Box>)
+                                              </>
+                                            )}
+                                          </>
+                                        )}
+                                      </Typography>
+                                    </Box>
+                                  );
+                                })}
+                              </Stack>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Box>
+                      <Divider />
+                    </>
+                  )}
+
+                  {/* Experiment Runs Section */}
+                  {experimentRuns.length > 0 && (
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
+                        EXPERIMENT RUNS ({experimentRuns.length})
+                      </Typography>
+                      <Stack spacing={1}>
+                        {experimentRuns.map((run: any, idx: number) => {
+                          const completionRate = run.total_rows > 0 ? (run.completed_rows / run.total_rows) * 100 : 0;
+                          const isCompleted = run.status === "completed";
+                          const isFailed = run.status === "failed";
+                          const isRunning = run.status === "running";
+                          const isExpanded = expandedRunId === run.id;
+                          const details = runDetails.get(run.id);
+
+                          return (
+                            <Box
+                              key={idx}
+                              sx={{
+                                border: "1px solid",
+                                borderColor: "divider",
+                                borderRadius: 1,
+                                overflow: "hidden",
+                                backgroundColor: isCompleted ? "#f1f8f4" : isFailed ? "#fef3f2" : "background.paper",
+                              }}
+                            >
+                              <Box
+                                onClick={() => handleExpandRun(run.id)}
+                                sx={{
+                                  px: 1.5,
+                                  py: 1,
+                                  cursor: "pointer",
+                                  "&:hover": { backgroundColor: "action.hover" },
+                                }}
+                              >
+                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+                                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                    <ChevronRightIcon
+                                      sx={{
+                                        fontSize: "1rem",
+                                        transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                                        transition: "transform 0.2s",
+                                      }}
+                                    />
+                                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
+                                      {new Date(run.created_at).toLocaleString()}
+                                    </Typography>
+                                  </Box>
+                                  <Box
+                                    component="span"
+                                    sx={{
+                                      fontSize: "0.688rem",
+                                      px: 0.75,
+                                      py: 0.25,
+                                      borderRadius: 0.5,
+                                      backgroundColor: isCompleted ? "#10b981" : isFailed ? "#ef4444" : isRunning ? "#f59e0b" : "#6b7280",
+                                      color: "white",
+                                      fontWeight: 600,
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {run.status}
+                                  </Box>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
+                                  {run.completed_rows}/{run.total_rows} completed • {run.failed_rows} failed • {completionRate.toFixed(1)}% done
+                                </Typography>
+                                {run.total_cost && (
+                                  <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary", mt: 0.25 }}>
+                                    Cost: ${run.total_cost}
+                                  </Typography>
+                                )}
+                              </Box>
+
+                              {/* Expanded Details */}
+                              {isExpanded && details?.summary_results?.prompt_eval_summaries && (
+                                <Box
+                                  sx={{
+                                    borderTop: "1px solid",
+                                    borderColor: "divider",
+                                    px: 1.5,
+                                    py: 1.5,
+                                    backgroundColor: "rgba(0, 0, 0, 0.02)",
+                                  }}
+                                >
+                                  <Stack spacing={1.5}>
+                                    {details.summary_results.prompt_eval_summaries.map((promptSummary: any, pIdx: number) => (
+                                      <Box key={pIdx}>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.75 }}>
+                                          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.75rem" }}>
+                                            {promptSummary.prompt_name} <Box component="span" sx={{ fontWeight: 400, color: "text.secondary" }}>(v{promptSummary.prompt_version})</Box>
+                                          </Typography>
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              navigate(`/tasks/${task.id}/prompts/${encodeURIComponent(promptSummary.prompt_name)}/versions/${promptSummary.prompt_version}`);
+                                            }}
+                                            sx={{
+                                              padding: 0.25,
+                                              color: "#9ca3af",
+                                              "&:hover": {
+                                                color: "#6b7280",
+                                                backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                              },
+                                            }}
+                                          >
+                                            <OpenInNewIcon sx={{ fontSize: "0.65rem" }} />
+                                          </IconButton>
+                                        </Box>
+                                        <Stack spacing={0.75}>
+                                          {promptSummary.eval_results.map((evalResult: any, eIdx: number) => {
+                                            const percentage = evalResult.total_count > 0 ? (evalResult.pass_count / evalResult.total_count) * 100 : 0;
+                                            return (
+                                              <Box key={eIdx} sx={{ pl: 1 }}>
+                                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.25 }}>
+                                                  <Typography variant="caption" sx={{ fontSize: "0.688rem", color: "text.secondary" }}>
+                                                    {evalResult.eval_name} (v{evalResult.eval_version})
+                                                  </Typography>
+                                                  <Typography variant="caption" sx={{ fontSize: "0.688rem", fontWeight: 600 }}>
+                                                    {evalResult.pass_count}/{evalResult.total_count} ({percentage.toFixed(0)}%)
+                                                  </Typography>
+                                                </Box>
+                                              </Box>
+                                            );
+                                          })}
+                                        </Stack>
+                                      </Box>
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  )}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No configuration data available
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </Drawer>
       </Box>
     </PromptProvider>
   );

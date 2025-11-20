@@ -3,7 +3,8 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import LaunchIcon from "@mui/icons-material/Launch";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -50,6 +51,15 @@ export const ExperimentDetailView: React.FC = () => {
   const handleDrawerClose = () => {
     setDrawerOpen(false);
   };
+
+  const handleOpenInNotebook = (promptName: string, promptVersion: string, event: React.MouseEvent) => {
+    // Prevent the card click event from firing
+    event.stopPropagation();
+
+    // Navigate to playground with config parameters
+    navigate(`/tasks/${taskId}/playgrounds/prompts?experimentId=${experimentId}&promptName=${encodeURIComponent(promptName)}&promptVersion=${promptVersion}`);
+  };
+
 
   // Refetch data when window gains focus (but not if we're deleting)
   useEffect(() => {
@@ -343,7 +353,7 @@ export const ExperimentDetailView: React.FC = () => {
               </Typography>
             </Box>
           ) : (
-            <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+            <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {(() => {
                 const sortedSummaries = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {
                   // Calculate total passes for each prompt
@@ -376,7 +386,7 @@ export const ExperimentDetailView: React.FC = () => {
                       onClick={() => handlePromptClick(promptSummary)}
                       sx={{ cursor: "pointer", "&:hover": { boxShadow: 3 }, position: "relative" }}
                     >
-                      <CardContent sx={{ position: "relative", paddingBottom: "16px !important" }}>
+                      <CardContent sx={{ position: "relative", paddingBottom: "40px !important", minHeight: "200px" }}>
                         <Box className="flex items-center gap-2 mb-3">
                           <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
                             Prompt: {promptSummary.prompt_name} (v{promptSummary.prompt_version})
@@ -416,6 +426,26 @@ export const ExperimentDetailView: React.FC = () => {
                             );
                           })}
                         </Box>
+
+                        {/* Open in Notebook button in lower left corner */}
+                        <Button
+                          size="small"
+                          startIcon={<LaunchIcon />}
+                          onClick={(e) => handleOpenInNotebook(promptSummary.prompt_name, promptSummary.prompt_version, e)}
+                          sx={{
+                            position: "absolute",
+                            bottom: 8,
+                            left: 8,
+                            textTransform: 'none',
+                            fontSize: '0.75rem',
+                            color: 'text.secondary',
+                            '&:hover': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            },
+                          }}
+                        >
+                          Open in Notebook
+                        </Button>
 
                         {/* Expand icon in lower right corner */}
                         <Box

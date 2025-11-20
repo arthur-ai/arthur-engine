@@ -6,11 +6,13 @@ interface PromptProviderProps {
   children: ReactNode;
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
+  experimentConfig?: any;
 }
 
 const PromptContext = createContext<{
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
+  experimentConfig?: any;
 } | null>(null);
 
 export const usePromptContext = () => {
@@ -19,6 +21,6 @@ export const usePromptContext = () => {
   return context;
 };
 
-export const PromptProvider = ({ children, state, dispatch }: PromptProviderProps) => {
-  return <PromptContext.Provider value={{ state, dispatch }}>{children}</PromptContext.Provider>;
+export const PromptProvider = ({ children, state, dispatch, experimentConfig }: PromptProviderProps) => {
+  return <PromptContext.Provider value={{ state, dispatch, experimentConfig }}>{children}</PromptContext.Provider>;
 };
