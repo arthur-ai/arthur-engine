@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Union
+from typing import Any, overload
 
 import tiktoken
 from pydantic import BaseModel
@@ -17,12 +17,12 @@ TIKTOKEN_ENCODER = "cl100k_base"
 class TokenCountCost(BaseModel):
     """Data structure for token counts and costs."""
 
-    prompt_token_cost: Optional[float] = None
-    completion_token_cost: Optional[float] = None
-    total_token_cost: Optional[float] = None
-    prompt_token_count: Optional[int] = None
-    completion_token_count: Optional[int] = None
-    total_token_count: Optional[int] = None
+    prompt_token_cost: float | None = None
+    completion_token_cost: float | None = None
+    total_token_cost: float | None = None
+    prompt_token_count: int | None = None
+    completion_token_count: int | None = None
+    total_token_count: int | None = None
 
 
 class TokenCounter:
@@ -36,7 +36,7 @@ class TokenCounter:
         """
         self.encoder = tiktoken.get_encoding(model)
 
-    def count(self, query: str):
+    def count(self, query: str) -> int:
         """Returns token count of the query using chunking for long texts.
 
         :param query: string query sent to LLM
@@ -65,7 +65,7 @@ def compute_cost_from_tokens(
     model_name: str,
     input_tokens: int = 0,
     output_tokens: int = 0,
-) -> Optional[float]:
+) -> float | None:
     """
     Compute cost from token counts.
 
@@ -109,14 +109,14 @@ def compute_cost_from_tokens(
 
 def count_tokens_from_string(
     text: str,
-    model_name: Optional[str] = None,
-) -> Optional[int]:
+    model_name: str | None = None,
+) -> int | None:
     """Calculate token count from string using tokencost or fallback to tiktoken."""
     if not text:
         return None
     try:
         if model_name:
-            return count_string_tokens(prompt=text, model=model_name)
+            return int(count_string_tokens(prompt=text, model=model_name))
         else:
             # Fallback: use default tiktoken encoder
             counter = TokenCounter(TIKTOKEN_ENCODER)
@@ -127,9 +127,9 @@ def count_tokens_from_string(
 
 
 def count_tokens_from_messages(
-    messages: List[dict],
-    model_name: Optional[str] = None,
-) -> Optional[int]:
+    messages: list[dict[str, Any]],
+    model_name: str | None = None,
+) -> int | None:
     """Calculate token count from messages using tokencost or fallback to tiktoken.
 
     Expects OpenInference normalized format where each message has nested structure:
@@ -159,7 +159,7 @@ def count_tokens_from_messages(
 
         if model_name:
             # Use tokencost for model-specific counting
-            return count_message_tokens(formatted, model=model_name)
+            return int(count_message_tokens(messages=formatted, model=model_name))
         else:
             # Fallback: concatenate message content and use string counter
             combined_text = "\n".join(
@@ -171,10 +171,30 @@ def count_tokens_from_messages(
         return None
 
 
+@overload
+def safe_add(current: None, value: None) -> None: ...
+
+
+@overload
+def safe_add(current: int, value: int | None) -> int: ...
+
+
+@overload
+def safe_add(current: int | None, value: int) -> int: ...
+
+
+@overload
+def safe_add(current: float, value: int | float | None) -> float: ...
+
+
+@overload
+def safe_add(current: int | float | None, value: float) -> float: ...
+
+
 def safe_add(
-    current: Optional[Union[int, float]],
-    value: Optional[Union[int, float]],
-) -> Optional[Union[int, float]]:
+    current: int | float | None,
+    value: int | float | None,
+) -> int | float | None:
     """
     NULL-safe addition for numeric values (token counts or costs).
 

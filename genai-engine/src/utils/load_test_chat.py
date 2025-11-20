@@ -34,7 +34,10 @@ PROMPTS = [
     "Tell me a short story about a place called France",
 ]
 
-SENSITIVE_DATA_RULE_BODY = {
+SENSITIVE_DATA_RULE_BODY: dict[
+    str,
+    str | bool | dict[str, list[dict[str, bool | str]]],
+] = {
     "name": "Sensitive Data Rule",
     "type": "ModelSensitiveDataRule",
     "apply_to_prompt": True,
@@ -50,14 +53,14 @@ SENSITIVE_DATA_RULE_BODY = {
     },
 }
 
-PROMPT_INJECTION_RULE_BODY = {
+PROMPT_INJECTION_RULE_BODY: dict[str, str | bool] = {
     "name": "Prompt Injection Rule",
     "type": "PromptInjectionRule",
     "apply_to_prompt": True,
     "apply_to_response": False,
 }
 
-HALLUCINATION_V2_RULE_BODY = {
+HALLUCINATION_V2_RULE_BODY: dict[str, str | bool] = {
     "name": "Hallucination Rule",
     "type": "ModelHallucinationRuleV2",
     "apply_to_prompt": False,
@@ -68,18 +71,18 @@ HALLUCINATION_V2_RULE_BODY = {
 class ChatAgent:
     def __init__(
         self,
-        id,
-        server_url,
-        prompt_delay_seconds=10.0,
-        conversation_length=5,
-    ):
+        id: int,
+        server_url: str,
+        prompt_delay_seconds: float = 10.0,
+        conversation_length: int = 5,
+    ) -> None:
         self.id = id
         self.prompt_delay_seconds = prompt_delay_seconds
         self.conversation_length = conversation_length
         self.client = httpx.Client(base_url=server_url, timeout=60)
         self.converation_id = str(uuid.uuid4())
 
-    def run_agent(self):
+    def run_agent(self) -> None:
         # Start delay so every agent doesn't go at once:
         time.sleep(random.random() * self.prompt_delay_seconds)
         for i in range(self.conversation_length):
@@ -88,7 +91,7 @@ class ChatAgent:
             time.sleep(self.prompt_delay_seconds)
             print("Resuming Agent %s..." % self.id)
 
-    def post_chat(self):
+    def post_chat(self) -> httpx.Response:
         request = {
             "user_prompt": get_random_prompt(),
             "conversation_id": self.converation_id,
@@ -102,11 +105,18 @@ class ChatAgent:
         return resp
 
 
-def get_random_prompt():
+def get_random_prompt() -> str:
     return random.choice(PROMPTS)
 
 
-def create_rule(body, client, task_id):
+def create_rule(
+    body: (
+        dict[str, str | bool]
+        | dict[str, str | bool | dict[str, list[dict[str, bool | str]]]]
+    ),
+    client: httpx.Client,
+    task_id: str,
+) -> httpx.Response:
     resp = client.post(
         "/api/v2/tasks/%s/rules" % task_id,
         json=body,
@@ -119,7 +129,7 @@ def create_rule(body, client, task_id):
     return resp
 
 
-def update_chat_config(client, task_id):
+def update_chat_config(client: httpx.Client, task_id: str) -> httpx.Response:
     uri = "/api/v2/configuration"
     config = {"chat_task_id": task_id}
     resp = client.post(
@@ -135,11 +145,11 @@ def update_chat_config(client, task_id):
 
 
 def create_chat_task(
-    server_url,
-    sensitive_data=True,
-    prompt_injection=True,
-    hallucination_v2=True,
-):
+    server_url: str,
+    sensitive_data: bool = True,
+    prompt_injection: bool = True,
+    hallucination_v2: bool = True,
+) -> str:
     client = httpx.Client(base_url=server_url)
     request = {}
     request["name"] = "Chat Task"
@@ -150,7 +160,7 @@ def create_chat_task(
         json=request,
         headers=AUTHORIZED_HEADERS,
     )
-    task_id = resp.json()["id"]
+    task_id: str = resp.json()["id"]
     print(task_id)
 
     # Associate Rules
