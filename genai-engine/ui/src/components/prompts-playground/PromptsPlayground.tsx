@@ -31,6 +31,7 @@ import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 import { useNavigate } from "react-router-dom";
+import { track, EVENT_NAMES } from "@/services/amplitude";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -243,6 +244,16 @@ const PromptsPlayground = () => {
   };
 
   const handleRunAllPrompts = () => {
+    // Calculate tracking properties
+    const nonRunningPrompts = state.prompts.filter((prompt) => !prompt.running);
+    const promptCount = nonRunningPrompts.length;
+
+    // Track the event
+    track(EVENT_NAMES.RUN_ALL_PROMPTS, {
+      prompt_count: promptCount,
+    });
+
+    // Run all non-running prompts
     state.prompts.forEach((prompt) => {
       if (!prompt.running) {
         // Only run prompts that are not already running
@@ -318,13 +329,18 @@ const PromptsPlayground = () => {
     <PromptProvider state={state} dispatch={dispatch} experimentConfig={experimentConfig}>
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
         {/* Config Mode Indicator */}
-        {configModeActive && (
+        {configModeActive && experimentConfig && (
           <Box className="bg-blue-100 border-b border-blue-300 px-4 py-2">
             <Box className="flex items-center justify-between">
               <Box className="flex items-center gap-2">
                 <Box className="w-2 h-2 bg-blue-600 rounded-full" />
                 <span className="text-sm font-medium text-blue-900">
-                  Config Mode: Loaded from experiment with {promptName} v{promptVersion}
+                  Config Mode: Loaded from experiment "{experimentConfig.name}"
+                  {experimentConfig.prompt_configs && experimentConfig.prompt_configs.length > 0 && (
+                    <span className="ml-2 text-xs">
+                      ({experimentConfig.prompt_configs.length} prompt{experimentConfig.prompt_configs.length > 1 ? 's' : ''})
+                    </span>
+                  )}
                 </span>
               </Box>
             </Box>

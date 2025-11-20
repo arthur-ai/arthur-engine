@@ -5,6 +5,7 @@ import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
+import { DurationCell } from "../../data/common";
 import { useSelectionStore } from "../../stores/selection.store";
 import { getSpanDuration, getSpanType } from "../../utils/spans";
 
@@ -58,59 +59,59 @@ const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; le
 
   const chip = <TypeChip type={getSpanType(span) ?? OpenInferenceSpanKind.AGENT} active={isSelected} />;
 
+  const duration = getSpanDuration(span);
+
   return (
-    <Accordion.Header
-      render={
+    <>
+      <Accordion.Header
+        render={
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1}
+            data-has-children={hasChildren ? "" : undefined}
+            className="group-data-selected:rounded-t rounded-b group-data-selected:data-open:data-has-children:rounded-b-none transition-all duration-75 cursor-pointer select-none"
+            sx={{
+              "--offset-start": "4px",
+              "--offset-multiply": 16,
+              pl: `calc(var(--offset-start) + var(--offset-multiply) * ${level} * 1px)`,
+              py: 0.5,
+              backgroundColor: isSelected ? "primary.main" : "transparent",
+              color: isSelected ? "primary.contrastText" : "text.primary",
+            }}
+          />
+        }
+      >
+        <Accordion.Trigger className="group">
+          <KeyboardArrowRightIcon
+            color="inherit"
+            sx={{
+              outline: "none",
+              visibility: span.children && span.children.length > 0 ? "visible" : "hidden",
+            }}
+            fontSize="small"
+            className="group-data-panel-open:rotate-90"
+          />
+        </Accordion.Trigger>
         <Stack
           direction="row"
           alignItems="center"
-          spacing={1}
-          data-has-children={hasChildren ? "" : undefined}
-          className="group-data-selected:rounded-t rounded-b group-data-selected:data-open:data-has-children:rounded-b-none transition-all duration-75 cursor-pointer select-none"
+          spacing={0}
           sx={{
-            "--offset-start": "4px",
-            "--offset-multiply": 16,
-            pl: `calc(var(--offset-start) + var(--offset-multiply) * ${level} * 1px)`,
-            py: 0.5,
-            backgroundColor: isSelected ? "primary.main" : "transparent",
-            color: isSelected ? "primary.contrastText" : "text.primary",
+            position: "relative",
+            width: "100%",
+            pr: 1,
           }}
-        />
-      }
-    >
-      <Accordion.Trigger className="group">
-        <KeyboardArrowRightIcon
-          color="inherit"
-          sx={{
-            outline: "none",
-            visibility: span.children && span.children.length > 0 ? "visible" : "hidden",
-          }}
-          fontSize="small"
-          className="group-data-panel-open:rotate-90"
-        />
-      </Accordion.Trigger>
-      <Stack
-        direction="row"
-        alignItems="center"
-        spacing={0}
-        sx={{
-          position: "relative",
-          width: "100%",
-          pr: 1,
-        }}
-      >
-        {chip}
-        <Stack direction="column" alignItems="flex-start" gap={0} ml={1}>
-          <Typography variant="body2" fontWeight={500} fontSize={12}>
-            {span.span_name}
-          </Typography>
-          <Stack direction="row" alignItems="center" gap={1}>
-            <Typography variant="caption" color="inherit" fontSize={10}>
-              {getSpanDuration(span)}ms
+        >
+          {chip}
+          <Stack direction="row" alignItems="center" justifyContent="space-between" flex={1} gap={0} ml={1}>
+            <Typography variant="body2" fontWeight={500} fontSize={12}>
+              {span.span_name}
             </Typography>
+            {typeof duration === "number" ? <DurationCell duration={duration} /> : null}
           </Stack>
         </Stack>
-      </Stack>
-    </Accordion.Header>
+      </Accordion.Header>
+    </>
   );
 };

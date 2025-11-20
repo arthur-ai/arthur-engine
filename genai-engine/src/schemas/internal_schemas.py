@@ -32,6 +32,7 @@ from arthur_common.models.request_schemas import (
     TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
+    AgenticAnnotationResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
     ChatDocumentContext,
@@ -72,6 +73,7 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from db_models import (
+    DatabaseAgenticAnnotation,
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
@@ -578,6 +580,54 @@ class Task(BaseModel):
         )
 
 
+class AgenticAnnotation(BaseModel):
+    id: uuid.UUID = Field(..., description="Unique identifier for the annotation")
+
+    # NOTE: Make this optional in the future when expanding to other annotation types (e.g. span annotations)
+    trace_id: str = Field(..., description="Trace ID this annotation belongs to")
+
+    annotation_score: int = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)",
+    )
+    annotation_description: Optional[str] = Field(
+        default=None,
+        description="Description of the annotation",
+    )
+
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        description="When the annotation was created",
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        description="When the annotation was last updated",
+    )
+
+    @staticmethod
+    def from_db_model(db_annotation: DatabaseAgenticAnnotation) -> "AgenticAnnotation":
+        return AgenticAnnotation(
+            id=db_annotation.id,
+            trace_id=db_annotation.trace_id,
+            annotation_score=db_annotation.annotation_score,
+            annotation_description=db_annotation.annotation_description,
+            created_at=db_annotation.created_at,
+            updated_at=db_annotation.updated_at,
+        )
+
+    def to_db_model(self) -> DatabaseAgenticAnnotation:
+        return DatabaseAgenticAnnotation(
+            id=self.id,
+            trace_id=self.trace_id,
+            annotation_score=self.annotation_score,
+            annotation_description=self.annotation_description,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+
 class TraceMetadata(TokenCountCostSchema):
     trace_id: str
     task_id: str
@@ -590,6 +640,9 @@ class TraceMetadata(TokenCountCostSchema):
     updated_at: datetime
     input_content: Optional[str] = None
     output_content: Optional[str] = None
+
+    # Annotation information (separate table only used for response model conversion)
+    annotation: Optional[AgenticAnnotation] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
@@ -637,6 +690,14 @@ class TraceMetadata(TokenCountCostSchema):
     def _to_metadata_response_model(self) -> TraceMetadataResponse:
         """Convert to lightweight metadata response"""
         duration_ms = calculate_duration_ms(self.start_time, self.end_time)
+
+        annotation_response = None
+        if self.annotation:
+            annotation_response = AgenticAnnotationResponse(
+                annotation_score=self.annotation.annotation_score,
+                annotation_description=self.annotation.annotation_description,
+            )
+
         return TraceMetadataResponse(
             trace_id=self.trace_id,
             task_id=self.task_id,
@@ -656,6 +717,7 @@ class TraceMetadata(TokenCountCostSchema):
             total_token_cost=self.total_token_cost,
             input_content=self.input_content,
             output_content=self.output_content,
+            annotation=annotation_response,
         )
 
 
@@ -2237,6 +2299,19 @@ class DatasetVersion(DatasetVersionMetadata):
         :param: latest_version: DatabaseBDatasetVersion of the latest version of the dataset before the new one.
         :param: new_version: NewDatasetVersionRequest with the diff changes for the new dataset version
         """
+
+        # Helper function to check if a row matches all filter conditions (AND logic)
+        def _row_matches_delete_filter(db_row: DatabaseDatasetVersionRow) -> bool:
+            if not new_version.rows_to_delete_filter:
+                return False
+
+            # Row must match ALL filter conditions to be deleted
+            for filter_condition in new_version.rows_to_delete_filter:
+                row_value = db_row.data.get(filter_condition.column_name)
+                if row_value != filter_condition.column_value:
+                    return False
+            return True
+
         # assemble data rows
         ids_rows_to_update = set(row.id for row in new_version.rows_to_update)
         if latest_version is not None:
@@ -2245,6 +2320,7 @@ class DatasetVersion(DatasetVersionMetadata):
                 for db_row in latest_version.version_rows
                 if db_row.id not in new_version.rows_to_delete
                 and db_row.id not in ids_rows_to_update
+                and not _row_matches_delete_filter(db_row)
             ]
             existing_row_id_to_row = {
                 db_row.id: db_row for db_row in latest_version.version_rows

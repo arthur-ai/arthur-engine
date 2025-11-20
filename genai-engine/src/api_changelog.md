@@ -2,6 +2,45 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/20/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_name' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_ref' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/name' response's property type/format changed from 'string'/'' to ''/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/version' response's property type/format changed from 'string'/'' to ''/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the required property 'data/items/prompt_name' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_configs'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_variable_mapping'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the required property 'prompt_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the request property 'prompt_ref'
+- **CHANGE** for Component/Schema:  removed the schema 'PromptRef-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'PromptRef-Output'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_configs' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added 'subschema #1, subschema #2' to the 'data/items/prompt_results/items/name' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added 'subschema #1, subschema #2' to the 'data/items/prompt_results/items/version' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the required property 'data/items/prompt_results/items/prompt_key' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the required property 'data/items/prompt_results/items/prompt_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/prompt_configs' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'prompt_configs' to the response with the '200' status
+
+# 11/19/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotation' to the response with the '200' status
+-
+
 # 11/18/2025
 - **CHANGE** for **URL**: /api/v1/prompt_variables  endpoint added
 

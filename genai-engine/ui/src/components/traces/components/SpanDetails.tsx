@@ -5,7 +5,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Button, Paper } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { createContext, useContext } from "react";
+import { createContext, Fragment, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
@@ -91,13 +91,7 @@ export const SpanDetailsHeader = () => {
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           {isLLM && (
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleOpenInPlayground}
-              disabled={!span.task_id}
-              startIcon={<OpenInNewIcon />}
-            >
+            <Button variant="outlined" size="small" onClick={handleOpenInPlayground} disabled={!span.task_id} startIcon={<OpenInNewIcon />}>
               Open in Playground
             </Button>
           )}
@@ -119,14 +113,18 @@ export const SpanDetailsHeader = () => {
 export const SpanDetailsPanels = () => {
   const { span, strategy } = useSpanDetails();
 
-  const rawStrategy = strategy?.raw;
+  const tabs = strategy?.tabs;
 
   return (
     <Stack direction="column" spacing={2}>
       <Tabs.Root defaultValue="formatted">
         <Tabs.List>
           <Tabs.Tab value="formatted">Formatted</Tabs.Tab>
-          <Tabs.Tab value="raw">Raw</Tabs.Tab>
+          {tabs?.map((tab) => (
+            <Tabs.Tab key={tab.label} value={tab.label}>
+              {tab.label}
+            </Tabs.Tab>
+          ))}
           <Tabs.Indicator />
         </Tabs.List>
         <Tabs.Panel value="formatted" render={<Stack direction="column" gap={1} />}>
@@ -151,7 +149,11 @@ export const SpanDetailsPanels = () => {
             </Collapsible.Root>
           ))}
         </Tabs.Panel>
-        <Tabs.Panel value="raw">{rawStrategy?.render(span)}</Tabs.Panel>
+        {tabs?.map((tab) => (
+          <Tabs.Panel key={tab.label} value={tab.label}>
+            {tab.render(span)}
+          </Tabs.Panel>
+        ))}
       </Tabs.Root>
     </Stack>
   );
@@ -161,12 +163,16 @@ export const SpanDetailsWidgets = () => {
   const { span, strategy } = useSpanDetails();
 
   return (
-    <Stack direction="row" gap={1} flexWrap="wrap" alignItems="flex-start">
-      {strategy.widgets.map((widget, index) => (
-        <Paper key={index} variant="outlined" sx={{ px: 1, py: 0.5 }}>
-          {widget.render(span)}
-        </Paper>
-      ))}
+    <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
+      {strategy.widgets.map((widget, index) =>
+        widget.wrapped ? (
+          <Paper key={index} variant="outlined" sx={{ px: 1, py: 0.5 }}>
+            {widget.render(span)}
+          </Paper>
+        ) : (
+          <Fragment key={index}>{widget.render(span)}</Fragment>
+        )
+      )}
     </Stack>
   );
 };

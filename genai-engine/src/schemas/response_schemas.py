@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.response_schemas import (
+    AgenticAnnotationResponse,
     ExternalInference,
     TokenCountCostSchema,
     TraceResponse,
@@ -18,6 +19,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.common_schemas import NewDatasetVersionRowRequest
 from schemas.enums import (
     ConnectionCheckOutcome,
     ModelProvider,
@@ -168,6 +170,12 @@ class ListDatasetTransformsResponse(BaseModel):
     )
 
 
+class ExecuteTransformResponse(BaseModel):
+    rows_extracted: List[NewDatasetVersionRowRequest] = Field(
+        description="List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.",
+    )
+
+
 class TraceMetadataResponse(TokenCountCostSchema):
     """Lightweight trace metadata for list operations"""
 
@@ -188,6 +196,10 @@ class TraceMetadataResponse(TokenCountCostSchema):
     output_content: Optional[str] = Field(
         None,
         description="Root span output value from trace metadata",
+    )
+    annotation: Optional[AgenticAnnotationResponse] = Field(
+        default=None,
+        description="Annotation for the trace.",
     )
 
 

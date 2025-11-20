@@ -14,6 +14,11 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from schemas.common_schemas import (
+    NewDatasetVersionRowColumnItemRequest,
+    NewDatasetVersionRowRequest,
+    NewDatasetVersionUpdateRowRequest,
+)
 from schemas.enums import (
     DocumentStorageEnvironment,
     ModelProvider,
@@ -99,30 +104,20 @@ class DatasetUpdateRequest(BaseModel):
     )
 
 
-class NewDatasetVersionRowColumnItemRequest(BaseModel):
-    column_name: str = Field(description="Name of column.")
-    column_value: str = Field(description="Value of column for the row.")
-
-
-class NewDatasetVersionRowRequest(BaseModel):
-    data: List[NewDatasetVersionRowColumnItemRequest] = Field(
-        description="List of column-value pairs in the new dataset row.",
-    )
-
-
-class NewDatasetVersionUpdateRowRequest(BaseModel):
-    id: UUID = Field(description="UUID of row to be updated.")
-    data: List[NewDatasetVersionRowColumnItemRequest] = Field(
-        description="List of column-value pairs in the updated row.",
-    )
-
-
 class NewDatasetVersionRequest(BaseModel):
     rows_to_add: list[NewDatasetVersionRowRequest] = Field(
         description="List of rows to be added to the new dataset version.",
     )
     rows_to_delete: list[UUID] = Field(
         description="List of IDs of rows to be deleted from the new dataset version.",
+    )
+    rows_to_delete_filter: Optional[list[NewDatasetVersionRowColumnItemRequest]] = (
+        Field(
+            default=None,
+            description="Optional list of column name and value filters. "
+            "Rows matching ALL specified column name-value pairs (AND condition) will be deleted from the new dataset version. "
+            "This filter is applied in addition to rows_to_delete.",
+        )
     )
     rows_to_update: list[NewDatasetVersionUpdateRowRequest] = Field(
         description="List of IDs of rows to be updated in the new dataset version with their new values. "
@@ -168,6 +163,12 @@ class DatasetTransformUpdateRequest(BaseModel):
     definition: Optional[dict] = Field(
         default=None,
         description="Transform definition in JSON format specifying extraction rules.",
+    )
+
+
+class ExecuteTransformRequest(BaseModel):
+    trace_id: str = Field(
+        description="ID of the trace to execute the transform against.",
     )
 
 
@@ -786,4 +787,17 @@ class UnsavedPromptVariablesRequest(BaseModel):
 
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
+    )
+
+
+class AgenticAnnotationRequest(BaseModel):
+    annotation_score: int = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)",
+    )
+    annotation_description: Optional[str] = Field(
+        default=None,
+        description="Description of the annotation",
     )

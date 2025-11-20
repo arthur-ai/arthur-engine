@@ -58,6 +58,20 @@ export const Message = z.discriminatedUnion("role", [
   }),
 ]);
 
+export const Tool = z.object({
+  name: z.string(),
+  description: z.string(),
+  input_schema: z.record(z.string(), z.any()),
+});
+
+export const LLMToolsField = z.array(
+  z.object({
+    tool: z.object({
+      json_schema: z.string(),
+    }),
+  })
+);
+
 export type Message = z.infer<typeof Message>;
 export type ToolCall = z.infer<typeof ToolCall>;
 
@@ -66,3 +80,6 @@ export type ToolCallContent = z.infer<typeof ToolCallContent>;
 export type ToolResultContent = z.infer<typeof ToolResultContent>;
 
 export type LLMOutputMessage = z.infer<typeof LLMOutputMessage>;
+
+export type Tool = z.infer<typeof Tool>;
+export type LLMToolsField = z.infer<typeof LLMToolsField>;
