@@ -259,12 +259,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
     100 // Fetch all results for now
   );
 
-  // Refetch test cases when runningExperimentId changes
+  // Refetch test cases when runningExperimentId or lastCompletedExperimentId changes
   useEffect(() => {
-    if (runningExperimentId) {
+    if (runningExperimentId || lastCompletedExperimentId) {
       refetch();
     }
-  }, [runningExperimentId, refetch]);
+  }, [runningExperimentId, lastCompletedExperimentId, refetch]);
 
   // Poll for test case updates while experiment is running
   useEffect(() => {
@@ -278,18 +278,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   }, [runningExperimentId, refetch]);
 
   const evals = experimentConfig?.eval_list || [];
-
-  // Debug logging
-  useEffect(() => {
-    if (testCases.length > 0) {
-      console.log('=== ResultsTable Debug ===');
-      console.log('promptId:', promptId);
-      console.log('prompt:', prompt);
-      console.log('promptKey:', promptKey);
-      console.log('First test case:', JSON.stringify(testCases[0], null, 2));
-      console.log('Eval list:', evals);
-    }
-  }, [testCases, promptId, prompt, promptKey, evals]);
 
   const handleRowClick = (testCase: TestCaseResult) => {
     setSelectedTestCase(testCase);

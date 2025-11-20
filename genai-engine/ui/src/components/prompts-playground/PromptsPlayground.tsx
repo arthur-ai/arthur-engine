@@ -615,38 +615,17 @@ const PromptsPlayground = () => {
       lastCompletedExperimentId={lastCompletedExperimentId}
     >
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
-        {/* Config Mode Indicator */}
-        {configModeActive && experimentConfig && (
-          <Box className="bg-blue-100 border-b border-blue-300 px-4 py-2">
-            <Box className="flex items-center justify-between">
-              <Box className="flex items-center gap-2">
-                <Box className="w-2 h-2 bg-blue-600 rounded-full" />
-                <span className="text-sm font-medium text-blue-900">
-                  Config Mode: Loaded from experiment "{experimentConfig.name}"
-                  {experimentConfig.prompt_configs && experimentConfig.prompt_configs.length > 0 && (
-                    <span className="ml-2 text-xs">
-                      ({experimentConfig.prompt_configs.length} prompt{experimentConfig.prompt_configs.length > 1 ? 's' : ''})
-                    </span>
-                  )}
-                </span>
-              </Box>
-            </Box>
-          </Box>
-        )}
-
         {/* Header with action buttons */}
         <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 shrink-0">
           <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
-            {configModeActive && (
-              <Button
-                variant={configDrawerOpen ? "contained" : "outlined"}
-                size="small"
-                onClick={toggleConfigDrawer}
-                startIcon={<InfoOutlinedIcon />}
-              >
-                Config
-              </Button>
-            )}
+            <Button
+              variant={configDrawerOpen ? "contained" : "outlined"}
+              size="small"
+              onClick={toggleConfigDrawer}
+              startIcon={<InfoOutlinedIcon />}
+            >
+              {configModeActive && experimentConfig ? "View Config" : "Set Config"}
+            </Button>
             <Box sx={{ position: "relative" }}>
               <Badge badgeContent={blankVariablesCount} color="error" overlap="rectangular">
                 <Button
