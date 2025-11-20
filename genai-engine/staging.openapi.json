@@ -9754,14 +9754,14 @@
                 }
             }
         },
-        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results": {
+        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results": {
             "get": {
                 "tags": [
                     "Prompt Experiments"
                 ],
-                "summary": "Get prompt version results",
-                "description": "Get paginated list of results for a specific prompt version within an experiment",
-                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_name__versions__prompt_version__results_get",
+                "summary": "Get prompt results",
+                "description": "Get paginated list of results for a specific prompt within an experiment (supports both saved and unsaved prompts)",
+                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_key__results_get",
                 "security": [
                     {
                         "API Key": []
@@ -9780,26 +9780,15 @@
                         "description": "The ID of the experiment"
                     },
                     {
-                        "name": "prompt_name",
+                        "name": "prompt_key",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt"
+                            "title": "Prompt Key",
+                            "description": "The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A"
                         },
-                        "description": "The name of the prompt"
-                    },
-                    {
-                        "name": "prompt_version",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "title": "Prompt Version",
-                            "description": "The version of the prompt"
-                        },
-                        "description": "The version of the prompt"
+                        "description": "The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A"
                     },
                     {
                         "name": "sort",
@@ -11610,9 +11599,35 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset to use"
                     },
-                    "prompt_ref": {
-                        "$ref": "#/components/schemas/PromptRef-Input",
-                        "description": "Reference to the prompt configuration"
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompt configurations (saved or unsaved)"
+                    },
+                    "prompt_variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                        },
+                        "type": "array",
+                        "title": "Prompt Variable Mapping",
+                        "description": "Shared variable mapping for all prompts"
                     },
                     "eval_list": {
                         "items": {
@@ -11627,7 +11642,8 @@
                 "required": [
                     "name",
                     "dataset_ref",
-                    "prompt_ref",
+                    "prompt_configs",
+                    "prompt_variable_mapping",
                     "eval_list"
                 ],
                 "title": "CreatePromptExperimentRequest",
@@ -15291,7 +15307,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.209"
+                                "version": "1.0"
                             }
                         ]
                     }
@@ -16236,10 +16252,27 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_name": {
-                        "type": "string",
-                        "title": "Prompt Name",
-                        "description": "Name of the prompt being tested"
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompts being tested"
                     },
                     "total_rows": {
                         "type": "integer",
@@ -16272,9 +16305,13 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "prompt_ref": {
-                        "$ref": "#/components/schemas/PromptRef-Output",
-                        "description": "Reference to the prompt configuration"
+                    "prompt_variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                        },
+                        "type": "array",
+                        "title": "Prompt Variable Mapping",
+                        "description": "Shared variable mapping for all prompts"
                     },
                     "eval_list": {
                         "items": {
@@ -16295,12 +16332,12 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_name",
+                    "prompt_configs",
                     "total_rows",
                     "completed_rows",
                     "failed_rows",
                     "dataset_ref",
-                    "prompt_ref",
+                    "prompt_variable_mapping",
                     "eval_list",
                     "summary_results"
                 ],
@@ -16394,10 +16431,27 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_name": {
-                        "type": "string",
-                        "title": "Prompt Name",
-                        "description": "Name of the prompt being tested"
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompts being tested"
                     },
                     "total_rows": {
                         "type": "integer",
@@ -16433,7 +16487,7 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_name",
+                    "prompt_configs",
                     "total_rows",
                     "completed_rows",
                     "failed_rows"
@@ -16468,83 +16522,41 @@
                 "title": "PromptOutput",
                 "description": "Output from a prompt execution"
             },
-            "PromptRef-Input": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the prompt"
-                    },
-                    "version_list": {
-                        "items": {
-                            "type": "integer"
-                        },
-                        "type": "array",
-                        "title": "Version List",
-                        "description": "List of prompt versions to test in the experiment"
-                    },
-                    "variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
-                        },
-                        "type": "array",
-                        "title": "Variable Mapping",
-                        "description": "Mapping of prompt variables to dataset columns"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "version_list",
-                    "variable_mapping"
-                ],
-                "title": "PromptRef",
-                "description": "Reference to a prompt configuration"
-            },
-            "PromptRef-Output": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the prompt"
-                    },
-                    "version_list": {
-                        "items": {
-                            "type": "integer"
-                        },
-                        "type": "array",
-                        "title": "Version List",
-                        "description": "List of prompt versions to test in the experiment"
-                    },
-                    "variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
-                        },
-                        "type": "array",
-                        "title": "Variable Mapping",
-                        "description": "Mapping of prompt variables to dataset columns"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "version_list",
-                    "variable_mapping"
-                ],
-                "title": "PromptRef",
-                "description": "Reference to a prompt configuration"
-            },
             "PromptResult": {
                 "properties": {
-                    "name": {
+                    "prompt_key": {
                         "type": "string",
+                        "title": "Prompt Key",
+                        "description": "Prompt key: 'saved:name:version' or 'unsaved:auto_name'"
+                    },
+                    "prompt_type": {
+                        "type": "string",
+                        "title": "Prompt Type",
+                        "description": "Type: 'saved' or 'unsaved'"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Name",
-                        "description": "Name of the prompt"
+                        "description": "Name of the prompt (for saved prompts)"
                     },
                     "version": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Version",
-                        "description": "Version of the prompt"
+                        "description": "Version of the prompt (for saved prompts)"
                     },
                     "rendered_prompt": {
                         "type": "string",
@@ -16573,8 +16585,8 @@
                 },
                 "type": "object",
                 "required": [
-                    "name",
-                    "version",
+                    "prompt_key",
+                    "prompt_type",
                     "rendered_prompt",
                     "evals"
                 ],
@@ -17862,6 +17874,33 @@
                     "ToxicityRule"
                 ],
                 "title": "RuleType"
+            },
+            "SavedPromptConfig": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "saved",
+                        "title": "Type",
+                        "default": "saved"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the saved prompt"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the saved prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version"
+                ],
+                "title": "SavedPromptConfig",
+                "description": "Configuration for a saved prompt"
             },
             "SavedPromptRenderingRequest": {
                 "properties": {
@@ -19679,7 +19718,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Annotation for the trace."
+                        "description": "Annotation for this trace."
                     }
                 },
                 "type": "object",
@@ -19857,6 +19896,98 @@
                 ],
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
+            },
+            "UnsavedPromptConfig": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "unsaved",
+                        "title": "Type",
+                        "default": "unsaved"
+                    },
+                    "auto_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Auto Name",
+                        "description": "Auto-generated name (set by backend)"
+                    },
+                    "messages": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "Prompt messages"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "LLM model name"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "LLM provider"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Config",
+                        "description": "LLM config settings"
+                    },
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "Variables (auto-detected if not provided)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages",
+                    "model_name",
+                    "model_provider"
+                ],
+                "title": "UnsavedPromptConfig",
+                "description": "Configuration for an unsaved prompt"
             },
             "UnsavedPromptRenderingRequest": {
                 "properties": {
