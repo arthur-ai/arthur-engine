@@ -4,23 +4,17 @@ import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
+import { BucketProvider } from "../context/bucket-context";
 import { useSelectionStore } from "../stores/selection.store";
-import { flattenSpans } from "../utils/spans";
+import { buildThresholdsFromSample } from "../utils/duration";
+import { flattenSpans, getSpanDuration } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
-import {
-  SpanDetails,
-  SpanDetailsHeader,
-  SpanDetailsPanels,
-  SpanDetailsWidgets,
-} from "./SpanDetails";
+import { DrawerPagination } from "./DrawerPagination";
+import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
 import { SpanTree } from "./SpanTree";
 
 import { CopyableChip } from "@/components/common";
@@ -48,10 +42,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   const refreshMetrics = useMutation({
     mutationFn: async () => {
-      const [, data] = await Promise.all([
-        wait(1000),
-        computeTraceMetrics(api!, { traceId: id! }),
-      ]);
+      const [, data] = await Promise.all([wait(1000), computeTraceMetrics(api!, { traceId: id! })]);
 
       return data;
     },
@@ -63,10 +54,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const name = trace?.root_spans?.[0]?.span_name;
 
   // Flatten nested spans recursively
-  const flatSpans = useMemo(
-    () => flattenSpans(trace?.root_spans ?? []),
-    [trace]
-  );
+  const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
 
   const rootSpan = trace?.root_spans?.[0];
 
@@ -76,94 +64,100 @@ export const TraceDrawerContent = ({ id }: Props) => {
     if (!selectedSpanId) {
       select("span", rootSpan.span_id);
     }
+
+    if (flatSpans.findIndex((span) => span.span_id === selectedSpanId) === -1) {
+      select("span", rootSpan.span_id);
+    }
   });
 
   useEffect(onOpenDrawer, []);
 
+  const thresholds = useMemo(() => buildThresholdsFromSample(flatSpans.map((span) => getSpanDuration(span) ?? 0)), [flatSpans]);
+
   if (!trace) return null;
 
-  const selectedSpan = flatSpans.find(
-    (span) => span.span_id === selectedSpanId
-  );
+  const selectedSpan = flatSpans.find((span) => span.span_id === selectedSpanId);
 
   return (
-    <Stack spacing={0} sx={{ height: "100%" }}>
-      <Stack
-        direction="row"
-        spacing={0}
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{
-          px: 4,
-          py: 2,
-          backgroundColor: "grey.100",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Stack direction="column" gap={0}>
-          <Typography variant="body2" color="text.secondary">
-            Trace Details
-          </Typography>
-          <Stack direction="row" gap={2}>
-            <Typography variant="h5" color="text.primary" fontWeight="bold">
-              {name}
+    <BucketProvider thresholds={thresholds}>
+      <Stack spacing={0} sx={{ height: "100%" }}>
+        <Stack
+          direction="row"
+          spacing={0}
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{
+            px: 4,
+            py: 2,
+            backgroundColor: "grey.100",
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Stack direction="column" gap={0}>
+            <Typography variant="body2" color="text.secondary">
+              Trace Details
             </Typography>
-            <CopyableChip
-              label={id!}
-              sx={{
-                fontFamily: "monospace",
-              }}
-            />
+            <Stack direction="row" gap={2}>
+              <Typography variant="h5" color="text.primary" fontWeight="bold">
+                {name}
+              </Typography>
+              <CopyableChip
+                label={id!}
+                sx={{
+                  fontFamily: "monospace",
+                }}
+              />
+            </Stack>
+          </Stack>
+
+          <Stack gap={2} alignItems="flex-end">
+            <ButtonGroup variant="outlined" size="small" disableElevation>
+              <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
+                Refresh Metrics
+              </Button>
+              <AddToDatasetDrawer traceId={id} />
+            </ButtonGroup>
           </Stack>
         </Stack>
 
-        <Stack gap={2} alignItems="flex-end">
-          <ButtonGroup variant="outlined" size="small" disableElevation>
-            <Button
-              loading={refreshMetrics.isPending}
-              onClick={() => refreshMetrics.mutate()}
-              startIcon={<RefreshIcon />}
-            >
-              Refresh Metrics
-            </Button>
-            <AddToDatasetDrawer traceId={id} />
-          </ButtonGroup>
-        </Stack>
-      </Stack>
+        <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
+          <DrawerPagination />
+        </Box>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: "2fr 3fr",
-          gap: 0,
-          height: "100%",
-          overflow: "auto",
-        }}
-      >
         <Box
           sx={{
-            borderRight: "1px solid",
-            borderColor: "divider",
-            p: 2,
-            backgroundColor: "grey.100",
+            display: "grid",
+            gridTemplateColumns: "2fr 3fr",
+            gap: 0,
+            height: "100%",
             overflow: "auto",
-            maxHeight: "100%",
           }}
         >
-          {rootSpan && <SpanTree spans={[rootSpan]} />}
+          <Box
+            sx={{
+              borderRight: "1px solid",
+              borderColor: "divider",
+              p: 2,
+              backgroundColor: "grey.100",
+              overflow: "auto",
+              maxHeight: "100%",
+            }}
+          >
+            {rootSpan && <SpanTree spans={[rootSpan]} />}
+          </Box>
+          <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
+            {selectedSpan && (
+              <SpanDetails span={selectedSpan}>
+                <SpanDetailsHeader />
+                <SpanDetailsWidgets />
+                <SpanDetailsPanels />
+              </SpanDetails>
+            )}
+          </Box>
         </Box>
-        <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
-          {selectedSpan && (
-            <SpanDetails span={selectedSpan}>
-              <SpanDetailsHeader />
-              <SpanDetailsWidgets />
-              <SpanDetailsPanels />
-            </SpanDetails>
-          )}
-        </Box>
-      </Box>
-    </Stack>
+      </Stack>
+    </BucketProvider>
   );
 };
 
@@ -188,20 +182,11 @@ export const TraceContentSkeleton = () => {
           <Skeleton variant="text" width={200} height={32} />
         </Stack>
 
-        <Skeleton
-          variant="rounded"
-          width={200}
-          height={32}
-          sx={{ borderRadius: 16 }}
-        />
+        <Skeleton variant="rounded" width={200} height={32} sx={{ borderRadius: 16 }} />
       </Stack>
 
       <Box sx={{ flexGrow: 1, p: 4 }}>
-        <Skeleton
-          variant="rectangular"
-          height="100%"
-          sx={{ borderRadius: 1 }}
-        />
+        <Skeleton variant="rectangular" height="100%" sx={{ borderRadius: 1 }} />
       </Box>
     </Stack>
   );

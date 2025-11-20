@@ -1,8 +1,8 @@
-import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
 import { Stack, Typography } from "@mui/material";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useEffectEvent } from "react";
 
+import { TokenCostTooltip, TokenCountTooltip } from "../data/common";
 import { getSessionTotals } from "../utils/sessions";
 
 import { TraceRenderer } from "./session/TraceRenderer";
@@ -10,7 +10,6 @@ import { TraceRenderer } from "./session/TraceRenderer";
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
 import { getSession } from "@/services/tracing";
-import { TokenCountTooltip } from "../data/common";
 
 type Props = {
   id: string;
@@ -36,7 +35,7 @@ export const SessionDrawerContent = ({ id }: Props) => {
     initOnTraces();
   }, [session.traces]);
 
-  const totals = getSessionTotals(session);
+  const { token, cost } = getSessionTotals(session);
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
@@ -63,12 +62,9 @@ export const SessionDrawerContent = ({ id }: Props) => {
       </Stack>
 
       <Stack gap={2} sx={{ p: 4 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <TokenCountTooltip
-            prompt={totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT]}
-            completion={totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]}
-            total={totals[SemanticConventions.LLM_TOKEN_COUNT_TOTAL]}
-          />
+        <Stack direction="row" alignItems="center" gap={2}>
+          <TokenCountTooltip prompt={token.prompt} completion={token.completion} total={token.total} />
+          <TokenCostTooltip prompt={cost.prompt} completion={cost.completion} total={cost.total} />
         </Stack>
         <Typography variant="body1" color="text.primary" sx={{ my: 0 }}>
           <strong>{session.count} trace(s)</strong> in this session

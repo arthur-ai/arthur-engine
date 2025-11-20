@@ -3,9 +3,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
+import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
 import { useFilterStore } from "../../stores/filter.store";
 import { useTracesHistoryStore } from "../../stores/history.store";
+import { usePaginationContext } from "../../stores/pagination-context";
+import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
@@ -26,9 +29,11 @@ export function TraceLevel() {
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const push = useTracesHistoryStore((state) => state.push);
-  const timeRange = useFilterStore((state) => state.timeRange);
 
+  const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
+
+  const setContext = usePaginationContext((state) => state.actions.setContext);
 
   const api = useApi()!;
 
@@ -68,6 +73,20 @@ export function TraceLevel() {
     [task?.id, api]
   );
 
+  const handleRowClick = (row: TraceMetadataResponse) => {
+    setContext({
+      type: "trace",
+      ids: data?.traces.map((trace) => trace.trace_id) ?? [],
+    });
+
+    push({
+      type: "trace",
+      id: row.trace_id,
+    });
+  };
+
+  const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
+
   if (error) {
     return <Alert severity="error">There was an error fetching traces.</Alert>;
   }
@@ -77,16 +96,15 @@ export function TraceLevel() {
       <FiltersRow />
       {data?.traces?.length ? (
         <>
-          <TracesTable
-            table={table}
-            loading={isFetching}
-            onRowClick={(row) => {
-              push({
-                type: "trace",
-                id: row.original.trace_id,
-              });
-            }}
-          />
+          <BucketProvider thresholds={thresholds}>
+            <TracesTable
+              table={table}
+              loading={isFetching}
+              onRowClick={(row) => {
+                handleRowClick(row.original);
+              }}
+            />
+          </BucketProvider>
           <TablePagination
             component="div"
             count={data?.count ?? 0}

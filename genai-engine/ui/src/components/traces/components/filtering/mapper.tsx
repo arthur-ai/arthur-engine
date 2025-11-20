@@ -32,6 +32,10 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       return (request[key] = [filter.value].flat());
     }
 
+    if (key === "user_ids") {
+      return (request[key] = [filter.value].flat());
+    }
+
     const keyPart = OPERATOR_TO_KEY_PART.get(filter.operator);
 
     if (keyPart) {

@@ -3,12 +3,10 @@ import duration from "dayjs/plugin/duration";
 
 dayjs.extend(duration);
 
-const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
-
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "short",
   timeStyle: "long",
-  timeZone,
+  timeZone: "UTC",
 });
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -66,7 +64,10 @@ export function formatCurrency(amount: number) {
 }
 
 export function formatDuration(duration: number) {
-  return dayjs.duration(duration).format("HH:mm:ss");
+  return dayjs
+    .duration(+duration.toPrecision(3), "millisecond")
+    .format("H[h] M[m] s[s] SSS[ms]")
+    .replace(/\b0[hmst]\b/g, "");
 }
 
 /**
