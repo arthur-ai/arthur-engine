@@ -8,6 +8,7 @@ const OPERATOR_TO_LABEL: Record<Operator, string> = {
   [Operators.EQUALS]: "=",
   [Operators.IN]: "In",
   [Operators.NOT_IN]: "Not In",
+  [Operators.CONTAINS]: "Contains",
 };
 
 export const getOperatorLabel = (operator: Operator) => {

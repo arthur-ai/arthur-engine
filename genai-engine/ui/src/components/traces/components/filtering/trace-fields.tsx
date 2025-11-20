@@ -10,7 +10,7 @@ import { getEnumOptionLabel } from "./utils";
 import { Api } from "@/lib/api";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { getFilteredSessions, getFilteredTraces } from "@/services/tracing";
+import { getFilteredSessions, getFilteredTraces, getUsers } from "@/services/tracing";
 
 export const TRACE_FIELDS = [
   createPrimitiveField({
@@ -129,5 +129,42 @@ export const TRACE_FIELDS = [
 
       return firstValue + additionalValues;
     },
+  }),
+
+  /*
+    createDynamicEnumField creates a field definition for filter fields whose options are
+    fetched at runtime, rather than being static. It defines enum fields where the options
+    come from an API call, not a fixed list. Used for fields like:
+      trace_ids — fetches available trace IDs
+      session_ids — fetches available session IDs
+      user_ids — fetches available user IDs
+      span_ids — fetches available span IDs
+   */
+  createDynamicEnumField<{ taskId: string; api: Api<unknown> }, "user_ids">({
+    name: "user_ids",
+    type: "dynamic_enum",
+    operators: [EnumOperators.IN, EnumOperators.EQUALS],
+    itemToStringLabel: undefined,
+    useData: function useData({ taskId, api }) {
+      const timeRange = useFilterStore((state) => state.timeRange);
+
+      const params = {
+        taskId,
+        page: 0,
+        pageSize: MAX_PAGE_SIZE,
+        filters: [],
+        timeRange,
+      };
+
+      const { data, isLoading } = useQuery({
+        queryKey: queryKeys.users.listPaginated(params),
+        queryFn: () => getUsers(api, params),
+        select: (data) => data.users.map((user) => user.user_id),
+      });
+
+      return { data: data ?? [], loading: isLoading };
+    },
+    getTriggerClassName: () => "",
+    renderValue: (value) => [value].flat().join(", "),
   }),
 ] as const satisfies Field[];

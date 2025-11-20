@@ -35,11 +35,31 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
     const scrollableRef = useRef<HTMLDivElement>(null);
     const setFilters = useFilterStore((state) => state.setFilters);
 
+    const isFilterComplete = (item: { name: string; operator: Operator | ""; value: string | string[] }): boolean => {
+      // Check if name is non-empty
+      if (!item.name || item.name.trim() === "") {
+        return false;
+      }
+
+      // Check if operator is non-empty and valid (not just "")
+      if (!item.operator) {
+        return false;
+      }
+
+      // Check if value is non-empty (string or array)
+      if (Array.isArray(item.value)) {
+        return item.value.length > 0;
+      }
+      return typeof item.value === "string" && item.value.trim() !== "";
+    };
+
     const form = useAppForm({
       ...sharedFormOptions,
       onSubmit: async ({ value }) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        setFilters(value.config.map(({ id: _, ...item }) => item) as IncomingFilter[]);
+        // Filter out incomplete filters before mapping and setting them
+        const completeFilters = value.config.filter(isFilterComplete);
+
+        setFilters(completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[]);
       },
     });
 
@@ -121,9 +141,13 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
 
       const config = useStore(field.store, (state) => state.value);
 
-      const operatorItems = useMemo(() => getAvailableOperators(allMetrics, config.name)?.map((operator) => operator), [allMetrics, config.name]);
+      const operatorItems = useMemo(
+        () => getAvailableOperators(allMetrics, config?.name ?? "")?.map((operator) => operator),
+        [allMetrics, config?.name]
+      );
 
       const stage = (() => {
+        if (!config) return 0;
         switch (true) {
           case !!config.name && !!config.operator && config.value !== "":
             return 3;
@@ -247,6 +271,11 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
           onMount: validators.numeric(fieldConfig.min ?? -Infinity, fieldConfig.max ?? Infinity),
           onChange: validators.numeric(fieldConfig.min ?? -Infinity, fieldConfig.max ?? Infinity),
         };
+      } else if (fieldConfig.type === "text") {
+        fieldValidators = {
+          onMount: validators.value,
+          onChange: validators.value,
+        };
       }
 
       return (
@@ -304,6 +333,33 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                     <NumberField.Input className="h-full" render={<TextField variant="filled" label="Value" size="small" />} />
                   </NumberField.Group>
                 </field.NumberField>
+              );
+            }
+
+            if (fieldConfig.type === "text") {
+              return (
+                <TextField
+                  variant="filled"
+                  label="Value"
+                  size="small"
+                  value={field.state.value || ""}
+                  onChange={(e) => {
+                    field.handleChange(e.target.value);
+                  }}
+                  onBlur={() => {
+                    field.handleBlur();
+                    onClose();
+                  }}
+                  sx={{
+                    width: 200,
+                    "& .MuiAutocomplete-inputRoot": {
+                      borderRadius: 0,
+                      "& fieldset": {
+                        borderInlineWidth: 0,
+                      },
+                    },
+                  }}
+                />
               );
             }
           }}

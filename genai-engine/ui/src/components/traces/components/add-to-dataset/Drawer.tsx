@@ -57,11 +57,11 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
     mutationFn: async ({ datasetId, columns }: { datasetId: string; columns: { name: string; value: string }[] }) => {
       // If there are pending columns for this dataset, merge them with the submitted columns
       const columnsForDataset = pendingColumns[datasetId] || [];
-      const allColumnNames = new Set([...columnsForDataset, ...columns.map(c => c.name)]);
+      const allColumnNames = new Set([...columnsForDataset, ...columns.map((c) => c.name)]);
 
       // Create the row data with all columns (pending + submitted)
-      const rowData = Array.from(allColumnNames).map(columnName => {
-        const submittedColumn = columns.find(c => c.name === columnName);
+      const rowData = Array.from(allColumnNames).map((columnName) => {
+        const submittedColumn = columns.find((c) => c.name === columnName);
         return {
           column_name: columnName,
           column_value: submittedColumn?.value || "",
@@ -81,7 +81,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
     onSuccess: (_data, variables) => {
       snackbar.showSnackbar("Row added", "success");
       // Clear pending columns for this dataset
-      setPendingColumns(prev => {
+      setPendingColumns((prev) => {
         const updated = { ...prev };
         delete updated[variables.datasetId];
         return updated;
@@ -128,9 +128,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
   const transformColumns = selectedTransform?.definition.columns.map((col) => col.column_name) || [];
 
   // Merge dataset columns with transform columns to get union of all columns
-  const datasetOnlyColumns = selectedDataset?.id
-    ? (pendingColumns[selectedDataset.id] || latestVersion?.column_names || [])
-    : [];
+  const datasetOnlyColumns = selectedDataset?.id ? pendingColumns[selectedDataset.id] || latestVersion?.column_names || [] : [];
 
   // Create union of dataset columns and transform columns
   const allColumnNames = new Set([...datasetOnlyColumns, ...transformColumns]);
@@ -163,7 +161,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
     }
 
     // Add column to pending columns
-    setPendingColumns(prev => ({
+    setPendingColumns((prev) => ({
       ...prev,
       [selectedDataset.id]: [...currentColumns, columnName],
     }));
@@ -197,14 +195,14 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
 
       setSavedTransformId(response.data.id);
       transformsQuery.refetch();
-      
+
       setTimeout(() => {
         setShowSaveTransformDialog(false);
         snackbar.showSnackbar("Transform saved", "success");
       }, 100);
     } catch (error: any) {
       let errorMessage = "Failed to save transform";
-      
+
       if (error.response?.status === 409) {
         errorMessage = `A transform named "${name}" already exists. Please use a different name.`;
       } else if (error.response?.data?.detail) {
@@ -212,7 +210,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       throw new Error(errorMessage);
     }
   };
@@ -328,8 +326,8 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
                               !selectedDataset
                                 ? "Select a dataset first"
                                 : !hasTransforms
-                                ? "No transforms available for this dataset"
-                                : "Select a saved transform"
+                                  ? "No transforms available for this dataset"
+                                  : "Select a saved transform"
                             }
                           />
                         )}
@@ -342,12 +340,12 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
                             if (executedColumns) {
                               // Get existing dataset columns
                               const existingDatasetColumns = latestVersion?.column_names || [];
-                              const executedColumnNames = new Set(executedColumns.map(col => col.name));
+                              const executedColumnNames = new Set(executedColumns.map((col) => col.name));
 
                               // Create columns for dataset columns that aren't in the transform
                               const datasetOnlyColumns = existingDatasetColumns
-                                .filter(columnName => !executedColumnNames.has(columnName))
-                                .map(columnName => ({
+                                .filter((columnName) => !executedColumnNames.has(columnName))
+                                .map((columnName) => ({
                                   name: columnName,
                                   value: "",
                                   path: "",
@@ -372,21 +370,11 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
               {selectedDataset && (
                 <>
                   {datasetColumns.length > 0 && (
-                    <Configurator
-                      form={form}
-                      dataset={selectedDataset}
-                      spans={flatSpans}
-                      onAddColumn={() => setShowAddColumnDialog(true)}
-                    />
+                    <Configurator form={form} dataset={selectedDataset} spans={flatSpans} onAddColumn={() => setShowAddColumnDialog(true)} />
                   )}
 
                   {datasetColumns.length === 0 && (
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={() => setShowAddColumnDialog(true)}
-                      fullWidth
-                    >
+                    <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setShowAddColumnDialog(true)} fullWidth>
                       Add New Column
                     </Button>
                   )}
@@ -394,9 +382,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
               )}
             </Stack>
 
-            {selectedDataset && datasetColumns.length > 0 && (
-              <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} />
-            )}
+            {selectedDataset && datasetColumns.length > 0 && <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} />}
           </form>
         </Drawer.Content>
       </Drawer>

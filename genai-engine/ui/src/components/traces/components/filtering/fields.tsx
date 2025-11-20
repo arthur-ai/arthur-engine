@@ -32,44 +32,27 @@ export type DynamicEnumField<TCtx> = {
 
 export type TextField = {
   type: "text";
-  operators: [Extract<Operator, "eq">];
+  operators: Extract<Operator, "eq" | "contains">[];
 };
 
 export type FreeSoloField = {
   type: "free_solo";
   operators: Extract<Operator, "eq" | "in">[];
-  getAutocompleteProps?: (
-    value?: string | string[]
-  ) => Partial<AutocompleteProps<string, boolean, boolean, boolean>>;
+  getAutocompleteProps?: (value?: string | string[]) => Partial<AutocompleteProps<string, boolean, boolean, boolean>>;
 };
 
-export type PrimitiveFieldType =
-  | NumericField
-  | EnumField
-  | TextField
-  | FreeSoloField;
+export type PrimitiveFieldType = NumericField | EnumField | TextField | FreeSoloField;
 
-export function createPrimitiveField<
-  Type extends PrimitiveFieldType,
-  const Name extends string
->(field: { name: Name } & Type) {
+export function createPrimitiveField<Type extends PrimitiveFieldType, const Name extends string>(field: { name: Name } & Type) {
   return field;
 }
 
-export function createDynamicEnumField<TCtx, const Name extends string>(
-  field: { name: Name } & DynamicEnumField<TCtx>
-) {
+export function createDynamicEnumField<TCtx, const Name extends string>(field: { name: Name } & DynamicEnumField<TCtx>) {
   return field;
 }
 
-export function filterFields<
-  const T extends readonly Field[],
-  N extends FieldNames<T>
->(fields: T, excludedFields: N[]) {
-  return fields.filter(
-    (item): item is Exclude<T[number], { name: N }> =>
-      !excludedFields.includes(item.name as N)
-  );
+export function filterFields<const T extends readonly Field[], N extends FieldNames<T>>(fields: T, excludedFields: N[]) {
+  return fields.filter((item): item is Exclude<T[number], { name: N }> => !excludedFields.includes(item.name as N));
 }
 
 export type Field =

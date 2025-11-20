@@ -35,13 +35,7 @@ export const PreviewTable = withForm({
             Preview: 1 row will be added
           </Typography>
           <ButtonGroup size="small">
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<SaveIcon />}
-              onClick={onSaveTransform}
-              disabled={!hasData}
-            >
+            <Button variant="outlined" color="primary" startIcon={<SaveIcon />} onClick={onSaveTransform} disabled={!hasData}>
               Save as Transform
             </Button>
             <Drawer.Close render={<Button variant="outlined" color="primary" startIcon={<CloseIcon />} />}>Cancel</Drawer.Close>

@@ -1,5 +1,6 @@
-import { NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
 import { TransformDefinition, Column } from "../form/shared";
+
+import { NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
 
 // Converts value to string: primitives as-is, objects/arrays via JSON.stringify
 function stringifyValue(value: any): string {
@@ -7,7 +8,7 @@ function stringifyValue(value: any): string {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
-  
+
   try {
     return JSON.stringify(value);
   } catch (error) {
@@ -16,10 +17,7 @@ function stringifyValue(value: any): string {
 }
 
 // Executes transform on spans, returns extracted columns. Uses first match if multiple spans found.
-export function executeTransform(
-  spans: NestedSpanWithMetricsResponse[],
-  transform: TransformDefinition
-): Column[] {
+export function executeTransform(spans: NestedSpanWithMetricsResponse[], transform: TransformDefinition): Column[] {
   const columns: Column[] = [];
 
   for (const colDef of transform.columns) {
@@ -40,19 +38,20 @@ export function executeTransform(
 
       columns.push({
         name: colDef.column_name,
-        value: value !== undefined && value !== null 
-          ? stringifyValue(value) 
-          : stringifyValue(colDef.fallback ?? ""),
+        value: value !== undefined && value !== null ? stringifyValue(value) : stringifyValue(colDef.fallback ?? ""),
         path: `${span.span_name}.${colDef.attribute_path}`,
         span_name: colDef.span_name,
         attribute_path: colDef.attribute_path,
         matchCount: matchingSpans.length,
         selectedSpanId: span.span_id,
-        allMatches: matchingSpans.length > 1 ? matchingSpans.map(s => ({
-          span_id: s.span_id,
-          span_name: s.span_name || "unknown",
-          extractedValue: stringifyValue(getNestedValue(s.raw_data, colDef.attribute_path)),
-        })) : undefined,
+        allMatches:
+          matchingSpans.length > 1
+            ? matchingSpans.map((s) => ({
+                span_id: s.span_id,
+                span_name: s.span_name || "unknown",
+                extractedValue: stringifyValue(getNestedValue(s.raw_data, colDef.attribute_path)),
+              }))
+            : undefined,
       });
     }
   }
@@ -77,4 +76,3 @@ function getNestedValue(obj: any, path: string): any {
 
   return current;
 }
-

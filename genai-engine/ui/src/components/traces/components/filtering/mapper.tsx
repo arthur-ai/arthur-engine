@@ -37,6 +37,16 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       return (request[key] = Number(filter.value));
     }
 
+    // Special handling for span_name with CONTAINS operator
+    if (key === "span_name" && filter.operator === Operators.CONTAINS) {
+      return (request["span_name_contains"] = filter.value as string);
+    }
+
+    // Special handling for span_name with EQUALS operator (backend expects "span_name", not "span_name_eq")
+    if (key === "span_name" && filter.operator === Operators.EQUALS) {
+      return (request["span_name"] = filter.value as string);
+    }
+
     const keyPart = OPERATOR_TO_KEY_PART.get(filter.operator);
 
     if (keyPart) {
