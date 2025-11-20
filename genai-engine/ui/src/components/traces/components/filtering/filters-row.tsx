@@ -2,7 +2,7 @@ import { ScrollArea } from "@base-ui-components/react/scroll-area";
 import { Close, Search } from "@mui/icons-material";
 import { Button, Paper, Stack, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 import { useFilterStore } from "../../stores/filter.store";
@@ -34,6 +34,8 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
     const setFilters = useFilterStore((state) => state.setFilters);
+    const storeFilters = useFilterStore((state) => state.filters);
+    const hasInitializedRef = useRef(false);
 
     const isFilterComplete = (item: { name: string; operator: Operator | ""; value: string | string[] }): boolean => {
       // Check if name is non-empty
@@ -62,6 +64,29 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
         setFilters(completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[]);
       },
     });
+
+    // Get current form config to check if form is empty
+    const currentFormConfig = useStore(form.store, (state) => state.values.config);
+
+    // Sync form with store filters when they're loaded from URL
+    // This only runs once when filters are first loaded from the store
+    useEffect(() => {
+      // Only initialize if:
+      // 1. We haven't initialized yet
+      // 2. Store has filters
+      // 3. Form is currently empty (to avoid overwriting user edits)
+      if (!hasInitializedRef.current && storeFilters.length > 0 && currentFormConfig.length === 0) {
+        const configFromStore = storeFilters.map((filter) => ({
+          id: uuidv4(),
+          name: filter.name,
+          operator: filter.operator,
+          value: filter.value,
+        }));
+        form.setFieldValue("config", configFromStore);
+        hasInitializedRef.current = true;
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [storeFilters, currentFormConfig.length]); // Watch storeFilters and form state
 
     const handleClose = () => {
       if (!scrollableRef.current) return;
