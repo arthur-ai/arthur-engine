@@ -24,9 +24,7 @@ const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
 const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultContent = "", content, toolCalls, dragHandleProps }) => {
   const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
-  const [toolCallsValue, setToolCallsValue] = useState(
-    toolCalls && toolCalls.length > 0 ? JSON.stringify(toolCalls, null, 2) : ""
-  );
+  const [toolCallsValue, setToolCallsValue] = useState(toolCalls && toolCalls.length > 0 ? JSON.stringify(toolCalls, null, 2) : "");
 
   const handleRoleChange = useCallback(
     (event: SelectChangeEvent) => {
@@ -192,13 +190,9 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
       </div>
       <div className="mt-2">
         {toolCalls && toolCalls.length > 0 && (!content || content === "") ? (
-          <HighlightedInputComponent 
-            value={toolCallsValue} 
-            onChange={handleToolCallsChange} 
-            label="Tool Calls (JSON)"
-          />
+          <HighlightedInputComponent value={toolCallsValue} onChange={handleToolCallsChange} />
         ) : (
-          <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" />
+          <HighlightedInputComponent value={inputValue} onChange={handleContentChange} />
         )}
       </div>
     </div>
