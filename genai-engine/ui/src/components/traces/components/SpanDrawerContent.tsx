@@ -2,28 +2,21 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Box, Button, ButtonGroup, Stack, Typography } from "@mui/material";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { useTracesHistoryStore } from "../stores/history.store";
+import { useSelectionStore } from "../stores/selection.store";
 import { isSpanOfType } from "../utils/spans";
 
-import {
-  SpanDetails,
-  SpanDetailsPanels,
-  SpanDetailsWidgets,
-} from "./SpanDetails";
+import { DrawerPagination } from "./DrawerPagination";
+import { SpanDetails, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
 
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
+import { queryKeys } from "@/lib/queryKeys";
 import { computeSpanMetrics, getSpan } from "@/services/tracing";
 import { wait } from "@/utils";
-import { queryKeys } from "@/lib/queryKeys";
-import { useSelectionStore } from "../stores/selection.store";
 
 type Props = {
   id: string;
@@ -38,16 +31,14 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const select = useSelectionStore((state) => state.select);
 
   const { data: span } = useSuspenseQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.spans.byId(id),
     queryFn: () => getSpan(api!, { spanId: id! }),
   });
 
   const refreshMetrics = useMutation({
     mutationFn: async () => {
-      const [, data] = await Promise.all([
-        wait(1000),
-        computeSpanMetrics(api!, { spanId: id! }),
-      ]);
+      const [, data] = await Promise.all([wait(1000), computeSpanMetrics(api!, { spanId: id! })]);
 
       return data;
     },
@@ -103,13 +94,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
           </Stack>
           <Typography variant="body2" color="text.secondary">
             Part of trace{" "}
-            <Button
-              variant="text"
-              size="small"
-              color="primary"
-              sx={{ fontFamily: "monospace" }}
-              onClick={onOpenTraceDrawer}
-            >
+            <Button variant="text" size="small" color="primary" sx={{ fontFamily: "monospace" }} onClick={onOpenTraceDrawer}>
               {span.trace_id}
             </Button>
           </Typography>
@@ -119,18 +104,10 @@ export const SpanDrawerContent = ({ id }: Props) => {
           <Stack direction="row" spacing={0} sx={{ marginLeft: "auto" }}>
             {isLLM && (
               <ButtonGroup variant="outlined" size="small" disableElevation>
-                <Button
-                  onClick={handleOpenInPlayground}
-                  disabled={!span.task_id}
-                  startIcon={<OpenInNewIcon />}
-                >
+                <Button onClick={handleOpenInPlayground} disabled={!span.task_id} startIcon={<OpenInNewIcon />}>
                   Open in Playground
                 </Button>
-                <Button
-                  loading={refreshMetrics.isPending}
-                  onClick={() => refreshMetrics.mutate()}
-                  startIcon={<RefreshIcon />}
-                >
+                <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
                   Refresh Metrics
                 </Button>
               </ButtonGroup>
@@ -138,6 +115,11 @@ export const SpanDrawerContent = ({ id }: Props) => {
           </Stack>
         </Stack>
       </Stack>
+
+      <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
+        <DrawerPagination />
+      </Box>
+
       <Box sx={{ overflow: "auto", maxHeight: "100%", px: 4, py: 2 }}>
         <SpanDetails span={span}>
           <SpanDetailsWidgets />
