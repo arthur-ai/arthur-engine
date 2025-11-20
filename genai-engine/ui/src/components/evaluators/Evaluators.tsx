@@ -51,9 +51,11 @@ const Evaluators: React.FC = () => {
 
   const { evals, count, error, isLoading, refetch } = useEvals(task?.id, filters);
 
-  const createMutation = useCreateEvalMutation(task?.id, () => {
+  const createMutation = useCreateEvalMutation(task?.id, (evalData) => {
     setIsCreateModalOpen(false);
     refetch();
+    // Navigate to the newly created eval's detail page
+    navigate(`/tasks/${taskId}/evaluators/${evalData.name}/versions/${evalData.version}`);
   });
 
   const deleteMutation = useDeleteEvalMutation(task?.id, () => {
