@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.200"
+        "version": "2.1.205"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -4660,9 +4660,9 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Version",
-                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -4729,9 +4729,9 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Version",
-                            "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -5334,9 +5334,9 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Version",
-                            "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -5425,9 +5425,9 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Version",
-                            "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -5703,9 +5703,9 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Version",
-                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -5784,9 +5784,9 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Version",
-                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "tag",
@@ -6678,6 +6678,79 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions": {
+            "post": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Execute Transform Endpoint",
+                "description": "Execute a transform against a trace to extract data for dataset rows. Returns data in the format expected by the create dataset version API's rows_to_add parameter.",
+                "operationId": "execute_transform_endpoint_api_v2_datasets__dataset_id__transforms__transform_id__extractions_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset."
+                    },
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to execute.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to execute."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExecuteTransformRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExecuteTransformResponse"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -8325,9 +8398,9 @@
                         "schema": {
                             "type": "string",
                             "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -8394,9 +8467,9 @@
                         "schema": {
                             "type": "string",
                             "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -8852,9 +8925,9 @@
                         "schema": {
                             "type": "string",
                             "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -9125,9 +9198,9 @@
                         "schema": {
                             "type": "string",
                             "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "task_id",
@@ -9206,9 +9279,9 @@
                         "schema": {
                             "type": "string",
                             "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
                         "name": "tag",
@@ -12126,6 +12199,37 @@
                     "hint": "specific individual's blood type"
                 }
             },
+            "ExecuteTransformRequest": {
+                "properties": {
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the trace to execute the transform against."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "trace_id"
+                ],
+                "title": "ExecuteTransformRequest"
+            },
+            "ExecuteTransformResponse": {
+                "properties": {
+                    "rows_extracted": {
+                        "items": {
+                            "$ref": "#/components/schemas/NewDatasetVersionRowRequest"
+                        },
+                        "type": "array",
+                        "title": "Rows Extracted",
+                        "description": "List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rows_extracted"
+                ],
+                "title": "ExecuteTransformResponse"
+            },
             "ExperimentOutputSource": {
                 "properties": {
                     "json_path": {
@@ -14979,7 +15083,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.200"
+                                "version": "2.1.205"
                             }
                         ]
                     }
@@ -15009,6 +15113,21 @@
                         "type": "array",
                         "title": "Rows To Delete",
                         "description": "List of IDs of rows to be deleted from the new dataset version."
+                    },
+                    "rows_to_delete_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rows To Delete Filter",
+                        "description": "Optional list of column name and value filters. Rows matching ALL specified column name-value pairs (AND condition) will be deleted from the new dataset version. This filter is applied in addition to rows_to_delete."
                     },
                     "rows_to_update": {
                         "items": {
@@ -15045,7 +15164,8 @@
                     "column_name",
                     "column_value"
                 ],
-                "title": "NewDatasetVersionRowColumnItemRequest"
+                "title": "NewDatasetVersionRowColumnItemRequest",
+                "description": "Represents a single column-value pair in a dataset row."
             },
             "NewDatasetVersionRowRequest": {
                 "properties": {
@@ -15062,7 +15182,8 @@
                 "required": [
                     "data"
                 ],
-                "title": "NewDatasetVersionRowRequest"
+                "title": "NewDatasetVersionRowRequest",
+                "description": "Represents a row to be added to a dataset version."
             },
             "NewDatasetVersionUpdateRowRequest": {
                 "properties": {
@@ -15086,7 +15207,8 @@
                     "id",
                     "data"
                 ],
-                "title": "NewDatasetVersionUpdateRowRequest"
+                "title": "NewDatasetVersionUpdateRowRequest",
+                "description": "Represents a row to be updated in a dataset version."
             },
             "NewMetricRequest": {
                 "properties": {

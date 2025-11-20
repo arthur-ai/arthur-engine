@@ -3,6 +3,9 @@ import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOu
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 
+import { useBucketer } from "../context/bucket-context";
+import { Bucket } from "../utils/duration";
+
 import { formatCurrency, formatDuration } from "@/utils/formatters";
 
 type TokenCountProps = {
@@ -12,6 +15,15 @@ type TokenCountProps = {
 };
 
 export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps) => {
+  if (!total)
+    return (
+      <Stack direction="row" alignItems="center" gap={0.5}>
+        <GeneratingTokensOutlinedIcon sx={{ fontSize: 16 }} />
+        <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+          N/A
+        </Typography>
+      </Stack>
+    );
   return (
     <Tooltip
       title={
@@ -35,6 +47,16 @@ export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps
 type TokenCostProps = TokenCountProps;
 
 export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) => {
+  if (!total)
+    return (
+      <Stack direction="row" alignItems="center" gap={0.5}>
+        <TollOutlinedIcon sx={{ fontSize: 16 }} />
+        <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+          N/A
+        </Typography>
+      </Stack>
+    );
+
   return (
     <Tooltip
       title={
@@ -60,12 +82,29 @@ export const TruncatedText = ({ text }: { text: string }) => {
 };
 
 export const DurationCell = ({ duration }: { duration: number }) => {
+  const bucketer = useBucketer();
+  const bucket = duration ? bucketer(duration) : "ok";
+  const color = BUCKET_COLORS[bucket];
+
   return (
-    <Stack gap={0.5} direction="row" alignItems="center">
-      <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} />
-      <Typography variant="body2" color="text.primary" fontWeight={500} className="select-none leading-none">
+    <Stack
+      gap={0.5}
+      direction="row"
+      alignItems="center"
+      color={color}
+      className="px-1 bg-[color-mix(in_oklab,var(--bucket-color)_20%,white)] w-fit border border-(--bucket-color)/50 rounded-md"
+      style={{ "--bucket-color": color } as React.CSSProperties}
+    >
+      <AccessTimeOutlinedIcon sx={{ fontSize: 12 }} />
+      <Typography variant="caption" color={color} fontWeight={500} className="select-none">
         {formatDuration(duration)}
       </Typography>
     </Stack>
   );
+};
+
+export const BUCKET_COLORS: Record<Bucket, string> = {
+  ok: "var(--color-green-700)",
+  warning: "var(--color-amber-700)",
+  bad: "var(--color-red-800)",
 };
