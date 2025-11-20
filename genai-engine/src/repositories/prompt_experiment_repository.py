@@ -313,9 +313,12 @@ class PromptExperimentRepository:
                 if not config.messages or len(config.messages) == 0:
                     raise ValueError("Unsaved prompt must have non-empty messages")
 
-                # Auto-generate name if not provided
-                auto_name = f"unsaved_prompt_{unsaved_prompt_counter}"
-                unsaved_prompt_counter += 1
+                # Use auto_name from frontend if provided, otherwise generate one
+                if config.auto_name is not None and config.auto_name != "":
+                    auto_name = config.auto_name
+                else:
+                    auto_name = f"unsaved_prompt_{unsaved_prompt_counter}"
+                    unsaved_prompt_counter += 1
 
                 # Auto-detect variables if not provided
                 if config.variables is None:

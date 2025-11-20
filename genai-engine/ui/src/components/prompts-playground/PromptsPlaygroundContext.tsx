@@ -37,7 +37,7 @@ export const PromptProvider = ({
   handleRunSingleWithConfig,
   isRunningExperiment,
   runningExperimentId,
-  lastCompletedExperimentId
+  lastCompletedExperimentId,
 }: PromptProviderProps) => {
   return (
     <PromptContext.Provider
@@ -48,7 +48,7 @@ export const PromptProvider = ({
         handleRunSingleWithConfig,
         isRunningExperiment,
         runningExperimentId,
-        lastCompletedExperimentId
+        lastCompletedExperimentId,
       }}
     >
       {children}

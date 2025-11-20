@@ -240,11 +240,13 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   // Find the prompt to get its key for filtering results
   const prompt = state.prompts.find((p) => p.id === promptId);
 
-  // Generate the prompt key (same logic as toExperimentPromptConfig)
+  // Generate the prompt key using the same logic as toExperimentPromptConfig
+  // Saved prompts (not dirty): "saved:{name}:{version}"
+  // Unsaved prompts (including dirty saved prompts): "unsaved:{name or id}"
   const promptKey = prompt
-    ? prompt.name && prompt.version !== null && prompt.version !== undefined
+    ? prompt.name && prompt.version !== null && prompt.version !== undefined && !prompt.isDirty
       ? `saved:${prompt.name}:${prompt.version}`
-      : `unsaved:${prompt.name || 'prompt'}`
+      : `unsaved:${prompt.name || prompt.id}`
     : undefined;
 
   // Use running experiment ID if available, otherwise use last completed
@@ -276,6 +278,18 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   }, [runningExperimentId, refetch]);
 
   const evals = experimentConfig?.eval_list || [];
+
+  // Debug logging
+  useEffect(() => {
+    if (testCases.length > 0) {
+      console.log('=== ResultsTable Debug ===');
+      console.log('promptId:', promptId);
+      console.log('prompt:', prompt);
+      console.log('promptKey:', promptKey);
+      console.log('First test case:', JSON.stringify(testCases[0], null, 2));
+      console.log('Eval list:', evals);
+    }
+  }, [testCases, promptId, prompt, promptKey, evals]);
 
   const handleRowClick = (testCase: TestCaseResult) => {
     setSelectedTestCase(testCase);

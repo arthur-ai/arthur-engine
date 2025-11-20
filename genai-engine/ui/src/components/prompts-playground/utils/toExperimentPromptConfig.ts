@@ -8,8 +8,9 @@ import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-cli
 export const toExperimentPromptConfig = (
   prompt: PromptType
 ): ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig) => {
-  // If prompt has a name and version, it's a saved prompt
-  if (prompt.name && prompt.version !== null && prompt.version !== undefined) {
+  // If prompt has a name and version AND is not dirty, it's a saved prompt
+  // isDirty means the prompt has been modified from its saved version
+  if (prompt.name && prompt.version !== null && prompt.version !== undefined && !prompt.isDirty) {
     return {
       type: "saved",
       name: prompt.name,
@@ -69,8 +70,14 @@ export const toExperimentPromptConfig = (
     config.response_format = prompt.responseFormat;
   }
 
+  // Generate an auto_name for the unsaved prompt
+  // Use the prompt name if available, otherwise use the prompt ID as a unique identifier
+  // Note: Don't add "unsaved_" prefix since the type and prompt key already indicate it's unsaved
+  const auto_name = prompt.name || prompt.id;
+
   return {
     type: "unsaved",
+    auto_name,
     messages,
     model_name: prompt.modelName,
     model_provider: prompt.modelProvider,

@@ -86,21 +86,30 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
     return Array.from(state.keywords.values()).some((value) => !value || value.trim() === "");
   }, [state.keywords, experimentConfig]);
 
+  // Check if model configuration is complete
+  const hasModelConfig = prompt.modelProvider !== "" && prompt.modelName !== "";
+
   // In config mode, disable if experiment is running. In normal mode, disable if prompt is running
   const runDisabled =
-    prompt.modelName === "" ||
+    !hasModelConfig ||
     hasUnsetVariables ||
     (experimentConfig ? isRunningExperiment : prompt.running);
-  const previewDisabled = hasUnsetVariables;
+  const previewDisabled = !hasModelConfig || hasUnsetVariables;
   const isDirty = prompt.isDirty;
   const saveTooltip = isDirty ? "Save unsaved changes" : "Save Prompt";
 
   // Determine the run button tooltip based on disabled state
   let runTooltip = experimentConfig ? "Run Experiment with this Prompt" : "Run Prompt";
-  if (hasUnsetVariables) {
+  if (!hasModelConfig) {
+    if (prompt.modelProvider === "" && prompt.modelName === "") {
+      runTooltip = "Please select a model provider and model before running";
+    } else if (prompt.modelProvider === "") {
+      runTooltip = "Please select a model provider before running";
+    } else if (prompt.modelName === "") {
+      runTooltip = "Please select a model before running";
+    }
+  } else if (hasUnsetVariables) {
     runTooltip = "Please fill in all variable values before running";
-  } else if (prompt.modelName === "") {
-    runTooltip = "Please select a model before running";
   } else if (experimentConfig && isRunningExperiment) {
     runTooltip = "An experiment is currently running";
   } else if (prompt.running) {
@@ -108,7 +117,18 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   }
 
   // Determine the preview button tooltip
-  const previewTooltip = hasUnsetVariables ? "Please fill in all variable values before previewing" : "Preview Rendered Prompt";
+  let previewTooltip = "Preview Rendered Prompt";
+  if (!hasModelConfig) {
+    if (prompt.modelProvider === "" && prompt.modelName === "") {
+      previewTooltip = "Please select a model provider and model before previewing";
+    } else if (prompt.modelProvider === "") {
+      previewTooltip = "Please select a model provider before previewing";
+    } else if (prompt.modelName === "") {
+      previewTooltip = "Please select a model before previewing";
+    }
+  } else if (hasUnsetVariables) {
+    previewTooltip = "Please fill in all variable values before previewing";
+  }
 
   return (
     <>

@@ -585,6 +585,25 @@ const PromptsPlayground = () => {
     return count;
   }, [state.keywords, experimentConfig]);
 
+  // Check if all prompts have model configuration
+  const allPromptsHaveModelConfig = useMemo(() => {
+    return state.prompts.every((prompt) => prompt.modelProvider !== "" && prompt.modelName !== "");
+  }, [state.prompts]);
+
+  // Check what's missing for run all button tooltip
+  const runAllDisabledReason = useMemo(() => {
+    if (!allPromptsHaveModelConfig) {
+      return "All prompts must have a model provider and model selected";
+    }
+    if (blankVariablesCount > 0) {
+      return "Please fill in all variable values before running";
+    }
+    if (isRunningExperiment) {
+      return "An experiment is currently running";
+    }
+    return null;
+  }, [allPromptsHaveModelConfig, blankVariablesCount, isRunningExperiment]);
+
   return (
     <PromptProvider
       state={state}
@@ -662,14 +681,14 @@ const PromptsPlayground = () => {
             <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
               Add Prompt
             </Button>
-            <Tooltip title={blankVariablesCount > 0 ? "Please fill in all variable values before running" : "Run All Prompts"} arrow>
+            <Tooltip title={runAllDisabledReason || "Run All Prompts"} arrow>
               <span>
                 <Button
                   variant="contained"
                   size="small"
                   onClick={handleRunAllPrompts}
                   startIcon={<PlayArrowIcon />}
-                  disabled={blankVariablesCount > 0}
+                  disabled={!!runAllDisabledReason}
                 >
                   Run All Prompts
                 </Button>
