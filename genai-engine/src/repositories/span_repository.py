@@ -13,14 +13,17 @@ from sqlalchemy.orm import Session
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import (
+    AgenticAnnotation,
     SessionMetadata,
     Span,
     TraceMetadata,
     TraceQuerySchema,
     TraceUserMetadata,
 )
+from schemas.request_schemas import AgenticAnnotationRequest
 from services.trace.metrics_integration_service import MetricsIntegrationService
 from services.trace.span_query_service import SpanQueryService
+from services.trace.trace_annotation_service import TraceAnnotationService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from services.trace.tree_building_service import TreeBuildingService
 from utils.trace import validate_span_version
@@ -44,6 +47,7 @@ class SpanRepository:
         self.metrics_repo = metrics_repo
 
         # Initialize services
+        self.trace_annotation_service = TraceAnnotationService(db_session)
         self.trace_ingestion_service = TraceIngestionService(db_session)
         self.span_query_service = SpanQueryService(db_session)
         self.metrics_integration_service = MetricsIntegrationService(
@@ -94,6 +98,13 @@ class SpanRepository:
         trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
             trace_ids=paginated_trace_ids,
             sort_method=pagination_parameters.sort,
+        )
+
+        # add annotation info to trace metadata list
+        trace_metadata_list = (
+            self.trace_annotation_service.append_annotation_info_to_trace_metadata(
+                trace_metadata_list,
+            )
         )
 
         return total_count, trace_metadata_list
@@ -156,7 +167,13 @@ class SpanRepository:
             trace_metadata=trace_metadata_db,
         )
 
-        return traces[0] if traces else None
+        if not traces or traces[0] is None:
+            return None
+
+        # add annotation info to trace responses if it exists
+        return self.trace_annotation_service.append_annotation_info_to_trace_response(
+            traces[0],
+        )
 
     def compute_trace_metrics(
         self,
@@ -295,6 +312,13 @@ class SpanRepository:
             pagination_parameters.sort,
         )
 
+        # add annotation info to trace responses if it exists
+        traces = (
+            self.trace_annotation_service.append_annotation_info_to_trace_responses(
+                traces,
+            )
+        )
+
         return count, traces
 
     def compute_session_metrics(
@@ -333,6 +357,13 @@ class SpanRepository:
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
             pagination_parameters.sort,
+        )
+
+        # add annotation info to trace responses if it exists
+        traces = (
+            self.trace_annotation_service.append_annotation_info_to_trace_responses(
+                traces,
+            )
         )
 
         return count, traces
@@ -516,7 +547,32 @@ class SpanRepository:
             valid_spans,
             pagination_parameters.sort,
         )
+
+        # add annotation info to trace responses if it exists
+        traces = (
+            self.trace_annotation_service.append_annotation_info_to_trace_responses(
+                traces,
+            )
+        )
+
         return total_count, traces
+
+    def annotate_trace(
+        self,
+        trace_id: str,
+        annotation_request: AgenticAnnotationRequest,
+    ) -> AgenticAnnotation:
+        """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
+        return self.trace_annotation_service.annotate_trace(
+            trace_id=trace_id,
+            annotation_request=annotation_request,
+        )
+
+    def delete_annotation_from_trace(self, trace_id: str) -> None:
+        """Delete an annotation from a trace."""
+        self.trace_annotation_service.delete_annotation_by_trace_id(
+            trace_id=trace_id,
+        )
 
     # ============================================================================
     # Testing/Utility Methods

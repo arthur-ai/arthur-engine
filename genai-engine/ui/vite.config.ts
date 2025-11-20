@@ -34,9 +34,14 @@ const injectMeticulousRecordingScript = (mode: string, recordingToken: string | 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const recordingToken = env.METICULOUS_RECORDING_TOKEN;
+  const amplitudeApiKey = env.AMPLITUDE_API_KEY;
 
   return {
     plugins: [injectMeticulousRecordingScript(mode, recordingToken), react(), tailwindcss()],
+    define: {
+      // Map AMPLITUDE_API_KEY from .env.local to VITE_AMPLITUDE_TOKEN for client-side access
+      "import.meta.env.VITE_AMPLITUDE_TOKEN": JSON.stringify(amplitudeApiKey || ""),
+    },
     server: {
       port: 3000,
       host: true, // Allow external connections
