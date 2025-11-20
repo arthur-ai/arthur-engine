@@ -7,7 +7,6 @@ import Typography from "@mui/material/Typography";
 
 import { DurationCell } from "../../data/common";
 import { useSelectionStore } from "../../stores/selection.store";
-import { Thresholds } from "../../utils/duration";
 import { getSpanDuration, getSpanType } from "../../utils/spans";
 
 import { TypeChip } from "@/components/common/span/TypeChip";
@@ -17,10 +16,9 @@ type Props = {
   level?: number;
   spans: NestedSpanWithMetricsResponse[];
   ancestors?: Set<string>;
-  thresholds?: Thresholds;
 };
 
-export const SpanTree = ({ level = 0, spans, ancestors = new Set(), thresholds }: Props) => {
+export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => {
   const selectedSpanId = useSelectionStore((state) => state.selection.span);
   const select = useSelectionStore((state) => state.select);
 
@@ -45,7 +43,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), thresholds }
               <Box className="h-(--accordion-panel-height) overflow-hidden text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b" />
             }
           >
-            <SpanTree spans={span.children ?? []} level={level + 1} ancestors={new Set(ancestors).add(span.span_id)} thresholds={thresholds} />
+            <SpanTree spans={span.children ?? []} level={level + 1} ancestors={new Set(ancestors).add(span.span_id)} />
           </Accordion.Panel>
         </Accordion.Item>
       ))}

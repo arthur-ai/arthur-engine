@@ -5,7 +5,6 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import dayjs from "dayjs";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
 import { BucketProvider } from "../context/bucket-context";
@@ -56,15 +55,6 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   // Flatten nested spans recursively
   const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
-
-  const percentiles = useMemo(() => {
-    return buildThresholdsFromSample(
-      flatSpans.map((span) => {
-        const duration = dayjs(span.end_time).diff(dayjs(span.start_time), "ms");
-        return duration;
-      })
-    );
-  }, [flatSpans]);
 
   const rootSpan = trace?.root_spans?.[0];
 
@@ -154,7 +144,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
               maxHeight: "100%",
             }}
           >
-            {rootSpan && <SpanTree spans={[rootSpan]} thresholds={percentiles} />}
+            {rootSpan && <SpanTree spans={[rootSpan]} />}
           </Box>
           <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
             {selectedSpan && (

@@ -17,9 +17,12 @@ export const DrawerPagination = () => {
       </span>
     );
 
-  if (!context.ids.length) return <span className="text-sm text-gray-400">No context available...</span>;
+  if (!context.ids.length) return <span className="text-sm text-gray-400">No context available.</span>;
 
   const idx = context.ids.indexOf(current.target.id.toString());
+
+  if (idx === -1) return <span className="text-sm text-gray-400">Current item not found in context.</span>;
+
   const hasNext = idx < context.ids.length - 1;
   const hasPrevious = idx > 0;
 
