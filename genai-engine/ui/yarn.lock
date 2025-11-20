@@ -224,16 +224,16 @@ __metadata:
   linkType: hard
 
 "@base-ui-components/react@npm:^1.0.0-beta.4":
-  version: 1.0.0-beta.4
-  resolution: "@base-ui-components/react@npm:1.0.0-beta.4"
+  version: 1.0.0-beta.6
+  resolution: "@base-ui-components/react@npm:1.0.0-beta.6"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
-    "@base-ui-components/utils": "npm:0.1.2"
+    "@base-ui-components/utils": "npm:0.2.0"
     "@floating-ui/react-dom": "npm:^2.1.6"
     "@floating-ui/utils": "npm:^0.2.10"
     reselect: "npm:^5.1.1"
-    tabbable: "npm:^6.2.0"
-    use-sync-external-store: "npm:^1.5.0"
+    tabbable: "npm:^6.3.0"
+    use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
     "@types/react": ^17 || ^18 || ^19
     react: ^17 || ^18 || ^19
@@ -241,18 +241,18 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/4bddb8eec6001edc93c96b4efcfc69fbc3bf153bcdb82c69e4bed067b324d73fea521ec1905f10c4ac7804660ed44929139337202af0cf70240f28350d32815c
+  checksum: 10c0/4922b71a3d20432d495329ef62a2b9d00b511d25d3c493d1651ad44a2a4b3a80072370fb658f7dce61b13316c195e72b662bfd9140c4774940d66f674de2900d
   languageName: node
   linkType: hard
 
-"@base-ui-components/utils@npm:0.1.2":
-  version: 0.1.2
-  resolution: "@base-ui-components/utils@npm:0.1.2"
+"@base-ui-components/utils@npm:0.2.0":
+  version: 0.2.0
+  resolution: "@base-ui-components/utils@npm:0.2.0"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
     "@floating-ui/utils": "npm:^0.2.10"
     reselect: "npm:^5.1.1"
-    use-sync-external-store: "npm:^1.5.0"
+    use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
     "@types/react": ^17 || ^18 || ^19
     react: ^17 || ^18 || ^19
@@ -260,7 +260,7 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/d4555f1bcb4245474939093f553104f27af18cd59a5cc78d34a4f199735660a041d0a02d7141bc5ae4646341d4e5130a632209d027f204eeaaac5d3970f33b8f
+  checksum: 10c0/dbfb53e01320ebc5aa92c0a7a8bc7fed25e9852ec9fb295bcf3c3450b73e53940ea0433a3d32fb09364360c1796fec679e862d044de5261f9ace03ebe5c08a45
   languageName: node
   linkType: hard
 
@@ -7282,7 +7282,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tabbable@npm:^6.2.0":
+"tabbable@npm:^6.3.0":
   version: 6.3.0
   resolution: "tabbable@npm:6.3.0"
   checksum: 10c0/57ba019d29b5cfa0c862248883bcec0e6d29d8f156ba52a1f425e7cfeca4a0fc701ab8d035c4c86ddf74ecdbd0e9f454a88d9b55d924a51f444038e9cd14d7a0
