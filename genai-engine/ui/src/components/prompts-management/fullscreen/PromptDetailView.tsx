@@ -1,10 +1,14 @@
 import CloseIcon from "@mui/icons-material/Close";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import SettingsIcon from "@mui/icons-material/Settings";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
@@ -27,6 +31,7 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
   const [promoteToProduction, setPromoteToProduction] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   const addTagMutation = useAddTagToPromptVersionMutation();
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
@@ -191,7 +196,7 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
             Metadata
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "flex-start" }}>
             <Box>
               <Typography variant="caption" color="text.secondary">
                 Model Provider
@@ -224,6 +229,32 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
                 <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
                   {formatDate(promptData.deleted_at)}
                 </Typography>
+              </Box>
+            )}
+            {promptData.config && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                  Configuration
+                </Typography>
+                <Button
+                  variant="text"
+                  size="small"
+                  startIcon={<SettingsIcon />}
+                  onClick={() => setIsConfigModalOpen(true)}
+                  sx={{
+                    p: 0,
+                    minWidth: 0,
+                    justifyContent: "flex-start",
+                    fontWeight: 500,
+                    textTransform: "none",
+                    "&:hover": {
+                      backgroundColor: "transparent",
+                      textDecoration: "underline"
+                    }
+                  }}
+                >
+                  View Config
+                </Button>
               </Box>
             )}
           </Box>
@@ -265,28 +296,6 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
             />
           </Box>
         </Paper>
-
-        {promptData.config && (
-          <Paper sx={{ p: 3, flexShrink: 0 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Configuration
-            </Typography>
-            <Box
-              component="pre"
-              sx={{
-                backgroundColor: "grey.50",
-                p: 2,
-                borderRadius: 1,
-                overflow: "auto",
-                fontSize: "0.875rem",
-                fontFamily: "monospace",
-                maxHeight: 400,
-              }}
-            >
-              {JSON.stringify(promptData.config, null, 2)}
-            </Box>
-          </Paper>
-        )}
       </Box>
 
       <Popover
@@ -365,6 +374,27 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
           </Box>
         </Box>
       </Popover>
+
+      <Dialog open={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Configuration</DialogTitle>
+        <DialogContent>
+          <Box
+            component="pre"
+            sx={{
+              backgroundColor: "grey.50",
+              p: 2,
+              borderRadius: 1,
+              overflow: "auto",
+              fontSize: "0.875rem",
+              fontFamily: "monospace",
+              maxHeight: 500,
+              m: 0,
+            }}
+          >
+            {promptData?.config ? JSON.stringify(promptData.config, null, 2) : "No configuration available"}
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

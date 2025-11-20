@@ -211,7 +211,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
             Metadata
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             <Box>
               <Typography variant="caption" color="text.secondary">
                 Model Provider
