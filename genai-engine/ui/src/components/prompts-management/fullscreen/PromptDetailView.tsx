@@ -15,12 +15,12 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
 
-import type { PromptDetailViewProps } from "../types";
 import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVersionMutation";
 import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
+import type { PromptDetailViewProps } from "../types";
 
-import { formatDate } from "@/utils/formatters";
 import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
+import { formatDate } from "@/utils/formatters";
 
 const PromptDetailView = ({ promptData, isLoading, error, promptName, version, latestVersion, taskId, onClose, onRefetch }: PromptDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -147,8 +147,8 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
   }
 
   return (
-    <Box sx={{ p: 3, height: "100%", overflow: "auto" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+    <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexShrink: 0 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {promptName}
@@ -186,83 +186,108 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
         )}
       </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Metadata
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Model Provider
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {promptData.model_provider}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Model Name
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {promptData.model_name}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Created At
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {promptData.created_at ? formatDate(promptData.created_at) : "N/A"}
-            </Typography>
-          </Box>
-          {promptData.deleted_at && (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 3, flex: 1, minHeight: 0, overflow: "auto" }}>
+        <Paper sx={{ p: 3, flexShrink: 0 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Metadata
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Box>
               <Typography variant="caption" color="text.secondary">
-                Deleted At
+                Model Provider
               </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
-                {formatDate(promptData.deleted_at)}
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {promptData.model_provider}
               </Typography>
             </Box>
-          )}
-        </Box>
-      </Paper>
-
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Messages
-        </Typography>
-        <MustacheHighlightedTextField
-          value={JSON.stringify(promptData.messages, null, 2)}
-          onChange={() => {}} // Read-only, no-op
-          disabled
-          multiline
-          minRows={4}
-          maxRows={20}
-          size="small"
-        />
-      </Paper>
-
-      {promptData.config && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Configuration
-          </Typography>
-          <Box
-            component="pre"
-            sx={{
-              backgroundColor: "grey.50",
-              p: 2,
-              borderRadius: 1,
-              overflow: "auto",
-              fontSize: "0.875rem",
-              fontFamily: "monospace",
-            }}
-          >
-            {JSON.stringify(promptData.config, null, 2)}
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Model Name
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {promptData.model_name}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Created At
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {promptData.created_at ? formatDate(promptData.created_at) : "N/A"}
+              </Typography>
+            </Box>
+            {promptData.deleted_at && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Deleted At
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
+                  {formatDate(promptData.deleted_at)}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Paper>
-      )}
+
+        <Paper sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Messages
+          </Typography>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              "& .MuiTextField-root": {
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+              },
+              "& .MuiInputBase-root": {
+                flex: 1,
+                height: "100%",
+                alignItems: "flex-start",
+              },
+              "& .MuiInputBase-input": {
+                height: "100% !important",
+                overflow: "auto !important",
+              },
+            }}
+          >
+            <MustacheHighlightedTextField
+              value={JSON.stringify(promptData.messages, null, 2)}
+              onChange={() => {}} // Read-only, no-op
+              disabled
+              multiline
+              minRows={4}
+              size="small"
+            />
+          </Box>
+        </Paper>
+
+        {promptData.config && (
+          <Paper sx={{ p: 3, flexShrink: 0 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+              Configuration
+            </Typography>
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: "grey.50",
+                p: 2,
+                borderRadius: 1,
+                overflow: "auto",
+                fontSize: "0.875rem",
+                fontFamily: "monospace",
+                maxHeight: 400,
+              }}
+            >
+              {JSON.stringify(promptData.config, null, 2)}
+            </Box>
+          </Paper>
+        )}
+      </Box>
 
       <Popover
         open={tagPopoverOpen}
