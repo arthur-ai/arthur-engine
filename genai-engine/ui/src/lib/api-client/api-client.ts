@@ -3412,10 +3412,30 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   response_relevance_lte?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
   /**
    * Span Types
    * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
@@ -3477,6 +3497,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
 export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
@@ -3580,10 +3605,30 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    */
   response_relevance_lte?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
   /**
    * Span Types
    * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
@@ -5409,10 +5454,30 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   response_relevance_lte?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
   /**
    * Span Types
    * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
@@ -5474,6 +5539,11 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
 export type QuerySpansWithMetricsV1TracesMetricsGetData = QueryTracesWithMetricsResponse;
@@ -5577,10 +5647,30 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   response_relevance_lte?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
   /**
    * Span Types
    * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
@@ -5642,6 +5732,11 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
 /**
