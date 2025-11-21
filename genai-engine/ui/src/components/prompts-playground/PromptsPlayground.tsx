@@ -45,6 +45,7 @@ const PromptsPlayground = () => {
   const hasFetchedAvailableModels = useRef(false);
   const hasFetchedSpan = useRef(false);
   const hasFetchedConfig = useRef(false);
+  const hasFetchedPrompt = useRef(false);
   const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
@@ -53,6 +54,8 @@ const PromptsPlayground = () => {
   const experimentId = searchParams.get("experimentId");
   const promptName = searchParams.get("promptName");
   const promptVersion = searchParams.get("promptVersion");
+  const promptNameParam = searchParams.get("promptName");
+  const promptVersionParam = searchParams.get("version");
 
   // Track if playground is opened with config from "Open in Notebook"
   const isConfigMode = !!(experimentId && promptName && promptVersion);
@@ -188,7 +191,7 @@ const PromptsPlayground = () => {
       const experimentsListResponse = await apiClient.api.listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet({
         taskId: task.id,
         page: 0,
-        pageSize: 100, // Fetch up to 100 experiments
+        page_size: 100, // Fetch up to 100 experiments
       });
 
       // Filter experiments with the same name as the current config
@@ -245,6 +248,48 @@ const PromptsPlayground = () => {
     }
   }, [fetchExperimentConfig, isConfigMode]);
 
+  /**
+   * Fetch prompt data by name and version
+   * Triggered if URL has promptName and version parameters (without experimentId)
+   */
+  const fetchPromptData = useCallback(async () => {
+    if (hasFetchedPrompt.current || !promptNameParam || !promptVersionParam || !apiClient || !task?.id) {
+      return;
+    }
+
+    hasFetchedPrompt.current = true;
+
+    try {
+      const response = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+        promptNameParam,
+        promptVersionParam,
+        task.id
+      );
+      const frontendPrompt = toFrontendPrompt(response.data);
+
+      // Update the first empty prompt instead of adding a new one
+      if (state.prompts.length > 0) {
+        dispatch({
+          type: "updatePrompt",
+          payload: { promptId: state.prompts[0].id, prompt: frontendPrompt },
+        });
+      } else {
+        dispatch({
+          type: "hydratePrompt",
+          payload: { promptData: frontendPrompt },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch prompt data:", error);
+    }
+  }, [promptNameParam, promptVersionParam, apiClient, task?.id, state.prompts]);
+
+  useEffect(() => {
+    if (promptNameParam && promptVersionParam && !isConfigMode) {
+      fetchPromptData();
+    }
+  }, [fetchPromptData, promptNameParam, promptVersionParam, isConfigMode]);
+
   // Fetch backend prompts on mount
   useEffect(() => {
     fetchPrompts(dispatch);
@@ -299,9 +344,9 @@ const PromptsPlayground = () => {
         const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(expId);
         const experiment = response.data;
 
-        // Check if experiment is still running, queued, or evaluating
+        // Check if experiment is still running
         // Keep polling while status is not completed or failed
-        if (experiment.status === "running" || experiment.status === "queued" || experiment.status === "evaluating") {
+        if (experiment.status !== "completed" && experiment.status !== "failed") {
           // Continue polling
           return;
         }
@@ -733,7 +778,7 @@ const PromptsPlayground = () => {
                       </Typography>
                       <IconButton
                         size="small"
-                        onClick={() => navigate(`/tasks/${task.id}/prompt-experiments/${experimentConfig.id}`)}
+                        onClick={() => navigate(`/tasks/${task?.id}/prompt-experiments/${experimentConfig.id}`)}
                         sx={{
                           padding: 0.5,
                           color: "#9ca3af",
@@ -763,7 +808,7 @@ const PromptsPlayground = () => {
                         {experimentConfig.dataset_ref?.id && (
                           <IconButton
                             size="small"
-                            onClick={() => navigate(`/tasks/${task.id}/datasets/${experimentConfig.dataset_ref.id}`)}
+                            onClick={() => navigate(`/tasks/${task?.id}/datasets/${experimentConfig.dataset_ref.id}`)}
                             sx={{
                               padding: 0.5,
                               color: "#9ca3af",
@@ -847,7 +892,7 @@ const PromptsPlayground = () => {
                                 </Typography>
                                 <IconButton
                                   size="small"
-                                  onClick={() => navigate(`/tasks/${task.id}/evaluators/${encodeURIComponent(evalRef.name)}`)}
+                                  onClick={() => navigate(`/tasks/${task?.id}/evaluators/${encodeURIComponent(evalRef.name)}`)}
                                   sx={{
                                     padding: 0.25,
                                     color: "#9ca3af",
@@ -1010,7 +1055,7 @@ const PromptsPlayground = () => {
                                             size="small"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              navigate(`/tasks/${task.id}/prompts/${encodeURIComponent(promptSummary.prompt_name)}/versions/${promptSummary.prompt_version}`);
+                                              navigate(`/tasks/${task?.id}/prompts/${encodeURIComponent(promptSummary.prompt_name)}/versions/${promptSummary.prompt_version}`);
                                             }}
                                             sx={{
                                               padding: 0.25,

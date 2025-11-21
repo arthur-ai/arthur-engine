@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.209"
+        "version": "2.1.212"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -15307,7 +15307,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "1.0"
+                                "version": "2.1.212"
                             }
                         ]
                     }
