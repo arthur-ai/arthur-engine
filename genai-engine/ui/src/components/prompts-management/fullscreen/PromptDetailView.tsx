@@ -1,10 +1,15 @@
 import CloseIcon from "@mui/icons-material/Close";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import SettingsIcon from "@mui/icons-material/Settings";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
@@ -15,18 +20,19 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
 
-import type { PromptDetailViewProps } from "../types";
 import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVersionMutation";
 import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
+import type { PromptDetailViewProps } from "../types";
 
-import { formatDate } from "@/utils/formatters";
 import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
+import { formatDate } from "@/utils/formatters";
 
 const PromptDetailView = ({ promptData, isLoading, error, promptName, version, latestVersion, taskId, onClose, onRefetch }: PromptDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
   const [promoteToProduction, setPromoteToProduction] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   const addTagMutation = useAddTagToPromptVersionMutation();
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
@@ -115,6 +121,12 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
     }
   }, [taskId, version, promptName, deleteTagMutation, onRefetch]);
 
+  const handleEditInPlayground = useCallback(() => {
+    if (!taskId || version === null) return;
+    const url = `/tasks/${taskId}/playgrounds/prompts?promptName=${encodeURIComponent(promptName)}&version=${version}`;
+    window.open(url, '_blank');
+  }, [taskId, promptName, version]);
+
   if (isLoading) {
     return (
       <Box
@@ -147,8 +159,8 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
   }
 
   return (
-    <Box sx={{ p: 3, height: "100%", overflow: "auto" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+    <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexShrink: 0 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {promptName}
@@ -179,90 +191,132 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
             </IconButton>
           )}
         </Box>
-        {onClose && (
-          <IconButton onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </IconButton>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Metadata
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Model Provider
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {promptData.model_provider}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Model Name
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {promptData.model_name}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Created At
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {promptData.created_at ? formatDate(promptData.created_at) : "N/A"}
-            </Typography>
-          </Box>
-          {promptData.deleted_at && (
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Deleted At
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
-                {formatDate(promptData.deleted_at)}
-              </Typography>
-            </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {!promptData.deleted_at && version !== null && (
+            <Button
+              variant="outlined"
+              size="small"
+              endIcon={<OpenInNewIcon />}
+              onClick={handleEditInPlayground}
+              sx={{ minWidth: 80 }}
+            >
+              Edit in Playground
+            </Button>
+          )}
+          {onClose && (
+            <IconButton onClick={onClose} aria-label="Close">
+              <CloseIcon />
+            </IconButton>
           )}
         </Box>
-      </Paper>
+      </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Messages
-        </Typography>
-        <MustacheHighlightedTextField
-          value={JSON.stringify(promptData.messages, null, 2)}
-          onChange={() => {}} // Read-only, no-op
-          disabled
-          multiline
-          minRows={4}
-          maxRows={20}
-          size="small"
-        />
-      </Paper>
-
-      {promptData.config && (
-        <Paper sx={{ p: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 3, flex: 1, minHeight: 0, overflow: "auto" }}>
+        <Paper sx={{ p: 3, flexShrink: 0 }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Configuration
+            Metadata
           </Typography>
-          <Box
-            component="pre"
-            sx={{
-              backgroundColor: "grey.50",
-              p: 2,
-              borderRadius: 1,
-              overflow: "auto",
-              fontSize: "0.875rem",
-              fontFamily: "monospace",
-            }}
-          >
-            {JSON.stringify(promptData.config, null, 2)}
+          <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Model Provider
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {promptData.model_provider}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Model Name
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {promptData.model_name}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Created At
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {promptData.created_at ? formatDate(promptData.created_at) : "N/A"}
+              </Typography>
+            </Box>
+            {promptData.deleted_at && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Deleted At
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
+                  {formatDate(promptData.deleted_at)}
+                </Typography>
+              </Box>
+            )}
+            {promptData.config && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                  Configuration
+                </Typography>
+                <Button
+                  variant="text"
+                  size="small"
+                  startIcon={<SettingsIcon />}
+                  onClick={() => setIsConfigModalOpen(true)}
+                  sx={{
+                    p: 0,
+                    minWidth: 0,
+                    justifyContent: "flex-start",
+                    fontWeight: 500,
+                    textTransform: "none",
+                    "&:hover": {
+                      backgroundColor: "transparent",
+                      textDecoration: "underline"
+                    }
+                  }}
+                >
+                  View Config
+                </Button>
+              </Box>
+            )}
           </Box>
         </Paper>
-      )}
+
+        <Paper sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Messages
+          </Typography>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              "& .MuiTextField-root": {
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+              },
+              "& .MuiInputBase-root": {
+                flex: 1,
+                height: "100%",
+                alignItems: "flex-start",
+              },
+              "& .MuiInputBase-input": {
+                height: "100% !important",
+                overflow: "auto !important",
+              },
+            }}
+          >
+            <MustacheHighlightedTextField
+              value={JSON.stringify(promptData.messages, null, 2)}
+              onChange={() => {}} // Read-only, no-op
+              disabled
+              multiline
+              minRows={4}
+              size="small"
+            />
+          </Box>
+        </Paper>
+      </Box>
 
       <Popover
         open={tagPopoverOpen}
@@ -340,6 +394,27 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
           </Box>
         </Box>
       </Popover>
+
+      <Dialog open={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Configuration</DialogTitle>
+        <DialogContent>
+          <Box
+            component="pre"
+            sx={{
+              backgroundColor: "grey.50",
+              p: 2,
+              borderRadius: 1,
+              overflow: "auto",
+              fontSize: "0.875rem",
+              fontFamily: "monospace",
+              maxHeight: 500,
+              m: 0,
+            }}
+          >
+            {promptData?.config ? JSON.stringify(promptData.config, null, 2) : "No configuration available"}
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
