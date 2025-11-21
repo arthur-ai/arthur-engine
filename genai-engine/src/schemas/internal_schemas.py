@@ -2204,7 +2204,9 @@ class DatasetTransform(BaseModel):
             dataset_id=db_transform.dataset_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=DatasetTransformDefinition.model_validate(db_transform.definition),
+            definition=DatasetTransformDefinition.model_validate(
+                db_transform.definition
+            ),
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
         )

@@ -4,8 +4,17 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import TIMESTAMP, Float, ForeignKey, ForeignKeyConstraint, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSON, UUID as PGUUID
+from sqlalchemy import (
+    TIMESTAMP,
+    Float,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
