@@ -383,9 +383,6 @@ class PromptExperimentRepository:
         # Validate that all dataset column references exist in the dataset version
         dataset_columns = set(dataset_version.column_names)
 
-<<<<<<< HEAD
-        # Check shared prompt variable mappings - validate dataset columns exist and no duplicates
-=======
         # Validate dataset row filter columns if provided
         if request.dataset_row_filter:
             for filter_item in request.dataset_row_filter:
@@ -396,7 +393,6 @@ class PromptExperimentRepository:
                     )
 
         # Check prompt variable mappings - validate dataset columns exist and no duplicates
->>>>>>> dev
         # (Type enforcement is handled by schema - PromptVariableMapping only accepts DatasetColumnVariableSource)
         prompt_variable_names = []
         for mapping in request.prompt_variable_mapping:
