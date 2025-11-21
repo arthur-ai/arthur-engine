@@ -3,6 +3,21 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  the 'data/items/dataset_id' response's property type/format changed from 'string'/'' to 'string'/'uuid' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  the 'dataset_id' response's property type/format changed from 'string'/'' to 'string'/'uuid' for status '200'
+
+# 11/21/2025
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'dataset_ref/name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_name' to the response with the '200' status
+
+# 11/21/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_version' to the response with the '200' status
+
+# 11/21/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  endpoint added
 
 # 11/21/2025

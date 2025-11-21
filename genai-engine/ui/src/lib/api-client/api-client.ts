@@ -665,7 +665,7 @@ export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostError = H
  */
 export interface CreatePromptExperimentRequest {
   /** Reference to the dataset to use */
-  dataset_ref: DatasetRef;
+  dataset_ref: DatasetRefInput;
   /**
    * Dataset Row Filter
    * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used.
@@ -769,9 +769,32 @@ export interface DatasetColumnVariableSource {
 
 /**
  * DatasetRef
- * Reference to a dataset and version
+ * Reference to a dataset and version (with name)
  */
 export interface DatasetRef {
+  /**
+   * Id
+   * Dataset ID
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Dataset name
+   */
+  name: string;
+  /**
+   * Version
+   * Dataset version number
+   */
+  version: number;
+}
+
+/**
+ * DatasetRefInput
+ * Reference to a dataset and version for input (without name)
+ */
+export interface DatasetRefInput {
   /**
    * Id
    * Dataset ID
@@ -4366,6 +4389,22 @@ export interface PromptExperimentSummary {
    * ISO timestamp when experiment was created
    */
   created_at: string;
+  /**
+   * Dataset Id
+   * ID of the dataset used
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Dataset Name
+   * Name of the dataset used
+   */
+  dataset_name: string;
+  /**
+   * Dataset Version
+   * Version of the dataset used
+   */
+  dataset_version: number;
   /**
    * Description
    * Description of the experiment
@@ -8020,7 +8059,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.212
+ * @version 2.1.213
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

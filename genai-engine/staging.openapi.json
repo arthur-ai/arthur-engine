@@ -11681,7 +11681,7 @@
                         "description": "Description of the experiment"
                     },
                     "dataset_ref": {
-                        "$ref": "#/components/schemas/DatasetRef",
+                        "$ref": "#/components/schemas/DatasetRefInput",
                         "description": "Reference to the dataset to use"
                     },
                     "prompt_ref": {
@@ -11807,6 +11807,34 @@
                         "title": "Id",
                         "description": "Dataset ID"
                     },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Dataset name"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Dataset version number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "version"
+                ],
+                "title": "DatasetRef",
+                "description": "Reference to a dataset and version (with name)"
+            },
+            "DatasetRefInput": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "Dataset ID"
+                    },
                     "version": {
                         "type": "integer",
                         "title": "Version",
@@ -11818,8 +11846,8 @@
                     "id",
                     "version"
                 ],
-                "title": "DatasetRef",
-                "description": "Reference to a dataset and version"
+                "title": "DatasetRefInput",
+                "description": "Reference to a dataset and version for input (without name)"
             },
             "DatasetResponse": {
                 "properties": {
@@ -15380,7 +15408,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.213"
+                                "version": "1.0"
                             }
                         ]
                     }
@@ -16503,6 +16531,22 @@
                         "title": "Prompt Name",
                         "description": "Name of the prompt being tested"
                     },
+                    "dataset_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Dataset Id",
+                        "description": "ID of the dataset used"
+                    },
+                    "dataset_name": {
+                        "type": "string",
+                        "title": "Dataset Name",
+                        "description": "Name of the dataset used"
+                    },
+                    "dataset_version": {
+                        "type": "integer",
+                        "title": "Dataset Version",
+                        "description": "Version of the dataset used"
+                    },
                     "total_rows": {
                         "type": "integer",
                         "title": "Total Rows",
@@ -16538,6 +16582,9 @@
                     "created_at",
                     "status",
                     "prompt_name",
+                    "dataset_id",
+                    "dataset_name",
+                    "dataset_version",
                     "total_rows",
                     "completed_rows",
                     "failed_rows"

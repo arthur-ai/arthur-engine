@@ -6,7 +6,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy import asc, desc, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from db_models.dataset_models import (
@@ -26,6 +26,7 @@ from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
     DatasetRef,
+    DatasetRefInput,
     EvalExecution,
     EvalExecutionResult,
     EvalRef,
@@ -54,6 +55,7 @@ class PromptExperimentRepository:
         """Get database experiment by ID or raise 404"""
         db_experiment = (
             self.db_session.query(DatabasePromptExperiment)
+            .options(joinedload(DatabasePromptExperiment.dataset))
             .filter(DatabasePromptExperiment.id == experiment_id)
             .first()
         )
@@ -68,6 +70,9 @@ class PromptExperimentRepository:
         self, db_experiment: DatabasePromptExperiment
     ) -> PromptExperimentSummary:
         """Convert database experiment to summary schema"""
+        # Get dataset name from relationship
+        dataset_name = db_experiment.dataset.name
+
         return PromptExperimentSummary(
             id=db_experiment.id,
             name=db_experiment.name,
@@ -84,6 +89,9 @@ class PromptExperimentRepository:
             ),
             status=db_experiment.status,
             prompt_name=db_experiment.prompt_name,
+            dataset_id=db_experiment.dataset_id,
+            dataset_name=dataset_name,
+            dataset_version=db_experiment.dataset_version,
             total_rows=db_experiment.total_rows,
             completed_rows=db_experiment.completed_rows,
             failed_rows=db_experiment.failed_rows,
@@ -119,6 +127,9 @@ class PromptExperimentRepository:
                 for filter_item in db_experiment.dataset_row_filter
             ]
 
+        # Get dataset name from relationship
+        dataset_name = db_experiment.dataset.name
+
         return PromptExperimentDetail(
             id=db_experiment.id,
             name=db_experiment.name,
@@ -141,6 +152,7 @@ class PromptExperimentRepository:
             total_cost=db_experiment.total_cost,
             dataset_ref=DatasetRef(
                 id=db_experiment.dataset_id,
+                name=dataset_name,
                 version=db_experiment.dataset_version,
             ),
             prompt_ref=PromptRef(
@@ -397,7 +409,7 @@ class PromptExperimentRepository:
     def _create_test_cases_for_dataset(
         self,
         experiment_id: str,
-        dataset_ref: DatasetRef,
+        dataset_ref: DatasetRefInput,
         prompt_variable_mappings: list[PromptVariableMapping],
         prompt_versions: List[DatabaseAgenticPrompt],
         eval_configs: List[Tuple[EvalRef, DatabaseLLMEval]],
@@ -588,8 +600,10 @@ class PromptExperimentRepository:
         search_text: Optional[str] = None,
     ) -> Tuple[List[PromptExperimentSummary], int]:
         """List experiments for a task with optional filtering"""
-        base_query = self.db_session.query(DatabasePromptExperiment).filter(
-            DatabasePromptExperiment.task_id == task_id
+        base_query = (
+            self.db_session.query(DatabasePromptExperiment)
+            .options(joinedload(DatabasePromptExperiment.dataset))
+            .filter(DatabasePromptExperiment.task_id == task_id)
         )
 
         # Apply status filter if provided
