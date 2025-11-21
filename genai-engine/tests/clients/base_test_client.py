@@ -97,6 +97,7 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetTransformResponse,
     DatasetVersionResponse,
+    DatasetVersionRowResponse,
     ExecuteTransformResponse,
     ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
@@ -2591,6 +2592,31 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_version_row(
+        self,
+        dataset_id: str,
+        version_number: int,
+        row_id: str,
+    ) -> tuple[int, DatasetVersionRowResponse]:
+        """Get a specific row from a dataset version."""
+        path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}"
+
+        resp = self.base_client.get(
+            path,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionRowResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),

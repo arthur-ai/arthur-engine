@@ -3,6 +3,7 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
+<<<<<<< HEAD
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_name' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_version' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the 'summary_results/prompt_eval_summaries/items/prompt_name' response's property type/format changed from 'string'/'' to ''/'' for status '200'
@@ -36,6 +37,13 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the required property 'data/items/prompt_results/items/prompt_type' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/prompt_configs' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'prompt_configs' to the response with the '200' status
+=======
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  endpoint added
+
+# 11/21/2025
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'dataset_row_filter' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional request property 'dataset_row_filter'
+>>>>>>> dev
 
 # 11/19/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added

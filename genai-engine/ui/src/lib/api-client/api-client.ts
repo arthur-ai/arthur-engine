@@ -667,6 +667,11 @@ export interface CreatePromptExperimentRequest {
   /** Reference to the dataset to use */
   dataset_ref: DatasetRef;
   /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
    * Description
    * Description of the experiment
    */
@@ -1832,6 +1837,10 @@ export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
    */
   versionNumber: number;
 }
+
+export type GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetData = DatasetVersionRowResponse;
+
+export type GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetError = HTTPValidationError;
 
 export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData = ListDatasetVersionsResponse;
 
@@ -4233,15 +4242,25 @@ export interface PromptEvalResultSummaries {
    */
   eval_results: EvalResultSummary[];
   /**
-   * Prompt Name
-   * Name of the prompt
+   * Prompt Key
+   * Prompt key: 'saved:name:version' or 'unsaved:auto_name'
    */
-  prompt_name: string;
+  prompt_key?: string | null;
+  /**
+   * Prompt Name
+   * Name of the prompt (for saved prompts, or auto_name for unsaved)
+   */
+  prompt_name?: string | null;
+  /**
+   * Prompt Type
+   * Type: 'saved' or 'unsaved'
+   */
+  prompt_type?: string | null;
   /**
    * Prompt Version
-   * Version of the prompt
+   * Version of the prompt (for saved prompts only)
    */
-  prompt_version: string;
+  prompt_version?: string | null;
 }
 
 /**
@@ -4261,6 +4280,11 @@ export interface PromptExperimentDetail {
   created_at: string;
   /** Reference to the dataset used */
   dataset_ref: DatasetRef;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
   /**
    * Description
    * Description of the experiment
@@ -8064,7 +8088,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.209
+ * @version 2.1.212
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -9183,6 +9207,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Fetch a specific row from a dataset version by row ID.
+     *
+     * @tags Datasets
+     * @name GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet
+     * @summary Get Dataset Version Row
+     * @request GET:/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}
+     * @secure
+     */
+    getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet: (
+      datasetId: string,
+      versionNumber: number,
+      rowId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetData,
+        GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/rows/${rowId}`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
