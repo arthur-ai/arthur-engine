@@ -2,6 +2,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/21/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the 'summary_results/prompt_eval_summaries/items/prompt_name' response's property type/format changed from 'string'/'' to ''/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the 'summary_results/prompt_eval_summaries/items/prompt_version' response's property type/format changed from 'string'/'' to ''/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'summary_results/prompt_eval_summaries/items/prompt_key' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'summary_results/prompt_eval_summaries/items/prompt_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added 'subschema #1, subschema #2' to the 'summary_results/prompt_eval_summaries/items/prompt_name' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added 'subschema #1, subschema #2' to the 'summary_results/prompt_eval_summaries/items/prompt_version' response property 'anyOf' list for the response status '200'
+
 # 11/20/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_name' from the response with the '200' status
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_ref' from the response with the '200' status
