@@ -1,6 +1,6 @@
 import logging
 from typing import List, Optional, Tuple
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -598,6 +598,7 @@ class PromptExperimentRepository:
         pagination_params: PaginationParameters,
         status_filter: Optional[str] = None,
         search_text: Optional[str] = None,
+        dataset_id: Optional[UUID] = None,
     ) -> Tuple[List[PromptExperimentSummary], int]:
         """List experiments for a task with optional filtering"""
         base_query = (
@@ -610,6 +611,12 @@ class PromptExperimentRepository:
         if status_filter:
             base_query = base_query.filter(
                 DatabasePromptExperiment.status == status_filter
+            )
+
+        # Apply dataset_id filter if provided
+        if dataset_id:
+            base_query = base_query.filter(
+                DatabasePromptExperiment.dataset_id == dataset_id
             )
 
         # Apply search filter if provided

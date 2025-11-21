@@ -1,6 +1,6 @@
 import { Alert, Box, Button, Snackbar, TablePagination } from "@mui/material";
-import React, { useCallback, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { ConfirmationModal } from "../common/ConfirmationModal";
 
@@ -34,6 +34,7 @@ export const DatasetDetailView: React.FC = () => {
   const { datasetId } = useParams<{ datasetId: string }>();
   const { task } = useTask();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<number | null>(null);
@@ -42,6 +43,10 @@ export const DatasetDetailView: React.FC = () => {
   const { latestVersion, isLoading: latestVersionLoading } = useDatasetLatestVersion(datasetId);
 
   const pagination = useDatasetPagination();
+
+  // Get version from URL query param
+  const versionFromUrl = searchParams.get("version");
+  const initialVersion = versionFromUrl ? parseInt(versionFromUrl, 10) : undefined;
 
   const versionSelection = useDatasetVersionSelection(latestVersion?.version_number, () => {
     pagination.resetPage();
@@ -77,6 +82,24 @@ export const DatasetDetailView: React.FC = () => {
   const hasError = datasetError || !dataset;
   const totalRows = versionData?.total_count ?? localState.localRows.length;
 
+  // Initialize version from URL on mount
+  useEffect(() => {
+    if (initialVersion && !isNaN(initialVersion)) {
+      versionSelection.handleVersionSwitch(initialVersion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Update URL when version selection changes
+  useEffect(() => {
+    if (versionSelection.selectedVersion !== undefined) {
+      setSearchParams({ version: versionSelection.selectedVersion.toString() });
+    } else {
+      // Remove version param when showing latest version
+      setSearchParams({});
+    }
+  }, [versionSelection.selectedVersion, setSearchParams]);
+
   const handleBack = useCallback(() => {
     if (localState.hasUnsavedChanges) {
       setShowUnsavedChangesModal(true);
@@ -91,6 +114,10 @@ export const DatasetDetailView: React.FC = () => {
 
   const handleManageTransforms = useCallback(() => {
     navigate(`/tasks/${task?.id}/datasets/${datasetId}/transforms`);
+  }, [navigate, task?.id, datasetId]);
+
+  const handleViewExperiments = useCallback(() => {
+    navigate(`/tasks/${task?.id}/datasets/${datasetId}/experiments`);
   }, [navigate, task?.id, datasetId]);
 
   const handleVersionSwitch = useCallback(
@@ -243,6 +270,7 @@ export const DatasetDetailView: React.FC = () => {
           onImport={modals.openImportModal}
           onOpenVersions={modals.openVersionDrawer}
           onManageTransforms={handleManageTransforms}
+          onViewExperiments={handleViewExperiments}
           searchValue={search.searchQuery}
           onSearchChange={search.setSearchQuery}
           onSearchClear={search.handleClearSearch}
