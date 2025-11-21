@@ -1,8 +1,10 @@
 from enum import Enum
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, List, Literal, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Discriminator, Field
+
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 
 
 class ExperimentStatus(str, Enum):
@@ -146,6 +148,12 @@ class CreatePromptExperimentRequest(BaseModel):
     dataset_ref: DatasetRef = Field(description="Reference to the dataset to use")
     prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
     eval_list: list[EvalRef] = Field(description="List of evaluations to run")
+    dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = Field(
+        default=None,
+        description="Optional list of column name and value filters. "
+        "Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. "
+        "If not specified, all rows from the dataset will be used.",
+    )
 
 
 class EvalResultSummary(BaseModel):
@@ -200,6 +208,11 @@ class PromptExperimentDetail(BaseModel):
     dataset_ref: DatasetRef = Field(description="Reference to the dataset used")
     prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
     eval_list: list[EvalRef] = Field(description="List of evaluations being run")
+    dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = Field(
+        default=None,
+        description="Optional list of column name and value filters applied to dataset rows. "
+        "Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.",
+    )
     summary_results: SummaryResults = Field(
         description="Summary of results across all test cases"
     )

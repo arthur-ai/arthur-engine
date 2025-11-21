@@ -78,7 +78,6 @@ class DatabaseAgenticPromptVersionTag(Base):
     # Composite primary key: task_id + name + version + tag
     task_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("tasks.id"),
         primary_key=True,
         index=True,
     )
