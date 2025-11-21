@@ -113,8 +113,10 @@ export const TraceDrawerContent = ({ id }: Props) => {
             </Stack>
           </Stack>
 
-          <Stack gap={2} alignItems="flex-end">
-            <ButtonGroup variant="outlined" size="small" disableElevation>
+          <Stack gap={1} alignItems="center" direction="row">
+            <FeedbackPanel containerRef={containerRef} annotation={trace.annotation} traceId={id} />
+
+            <ButtonGroup size="small" variant="contained" disableElevation>
               <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
                 Refresh Metrics
               </Button>
@@ -126,9 +128,6 @@ export const TraceDrawerContent = ({ id }: Props) => {
         <Stack direction="row" alignItems="stretch">
           <Box sx={{ flex: 1, px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
             <DrawerPagination />
-          </Box>
-          <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderLeft: "1px solid", borderColor: "divider", backgroundColor: "grey.100" }}>
-            <FeedbackPanel containerRef={containerRef} />
           </Box>
         </Stack>
 
