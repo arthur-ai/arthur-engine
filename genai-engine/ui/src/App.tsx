@@ -13,11 +13,11 @@ import TransformsManagement from "./components/datasets/transforms/TransformsMan
 import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
+import Notebooks from "./components/notebooks/Notebooks";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
-import Notebooks from "./components/notebooks/Notebooks";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
 import { TaskDetailContent } from "./components/TaskDetailContent";
@@ -131,6 +131,17 @@ function App() {
                     />
 
                     <Route
+                      path="/tasks/:id/datasets/:datasetId/experiments"
+                      element={
+                        <ProtectedRoute>
+                          <TaskLayout>
+                            <DatasetExperimentsView />
+                          </TaskLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
                       path="/tasks/:id/evaluators"
                       element={
                         <ProtectedRoute>
@@ -191,6 +202,17 @@ function App() {
                         <ProtectedRoute>
                           <TaskLayout>
                             <PromptsManagement />
+                          </TaskLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/tasks/:id/notebooks"
+                      element={
+                        <ProtectedRoute>
+                          <TaskLayout>
+                            <Notebooks />
                           </TaskLayout>
                         </ProtectedRoute>
                       }

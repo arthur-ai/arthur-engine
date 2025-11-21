@@ -10,7 +10,7 @@ import { useSnackbar } from "notistack";
 import z from "zod";
 
 import { useApi } from "@/hooks/useApi";
-import { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
+import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
 type Props = {
@@ -35,26 +35,64 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
         annotation_description: data.details,
       });
     },
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.traces.byId(traceId) });
+
+      const previousData = queryClient.getQueryData<TraceResponse>(queryKeys.traces.byId(traceId));
+
+      if (previousData) {
+        queryClient.setQueryData(queryKeys.traces.byId(traceId), (old: TraceResponse) => ({
+          ...old,
+          annotation: {
+            ...old.annotation,
+            annotation_score: data.feedback === "positive" ? 1 : 0,
+            annotation_description: data.details,
+          },
+        }));
+      }
+
+      return { previousData };
+    },
     onSuccess: () => {
       enqueueSnackbar("Feedback submitted", { variant: "success" });
-      queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
     },
-    onError: () => {
+    onError: (error, data, context) => {
+      queryClient.setQueryData(queryKeys.traces.byId(traceId), context?.previousData);
       enqueueSnackbar("Failed to submit feedback", { variant: "error" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
     },
   });
 
   const clearFeedbackMutation = useMutation({
     mutationFn: () => api.api.deleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDelete(traceId),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.traces.byId(traceId) });
+
+      const previousData = queryClient.getQueryData<TraceResponse>(queryKeys.traces.byId(traceId));
+
+      if (previousData) {
+        queryClient.setQueryData(queryKeys.traces.byId(traceId), (old: TraceResponse) => ({
+          ...old,
+          annotation: null,
+        }));
+      }
+
+      return { previousData };
+    },
     onSuccess: () => {
       enqueueSnackbar("Feedback cleared", { variant: "success" });
+    },
+    onError: (error, data, context) => {
+      queryClient.setQueryData(queryKeys.traces.byId(traceId), context?.previousData);
+      enqueueSnackbar("Failed to clear feedback", { variant: "error" });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
 
       handle.close();
       form.reset();
-    },
-    onError: () => {
-      enqueueSnackbar("Failed to clear feedback", { variant: "error" });
     },
   });
 
@@ -78,26 +116,41 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
   });
 
   const feedback = annotation ? (annotation.annotation_score === 1 ? "positive" : "negative") : null;
+  const isMutating = sendFeedbackMutation.isPending || clearFeedbackMutation.isPending;
 
   return (
     <>
-      <ButtonGroup size="small" disableElevation>
+      <ButtonGroup size="small" disableElevation disabled={isMutating}>
         <Tooltip title="Helpful">
           <Popover.Trigger
             handle={handle}
-            render={<Button color={feedback === "positive" ? "success" : undefined} variant={feedback === "positive" ? "contained" : "outlined"} />}
+            render={
+              <Button
+                color={feedback === "positive" ? "success" : undefined}
+                variant={feedback === "positive" ? "contained" : "outlined"}
+                startIcon={<ThumbUpOutlinedIcon sx={{ fontSize: 16 }} />}
+              />
+            }
             payload={{ feedback: "positive" }}
+            disabled={feedback === "negative"}
           >
-            <ThumbUpOutlinedIcon sx={{ fontSize: 16, my: 0.5, mx: 1 }} />
+            Helpful
           </Popover.Trigger>
         </Tooltip>
         <Tooltip title="Needs improvement">
           <Popover.Trigger
             handle={handle}
-            render={<Button variant={feedback === "negative" ? "contained" : "outlined"} color={feedback === "negative" ? "error" : undefined} />}
+            render={
+              <Button
+                variant={feedback === "negative" ? "contained" : "outlined"}
+                color={feedback === "negative" ? "error" : undefined}
+                startIcon={<ThumbDownOutlinedIcon sx={{ fontSize: 16 }} />}
+              />
+            }
             payload={{ feedback: "negative" }}
+            disabled={feedback === "positive"}
           >
-            <ThumbDownOutlinedIcon sx={{ fontSize: 16, my: 0.5, mx: 1 }} />
+            Unhelpful
           </Popover.Trigger>
         </Tooltip>
       </ButtonGroup>
