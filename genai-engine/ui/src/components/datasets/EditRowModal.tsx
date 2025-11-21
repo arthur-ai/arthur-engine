@@ -1,13 +1,4 @@
-import {
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-} from "@mui/material";
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useForm } from "@tanstack/react-form";
 import React, { useMemo } from "react";
 
@@ -20,14 +11,7 @@ interface EditRowModalProps {
   isLoading?: boolean;
 }
 
-export const EditRowModal: React.FC<EditRowModalProps> = ({
-  open,
-  onClose,
-  onSubmit,
-  rowData,
-  rowId,
-  isLoading = false,
-}) => {
+export const EditRowModal: React.FC<EditRowModalProps> = ({ open, onClose, onSubmit, rowData, rowId, isLoading = false }) => {
   const columns = Object.keys(rowData);
 
   const stringData = useMemo(() => {
@@ -52,13 +36,7 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="md"
-      fullWidth
-      aria-labelledby="edit-row-dialog-title"
-    >
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth aria-labelledby="edit-row-dialog-title">
       <form
         key={rowId}
         onSubmit={(e) => {
@@ -66,9 +44,7 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
           form.handleSubmit();
         }}
       >
-        <DialogTitle id="edit-row-dialog-title">
-          {rowId === "new" ? "Add Row" : "Edit Row"}
-        </DialogTitle>
+        <DialogTitle id="edit-row-dialog-title">{rowId === "new" ? "Add Row" : "Edit Row"}</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {columns.map((column) => (
@@ -104,7 +80,7 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
             color="primary"
             startIcon={isLoading ? <CircularProgress size={16} /> : null}
           >
-            {isLoading ? "Saving..." : "Save"}
+            {isLoading ? "Applying..." : "Apply"}
           </Button>
         </DialogActions>
       </form>
