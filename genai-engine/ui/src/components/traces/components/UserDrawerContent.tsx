@@ -160,6 +160,8 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
     () =>
       createFilterRow(USER_FILTERS, {
         session_ids: { taskId, api },
+        user_ids: { taskId, api },
+        span_ids: { taskId, api },
       }),
     [taskId, api]
   );
