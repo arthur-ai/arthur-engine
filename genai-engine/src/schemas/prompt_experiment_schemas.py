@@ -1,9 +1,5 @@
 from enum import Enum
-<<<<<<< HEAD
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
-=======
-from typing import Annotated, List, Literal, Optional, Union
->>>>>>> dev
 from uuid import UUID
 
 from pydantic import BaseModel, Discriminator, Field, model_validator
