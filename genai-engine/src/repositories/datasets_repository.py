@@ -203,6 +203,32 @@ class DatasetRepository:
             pagination_params,
         )
 
+    def get_dataset_version_row(
+        self,
+        dataset_id: UUID,
+        dataset_version: int,
+        row_id: UUID,
+    ) -> DatabaseDatasetVersionRow:
+        """Get a specific row by ID from a dataset version"""
+        db_row = (
+            self.db_session.query(DatabaseDatasetVersionRow)
+            .filter(
+                DatabaseDatasetVersionRow.dataset_id == dataset_id,
+                DatabaseDatasetVersionRow.version_number == dataset_version,
+                DatabaseDatasetVersionRow.id == row_id,
+            )
+            .first()
+        )
+
+        if not db_row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Row {row_id} not found in dataset {dataset_id} version {dataset_version}",
+                headers={"full_stacktrace": "false"},
+            )
+
+        return db_row
+
     def create_dataset_version(
         self,
         dataset_id: UUID,

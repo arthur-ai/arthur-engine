@@ -22,6 +22,7 @@ from db_models.prompt_experiment_models import (
     DatabasePromptExperimentTestCasePromptResultEvalScore,
 )
 from db_models.task_models import DatabaseTask
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
     DatasetRef,
@@ -110,6 +111,14 @@ class PromptExperimentRepository:
             db_experiment.summary_results or {"prompt_eval_summaries": []}
         )
 
+        # Convert dataset row filter to Pydantic models if present
+        dataset_row_filter = None
+        if db_experiment.dataset_row_filter:
+            dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in db_experiment.dataset_row_filter
+            ]
+
         return PromptExperimentDetail(
             id=db_experiment.id,
             name=db_experiment.name,
@@ -140,6 +149,7 @@ class PromptExperimentRepository:
                 variable_mapping=prompt_variable_mappings,
             ),
             eval_list=eval_list,
+            dataset_row_filter=dataset_row_filter,
             summary_results=summary_results,
         )
 
@@ -293,6 +303,15 @@ class PromptExperimentRepository:
         # Validate that all dataset column references exist in the dataset version
         dataset_columns = set(dataset_version.column_names)
 
+        # Validate dataset row filter columns if provided
+        if request.dataset_row_filter:
+            for filter_item in request.dataset_row_filter:
+                if filter_item.column_name not in dataset_columns:
+                    raise ValueError(
+                        f"Dataset column '{filter_item.column_name}' referenced in dataset_row_filter not found in dataset version. "
+                        f"Available columns: {', '.join(sorted(dataset_columns))}"
+                    )
+
         # Check prompt variable mappings - validate dataset columns exist and no duplicates
         # (Type enforcement is handled by schema - PromptVariableMapping only accepts DatasetColumnVariableSource)
         prompt_variable_names = []
@@ -382,6 +401,9 @@ class PromptExperimentRepository:
         prompt_variable_mappings: list[PromptVariableMapping],
         prompt_versions: List[DatabaseAgenticPrompt],
         eval_configs: List[Tuple[EvalRef, DatabaseLLMEval]],
+        dataset_row_filter: Optional[
+            List[NewDatasetVersionRowColumnItemRequest]
+        ] = None,
     ) -> int:
         """Create test cases for each row in the dataset version, including prompt results and eval scores"""
         # Get all rows for this dataset version
@@ -394,8 +416,23 @@ class PromptExperimentRepository:
             .all()
         )
 
-        # Create a test case for each row
-        for row in dataset_rows:
+        # Helper function to check if a row matches all filter conditions (AND logic)
+        def _row_matches_filter(db_row: DatabaseDatasetVersionRow) -> bool:
+            if not dataset_row_filter:
+                return True  # No filter means all rows match
+
+            # Row must match ALL filter conditions to be included
+            for filter_condition in dataset_row_filter:
+                row_value = db_row.data.get(filter_condition.column_name)
+                if row_value != filter_condition.column_value:
+                    return False
+            return True
+
+        # Filter rows based on dataset_row_filter if provided
+        filtered_rows = [row for row in dataset_rows if _row_matches_filter(row)]
+
+        # Create a test case for each filtered row
+        for row in filtered_rows:
             # Build prompt input variables from the dataset row data
             prompt_input_variables = []
             row_data = row.data  # This is the JSON data for the row
@@ -480,7 +517,7 @@ class PromptExperimentRepository:
         # Commit all the created objects
         self.db_session.flush()
 
-        return len(dataset_rows)
+        return len(filtered_rows)
 
     def create_experiment(
         self,
@@ -505,6 +542,11 @@ class PromptExperimentRepository:
             prompt_versions=request.prompt_ref.version_list,
             dataset_id=str(request.dataset_ref.id),
             dataset_version=request.dataset_ref.version,
+            dataset_row_filter=(
+                [filter_item.model_dump() for filter_item in request.dataset_row_filter]
+                if request.dataset_row_filter
+                else None
+            ),
             prompt_variable_mapping=[
                 mapping.model_dump() for mapping in request.prompt_ref.variable_mapping
             ],
@@ -523,6 +565,7 @@ class PromptExperimentRepository:
             request.prompt_ref.variable_mapping,
             prompt_versions,
             eval_configs,
+            request.dataset_row_filter,
         )
 
         # Update experiment with total row count

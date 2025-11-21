@@ -61,6 +61,13 @@ class DatabasePromptExperiment(Base):
     dataset_id: Mapped[str] = mapped_column(String, nullable=False)
     dataset_version: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    # Dataset row filter (optional) stored as JSON
+    # Structure: [{"column_name": str, "column_value": str}, ...]
+    # Only rows matching ALL filter conditions (AND logic) are included in the experiment
+    dataset_row_filter: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSON, nullable=True
+    )
+
     # Variable mappings stored as JSON
     # Structure: [{"variable_name": str, "source": {"type": str, "dataset_column": {...}, ...}}]
     prompt_variable_mapping: Mapped[List[Dict[str, Any]]] = mapped_column(

@@ -207,6 +207,7 @@ export const ExperimentDetailView: React.FC = () => {
           variable_mapping: promptVariableMapping,
         },
         eval_list: evalList,
+        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
       });
       handleCloseModal();
       return { id: result.id };
@@ -313,6 +314,45 @@ export const ExperimentDetailView: React.FC = () => {
               </Box>
             )}
           </Box>
+
+          {/* Dataset Row Filter Section */}
+          {experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 && (
+            <Box className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+              <Box className="flex items-center gap-2 mb-2">
+                <Typography variant="body2" className="font-medium text-gray-900">
+                  Dataset Row Filter Applied
+                </Typography>
+                <Tooltip
+                  title="This experiment only includes dataset rows that match ALL of the following conditions."
+                  arrow
+                  placement="right"
+                >
+                  <InfoOutlinedIcon
+                    sx={{
+                      fontSize: 16,
+                      color: "text.secondary",
+                      cursor: "help",
+                    }}
+                  />
+                </Tooltip>
+              </Box>
+              <Box className="flex flex-wrap gap-2">
+                {experiment.dataset_row_filter.map((filter, index) => (
+                  <Chip
+                    key={index}
+                    label={`${filter.column_name} = "${filter.column_value}"`}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      backgroundColor: "white",
+                      borderColor: "#3b82f6",
+                      color: "#1e40af",
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
         </Box>
 
         {/* Overall Prompt Performance Section */}
@@ -463,6 +503,8 @@ export const ExperimentDetailView: React.FC = () => {
               taskId={taskId}
               experimentId={experimentId}
               refreshTrigger={refreshTrigger}
+              datasetId={experiment.dataset_ref.id}
+              datasetVersion={experiment.dataset_ref.version}
               promptSummaries={(() => {
                 // Sort prompt summaries the same way as in Overall Prompt Performance
                 const sorted = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {

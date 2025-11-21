@@ -29,6 +29,7 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetTransformResponse,
     DatasetVersionResponse,
+    DatasetVersionRowResponse,
     ExecuteTransformResponse,
     ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
@@ -252,6 +253,45 @@ def get_dataset_version(
             version_number,
             pagination_parameters,
         ).to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.get(
+    "/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}",
+    description="Fetch a specific row from a dataset version by row ID.",
+    tags=[datasets_router_tag],
+    response_model=DatasetVersionRowResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def get_dataset_version_row(
+    dataset_id: UUID = Path(
+        description="ID of the dataset.",
+    ),
+    version_number: int = Path(description="Version number of the dataset."),
+    row_id: UUID = Path(description="ID of the row to fetch."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DatasetVersionRowResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        db_row = dataset_repo.get_dataset_version_row(
+            dataset_id,
+            version_number,
+            row_id,
+        )
+
+        # Convert database row to response format
+        row_data = [
+            {"column_name": key, "column_value": value}
+            for key, value in db_row.data.items()
+        ]
+
+        return DatasetVersionRowResponse(
+            id=db_row.id,
+            data=row_data,
+            created_at=int(db_row.created_at.timestamp() * 1000),
+        )
     finally:
         db_session.close()
 

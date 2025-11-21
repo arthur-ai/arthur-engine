@@ -86,6 +86,11 @@ export interface EvalVariableMappings {
   };
 }
 
+export interface DatasetRowFilter {
+  column_name: string;
+  column_value: string;
+}
+
 export interface ExperimentFormData {
   name: string;
   description: string;
@@ -95,6 +100,7 @@ export interface ExperimentFormData {
   evaluators: EvaluatorSelection[];
   promptVariableMappings?: PromptVariableMappings;
   evalVariableMappings?: EvalVariableMappings[];
+  datasetRowFilter?: DatasetRowFilter[];
 }
 
 export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
@@ -125,6 +131,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     evaluators: [],
     promptVariableMappings: {},
     evalVariableMappings: [],
+    datasetRowFilter: [],
   });
 
   // Prompts state
@@ -249,6 +256,9 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           ...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)),
         ]);
 
+        // Transform dataset row filter from initial data
+        const datasetRowFilter: DatasetRowFilter[] = initialData.dataset_row_filter || [];
+
         // Now set the form data after all dropdowns are populated
         setFormData({
           name: `${initialData.name} (Copy)`,
@@ -259,6 +269,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           evaluators,
           promptVariableMappings,
           evalVariableMappings,
+          datasetRowFilter,
         });
 
         // Clear the "add evaluator" form state that was set during loadEvaluatorVersions
@@ -555,6 +566,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         evaluators: [],
         promptVariableMappings: {},
         evalVariableMappings: [],
+        datasetRowFilter: [],
       });
       setSelectedPromptName("");
       setVisibleOlderVersions([]);
@@ -590,6 +602,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       evaluators: [],
       promptVariableMappings: {},
       evalVariableMappings: [],
+      datasetRowFilter: [],
     });
     setSelectedPromptName("");
     setVisibleOlderVersions([]);
@@ -1010,6 +1023,90 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           <Typography variant="caption" className="text-red-600">
             {errors.datasetId || errors.datasetVersion}
           </Typography>
+        )}
+
+        {/* Dataset Row Filter (Optional) */}
+        {formData.datasetId && formData.datasetVersion && datasetColumns.length > 0 && (
+          <Box className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded">
+            <Box className="flex items-center gap-2 mb-2">
+              <Typography variant="body2" className="font-medium text-gray-700">
+                Filter Dataset Rows (Optional)
+              </Typography>
+              <Tooltip
+                title="Optionally filter which dataset rows are included in this experiment. Only rows matching ALL specified conditions will be used."
+                arrow
+                placement="right"
+              >
+                <InfoOutlinedIcon
+                  sx={{
+                    fontSize: 16,
+                    color: "text.secondary",
+                    cursor: "help",
+                  }}
+                />
+              </Tooltip>
+            </Box>
+
+            {formData.datasetRowFilter && formData.datasetRowFilter.length > 0 && (
+              <Box className="flex flex-col gap-2 mb-2">
+                {formData.datasetRowFilter.map((filter, index) => (
+                  <Box key={index} className="flex gap-2 items-center">
+                    <FormControl size="small" className="flex-1">
+                      <InputLabel>Column</InputLabel>
+                      <Select
+                        value={filter.column_name}
+                        onChange={(e) => {
+                          const newFilters = [...(formData.datasetRowFilter || [])];
+                          newFilters[index] = { ...filter, column_name: e.target.value };
+                          setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+                        }}
+                        label="Column"
+                      >
+                        {datasetColumns.map((column) => (
+                          <MenuItem key={column} value={column}>
+                            {column}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <TextField
+                      size="small"
+                      label="Value"
+                      value={filter.column_value}
+                      onChange={(e) => {
+                        const newFilters = [...(formData.datasetRowFilter || [])];
+                        newFilters[index] = { ...filter, column_value: e.target.value };
+                        setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        const newFilters = formData.datasetRowFilter?.filter((_, i) => i !== index) || [];
+                        setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+                      }}
+                      color="error"
+                    >
+                      <CloseIcon fontSize="small" />
+                    </Button>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                const newFilters = [...(formData.datasetRowFilter || []), { column_name: "", column_value: "" }];
+                setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+              }}
+            >
+              Add Filter Condition
+            </Button>
+          </Box>
         )}
       </Box>
 

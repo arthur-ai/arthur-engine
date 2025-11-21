@@ -20,6 +20,75 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
+/** AgenticAnnotation */
+export interface AgenticAnnotation {
+  /**
+   * Annotation Description
+   * Description of the annotation
+   */
+  annotation_description?: string | null;
+  /**
+   * Annotation Score
+   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)
+   * @min 0
+   * @max 1
+   */
+  annotation_score: number;
+  /**
+   * Created At
+   * When the annotation was created
+   * @format date-time
+   */
+  created_at?: string;
+  /**
+   * Id
+   * Unique identifier for the annotation
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Trace Id
+   * Trace ID this annotation belongs to
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * When the annotation was last updated
+   * @format date-time
+   */
+  updated_at?: string;
+}
+
+/** AgenticAnnotationRequest */
+export interface AgenticAnnotationRequest {
+  /**
+   * Annotation Description
+   * Description of the annotation
+   */
+  annotation_description?: string | null;
+  /**
+   * Annotation Score
+   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)
+   * @min 0
+   * @max 1
+   */
+  annotation_score: number;
+}
+
+/** AgenticAnnotationResponse */
+export interface AgenticAnnotationResponse {
+  /**
+   * Annotation Description
+   * Description of the annotation.
+   */
+  annotation_description?: string | null;
+  /**
+   * Annotation Score
+   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked).
+   */
+  annotation_score?: number | null;
+}
+
 /** AgenticPrompt */
 export interface AgenticPrompt {
   /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
@@ -140,6 +209,10 @@ export interface AgenticPromptVersionResponse {
    */
   version: number;
 }
+
+export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotation;
+
+export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
 /** AnthropicThinkingParam */
 export interface AnthropicThinkingParam {
@@ -594,6 +667,11 @@ export interface CreatePromptExperimentRequest {
   /** Reference to the dataset to use */
   dataset_ref: DatasetRef;
   /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
    * Description
    * Description of the experiment
    */
@@ -954,6 +1032,10 @@ export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HT
 export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData = any;
 
 export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError = HTTPValidationError;
+
+export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteData = any;
+
+export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError = HTTPValidationError;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
@@ -1740,6 +1822,10 @@ export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
    */
   versionNumber: number;
 }
+
+export type GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetData = DatasetVersionRowResponse;
+
+export type GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetError = HTTPValidationError;
 
 export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData = ListDatasetVersionsResponse;
 
@@ -4176,6 +4262,11 @@ export interface PromptExperimentDetail {
   /** Reference to the dataset used */
   dataset_ref: DatasetRef;
   /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
    * Description
    * Description of the experiment
    */
@@ -6544,6 +6635,8 @@ export interface TraceListResponse {
  * Lightweight trace metadata for list operations
  */
 export interface TraceMetadataResponse {
+  /** Annotation for the trace. */
+  annotation?: AgenticAnnotationResponse | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -6645,6 +6738,8 @@ export interface TraceMetadataResponse {
  * Response model for a single trace containing nested spans
  */
 export interface TraceResponse {
+  /** Annotation for this trace. */
+  annotation?: AgenticAnnotationResponse | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -7925,7 +8020,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.203
+ * @version 2.1.212
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -7980,6 +8075,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/tags`,
         method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Annotate a trace with a score and description (1 = liked, 0 = disliked)
+     *
+     * @tags Traces
+     * @name AnnotateTraceApiV1TracesTraceIdAnnotationsPost
+     * @summary Annotate a Trace
+     * @request POST:/api/v1/traces/{trace_id}/annotations
+     * @secure
+     */
+    annotateTraceApiV1TracesTraceIdAnnotationsPost: (traceId: string, data: AgenticAnnotationRequest, params: RequestParams = {}) =>
+      this.request<AnnotateTraceApiV1TracesTraceIdAnnotationsPostData, AnnotateTraceApiV1TracesTraceIdAnnotationsPostError>({
+        path: `/api/v1/traces/${traceId}/annotations`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,
@@ -8444,6 +8559,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError
       >({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete an annotation from a trace
+     *
+     * @tags Traces
+     * @name DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDelete
+     * @summary Delete an annotation from a trace
+     * @request DELETE:/api/v1/traces/{trace_id}/annotations
+     * @secure
+     */
+    deleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDelete: (traceId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteData,
+        DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError
+      >({
+        path: `/api/v1/traces/${traceId}/annotations`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -9004,6 +9139,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Fetch a specific row from a dataset version by row ID.
+     *
+     * @tags Datasets
+     * @name GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet
+     * @summary Get Dataset Version Row
+     * @request GET:/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}
+     * @secure
+     */
+    getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet: (
+      datasetId: string,
+      versionNumber: number,
+      rowId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetData,
+        GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/rows/${rowId}`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
