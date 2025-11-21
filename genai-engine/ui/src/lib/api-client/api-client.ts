@@ -3196,6 +3196,13 @@ export type ListSpansMetadataApiV1TracesSpansGetError = HTTPValidationError;
 
 export interface ListSpansMetadataApiV1TracesSpansGetParams {
   /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
+  /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
    * @format date-time
@@ -3356,6 +3363,13 @@ export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
 export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
 
 export interface ListTracesMetadataApiV1TracesGetParams {
+  /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -4980,6 +4994,13 @@ export type QuerySpansV1TracesQueryGetError = HTTPValidationError;
 
 export interface QuerySpansV1TracesQueryGetParams {
   /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
+  /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
    * @format date-time
@@ -5140,6 +5161,13 @@ export type QuerySpansWithMetricsV1TracesMetricsGetData = QueryTracesWithMetrics
 export type QuerySpansWithMetricsV1TracesMetricsGetError = HTTPValidationError;
 
 export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
+  /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -8088,7 +8116,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.213
+ * @version 2.1.214
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
