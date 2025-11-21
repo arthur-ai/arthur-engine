@@ -1,7 +1,7 @@
 """support_non_similar_and_unsaved_prompts_in_experiments
 
 Revision ID: 88a3cbf21434
-Revises: 7bff101b1a7a
+Revises: 2cb1d34dafa5
 Create Date: 2025-11-20 15:20:03.216077
 
 """
@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "88a3cbf21434"
-down_revision = "7bff101b1a7a"
+down_revision = "2cb1d34dafa5"
 branch_labels = None
 depends_on = None
 
@@ -30,16 +30,6 @@ def upgrade() -> None:
     4. Drop old columns
     """
     conn = op.get_bind()
-
-    # Add foreign key constraints
-    op.create_foreign_key(
-        None,
-        "agentic_prompt_version_tags",
-        "tasks",
-        ["task_id"],
-        ["id"],
-    )
-    op.create_foreign_key(None, "llm_eval_version_tags", "tasks", ["task_id"], ["id"])
 
     # Step 1: Add new columns to prompt_experiment_test_case_prompt_results (nullable initially)
     op.add_column(
@@ -362,9 +352,5 @@ def downgrade() -> None:
     )
     op.drop_column("prompt_experiment_test_case_prompt_results", "prompt_type")
     op.drop_column("prompt_experiment_test_case_prompt_results", "prompt_key")
-
-    # Drop foreign key constraints
-    op.drop_constraint(None, "llm_eval_version_tags", type_="foreignkey")
-    op.drop_constraint(None, "agentic_prompt_version_tags", type_="foreignkey")
 
     print("Downgrade complete!")
