@@ -2404,6 +2404,19 @@
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -2765,6 +2778,19 @@
                             "title": "Span Types"
                         },
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3371,6 +3397,19 @@
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -3731,6 +3770,19 @@
                             "title": "Span Types"
                         },
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -15380,7 +15432,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.213"
+                                "version": "1.0"
                             }
                         ]
                     }

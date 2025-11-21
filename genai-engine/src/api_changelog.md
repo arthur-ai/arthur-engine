@@ -3,6 +3,10 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'annotation_score'
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  endpoint added
 
 # 11/21/2025
