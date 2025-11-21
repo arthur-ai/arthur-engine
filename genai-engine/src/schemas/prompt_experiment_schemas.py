@@ -4,9 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Discriminator, Field, model_validator
 
-from schemas.enums import ModelProvider
-
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.enums import ModelProvider
 
 
 class ExperimentStatus(str, Enum):
