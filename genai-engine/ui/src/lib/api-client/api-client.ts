@@ -665,7 +665,7 @@ export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostError = H
  */
 export interface CreatePromptExperimentRequest {
   /** Reference to the dataset to use */
-  dataset_ref: DatasetRef;
+  dataset_ref: DatasetRefInput;
   /**
    * Dataset Row Filter
    * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used.
@@ -769,9 +769,32 @@ export interface DatasetColumnVariableSource {
 
 /**
  * DatasetRef
- * Reference to a dataset and version
+ * Reference to a dataset and version (with name)
  */
 export interface DatasetRef {
+  /**
+   * Id
+   * Dataset ID
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Dataset name
+   */
+  name: string;
+  /**
+   * Version
+   * Dataset version number
+   */
+  version: number;
+}
+
+/**
+ * DatasetRefInput
+ * Reference to a dataset and version for input (without name)
+ */
+export interface DatasetRefInput {
   /**
    * Id
    * Dataset ID
@@ -825,6 +848,39 @@ export interface DatasetResponse {
   updated_at: number;
 }
 
+/** DatasetTransformColumnDefinition */
+export interface DatasetTransformColumnDefinition {
+  /**
+   * Attribute Path
+   * Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').
+   */
+  attribute_path: string;
+  /**
+   * Column Name
+   * Name of the column to extract.
+   */
+  column_name: string;
+  /**
+   * Fallback
+   * Fallback value to use if the attribute is not found.
+   */
+  fallback?: string | null;
+  /**
+   * Span Name
+   * Name of the span to extract data from.
+   */
+  span_name: string;
+}
+
+/** DatasetTransformDefinition */
+export interface DatasetTransformDefinition {
+  /**
+   * Columns
+   * List of column extraction rules.
+   */
+  columns: DatasetTransformColumnDefinition[];
+}
+
 /** DatasetTransformResponse */
 export interface DatasetTransformResponse {
   /**
@@ -838,11 +894,8 @@ export interface DatasetTransformResponse {
    * @format uuid
    */
   dataset_id: string;
-  /**
-   * Definition
-   * Transform definition in JSON format specifying extraction rules.
-   */
-  definition: Record<string, any>;
+  /** Transform definition specifying extraction rules. */
+  definition: DatasetTransformDefinition;
   /**
    * Description
    * Description of the transform.
@@ -868,11 +921,8 @@ export interface DatasetTransformResponse {
 
 /** DatasetTransformUpdateRequest */
 export interface DatasetTransformUpdateRequest {
-  /**
-   * Definition
-   * Transform definition in JSON format specifying extraction rules.
-   */
-  definition?: Record<string, any> | null;
+  /** Transform definition specifying extraction rules. */
+  definition?: DatasetTransformDefinition | null;
   /**
    * Description
    * Description of the transform.
@@ -3028,6 +3078,11 @@ export type ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetError = HTT
 
 export interface ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetParams {
   /**
+   * Dataset Id
+   * Filter experiments by dataset ID
+   */
+  dataset_id?: string | null;
+  /**
    * Page
    * Page number
    * @default 0
@@ -3140,6 +3195,13 @@ export type ListSpansMetadataApiV1TracesSpansGetData = SpanListResponse;
 export type ListSpansMetadataApiV1TracesSpansGetError = HTTPValidationError;
 
 export interface ListSpansMetadataApiV1TracesSpansGetParams {
+  /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -3301,6 +3363,13 @@ export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
 export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
 
 export interface ListTracesMetadataApiV1TracesGetParams {
+  /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -3856,11 +3925,8 @@ export interface NewDatasetRequest {
 
 /** NewDatasetTransformRequest */
 export interface NewDatasetTransformRequest {
-  /**
-   * Definition
-   * Transform definition in JSON format specifying extraction rules.
-   */
-  definition: Record<string, any>;
+  /** Transform definition specifying extraction rules. */
+  definition: DatasetTransformDefinition;
   /**
    * Description
    * Description of the transform.
@@ -4366,6 +4432,22 @@ export interface PromptExperimentSummary {
    * ISO timestamp when experiment was created
    */
   created_at: string;
+  /**
+   * Dataset Id
+   * ID of the dataset used
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Dataset Name
+   * Name of the dataset used
+   */
+  dataset_name: string;
+  /**
+   * Dataset Version
+   * Version of the dataset used
+   */
+  dataset_version: number;
   /**
    * Description
    * Description of the experiment
@@ -4912,6 +4994,13 @@ export type QuerySpansV1TracesQueryGetError = HTTPValidationError;
 
 export interface QuerySpansV1TracesQueryGetParams {
   /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
+  /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
    * @format date-time
@@ -5072,6 +5161,13 @@ export type QuerySpansWithMetricsV1TracesMetricsGetData = QueryTracesWithMetrics
 export type QuerySpansWithMetricsV1TracesMetricsGetError = HTTPValidationError;
 
 export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
+  /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -8020,7 +8116,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.212
+ * @version 2.1.214
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

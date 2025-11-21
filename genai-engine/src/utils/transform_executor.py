@@ -6,7 +6,7 @@ genai-engine/ui/src/components/traces/components/add-to-dataset/utils/transformE
 """
 
 import json
-from typing import Any, Dict, List
+from typing import Any, List
 
 from arthur_common.models.response_schemas import (
     NestedSpanWithMetricsResponse,
@@ -14,6 +14,7 @@ from arthur_common.models.response_schemas import (
 )
 
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.request_schemas import DatasetTransformDefinition
 from utils.trace import get_nested_value
 
 
@@ -57,7 +58,7 @@ def _flatten_spans(
 
 def execute_transform(
     trace: TraceResponse,
-    transform_definition: Dict[str, Any],
+    transform_definition: DatasetTransformDefinition,
 ) -> List[NewDatasetVersionRowColumnItemRequest]:
     """Execute transform on a trace, returns extracted columns.
 
@@ -66,7 +67,7 @@ def execute_transform(
 
     Args:
         trace: TraceResponse object containing root_spans
-        transform_definition: Transform definition containing columns to extract
+        transform_definition: DatasetTransformDefinition object containing columns to extract
 
     Returns:
         List of column items ready to be used in NewDatasetVersionRowRequest
@@ -78,14 +79,12 @@ def execute_transform(
 
     columns: List[NewDatasetVersionRowColumnItemRequest] = []
 
-    # Get columns from transform definition
-    transform_columns = transform_definition.get("columns", [])
-
-    for col_def in transform_columns:
-        span_name = col_def.get("span_name")
-        column_name = col_def.get("column_name")
-        attribute_path = col_def.get("attribute_path")
-        fallback = col_def.get("fallback")
+    # Iterate through column definitions
+    for col_def in transform_definition.columns:
+        span_name = col_def.span_name
+        column_name = col_def.column_name
+        attribute_path = col_def.attribute_path
+        fallback = col_def.fallback
 
         # Find matching spans by span_name
         matching_spans = [span for span in flat_spans if span.span_name == span_name]

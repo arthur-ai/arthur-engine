@@ -125,6 +125,28 @@ class NewDatasetVersionRequest(BaseModel):
     )
 
 
+class DatasetTransformColumnDefinition(BaseModel):
+    column_name: str = Field(
+        description="Name of the column to extract.",
+    )
+    span_name: str = Field(
+        description="Name of the span to extract data from.",
+    )
+    attribute_path: str = Field(
+        description="Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').",
+    )
+    fallback: Optional[str] = Field(
+        default=None,
+        description="Fallback value to use if the attribute is not found.",
+    )
+
+
+class DatasetTransformDefinition(BaseModel):
+    columns: list[DatasetTransformColumnDefinition] = Field(
+        description="List of column extraction rules.",
+    )
+
+
 class NewDatasetTransformRequest(BaseModel):
     name: str = Field(
         description="Name of the transform.",
@@ -133,21 +155,8 @@ class NewDatasetTransformRequest(BaseModel):
         default=None,
         description="Description of the transform.",
     )
-    definition: dict = Field(
-        description="Transform definition in JSON format specifying extraction rules.",
-        examples=[
-            {
-                "version": "1.0",
-                "columns": [
-                    {
-                        "column_name": "sqlQuery",
-                        "span_name": "rag-retrieval-savedQueries",
-                        "attribute_path": "attributes.input.value.sqlQuery",
-                        "fallback": None,
-                    },
-                ],
-            },
-        ],
+    definition: DatasetTransformDefinition = Field(
+        description="Transform definition specifying extraction rules.",
     )
 
 
@@ -160,9 +169,9 @@ class DatasetTransformUpdateRequest(BaseModel):
         default=None,
         description="Description of the transform.",
     )
-    definition: Optional[dict] = Field(
+    definition: Optional[DatasetTransformDefinition] = Field(
         default=None,
-        description="Transform definition in JSON format specifying extraction rules.",
+        description="Transform definition specifying extraction rules.",
     )
 
 

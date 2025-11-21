@@ -1,14 +1,7 @@
-import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
+import type { DatasetTransform, TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 
-export interface DatasetTransform {
-  id: string;
-  dataset_id: string;
-  name: string;
-  description?: string | null;
-  definition: TransformDefinition;
-  created_at: number;
-  updated_at: number;
-}
+// Re-export for convenience
+export type { DatasetTransform, TransformDefinition };
 
 export interface TransformsTableProps {
   transforms: DatasetTransform[];

@@ -5,6 +5,7 @@ import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "rea
 import { AllTasks } from "./components/AllTasks";
 import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
+import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
 import TransformsManagement from "./components/datasets/transforms/TransformsManagement";
 import Evaluators from "./components/evaluators/Evaluators";
@@ -110,6 +111,17 @@ function App() {
                   <ProtectedRoute>
                     <TaskLayout>
                       <TransformsManagement />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/datasets/:datasetId/experiments"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <DatasetExperimentsView />
                     </TaskLayout>
                   </ProtectedRoute>
                 }

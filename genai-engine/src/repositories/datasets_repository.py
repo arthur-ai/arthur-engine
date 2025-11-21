@@ -382,7 +382,7 @@ class DatasetRepository:
         if update_request.description is not None:
             db_transform.description = update_request.description
         if update_request.definition is not None:
-            db_transform.definition = update_request.definition
+            db_transform.definition = update_request.definition.model_dump()
 
         db_transform.updated_at = datetime.now()
         try:

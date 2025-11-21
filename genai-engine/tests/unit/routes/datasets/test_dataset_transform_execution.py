@@ -231,7 +231,7 @@ def test_execute_transform_success(
                     "column_name": "token_cost",
                     "span_name": "llm_call",
                     "attribute_path": "attributes.llm.token_cost",
-                    "fallback": 0,
+                    "fallback": "0",
                 },
             ],
         }
@@ -452,7 +452,7 @@ def test_execute_transform_complex_nested_data(
                     "column_name": "query_results",
                     "span_name": "rag-retrieval-savedQueries",
                     "attribute_path": "attributes.output.value.results",
-                    "fallback": [],
+                    "fallback": "[]",
                 },
                 {
                     "column_name": "context",
