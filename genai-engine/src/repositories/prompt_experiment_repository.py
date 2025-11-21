@@ -401,7 +401,9 @@ class PromptExperimentRepository:
         prompt_variable_mappings: list[PromptVariableMapping],
         prompt_versions: List[DatabaseAgenticPrompt],
         eval_configs: List[Tuple[EvalRef, DatabaseLLMEval]],
-        dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = None,
+        dataset_row_filter: Optional[
+            List[NewDatasetVersionRowColumnItemRequest]
+        ] = None,
     ) -> int:
         """Create test cases for each row in the dataset version, including prompt results and eval scores"""
         # Get all rows for this dataset version
