@@ -36,37 +36,22 @@ export const DatasetDetailView: React.FC = () => {
   const navigate = useNavigate();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
-  const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<
-    number | null
-  >(null);
+  const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<number | null>(null);
 
-  const {
-    dataset,
-    isLoading: datasetLoading,
-    error: datasetError,
-  } = useDataset(datasetId);
-  const { latestVersion, isLoading: latestVersionLoading } =
-    useDatasetLatestVersion(datasetId);
+  const { dataset, isLoading: datasetLoading, error: datasetError } = useDataset(datasetId);
+  const { latestVersion, isLoading: latestVersionLoading } = useDatasetLatestVersion(datasetId);
 
   const pagination = useDatasetPagination();
 
-  const versionSelection = useDatasetVersionSelection(
-    latestVersion?.version_number,
-    () => {
-      pagination.resetPage();
-    }
-  );
+  const versionSelection = useDatasetVersionSelection(latestVersion?.version_number, () => {
+    pagination.resetPage();
+  });
 
   const {
     version: versionData,
     isLoading: versionLoading,
     error: versionError,
-  } = useDatasetVersionData(
-    datasetId,
-    versionSelection.currentVersion,
-    pagination.page,
-    pagination.rowsPerPage
-  );
+  } = useDatasetVersionData(datasetId, versionSelection.currentVersion, pagination.page, pagination.rowsPerPage);
 
   const localState = useDatasetLocalState(versionData);
 
@@ -84,10 +69,7 @@ export const DatasetDetailView: React.FC = () => {
       showSnackbar("Changes saved successfully!", "success");
     },
     (error) => {
-      showSnackbar(
-        error.message || "Failed to save changes. Please try again.",
-        "error"
-      );
+      showSnackbar(error.message || "Failed to save changes. Please try again.", "error");
     }
   );
 
@@ -145,10 +127,7 @@ export const DatasetDetailView: React.FC = () => {
         localState.addRow(rowData);
         modals.closeAddModal();
       } catch {
-        showSnackbar(
-          `Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`,
-          "error"
-        );
+        showSnackbar(`Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`, "error");
       }
     },
     [localState, modals, showSnackbar]
@@ -163,15 +142,18 @@ export const DatasetDetailView: React.FC = () => {
 
   const handleExport = useCallback(() => {
     if (!dataset || localState.localRows.length === 0) return;
-    exportDatasetToCSV(dataset.name, localState.localRows);
-  }, [dataset, localState.localRows]);
+    try {
+      exportDatasetToCSV(dataset.name, localState.localRows);
+      showSnackbar("Dataset exported successfully!", "success");
+    } catch {
+      showSnackbar("Failed to export dataset. Please try again.", "error");
+    }
+  }, [dataset, localState.localRows, showSnackbar]);
 
   const handleImportData = useCallback(
     (csvColumns: string[], csvRows: Record<string, string>[]) => {
       const existingColumnsSet = new Set(localState.localColumns);
-      const newColumns = csvColumns.filter(
-        (col) => !existingColumnsSet.has(col)
-      );
+      const newColumns = csvColumns.filter((col) => !existingColumnsSet.has(col));
       const mergedColumns = [...localState.localColumns, ...newColumns];
 
       if (newColumns.length > 0) {
