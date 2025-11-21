@@ -2064,6 +2064,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Filter by trace annotation score (0 or 1). Optional.",
     )
+    session_ids: Optional[list[str]] = Field(
+        None,
+        description="Session IDs to filter on. Optional.",
+    )
     span_ids: Optional[list[str]] = Field(
         None,
         description="Span IDs to filter on. Optional.",
@@ -2106,6 +2110,7 @@ class TraceQuerySchema(BaseModel):
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
             user_ids=request.user_ids,
+            session_ids=request.session_ids,
             span_ids=request.span_ids,
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,

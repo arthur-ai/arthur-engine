@@ -212,6 +212,8 @@ class SpanQueryService:
             conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
         if filters.user_ids:
             conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
+        if filters.session_ids:
+            conditions.append(DatabaseTraceMetadata.session_id.in_(filters.session_ids))
 
         # Duration filters with optimized calculation
         if filters.trace_duration_filters:
@@ -580,6 +582,7 @@ class SpanQueryService:
             or filters.trace_duration_filters
             or filters.annotation_score is not None,
             or filters.user_ids
+            or filters.session_ids
         )
 
     def _apply_trace_filters_with_join(
@@ -608,6 +611,8 @@ class SpanQueryService:
             conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
         if filters.user_ids:
             conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
+        if filters.session_ids:
+            conditions.append(DatabaseTraceMetadata.session_id.in_(filters.session_ids))
 
         # Duration filters
         if filters.trace_duration_filters:
