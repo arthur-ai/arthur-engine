@@ -879,11 +879,6 @@ export interface DatasetTransformDefinition {
    * List of column extraction rules.
    */
   columns: DatasetTransformColumnDefinition[];
-  /**
-   * Version
-   * Version of the transform definition schema.
-   */
-  version: string;
 }
 
 /** DatasetTransformResponse */

@@ -142,9 +142,6 @@ class DatasetTransformColumnDefinition(BaseModel):
 
 
 class DatasetTransformDefinition(BaseModel):
-    version: str = Field(
-        description="Version of the transform definition schema.",
-    )
     columns: list[DatasetTransformColumnDefinition] = Field(
         description="List of column extraction rules.",
     )

@@ -11978,11 +11978,6 @@
             },
             "DatasetTransformDefinition": {
                 "properties": {
-                    "version": {
-                        "type": "string",
-                        "title": "Version",
-                        "description": "Version of the transform definition schema."
-                    },
                     "columns": {
                         "items": {
                             "$ref": "#/components/schemas/DatasetTransformColumnDefinition"
@@ -11994,7 +11989,6 @@
                 },
                 "type": "object",
                 "required": [
-                    "version",
                     "columns"
                 ],
                 "title": "DatasetTransformDefinition"

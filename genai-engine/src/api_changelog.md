@@ -3,6 +3,14 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the required property 'transforms/items/definition/version' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the required property 'definition/version' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the required property 'definition/version' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the required property 'definition/version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the request property 'definition/version'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the request property 'definition/anyOf[subschema #1: DatasetTransformDefinition]/version'
+
+# 11/21/2025
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/columns'
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/version'
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed 'subschema #1' from the 'definition' request property 'anyOf' list

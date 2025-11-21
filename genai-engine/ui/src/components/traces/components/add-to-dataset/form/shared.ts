@@ -1,4 +1,9 @@
 import { formOptions } from "@tanstack/react-form";
+import type {
+  DatasetTransformDefinition,
+  DatasetTransformColumnDefinition,
+  DatasetTransformResponse,
+} from "@/lib/api-client/api-client";
 
 export type Column = {
   name: string;
@@ -15,25 +20,10 @@ export type Column = {
   }>;
 };
 
-export type TransformDefinition = {
-  version?: string;
-  columns: Array<{
-    column_name: string;
-    span_name: string;
-    attribute_path: string;
-    fallback?: any;
-  }>;
-};
-
-export interface DatasetTransform {
-  id: string;
-  dataset_id: string;
-  name: string;
-  description?: string | null;
-  definition: TransformDefinition;
-  created_at: number;  // Unix timestamp in milliseconds
-  updated_at: number;  // Unix timestamp in milliseconds
-}
+// Re-export API types for convenience
+export type TransformDefinition = DatasetTransformDefinition;
+export type TransformColumnDefinition = DatasetTransformColumnDefinition;
+export type DatasetTransform = DatasetTransformResponse;
 
 export const addToDatasetFormOptions = formOptions({
   defaultValues: {
