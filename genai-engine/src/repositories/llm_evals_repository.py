@@ -9,6 +9,7 @@ from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.enums import ModelProvider
 from schemas.llm_eval_schemas import LLMEval, ReasonedScore
 from schemas.llm_schemas import LLMConfigSettings, LLMResponseFormat
 from schemas.request_schemas import (
@@ -139,12 +140,19 @@ class LLMEvalsRepository(BaseLLMRepository):
         # NOTE: We currently don't set litellm.enable_json_schema_validation=True, which has litellm validate schemas for models that support structured outputs
         # Some vertex ai models return true for the function below, but don't do any schema validations: https://docs.litellm.ai/docs/completion/json_mode?#validate-json-schema
         # If we choose to support vertex ai in the future, we should set the above flag to True to have litellm validate the schema
+        if llm_eval.model_provider == ModelProvider.DEFAULT:
+            model_name = llm_client.model_name
+            model_provider = llm_client.provider
+        else:
+            model_name = llm_eval.model_name
+            model_provider = llm_eval.model_provider
+
         if not supports_response_schema(
-            model=llm_eval.model_name,
-            custom_llm_provider=llm_eval.model_provider,
+            model=model_name,
+            custom_llm_provider=model_provider,
         ):
             raise ValueError(
-                f"Model {llm_eval.model_name} with provider {llm_eval.model_provider} does not support structured outputs",
+                f"Model {model_name} with provider {model_provider} does not support structured outputs",
             )
 
         variables = []

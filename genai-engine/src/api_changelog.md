@@ -6,6 +6,18 @@ The intention of this changelog is to document API changes as they happen to eff
 - `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
 - `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
 - `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
+- **CHANGE** for **URL**: /api/v1/completions  added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/completions  added the new 'default' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'azure' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'default' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'azure' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'default' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'azure' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'default' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'default' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'default' enum value to the request property 'model_provider'
 
 # 11/20/2025
 - `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed

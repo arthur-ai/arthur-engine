@@ -11,6 +11,7 @@ from clients.llm.llm_client import LLMClient
 from db_models.secret_storage_models import DatabaseSecretStorage
 from schemas.enums import ModelProvider, SecretType
 from schemas.response_schemas import ModelProviderResponse
+from scorer.llm_client import get_default_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,9 @@ class ModelProviderRepository:
 
     def get_model_provider_client(self, provider: ModelProvider) -> LLMClient:
         """Returns an authenticated LiteLLM client instance for the provider"""
+        if provider == ModelProvider.DEFAULT:
+            return get_default_llm_client()
+
         secret = (
             self.db_session.query(DatabaseSecretStorage)
             .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)

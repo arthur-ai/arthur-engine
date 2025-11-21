@@ -164,12 +164,13 @@ class SecretType(str, Enum):
 
 
 class ModelProvider(str, Enum):
+    DEFAULT = "default"
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GEMINI = "gemini"
+    AZURE = "azure"
 
     # not supporting for v0
-    # AZURE = "azure"
     # BEDROCK = "bedrock"
     # SAGEMAKER = "sagemaker"
     # VERTEX_AI = "vertex_ai"

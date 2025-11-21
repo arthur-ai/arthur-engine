@@ -69,9 +69,19 @@ refresh_thread.start()
 
 
 class LLMClient:
-    def __init__(self, provider: ModelProvider, api_key: str):
+    def __init__(
+        self,
+        provider: ModelProvider,
+        api_key: str,
+        model_name: str | None = None,
+        base_url: str | None = None,
+    ):
         self.provider = provider
         self.api_key = api_key
+
+        # used for default provider configurations
+        self.base_url = base_url
+        self.model_name = model_name
 
     def completion(
         self,
@@ -79,6 +89,13 @@ class LLMClient:
         **kwargs: Any,
     ) -> LLMModelResponse:
         # Delegate to the top-level function
+
+        # override model and base_url if they are set on the client (currently used for default provider configuration)
+        if self.model_name:
+            kwargs["model"] = self.provider.value + "/" + self.model_name
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+
         response = litellm.completion(*args, api_key=self.api_key, **kwargs)
         cost_float = completion_cost(response)
         cost = f"{cost_float:.6f}" if cost_float is not None else None
@@ -103,6 +120,13 @@ class LLMClient:
         **kwargs: Any,
     ) -> ModelResponse | CustomStreamWrapper:
         # Delegate to the top-level function
+
+        # override model and base_url if they are set on the client (currently used for default provider configuration)
+        if self.model_name:
+            kwargs["model"] = self.provider.value + "/" + self.model_name
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+
         response: ModelResponse | CustomStreamWrapper = await litellm.acompletion(
             *args,
             api_key=self.api_key,

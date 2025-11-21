@@ -209,6 +209,54 @@ async def test_run_prompt(
 
 
 @pytest.mark.unit_tests
+@pytest.mark.asyncio
+@patch("clients.llm.llm_client.LLMClient.completion")
+async def test_run_unsaved_prompt_default_provider(
+    mock_completion,
+    agentic_prompt_repo,
+    sample_unsaved_run_config,
+):
+    """Test running a prompt and getting response"""
+    # Mock completion response
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": "Test response",
+        "tool_calls": [{"id": "call_123", "function": {"name": "test_tool"}}],
+    }
+    mock_llm_response = MagicMock()
+    mock_llm_response.response = mock_response
+    mock_llm_response.cost = "0.001234"
+
+    mock_completion.return_value = mock_llm_response
+
+    sample_unsaved_run_config.model_provider = ModelProvider.DEFAULT
+    sample_unsaved_run_config.model_name = "default"
+
+    result = await agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
+
+    assert isinstance(result, AgenticPromptRunResponse)
+    assert result.content == "Test response"
+    assert result.tool_calls == [
+        ChatCompletionMessageToolCall(
+            function=Function(arguments="", name="test_tool"),
+            id="call_123",
+            type="function",
+        ),
+    ]
+    assert result.cost == "0.001234"
+
+    # Verify completion was called with correct parameters
+    mock_completion.assert_called_once()
+    call_args = mock_completion.call_args[1]
+    assert call_args["model"] == "default/default"
+    assert (
+        to_openai_messages(call_args["messages"]) == sample_unsaved_run_config.messages
+    )
+    assert call_args["temperature"] == sample_unsaved_run_config.config.temperature
+
+
+@pytest.mark.unit_tests
 def test_get_prompt_success(
     agentic_prompt_repo,
     sample_agentic_prompt,
@@ -429,6 +477,57 @@ async def test_run_saved_prompt(
         "1",
         PromptCompletionRequest(variables=[]),
     )
+
+    assert isinstance(result, AgenticPromptRunResponse)
+    assert result.content == "Saved prompt response"
+    assert result.cost == "0.002345"
+
+    agentic_prompt_repo.delete_llm_item(task_id, created_prompt.name)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+@patch("clients.llm.llm_client.LLMClient.completion")
+async def test_run_saved_prompt_default_provider(
+    mock_completion,
+    agentic_prompt_repo,
+    sample_agentic_prompt,
+):
+    """Test running a saved prompt from database"""
+    task_id = "test_task_id"
+    prompt_name = "test_prompt"
+
+    # Mock completion response
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": "Saved prompt response",
+    }
+    mock_llm_response = MagicMock()
+    mock_llm_response.response = mock_response
+    mock_llm_response.cost = "0.002345"
+
+    mock_completion.return_value = mock_llm_response
+
+    sample_agentic_prompt.model_provider = ModelProvider.DEFAULT
+    sample_agentic_prompt.model_name = "default"
+
+    created_prompt = agentic_prompt_repo.save_llm_item(
+        task_id,
+        prompt_name,
+        sample_agentic_prompt,
+    )
+
+    result = await agentic_prompt_repo.run_saved_prompt(
+        task_id,
+        prompt_name,
+        "1",
+        PromptCompletionRequest(variables=[]),
+    )
+
+    mock_completion.assert_called_once()
+    call_args = mock_completion.call_args[1]
+    assert call_args["model"] == "default/default"
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Saved prompt response"

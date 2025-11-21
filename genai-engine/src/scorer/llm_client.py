@@ -17,6 +17,7 @@ from langchain_openai import (
 )
 from opentelemetry import trace
 
+from clients.llm.llm_client import LLMClient
 from config.openai_config import GenaiEngineOpenAIProvider, OpenAISettings
 from schemas.custom_exceptions import (
     LLMContentFilterException,
@@ -24,6 +25,7 @@ from schemas.custom_exceptions import (
     LLMMaxRequestTokensException,
     LLMTokensPerPeriodRateLimitException,
 )
+from schemas.enums import ModelProvider
 from schemas.scorer_schemas import RuleScore, ScorerRuleDetails
 
 logger = logging.getLogger()
@@ -35,6 +37,7 @@ llm_executor = None
 tracer = trace.get_tracer(__name__)
 
 DEFAULT_TEMPERATURE = 0.0
+DEFAULT_LLM_CLIENT = None
 
 
 class LLMTokensPerPeriodRateLimiter:
@@ -281,6 +284,26 @@ def get_llm_executor() -> LLMExecutor:
     if llm_executor is None:
         llm_executor = LLMExecutor(llm_config=openai_config)
     return llm_executor
+
+
+def get_default_llm_client() -> LLMClient:
+    global DEFAULT_LLM_CLIENT
+    if not DEFAULT_LLM_CLIENT:
+        llm_executor = get_llm_executor()
+        model_name, endpoint, key = llm_executor._get_random_connection_details(
+            llm_executor.gpt_hosts,
+        )
+        DEFAULT_LLM_CLIENT = LLMClient(
+            provider=(
+                ModelProvider.OPENAI
+                if llm_executor.openai_enabled
+                else ModelProvider.AZURE
+            ),
+            model_name=model_name,
+            api_key=key,
+            base_url=endpoint,
+        )
+    return DEFAULT_LLM_CLIENT
 
 
 def validate_llm_connection() -> None:

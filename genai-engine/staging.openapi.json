@@ -15743,9 +15743,11 @@
             "ModelProvider": {
                 "type": "string",
                 "enum": [
+                    "default",
                     "anthropic",
                     "openai",
-                    "gemini"
+                    "gemini",
+                    "azure"
                 ],
                 "title": "ModelProvider"
             },
