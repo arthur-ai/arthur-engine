@@ -3,44 +3,10 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the required property 'transforms/items/definition/version' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the required property 'definition/version' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the required property 'definition/version' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the required property 'definition/version' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the request property 'definition/version'
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the request property 'definition/anyOf[subschema #1: DatasetTransformDefinition]/version'
-
-# 11/21/2025
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/columns'
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/version'
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed 'subschema #1' from the 'definition' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional 'query' request parameter 'dataset_id'
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'transforms/items/definition/columns' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'transforms/items/definition/version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'definition/columns' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'definition/version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added '#/components/schemas/DatasetTransformDefinition' to the 'definition' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/version' to the response with the '200' status
-
-# 11/21/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  the 'data/items/dataset_id' response's property type/format changed from 'string'/'' to 'string'/'uuid' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  the 'dataset_id' response's property type/format changed from 'string'/'' to 'string'/'uuid' for status '200'
-
-# 11/21/2025
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'dataset_ref/name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_name' to the response with the '200' status
-
-# 11/21/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_version' to the response with the '200' status
-
-# 11/21/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'annotation_score'
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  endpoint added
 
 # 11/21/2025
