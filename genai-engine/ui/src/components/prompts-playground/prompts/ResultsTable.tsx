@@ -150,10 +150,24 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                       Input Messages:
                     </Typography>
                     <Box className="max-h-96 overflow-auto">
-                      {promptResult?.input?.messages ? (
-                        promptResult.input.messages.map((message: any, msgIndex: number) => (
-                          <MessageDisplay key={msgIndex} message={message} />
-                        ))
+                      {promptResult?.rendered_prompt ? (
+                        (() => {
+                          try {
+                            const messages = JSON.parse(promptResult.rendered_prompt) as Message[];
+                            return messages.map((message, msgIndex) => (
+                              <MessageDisplay key={msgIndex} message={message} />
+                            ));
+                          } catch {
+                            // If not JSON, display as plain text
+                            return (
+                              <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
+                                <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+                                  {promptResult.rendered_prompt}
+                                </Typography>
+                              </Box>
+                            );
+                          }
+                        })()
                       ) : (
                         <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
                           <Typography variant="body2" className="text-gray-500 italic">
