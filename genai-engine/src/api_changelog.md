@@ -3,6 +3,21 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/columns'
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/version'
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed 'subschema #1' from the 'definition' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional 'query' request parameter 'dataset_id'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'transforms/items/definition/columns' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'transforms/items/definition/version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'definition/columns' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'definition/version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added '#/components/schemas/DatasetTransformDefinition' to the 'definition' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/version' to the response with the '200' status
+
+# 11/21/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  the 'data/items/dataset_id' response's property type/format changed from 'string'/'' to 'string'/'uuid' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  the 'dataset_id' response's property type/format changed from 'string'/'' to 'string'/'uuid' for status '200'
 

@@ -132,7 +132,7 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           Versions
         </Button>
         <Button
-          variant="contained"
+          variant="outlined"
           size="small"
           startIcon={<TransformIcon />}
           onClick={onManageTransforms}

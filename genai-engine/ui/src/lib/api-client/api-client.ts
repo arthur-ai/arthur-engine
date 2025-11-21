@@ -848,6 +848,44 @@ export interface DatasetResponse {
   updated_at: number;
 }
 
+/** DatasetTransformColumnDefinition */
+export interface DatasetTransformColumnDefinition {
+  /**
+   * Attribute Path
+   * Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').
+   */
+  attribute_path: string;
+  /**
+   * Column Name
+   * Name of the column to extract.
+   */
+  column_name: string;
+  /**
+   * Fallback
+   * Fallback value to use if the attribute is not found.
+   */
+  fallback?: string | null;
+  /**
+   * Span Name
+   * Name of the span to extract data from.
+   */
+  span_name: string;
+}
+
+/** DatasetTransformDefinition */
+export interface DatasetTransformDefinition {
+  /**
+   * Columns
+   * List of column extraction rules.
+   */
+  columns: DatasetTransformColumnDefinition[];
+  /**
+   * Version
+   * Version of the transform definition schema.
+   */
+  version: string;
+}
+
 /** DatasetTransformResponse */
 export interface DatasetTransformResponse {
   /**
@@ -861,11 +899,8 @@ export interface DatasetTransformResponse {
    * @format uuid
    */
   dataset_id: string;
-  /**
-   * Definition
-   * Transform definition in JSON format specifying extraction rules.
-   */
-  definition: Record<string, any>;
+  /** Transform definition specifying extraction rules. */
+  definition: DatasetTransformDefinition;
   /**
    * Description
    * Description of the transform.
@@ -891,11 +926,8 @@ export interface DatasetTransformResponse {
 
 /** DatasetTransformUpdateRequest */
 export interface DatasetTransformUpdateRequest {
-  /**
-   * Definition
-   * Transform definition in JSON format specifying extraction rules.
-   */
-  definition?: Record<string, any> | null;
+  /** Transform definition specifying extraction rules. */
+  definition?: DatasetTransformDefinition | null;
   /**
    * Description
    * Description of the transform.
@@ -3051,6 +3083,11 @@ export type ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetError = HTT
 
 export interface ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetParams {
   /**
+   * Dataset Id
+   * Filter experiments by dataset ID
+   */
+  dataset_id?: string | null;
+  /**
    * Page
    * Page number
    * @default 0
@@ -3879,11 +3916,8 @@ export interface NewDatasetRequest {
 
 /** NewDatasetTransformRequest */
 export interface NewDatasetTransformRequest {
-  /**
-   * Definition
-   * Transform definition in JSON format specifying extraction rules.
-   */
-  definition: Record<string, any>;
+  /** Transform definition specifying extraction rules. */
+  definition: DatasetTransformDefinition;
   /**
    * Description
    * Description of the transform.
