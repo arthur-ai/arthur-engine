@@ -294,6 +294,22 @@ class SpanQueryService:
             )
             query = query.where(span_name_exists)
 
+        # Apply span_ids filter even when no span_types are detected
+        # Use EXISTS clause to filter traces that contain spans with matching IDs
+        if filters.span_ids:
+            span_ids_exists = exists(
+                select(1)
+                .select_from(DatabaseSpan)
+                .where(
+                    and_(
+                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
+                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        DatabaseSpan.span_id.in_(filters.span_ids),
+                    ),
+                ),
+            )
+            query = query.where(span_ids_exists)
+
         if not span_types:
             return query
 

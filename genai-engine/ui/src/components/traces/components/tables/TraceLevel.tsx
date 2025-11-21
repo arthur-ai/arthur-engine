@@ -75,6 +75,7 @@ export function TraceLevel() {
         trace_ids: { taskId: task?.id ?? "", api },
         session_ids: { taskId: task?.id ?? "", api },
         user_ids: { taskId: task?.id ?? "", api },
+        span_ids: { taskId: task?.id ?? "", api },
       }),
     [task?.id, api]
   );
