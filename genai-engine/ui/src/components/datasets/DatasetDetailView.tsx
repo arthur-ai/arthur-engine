@@ -93,10 +93,10 @@ export const DatasetDetailView: React.FC = () => {
   // Update URL when version selection changes
   useEffect(() => {
     if (versionSelection.selectedVersion !== undefined) {
-      setSearchParams({ version: versionSelection.selectedVersion.toString() });
+      setSearchParams({ version: versionSelection.selectedVersion.toString() }, { replace: true });
     } else {
       // Remove version param when showing latest version
-      setSearchParams({});
+      setSearchParams({}, { replace: true });
     }
   }, [versionSelection.selectedVersion, setSearchParams]);
 
