@@ -47,7 +47,7 @@ interface CreateExperimentModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: ExperimentFormData) => Promise<{ id: string }>;
-  initialData?: PromptExperimentDetail;
+  initialData?: Partial<PromptExperimentDetail>;
   isLoadingInitialData?: boolean;
 }
 
@@ -203,69 +203,89 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setIsInitializing(true);
 
       try {
-        // Transform the initial data to form data format
-        const promptVersions: PromptVersionSelection[] = initialData.prompt_ref.version_list.map((v) => ({
-          promptName: initialData.prompt_ref.name,
-          version: v,
-        }));
+        // Check if we're initializing from a full experiment or just a dataset
+        const isFullExperiment = initialData.prompt_ref && initialData.eval_list;
 
-        const evaluators: EvaluatorSelection[] = initialData.eval_list.map((e) => ({
-          name: e.name,
-          version: e.version,
-        }));
+        // Transform the initial data to form data format
+        const promptVersions: PromptVersionSelection[] = isFullExperiment && initialData.prompt_ref
+          ? initialData.prompt_ref.version_list.map((v) => ({
+              promptName: initialData.prompt_ref!.name,
+              version: v,
+            }))
+          : [];
+
+        const evaluators: EvaluatorSelection[] = isFullExperiment && initialData.eval_list
+          ? initialData.eval_list.map((e) => ({
+              name: e.name,
+              version: e.version,
+            }))
+          : [];
 
         // Transform prompt variable mappings
         const promptVariableMappings: PromptVariableMappings = {};
-        initialData.prompt_ref.variable_mapping.forEach((mapping) => {
-          if (mapping.source.type === "dataset_column") {
-            promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
-          }
-        });
-
-        // Transform eval variable mappings
-        const evalVariableMappings: EvalVariableMappings[] = initialData.eval_list.map((evalConfig) => {
-          const mappings: EvalVariableMappings["mappings"] = {};
-          evalConfig.variable_mapping.forEach((mapping) => {
+        if (isFullExperiment && initialData.prompt_ref?.variable_mapping) {
+          initialData.prompt_ref.variable_mapping.forEach((mapping) => {
             if (mapping.source.type === "dataset_column") {
-              mappings[mapping.variable_name] = {
-                sourceType: "dataset_column",
-                datasetColumn: mapping.source.dataset_column.name,
-              };
-            } else if (mapping.source.type === "experiment_output") {
-              mappings[mapping.variable_name] = {
-                sourceType: "experiment_output",
-                jsonPath: mapping.source.experiment_output.json_path || "",
-              };
+              promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
             }
           });
-          return {
-            evalName: evalConfig.name,
-            evalVersion: evalConfig.version,
-            mappings,
-          };
-        });
+        }
+
+        // Transform eval variable mappings
+        const evalVariableMappings: EvalVariableMappings[] = isFullExperiment && initialData.eval_list
+          ? initialData.eval_list.map((evalConfig) => {
+              const mappings: EvalVariableMappings["mappings"] = {};
+              evalConfig.variable_mapping.forEach((mapping) => {
+                if (mapping.source.type === "dataset_column") {
+                  mappings[mapping.variable_name] = {
+                    sourceType: "dataset_column",
+                    datasetColumn: mapping.source.dataset_column.name,
+                  };
+                } else if (mapping.source.type === "experiment_output") {
+                  mappings[mapping.variable_name] = {
+                    sourceType: "experiment_output",
+                    jsonPath: mapping.source.experiment_output.json_path || "",
+                  };
+                }
+              });
+              return {
+                evalName: evalConfig.name,
+                evalVersion: evalConfig.version,
+                mappings,
+              };
+            })
+          : [];
 
         // Set the selected prompt name first
-        setSelectedPromptName(initialData.prompt_ref.name);
+        if (isFullExperiment && initialData.prompt_ref) {
+          setSelectedPromptName(initialData.prompt_ref.name);
+        }
 
         // Load all necessary data in parallel
         // Pass the desired version to preserve the original dataset version
-        await Promise.all([
-          loadDatasetVersions(initialData.dataset_ref.id, initialData.dataset_ref.version),
-          loadPromptVersions(initialData.prompt_ref.name),
-          ...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)),
-        ]);
+        const loadTasks = [
+          loadDatasetVersions(initialData.dataset_ref!.id, initialData.dataset_ref!.version),
+        ];
+
+        if (isFullExperiment && initialData.prompt_ref) {
+          loadTasks.push(loadPromptVersions(initialData.prompt_ref.name));
+          loadTasks.push(...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)));
+        }
+
+        await Promise.all(loadTasks);
 
         // Transform dataset row filter from initial data
-        const datasetRowFilter: DatasetRowFilter[] = initialData.dataset_row_filter || [];
+        const datasetRowFilter: DatasetRowFilter[] = isFullExperiment && initialData.dataset_row_filter
+          ? initialData.dataset_row_filter
+          : [];
 
         // Now set the form data after all dropdowns are populated
         setFormData({
-          name: `${initialData.name} (Copy)`,
-          description: initialData.description || "",
+          name: isFullExperiment && initialData.name ? `${initialData.name} (Copy)` : "",
+          description: isFullExperiment ? (initialData.description || "") : "",
           promptVersions,
-          datasetId: initialData.dataset_ref.id,
-          datasetVersion: initialData.dataset_ref.version,
+          datasetId: initialData.dataset_ref!.id,
+          datasetVersion: initialData.dataset_ref!.version,
           evaluators,
           promptVariableMappings,
           evalVariableMappings,

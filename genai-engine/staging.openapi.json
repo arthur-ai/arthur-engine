@@ -9588,6 +9588,25 @@
                         "description": "Search text to filter experiments by name, description, prompt name, or dataset name"
                     },
                     {
+                        "name": "dataset_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter experiments by dataset ID",
+                            "title": "Dataset Id"
+                        },
+                        "description": "Filter experiments by dataset ID"
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -11733,7 +11752,7 @@
                         "description": "Description of the experiment"
                     },
                     "dataset_ref": {
-                        "$ref": "#/components/schemas/DatasetRef",
+                        "$ref": "#/components/schemas/DatasetRefInput",
                         "description": "Reference to the dataset to use"
                     },
                     "prompt_ref": {
@@ -11859,6 +11878,34 @@
                         "title": "Id",
                         "description": "Dataset ID"
                     },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Dataset name"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Dataset version number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "version"
+                ],
+                "title": "DatasetRef",
+                "description": "Reference to a dataset and version (with name)"
+            },
+            "DatasetRefInput": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "Dataset ID"
+                    },
                     "version": {
                         "type": "integer",
                         "title": "Version",
@@ -11870,8 +11917,8 @@
                     "id",
                     "version"
                 ],
-                "title": "DatasetRef",
-                "description": "Reference to a dataset and version"
+                "title": "DatasetRefInput",
+                "description": "Reference to a dataset and version for input (without name)"
             },
             "DatasetResponse": {
                 "properties": {
@@ -11943,6 +11990,61 @@
                 ],
                 "title": "DatasetResponse"
             },
+            "DatasetTransformColumnDefinition": {
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "title": "Column Name",
+                        "description": "Name of the column to extract."
+                    },
+                    "span_name": {
+                        "type": "string",
+                        "title": "Span Name",
+                        "description": "Name of the span to extract data from."
+                    },
+                    "attribute_path": {
+                        "type": "string",
+                        "title": "Attribute Path",
+                        "description": "Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery')."
+                    },
+                    "fallback": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Fallback",
+                        "description": "Fallback value to use if the attribute is not found."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "column_name",
+                    "span_name",
+                    "attribute_path"
+                ],
+                "title": "DatasetTransformColumnDefinition"
+            },
+            "DatasetTransformDefinition": {
+                "properties": {
+                    "columns": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatasetTransformColumnDefinition"
+                        },
+                        "type": "array",
+                        "title": "Columns",
+                        "description": "List of column extraction rules."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "columns"
+                ],
+                "title": "DatasetTransformDefinition"
+            },
             "DatasetTransformResponse": {
                 "properties": {
                     "id": {
@@ -11975,10 +12077,8 @@
                         "description": "Description of the transform."
                     },
                     "definition": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules."
+                        "$ref": "#/components/schemas/DatasetTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
                     },
                     "created_at": {
                         "type": "integer",
@@ -12031,15 +12131,13 @@
                     "definition": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/DatasetTransformDefinition"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules."
+                        "description": "Transform definition specifying extraction rules."
                     }
                 },
                 "type": "object",
@@ -15419,22 +15517,8 @@
                         "description": "Description of the transform."
                     },
                     "definition": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules.",
-                        "examples": [
-                            {
-                                "columns": [
-                                    {
-                                        "attribute_path": "attributes.input.value.sqlQuery",
-                                        "column_name": "sqlQuery",
-                                        "span_name": "rag-retrieval-savedQueries"
-                                    }
-                                ],
-                                "version": "2.1.214"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/DatasetTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
                     }
                 },
                 "type": "object",
@@ -16555,6 +16639,22 @@
                         "title": "Prompt Name",
                         "description": "Name of the prompt being tested"
                     },
+                    "dataset_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Dataset Id",
+                        "description": "ID of the dataset used"
+                    },
+                    "dataset_name": {
+                        "type": "string",
+                        "title": "Dataset Name",
+                        "description": "Name of the dataset used"
+                    },
+                    "dataset_version": {
+                        "type": "integer",
+                        "title": "Dataset Version",
+                        "description": "Version of the dataset used"
+                    },
                     "total_rows": {
                         "type": "integer",
                         "title": "Total Rows",
@@ -16590,6 +16690,9 @@
                     "created_at",
                     "status",
                     "prompt_name",
+                    "dataset_id",
+                    "dataset_name",
+                    "dataset_version",
                     "total_rows",
                     "completed_rows",
                     "failed_rows"

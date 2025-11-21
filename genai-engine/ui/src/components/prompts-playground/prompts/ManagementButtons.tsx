@@ -63,7 +63,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   const runDisabled = prompt.running || prompt.modelName === "" || hasUnsetVariables;
   const previewDisabled = hasUnsetVariables;
   const isDirty = prompt.isDirty;
-  const saveTooltip = isDirty ? "Save unsaved changes" : "Save Prompt";
+  const saveTooltip = isDirty ? "Save changes as new version" : "Save Prompt";
 
   // Determine the run button tooltip based on disabled state
   let runTooltip = "Run Prompt";

@@ -18,11 +18,12 @@ export function usePromptExperiments(
   taskId: string | undefined,
   page: number = 0,
   pageSize: number = 100,
-  search?: string
+  search?: string,
+  datasetId?: string
 ) {
   const { data, error, isLoading, refetch } = useApiQuery<"listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet">({
     method: "listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet",
-    args: [{ taskId: taskId!, page, page_size: pageSize, search }] as const,
+    args: [{ taskId: taskId!, page, page_size: pageSize, search, dataset_id: datasetId }] as const,
     enabled: !!taskId,
     queryOptions: {
       staleTime: 5000,
