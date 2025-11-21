@@ -209,19 +209,15 @@ class SpanQueryService:
 
         # Annotation score filter
         if filters.annotation_score is not None:
-            annotation_exists = exists(
-                select(1)
-                .select_from(DatabaseAgenticAnnotation)
-                .where(
-                    and_(
-                        DatabaseAgenticAnnotation.trace_id
-                        == DatabaseTraceMetadata.trace_id,
-                        DatabaseAgenticAnnotation.annotation_score
-                        == filters.annotation_score,
-                    ),
+            query = query.join(
+                DatabaseAgenticAnnotation,
+                and_(
+                    DatabaseAgenticAnnotation.trace_id
+                    == DatabaseTraceMetadata.trace_id,
+                    DatabaseAgenticAnnotation.annotation_score
+                    == filters.annotation_score,
                 ),
             )
-            conditions.append(annotation_exists)
 
         if conditions:
             query = query.where(and_(*conditions))
@@ -546,19 +542,15 @@ class SpanQueryService:
 
         # Annotation score filter
         if filters.annotation_score is not None:
-            annotation_exists = exists(
-                select(1)
-                .select_from(DatabaseAgenticAnnotation)
-                .where(
-                    and_(
-                        DatabaseAgenticAnnotation.trace_id
-                        == DatabaseTraceMetadata.trace_id,
-                        DatabaseAgenticAnnotation.annotation_score
-                        == filters.annotation_score,
-                    ),
+            query = query.join(
+                DatabaseAgenticAnnotation,
+                and_(
+                    DatabaseAgenticAnnotation.trace_id
+                    == DatabaseTraceMetadata.trace_id,
+                    DatabaseAgenticAnnotation.annotation_score
+                    == filters.annotation_score,
                 ),
             )
-            conditions.append(annotation_exists)
 
         if conditions:
             query = query.where(and_(*conditions))
