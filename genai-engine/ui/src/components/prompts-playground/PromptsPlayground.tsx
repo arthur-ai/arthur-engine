@@ -16,9 +16,11 @@ import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
 import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
+import toFrontendPrompt from "./utils/toFrontendPrompt";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 import { track, EVENT_NAMES } from "@/services/amplitude";
 
@@ -30,10 +32,14 @@ const PromptsPlayground = () => {
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
   const hasFetchedSpan = useRef(false);
+  const hasFetchedPrompt = useRef(false);
   const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
+  const { task } = useTask();
   const spanId = searchParams.get("spanId");
+  const promptNameParam = searchParams.get("promptName");
+  const promptVersionParam = searchParams.get("version");
 
   // Pass false to let each prompt determine its own icon-only mode based on container width
   // This enables true container query behavior - each prompt measures its own width
@@ -133,6 +139,48 @@ const PromptsPlayground = () => {
       fetchSpanData();
     }
   }, [fetchSpanData, spanId]);
+
+  /**
+   * Fetch prompt data by name and version
+   * Triggered if URL has promptName and version parameters
+   */
+  const fetchPromptData = useCallback(async () => {
+    if (hasFetchedPrompt.current || !promptNameParam || !promptVersionParam || !apiClient || !task?.id) {
+      return;
+    }
+
+    hasFetchedPrompt.current = true;
+
+    try {
+      const response = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+        promptNameParam,
+        promptVersionParam,
+        task.id
+      );
+      const frontendPrompt = toFrontendPrompt(response.data);
+
+      // Update the first empty prompt instead of adding a new one
+      if (state.prompts.length > 0) {
+        dispatch({
+          type: "updatePrompt",
+          payload: { promptId: state.prompts[0].id, prompt: frontendPrompt },
+        });
+      } else {
+        dispatch({
+          type: "hydratePrompt",
+          payload: { promptData: frontendPrompt },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch prompt data:", error);
+    }
+  }, [promptNameParam, promptVersionParam, apiClient, task?.id, state.prompts]);
+
+  useEffect(() => {
+    if (promptNameParam && promptVersionParam) {
+      fetchPromptData();
+    }
+  }, [fetchPromptData, promptNameParam, promptVersionParam]);
 
   // Fetch backend prompts on mount
   useEffect(() => {
