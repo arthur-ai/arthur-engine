@@ -308,6 +308,9 @@ export const ExperimentDetailView: React.FC = () => {
             <Box>
               <span className="font-medium">Prompt:</span> {experiment.prompt_name}
             </Box>
+            <Box>
+              <span className="font-medium">Dataset:</span> {experiment.dataset_ref.name} (v{experiment.dataset_ref.version})
+            </Box>
             {experiment.total_cost && (
               <Box>
                 <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost))}
