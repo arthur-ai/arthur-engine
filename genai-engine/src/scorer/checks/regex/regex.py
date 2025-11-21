@@ -20,7 +20,7 @@ class RegexScorer(RuleScorer):
 
         regex_matched = False
         matches: list[ScorerRegexSpan] = []
-        for pattern in request.regex_patterns:
+        for pattern in request.regex_patterns or []:
             re_matches = pattern.finditer(text)
             for m in re_matches:
                 regex_matched = True

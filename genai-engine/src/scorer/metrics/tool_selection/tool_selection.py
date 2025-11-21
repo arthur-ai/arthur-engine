@@ -1,4 +1,5 @@
 import logging
+from typing import Any, Callable
 
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import MetricType, ToolClassEnum
@@ -7,6 +8,8 @@ from arthur_common.models.metric_schemas import (
 )
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
+from langchain_core.runnables import RunnableSerializable
+from langchain_openai.chat_models import AzureChatOpenAI, ChatOpenAI
 from pydantic import BaseModel, Field
 
 from schemas.internal_schemas import MetricResult
@@ -42,12 +45,20 @@ class ToolUsageResponseSchema(BaseModel):
     )
 
 
-def get_model(temperature=0.0):
-    return get_llm_executor().get_gpt_model(chat_temperature=temperature)
+def get_model(temperature: float = 0.0) -> AzureChatOpenAI | ChatOpenAI:
+    model = get_llm_executor().get_gpt_model(chat_temperature=temperature)
+    if model is None:
+        raise RuntimeError(
+            "Failed to initialize LLM model for ToolSelectionCorrectnessScorer. "
+            "Check your LLM configuration.",
+        )
+    return model
 
 
 # Structured output chains
-def get_tool_selection_chain_structured(temperature=0.0):
+def get_tool_selection_chain_structured(
+    temperature: float = 0.0,
+) -> RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema]:
     """Structured output chain for tool selection"""
     model = get_model(temperature)
     pt = PromptTemplate(
@@ -55,10 +66,12 @@ def get_tool_selection_chain_structured(temperature=0.0):
         template=TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE,
     )
     evaluation_chain = pt | model.with_structured_output(ToolSelectionResponseSchema)
-    return evaluation_chain
+    return evaluation_chain  # type: ignore[return-value]
 
 
-def get_tool_usage_chain_structured(temperature=0.0):
+def get_tool_usage_chain_structured(
+    temperature: float = 0.0,
+) -> RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema]:
     """Structured output chain for tool usage"""
     model = get_model(temperature)
     pt = PromptTemplate(
@@ -66,11 +79,13 @@ def get_tool_usage_chain_structured(temperature=0.0):
         template=TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE,
     )
     evaluation_chain = pt | model.with_structured_output(ToolUsageResponseSchema)
-    return evaluation_chain
+    return evaluation_chain  # type: ignore[return-value]
 
 
 # Legacy chains with JSON parser
-def get_tool_selection_chain_legacy(temperature=0.0):
+def get_tool_selection_chain_legacy(
+    temperature: float = 0.0,
+) -> RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema]:
     """Legacy chain for tool selection with JSON parser"""
     model = get_model(temperature)
     parser = JsonOutputParser(pydantic_object=ToolSelectionResponseSchema)
@@ -85,7 +100,9 @@ def get_tool_selection_chain_legacy(temperature=0.0):
     return evaluation_chain
 
 
-def get_tool_usage_chain_legacy(temperature=0.0):
+def get_tool_usage_chain_legacy(
+    temperature: float = 0.0,
+) -> RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema]:
     """Legacy chain for tool usage with JSON parser"""
     model = get_model(temperature)
 
@@ -103,7 +120,9 @@ def get_tool_usage_chain_legacy(temperature=0.0):
 
 
 # Legacy functions for backward compatibility
-def get_tool_selection_chain(temperature=0.0):
+def get_tool_selection_chain(
+    temperature: float = 0.0,
+) -> RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema]:
     """Legacy function - uses structured outputs if supported, falls back to legacy"""
     if get_llm_executor().supports_structured_outputs():
         return get_tool_selection_chain_structured(temperature)
@@ -111,7 +130,9 @@ def get_tool_selection_chain(temperature=0.0):
         return get_tool_selection_chain_legacy(temperature)
 
 
-def get_tool_usage_chain(temperature=0.0):
+def get_tool_usage_chain(
+    temperature: float = 0.0,
+) -> RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema]:
     """Legacy function - uses structured outputs if supported, falls back to legacy"""
     if get_llm_executor().supports_structured_outputs():
         return get_tool_usage_chain_structured(temperature)
@@ -120,10 +141,15 @@ def get_tool_usage_chain(temperature=0.0):
 
 
 class ToolSelectionCorrectnessScorer(MetricScorer):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def _get_chains(self):
+    def _get_chains(
+        self,
+    ) -> tuple[
+        RunnableSerializable[dict[str, str | None], ToolSelectionResponseSchema],
+        RunnableSerializable[dict[str, str | None], ToolUsageResponseSchema],
+    ]:
         """Get the appropriate chains based on structured output support"""
         if get_llm_executor().supports_structured_outputs():
             return (
@@ -134,11 +160,19 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             return get_tool_selection_chain_legacy(), get_tool_usage_chain_legacy()
 
     @staticmethod
-    def prompt_llm(f, operation_name: str):
+    def prompt_llm(
+        f: Callable[[], Any],
+        operation_name: str,
+    ) -> tuple[Any, LLMTokenConsumption]:
         """Execute chain with token tracking, similar to relevance scorer"""
         return get_llm_executor().execute(f, operation_name)
 
-    def invoke_chain(self, user_query, system_prompt, context):
+    def invoke_chain(
+        self,
+        user_query: str,
+        system_prompt: str,
+        context: list[dict[str, Any]],
+    ) -> tuple[dict[str, str | int], dict[str, int]]:
         tool_selection_chain, tool_usage_chain = self._get_chains()
 
         # Create lambda for tool selection chain
@@ -146,7 +180,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             {
                 "system_prompt": system_prompt,
                 "user_query": user_query,
-                "context": context,
+                "context": context,  # TODO: here tool expect RunableConfig which is TypedDict should we use the the type from library here?
             },
         )
 
@@ -155,21 +189,22 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             {
                 "system_prompt": system_prompt,
                 "user_query": user_query,
-                "context": context,
+                "context": context,  # TODO: here tool expect RunableConfig which is TypedDict should we use the the type from library here?
             },
         )
 
-        default_tool_selection = {
+        default_tool_selection: dict[str, str | int] = {
             "tool_selection": 2,
             "tool_selection_reason": "Could not evaluate tool selection",
         }
-        default_tool_usage = {
+        default_tool_usage: dict[str, str | int] = {
             "tool_usage": 2,
             "tool_usage_reason": "Could not evaluate tool usage",
         }
         default_tokens = LLMTokenConsumption(prompt_tokens=0, completion_tokens=0)
         # Execute chains using prompt_llm pattern
         try:
+            tool_selection_response: dict[str, str | int]
             tool_selection_response, selection_tokens = self.prompt_llm(
                 tool_selection_call,
                 "Tool Selection Check",
@@ -184,6 +219,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             )
 
         try:
+            tool_usage_response: dict[str, str | int]
             # If tool selection is not 2, then we can evaluate tool usage
             if tool_selection_response["tool_selection"] != 2:
                 tool_usage_response, usage_tokens = self.prompt_llm(
@@ -209,13 +245,13 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
 
         return tool_response, total_tokens
 
-    def score(self, request: MetricRequest, config: dict) -> MetricResult:
+    def score(self, request: MetricRequest, config: dict[str, Any]) -> MetricResult:
         """Scores tool selection and tool use by the assistant in relevance to the user's query"""
         # Config is not used in this scorer
         _ = config
 
-        user_query = request.user_query
-        system_prompt = request.system_prompt
+        user_query = request.user_query or ""
+        system_prompt = request.system_prompt or ""
         context = request.context
 
         tool_response, total_tokens = self.invoke_chain(
@@ -224,8 +260,8 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             context,
         )
         # Translate integer values to ToolClassEnum
-        tool_selection_enum = ToolClassEnum(tool_response["tool_selection"])
-        tool_usage_enum = ToolClassEnum(tool_response["tool_usage"])
+        tool_selection_enum = ToolClassEnum(int(tool_response["tool_selection"]))
+        tool_usage_enum = ToolClassEnum(int(tool_response["tool_usage"]))
 
         logger.info(f"Tool Selection Result: {tool_selection_enum}, {tool_usage_enum}")
         return MetricResult(
@@ -234,9 +270,9 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             details=MetricScoreDetails(
                 tool_selection=ToolSelectionCorrectnessMetric(
                     tool_selection=tool_selection_enum,
-                    tool_selection_reason=tool_response["tool_selection_reason"],
+                    tool_selection_reason=str(tool_response["tool_selection_reason"]),
                     tool_usage=tool_usage_enum,
-                    tool_usage_reason=tool_response["tool_usage_reason"],
+                    tool_usage_reason=str(tool_response["tool_usage_reason"]),
                 ),
             ),
             prompt_tokens=total_tokens["prompt_tokens"],

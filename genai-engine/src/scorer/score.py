@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Union
+from typing import Dict, Protocol, Union, overload
 
 from arthur_common.models.enums import MetricType, RuleType
 from arthur_common.models.metric_schemas import MetricRequest
@@ -7,6 +7,21 @@ from arthur_common.models.metric_schemas import MetricRequest
 from schemas.internal_schemas import Metric, MetricResult
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import MetricScorer, RuleScorer
+
+
+class ScorerMapping(Protocol):
+    """Protocol for type-safe scorer mapping where RuleType -> RuleScorer and MetricType -> MetricScorer"""
+
+    @overload
+    def __getitem__(self, key: RuleType) -> RuleScorer: ...
+
+    @overload
+    def __getitem__(self, key: MetricType) -> MetricScorer: ...
+
+    def __getitem__(
+        self,
+        key: Union[RuleType, MetricType],
+    ) -> Union[RuleScorer, MetricScorer]: ...
 
 
 class ScorerClient:
@@ -17,10 +32,7 @@ class ScorerClient:
             Union[RuleScorer, MetricScorer],
         ],
     ):
-        self.NAME_VERSION_MAPPING: Dict[
-            Union[RuleType, MetricType],
-            Union[RuleScorer, MetricScorer],
-        ] = name_version_mapping
+        self.NAME_VERSION_MAPPING: ScorerMapping = name_version_mapping  # type: ignore[assignment]
 
     def score(self, score_request: ScoreRequest) -> RuleScore:
         """Scores any request with the provided rule

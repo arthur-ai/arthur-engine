@@ -44,7 +44,7 @@ letter_substitutions = {
 }
 
 
-def generate_obscured_regex(word):
+def generate_obscured_regex(word: str) -> re.Pattern[str]:
     """
     Generates a regex to match a standalone word with allowed character substitutions (e.g. f*ck, sh!t, or a55),
     but it does not check for multiple substitutions or spaces (e.g. 's h i t' and 'f***ck' would not be flagged)
@@ -72,10 +72,12 @@ def generate_obscured_regex(word):
 
 # use the above function to generate an obscured regex to catch
 # obscured representations of the profanities in the local blacklist
-all_bad_word_regexes = [generate_obscured_regex(w) for w in FULLY_BAD_WORDS]
+all_bad_word_regexes: list[re.Pattern[str]] = [
+    generate_obscured_regex(w) for w in FULLY_BAD_WORDS
+]
 
 
-def detect_profanity(s):
+def detect_profanity(s: str) -> bool:
     """
     Detects profanity using the regular expressions generated above
 

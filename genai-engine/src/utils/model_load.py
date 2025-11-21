@@ -20,7 +20,7 @@ from transformers import (
     pipeline,
 )
 from transformers.modeling_utils import PreTrainedModel
-from transformers.tokenization_utils import PreTrainedTokenizerBase
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from custom_types import P, T
 from utils import constants
@@ -45,7 +45,7 @@ PROMPT_INJECTION_MODEL: PreTrainedModel | None = None
 PROMPT_INJECTION_TOKENIZER: PreTrainedTokenizerBase | None = None
 PROMPT_INJECTION_CLASSIFIER: TextClassificationPipeline | None = None
 TOXICITY_MODEL: AutoModelForSequenceClassification | None = None
-TOXICITY_TOKENIZER: AutoTokenizer | None = None
+TOXICITY_TOKENIZER: PreTrainedTokenizerBase | None = None
 RELEVANCE_MODEL: AutoModelForSequenceClassification | None = None
 RELEVANCE_TOKENIZER: AutoTokenizer | None = None
 TOXICITY_CLASSIFIER: TextClassificationPipeline | None = None
@@ -53,7 +53,7 @@ PROFANITY_CLASSIFIER = None
 BERT_SCORER: BERTScorer | None = None
 RELEVANCE_RERANKER: TextClassificationPipeline | None = None
 PII_GLINER_MODEL = None
-PII_GLINER_TOKENIZER: AutoTokenizer | None = None
+PII_GLINER_TOKENIZER: PreTrainedTokenizerBase | None = None
 PII_PRESIDIO_ANALYZER = None
 
 
@@ -229,7 +229,7 @@ def get_toxicity_model() -> AutoModelForSequenceClassification | None:
 
 
 @log_model_loading("toxicity tokenizer", "TOXICITY_TOKENIZER")
-def get_toxicity_tokenizer() -> AutoTokenizer | None:
+def get_toxicity_tokenizer() -> PreTrainedTokenizerBase | None:
     global TOXICITY_TOKENIZER
     if not TOXICITY_TOKENIZER:
         TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
@@ -243,7 +243,7 @@ def get_toxicity_tokenizer() -> AutoTokenizer | None:
 @log_model_loading("toxicity classifier pipeline", "TOXICITY_CLASSIFIER")
 def get_toxicity_classifier(
     model: AutoModelForSequenceClassification | None,
-    tokenizer: AutoTokenizer | None,
+    tokenizer: PreTrainedTokenizerBase | None,
 ) -> TextClassificationPipeline | None:
     if not model:
         model = get_toxicity_model()
@@ -354,7 +354,7 @@ def get_relevance_reranker() -> TextClassificationPipeline | None:
 
 
 @log_model_loading("gliner tokenizer")
-def get_gliner_tokenizer() -> AutoTokenizer | None:
+def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
     global PII_GLINER_TOKENIZER
 
     # Check if Gliner is enabled

@@ -15,10 +15,10 @@ logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 
 
 class BinaryPIIDataClassifierV1(RuleScorer):
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialized the binary classifier for PII Data"""
-        self.analyzer = AnalyzerEngine()
-        self.default_confidence_threshold = 0.5
+        self.analyzer: AnalyzerEngine = AnalyzerEngine()
+        self.default_confidence_threshold: float = 0.5
 
     def score(self, request: ScoreRequest) -> RuleScore:
         """Scores request for PII"""
@@ -38,7 +38,8 @@ class BinaryPIIDataClassifierV1(RuleScorer):
             ]
 
         results = self.analyzer.analyze(
-            text=request.scoring_text,
+            text=request.scoring_text
+            or "",  # TODO: should we analyze if scoring_text is None? or just return PASS since there is no PII violation?
             entities=entities_to_check,
             allow_list=request.allow_list,
             language="en",
@@ -54,15 +55,21 @@ class BinaryPIIDataClassifierV1(RuleScorer):
                 completion_tokens=0,
             )
         else:
-            found_types = [res.entity_type for res in results]
-            entity_spans = [
-                ScorerPIIEntitySpan(
-                    entity=res.entity_type,
-                    span=request.scoring_text[res.start : res.end],
-                    confidence=res.score,
+            found_types: list[PIIEntityTypes] = []
+            entity_spans: list[ScorerPIIEntitySpan] = []
+            for res in results:
+                entity_type = PIIEntityTypes(value=res.entity_type)
+                if not (scoring_text := request.scoring_text):
+                    # raising TypeError here to not change previous code behavior
+                    raise ValueError("Scoring text is required")
+                found_types.append(entity_type)
+                entity_spans.append(
+                    ScorerPIIEntitySpan(
+                        entity=entity_type,
+                        span=scoring_text[res.start : res.end],
+                        confidence=res.score,
+                    ),
                 )
-                for res in results
-            ]
             message_string = f"PII found in data: {','.join(found_types)}"
             return RuleScore(
                 result=RuleResultEnum.FAIL,
