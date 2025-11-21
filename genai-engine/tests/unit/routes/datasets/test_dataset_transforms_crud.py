@@ -49,7 +49,7 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         assert created_transform.dataset_id == created_dataset.id
         assert created_transform.name == transform_name
         assert created_transform.description == transform_description
-        assert created_transform.definition == transform_definition
+        assert created_transform.definition.model_dump() == transform_definition
         assert created_transform.created_at is not None
         assert created_transform.updated_at is not None
 
@@ -62,7 +62,7 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         assert retrieved_transform.id == created_transform.id
         assert retrieved_transform.name == transform_name
         assert retrieved_transform.description == transform_description
-        assert retrieved_transform.definition == transform_definition
+        assert retrieved_transform.definition.model_dump() == transform_definition
 
         # Test list transforms (should have 1)
         status_code, transforms_list = client.list_transforms(created_dataset.id)
@@ -78,7 +78,7 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
                     "column_name": "token_count",
                     "span_name": "llm: 'gpt-4.1'",
                     "attribute_path": "attributes.llm.token_cost",
-                    "fallback": 0,
+                    "fallback": "0",
                 },
             ],
         }
@@ -125,7 +125,7 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         assert updated_transform.id == created_transform.id
         assert updated_transform.name == updated_name
         assert updated_transform.description == updated_description
-        assert updated_transform.definition == updated_definition
+        assert updated_transform.definition.model_dump() == updated_definition
         assert updated_transform.updated_at > updated_transform.created_at
 
         # Validate updates persisted on fetch
@@ -136,7 +136,7 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         assert status_code == 200
         assert final_transform.name == updated_name
         assert final_transform.description == updated_description
-        assert final_transform.definition == updated_definition
+        assert final_transform.definition.model_dump() == updated_definition
 
         # Test partial update (only name)
         partial_updated_name = "Partially Updated Name"
@@ -148,7 +148,7 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         assert status_code == 200
         assert partial_updated_transform.name == partial_updated_name
         assert partial_updated_transform.description == updated_description  # unchanged
-        assert partial_updated_transform.definition == updated_definition  # unchanged
+        assert partial_updated_transform.definition.model_dump() == updated_definition  # unchanged
 
         # Delete first transform
         status_code = client.delete_transform(
