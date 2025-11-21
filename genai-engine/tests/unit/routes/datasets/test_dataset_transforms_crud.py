@@ -22,7 +22,6 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         transform_name = "Extract SQL Queries"
         transform_description = "Extracts SQL queries from RAG spans"
         transform_definition = {
-            "version": "1.0",
             "columns": [
                 {
                     "column_name": "sqlQuery",
@@ -74,7 +73,6 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         # Create a second transform
         transform_name_2 = "Extract Token Costs"
         transform_definition_2 = {
-            "version": "1.0",
             "columns": [
                 {
                     "column_name": "token_count",
@@ -106,7 +104,6 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         updated_name = "Updated Transform Name"
         updated_description = "Updated description"
         updated_definition = {
-            "version": "1.0",
             "columns": [
                 {
                     "column_name": "updated_column",
@@ -211,7 +208,6 @@ def test_transform_unique_name_constraint(client: GenaiEngineTestClientBase) -> 
         # Create first transform
         transform_name = "Duplicate Name Test"
         transform_definition = {
-            "version": "1.0",
             "columns": [
                 {
                     "column_name": "test_column",
@@ -257,7 +253,6 @@ def test_transform_update_unique_name_constraint(
     try:
         # Create first transform
         transform_definition = {
-            "version": "1.0",
             "columns": [
                 {
                     "column_name": "test_column",
@@ -310,7 +305,6 @@ def test_transform_cascade_delete_with_dataset(
 
     # Create a transform
     transform_definition = {
-        "version": "1.0",
         "columns": [
             {
                 "column_name": "test_column",
@@ -347,7 +341,6 @@ def test_transform_operations_on_nonexistent_dataset(
     """Test that transform operations fail gracefully on non-existent datasets."""
     fake_dataset_id = "00000000-0000-0000-0000-000000000000"
     transform_definition = {
-        "version": "1.0",
         "columns": [
             {
                 "column_name": "test_column",
