@@ -1,4 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -13,20 +14,25 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
 
+import EvalEditModal from "../EvalEditModal";
 import { useAddTagToEvalVersionMutation } from "../hooks/useAddTagToEvalVersionMutation";
+import { useCreateEvalMutation } from "../hooks/useCreateEvalMutation";
 import { useDeleteTagFromEvalVersionMutation } from "../hooks/useDeleteTagFromEvalVersionMutation";
-import type { EvalDetailViewProps } from "../types";
 import NunjucksHighlightedTextField from "../MustacheHighlightedTextField";
+import type { EvalDetailViewProps } from "../types";
 
+import type { CreateEvalRequest } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
 
 const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const addTagMutation = useAddTagToEvalVersionMutation();
   const deleteTagMutation = useDeleteTagFromEvalVersionMutation();
+  const createEvalMutation = useCreateEvalMutation(taskId);
 
   const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setTagAnchorEl(event.currentTarget);
@@ -98,6 +104,27 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
     },
     [taskId, version, evalName, deleteTagMutation, onRefetch]
   );
+
+  const handleEditClick = useCallback(() => {
+    setIsEditModalOpen(true);
+  }, []);
+
+  const handleEditModalClose = useCallback(() => {
+    setIsEditModalOpen(false);
+  }, []);
+
+  const handleEditSubmit = useCallback(
+    async (data: CreateEvalRequest) => {
+      const result = await createEvalMutation.mutateAsync({
+        evalName,
+        data,
+      });
+      setIsEditModalOpen(false);
+      // Trigger refetch to get the new version and pass the new version number
+      onRefetch?.(result.version);
+    },
+    [evalName, createEvalMutation, onRefetch]
+  );
   if (isLoading) {
     return (
       <Box
@@ -130,8 +157,8 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
   }
 
   return (
-    <Box sx={{ p: 3, height: "100%", overflow: "auto" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+    <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexShrink: 0 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {evalName}
@@ -159,90 +186,128 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             </IconButton>
           )}
         </Box>
-        {onClose && (
-          <IconButton onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </IconButton>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Metadata
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Model Provider
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {evalData.model_provider}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Model Name
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {evalData.model_name}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Created At
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {evalData.created_at ? formatDate(evalData.created_at) : "N/A"}
-            </Typography>
-          </Box>
-          {evalData.deleted_at && (
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Deleted At
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
-                {formatDate(evalData.deleted_at)}
-              </Typography>
-            </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {!evalData.deleted_at && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon />}
+              onClick={handleEditClick}
+              sx={{ minWidth: 80 }}
+            >
+              Edit
+            </Button>
+          )}
+          {onClose && (
+            <IconButton onClick={onClose} aria-label="Close">
+              <CloseIcon />
+            </IconButton>
           )}
         </Box>
-      </Paper>
+      </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Instructions
-        </Typography>
-        <NunjucksHighlightedTextField
-          value={evalData.instructions}
-          onChange={() => {}} // Read-only, no-op
-          disabled
-          multiline
-          minRows={4}
-          maxRows={20}
-          size="small"
-        />
-      </Paper>
-
-      {evalData.config && (
-        <Paper sx={{ p: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 3, flex: 1, minHeight: 0, overflow: "auto" }}>
+        <Paper sx={{ p: 3, flexShrink: 0 }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Configuration
+            Metadata
           </Typography>
-          <Box
-            component="pre"
-            sx={{
-              backgroundColor: "grey.50",
-              p: 2,
-              borderRadius: 1,
-              overflow: "auto",
-              fontSize: "0.875rem",
-              fontFamily: "monospace",
-            }}
-          >
-            {JSON.stringify(evalData.config, null, 2)}
+          <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Model Provider
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {evalData.model_provider}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Model Name
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {evalData.model_name}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Created At
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {evalData.created_at ? formatDate(evalData.created_at) : "N/A"}
+              </Typography>
+            </Box>
+            {evalData.deleted_at && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Deleted At
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
+                  {formatDate(evalData.deleted_at)}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Paper>
-      )}
+
+        <Paper sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Instructions
+          </Typography>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              "& .MuiTextField-root": {
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+              },
+              "& .MuiInputBase-root": {
+                flex: 1,
+                height: "100%",
+                alignItems: "flex-start",
+              },
+              "& .MuiInputBase-input": {
+                height: "100% !important",
+                overflow: "auto !important",
+              },
+            }}
+          >
+            <NunjucksHighlightedTextField
+              value={evalData.instructions}
+              onChange={() => {}} // Read-only, no-op
+              disabled
+              multiline
+              minRows={4}
+              size="small"
+            />
+          </Box>
+        </Paper>
+
+        {evalData.config && (
+          <Paper sx={{ p: 3, flexShrink: 0 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+              Configuration
+            </Typography>
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: "grey.50",
+                p: 2,
+                borderRadius: 1,
+                overflow: "auto",
+                fontSize: "0.875rem",
+                fontFamily: "monospace",
+                maxHeight: 400,
+              }}
+            >
+              {JSON.stringify(evalData.config, null, 2)}
+            </Box>
+          </Paper>
+        )}
+      </Box>
 
       <Popover
         open={tagPopoverOpen}
@@ -312,6 +377,19 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           </Box>
         </Box>
       </Popover>
+
+      {evalData && (
+        <EvalEditModal
+          open={isEditModalOpen}
+          onClose={handleEditModalClose}
+          onSubmit={handleEditSubmit}
+          isLoading={createEvalMutation.isPending}
+          evalName={evalName}
+          initialInstructions={evalData.instructions}
+          initialModelProvider={evalData.model_provider}
+          initialModelName={evalData.model_name}
+        />
+      )}
     </Box>
   );
 };
