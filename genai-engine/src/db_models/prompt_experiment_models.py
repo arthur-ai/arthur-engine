@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sqlalchemy import TIMESTAMP, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON
@@ -9,6 +9,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
 from schemas.prompt_experiment_schemas import ExperimentStatus, TestCaseStatus
+
+# TYPE_CHECKING is False at runtime but True during static type checking.
+# This avoids circular import errors (notebook_models imports this file)
+# while still providing type hints for IDEs and mypy.
+if TYPE_CHECKING:
+    from db_models.notebook_models import DatabaseNotebook
 
 
 class DatabasePromptExperiment(Base):
@@ -24,6 +30,14 @@ class DatabasePromptExperiment(Base):
         String,
         ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+
+    # Foreign key to notebook (optional)
+    notebook_id: Mapped[Optional[str]] = mapped_column(
+        String,
+        ForeignKey("notebooks.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
 
@@ -86,6 +100,9 @@ class DatabasePromptExperiment(Base):
     )
 
     # Relationships
+    notebook: Mapped[Optional["DatabaseNotebook"]] = relationship(
+        back_populates="experiments"
+    )
     test_cases: Mapped[List["DatabasePromptExperimentTestCase"]] = relationship(
         back_populates="experiment",
         lazy="select",
