@@ -1911,6 +1911,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         tool_name: str | None = None,
         span_types: list | None = None,
         user_ids: list[str] | None = None,
+        annotation_score: int | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1955,6 +1956,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["tool_name"] = tool_name
         if span_types is not None:
             params["span_types"] = span_types
+        if annotation_score is not None:
+            params["annotation_score"] = annotation_score
         if user_ids is not None:
             params["user_ids"] = user_ids
         # Query relevance filters

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.types import Numeric
 
 from db_models import (
+    DatabaseAgenticAnnotation,
     DatabaseSpan,
     DatabaseTraceMetadata,
 )
@@ -205,6 +206,22 @@ class SpanQueryService:
                     ),
                 )
             conditions.extend(duration_conditions)
+
+        # Annotation score filter
+        if filters.annotation_score is not None:
+            annotation_exists = exists(
+                select(1)
+                .select_from(DatabaseAgenticAnnotation)
+                .where(
+                    and_(
+                        DatabaseAgenticAnnotation.trace_id
+                        == DatabaseTraceMetadata.trace_id,
+                        DatabaseAgenticAnnotation.annotation_score
+                        == filters.annotation_score,
+                    ),
+                ),
+            )
+            conditions.append(annotation_exists)
 
         if conditions:
             query = query.where(and_(*conditions))
@@ -482,7 +499,8 @@ class SpanQueryService:
             filters.trace_ids
             or filters.start_time
             or filters.end_time
-            or filters.trace_duration_filters,
+            or filters.trace_duration_filters
+            or filters.annotation_score is not None,
         )
 
     def _apply_trace_filters_with_join(
@@ -525,6 +543,22 @@ class SpanQueryService:
                     ),
                 )
             conditions.extend(duration_conditions)
+
+        # Annotation score filter
+        if filters.annotation_score is not None:
+            annotation_exists = exists(
+                select(1)
+                .select_from(DatabaseAgenticAnnotation)
+                .where(
+                    and_(
+                        DatabaseAgenticAnnotation.trace_id
+                        == DatabaseTraceMetadata.trace_id,
+                        DatabaseAgenticAnnotation.annotation_score
+                        == filters.annotation_score,
+                    ),
+                ),
+            )
+            conditions.append(annotation_exists)
 
         if conditions:
             query = query.where(and_(*conditions))

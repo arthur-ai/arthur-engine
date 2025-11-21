@@ -2059,6 +2059,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="User IDs to filter on. Optional.",
     )
+    annotation_score: Optional[int] = Field(
+        None,
+        description="Filter by trace annotation score (0 or 1). Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2082,6 +2086,7 @@ class TraceQuerySchema(BaseModel):
             end_time=request.end_time,
             tool_name=request.tool_name,
             span_types=request.span_types,
+            annotation_score=request.annotation_score,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,
             query_relevance_filters=query_relevance,

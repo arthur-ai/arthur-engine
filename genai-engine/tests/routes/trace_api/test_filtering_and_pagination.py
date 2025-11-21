@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from schemas.internal_schemas import AgenticAnnotation
+from schemas.request_schemas import AgenticAnnotationRequest
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 # ============================================================================
@@ -141,6 +143,82 @@ def test_trace_metadata_sorting(
         assert (
             start_times[i] >= start_times[i + 1]
         ), f"Traces not in descending order: {start_times[i]} should be >= {start_times[i + 1]}"
+
+
+@pytest.mark.unit_tests
+def test_get_trace_requests_return_annotation_info(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test filtering by annotation score."""
+    # Add a positive annotation to the trace
+    annotation_request = AgenticAnnotationRequest(
+        annotation_score=1,
+        annotation_description="Test annotation",
+    )
+    status_code, response = client.trace_api_annotate_trace(
+        "api_trace1",
+        annotation_request,
+    )
+    assert status_code == 200
+    assert isinstance(response, AgenticAnnotation)
+    assert response.trace_id == "api_trace1"
+    assert response.annotation_score == 1
+    assert response.annotation_description == "Test annotation"
+
+    # Add a negative annotation to a different trace
+    annotation_request = AgenticAnnotationRequest(
+        annotation_score=0,
+        annotation_description="Disliked annotation",
+    )
+    status_code, response = client.trace_api_annotate_trace(
+        "api_trace2",
+        annotation_request,
+    )
+    assert status_code == 200
+    assert isinstance(response, AgenticAnnotation)
+    assert response.trace_id == "api_trace2"
+    assert response.annotation_score == 0
+    assert response.annotation_description == "Disliked annotation"
+
+    #########################################################################################
+    # Assert filtering by annotation score works
+    #########################################################################################
+
+    # Test filtering without annotation score
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+    )
+    assert status_code == 200
+    assert len(data.traces) == 3
+
+    # Test filtering on only positive annotation scores
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+        annotation_score=1,
+    )
+    assert status_code == 200
+    assert len(data.traces) == 1
+    assert data.traces[0].trace_id == "api_trace1"
+    assert data.traces[0].annotation.annotation_score == 1
+    assert data.traces[0].annotation.annotation_description == "Test annotation"
+
+    # Test filtering on only negative annotation scores
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+        annotation_score=0,
+    )
+    assert status_code == 200
+    assert len(data.traces) == 1
+    assert data.traces[0].trace_id == "api_trace2"
+    assert data.traces[0].annotation.annotation_score == 0
+    assert data.traces[0].annotation.annotation_description == "Disliked annotation"
+
+    # Cleanup
+    status_code, _ = client.trace_api_delete_annotation_from_trace("api_trace1")
+    assert status_code == 204
+    status_code, _ = client.trace_api_delete_annotation_from_trace("api_trace2")
+    assert status_code == 204
 
 
 # ============================================================================
