@@ -2,6 +2,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
   Box,
   Table,
@@ -28,7 +29,8 @@ import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 import { EvalInputsDialog } from "./PromptResultDetailModal";
 
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import type { TestCase } from "@/lib/api-client/api-client";
+import type { TestCase, DatasetVersionRowResponse } from "@/lib/api-client/api-client";
+import { useApi } from "@/hooks/useApi";
 import { formatCurrency } from "@/utils/formatters";
 
 interface Message {
@@ -50,6 +52,8 @@ interface ExperimentResultsTableProps {
     }>;
   }>;
   refreshTrigger?: number;
+  datasetId?: string;
+  datasetVersion?: number;
 }
 
 interface TestCaseDetailModalProps {
@@ -340,9 +344,10 @@ interface RowProps {
   promptEvalColumns: PromptEvalColumn[];
   evalGroups: EvalGroup[];
   onClick: () => void;
+  onViewData?: () => void;
 }
 
-const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick }) => {
+const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick, onViewData }) => {
 
   const getStatusColor = (
     status: TestCase["status"]
@@ -509,7 +514,108 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
       <TableCell align="right">
         {testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}
       </TableCell>
+      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+        {onViewData && (
+          <IconButton
+            size="small"
+            onClick={onViewData}
+            title="View dataset row"
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+        )}
+      </TableCell>
     </TableRow>
+  );
+};
+
+interface DatasetRowModalProps {
+  open: boolean;
+  onClose: () => void;
+  datasetId: string;
+  versionNumber: number;
+  rowId: string;
+}
+
+const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datasetId, versionNumber, rowId }) => {
+  const [rowData, setRowData] = useState<DatasetVersionRowResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const api = useApi();
+
+  useEffect(() => {
+    if (!open || !api) return;
+
+    const fetchRowData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await api.api.getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet(
+          datasetId,
+          versionNumber,
+          rowId
+        );
+        setRowData(response.data);
+      } catch (err) {
+        console.error("Failed to fetch dataset row:", err);
+        setError(err instanceof Error ? err.message : "Failed to load dataset row");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRowData();
+  }, [open, api, datasetId, versionNumber, rowId]);
+
+  return (
+    <Modal open={open} onClose={onClose} aria-labelledby="dataset-row-modal">
+      <Box
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-4xl max-h-[80vh] bg-white rounded-lg shadow-xl overflow-auto"
+      >
+        {/* Modal Header */}
+        <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+          <Typography variant="h6" className="font-semibold text-gray-900">
+            Dataset Row Data
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        {/* Modal Content */}
+        <Box className="p-6">
+          {loading ? (
+            <Box className="flex justify-center items-center py-8">
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Box className="flex justify-center items-center py-8">
+              <Typography color="error">{error}</Typography>
+            </Box>
+          ) : rowData ? (
+            <Box>
+              <Box className="mb-4">
+                <Typography variant="body2" className="text-gray-600 mb-2">
+                  Dataset: {datasetId} | Version: {versionNumber} | Row ID: {rowId}
+                </Typography>
+              </Box>
+              <Box className="space-y-3">
+                {rowData.data.map((item, index) => (
+                  <Box key={index} className="p-4 bg-gray-50 rounded border border-gray-200">
+                    <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
+                      {item.column_name}
+                    </Typography>
+                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap break-words">
+                      {item.column_value}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          ) : null}
+        </Box>
+      </Box>
+    </Modal>
   );
 };
 
@@ -518,6 +624,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   experimentId,
   promptSummaries = [],
   refreshTrigger,
+  datasetId,
+  datasetVersion,
 }) => {
   const [page, setPage] = useState(0);
   const pageSize = 20;
@@ -527,6 +635,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
+  const [datasetRowModalOpen, setDatasetRowModalOpen] = useState(false);
+  const [selectedDatasetRow, setSelectedDatasetRow] = useState<{datasetId: string; versionNumber: number; rowId: string} | null>(null);
 
   // Refetch test cases when refreshTrigger changes
   useEffect(() => {
@@ -565,6 +675,20 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const handleCloseEvalInputsDialog = () => {
     setEvalInputsDialogOpen(false);
     setSelectedEvalExecution(null);
+  };
+
+  const handleViewDatasetRow = (testCase: TestCase, datasetId: string, versionNumber: number) => {
+    setSelectedDatasetRow({
+      datasetId,
+      versionNumber,
+      rowId: testCase.dataset_row_id,
+    });
+    setDatasetRowModalOpen(true);
+  };
+
+  const handleCloseDatasetRowModal = () => {
+    setDatasetRowModalOpen(false);
+    setSelectedDatasetRow(null);
   };
 
   const handlePrevious = async () => {
@@ -759,6 +883,15 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Cost
                 </Box>
               </TableCell>
+              <TableCell
+                rowSpan={2}
+                align="center"
+                sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}
+              >
+                <Box component="span" className="font-semibold">
+                  View Data
+                </Box>
+              </TableCell>
             </TableRow>
             {/* Bottom header row: Evaluators */}
             <TableRow>
@@ -808,19 +941,19 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
+                <TableCell colSpan={3 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography>Loading results...</Typography>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
+                <TableCell colSpan={3 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography color="error">{error.message}</Typography>
                 </TableCell>
               </TableRow>
             ) : testCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
+                <TableCell colSpan={3 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography className="text-gray-600">No test cases found</Typography>
                 </TableCell>
               </TableRow>
@@ -832,6 +965,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   promptEvalColumns={promptEvalColumns}
                   evalGroups={evalGroups}
                   onClick={() => handleRowClick(index)}
+                  onViewData={datasetId && datasetVersion ? () => handleViewDatasetRow(testCase, datasetId, datasetVersion) : undefined}
                 />
               ))
             )}
@@ -867,6 +1001,17 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
         onClose={handleCloseEvalInputsDialog}
         evalExecution={selectedEvalExecution}
       />
+
+      {/* Dataset Row Modal */}
+      {selectedDatasetRow && (
+        <DatasetRowModal
+          open={datasetRowModalOpen}
+          onClose={handleCloseDatasetRowModal}
+          datasetId={selectedDatasetRow.datasetId}
+          versionNumber={selectedDatasetRow.versionNumber}
+          rowId={selectedDatasetRow.rowId}
+        />
+      )}
     </Box>
   );
 };

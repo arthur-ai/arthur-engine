@@ -1823,6 +1823,10 @@ export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
   versionNumber: number;
 }
 
+export type GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetData = DatasetVersionRowResponse;
+
+export type GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetError = HTTPValidationError;
+
 export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData = ListDatasetVersionsResponse;
 
 export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetError = HTTPValidationError;
@@ -9135,6 +9139,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Fetch a specific row from a dataset version by row ID.
+     *
+     * @tags Datasets
+     * @name GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet
+     * @summary Get Dataset Version Row
+     * @request GET:/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}
+     * @secure
+     */
+    getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet: (
+      datasetId: string,
+      versionNumber: number,
+      rowId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetData,
+        GetDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGetError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/rows/${rowId}`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,

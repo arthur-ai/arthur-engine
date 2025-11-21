@@ -503,6 +503,8 @@ export const ExperimentDetailView: React.FC = () => {
               taskId={taskId}
               experimentId={experimentId}
               refreshTrigger={refreshTrigger}
+              datasetId={experiment.dataset_ref.id}
+              datasetVersion={experiment.dataset_ref.version}
               promptSummaries={(() => {
                 // Sort prompt summaries the same way as in Overall Prompt Performance
                 const sorted = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {

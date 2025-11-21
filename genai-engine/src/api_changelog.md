@@ -3,6 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  endpoint added
+
+# 11/21/2025
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'dataset_row_filter' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional request property 'dataset_row_filter'
 

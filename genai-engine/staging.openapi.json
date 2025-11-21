@@ -6491,6 +6491,80 @@
                 }
             }
         },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}": {
+            "get": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Get Dataset Version Row",
+                "description": "Fetch a specific row from a dataset version by row ID.",
+                "operationId": "get_dataset_version_row_api_v2_datasets__dataset_id__versions__version_number__rows__row_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the dataset.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the dataset."
+                    },
+                    {
+                        "name": "row_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the row to fetch.",
+                            "title": "Row Id"
+                        },
+                        "description": "ID of the row to fetch."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatasetVersionRowResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/datasets/{dataset_id}/transforms": {
             "post": {
                 "tags": [
