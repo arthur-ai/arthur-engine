@@ -3100,6 +3100,8 @@ export type ListNotebooksApiV1TasksTaskIdNotebooksGetData = NotebookListResponse
 export type ListNotebooksApiV1TasksTaskIdNotebooksGetError = HTTPValidationError;
 
 export interface ListNotebooksApiV1TasksTaskIdNotebooksGetParams {
+  /** Name */
+  name?: string | null;
   /**
    * Page
    * Page number
@@ -10200,7 +10202,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description List all notebooks for a task with pagination
+     * @description List all notebooks for a task with pagination and optional name search
      *
      * @tags Notebooks
      * @name ListNotebooksApiV1TasksTaskIdNotebooksGet

@@ -70,7 +70,7 @@ def create_notebook(
 @notebook_routes.get(
     "/tasks/{task_id}/notebooks",
     summary="List notebooks",
-    description="List all notebooks for a task with pagination",
+    description="List all notebooks for a task with pagination and optional name search",
     response_model=NotebookListResponse,
     response_model_exclude_none=True,
     tags=["Notebooks"],
@@ -81,6 +81,7 @@ def list_notebooks(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
+    name: str | None = None,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
@@ -88,13 +89,14 @@ def list_notebooks(
     """
     List all notebooks for a given task.
 
-    Returns paginated list of notebook summaries.
+    Returns paginated list of notebook summaries. Optionally filter by exact name match.
     """
     try:
         repo = NotebookRepository(db_session)
         response = repo.list_notebooks(
             task_id=task.id,
             pagination_params=pagination_parameters,
+            name_filter=name,
         )
         return response
     except Exception as e:

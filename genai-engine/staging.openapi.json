@@ -9556,7 +9556,7 @@
                     "Notebooks"
                 ],
                 "summary": "List notebooks",
-                "description": "List all notebooks for a task with pagination",
+                "description": "List all notebooks for a task with pagination and optional name search",
                 "operationId": "list_notebooks_api_v1_tasks__task_id__notebooks_get",
                 "security": [
                     {
@@ -9572,6 +9572,22 @@
                             "type": "string",
                             "format": "uuid",
                             "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Name"
                         }
                     },
                     {

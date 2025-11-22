@@ -131,11 +131,21 @@ const PromptsPlayground = () => {
         task.id
       );
 
-      // Replace the entire state with loaded notebook state
-      dispatch({
-        type: "hydrateNotebookState",
-        payload: { prompts: loadedPrompts, keywords: loadedKeywords },
-      });
+      // If there are URL parameters for loading a prompt and the notebook is empty,
+      // skip hydration to allow the prompt loading logic to populate the first prompt
+      const hasPromptUrlParams = promptNameParam && promptVersionParam;
+      const notebookIsEmpty = !loadedPrompts || loadedPrompts.length === 0;
+
+      if (hasPromptUrlParams && notebookIsEmpty) {
+        // Don't hydrate - let fetchPromptData handle it
+        console.log("Skipping notebook state hydration - will load prompt from URL params");
+      } else {
+        // Replace the entire state with loaded notebook state
+        dispatch({
+          type: "hydrateNotebookState",
+          payload: { prompts: loadedPrompts, keywords: loadedKeywords },
+        });
+      }
 
       // Check if we're in Experiment Mode (has dataset_ref)
       if (fullState.dataset_ref) {
@@ -160,7 +170,7 @@ const PromptsPlayground = () => {
     } catch (error) {
       console.error("Failed to load notebook state:", error);
     }
-  }, [notebookId, apiClient, task?.id, notebook]);
+  }, [notebookId, apiClient, task?.id, notebook, promptNameParam, promptVersionParam]);
 
   /**
    * Auto-save notebook state with debounce
@@ -204,10 +214,10 @@ const PromptsPlayground = () => {
         clearTimeout(autoSaveTimeoutRef.current);
       }
 
-      // Set new timeout for auto-save (10 seconds)
+      // Set new timeout for auto-save (5 seconds)
       autoSaveTimeoutRef.current = setTimeout(() => {
         autoSaveNotebookState();
-      }, 10000);
+      }, 5000);
     }
 
     // Cleanup timeout on unmount

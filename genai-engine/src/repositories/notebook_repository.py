@@ -88,12 +88,17 @@ class NotebookRepository:
         self,
         task_id: str,
         pagination_params: PaginationParameters,
+        name_filter: str | None = None,
     ) -> NotebookListResponse:
-        """List notebooks for a task with pagination"""
+        """List notebooks for a task with pagination and optional name filter"""
         # Base query
         query = self.db_session.query(DatabaseNotebook).filter(
             DatabaseNotebook.task_id == task_id,
         )
+
+        # Apply name filter if provided (exact match)
+        if name_filter is not None:
+            query = query.filter(DatabaseNotebook.name == name_filter)
 
         # Get total count
         total_count = query.count()
