@@ -4,27 +4,32 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
+import { CreateNotebookModal } from "./CreateNotebookModal";
 import NotebookDetailModal from "./NotebookDetailModal";
 import NotebooksHeader from "./NotebooksHeader";
 import NotebooksTable from "./NotebooksTable";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
-import { useNotebooks, useDeleteNotebookMutation } from "@/hooks/useNotebooks";
+import { useNotebooks, useDeleteNotebookMutation, useCreateNotebookMutation } from "@/hooks/useNotebooks";
+
+import type { CreateNotebookRequest } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const Notebooks: React.FC = () => {
   const { task } = useTask();
   const { id: taskId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [sortColumn, setSortColumn] = useState<string | null>("updated_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -41,17 +46,36 @@ const Notebooks: React.FC = () => {
     refetch();
   });
 
+  const createMutation = useCreateNotebookMutation(task?.id, (notebook) => {
+    refetch();
+    setIsCreateModalOpen(false);
+    if (taskId) {
+      navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebook.id}`);
+    }
+  });
+
   const handleCreateNotebook = useCallback(() => {
-    console.log("Create notebook - not implemented yet");
-    // TODO: Phase 2 - Open CreateNotebookModal
+    setIsCreateModalOpen(true);
   }, []);
+
+  const handleCloseCreateModal = useCallback(() => {
+    setIsCreateModalOpen(false);
+  }, []);
+
+  const handleSubmitCreateNotebook = useCallback(
+    async (data: CreateNotebookRequest) => {
+      await createMutation.mutateAsync(data);
+    },
+    [createMutation]
+  );
 
   const handleLaunchNotebook = useCallback(
     (notebookId: string) => {
-      console.log("Launch notebook:", notebookId);
-      // TODO: Phase 2 - Navigate to /tasks/{taskId}/playgrounds/prompts?notebookId={notebookId}
+      if (taskId) {
+        navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebookId}`);
+      }
     },
-    []
+    [taskId, navigate]
   );
 
   const handleSort = useCallback(
@@ -202,6 +226,13 @@ const Notebooks: React.FC = () => {
         open={isDetailModalOpen}
         notebookId={selectedNotebookId}
         onClose={handleCloseDetailModal}
+      />
+
+      <CreateNotebookModal
+        open={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onSubmit={handleSubmitCreateNotebook}
+        isLoading={createMutation.isPending}
       />
     </Box>
   );

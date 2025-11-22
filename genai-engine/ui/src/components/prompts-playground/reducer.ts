@@ -168,6 +168,20 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         prompts: [...state.prompts, hydratePrompt(promptData)],
       };
     }
+    case "clearPrompts": {
+      return {
+        ...state,
+        prompts: [],
+      };
+    }
+    case "hydrateNotebookState": {
+      const { prompts, keywords } = action.payload;
+      return {
+        ...state,
+        prompts: prompts.length > 0 ? prompts : [newPrompt()],
+        keywords,
+      };
+    }
     case "updatePromptName": {
       const { promptId, name } = action.payload;
       return {

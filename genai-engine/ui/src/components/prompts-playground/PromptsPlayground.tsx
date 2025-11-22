@@ -1,6 +1,9 @@
 import AddIcon from "@mui/icons-material/Add";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import BookIcon from "@mui/icons-material/Book";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import EditIcon from "@mui/icons-material/Edit";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -14,6 +17,7 @@ import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
@@ -26,10 +30,12 @@ import { promptsReducer, initialState } from "./reducer";
 import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
 import toFrontendPrompt from "./utils/toFrontendPrompt";
 import { toExperimentPromptConfig } from "./utils/toExperimentPromptConfig";
+import { serializePlaygroundState, deserializeNotebookState } from "./utils/notebookStateUtils";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import { useNotebook, useSetNotebookStateMutation, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 import { useNavigate } from "react-router-dom";
 import { track, EVENT_NAMES } from "@/services/amplitude";
@@ -46,6 +52,7 @@ const PromptsPlayground = () => {
   const hasFetchedSpan = useRef(false);
   const hasFetchedConfig = useRef(false);
   const hasFetchedPrompt = useRef(false);
+  const hasFetchedNotebookState = useRef(false);
   const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
@@ -56,6 +63,7 @@ const PromptsPlayground = () => {
   const promptVersion = searchParams.get("promptVersion");
   const promptNameParam = searchParams.get("promptName");
   const promptVersionParam = searchParams.get("version");
+  const notebookId = searchParams.get("notebookId");
 
   // Track if playground is opened with config from "Open in Notebook"
   const isConfigMode = !!(experimentId && promptName && promptVersion);
@@ -71,9 +79,159 @@ const PromptsPlayground = () => {
   const [lastCompletedExperimentId, setLastCompletedExperimentId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Notebook state management
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  const [notebookName, setNotebookName] = useState<string>("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newNotebookName, setNewNotebookName] = useState<string>("");
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedStateRef = useRef<string>("");
+
   // Pass false to let each prompt determine its own icon-only mode based on container width
   // This enables true container query behavior - each prompt measures its own width
   const useIconOnlyMode = false;
+
+  // Fetch notebook data if notebookId is present
+  const { notebook } = useNotebook(notebookId || undefined);
+  const setNotebookStateMutation = useSetNotebookStateMutation();
+  const updateNotebookMutation = useUpdateNotebookMutation(task?.id);
+
+  // Update notebook name when notebook data loads
+  useEffect(() => {
+    if (notebook?.name) {
+      setNotebookName(notebook.name);
+    }
+  }, [notebook]);
+
+  /**
+   * Load notebook state on mount
+   */
+  const fetchNotebookState = useCallback(async () => {
+    if (hasFetchedNotebookState.current || !notebookId || !apiClient || !task?.id) {
+      return;
+    }
+
+    hasFetchedNotebookState.current = true;
+
+    try {
+      const response = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(notebookId);
+      const notebookState = response.data;
+
+      // Deserialize the notebook state
+      const { prompts: loadedPrompts, keywords: loadedKeywords } = await deserializeNotebookState(
+        notebookState,
+        apiClient,
+        task.id
+      );
+
+      // Replace the entire state with loaded notebook state
+      dispatch({
+        type: "hydrateNotebookState",
+        payload: { prompts: loadedPrompts, keywords: loadedKeywords },
+      });
+
+      // Initialize the lastSavedStateRef after loading
+      // We'll set it in a setTimeout to ensure state updates have completed
+      setTimeout(() => {
+        lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state));
+        setSaveStatus("saved");
+      }, 100);
+    } catch (error) {
+      console.error("Failed to load notebook state:", error);
+    }
+  }, [notebookId, apiClient, task?.id]);
+
+  /**
+   * Auto-save notebook state with debounce
+   */
+  const autoSaveNotebookState = useCallback(async () => {
+    if (!notebookId || !apiClient) {
+      return;
+    }
+
+    try {
+      setSaveStatus("saving");
+      const serializedState = serializePlaygroundState(state);
+
+      await setNotebookStateMutation.mutateAsync({
+        notebookId,
+        request: { state: serializedState },
+      });
+
+      lastSavedStateRef.current = JSON.stringify(serializedState);
+      setSaveStatus("saved");
+    } catch (error) {
+      console.error("Failed to save notebook state:", error);
+      setSaveStatus("unsaved");
+    }
+  }, [notebookId, apiClient, state, setNotebookStateMutation]);
+
+  // Detect state changes and trigger auto-save
+  useEffect(() => {
+    if (!notebookId || !lastSavedStateRef.current) {
+      return;
+    }
+
+    const currentStateStr = JSON.stringify(serializePlaygroundState(state));
+
+    // Check if state has actually changed
+    if (currentStateStr !== lastSavedStateRef.current) {
+      setSaveStatus("unsaved");
+
+      // Clear existing timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+
+      // Set new timeout for auto-save (10 seconds)
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        autoSaveNotebookState();
+      }, 10000);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [state, notebookId, autoSaveNotebookState]);
+
+  // Load notebook state on mount
+  useEffect(() => {
+    if (notebookId) {
+      fetchNotebookState();
+    }
+  }, [fetchNotebookState, notebookId]);
+
+  // Handle notebook rename
+  const handleStartRename = useCallback(() => {
+    setNewNotebookName(notebookName);
+    setIsRenaming(true);
+  }, [notebookName]);
+
+  const handleCancelRename = useCallback(() => {
+    setIsRenaming(false);
+    setNewNotebookName("");
+  }, []);
+
+  const handleSaveRename = useCallback(async () => {
+    if (!notebookId || !newNotebookName.trim()) {
+      return;
+    }
+
+    try {
+      await updateNotebookMutation.mutateAsync({
+        notebookId,
+        request: { name: newNotebookName.trim(), description: notebook?.description },
+      });
+      setNotebookName(newNotebookName.trim());
+      setIsRenaming(false);
+      setNewNotebookName("");
+    } catch (error) {
+      console.error("Failed to rename notebook:", error);
+    }
+  }, [notebookId, newNotebookName, updateNotebookMutation, notebook?.description]);
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
@@ -662,8 +820,85 @@ const PromptsPlayground = () => {
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
         {/* Header with action buttons */}
         <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 shrink-0">
-          <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
-            <Button
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+            {/* Left side: Notebook info */}
+            <Stack direction="row" alignItems="center" spacing={2}>
+              {notebookId && (
+                <>
+                  <IconButton
+                    size="small"
+                    onClick={() => navigate(`/tasks/${task?.id}/notebooks`)}
+                    sx={{
+                      color: "text.secondary",
+                      "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                    }}
+                  >
+                    <ArrowBackIcon fontSize="small" />
+                  </IconButton>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {isRenaming ? (
+                      <TextField
+                        size="small"
+                        value={newNotebookName}
+                        onChange={(e) => setNewNotebookName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleSaveRename();
+                          } else if (e.key === "Escape") {
+                            handleCancelRename();
+                          }
+                        }}
+                        onBlur={handleSaveRename}
+                        autoFocus
+                        sx={{
+                          "& .MuiInputBase-root": {
+                            fontSize: "0.875rem",
+                            fontWeight: 600,
+                          },
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            backgroundColor:
+                              saveStatus === "saved"
+                                ? "#10b981"
+                                : saveStatus === "saving"
+                                ? "#f59e0b"
+                                : "#6b7280",
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+                          {notebookName || "Notebook"}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={handleStartRename}
+                          sx={{
+                            padding: 0.5,
+                            color: "text.secondary",
+                            "&:hover": {
+                              color: "text.primary",
+                              backgroundColor: "rgba(0, 0, 0, 0.04)",
+                            },
+                          }}
+                        >
+                          <EditIcon sx={{ fontSize: "1rem" }} />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
+                </>
+              )}
+            </Stack>
+
+            {/* Right side: Action buttons */}
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Button
               variant={configDrawerOpen ? "contained" : "outlined"}
               size="small"
               onClick={toggleConfigDrawer}
@@ -718,6 +953,7 @@ const PromptsPlayground = () => {
                 </Button>
               </span>
             </Tooltip>
+            </Stack>
           </Stack>
         </Container>
 

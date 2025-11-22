@@ -80,7 +80,7 @@ export const toExperimentPromptConfig = (
     auto_name,
     messages,
     model_name: prompt.modelName,
-    model_provider: prompt.modelProvider,
+    model_provider: prompt.modelProvider || undefined,
     config: Object.keys(config).length > 0 ? config : undefined,
     tools,
     variables: undefined, // Let backend auto-detect variables

@@ -31,7 +31,6 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       label: "Prompts",
       items: [
         { id: "notebooks", label: "Notebooks" },
-        { id: "playgrounds/prompts", label: "Prompt Playground" },
         { id: "prompts-management", label: "Prompt Management" },
         { id: "prompt-experiments", label: "Prompt Experiments" },
       ],
