@@ -14,6 +14,7 @@ import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
 import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
+import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation } from "@/hooks/useNotebooks";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
@@ -44,6 +45,8 @@ export const ExperimentDetailView: React.FC = () => {
   const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId, !isDeleting);
   const createExperiment = useCreateExperiment(taskId);
   const deleteExperiment = useDeleteExperiment();
+  const createNotebook = useCreateNotebookMutation(taskId);
+  const attachExperimentToNotebook = useAttachExperimentToNotebookMutation();
 
   const handlePromptClick = (promptSummary: PromptVersionDetails) => {
     setSelectedPrompt(promptSummary);
@@ -54,12 +57,36 @@ export const ExperimentDetailView: React.FC = () => {
     setDrawerOpen(false);
   };
 
-  const handleOpenInNotebook = (promptName: string, promptVersion: string, event: React.MouseEvent) => {
+  const handleOpenInNotebook = async (promptName: string, promptVersion: string, event: React.MouseEvent) => {
     // Prevent the card click event from firing
     event.stopPropagation();
 
-    // Navigate to playground with config parameters
-    navigate(`/tasks/${taskId}/playgrounds/prompts?experimentId=${experimentId}&promptName=${encodeURIComponent(promptName)}&promptVersion=${promptVersion}`);
+    if (!experiment || !experimentId || !taskId) return;
+
+    try {
+      // Check if experiment already has a notebook
+      if (experiment.notebook_id) {
+        // Navigate to existing notebook with experiment config loaded
+        navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${experiment.notebook_id}&experimentId=${experimentId}`);
+      } else {
+        // Create a new notebook with the experiment name
+        const notebook = await createNotebook.mutateAsync({
+          name: `${experiment.name} - Notebook`,
+          description: `Notebook for experiment: ${experiment.name}`,
+        });
+
+        // Attach the experiment to the newly created notebook
+        await attachExperimentToNotebook.mutateAsync({
+          experimentId,
+          notebookId: notebook.id,
+        });
+
+        // Navigate to the new notebook with experiment config
+        navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebook.id}&experimentId=${experimentId}`);
+      }
+    } catch (error) {
+      console.error("Failed to open in notebook:", error);
+    }
   };
 
 

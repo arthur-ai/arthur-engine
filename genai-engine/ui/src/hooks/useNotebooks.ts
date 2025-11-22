@@ -218,3 +218,29 @@ export function useDeleteNotebookMutation(
   });
 }
 
+/**
+ * Hook to attach an experiment to a notebook
+ */
+export function useAttachExperimentToNotebookMutation(
+  onSuccess?: () => void
+) {
+  const api = useApi();
+
+  return useApiMutation<NotebookSummary, { experimentId: string; notebookId: string }>({
+    mutationFn: async ({ experimentId, notebookId }) => {
+      if (!api) throw new Error("API client not available");
+
+      // The generated API client expects experimentId and notebook_id in the params object
+      const response = await api.api.attachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatch(
+        { experimentId, notebook_id: notebookId }
+      );
+      return response.data;
+    },
+    onSuccess,
+    invalidateQueries: [
+      { queryKey: ["getPromptExperimentApiV1PromptExperimentsExperimentIdGet"] },
+      { queryKey: ["getNotebookHistoryApiV1NotebooksNotebookIdHistoryGet"] },
+    ],
+  });
+}
+

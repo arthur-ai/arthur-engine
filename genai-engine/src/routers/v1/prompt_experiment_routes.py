@@ -361,3 +361,35 @@ def delete_prompt_experiment(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
+
+
+@prompt_experiment_routes.patch(
+    "/prompt_experiments/{experiment_id}/notebook",
+    summary="Attach notebook to experiment",
+    description="Attach a notebook to an existing experiment",
+    response_model=PromptExperimentSummary,
+    response_model_exclude_none=True,
+    tags=["Prompt Experiments"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def attach_notebook_to_experiment(
+    experiment_id: str = Path(..., description="ID of the experiment"),
+    notebook_id: str = Query(..., description="ID of the notebook to attach"),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> PromptExperimentSummary:
+    """Attach a notebook to an existing experiment."""
+    try:
+        repo = PromptExperimentRepository(db_session)
+        return repo.attach_notebook_to_experiment(experiment_id, notebook_id)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()

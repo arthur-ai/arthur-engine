@@ -309,6 +309,10 @@ class PromptExperimentDetail(BaseModel):
     summary_results: SummaryResults = Field(
         description="Summary of results across all test cases",
     )
+    notebook_id: Optional[str] = Field(
+        default=None,
+        description="Optional notebook ID this experiment is linked to",
+    )
 
 
 # Pagination schemas

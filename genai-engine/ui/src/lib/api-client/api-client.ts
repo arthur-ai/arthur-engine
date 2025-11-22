@@ -347,6 +347,23 @@ export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData = any;
 
 export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError = HTTPValidationError;
 
+export type AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchData = PromptExperimentSummary;
+
+export type AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchError = HTTPValidationError;
+
+export interface AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchParams {
+  /**
+   * Experiment Id
+   * ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Notebook Id
+   * ID of the notebook to attach
+   */
+  notebook_id: string;
+}
+
 /** AuthUserRole */
 export interface AuthUserRole {
   /** Composite */
@@ -709,11 +726,6 @@ export interface CreatePromptExperimentRequest {
    * Name for the experiment
    */
   name: string;
-  /**
-   * Notebook Id
-   * Optional notebook ID to link this experiment to a notebook
-   */
-  notebook_id?: string | null;
   /**
    * Prompt Configs
    * List of prompt configurations (saved or unsaved)
@@ -4616,6 +4628,11 @@ export interface PromptExperimentDetail {
    * Name of the experiment
    */
   name: string;
+  /**
+   * Notebook Id
+   * Optional notebook ID this experiment is linked to
+   */
+  notebook_id?: string | null;
   /**
    * Prompt Configs
    * List of prompts being tested
@@ -8572,6 +8589,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData, ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError>({
         path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
         method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Attach a notebook to an existing experiment
+     *
+     * @tags Prompt Experiments
+     * @name AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatch
+     * @summary Attach notebook to experiment
+     * @request PATCH:/api/v1/prompt_experiments/{experiment_id}/notebook
+     * @secure
+     */
+    attachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatch: (
+      { experimentId, ...query }: AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchData,
+        AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchError
+      >({
+        path: `/api/v1/prompt_experiments/${experimentId}/notebook`,
+        method: "PATCH",
+        query: query,
         secure: true,
         format: "json",
         ...params,

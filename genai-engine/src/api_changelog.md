@@ -3,6 +3,27 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/22/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the success response with the status '201'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  deleted the 'query' request parameter 'task_id'
+- **CHANGE** in API GET /api/v1/prompt_experiments/{experiment_id}
+- **CHANGE**warning [request-parameter-removed] at /Users/videetparekh/Desktop/arthur-engine/genai-engine/new.openapi.json 
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  deleted the 'query' request parameter 'task_id'
+- **CHANGE** in API GET /api/v1/prompt_experiments/{experiment_id}/test_cases
+- **CHANGE**info [response-success-status-added] at /Users/videetparekh/Desktop/arthur-engine/genai-engine/new.openapi.json 
+
+# 11/22/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new required 'query' request parameter 'task_id'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new required 'query' request parameter 'task_id'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  added the new required 'query' request parameter 'task_id'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the new required 'query' request parameter 'task_id'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the success response with the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the request property 'notebook_id'
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/notebook  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the success response with the status '201'
+
+# 11/22/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional request property 'notebook_id'
 
 # 11/22/2025

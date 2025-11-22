@@ -10423,6 +10423,67 @@
                 }
             }
         },
+        "/api/v1/prompt_experiments/{experiment_id}/notebook": {
+            "patch": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Attach notebook to experiment",
+                "description": "Attach a notebook to an existing experiment",
+                "operationId": "attach_notebook_to_experiment_api_v1_prompt_experiments__experiment_id__notebook_patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the experiment",
+                            "title": "Experiment Id"
+                        },
+                        "description": "ID of the experiment"
+                    },
+                    {
+                        "name": "notebook_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the notebook to attach",
+                            "title": "Notebook Id"
+                        },
+                        "description": "ID of the notebook to attach"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptExperimentSummary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -12262,18 +12323,6 @@
                         ],
                         "title": "Dataset Row Filter",
                         "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used."
-                    },
-                    "notebook_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Notebook Id",
-                        "description": "Optional notebook ID to link this experiment to a notebook"
                     }
                 },
                 "type": "object",
@@ -17384,6 +17433,18 @@
                     "summary_results": {
                         "$ref": "#/components/schemas/SummaryResults",
                         "description": "Summary of results across all test cases"
+                    },
+                    "notebook_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notebook Id",
+                        "description": "Optional notebook ID this experiment is linked to"
                     }
                 },
                 "type": "object",

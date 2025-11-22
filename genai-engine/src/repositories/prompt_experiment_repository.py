@@ -173,6 +173,7 @@ class PromptExperimentRepository:
             eval_list=eval_list,
             dataset_row_filter=dataset_row_filter,
             summary_results=summary_results,
+            notebook_id=db_experiment.notebook_id,
         )
 
     def _db_test_case_to_schema(
@@ -910,3 +911,16 @@ class PromptExperimentRepository:
             results.append(result)
 
         return results, count
+
+    def attach_notebook_to_experiment(
+        self, experiment_id: str, notebook_id: str
+    ) -> PromptExperimentSummary:
+        """Attach a notebook to an experiment."""
+        db_experiment = self._get_db_experiment(experiment_id)
+
+        # Update notebook_id
+        db_experiment.notebook_id = notebook_id
+        self.db_session.commit()
+
+        # Return updated summary
+        return self._db_experiment_to_summary(db_experiment)
