@@ -32,7 +32,9 @@ import toFrontendPrompt from "./utils/toFrontendPrompt";
 import { toExperimentPromptConfig } from "./utils/toExperimentPromptConfig";
 import { serializePlaygroundState, deserializeNotebookState } from "./utils/notebookStateUtils";
 import VariableInputs from "./VariableInputs";
+import SetConfigDrawer from "./SetConfigDrawer";
 
+import { CreateExperimentModal, type ExperimentFormData } from "@/components/prompt-experiments/CreateExperimentModal";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { useNotebook, useSetNotebookStateMutation, useUpdateNotebookMutation, useNotebookHistory } from "@/hooks/useNotebooks";
@@ -46,6 +48,7 @@ const PromptsPlayground = () => {
   const navigate = useNavigate();
   const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+  const [createExperimentModalOpen, setCreateExperimentModalOpen] = useState(false);
   const variablesButtonRef = useRef<HTMLButtonElement>(null);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
@@ -765,6 +768,140 @@ const PromptsPlayground = () => {
     setConfigDrawerOpen((prev) => !prev);
   };
 
+  const handleLoadConfig = useCallback(async (config: any, overwritePrompts: boolean) => {
+    console.log("[handleLoadConfig] Called with overwritePrompts:", overwritePrompts);
+    console.log("[handleLoadConfig] Config:", config);
+    console.log("[handleLoadConfig] prompt_configs:", config.prompt_configs);
+
+    // If overwritePrompts is true, load the prompts from the experiment's prompt configs
+    if (overwritePrompts && config.prompt_configs && config.prompt_configs.length > 0 && apiClient && task?.id) {
+      console.log("[handleLoadConfig] Entering overwrite block");
+      try {
+        const prompts = [];
+        for (const promptConfig of config.prompt_configs) {
+          console.log("[handleLoadConfig] Processing prompt config:", promptConfig);
+          if (promptConfig.type === "saved") {
+            const savedConfig = promptConfig as any;
+            console.log(`[handleLoadConfig] Fetching saved prompt ${savedConfig.name} v${savedConfig.version}`);
+            try {
+              const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+                savedConfig.name,
+                savedConfig.version.toString(),
+                task.id
+              );
+              const frontendPrompt = toFrontendPrompt(promptResponse.data);
+              console.log("[handleLoadConfig] Loaded prompt:", frontendPrompt);
+              prompts.push(frontendPrompt);
+            } catch (error) {
+              console.error(`Failed to fetch saved prompt ${savedConfig.name} v${savedConfig.version}:`, error);
+            }
+          }
+        }
+
+        // Overwrite prompts if we loaded any using hydrateNotebookState
+        console.log(`[handleLoadConfig] Loaded ${prompts.length} prompts, dispatching hydrateNotebookState`);
+        if (prompts.length > 0) {
+          dispatch({
+            type: "hydrateNotebookState",
+            payload: {
+              prompts,
+              keywords: new Map<string, string>()
+            }
+          });
+          console.log("[handleLoadConfig] Dispatched hydrateNotebookState");
+        }
+      } catch (error) {
+        console.error("Failed to load prompts from experiment:", error);
+      }
+    } else {
+      console.log("[handleLoadConfig] Skipping overwrite block. Conditions:", {
+        overwritePrompts,
+        hasPromptConfigs: config.prompt_configs && config.prompt_configs.length > 0,
+        hasApiClient: !!apiClient,
+        hasTaskId: !!task?.id
+      });
+    }
+
+    // Update experiment config and activate experiment mode
+    setExperimentConfig(config);
+    setConfigModeActive(true);
+
+    // Mark state as unsaved so auto-save will persist the config
+    setSaveStatus("unsaved");
+
+    // Refetch notebook history since we're now in experiment mode
+    if (notebookId) {
+      refetchNotebookHistory();
+    }
+  }, [notebookId, apiClient, task?.id, refetchNotebookHistory]);
+
+  const handleCreateNewConfig = useCallback(() => {
+    // Open the Create Experiment Modal
+    setCreateExperimentModalOpen(true);
+  }, []);
+
+  const handleCreateExperimentSubmit = useCallback(async (formData: ExperimentFormData) => {
+    // Transform form data to config format
+    const config = {
+      name: formData.name,
+      description: formData.description,
+      dataset_ref: {
+        id: formData.datasetId,
+        version: formData.datasetVersion as number,
+      },
+      eval_list: formData.evaluators.map((evalRef) => ({
+        name: evalRef.name,
+        version: evalRef.version,
+        variable_mapping: formData.evalVariableMappings
+          ?.find((mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version)
+          ?.mappings
+          ? Object.entries(
+              formData.evalVariableMappings.find(
+                (mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version
+              )!.mappings
+            ).map(([variableName, mapping]) => ({
+              variable_name: variableName,
+              source: mapping.sourceType === "dataset_column"
+                ? {
+                    type: "dataset_column" as const,
+                    dataset_column: { name: mapping.datasetColumn! },
+                  }
+                : {
+                    type: "experiment_output" as const,
+                    experiment_output: { json_path: mapping.jsonPath! },
+                  },
+            }))
+          : [],
+      })),
+      prompt_variable_mapping: formData.promptVariableMappings
+        ? Object.entries(formData.promptVariableMappings).map(([variableName, datasetColumn]) => ({
+            variable_name: variableName,
+            source: {
+              type: "dataset_column" as const,
+              dataset_column: { name: datasetColumn },
+            },
+          }))
+        : [],
+      dataset_row_filter: formData.datasetRowFilter || [],
+    };
+
+    // Apply the config
+    setExperimentConfig(config);
+    setConfigModeActive(true);
+    setSaveStatus("unsaved");
+
+    // Close modal
+    setCreateExperimentModalOpen(false);
+
+    // Refetch notebook history
+    if (notebookId) {
+      refetchNotebookHistory();
+    }
+
+    // Return a dummy id since this is not creating an actual experiment
+    return { id: "config-only" };
+  }, [notebookId, refetchNotebookHistory]);
+
   const handleExpandRun = useCallback(async (runId: string) => {
     if (expandedRunId === runId) {
       setExpandedRunId(null);
@@ -1013,32 +1150,42 @@ const PromptsPlayground = () => {
           </Box>
         </Box>
 
-        {/* Config Drawer */}
-        <Drawer
-          anchor="right"
-          open={configDrawerOpen}
-          onClose={toggleConfigDrawer}
-          variant="temporary"
-          sx={{
-            zIndex: (theme) => theme.zIndex.drawer + 2,
-            "& .MuiDrawer-paper": {
-              width: 480,
-              boxSizing: "border-box",
-            },
-          }}
-        >
-          <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            {/* Drawer Header */}
-            <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider" }}>
-              <Typography variant="h6">Experiment Configuration</Typography>
-              <IconButton onClick={toggleConfigDrawer} size="small">
-                <ChevronLeftIcon />
-              </IconButton>
-            </Box>
+        {/* Config Drawer - Show SetConfigDrawer if not in config mode, otherwise show view config drawer */}
+        {!configModeActive || !experimentConfig ? (
+          <SetConfigDrawer
+            open={configDrawerOpen}
+            onClose={toggleConfigDrawer}
+            taskId={task?.id}
+            onLoadConfig={handleLoadConfig}
+            onCreateNewConfig={handleCreateNewConfig}
+            hasExistingPrompts={state.prompts.length > 0}
+          />
+        ) : (
+          <Drawer
+            anchor="right"
+            open={configDrawerOpen}
+            onClose={toggleConfigDrawer}
+            variant="temporary"
+            sx={{
+              zIndex: (theme) => theme.zIndex.drawer + 2,
+              "& .MuiDrawer-paper": {
+                width: 480,
+                boxSizing: "border-box",
+              },
+            }}
+          >
+            <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              {/* Drawer Header */}
+              <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: 1, borderColor: "divider" }}>
+                <Typography variant="h6">Experiment Configuration</Typography>
+                <IconButton onClick={toggleConfigDrawer} size="small">
+                  <ChevronLeftIcon />
+                </IconButton>
+              </Box>
 
-            {/* Drawer Content */}
-            <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
-              {experimentConfig ? (
+              {/* Drawer Content */}
+              <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
+                {experimentConfig ? (
                 <Stack spacing={3}>
                   {/* Experiment Name Section - Only show if not in notebook mode */}
                   {!notebookId && experimentConfig.id && (
@@ -1384,6 +1531,14 @@ const PromptsPlayground = () => {
             </Box>
           </Box>
         </Drawer>
+        )}
+
+        {/* Create Experiment Modal for setting up config */}
+        <CreateExperimentModal
+          open={createExperimentModalOpen}
+          onClose={() => setCreateExperimentModalOpen(false)}
+          onSubmit={handleCreateExperimentSubmit}
+        />
       </Box>
     </PromptProvider>
   );
