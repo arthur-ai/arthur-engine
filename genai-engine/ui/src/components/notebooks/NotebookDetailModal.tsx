@@ -140,7 +140,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
               <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}>
                 CONFIGURATION
               </Typography>
-              
+
               {!notebook.state?.prompt_configs && !notebook.state?.dataset_ref && !notebook.state?.eval_list ? (
                 <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                   No configuration set
@@ -196,26 +196,35 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                       <Typography variant="caption" sx={{ color: "text.secondary", mb: 0.5, display: "block" }}>
                         Dataset
                       </Typography>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {notebook.state.dataset_ref.name || notebook.state.dataset_ref.id}
-                        </Typography>
-                        {notebook.state.dataset_ref.version && (
-                          <Chip label={`v${notebook.state.dataset_ref.version}`} size="small" />
-                        )}
-                        {notebook.state.dataset_ref.id && (
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              navigate(`/tasks/${taskId}/datasets/${notebook.state!.dataset_ref!.id}`);
-                              onClose();
-                            }}
-                            sx={{ padding: 0.5 }}
-                          >
-                            <OpenInNewIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Box>
+                      <Chip
+                        label={
+                          notebook.state.dataset_ref.version
+                            ? `${notebook.state.dataset_ref.name || notebook.state.dataset_ref.id} (v${notebook.state.dataset_ref.version})`
+                            : notebook.state.dataset_ref.name || notebook.state.dataset_ref.id
+                        }
+                        size="small"
+                        sx={{
+                          backgroundColor: "#fce4ec",
+                          borderColor: "#e91e63",
+                        }}
+                        onClick={
+                          notebook.state.dataset_ref.id
+                            ? () => {
+                                navigate(`/tasks/${taskId}/datasets/${notebook.state!.dataset_ref!.id}`);
+                                onClose();
+                              }
+                            : undefined
+                        }
+                        onDelete={
+                          notebook.state.dataset_ref.id
+                            ? () => {
+                                navigate(`/tasks/${taskId}/datasets/${notebook.state!.dataset_ref!.id}`);
+                                onClose();
+                              }
+                            : undefined
+                        }
+                        deleteIcon={notebook.state.dataset_ref.id ? <OpenInNewIcon fontSize="small" /> : undefined}
+                      />
                     </Box>
                   )}
 
@@ -368,4 +377,3 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
 };
 
 export default NotebookDetailModal;
-

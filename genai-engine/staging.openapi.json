@@ -12262,6 +12262,18 @@
                         ],
                         "title": "Dataset Row Filter",
                         "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used."
+                    },
+                    "notebook_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notebook Id",
+                        "description": "Optional notebook ID to link this experiment to a notebook"
                     }
                 },
                 "type": "object",

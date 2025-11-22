@@ -710,6 +710,11 @@ export interface CreatePromptExperimentRequest {
    */
   name: string;
   /**
+   * Notebook Id
+   * Optional notebook ID to link this experiment to a notebook
+   */
+  notebook_id?: string | null;
+  /**
    * Prompt Configs
    * List of prompt configurations (saved or unsaved)
    */

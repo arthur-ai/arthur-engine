@@ -389,7 +389,7 @@ class PromptExperimentRepository:
                 if filter_item.column_name not in dataset_columns:
                     raise ValueError(
                         f"Dataset column '{filter_item.column_name}' referenced in dataset_row_filter not found in dataset version. "
-                        f"Available columns: {', '.join(sorted(dataset_columns))}"
+                        f"Available columns: {', '.join(sorted(dataset_columns))}",
                     )
 
         # Check prompt variable mappings - validate dataset columns exist and no duplicates
@@ -649,6 +649,7 @@ class PromptExperimentRepository:
             total_rows=0,  # Will be updated after creating test cases
             completed_rows=0,
             failed_rows=0,
+            notebook_id=request.notebook_id,  # Link to notebook if provided
         )
 
         self.db_session.add(db_experiment)

@@ -95,7 +95,9 @@ const PromptsPlayground = () => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState<string>("");
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const periodicSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef<string>("");
+  const hasUnsavedChangesRef = useRef<boolean>(false);
 
   // Pass false to let each prompt determine its own icon-only mode based on container width
   // This enables true container query behavior - each prompt measures its own width
@@ -184,22 +186,31 @@ const PromptsPlayground = () => {
 
   /**
    * Auto-save notebook state with debounce
+   * Only saves if there are actual changes
    */
   const autoSaveNotebookState = useCallback(async () => {
     if (!notebookId || !apiClient) {
       return;
     }
 
+    const serializedState = serializePlaygroundState(state, experimentConfig);
+    const currentStateStr = JSON.stringify(serializedState);
+
+    // Only save if state has actually changed
+    if (currentStateStr === lastSavedStateRef.current) {
+      return;
+    }
+
     try {
       setSaveStatus("saving");
-      const serializedState = serializePlaygroundState(state, experimentConfig);
 
       await setNotebookStateMutation.mutateAsync({
         notebookId,
         request: { state: serializedState },
       });
 
-      lastSavedStateRef.current = JSON.stringify(serializedState);
+      lastSavedStateRef.current = currentStateStr;
+      hasUnsavedChangesRef.current = false;
       setSaveStatus("saved");
     } catch (error) {
       console.error("Failed to save notebook state:", error);
@@ -207,7 +218,7 @@ const PromptsPlayground = () => {
     }
   }, [notebookId, apiClient, state, experimentConfig, setNotebookStateMutation]);
 
-  // Detect state changes and trigger auto-save
+  // Detect state changes and trigger auto-save with debounce
   useEffect(() => {
     if (!notebookId || !lastSavedStateRef.current) {
       return;
@@ -217,6 +228,7 @@ const PromptsPlayground = () => {
 
     // Check if state has actually changed
     if (currentStateStr !== lastSavedStateRef.current) {
+      hasUnsavedChangesRef.current = true;
       setSaveStatus("unsaved");
 
       // Clear existing timeout
@@ -224,7 +236,7 @@ const PromptsPlayground = () => {
         clearTimeout(autoSaveTimeoutRef.current);
       }
 
-      // Set new timeout for auto-save (5 seconds)
+      // Set new timeout for auto-save (5 seconds after last change)
       autoSaveTimeoutRef.current = setTimeout(() => {
         autoSaveNotebookState();
       }, 5000);
@@ -237,6 +249,28 @@ const PromptsPlayground = () => {
       }
     };
   }, [state, experimentConfig, notebookId, autoSaveNotebookState]);
+
+  // Periodic save check (every 10 seconds)
+  // Only saves if there are unsaved changes
+  useEffect(() => {
+    if (!notebookId) {
+      return;
+    }
+
+    // Set up periodic save interval (10 seconds)
+    periodicSaveIntervalRef.current = setInterval(() => {
+      if (hasUnsavedChangesRef.current) {
+        autoSaveNotebookState();
+      }
+    }, 10000);
+
+    // Cleanup interval on unmount
+    return () => {
+      if (periodicSaveIntervalRef.current) {
+        clearInterval(periodicSaveIntervalRef.current);
+      }
+    };
+  }, [notebookId, autoSaveNotebookState]);
 
   // Load notebook state on mount
   useEffect(() => {
@@ -636,6 +670,7 @@ const PromptsPlayground = () => {
         eval_list: experimentConfig.eval_list,
         prompt_configs: promptConfigs,
         prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
+        notebook_id: notebookId || undefined,  // Link to current notebook
       };
 
       // Create and run the experiment
@@ -696,6 +731,7 @@ const PromptsPlayground = () => {
         eval_list: experimentConfig.eval_list,
         prompt_configs: [promptConfig],
         prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
+        notebook_id: notebookId || undefined,  // Link to current notebook
       };
 
       // Create and run the experiment
@@ -834,6 +870,7 @@ const PromptsPlayground = () => {
     setConfigModeActive(true);
 
     // Mark state as unsaved so auto-save will persist the config
+    hasUnsavedChangesRef.current = true;
     setSaveStatus("unsaved");
 
     // Refetch notebook history since we're now in experiment mode
@@ -922,6 +959,7 @@ const PromptsPlayground = () => {
       // No prompts to load, just set the config
       setExperimentConfig(config);
       setConfigModeActive(true);
+      hasUnsavedChangesRef.current = true;
       setSaveStatus("unsaved");
 
       if (notebookId) {
@@ -946,6 +984,7 @@ const PromptsPlayground = () => {
     if (pendingConfigForPromptOverwrite) {
       setExperimentConfig(pendingConfigForPromptOverwrite);
       setConfigModeActive(true);
+      hasUnsavedChangesRef.current = true;
       setSaveStatus("unsaved");
 
       if (notebookId) {
@@ -1087,19 +1126,31 @@ const PromptsPlayground = () => {
                       />
                     ) : (
                       <>
-                        <Box
-                          sx={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: "50%",
-                            backgroundColor:
-                              saveStatus === "saved"
-                                ? "#10b981"
-                                : saveStatus === "saving"
-                                ? "#f59e0b"
-                                : "#6b7280",
-                          }}
-                        />
+                        <Tooltip
+                          title={
+                            saveStatus === "saved"
+                              ? "All changes saved"
+                              : saveStatus === "saving"
+                              ? "Saving changes..."
+                              : "Unsaved changes"
+                          }
+                          arrow
+                        >
+                          <Box
+                            sx={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              backgroundColor:
+                                saveStatus === "saved"
+                                  ? "#10b981"
+                                  : saveStatus === "saving"
+                                  ? "#f59e0b"
+                                  : "#6b7280",
+                              cursor: "help",
+                            }}
+                          />
+                        </Tooltip>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
                           {notebookName || "Notebook"}
                         </Typography>
