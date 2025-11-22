@@ -12,6 +12,11 @@ import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -49,6 +54,8 @@ const PromptsPlayground = () => {
   const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [createExperimentModalOpen, setCreateExperimentModalOpen] = useState(false);
+  const [showPromptOverwriteDialog, setShowPromptOverwriteDialog] = useState(false);
+  const [pendingConfigForPromptOverwrite, setPendingConfigForPromptOverwrite] = useState<any>(null);
   const variablesButtonRef = useRef<HTMLButtonElement>(null);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
@@ -841,6 +848,8 @@ const PromptsPlayground = () => {
   }, []);
 
   const handleCreateExperimentSubmit = useCallback(async (formData: ExperimentFormData) => {
+    console.log("[handleCreateExperimentSubmit] Called with formData:", formData);
+
     // Transform form data to config format
     const config = {
       name: formData.name,
@@ -883,24 +892,69 @@ const PromptsPlayground = () => {
           }))
         : [],
       dataset_row_filter: formData.datasetRowFilter || [],
+      // Include prompt configs for loading into notebook
+      prompt_configs: formData.promptVersions.map((pv) => ({
+        type: "saved" as const,
+        name: pv.promptName,
+        version: pv.version,
+      })),
     };
 
-    // Apply the config
-    setExperimentConfig(config);
-    setConfigModeActive(true);
-    setSaveStatus("unsaved");
+    console.log("[handleCreateExperimentSubmit] Config created:", config);
 
-    // Close modal
+    // Check if we have prompts to load and existing prompts in the notebook
+    const hasPromptsToLoad = formData.promptVersions.length > 0;
+    const hasExistingPrompts = state.prompts.length > 0;
+
+    console.log("[handleCreateExperimentSubmit] hasPromptsToLoad:", hasPromptsToLoad, "hasExistingPrompts:", hasExistingPrompts);
+
+    // Close the create experiment modal first
     setCreateExperimentModalOpen(false);
 
-    // Refetch notebook history
-    if (notebookId) {
-      refetchNotebookHistory();
+    if (hasPromptsToLoad && hasExistingPrompts) {
+      // Show the overwrite dialog
+      setPendingConfigForPromptOverwrite(config);
+      setShowPromptOverwriteDialog(true);
+    } else if (hasPromptsToLoad) {
+      // No existing prompts, auto-overwrite
+      await handleLoadConfig(config, true);
+    } else {
+      // No prompts to load, just set the config
+      setExperimentConfig(config);
+      setConfigModeActive(true);
+      setSaveStatus("unsaved");
+
+      if (notebookId) {
+        refetchNotebookHistory();
+      }
     }
 
     // Return a dummy id since this is not creating an actual experiment
     return { id: "config-only" };
-  }, [notebookId, refetchNotebookHistory]);
+  }, [notebookId, refetchNotebookHistory, state.prompts.length, handleLoadConfig]);
+
+  const handlePromptOverwriteConfirm = useCallback(async (overwrite: boolean) => {
+    if (pendingConfigForPromptOverwrite) {
+      await handleLoadConfig(pendingConfigForPromptOverwrite, overwrite);
+      setPendingConfigForPromptOverwrite(null);
+      setShowPromptOverwriteDialog(false);
+    }
+  }, [pendingConfigForPromptOverwrite, handleLoadConfig]);
+
+  const handlePromptOverwriteCancel = useCallback(() => {
+    // Just apply the config without loading prompts
+    if (pendingConfigForPromptOverwrite) {
+      setExperimentConfig(pendingConfigForPromptOverwrite);
+      setConfigModeActive(true);
+      setSaveStatus("unsaved");
+
+      if (notebookId) {
+        refetchNotebookHistory();
+      }
+    }
+    setPendingConfigForPromptOverwrite(null);
+    setShowPromptOverwriteDialog(false);
+  }, [pendingConfigForPromptOverwrite, notebookId, refetchNotebookHistory]);
 
   const handleExpandRun = useCallback(async (runId: string) => {
     if (expandedRunId === runId) {
@@ -1538,7 +1592,34 @@ const PromptsPlayground = () => {
           open={createExperimentModalOpen}
           onClose={() => setCreateExperimentModalOpen(false)}
           onSubmit={handleCreateExperimentSubmit}
+          disableNavigation={true}
         />
+
+        {/* Prompt Overwrite Confirmation Dialog */}
+        <Dialog
+          open={showPromptOverwriteDialog}
+          onClose={handlePromptOverwriteCancel}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Overwrite Existing Prompts?</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              This notebook already contains prompts. Would you like to overwrite them with the prompts from the selected configuration, or keep your existing prompts and only load the configuration?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handlePromptOverwriteCancel} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={() => handlePromptOverwriteConfirm(false)} variant="outlined">
+              Keep Existing Prompts
+            </Button>
+            <Button onClick={() => handlePromptOverwriteConfirm(true)} variant="contained" color="primary">
+              Overwrite Prompts
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </PromptProvider>
   );

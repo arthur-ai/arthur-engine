@@ -49,6 +49,7 @@ interface CreateExperimentModalProps {
   onSubmit: (data: ExperimentFormData) => Promise<{ id: string }>;
   initialData?: PromptExperimentDetail;
   isLoadingInitialData?: boolean;
+  disableNavigation?: boolean; // Don't navigate after creation (for notebook config mode)
 }
 
 export interface PromptVersionSelection {
@@ -109,6 +110,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   onSubmit,
   initialData,
   isLoadingInitialData = false,
+  disableNavigation = false,
 }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -580,8 +582,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setCompletedSteps(new Set());
       setErrors({});
       onClose();
-      // Navigate to the experiment detail page
-      navigate(`/tasks/${taskId}/prompt-experiments/${result.id}`);
+      // Navigate to the experiment detail page (unless disabled for notebook config mode)
+      if (!disableNavigation) {
+        navigate(`/tasks/${taskId}/prompt-experiments/${result.id}`);
+      }
     } catch (error) {
       console.error("Failed to create experiment:", error);
       setErrors({ general: "Failed to create experiment. Please try again." });
