@@ -35,7 +35,7 @@ import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { useNotebook, useSetNotebookStateMutation, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
+import { useNotebook, useSetNotebookStateMutation, useUpdateNotebookMutation, useNotebookHistory } from "@/hooks/useNotebooks";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 import { useNavigate } from "react-router-dom";
 import { track, EVENT_NAMES } from "@/services/amplitude";
@@ -96,6 +96,13 @@ const PromptsPlayground = () => {
   const setNotebookStateMutation = useSetNotebookStateMutation();
   const updateNotebookMutation = useUpdateNotebookMutation(task?.id);
 
+  // Fetch notebook history for experiment mode
+  const { experiments: notebookHistory, refetch: refetchNotebookHistory } = useNotebookHistory(
+    notebookId || undefined,
+    0,
+    100
+  );
+
   // Update notebook name when notebook data loads
   useEffect(() => {
     if (notebook?.name) {
@@ -118,7 +125,7 @@ const PromptsPlayground = () => {
       const notebookState = response.data;
 
       // Deserialize the notebook state
-      const { prompts: loadedPrompts, keywords: loadedKeywords } = await deserializeNotebookState(
+      const { prompts: loadedPrompts, keywords: loadedKeywords, fullState } = await deserializeNotebookState(
         notebookState,
         apiClient,
         task.id
@@ -130,16 +137,30 @@ const PromptsPlayground = () => {
         payload: { prompts: loadedPrompts, keywords: loadedKeywords },
       });
 
+      // Check if we're in Experiment Mode (has dataset_ref)
+      if (fullState.dataset_ref) {
+        // Convert notebook state to experimentConfig format
+        setExperimentConfig({
+          name: notebook?.name || "Notebook Experiment",
+          description: notebook?.description || "",
+          dataset_ref: fullState.dataset_ref,
+          eval_list: fullState.eval_list || [],
+          prompt_variable_mapping: fullState.prompt_variable_mapping || [],
+          dataset_row_filter: fullState.dataset_row_filter || [],
+        });
+        setConfigModeActive(true);
+      }
+
       // Initialize the lastSavedStateRef after loading
       // We'll set it in a setTimeout to ensure state updates have completed
       setTimeout(() => {
-        lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state));
+        lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state, experimentConfig));
         setSaveStatus("saved");
       }, 100);
     } catch (error) {
       console.error("Failed to load notebook state:", error);
     }
-  }, [notebookId, apiClient, task?.id]);
+  }, [notebookId, apiClient, task?.id, notebook]);
 
   /**
    * Auto-save notebook state with debounce
@@ -151,7 +172,7 @@ const PromptsPlayground = () => {
 
     try {
       setSaveStatus("saving");
-      const serializedState = serializePlaygroundState(state);
+      const serializedState = serializePlaygroundState(state, experimentConfig);
 
       await setNotebookStateMutation.mutateAsync({
         notebookId,
@@ -164,7 +185,7 @@ const PromptsPlayground = () => {
       console.error("Failed to save notebook state:", error);
       setSaveStatus("unsaved");
     }
-  }, [notebookId, apiClient, state, setNotebookStateMutation]);
+  }, [notebookId, apiClient, state, experimentConfig, setNotebookStateMutation]);
 
   // Detect state changes and trigger auto-save
   useEffect(() => {
@@ -172,7 +193,7 @@ const PromptsPlayground = () => {
       return;
     }
 
-    const currentStateStr = JSON.stringify(serializePlaygroundState(state));
+    const currentStateStr = JSON.stringify(serializePlaygroundState(state, experimentConfig));
 
     // Check if state has actually changed
     if (currentStateStr !== lastSavedStateRef.current) {
@@ -195,7 +216,7 @@ const PromptsPlayground = () => {
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [state, notebookId, autoSaveNotebookState]);
+  }, [state, experimentConfig, notebookId, autoSaveNotebookState]);
 
   // Load notebook state on mount
   useEffect(() => {
@@ -473,6 +494,12 @@ const PromptsPlayground = () => {
    * Refresh experiment runs list
    */
   const refreshExperimentRuns = useCallback(async () => {
+    // In notebook mode, refresh notebook history instead
+    if (notebookId) {
+      refetchNotebookHistory();
+      return;
+    }
+
     if (!experimentConfig || !task?.id || !apiClient) return;
 
     try {
@@ -489,7 +516,7 @@ const PromptsPlayground = () => {
     } catch (error) {
       console.error("Failed to refresh experiment runs:", error);
     }
-  }, [experimentConfig, task?.id, apiClient]);
+  }, [notebookId, refetchNotebookHistory, experimentConfig, task?.id, apiClient]);
 
   /**
    * Poll experiment status until completion
@@ -1003,33 +1030,37 @@ const PromptsPlayground = () => {
             <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
               {experimentConfig ? (
                 <Stack spacing={3}>
-                  {/* Experiment Name Section */}
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
-                      EXPERIMENT
-                    </Typography>
-                    <Box sx={{ pl: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {experimentConfig.name}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => navigate(`/tasks/${task?.id}/prompt-experiments/${experimentConfig.id}`)}
-                        sx={{
-                          padding: 0.5,
-                          color: "#9ca3af",
-                          "&:hover": {
-                            color: "#6b7280",
-                            backgroundColor: "rgba(0, 0, 0, 0.04)",
-                          },
-                        }}
-                      >
-                        <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
-                      </IconButton>
-                    </Box>
-                  </Box>
+                  {/* Experiment Name Section - Only show if not in notebook mode */}
+                  {!notebookId && experimentConfig.id && (
+                    <>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
+                          EXPERIMENT
+                        </Typography>
+                        <Box sx={{ pl: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {experimentConfig.name}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/tasks/${task?.id}/prompt-experiments/${experimentConfig.id}`)}
+                            sx={{
+                              padding: 0.5,
+                              color: "#9ca3af",
+                              "&:hover": {
+                                color: "#6b7280",
+                                backgroundColor: "rgba(0, 0, 0, 0.04)",
+                              },
+                            }}
+                          >
+                            <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
+                          </IconButton>
+                        </Box>
+                      </Box>
 
-                  <Divider />
+                      <Divider />
+                    </>
+                  )}
 
                   {/* Dataset Section */}
                   <Box>
@@ -1069,14 +1100,15 @@ const PromptsPlayground = () => {
                   <Divider />
 
                   {/* Prompt Variable Mappings Section */}
-                  {experimentConfig.prompt_ref?.variable_mapping && experimentConfig.prompt_ref.variable_mapping.length > 0 && (
+                  {((experimentConfig.prompt_ref?.variable_mapping && experimentConfig.prompt_ref.variable_mapping.length > 0) ||
+                    (experimentConfig.prompt_variable_mapping && experimentConfig.prompt_variable_mapping.length > 0)) && (
                     <>
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
                           PROMPT VARIABLE MAPPINGS
                         </Typography>
                         <Stack spacing={1}>
-                          {experimentConfig.prompt_ref.variable_mapping.map((mapping: any, idx: number) => (
+                          {(experimentConfig.prompt_variable_mapping || experimentConfig.prompt_ref?.variable_mapping || []).map((mapping: any, idx: number) => (
                             <Box
                               key={idx}
                               sx={{
@@ -1195,14 +1227,14 @@ const PromptsPlayground = () => {
                     </>
                   )}
 
-                  {/* Experiment Runs Section */}
-                  {experimentRuns.length > 0 && (
+                  {/* Experiment Runs Section - Show notebook history if in notebook mode */}
+                  {(notebookId ? notebookHistory : experimentRuns).length > 0 && (
                     <Box>
                       <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
-                        EXPERIMENT RUNS ({experimentRuns.length})
+                        EXPERIMENT HISTORY ({notebookId ? notebookHistory.length : experimentRuns.length})
                       </Typography>
                       <Stack spacing={1}>
-                        {experimentRuns.map((run: any, idx: number) => {
+                        {(notebookId ? notebookHistory : experimentRuns).map((run: any, idx: number) => {
                           const completionRate = run.total_rows > 0 ? (run.completed_rows / run.total_rows) * 100 : 0;
                           const isCompleted = run.status === "completed";
                           const isFailed = run.status === "failed";

@@ -5,15 +5,28 @@ import { NotebookStateInput, NotebookStateOutput, SavedPromptConfig, UnsavedProm
 
 /**
  * Serializes the current playground state to NotebookStateInput format
- * For Iteration Mode, this only includes prompts (no dataset/evals/variable mappings)
+ * For Iteration Mode, this only includes prompts
+ * For Experiment Mode, includes prompts + dataset + evals + mappings
  */
-export const serializePlaygroundState = (state: PromptPlaygroundState): NotebookStateInput => {
+export const serializePlaygroundState = (
+  state: PromptPlaygroundState,
+  experimentConfig?: any
+): NotebookStateInput => {
   // Convert prompts to experiment prompt configs
   const prompt_configs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
 
-  // In Iteration Mode, we don't store variable mappings since there's no dataset
-  // Variables are embedded in the prompt templates themselves
+  // If experimentConfig is provided, include it in the serialized state (Experiment Mode)
+  if (experimentConfig && experimentConfig.dataset_ref) {
+    return {
+      prompt_configs: prompt_configs.length > 0 ? prompt_configs : null,
+      prompt_variable_mapping: experimentConfig.prompt_variable_mapping || null,
+      dataset_ref: experimentConfig.dataset_ref,
+      eval_list: experimentConfig.eval_list || null,
+      dataset_row_filter: experimentConfig.dataset_row_filter || null,
+    };
+  }
 
+  // Iteration Mode - only prompts
   return {
     prompt_configs: prompt_configs.length > 0 ? prompt_configs : null,
     prompt_variable_mapping: null,
@@ -24,14 +37,18 @@ export const serializePlaygroundState = (state: PromptPlaygroundState): Notebook
 };
 
 /**
- * Deserializes NotebookStateOutput to playground prompts
- * Returns an array of PromptType objects that can be hydrated into the reducer
+ * Deserializes NotebookStateOutput to playground prompts and full state
+ * Returns prompts, keywords, and the complete notebook state for experiment mode detection
  */
 export const deserializeNotebookState = async (
   notebookState: NotebookStateOutput,
   apiClient: any,
   taskId: string
-): Promise<{ prompts: PromptType[]; keywords: Map<string, string> }> => {
+): Promise<{
+  prompts: PromptType[];
+  keywords: Map<string, string>;
+  fullState: NotebookStateOutput;
+}> => {
   const prompts: PromptType[] = [];
   const keywords = new Map<string, string>();
 
@@ -111,11 +128,10 @@ export const deserializeNotebookState = async (
   // Process variable mappings to restore keyword values
   if (notebookState.prompt_variable_mapping && notebookState.prompt_variable_mapping.length > 0) {
     notebookState.prompt_variable_mapping.forEach((mapping) => {
-      // In Iteration Mode, we just store empty values for now
-      // The actual values will be filled in by the user
+      // Initialize with empty values - will be populated by dataset or user input
       keywords.set(mapping.variable_name, "");
     });
   }
 
-  return { prompts, keywords };
+  return { prompts, keywords, fullState: notebookState };
 };

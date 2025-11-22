@@ -2,6 +2,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/22/2025
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  endpoint added
+
 # 11/21/2025
 <<<<<<< HEAD
 - **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_name' became optional for the status '200'

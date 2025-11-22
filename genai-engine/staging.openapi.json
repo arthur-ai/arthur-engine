@@ -9493,6 +9493,489 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/notebooks": {
+            "post": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Create a notebook",
+                "description": "Create a new notebook for organizing experiments within a task",
+                "operationId": "create_notebook_api_v1_tasks__task_id__notebooks_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "List notebooks",
+                "description": "List all notebooks for a task with pagination",
+                "operationId": "list_notebooks_api_v1_tasks__task_id__notebooks_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notebooks/{notebook_id}": {
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Get notebook details",
+                "description": "Get detailed information about a notebook including state and experiment history",
+                "operationId": "get_notebook_api_v1_notebooks__notebook_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Update notebook metadata",
+                "description": "Update notebook name or description (not the state)",
+                "operationId": "update_notebook_api_v1_notebooks__notebook_id__put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Delete notebook",
+                "description": "Delete a notebook (experiments are kept)",
+                "operationId": "delete_notebook_api_v1_notebooks__notebook_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notebooks/{notebook_id}/state": {
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Get notebook state",
+                "description": "Get the current state (draft configuration) of a notebook",
+                "operationId": "get_notebook_state_api_v1_notebooks__notebook_id__state_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookState-Output"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Set notebook state",
+                "description": "Set the state (draft configuration) of a notebook",
+                "operationId": "set_notebook_state_api_v1_notebooks__notebook_id__state_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetNotebookStateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notebooks/{notebook_id}/history": {
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Get notebook history",
+                "description": "Get paginated list of experiments run from this notebook",
+                "operationId": "get_notebook_history_api_v1_notebooks__notebook_id__history_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptExperimentListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/prompt_experiments": {
             "get": {
                 "tags": [
@@ -11649,6 +12132,44 @@
                     "instructions"
                 ],
                 "title": "CreateEvalRequest"
+            },
+            "CreateNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the notebook"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "state": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/NotebookState-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Initial state"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "CreateNotebookRequest",
+                "description": "Request to create a new notebook"
             },
             "CreatePromptExperimentRequest": {
                 "properties": {
@@ -15396,7 +15917,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.213"
+                                "version": "1.0"
                             }
                         ]
                     }
@@ -15804,6 +16325,377 @@
                     "name"
                 ],
                 "title": "NewTaskRequest"
+            },
+            "NotebookDetail": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/NotebookState-Output",
+                        "description": "Current draft state"
+                    },
+                    "experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptExperimentSummary"
+                        },
+                        "type": "array",
+                        "title": "Experiments",
+                        "description": "History of experiments run from this notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "state",
+                    "experiments"
+                ],
+                "title": "NotebookDetail",
+                "description": "Detailed notebook information"
+            },
+            "NotebookListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/NotebookSummary"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of notebook summaries"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of notebooks"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "NotebookListResponse",
+                "description": "Paginated list of notebooks"
+            },
+            "NotebookState-Input": {
+                "properties": {
+                    "prompt_configs": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SavedPromptConfig"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    ],
+                                    "discriminator": {
+                                        "propertyName": "type",
+                                        "mapping": {
+                                            "saved": "#/components/schemas/SavedPromptConfig",
+                                            "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    }
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Configs",
+                        "description": "List of prompt configurations"
+                    },
+                    "prompt_variable_mapping": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Variable Mapping",
+                        "description": "Variable mappings for prompts"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/EvalRef-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "NotebookState",
+                "description": "Draft state of a notebook - mirrors experiment config but all fields optional."
+            },
+            "NotebookState-Output": {
+                "properties": {
+                    "prompt_configs": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SavedPromptConfig"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    ],
+                                    "discriminator": {
+                                        "propertyName": "type",
+                                        "mapping": {
+                                            "saved": "#/components/schemas/SavedPromptConfig",
+                                            "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    }
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Configs",
+                        "description": "List of prompt configurations"
+                    },
+                    "prompt_variable_mapping": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Variable Mapping",
+                        "description": "Variable mappings for prompts"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/EvalRef-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "NotebookState",
+                "description": "Draft state of a notebook - mirrors experiment config but all fields optional."
+            },
+            "NotebookSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "run_count": {
+                        "type": "integer",
+                        "title": "Run Count",
+                        "description": "Number of experiments run from this notebook"
+                    },
+                    "latest_run_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Latest Run Id",
+                        "description": "ID of most recent experiment run"
+                    },
+                    "latest_run_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ExperimentStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Status of most recent experiment"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "run_count"
+                ],
+                "title": "NotebookSummary",
+                "description": "Summary of a notebook"
             },
             "OpenAIMessage-Input": {
                 "properties": {
@@ -18487,6 +19379,20 @@
                 "title": "SessionTracesResponse",
                 "description": "Response for session traces endpoint"
             },
+            "SetNotebookStateRequest": {
+                "properties": {
+                    "state": {
+                        "$ref": "#/components/schemas/NotebookState-Input",
+                        "description": "New state for the notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "state"
+                ],
+                "title": "SetNotebookStateRequest",
+                "description": "Request to set the notebook state"
+            },
             "SpanListResponse": {
                 "properties": {
                     "count": {
@@ -20199,6 +21105,37 @@
                     "enabled"
                 ],
                 "title": "UpdateMetricRequest"
+            },
+            "UpdateNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "New name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "New description"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateNotebookRequest",
+                "description": "Request to update a notebook"
             },
             "UpdateRuleRequest": {
                 "properties": {
