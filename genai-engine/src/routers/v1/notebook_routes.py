@@ -1,5 +1,4 @@
 from typing import Annotated
-from uuid import uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
@@ -16,14 +15,11 @@ from schemas.notebook_schemas import (
     NotebookDetail,
     NotebookListResponse,
     NotebookState,
-    NotebookValidationResponse,
-    RunNotebookRequest,
     SetNotebookStateRequest,
     UpdateNotebookRequest,
 )
 from schemas.prompt_experiment_schemas import (
     PromptExperimentListResponse,
-    PromptExperimentSummary,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -58,10 +54,8 @@ def create_notebook(
     """
     try:
         repo = NotebookRepository(db_session)
-        notebook_id = str(uuid4())
         notebook = repo.create_notebook(
             task_id=task.id,
-            notebook_id=notebook_id,
             request=notebook_request,
         )
         return notebook
@@ -98,24 +92,11 @@ def list_notebooks(
     """
     try:
         repo = NotebookRepository(db_session)
-        notebooks, total_count = repo.list_notebooks(
+        response = repo.list_notebooks(
             task_id=task.id,
             pagination_params=pagination_parameters,
         )
-
-        page = pagination_parameters.page
-        page_size = pagination_parameters.page_size
-        total_pages = (
-            (total_count + page_size - 1) // page_size if total_count > 0 else 0
-        )
-
-        return NotebookListResponse(
-            data=notebooks,
-            page=page,
-            page_size=page_size,
-            total_pages=total_pages,
-            total_count=total_count,
-        )
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -284,71 +265,6 @@ def delete_notebook(
         db_session.close()
 
 
-@notebook_routes.post(
-    "/notebooks/{notebook_id}/validate",
-    summary="Validate notebook state",
-    description="Check if notebook state is complete and valid for running",
-    response_model=NotebookValidationResponse,
-    response_model_exclude_none=True,
-    tags=["Notebooks"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def validate_notebook(
-    notebook_id: str = Path(..., description="Notebook ID"),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
-    """
-    Validate that a notebook's state is complete and valid for running.
-
-    Returns a validation response indicating whether the notebook can be run
-    and any errors that need to be fixed.
-    """
-    try:
-        repo = NotebookRepository(db_session)
-        validation_result = repo.validate_notebook_state(notebook_id)
-        return validation_result
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
-
-
-@notebook_routes.post(
-    "/notebooks/{notebook_id}/run",
-    summary="Run notebook",
-    description="Create and execute an experiment from notebook state",
-    response_model=PromptExperimentSummary,
-    response_model_exclude_none=True,
-    tags=["Notebooks"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def run_notebook(
-    run_request: RunNotebookRequest,
-    notebook_id: str = Path(..., description="Notebook ID"),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
-    """
-    Run a notebook by creating and executing an experiment from its current state.
-
-    The notebook state must be complete and valid. The created experiment
-    will be linked to this notebook in the experiment history.
-    """
-    try:
-        repo = NotebookRepository(db_session)
-        experiment = repo.run_notebook(notebook_id, run_request)
-        return experiment
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
-
-
 @notebook_routes.get(
     "/notebooks/{notebook_id}/history",
     summary="Get notebook history",
@@ -375,24 +291,11 @@ def get_notebook_history(
     """
     try:
         repo = NotebookRepository(db_session)
-        experiments, total_count = repo.get_notebook_history(
+        response = repo.get_notebook_history(
             notebook_id=notebook_id,
             pagination_params=pagination_parameters,
         )
-
-        page = pagination_parameters.page
-        page_size = pagination_parameters.page_size
-        total_pages = (
-            (total_count + page_size - 1) // page_size if total_count > 0 else 0
-        )
-
-        return PromptExperimentListResponse(
-            data=experiments,
-            page=page,
-            page_size=page_size,
-            total_pages=total_pages,
-            total_count=total_count,
-        )
+        return response
     except HTTPException:
         raise
     except Exception as e:

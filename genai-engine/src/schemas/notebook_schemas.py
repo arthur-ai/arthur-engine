@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 from db_models.notebook_models import DatabaseNotebook
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.prompt_experiment_schemas import (
     DatasetRef,
     EvalRef,
@@ -23,16 +23,25 @@ class NotebookState(BaseModel):
     """
 
     prompt_configs: Optional[List[PromptConfig]] = Field(
-        default=None, description="List of prompt configurations"
+        default=None,
+        description="List of prompt configurations",
     )
     prompt_variable_mapping: Optional[List[PromptVariableMapping]] = Field(
-        default=None, description="Variable mappings for prompts"
+        default=None,
+        description="Variable mappings for prompts",
     )
     dataset_ref: Optional[DatasetRef] = Field(
-        default=None, description="Dataset reference"
+        default=None,
+        description="Dataset reference",
+    )
+    dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = Field(
+        default=None,
+        description="Optional list of column name and value filters. "
+        "Only rows matching ALL specified column name-value pairs (AND condition) will be included.",
     )
     eval_list: Optional[List[EvalRef]] = Field(
-        default=None, description="List of evaluations"
+        default=None,
+        description="List of evaluations",
     )
 
 
@@ -41,9 +50,7 @@ class CreateNotebookRequest(BaseModel):
 
     name: str = Field(description="Name of the notebook")
     description: Optional[str] = Field(default=None, description="Description")
-    state: Optional[NotebookState] = Field(
-        default=None, description="Initial state"
-    )
+    state: Optional[NotebookState] = Field(default=None, description="Initial state")
 
 
 class UpdateNotebookRequest(BaseModel):
@@ -70,10 +77,12 @@ class NotebookSummary(BaseModel):
     updated_at: str = Field(description="ISO timestamp when last updated")
     run_count: int = Field(description="Number of experiments run from this notebook")
     latest_run_id: Optional[str] = Field(
-        default=None, description="ID of most recent experiment run"
+        default=None,
+        description="ID of most recent experiment run",
     )
     latest_run_status: Optional[ExperimentStatus] = Field(
-        default=None, description="Status of most recent experiment"
+        default=None,
+        description="Status of most recent experiment",
     )
 
 
@@ -88,28 +97,7 @@ class NotebookDetail(BaseModel):
     updated_at: str = Field(description="ISO timestamp when last updated")
     state: NotebookState = Field(description="Current draft state")
     experiments: List[PromptExperimentSummary] = Field(
-        description="History of experiments run from this notebook"
-    )
-
-
-class RunNotebookRequest(BaseModel):
-    """Request to run a notebook as an experiment"""
-
-    experiment_name: Optional[str] = Field(
-        default=None,
-        description="Name for the experiment (defaults to notebook name + run number)",
-    )
-    experiment_description: Optional[str] = Field(
-        default=None, description="Description for the experiment"
-    )
-
-
-class NotebookValidationResponse(BaseModel):
-    """Response from validating notebook state"""
-
-    valid: bool = Field(description="Whether the notebook state is valid and complete")
-    errors: List[str] = Field(
-        description="List of validation errors (empty if valid)"
+        description="History of experiments run from this notebook",
     )
 
 
@@ -140,12 +128,15 @@ class Notebook(BaseModel):
     prompt_variable_mapping: Optional[List[Dict[str, Any]]]
     dataset_id: Optional[str]
     dataset_version: Optional[int]
+    dataset_row_filter: Optional[List[Dict[str, Any]]]
     eval_configs: Optional[List[Dict[str, Any]]]
     experiments: List[PromptExperimentSummary] = Field(default_factory=list)
 
     @staticmethod
     def _from_request_model(
-        task_id: str, notebook_id: str, request: CreateNotebookRequest
+        task_id: str,
+        notebook_id: str,
+        request: CreateNotebookRequest,
     ) -> "Notebook":
         """Create internal Notebook from CreateNotebookRequest"""
         # Prepare state JSON
@@ -153,6 +144,7 @@ class Notebook(BaseModel):
         prompt_variable_mapping = None
         dataset_id = None
         dataset_version = None
+        dataset_row_filter = None
         eval_configs = None
 
         if request.state:
@@ -171,6 +163,12 @@ class Notebook(BaseModel):
                 dataset_id = str(request.state.dataset_ref.id)
                 dataset_version = request.state.dataset_ref.version
 
+            if request.state.dataset_row_filter:
+                dataset_row_filter = [
+                    filter_item.model_dump()
+                    for filter_item in request.state.dataset_row_filter
+                ]
+
             if request.state.eval_list:
                 eval_configs = [
                     eval_ref.model_dump() for eval_ref in request.state.eval_list
@@ -187,12 +185,14 @@ class Notebook(BaseModel):
             prompt_variable_mapping=prompt_variable_mapping,
             dataset_id=dataset_id,
             dataset_version=dataset_version,
+            dataset_row_filter=dataset_row_filter,
             eval_configs=eval_configs,
         )
 
     @staticmethod
     def _from_database_model(
-        db_notebook: DatabaseNotebook, experiments: List[PromptExperimentSummary]
+        db_notebook: DatabaseNotebook,
+        experiments: List[PromptExperimentSummary],
     ) -> "Notebook":
         """Create internal Notebook from DatabaseNotebook"""
         return Notebook(
@@ -206,6 +206,7 @@ class Notebook(BaseModel):
             prompt_variable_mapping=db_notebook.prompt_variable_mapping,
             dataset_id=db_notebook.dataset_id,
             dataset_version=db_notebook.dataset_version,
+            dataset_row_filter=db_notebook.dataset_row_filter,
             eval_configs=db_notebook.eval_configs,
             experiments=experiments,
         )
@@ -223,11 +224,15 @@ class Notebook(BaseModel):
             prompt_variable_mapping=self.prompt_variable_mapping,
             dataset_id=self.dataset_id,
             dataset_version=self.dataset_version,
+            dataset_row_filter=self.dataset_row_filter,
             eval_configs=self.eval_configs,
         )
 
     def _to_summary_response(
-        self, run_count: int, latest_run_id: Optional[str], latest_run_status: Optional[ExperimentStatus]
+        self,
+        run_count: int,
+        latest_run_id: Optional[str],
+        latest_run_status: Optional[ExperimentStatus],
     ) -> NotebookSummary:
         """Convert internal Notebook to NotebookSummary response"""
         return NotebookSummary(
@@ -268,6 +273,12 @@ class Notebook(BaseModel):
                 id=self.dataset_id,
                 version=self.dataset_version,
             )
+
+        if self.dataset_row_filter is not None:
+            state.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
 
         if self.eval_configs is not None:
             state.eval_list = [
@@ -310,6 +321,12 @@ class Notebook(BaseModel):
                 id=self.dataset_id,
                 version=self.dataset_version,
             )
+
+        if self.dataset_row_filter is not None:
+            state.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
 
         if self.eval_configs is not None:
             state.eval_list = [

@@ -52,15 +52,22 @@ class DatabaseNotebook(Base):
 
     # Draft experiment state (mirrors PromptExperiment but nullable)
     prompt_configs: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
-        JSON, nullable=True
+        JSON,
+        nullable=True,
     )
     prompt_variable_mapping: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
-        JSON, nullable=True
+        JSON,
+        nullable=True,
     )
     dataset_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     dataset_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    dataset_row_filter: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSON,
+        nullable=True,
+    )
     eval_configs: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
-        JSON, nullable=True
+        JSON,
+        nullable=True,
     )
 
     # Relationships

@@ -1,12 +1,11 @@
 import logging
 from datetime import datetime
-from typing import List, Optional, Tuple
 from uuid import uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import asc, desc, func
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from db_models.notebook_models import DatabaseNotebook
@@ -16,18 +15,14 @@ from schemas.notebook_schemas import (
     CreateNotebookRequest,
     Notebook,
     NotebookDetail,
+    NotebookListResponse,
     NotebookState,
-    NotebookSummary,
-    NotebookValidationResponse,
-    RunNotebookRequest,
     SetNotebookStateRequest,
     UpdateNotebookRequest,
 )
 from schemas.prompt_experiment_schemas import (
-    CreatePromptExperimentRequest,
-    PromptExperimentSummary,
+    PromptExperimentListResponse,
 )
-from services.experiment_executor import ExperimentExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +46,15 @@ class NotebookRepository:
             )
         return db_notebook
 
-
     def create_notebook(
-        self, task_id: str, notebook_id: str, request: CreateNotebookRequest
+        self,
+        task_id: str,
+        request: CreateNotebookRequest,
     ) -> NotebookDetail:
         """Create a new notebook with optional initial state"""
+        # Generate notebook ID
+        notebook_id = str(uuid4())
+
         # Create internal notebook from request
         notebook = Notebook._from_request_model(task_id, notebook_id, request)
 
@@ -86,19 +85,21 @@ class NotebookRepository:
         return notebook._to_detail_response()
 
     def list_notebooks(
-        self, task_id: str, pagination_params: PaginationParameters
-    ) -> Tuple[List[NotebookSummary], int]:
+        self,
+        task_id: str,
+        pagination_params: PaginationParameters,
+    ) -> NotebookListResponse:
         """List notebooks for a task with pagination"""
         # Base query
         query = self.db_session.query(DatabaseNotebook).filter(
-            DatabaseNotebook.task_id == task_id
+            DatabaseNotebook.task_id == task_id,
         )
 
         # Get total count
         total_count = query.count()
 
         # Apply sorting
-        if pagination_params.sort_method == PaginationSortMethod.ASC:
+        if pagination_params.sort == PaginationSortMethod.ASCENDING:
             query = query.order_by(asc(DatabaseNotebook.created_at))
         else:
             query = query.order_by(desc(DatabaseNotebook.created_at))
@@ -119,7 +120,9 @@ class NotebookRepository:
             latest_run_status = None
 
             if db_notebook.experiments:
-                latest_experiment = db_notebook.experiments[0]  # Already ordered by created_at desc
+                latest_experiment = db_notebook.experiments[
+                    0
+                ]  # Already ordered by created_at desc
                 latest_run_id = latest_experiment.id
                 latest_run_status = latest_experiment.status
 
@@ -132,10 +135,25 @@ class NotebookRepository:
             )
             notebooks.append(summary)
 
-        return notebooks, total_count
+        # Calculate pagination metadata
+        page = pagination_params.page
+        page_size = pagination_params.page_size
+        total_pages = (
+            (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        )
+
+        return NotebookListResponse(
+            data=notebooks,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            total_count=total_count,
+        )
 
     def update_notebook(
-        self, notebook_id: str, request: UpdateNotebookRequest
+        self,
+        notebook_id: str,
+        request: UpdateNotebookRequest,
     ) -> NotebookDetail:
         """Update notebook name or description"""
         db_notebook = self._get_db_notebook(notebook_id)
@@ -162,7 +180,9 @@ class NotebookRepository:
         return notebook._to_detail_response()
 
     def set_notebook_state(
-        self, notebook_id: str, request: SetNotebookStateRequest
+        self,
+        notebook_id: str,
+        request: SetNotebookStateRequest,
     ) -> NotebookDetail:
         """Set the notebook state"""
         db_notebook = self._get_db_notebook(notebook_id)
@@ -177,7 +197,8 @@ class NotebookRepository:
 
         if request.state.prompt_variable_mapping is not None:
             db_notebook.prompt_variable_mapping = [
-                mapping.model_dump() for mapping in request.state.prompt_variable_mapping
+                mapping.model_dump()
+                for mapping in request.state.prompt_variable_mapping
             ]
         else:
             db_notebook.prompt_variable_mapping = None
@@ -188,6 +209,14 @@ class NotebookRepository:
         else:
             db_notebook.dataset_id = None
             db_notebook.dataset_version = None
+
+        if request.state.dataset_row_filter is not None:
+            db_notebook.dataset_row_filter = [
+                filter_item.model_dump()
+                for filter_item in request.state.dataset_row_filter
+            ]
+        else:
+            db_notebook.dataset_row_filter = None
 
         if request.state.eval_list is not None:
             db_notebook.eval_configs = [
@@ -228,124 +257,24 @@ class NotebookRepository:
 
         logger.info(f"Deleted notebook {notebook_id}")
 
-    def validate_notebook_state(self, notebook_id: str) -> NotebookValidationResponse:
-        """
-        Check if notebook state is complete and valid for running.
-        Returns validation result with list of errors if invalid.
-        """
-        db_notebook = self._get_db_notebook(notebook_id)
-        errors = []
-
-        # Check required fields are present and non-null
-        if not db_notebook.prompt_configs:
-            errors.append("prompt_configs is required")
-        elif len(db_notebook.prompt_configs) == 0:
-            errors.append("At least one prompt configuration is required")
-
-        if not db_notebook.prompt_variable_mapping:
-            errors.append("prompt_variable_mapping is required")
-
-        if not db_notebook.dataset_id or not db_notebook.dataset_version:
-            errors.append("dataset_ref is required")
-
-        if not db_notebook.eval_configs:
-            errors.append("eval_list is required")
-        elif len(db_notebook.eval_configs) == 0:
-            errors.append("At least one evaluation is required")
-
-        # If basic validation passes, try to construct an experiment request
-        # to leverage existing validation logic
-        if not errors:
-            try:
-                # Convert to internal model and get state
-                notebook = Notebook._from_database_model(db_notebook, [])
-                state = notebook._to_state_response()
-
-                # Construct CreatePromptExperimentRequest to validate
-                experiment_request = CreatePromptExperimentRequest(
-                    name="Validation Test",
-                    description=None,
-                    prompt_configs=state.prompt_configs,
-                    prompt_variable_mapping=state.prompt_variable_mapping,
-                    dataset_ref=state.dataset_ref,
-                    eval_list=state.eval_list,
-                )
-                # If we get here, the request is valid
-            except Exception as e:
-                errors.append(f"State validation failed: {str(e)}")
-
-        valid = len(errors) == 0
-        return NotebookValidationResponse(valid=valid, errors=errors)
-
-    def run_notebook(
-        self, notebook_id: str, request: RunNotebookRequest
-    ) -> PromptExperimentSummary:
-        """
-        Create and execute a PromptExperiment from the notebook's current state.
-        Validates state is complete, creates experiment, links to notebook, executes.
-        """
-        # Validate state is complete
-        validation = self.validate_notebook_state(notebook_id)
-        if not validation.valid:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Notebook state is invalid: {', '.join(validation.errors)}",
-            )
-
-        db_notebook = self._get_db_notebook(notebook_id)
-
-        # Convert to internal model and get state
-        notebook = Notebook._from_database_model(db_notebook, [])
-        state = notebook._to_state_response()
-
-        # Generate experiment name if not provided
-        experiment_name = request.experiment_name
-        if not experiment_name:
-            run_count = len(db_notebook.experiments) + 1
-            experiment_name = f"{db_notebook.name} - Run {run_count}"
-
-        # Create experiment request from notebook state
-        experiment_request = CreatePromptExperimentRequest(
-            name=experiment_name,
-            description=request.experiment_description,
-            prompt_configs=state.prompt_configs,
-            prompt_variable_mapping=state.prompt_variable_mapping,
-            dataset_ref=state.dataset_ref,
-            eval_list=state.eval_list,
-        )
-
-        # Create experiment with notebook_id link
-        experiment_id = str(uuid4())
-        experiment_summary = self.experiment_repo.create_prompt_experiment(
-            task_id=db_notebook.task_id,
-            experiment_id=experiment_id,
-            request=experiment_request,
-            notebook_id=notebook_id,  # Link to notebook
-        )
-
-        # Trigger experiment execution
-        executor = ExperimentExecutor(self.db_session)
-        executor.execute_experiment(experiment_id)
-
-        logger.info(f"Running notebook {notebook_id} as experiment {experiment_id}")
-        return experiment_summary
-
     def get_notebook_history(
-        self, notebook_id: str, pagination_params: PaginationParameters
-    ) -> Tuple[List[PromptExperimentSummary], int]:
+        self,
+        notebook_id: str,
+        pagination_params: PaginationParameters,
+    ) -> PromptExperimentListResponse:
         """Get paginated history of experiments run from this notebook"""
         db_notebook = self._get_db_notebook(notebook_id)
 
         # Base query for experiments linked to this notebook
         query = self.db_session.query(DatabasePromptExperiment).filter(
-            DatabasePromptExperiment.notebook_id == notebook_id
+            DatabasePromptExperiment.notebook_id == notebook_id,
         )
 
         # Get total count
         total_count = query.count()
 
         # Apply sorting (most recent first)
-        if pagination_params.sort_method == PaginationSortMethod.ASC:
+        if pagination_params.sort == PaginationSortMethod.ASCENDING:
             query = query.order_by(asc(DatabasePromptExperiment.created_at))
         else:
             query = query.order_by(desc(DatabasePromptExperiment.created_at))
@@ -363,4 +292,17 @@ class NotebookRepository:
             for exp in db_experiments
         ]
 
-        return experiments, total_count
+        # Calculate pagination metadata
+        page = pagination_params.page
+        page_size = pagination_params.page_size
+        total_pages = (
+            (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        )
+
+        return PromptExperimentListResponse(
+            data=experiments,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            total_count=total_count,
+        )
