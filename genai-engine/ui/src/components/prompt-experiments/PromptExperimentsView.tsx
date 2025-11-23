@@ -191,6 +191,9 @@ export const PromptExperimentsView: React.FC = () => {
         })),
         prompt_variable_mapping: promptVariableMapping,
         eval_list: evalList,
+        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0
+          ? data.datasetRowFilter
+          : undefined,
       });
       handleCloseModal();
       return { id: result.id };

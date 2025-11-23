@@ -512,7 +512,9 @@ class PromptExperimentRepository:
             # Row must match ALL filter conditions to be included
             for filter_condition in dataset_row_filter:
                 row_value = db_row.data.get(filter_condition.column_name)
-                if row_value != filter_condition.column_value:
+                # Convert both to strings for comparison since row data can be any JSON type
+                # (int, bool, etc.) but filter values are always strings per the schema
+                if str(row_value) != str(filter_condition.column_value):
                     return False
             return True
 
