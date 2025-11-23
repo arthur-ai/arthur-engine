@@ -1,7 +1,7 @@
 """support_non_similar_and_unsaved_prompts_in_experiments
 
 Revision ID: 88a3cbf21434
-Revises: 2cb1d34dafa5
+Revises: 49afefacd064
 Create Date: 2025-11-20 15:20:03.216077
 
 """
@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "88a3cbf21434"
-down_revision = "2cb1d34dafa5"
+down_revision = "49afefacd064"
 branch_labels = None
 depends_on = None
 
