@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.213"
+        "version": "2.1.215"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2404,6 +2404,19 @@
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -2765,6 +2778,19 @@
                             "title": "Span Types"
                         },
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3371,6 +3397,19 @@
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -3731,6 +3770,19 @@
                             "title": "Span Types"
                         },
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -9493,505 +9545,6 @@
                 }
             }
         },
-        "/api/v1/tasks/{task_id}/notebooks": {
-            "post": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "Create a notebook",
-                "description": "Create a new notebook for organizing experiments within a task",
-                "operationId": "create_notebook_api_v1_tasks__task_id__notebooks_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateNotebookRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotebookDetail"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "List notebooks",
-                "description": "List all notebooks for a task with pagination and optional name search",
-                "operationId": "list_notebooks_api_v1_tasks__task_id__notebooks_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    },
-                    {
-                        "name": "name",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Name"
-                        }
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
-                        },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotebookListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/notebooks/{notebook_id}": {
-            "get": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "Get notebook details",
-                "description": "Get detailed information about a notebook including state and experiment history",
-                "operationId": "get_notebook_api_v1_notebooks__notebook_id__get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "notebook_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "Notebook ID",
-                            "title": "Notebook Id"
-                        },
-                        "description": "Notebook ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotebookDetail"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "Update notebook metadata",
-                "description": "Update notebook name or description (not the state)",
-                "operationId": "update_notebook_api_v1_notebooks__notebook_id__put",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "notebook_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "Notebook ID",
-                            "title": "Notebook Id"
-                        },
-                        "description": "Notebook ID"
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateNotebookRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotebookDetail"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "Delete notebook",
-                "description": "Delete a notebook (experiments are kept)",
-                "operationId": "delete_notebook_api_v1_notebooks__notebook_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "notebook_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "Notebook ID",
-                            "title": "Notebook Id"
-                        },
-                        "description": "Notebook ID"
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/notebooks/{notebook_id}/state": {
-            "get": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "Get notebook state",
-                "description": "Get the current state (draft configuration) of a notebook",
-                "operationId": "get_notebook_state_api_v1_notebooks__notebook_id__state_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "notebook_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "Notebook ID",
-                            "title": "Notebook Id"
-                        },
-                        "description": "Notebook ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotebookState-Output"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "Set notebook state",
-                "description": "Set the state (draft configuration) of a notebook",
-                "operationId": "set_notebook_state_api_v1_notebooks__notebook_id__state_put",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "notebook_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "Notebook ID",
-                            "title": "Notebook Id"
-                        },
-                        "description": "Notebook ID"
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SetNotebookStateRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotebookDetail"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/notebooks/{notebook_id}/history": {
-            "get": {
-                "tags": [
-                    "Notebooks"
-                ],
-                "summary": "Get notebook history",
-                "description": "Get paginated list of experiments run from this notebook",
-                "operationId": "get_notebook_history_api_v1_notebooks__notebook_id__history_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "notebook_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "Notebook ID",
-                            "title": "Notebook Id"
-                        },
-                        "description": "Notebook ID"
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
-                        },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PromptExperimentListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/tasks/{task_id}/prompt_experiments": {
             "get": {
                 "tags": [
@@ -10033,6 +9586,25 @@
                             "title": "Search"
                         },
                         "description": "Search text to filter experiments by name, description, prompt name, or dataset name"
+                    },
+                    {
+                        "name": "dataset_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter experiments by dataset ID",
+                            "title": "Dataset Id"
+                        },
+                        "description": "Filter experiments by dataset ID"
                     },
                     {
                         "name": "sort",
@@ -10327,14 +9899,14 @@
                 }
             }
         },
-        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results": {
+        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results": {
             "get": {
                 "tags": [
                     "Prompt Experiments"
                 ],
-                "summary": "Get prompt results",
-                "description": "Get paginated list of results for a specific prompt within an experiment (supports both saved and unsaved prompts)",
-                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_key__results_get",
+                "summary": "Get prompt version results",
+                "description": "Get paginated list of results for a specific prompt version within an experiment",
+                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_name__versions__prompt_version__results_get",
                 "security": [
                     {
                         "API Key": []
@@ -10353,15 +9925,26 @@
                         "description": "The ID of the experiment"
                     },
                     {
-                        "name": "prompt_key",
+                        "name": "prompt_name",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Key",
-                            "description": "The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A"
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt"
                         },
-                        "description": "The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A"
+                        "description": "The name of the prompt"
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt"
+                        },
+                        "description": "The version of the prompt"
                     },
                     {
                         "name": "sort",
@@ -10406,67 +9989,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PromptVersionResultListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/prompt_experiments/{experiment_id}/notebook": {
-            "patch": {
-                "tags": [
-                    "Prompt Experiments"
-                ],
-                "summary": "Attach notebook to experiment",
-                "description": "Attach a notebook to an existing experiment",
-                "operationId": "attach_notebook_to_experiment_api_v1_prompt_experiments__experiment_id__notebook_patch",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "experiment_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "ID of the experiment",
-                            "title": "Experiment Id"
-                        },
-                        "description": "ID of the experiment"
-                    },
-                    {
-                        "name": "notebook_id",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "ID of the notebook to attach",
-                            "title": "Notebook Id"
-                        },
-                        "description": "ID of the notebook to attach"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PromptExperimentSummary"
                                 }
                             }
                         }
@@ -12210,44 +11732,6 @@
                 ],
                 "title": "CreateEvalRequest"
             },
-            "CreateNotebookRequest": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the notebook"
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description"
-                    },
-                    "state": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/NotebookState-Input"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Initial state"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name"
-                ],
-                "title": "CreateNotebookRequest",
-                "description": "Request to create a new notebook"
-            },
             "CreatePromptExperimentRequest": {
                 "properties": {
                     "name": {
@@ -12268,38 +11752,12 @@
                         "description": "Description of the experiment"
                     },
                     "dataset_ref": {
-                        "$ref": "#/components/schemas/DatasetRef",
+                        "$ref": "#/components/schemas/DatasetRefInput",
                         "description": "Reference to the dataset to use"
                     },
-                    "prompt_configs": {
-                        "items": {
-                            "oneOf": [
-                                {
-                                    "$ref": "#/components/schemas/SavedPromptConfig"
-                                },
-                                {
-                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            ],
-                            "discriminator": {
-                                "propertyName": "type",
-                                "mapping": {
-                                    "saved": "#/components/schemas/SavedPromptConfig",
-                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            }
-                        },
-                        "type": "array",
-                        "title": "Prompt Configs",
-                        "description": "List of prompt configurations (saved or unsaved)"
-                    },
-                    "prompt_variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
-                        },
-                        "type": "array",
-                        "title": "Prompt Variable Mapping",
-                        "description": "Shared variable mapping for all prompts"
+                    "prompt_ref": {
+                        "$ref": "#/components/schemas/PromptRef-Input",
+                        "description": "Reference to the prompt configuration"
                     },
                     "eval_list": {
                         "items": {
@@ -12329,8 +11787,7 @@
                 "required": [
                     "name",
                     "dataset_ref",
-                    "prompt_configs",
-                    "prompt_variable_mapping",
+                    "prompt_ref",
                     "eval_list"
                 ],
                 "title": "CreatePromptExperimentRequest",
@@ -12421,6 +11878,34 @@
                         "title": "Id",
                         "description": "Dataset ID"
                     },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Dataset name"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Dataset version number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "version"
+                ],
+                "title": "DatasetRef",
+                "description": "Reference to a dataset and version (with name)"
+            },
+            "DatasetRefInput": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "Dataset ID"
+                    },
                     "version": {
                         "type": "integer",
                         "title": "Version",
@@ -12432,8 +11917,8 @@
                     "id",
                     "version"
                 ],
-                "title": "DatasetRef",
-                "description": "Reference to a dataset and version"
+                "title": "DatasetRefInput",
+                "description": "Reference to a dataset and version for input (without name)"
             },
             "DatasetResponse": {
                 "properties": {
@@ -12505,6 +11990,61 @@
                 ],
                 "title": "DatasetResponse"
             },
+            "DatasetTransformColumnDefinition": {
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "title": "Column Name",
+                        "description": "Name of the column to extract."
+                    },
+                    "span_name": {
+                        "type": "string",
+                        "title": "Span Name",
+                        "description": "Name of the span to extract data from."
+                    },
+                    "attribute_path": {
+                        "type": "string",
+                        "title": "Attribute Path",
+                        "description": "Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery')."
+                    },
+                    "fallback": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Fallback",
+                        "description": "Fallback value to use if the attribute is not found."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "column_name",
+                    "span_name",
+                    "attribute_path"
+                ],
+                "title": "DatasetTransformColumnDefinition"
+            },
+            "DatasetTransformDefinition": {
+                "properties": {
+                    "columns": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatasetTransformColumnDefinition"
+                        },
+                        "type": "array",
+                        "title": "Columns",
+                        "description": "List of column extraction rules."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "columns"
+                ],
+                "title": "DatasetTransformDefinition"
+            },
             "DatasetTransformResponse": {
                 "properties": {
                     "id": {
@@ -12537,10 +12077,8 @@
                         "description": "Description of the transform."
                     },
                     "definition": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules."
+                        "$ref": "#/components/schemas/DatasetTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
                     },
                     "created_at": {
                         "type": "integer",
@@ -12593,15 +12131,13 @@
                     "definition": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/DatasetTransformDefinition"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules."
+                        "description": "Transform definition specifying extraction rules."
                     }
                 },
                 "type": "object",
@@ -15981,22 +15517,8 @@
                         "description": "Description of the transform."
                     },
                     "definition": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules.",
-                        "examples": [
-                            {
-                                "columns": [
-                                    {
-                                        "attribute_path": "attributes.input.value.sqlQuery",
-                                        "column_name": "sqlQuery",
-                                        "span_name": "rag-retrieval-savedQueries"
-                                    }
-                                ],
-                                "version": "1.0"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/DatasetTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
                     }
                 },
                 "type": "object",
@@ -16402,377 +15924,6 @@
                     "name"
                 ],
                 "title": "NewTaskRequest"
-            },
-            "NotebookDetail": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id",
-                        "description": "Notebook ID"
-                    },
-                    "task_id": {
-                        "type": "string",
-                        "title": "Task Id",
-                        "description": "Associated task ID"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Notebook name"
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "title": "Created At",
-                        "description": "ISO timestamp when created"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "title": "Updated At",
-                        "description": "ISO timestamp when last updated"
-                    },
-                    "state": {
-                        "$ref": "#/components/schemas/NotebookState-Output",
-                        "description": "Current draft state"
-                    },
-                    "experiments": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptExperimentSummary"
-                        },
-                        "type": "array",
-                        "title": "Experiments",
-                        "description": "History of experiments run from this notebook"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "task_id",
-                    "name",
-                    "created_at",
-                    "updated_at",
-                    "state",
-                    "experiments"
-                ],
-                "title": "NotebookDetail",
-                "description": "Detailed notebook information"
-            },
-            "NotebookListResponse": {
-                "properties": {
-                    "data": {
-                        "items": {
-                            "$ref": "#/components/schemas/NotebookSummary"
-                        },
-                        "type": "array",
-                        "title": "Data",
-                        "description": "List of notebook summaries"
-                    },
-                    "page": {
-                        "type": "integer",
-                        "title": "Page",
-                        "description": "Current page number (0-indexed)"
-                    },
-                    "page_size": {
-                        "type": "integer",
-                        "title": "Page Size",
-                        "description": "Number of items per page"
-                    },
-                    "total_pages": {
-                        "type": "integer",
-                        "title": "Total Pages",
-                        "description": "Total number of pages"
-                    },
-                    "total_count": {
-                        "type": "integer",
-                        "title": "Total Count",
-                        "description": "Total number of notebooks"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "data",
-                    "page",
-                    "page_size",
-                    "total_pages",
-                    "total_count"
-                ],
-                "title": "NotebookListResponse",
-                "description": "Paginated list of notebooks"
-            },
-            "NotebookState-Input": {
-                "properties": {
-                    "prompt_configs": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/SavedPromptConfig"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                        }
-                                    ],
-                                    "discriminator": {
-                                        "propertyName": "type",
-                                        "mapping": {
-                                            "saved": "#/components/schemas/SavedPromptConfig",
-                                            "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                        }
-                                    }
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Configs",
-                        "description": "List of prompt configurations"
-                    },
-                    "prompt_variable_mapping": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/PromptVariableMapping-Input"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Variable Mapping",
-                        "description": "Variable mappings for prompts"
-                    },
-                    "dataset_ref": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetRef"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Dataset reference"
-                    },
-                    "dataset_row_filter": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Dataset Row Filter",
-                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
-                    },
-                    "eval_list": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/EvalRef-Input"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Eval List",
-                        "description": "List of evaluations"
-                    }
-                },
-                "type": "object",
-                "title": "NotebookState",
-                "description": "Draft state of a notebook - mirrors experiment config but all fields optional."
-            },
-            "NotebookState-Output": {
-                "properties": {
-                    "prompt_configs": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/SavedPromptConfig"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                        }
-                                    ],
-                                    "discriminator": {
-                                        "propertyName": "type",
-                                        "mapping": {
-                                            "saved": "#/components/schemas/SavedPromptConfig",
-                                            "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                        }
-                                    }
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Configs",
-                        "description": "List of prompt configurations"
-                    },
-                    "prompt_variable_mapping": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/PromptVariableMapping-Output"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Variable Mapping",
-                        "description": "Variable mappings for prompts"
-                    },
-                    "dataset_ref": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetRef"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Dataset reference"
-                    },
-                    "dataset_row_filter": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Dataset Row Filter",
-                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
-                    },
-                    "eval_list": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/EvalRef-Output"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Eval List",
-                        "description": "List of evaluations"
-                    }
-                },
-                "type": "object",
-                "title": "NotebookState",
-                "description": "Draft state of a notebook - mirrors experiment config but all fields optional."
-            },
-            "NotebookSummary": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id",
-                        "description": "Notebook ID"
-                    },
-                    "task_id": {
-                        "type": "string",
-                        "title": "Task Id",
-                        "description": "Associated task ID"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Notebook name"
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "title": "Created At",
-                        "description": "ISO timestamp when created"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "title": "Updated At",
-                        "description": "ISO timestamp when last updated"
-                    },
-                    "run_count": {
-                        "type": "integer",
-                        "title": "Run Count",
-                        "description": "Number of experiments run from this notebook"
-                    },
-                    "latest_run_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Latest Run Id",
-                        "description": "ID of most recent experiment run"
-                    },
-                    "latest_run_status": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ExperimentStatus"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Status of most recent experiment"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "task_id",
-                    "name",
-                    "created_at",
-                    "updated_at",
-                    "run_count"
-                ],
-                "title": "NotebookSummary",
-                "description": "Summary of a notebook"
             },
             "OpenAIMessage-Input": {
                 "properties": {
@@ -17237,53 +16388,15 @@
             },
             "PromptEvalResultSummaries": {
                 "properties": {
-                    "prompt_key": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Key",
-                        "description": "Prompt key: 'saved:name:version' or 'unsaved:auto_name'"
-                    },
-                    "prompt_type": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Prompt Type",
-                        "description": "Type: 'saved' or 'unsaved'"
-                    },
                     "prompt_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Prompt Name",
-                        "description": "Name of the prompt (for saved prompts, or auto_name for unsaved)"
+                        "description": "Name of the prompt"
                     },
                     "prompt_version": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Prompt Version",
-                        "description": "Version of the prompt (for saved prompts only)"
+                        "description": "Version of the prompt"
                     },
                     "eval_results": {
                         "items": {
@@ -17296,6 +16409,8 @@
                 },
                 "type": "object",
                 "required": [
+                    "prompt_name",
+                    "prompt_version",
                     "eval_results"
                 ],
                 "title": "PromptEvalResultSummaries",
@@ -17346,27 +16461,10 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_configs": {
-                        "items": {
-                            "oneOf": [
-                                {
-                                    "$ref": "#/components/schemas/SavedPromptConfig"
-                                },
-                                {
-                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            ],
-                            "discriminator": {
-                                "propertyName": "type",
-                                "mapping": {
-                                    "saved": "#/components/schemas/SavedPromptConfig",
-                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            }
-                        },
-                        "type": "array",
-                        "title": "Prompt Configs",
-                        "description": "List of prompts being tested"
+                    "prompt_name": {
+                        "type": "string",
+                        "title": "Prompt Name",
+                        "description": "Name of the prompt being tested"
                     },
                     "total_rows": {
                         "type": "integer",
@@ -17399,13 +16497,9 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "prompt_variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
-                        },
-                        "type": "array",
-                        "title": "Prompt Variable Mapping",
-                        "description": "Shared variable mapping for all prompts"
+                    "prompt_ref": {
+                        "$ref": "#/components/schemas/PromptRef-Output",
+                        "description": "Reference to the prompt configuration"
                     },
                     "eval_list": {
                         "items": {
@@ -17433,18 +16527,6 @@
                     "summary_results": {
                         "$ref": "#/components/schemas/SummaryResults",
                         "description": "Summary of results across all test cases"
-                    },
-                    "notebook_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Notebook Id",
-                        "description": "Optional notebook ID this experiment is linked to"
                     }
                 },
                 "type": "object",
@@ -17453,12 +16535,12 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_configs",
+                    "prompt_name",
                     "total_rows",
                     "completed_rows",
                     "failed_rows",
                     "dataset_ref",
-                    "prompt_variable_mapping",
+                    "prompt_ref",
                     "eval_list",
                     "summary_results"
                 ],
@@ -17552,27 +16634,26 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_configs": {
-                        "items": {
-                            "oneOf": [
-                                {
-                                    "$ref": "#/components/schemas/SavedPromptConfig"
-                                },
-                                {
-                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            ],
-                            "discriminator": {
-                                "propertyName": "type",
-                                "mapping": {
-                                    "saved": "#/components/schemas/SavedPromptConfig",
-                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            }
-                        },
-                        "type": "array",
-                        "title": "Prompt Configs",
-                        "description": "List of prompts being tested"
+                    "prompt_name": {
+                        "type": "string",
+                        "title": "Prompt Name",
+                        "description": "Name of the prompt being tested"
+                    },
+                    "dataset_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Dataset Id",
+                        "description": "ID of the dataset used"
+                    },
+                    "dataset_name": {
+                        "type": "string",
+                        "title": "Dataset Name",
+                        "description": "Name of the dataset used"
+                    },
+                    "dataset_version": {
+                        "type": "integer",
+                        "title": "Dataset Version",
+                        "description": "Version of the dataset used"
                     },
                     "total_rows": {
                         "type": "integer",
@@ -17608,7 +16689,10 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_configs",
+                    "prompt_name",
+                    "dataset_id",
+                    "dataset_name",
+                    "dataset_version",
                     "total_rows",
                     "completed_rows",
                     "failed_rows"
@@ -17643,41 +16727,83 @@
                 "title": "PromptOutput",
                 "description": "Output from a prompt execution"
             },
+            "PromptRef-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the prompt"
+                    },
+                    "version_list": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Version List",
+                        "description": "List of prompt versions to test in the experiment"
+                    },
+                    "variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                        },
+                        "type": "array",
+                        "title": "Variable Mapping",
+                        "description": "Mapping of prompt variables to dataset columns"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version_list",
+                    "variable_mapping"
+                ],
+                "title": "PromptRef",
+                "description": "Reference to a prompt configuration"
+            },
+            "PromptRef-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the prompt"
+                    },
+                    "version_list": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Version List",
+                        "description": "List of prompt versions to test in the experiment"
+                    },
+                    "variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                        },
+                        "type": "array",
+                        "title": "Variable Mapping",
+                        "description": "Mapping of prompt variables to dataset columns"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version_list",
+                    "variable_mapping"
+                ],
+                "title": "PromptRef",
+                "description": "Reference to a prompt configuration"
+            },
             "PromptResult": {
                 "properties": {
-                    "prompt_key": {
-                        "type": "string",
-                        "title": "Prompt Key",
-                        "description": "Prompt key: 'saved:name:version' or 'unsaved:auto_name'"
-                    },
-                    "prompt_type": {
-                        "type": "string",
-                        "title": "Prompt Type",
-                        "description": "Type: 'saved' or 'unsaved'"
-                    },
                     "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Name",
-                        "description": "Name of the prompt (for saved prompts)"
+                        "description": "Name of the prompt"
                     },
                     "version": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Version",
-                        "description": "Version of the prompt (for saved prompts)"
+                        "description": "Version of the prompt"
                     },
                     "rendered_prompt": {
                         "type": "string",
@@ -17706,8 +16832,8 @@
                 },
                 "type": "object",
                 "required": [
-                    "prompt_key",
-                    "prompt_type",
+                    "name",
+                    "version",
                     "rendered_prompt",
                     "evals"
                 ],
@@ -18996,33 +18122,6 @@
                 ],
                 "title": "RuleType"
             },
-            "SavedPromptConfig": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "saved",
-                        "title": "Type",
-                        "default": "saved"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the saved prompt"
-                    },
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version of the saved prompt"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "version"
-                ],
-                "title": "SavedPromptConfig",
-                "description": "Configuration for a saved prompt"
-            },
             "SavedPromptRenderingRequest": {
                 "properties": {
                     "completion_request": {
@@ -19467,20 +18566,6 @@
                 ],
                 "title": "SessionTracesResponse",
                 "description": "Response for session traces endpoint"
-            },
-            "SetNotebookStateRequest": {
-                "properties": {
-                    "state": {
-                        "$ref": "#/components/schemas/NotebookState-Input",
-                        "description": "New state for the notebook"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "state"
-                ],
-                "title": "SetNotebookStateRequest",
-                "description": "Request to set the notebook state"
             },
             "SpanListResponse": {
                 "properties": {
@@ -21032,98 +20117,6 @@
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
             },
-            "UnsavedPromptConfig": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "unsaved",
-                        "title": "Type",
-                        "default": "unsaved"
-                    },
-                    "auto_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Auto Name",
-                        "description": "Auto-generated name (set by backend)"
-                    },
-                    "messages": {
-                        "items": {
-                            "additionalProperties": true,
-                            "type": "object"
-                        },
-                        "type": "array",
-                        "title": "Messages",
-                        "description": "Prompt messages"
-                    },
-                    "model_name": {
-                        "type": "string",
-                        "title": "Model Name",
-                        "description": "LLM model name"
-                    },
-                    "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "LLM provider"
-                    },
-                    "tools": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tools",
-                        "description": "Available tools"
-                    },
-                    "config": {
-                        "anyOf": [
-                            {
-                                "additionalProperties": true,
-                                "type": "object"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Config",
-                        "description": "LLM config settings"
-                    },
-                    "variables": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Variables",
-                        "description": "Variables (auto-detected if not provided)"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "messages",
-                    "model_name",
-                    "model_provider"
-                ],
-                "title": "UnsavedPromptConfig",
-                "description": "Configuration for an unsaved prompt"
-            },
             "UnsavedPromptRenderingRequest": {
                 "properties": {
                     "completion_request": {
@@ -21194,37 +20187,6 @@
                     "enabled"
                 ],
                 "title": "UpdateMetricRequest"
-            },
-            "UpdateNotebookRequest": {
-                "properties": {
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name",
-                        "description": "New name"
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "New description"
-                    }
-                },
-                "type": "object",
-                "title": "UpdateNotebookRequest",
-                "description": "Request to update a notebook"
             },
             "UpdateRuleRequest": {
                 "properties": {

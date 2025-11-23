@@ -131,6 +131,7 @@ from schemas.enums import (
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
+    DatasetTransformDefinition,
     NewDatasetRequest,
     NewDatasetTransformRequest,
     NewDatasetVersionRequest,
@@ -2059,6 +2060,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="User IDs to filter on. Optional.",
     )
+    annotation_score: Optional[int] = Field(
+        None,
+        description="Filter by trace annotation score (0 or 1). Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2082,6 +2087,7 @@ class TraceQuerySchema(BaseModel):
             end_time=request.end_time,
             tool_name=request.tool_name,
             span_types=request.span_types,
+            annotation_score=request.annotation_score,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,
             query_relevance_filters=query_relevance,
@@ -2152,7 +2158,7 @@ class DatasetTransform(BaseModel):
     dataset_id: uuid.UUID
     name: str
     description: Optional[str]
-    definition: dict
+    definition: DatasetTransformDefinition
     created_at: datetime
     updated_at: datetime
 
@@ -2173,7 +2179,7 @@ class DatasetTransform(BaseModel):
             dataset_id=self.dataset_id,
             name=self.name,
             description=self.description,
-            definition=self.definition,
+            definition=self.definition.model_dump(),
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2203,7 +2209,9 @@ class DatasetTransform(BaseModel):
             dataset_id=db_transform.dataset_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=db_transform.definition,
+            definition=DatasetTransformDefinition.model_validate(
+                db_transform.definition
+            ),
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
         )

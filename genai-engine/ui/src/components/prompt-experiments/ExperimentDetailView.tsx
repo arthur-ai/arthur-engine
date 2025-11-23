@@ -4,9 +4,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import LaunchIcon from "@mui/icons-material/Launch";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton } from "@mui/material";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton, Link } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
 import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
@@ -346,6 +346,17 @@ export const ExperimentDetailView: React.FC = () => {
               })()}
             <Box>
               <span className="font-medium">Prompts:</span> {experiment.prompt_configs.length} prompt{experiment.prompt_configs.length > 1 ? 's' : ''}
+            </Box>
+            <Box>
+              <span className="font-medium">Dataset:</span>{" "}
+              <Link
+                component={RouterLink}
+                to={`/tasks/${taskId}/datasets/${experiment.dataset_ref.id}?version=${experiment.dataset_ref.version}`}
+                underline="hover"
+                sx={{ cursor: "pointer" }}
+              >
+                {experiment.dataset_ref.name} (v{experiment.dataset_ref.version})
+              </Link>
             </Box>
             {experiment.total_cost && (
               <Box>

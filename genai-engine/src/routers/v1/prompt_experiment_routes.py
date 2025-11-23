@@ -1,5 +1,5 @@
 from typing import Annotated, Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
@@ -47,6 +47,10 @@ def list_prompt_experiments(
         None,
         description="Search text to filter experiments by name, description, prompt name, or dataset name",
     ),
+    dataset_id: Optional[UUID] = Query(
+        None,
+        description="Filter experiments by dataset ID",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
@@ -56,6 +60,7 @@ def list_prompt_experiments(
 
     Returns paginated list of experiment summaries.
     Optionally filter by search text matching experiment name, description, prompt name, or dataset name.
+    Optionally filter by dataset ID.
     """
     try:
         repo = PromptExperimentRepository(db_session)
@@ -63,6 +68,7 @@ def list_prompt_experiments(
             task_id=task.id,
             pagination_params=pagination_parameters,
             search_text=search,
+            dataset_id=dataset_id,
         )
 
         page = pagination_parameters.page

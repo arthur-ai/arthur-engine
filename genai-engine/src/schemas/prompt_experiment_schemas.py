@@ -124,10 +124,18 @@ class EvalVariableMapping(BaseModel):
 
 
 # Reference schemas
-class DatasetRef(BaseModel):
-    """Reference to a dataset and version"""
+class DatasetRefInput(BaseModel):
+    """Reference to a dataset and version for input (without name)"""
 
     id: UUID = Field(description="Dataset ID")
+    version: int = Field(description="Dataset version number")
+
+
+class DatasetRef(BaseModel):
+    """Reference to a dataset and version (with name)"""
+
+    id: UUID = Field(description="Dataset ID")
+    name: str = Field(description="Dataset name")
     version: int = Field(description="Dataset version number")
 
 
@@ -172,6 +180,9 @@ class PromptExperimentSummary(BaseModel):
     prompt_configs: List[PromptConfig] = Field(
         description="List of prompts being tested",
     )
+    dataset_id: UUID = Field(description="ID of the dataset used")
+    dataset_name: str = Field(description="Name of the dataset used")
+    dataset_version: int = Field(description="Version of the dataset used")
     total_rows: int = Field(description="Total number of test rows in the experiment")
     completed_rows: int = Field(
         description="Number of test rows completed successfully",
@@ -191,7 +202,7 @@ class CreatePromptExperimentRequest(BaseModel):
         default=None,
         description="Description of the experiment",
     )
-    dataset_ref: DatasetRef = Field(description="Reference to the dataset to use")
+    dataset_ref: DatasetRefInput = Field(description="Reference to the dataset to use")
     prompt_configs: List[PromptConfig] = Field(
         description="List of prompt configurations (saved or unsaved)",
     )

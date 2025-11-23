@@ -2,9 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from uuid import UUID
 
-from sqlalchemy import TIMESTAMP, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    TIMESTAMP,
+    Float,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
@@ -15,6 +25,8 @@ from schemas.prompt_experiment_schemas import ExperimentStatus, TestCaseStatus
 # while still providing type hints for IDEs and mypy.
 if TYPE_CHECKING:
     from db_models.notebook_models import DatabaseNotebook
+    from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 
 
 class DatabasePromptExperiment(Base):
@@ -70,7 +82,7 @@ class DatabasePromptExperiment(Base):
     prompt_configs: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
 
     # Dataset reference
-    dataset_id: Mapped[str] = mapped_column(String, nullable=False)
+    dataset_id: Mapped[UUID] = mapped_column(PGUUID, nullable=False)
     dataset_version: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Dataset row filter (optional) stored as JSON
@@ -114,6 +126,20 @@ class DatabasePromptExperiment(Base):
         back_populates="experiment",
         lazy="select",
         cascade="all, delete-orphan",
+    )
+
+    dataset: Mapped["DatabaseDataset"] = relationship(
+        primaryjoin="DatabasePromptExperiment.dataset_id == foreign(DatabaseDataset.id)",
+        lazy="select",
+        viewonly=True,
+    )
+
+    # Table args for composite foreign key
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["dataset_id", "dataset_version"],
+            ["dataset_versions.dataset_id", "dataset_versions.version_number"],
+        ),
     )
 
 

@@ -29,6 +29,7 @@ from schemas.enums import (
     RagSearchKind,
 )
 from schemas.llm_schemas import OpenAIMessage
+from schemas.request_schemas import DatasetTransformDefinition
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -153,8 +154,8 @@ class DatasetTransformResponse(BaseModel):
         default=None,
         description="Description of the transform.",
     )
-    definition: dict = Field(
-        description="Transform definition in JSON format specifying extraction rules.",
+    definition: DatasetTransformDefinition = Field(
+        description="Transform definition specifying extraction rules.",
     )
     created_at: int = Field(
         description="Timestamp representing the time of transform creation in unix milliseconds.",

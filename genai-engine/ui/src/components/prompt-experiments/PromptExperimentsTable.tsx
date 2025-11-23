@@ -42,6 +42,9 @@ export interface PromptExperiment {
   finished_at?: string | null;
   status: "queued" | "running" | "evaluating" | "failed" | "completed";
   prompt_configs: PromptConfig[];
+  dataset_id: string;
+  dataset_name: string;
+  dataset_version: number;
   total_rows: number;
   total_cost?: string | null;
 }
@@ -148,6 +151,11 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
               </TableCell>
               <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
+                  Dataset (Version)
+                </Box>
+              </TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
                   Test Cases
                 </Box>
               </TableCell>
@@ -195,7 +203,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                   </Box>
                 </TableCell>
                 <TableCell>
-                  <Box className="flex flex-wrap gap-1">
+                    <Box className="flex flex-wrap gap-1">
                     {experiment.prompt_configs.map((config, idx) => (
                       <Chip
                         key={idx}
@@ -210,6 +218,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                     ))}
                   </Box>
                 </TableCell>
+                <TableCell>{experiment.dataset_name} (v{experiment.dataset_version})</TableCell>
                 <TableCell>{experiment.total_rows}</TableCell>
                 <TableCell>
                   <Box className="flex items-center gap-2">

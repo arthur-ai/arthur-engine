@@ -96,7 +96,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
     (experimentConfig ? isRunningExperiment : prompt.running);
   const previewDisabled = !hasModelConfig || hasUnsetVariables;
   const isDirty = prompt.isDirty;
-  const saveTooltip = isDirty ? "Save unsaved changes" : "Save Prompt";
+  const saveTooltip = isDirty ? "Save changes as new version" : "Save Prompt";
 
   // Determine the run button tooltip based on disabled state
   let runTooltip = experimentConfig ? "Run Experiment with this Prompt" : "Run Prompt";

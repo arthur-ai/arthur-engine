@@ -2,85 +2,33 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 11/22/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the success response with the status '201'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  deleted the 'query' request parameter 'task_id'
-- **CHANGE** in API GET /api/v1/prompt_experiments/{experiment_id}
-- **CHANGE**warning [request-parameter-removed] at /Users/videetparekh/Desktop/arthur-engine/genai-engine/new.openapi.json 
-- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  deleted the 'query' request parameter 'task_id'
-- **CHANGE** in API GET /api/v1/prompt_experiments/{experiment_id}/test_cases
-- **CHANGE**info [response-success-status-added] at /Users/videetparekh/Desktop/arthur-engine/genai-engine/new.openapi.json 
-
-# 11/22/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new required 'query' request parameter 'task_id'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new required 'query' request parameter 'task_id'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  added the new required 'query' request parameter 'task_id'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the new required 'query' request parameter 'task_id'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the success response with the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the request property 'notebook_id'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/notebook  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the success response with the status '201'
-
-# 11/22/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional request property 'notebook_id'
-
-# 11/22/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new optional 'query' request parameter 'name'
-
-# 11/22/2025
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  endpoint added
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  endpoint added
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  endpoint added
+# 11/21/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/columns'
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed 'subschema #1' from the 'definition' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'dataset_ref/name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional 'query' request parameter 'dataset_id'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'transforms/items/definition/columns' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'definition/columns' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added '#/components/schemas/DatasetTransformDefinition' to the 'definition' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
 
 # 11/21/2025
-<<<<<<< HEAD
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_version' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the 'summary_results/prompt_eval_summaries/items/prompt_name' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the 'summary_results/prompt_eval_summaries/items/prompt_version' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'summary_results/prompt_eval_summaries/items/prompt_key' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'summary_results/prompt_eval_summaries/items/prompt_type' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added 'subschema #1, subschema #2' to the 'summary_results/prompt_eval_summaries/items/prompt_name' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added 'subschema #1, subschema #2' to the 'summary_results/prompt_eval_summaries/items/prompt_version' response property 'anyOf' list for the response status '200'
-
-# 11/20/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_name' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_ref' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/version' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/name' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/version' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the required property 'data/items/prompt_name' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_configs'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_variable_mapping'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the required property 'prompt_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the request property 'prompt_ref'
-- **CHANGE** for Component/Schema:  removed the schema 'PromptRef-Input'
-- **CHANGE** for Component/Schema:  removed the schema 'PromptRef-Output'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_configs' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_variable_mapping' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  endpoint added
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added 'subschema #1, subschema #2' to the 'data/items/prompt_results/items/name' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added 'subschema #1, subschema #2' to the 'data/items/prompt_results/items/version' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the required property 'data/items/prompt_results/items/prompt_key' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the required property 'data/items/prompt_results/items/prompt_type' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/prompt_configs' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'prompt_configs' to the response with the '200' status
-=======
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'annotation_score'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'annotation_score'
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  endpoint added
 
 # 11/21/2025
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'dataset_row_filter' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional request property 'dataset_row_filter'
->>>>>>> dev
 
 # 11/19/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
