@@ -670,7 +670,9 @@ const PromptsPlayground = () => {
         eval_list: experimentConfig.eval_list,
         prompt_configs: promptConfigs,
         prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
-        dataset_row_filter: experimentConfig.dataset_row_filter,
+        dataset_row_filter: experimentConfig.dataset_row_filter && experimentConfig.dataset_row_filter.length > 0
+          ? experimentConfig.dataset_row_filter
+          : undefined,
         notebook_id: notebookId || undefined,  // Link to current notebook
       };
 
@@ -732,7 +734,9 @@ const PromptsPlayground = () => {
         eval_list: experimentConfig.eval_list,
         prompt_configs: [promptConfig],
         prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
-        dataset_row_filter: experimentConfig.dataset_row_filter,
+        dataset_row_filter: experimentConfig.dataset_row_filter && experimentConfig.dataset_row_filter.length > 0
+          ? experimentConfig.dataset_row_filter
+          : undefined,
         notebook_id: notebookId || undefined,  // Link to current notebook
       };
 
