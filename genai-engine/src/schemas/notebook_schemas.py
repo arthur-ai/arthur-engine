@@ -8,7 +8,6 @@ from db_models.notebook_models import DatabaseNotebook
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.prompt_experiment_schemas import (
     DatasetRef,
-    DatasetRefInput,
     EvalRef,
     ExperimentStatus,
     PromptConfig,
@@ -276,7 +275,11 @@ class Notebook(BaseModel):
                 for mapping in self.prompt_variable_mapping
             ]
 
-        if self.dataset_id is not None and self.dataset_version is not None and self.dataset_name is not None:
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
             state.dataset_ref = DatasetRef(
                 id=self.dataset_id,
                 name=self.dataset_name,
@@ -325,7 +328,11 @@ class Notebook(BaseModel):
                 for mapping in self.prompt_variable_mapping
             ]
 
-        if self.dataset_id is not None and self.dataset_version is not None and self.dataset_name is not None:
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
             state.dataset_ref = DatasetRef(
                 id=self.dataset_id,
                 name=self.dataset_name,
