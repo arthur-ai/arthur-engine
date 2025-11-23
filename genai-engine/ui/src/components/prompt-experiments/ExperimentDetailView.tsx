@@ -14,7 +14,7 @@ import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
 import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
-import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation } from "@/hooks/useNotebooks";
+import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
@@ -47,6 +47,7 @@ export const ExperimentDetailView: React.FC = () => {
   const deleteExperiment = useDeleteExperiment();
   const createNotebook = useCreateNotebookMutation(taskId);
   const attachExperimentToNotebook = useAttachExperimentToNotebookMutation();
+  const setNotebookState = useSetNotebookStateMutation();
 
   const handlePromptClick = (promptSummary: PromptVersionDetails) => {
     setSelectedPrompt(promptSummary);
@@ -64,12 +65,10 @@ export const ExperimentDetailView: React.FC = () => {
     if (!experiment || !experimentId || !taskId) return;
 
     try {
-      // Check if experiment already has a notebook
-      if (experiment.notebook_id) {
-        // Navigate to existing notebook with experiment config loaded
-        navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${experiment.notebook_id}&experimentId=${experimentId}`);
-      } else {
-        // Create a new notebook with the experiment name
+      let notebookId = experiment.notebook_id;
+
+      // Create notebook if it doesn't exist
+      if (!notebookId) {
         const notebook = await createNotebook.mutateAsync({
           name: `${experiment.name} - Notebook`,
           description: `Notebook for experiment: ${experiment.name}`,
@@ -81,9 +80,27 @@ export const ExperimentDetailView: React.FC = () => {
           notebookId: notebook.id,
         });
 
-        // Navigate to the new notebook with experiment config
-        navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebook.id}&experimentId=${experimentId}`);
+        notebookId = notebook.id;
       }
+
+      // Save the experiment config to the notebook state
+      await setNotebookState.mutateAsync({
+        notebookId,
+        request: {
+          state: {
+            prompt_configs: experiment.prompt_configs || null,
+            prompt_variable_mapping: experiment.prompt_variable_mapping || null,
+            dataset_ref: experiment.dataset_ref,
+            eval_list: experiment.eval_list || null,
+            dataset_row_filter: experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0
+              ? experiment.dataset_row_filter
+              : null,
+          },
+        },
+      });
+
+      // Navigate to the notebook with experiment config loaded
+      navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebookId}&experimentId=${experimentId}`);
     } catch (error) {
       console.error("Failed to open in notebook:", error);
     }
