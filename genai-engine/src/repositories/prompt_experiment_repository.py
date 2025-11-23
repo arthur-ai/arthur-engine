@@ -648,7 +648,7 @@ class PromptExperimentRepository:
             description=request.description,
             status=ExperimentStatus.QUEUED,
             prompt_configs=[config.model_dump() for config in validated_prompt_configs],
-            dataset_id=str(request.dataset_ref.id),
+            dataset_id=request.dataset_ref.id,
             dataset_version=request.dataset_ref.version,
             dataset_row_filter=(
                 [filter_item.model_dump() for filter_item in request.dataset_row_filter]
@@ -662,7 +662,7 @@ class PromptExperimentRepository:
             total_rows=0,  # Will be updated after creating test cases
             completed_rows=0,
             failed_rows=0,
-            notebook_id=request.notebook_id,  # Link to notebook if provided
+            notebook_id=None,
         )
 
         self.db_session.add(db_experiment)
