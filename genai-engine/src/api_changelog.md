@@ -3,32 +3,20 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/21/2025
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/columns'
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed 'subschema #1' from the 'definition' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'dataset_ref/name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional 'query' request parameter 'dataset_id'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/dataset_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'dataset_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'transforms/items/definition/columns' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'definition/columns' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added '#/components/schemas/DatasetTransformDefinition' to the 'definition' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'definition/columns' to the response with the '200' status
+- `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
+- `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
 
-# 11/21/2025
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'annotation_score'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'annotation_score'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'annotation_score'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'annotation_score'
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}  endpoint added
-
-# 11/21/2025
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'dataset_row_filter' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional request property 'dataset_row_filter'
+# 11/20/2025
+- `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Made `name` and `version` optional in `data.items.prompt_results.items` (changed from required string to optional with multiple types)
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Removed required fields `prompt_name`, `prompt_ref` from request/response; added required request fields `prompt_configs`, `prompt_variable_mapping`
+- Added endpoint: `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results`
+- Added endpoint: `/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}`
+- `/api/v1/prompt_experiments/{experiment_id}`: Added required response fields `prompt_configs`, `prompt_variable_mapping`
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Added required fields `prompt_key`, `prompt_type` to `data.items.prompt_results.items` response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added required response field `prompt_configs` to both root and `data.items`
+- Removed schemas: `PromptRef-Input`, `PromptRef-Output`
 
 # 11/19/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added

@@ -15,6 +15,7 @@ import { ExperimentDetailView } from "./components/prompt-experiments/Experiment
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
+import Notebooks from "./components/notebooks/Notebooks";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
 import { TaskDetailContent } from "./components/TaskDetailContent";
@@ -188,6 +189,17 @@ function App() {
                   <ProtectedRoute>
                     <TaskLayout>
                       <PromptsManagement />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/notebooks"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <Notebooks />
                     </TaskLayout>
                   </ProtectedRoute>
                 }
