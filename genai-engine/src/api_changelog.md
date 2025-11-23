@@ -3,6 +3,22 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/23/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed '#/components/schemas/DatasetRefInput' from the 'state/dataset_ref' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed '#/components/schemas/DatasetRefInput' from the 'state/anyOf[subschema #1: NotebookState]/dataset_ref' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added '#/components/schemas/DatasetRef' to the 'state/dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  removed '#/components/schemas/DatasetRefInput' from the 'state/dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added '#/components/schemas/DatasetRef' to the 'state/dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  removed '#/components/schemas/DatasetRefInput' from the 'state/dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added '#/components/schemas/DatasetRef' to the 'dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed '#/components/schemas/DatasetRefInput' from the 'dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added '#/components/schemas/DatasetRef' to the 'state/dataset_ref' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added '#/components/schemas/DatasetRef' to the 'state/dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed '#/components/schemas/DatasetRefInput' from the 'state/dataset_ref' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added '#/components/schemas/DatasetRef' to the 'state/anyOf[subschema #1: NotebookState]/dataset_ref' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added '#/components/schemas/DatasetRef' to the 'state/dataset_ref' response property 'anyOf' list for the response status '201'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed '#/components/schemas/DatasetRefInput' from the 'state/dataset_ref' response property 'anyOf' list for the response status '201'
+
+# 11/23/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed '#/components/schemas/DatasetRef' from the 'state/dataset_ref' request property 'anyOf' list
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed '#/components/schemas/DatasetRef' from the 'state/anyOf[subschema #1: NotebookState]/dataset_ref' request property 'anyOf' list
 - **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added '#/components/schemas/DatasetRefInput' to the 'state/dataset_ref' response property 'anyOf' list for the response status '200'

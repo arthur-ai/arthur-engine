@@ -90,7 +90,13 @@ export const ExperimentDetailView: React.FC = () => {
           state: {
             prompt_configs: experiment.prompt_configs || null,
             prompt_variable_mapping: experiment.prompt_variable_mapping || null,
-            dataset_ref: experiment.dataset_ref,
+            dataset_ref: experiment.dataset_ref
+              ? {
+                  id: experiment.dataset_ref.id,
+                  name: experiment.dataset_ref.name,
+                  version: experiment.dataset_ref.version,
+                }
+              : null,
             eval_list: experiment.eval_list || null,
             dataset_row_filter: experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0
               ? experiment.dataset_row_filter

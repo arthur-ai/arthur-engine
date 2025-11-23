@@ -16695,13 +16695,13 @@
                     "dataset_ref": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DatasetRefInput"
+                                "$ref": "#/components/schemas/DatasetRef"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "description": "Dataset reference"
+                        "description": "Dataset reference (includes name)"
                     },
                     "dataset_row_filter": {
                         "anyOf": [
@@ -16787,13 +16787,13 @@
                     "dataset_ref": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DatasetRefInput"
+                                "$ref": "#/components/schemas/DatasetRef"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "description": "Dataset reference"
+                        "description": "Dataset reference (includes name)"
                     },
                     "dataset_row_filter": {
                         "anyOf": [

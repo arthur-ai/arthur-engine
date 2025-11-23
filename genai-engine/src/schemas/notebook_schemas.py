@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from db_models.notebook_models import DatabaseNotebook
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.prompt_experiment_schemas import (
+    DatasetRef,
     DatasetRefInput,
     EvalRef,
     ExperimentStatus,
@@ -31,9 +32,9 @@ class NotebookState(BaseModel):
         default=None,
         description="Variable mappings for prompts",
     )
-    dataset_ref: Optional[DatasetRefInput] = Field(
+    dataset_ref: Optional[DatasetRef] = Field(
         default=None,
-        description="Dataset reference",
+        description="Dataset reference (includes name)",
     )
     dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = Field(
         default=None,
@@ -128,6 +129,7 @@ class Notebook(BaseModel):
     prompt_configs: Optional[List[Dict[str, Any]]]
     prompt_variable_mapping: Optional[List[Dict[str, Any]]]
     dataset_id: Optional[uuid.UUID]
+    dataset_name: Optional[str]
     dataset_version: Optional[int]
     dataset_row_filter: Optional[List[Dict[str, Any]]]
     eval_configs: Optional[List[Dict[str, Any]]]
@@ -144,6 +146,7 @@ class Notebook(BaseModel):
         prompt_configs = None
         prompt_variable_mapping = None
         dataset_id = None
+        dataset_name = None
         dataset_version = None
         dataset_row_filter = None
         eval_configs = None
@@ -162,6 +165,7 @@ class Notebook(BaseModel):
 
             if request.state.dataset_ref:
                 dataset_id = request.state.dataset_ref.id
+                dataset_name = request.state.dataset_ref.name
                 dataset_version = request.state.dataset_ref.version
 
             if request.state.dataset_row_filter:
@@ -185,6 +189,7 @@ class Notebook(BaseModel):
             prompt_configs=prompt_configs,
             prompt_variable_mapping=prompt_variable_mapping,
             dataset_id=dataset_id,
+            dataset_name=dataset_name,
             dataset_version=dataset_version,
             dataset_row_filter=dataset_row_filter,
             eval_configs=eval_configs,
@@ -206,6 +211,7 @@ class Notebook(BaseModel):
             prompt_configs=db_notebook.prompt_configs,
             prompt_variable_mapping=db_notebook.prompt_variable_mapping,
             dataset_id=db_notebook.dataset_id,
+            dataset_name=db_notebook.dataset_name,
             dataset_version=db_notebook.dataset_version,
             dataset_row_filter=db_notebook.dataset_row_filter,
             eval_configs=db_notebook.eval_configs,
@@ -224,6 +230,7 @@ class Notebook(BaseModel):
             prompt_configs=self.prompt_configs,
             prompt_variable_mapping=self.prompt_variable_mapping,
             dataset_id=self.dataset_id,
+            dataset_name=self.dataset_name,
             dataset_version=self.dataset_version,
             dataset_row_filter=self.dataset_row_filter,
             eval_configs=self.eval_configs,
@@ -269,9 +276,10 @@ class Notebook(BaseModel):
                 for mapping in self.prompt_variable_mapping
             ]
 
-        if self.dataset_id is not None and self.dataset_version is not None:
-            state.dataset_ref = DatasetRefInput(
+        if self.dataset_id is not None and self.dataset_version is not None and self.dataset_name is not None:
+            state.dataset_ref = DatasetRef(
                 id=self.dataset_id,
+                name=self.dataset_name,
                 version=self.dataset_version,
             )
 
@@ -317,9 +325,10 @@ class Notebook(BaseModel):
                 for mapping in self.prompt_variable_mapping
             ]
 
-        if self.dataset_id is not None and self.dataset_version is not None:
-            state.dataset_ref = DatasetRefInput(
+        if self.dataset_id is not None and self.dataset_version is not None and self.dataset_name is not None:
+            state.dataset_ref = DatasetRef(
                 id=self.dataset_id,
+                name=self.dataset_name,
                 version=self.dataset_version,
             )
 

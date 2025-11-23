@@ -4275,8 +4275,8 @@ export interface NotebookListResponse {
  * Draft state of a notebook - mirrors experiment config but all fields optional.
  */
 export interface NotebookStateInput {
-  /** Dataset reference */
-  dataset_ref?: DatasetRefInput | null;
+  /** Dataset reference (includes name) */
+  dataset_ref?: DatasetRef | null;
   /**
    * Dataset Row Filter
    * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
@@ -4313,8 +4313,8 @@ export interface NotebookStateInput {
  * Draft state of a notebook - mirrors experiment config but all fields optional.
  */
 export interface NotebookStateOutput {
-  /** Dataset reference */
-  dataset_ref?: DatasetRefInput | null;
+  /** Dataset reference (includes name) */
+  dataset_ref?: DatasetRef | null;
   /**
    * Dataset Row Filter
    * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.

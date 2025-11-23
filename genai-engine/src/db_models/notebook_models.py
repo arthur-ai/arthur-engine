@@ -60,6 +60,7 @@ class DatabaseNotebook(Base):
         nullable=True,
     )
     dataset_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    dataset_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     dataset_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     dataset_row_filter: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
         JSON,

@@ -211,6 +211,7 @@ class NotebookRepository:
         if request.state.dataset_ref is not None:
             db_notebook.dataset_id = str(request.state.dataset_ref.id)
             db_notebook.dataset_version = request.state.dataset_ref.version
+            db_notebook.dataset_name = request.state.dataset_ref.name
         else:
             db_notebook.dataset_id = None
             db_notebook.dataset_version = None

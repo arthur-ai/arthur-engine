@@ -97,6 +97,7 @@ export interface ExperimentFormData {
   description: string;
   promptVersions: PromptVersionSelection[];
   datasetId: string;
+  datasetName: string;
   datasetVersion: number | "";
   evaluators: EvaluatorSelection[];
   promptVariableMappings?: PromptVariableMappings;
@@ -129,6 +130,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     description: "",
     promptVersions: [],
     datasetId: "",
+    datasetName: "",
     datasetVersion: "",
     evaluators: [],
     promptVariableMappings: {},
@@ -292,6 +294,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           description: isFullExperiment ? (initialData.description || "") : "",
           promptVersions,
           datasetId: initialData.dataset_ref!.id,
+          datasetName: initialData.dataset_ref!.name,
           datasetVersion: initialData.dataset_ref!.version,
           evaluators,
           promptVariableMappings,
@@ -589,6 +592,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         description: "",
         promptVersions: [],
         datasetId: "",
+        datasetName: "",
         datasetVersion: "",
         evaluators: [],
         promptVariableMappings: {},
@@ -627,6 +631,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       description: "",
       promptVersions: [],
       datasetId: "",
+      datasetName: "",
       datasetVersion: "",
       evaluators: [],
       promptVariableMappings: {},
@@ -994,6 +999,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
               setFormData((prev) => ({
                 ...prev,
                 datasetId: value?.id || "",
+                datasetName: value?.name || "",
               }));
               if (value?.id) {
                 loadDatasetVersions(value.id);

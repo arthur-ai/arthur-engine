@@ -899,6 +899,7 @@ const PromptsPlayground = () => {
       description: formData.description,
       dataset_ref: {
         id: formData.datasetId,
+        name: formData.datasetName,
         version: formData.datasetVersion as number,
       },
       eval_list: formData.evaluators.map((evalRef) => ({
