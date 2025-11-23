@@ -206,14 +206,16 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
       try {
         // Check if we're initializing from a full experiment or just a dataset
-        const isFullExperiment = initialData.prompt_ref && initialData.eval_list;
+        const isFullExperiment = initialData.prompt_configs && initialData.eval_list;
 
         // Transform the initial data to form data format
-        const promptVersions: PromptVersionSelection[] = isFullExperiment && initialData.prompt_ref
-          ? initialData.prompt_ref.version_list.map((v) => ({
-              promptName: initialData.prompt_ref!.name,
-              version: v,
-            }))
+        const promptVersions: PromptVersionSelection[] = isFullExperiment && initialData.prompt_configs
+          ? initialData.prompt_configs
+              .filter((pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved")
+              .map((pc) => ({
+                promptName: pc.name,
+                version: pc.version,
+              }))
           : [];
 
         const evaluators: EvaluatorSelection[] = isFullExperiment && initialData.eval_list
@@ -225,8 +227,8 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
         // Transform prompt variable mappings
         const promptVariableMappings: PromptVariableMappings = {};
-        if (isFullExperiment && initialData.prompt_ref?.variable_mapping) {
-          initialData.prompt_ref.variable_mapping.forEach((mapping) => {
+        if (isFullExperiment && initialData.prompt_variable_mapping) {
+          initialData.prompt_variable_mapping.forEach((mapping) => {
             if (mapping.source.type === "dataset_column") {
               promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
             }
@@ -258,9 +260,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             })
           : [];
 
-        // Set the selected prompt name first
-        if (isFullExperiment && initialData.prompt_ref) {
-          setSelectedPromptName(initialData.prompt_ref.name);
+        // Set the selected prompt name first (from first saved prompt config)
+        const firstSavedPrompt = initialData.prompt_configs?.find(
+          (pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved"
+        );
+        if (isFullExperiment && firstSavedPrompt) {
+          setSelectedPromptName(firstSavedPrompt.name);
         }
 
         // Load all necessary data in parallel
@@ -269,8 +274,8 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           loadDatasetVersions(initialData.dataset_ref!.id, initialData.dataset_ref!.version),
         ];
 
-        if (isFullExperiment && initialData.prompt_ref) {
-          loadTasks.push(loadPromptVersions(initialData.prompt_ref.name));
+        if (isFullExperiment && firstSavedPrompt) {
+          loadTasks.push(loadPromptVersions(firstSavedPrompt.name));
           loadTasks.push(...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)));
         }
 

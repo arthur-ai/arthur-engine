@@ -59,13 +59,13 @@ interface PromptVersionDrawerProps {
     type: "saved" | "unsaved";
     name?: string;
     version?: number;
-    auto_name?: string;
-    messages?: any[];
+    auto_name?: string | null;
+    messages?: any[] | null;
     model_name?: string;
     model_provider?: string;
-    tools?: any[];
+    tools?: any[] | null;
     config?: any;
-    variables?: string[];
+    variables?: string[] | null;
   }>;
 }
 
@@ -102,8 +102,8 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const shouldFetchPrompt = promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) && !!promptDetails.prompt_name && !!promptDetails.prompt_version;
   const { prompt: fetchedPrompt, isLoading: isPromptLoading } = usePrompt(
     taskId,
-    shouldFetchPrompt && promptDetails ? promptDetails.prompt_name : undefined,
-    shouldFetchPrompt && promptDetails ? promptDetails.prompt_version : undefined
+    shouldFetchPrompt && promptDetails?.prompt_name ? promptDetails.prompt_name : undefined,
+    shouldFetchPrompt && promptDetails?.prompt_version ? promptDetails.prompt_version : undefined
   );
 
   // Use either fetched prompt (for saved) or construct from config (for unsaved)

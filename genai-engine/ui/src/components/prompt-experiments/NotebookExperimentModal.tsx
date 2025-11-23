@@ -199,14 +199,19 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
 
       try {
         // Transform the initial data to form data format
-        // Filter to only the selected prompt version if specified
-        const versionList = selectedPromptVersion
-          ? initialData.prompt_ref.version_list.filter((v) => v.toString() === selectedPromptVersion)
-          : initialData.prompt_ref.version_list;
+        // Get saved prompt configs
+        const savedPromptConfigs = initialData.prompt_configs?.filter(
+          (pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved"
+        ) || [];
 
-        const promptVersions: PromptVersionSelection[] = versionList.map((v) => ({
-          promptName: initialData.prompt_ref.name,
-          version: v,
+        // Filter to only the selected prompt version if specified
+        const filteredConfigs = selectedPromptVersion
+          ? savedPromptConfigs.filter((pc) => pc.version.toString() === selectedPromptVersion)
+          : savedPromptConfigs;
+
+        const promptVersions: PromptVersionSelection[] = filteredConfigs.map((pc) => ({
+          promptName: pc.name,
+          version: pc.version,
         }));
 
         const evaluators: EvaluatorSelection[] = initialData.eval_list.map((e) => ({
@@ -216,7 +221,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
 
         // Transform prompt variable mappings
         const promptVariableMappings: PromptVariableMappings = {};
-        initialData.prompt_ref.variable_mapping.forEach((mapping) => {
+        initialData.prompt_variable_mapping?.forEach((mapping) => {
           if (mapping.source.type === "dataset_column") {
             promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
           }
@@ -245,16 +250,23 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
           };
         });
 
-        // Set the selected prompt name first
-        setSelectedPromptName(initialData.prompt_ref.name);
+        // Set the selected prompt name first (from first saved prompt)
+        const firstSavedPrompt = savedPromptConfigs[0];
+        if (firstSavedPrompt) {
+          setSelectedPromptName(firstSavedPrompt.name);
+        }
 
         // Load all necessary data in parallel
         // Pass the desired version to preserve the original dataset version
-        await Promise.all([
+        const loadTasks = [
           loadDatasetVersions(initialData.dataset_ref.id, initialData.dataset_ref.version),
-          loadPromptVersions(initialData.prompt_ref.name),
-          ...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)),
-        ]);
+        ];
+        if (firstSavedPrompt) {
+          loadTasks.push(loadPromptVersions(firstSavedPrompt.name));
+        }
+        loadTasks.push(...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)));
+
+        await Promise.all(loadTasks);
 
         // Now set the form data after all dropdowns are populated
         setFormData({

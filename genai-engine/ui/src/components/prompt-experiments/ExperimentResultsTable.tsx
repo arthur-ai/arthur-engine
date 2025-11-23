@@ -44,8 +44,8 @@ interface ExperimentResultsTableProps {
   promptSummaries?: Array<{
     prompt_key?: string | null;
     prompt_type?: string | null;
-    prompt_name: string | null;
-    prompt_version: string | null;
+    prompt_name?: string | null;
+    prompt_version?: string | null;
     eval_results: Array<{
       eval_name: string;
       eval_version: string;
@@ -336,8 +336,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
 interface PromptEvalColumn {
   promptKey: string;
-  promptName: string | null;
-  promptVersion: string | null;
+  promptName?: string | null;
+  promptVersion?: string | null;
   evalName: string;
   evalVersion: string;
 }
@@ -750,8 +750,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       // Fallback: extract from test cases
       const promptMap = new Map<string, {
         promptKey: string;
-        promptName: string | null;
-        promptVersion: string | null;
+        promptName: string | null | undefined;
+        promptVersion: string | null | undefined;
         evals: Array<{ evalName: string; evalVersion: string }>;
       }>();
 
@@ -760,8 +760,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
           if (!promptMap.has(pr.prompt_key)) {
             promptMap.set(pr.prompt_key, {
               promptKey: pr.prompt_key,
-              promptName: pr.name,
-              promptVersion: pr.version,
+              promptName: pr.name ?? null,
+              promptVersion: pr.version ?? null,
               evals: [],
             });
           }
@@ -798,13 +798,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
 
   // Group columns by prompt for the header
   const promptGroups = React.useMemo(() => {
-    const groups = new Map<string, { promptKey: string; promptName: string | null; promptVersion: string | null; evalCount: number }>();
+    const groups = new Map<string, { promptKey: string; promptName?: string | null; promptVersion?: string | null; evalCount: number }>();
     promptEvalColumns.forEach((col) => {
       if (!groups.has(col.promptKey)) {
         groups.set(col.promptKey, {
           promptKey: col.promptKey,
-          promptName: col.promptName,
-          promptVersion: col.promptVersion,
+          promptName: col.promptName ?? null,
+          promptVersion: col.promptVersion ?? null,
           evalCount: 0,
         });
       }

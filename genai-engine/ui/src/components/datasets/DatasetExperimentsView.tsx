@@ -191,11 +191,12 @@ export const DatasetExperimentsView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_ref: {
-          name: data.promptVersions[0].promptName,
-          version_list: data.promptVersions.map(pv => pv.version),
-          variable_mapping: promptVariableMapping,
-        },
+        prompt_configs: data.promptVersions.map(pv => ({
+          type: "saved" as const,
+          name: pv.promptName,
+          version: pv.version,
+        })),
+        prompt_variable_mapping: promptVariableMapping,
         eval_list: evalList,
         dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
       });
@@ -339,10 +340,11 @@ export const DatasetExperimentsView: React.FC = () => {
             const filteredExperiments = experiments.filter((exp) => {
               if (!modalSearchText) return true;
               const searchLower = modalSearchText.toLowerCase();
+              const firstPromptName = exp.prompt_configs?.[0]?.type === "saved" ? exp.prompt_configs[0].name : exp.prompt_configs?.[0]?.auto_name || "";
               return (
                 exp.name.toLowerCase().includes(searchLower) ||
                 (exp.description && exp.description.toLowerCase().includes(searchLower)) ||
-                exp.prompt_name.toLowerCase().includes(searchLower)
+                firstPromptName.toLowerCase().includes(searchLower)
               );
             });
 
@@ -397,7 +399,7 @@ export const DatasetExperimentsView: React.FC = () => {
                             )}
                             <Box className="flex gap-4 text-sm">
                               <Typography variant="caption" className="text-gray-600">
-                                <strong>Prompt:</strong> {experiment.prompt_name}
+                                <strong>Prompt:</strong> {experiment.prompt_configs?.[0]?.type === "saved" ? experiment.prompt_configs[0].name : experiment.prompt_configs?.[0]?.auto_name || "N/A"}
                               </Typography>
                               <Typography variant="caption" className="text-gray-600">
                                 <strong>Rows:</strong> {experiment.total_rows}

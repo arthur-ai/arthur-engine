@@ -9,7 +9,7 @@ import type {
   CreateNotebookRequest,
   UpdateNotebookRequest,
   SetNotebookStateRequest,
-  NotebookState,
+  NotebookStateOutput,
   PromptExperimentListResponse,
 } from "@/lib/api-client/api-client";
 
@@ -81,7 +81,7 @@ export function useNotebookState(notebookId: string | undefined) {
   });
 
   return {
-    state: data as NotebookState | undefined,
+    state: data as NotebookStateOutput | undefined,
     error,
     isLoading,
     refetch,
@@ -226,7 +226,7 @@ export function useAttachExperimentToNotebookMutation(
 ) {
   const api = useApi();
 
-  return useApiMutation<NotebookSummary, { experimentId: string; notebookId: string }>({
+  return useApiMutation<PromptExperimentListResponse["data"][0], { experimentId: string; notebookId: string }>({
     mutationFn: async ({ experimentId, notebookId }) => {
       if (!api) throw new Error("API client not available");
 

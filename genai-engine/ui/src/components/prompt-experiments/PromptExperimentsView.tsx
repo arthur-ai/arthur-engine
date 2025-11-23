@@ -184,11 +184,12 @@ export const PromptExperimentsView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_ref: {
-          name: data.promptVersions[0].promptName,
-          version_list: data.promptVersions.map(pv => pv.version),
-          variable_mapping: promptVariableMapping,
-        },
+        prompt_configs: data.promptVersions.map(pv => ({
+          type: "saved" as const,
+          name: pv.promptName,
+          version: pv.version,
+        })),
+        prompt_variable_mapping: promptVariableMapping,
         eval_list: evalList,
       });
       handleCloseModal();

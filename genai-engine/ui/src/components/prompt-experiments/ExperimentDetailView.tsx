@@ -240,11 +240,12 @@ export const ExperimentDetailView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_ref: {
-          name: data.promptVersions[0].promptName,
-          version_list: data.promptVersions.map((pv) => pv.version),
-          variable_mapping: promptVariableMapping,
-        },
+        prompt_configs: data.promptVersions.map(pv => ({
+          type: "saved" as const,
+          name: pv.promptName,
+          version: pv.version,
+        })),
+        prompt_variable_mapping: promptVariableMapping,
         eval_list: evalList,
         dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
       });
@@ -446,7 +447,7 @@ export const ExperimentDetailView: React.FC = () => {
                   }
 
                   // If tied, sort by version descending (higher version first)
-                  return parseInt(b.prompt_version) - parseInt(a.prompt_version);
+                  return parseInt(b.prompt_version || "0") - parseInt(a.prompt_version || "0");
                 });
 
                 // Find the max total passes to identify best performing prompts
@@ -593,7 +594,7 @@ export const ExperimentDetailView: React.FC = () => {
                   if (totalPassesB !== totalPassesA) {
                     return totalPassesB - totalPassesA;
                   }
-                  return parseInt(b.prompt_version) - parseInt(a.prompt_version);
+                  return parseInt(b.prompt_version || "0") - parseInt(a.prompt_version || "0");
                 });
                 return sorted;
               })()}

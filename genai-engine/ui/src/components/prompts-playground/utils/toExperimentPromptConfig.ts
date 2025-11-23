@@ -75,12 +75,17 @@ export const toExperimentPromptConfig = (
   // Note: Don't add "unsaved_" prefix since the type and prompt key already indicate it's unsaved
   const auto_name = prompt.name || prompt.id;
 
+  // Validate modelProvider is not empty string
+  if (!prompt.modelProvider) {
+    throw new Error("Model provider is required for unsaved prompts");
+  }
+
   return {
     type: "unsaved",
     auto_name,
     messages,
     model_name: prompt.modelName,
-    model_provider: prompt.modelProvider || undefined,
+    model_provider: prompt.modelProvider,
     config: Object.keys(config).length > 0 ? config : undefined,
     tools,
     variables: undefined, // Let backend auto-detect variables

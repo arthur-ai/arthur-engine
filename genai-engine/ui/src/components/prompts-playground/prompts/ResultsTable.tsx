@@ -22,6 +22,7 @@ import React, { useState, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
+import type { TestCase } from "@/lib/api-client/api-client";
 
 interface ResultsTableProps {
   promptId: string;
@@ -38,14 +39,6 @@ interface EvalResult {
   score?: number;
   explanation?: string;
   cost?: string;
-}
-
-interface TestCaseResult {
-  row_index: number;
-  status: "completed" | "running" | "failed" | "queued";
-  rendered_prompt: string;
-  response: string;
-  eval_results: EvalResult[];
 }
 
 const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
@@ -68,12 +61,13 @@ const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
 };
 
 interface TestCaseDetailModalProps {
-  testCase: TestCaseResult | null;
+  testCase: TestCase | null;
+  testCaseIndex: number;
   open: boolean;
   onClose: () => void;
 }
 
-const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: string }> = ({ testCase, open, onClose, promptKey }) => {
+const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: string }> = ({ testCase, testCaseIndex, open, onClose, promptKey }) => {
   if (!testCase) return null;
 
   // Get the prompt result for this specific prompt using the prompt key
@@ -130,7 +124,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
           sx={{ backgroundColor: "#f9fafb" }}
         >
           <Typography variant="h6" className="font-semibold text-gray-900">
-            Test Case {testCase.row_index + 1}
+            Test Case {testCaseIndex + 1}
           </Typography>
           <IconButton onClick={onClose} size="small">
             <CloseIcon />
@@ -250,6 +244,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   const { experimentConfig, runningExperimentId, lastCompletedExperimentId, state } = usePromptContext();
   const [selectedTestCase, setSelectedTestCase] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
 
   // Find the prompt to get its key for filtering results
   const prompt = state.prompts.find((p) => p.id === promptId);
@@ -293,8 +288,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
 
   const evals = experimentConfig?.eval_list || [];
 
-  const handleRowClick = (testCase: TestCaseResult) => {
+  const handleRowClick = (testCase: TestCase, index: number) => {
     setSelectedTestCase(testCase);
+    setSelectedTestCaseIndex(index);
     setModalOpen(true);
   };
 
@@ -304,7 +300,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   };
 
   const getStatusColor = (
-    status: TestCaseResult["status"]
+    status: TestCase["status"]
   ): "default" | "primary" | "info" | "success" | "error" => {
     switch (status) {
       case "queued":
@@ -433,9 +429,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             <TableBody>
               {testCases.map((testCase, index) => (
                 <TableRow
-                  key={testCase.id || testCase.row_index || index}
+                  key={testCase.dataset_row_id || index}
                   hover
-                  onClick={() => handleRowClick(testCase)}
+                  onClick={() => handleRowClick(testCase, index)}
                   sx={{
                     cursor: "pointer",
                     backgroundColor: "#f8f9fa",
@@ -446,14 +442,14 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                 >
                   <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {testCase.row_index !== undefined ? testCase.row_index + 1 : index + 1}
+                      {index + 1}
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
                     <Chip
                       label={getStatusLabel(testCase.status)}
                       size="small"
-                      sx={getStatusChipSx(getStatusColor(testCase.status))}
+                      sx={getStatusChipSx(getStatusColor(testCase.status as "completed" | "running" | "failed" | "queued"))}
                     />
                   </TableCell>
                   {evals.map((evalRef: any) => {
@@ -506,7 +502,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
         </TableContainer>
       )}
 
-      <TestCaseDetailModal testCase={selectedTestCase} open={modalOpen} onClose={handleCloseModal} promptKey={promptKey} />
+      <TestCaseDetailModal testCase={selectedTestCase} testCaseIndex={selectedTestCaseIndex} open={modalOpen} onClose={handleCloseModal} promptKey={promptKey} />
     </Box>
   );
 };
