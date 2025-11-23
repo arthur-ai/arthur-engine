@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -6,7 +7,7 @@ from pydantic import BaseModel, Field
 from db_models.notebook_models import DatabaseNotebook
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.prompt_experiment_schemas import (
-    DatasetRef,
+    DatasetRefInput,
     EvalRef,
     ExperimentStatus,
     PromptConfig,
@@ -30,7 +31,7 @@ class NotebookState(BaseModel):
         default=None,
         description="Variable mappings for prompts",
     )
-    dataset_ref: Optional[DatasetRef] = Field(
+    dataset_ref: Optional[DatasetRefInput] = Field(
         default=None,
         description="Dataset reference",
     )
@@ -126,7 +127,7 @@ class Notebook(BaseModel):
     updated_at: datetime
     prompt_configs: Optional[List[Dict[str, Any]]]
     prompt_variable_mapping: Optional[List[Dict[str, Any]]]
-    dataset_id: Optional[str]
+    dataset_id: Optional[uuid.UUID]
     dataset_version: Optional[int]
     dataset_row_filter: Optional[List[Dict[str, Any]]]
     eval_configs: Optional[List[Dict[str, Any]]]
@@ -160,7 +161,7 @@ class Notebook(BaseModel):
                 ]
 
             if request.state.dataset_ref:
-                dataset_id = str(request.state.dataset_ref.id)
+                dataset_id = request.state.dataset_ref.id
                 dataset_version = request.state.dataset_ref.version
 
             if request.state.dataset_row_filter:
@@ -269,7 +270,7 @@ class Notebook(BaseModel):
             ]
 
         if self.dataset_id is not None and self.dataset_version is not None:
-            state.dataset_ref = DatasetRef(
+            state.dataset_ref = DatasetRefInput(
                 id=self.dataset_id,
                 version=self.dataset_version,
             )
@@ -317,7 +318,7 @@ class Notebook(BaseModel):
             ]
 
         if self.dataset_id is not None and self.dataset_version is not None:
-            state.dataset_ref = DatasetRef(
+            state.dataset_ref = DatasetRefInput(
                 id=self.dataset_id,
                 version=self.dataset_version,
             )
