@@ -16695,7 +16695,7 @@
                     "dataset_ref": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DatasetRef"
+                                "$ref": "#/components/schemas/DatasetRefInput"
                             },
                             {
                                 "type": "null"
@@ -16787,7 +16787,7 @@
                     "dataset_ref": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DatasetRef"
+                                "$ref": "#/components/schemas/DatasetRefInput"
                             },
                             {
                                 "type": "null"

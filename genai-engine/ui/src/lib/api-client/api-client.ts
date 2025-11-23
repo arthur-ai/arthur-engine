@@ -4276,7 +4276,7 @@ export interface NotebookListResponse {
  */
 export interface NotebookStateInput {
   /** Dataset reference */
-  dataset_ref?: DatasetRef | null;
+  dataset_ref?: DatasetRefInput | null;
   /**
    * Dataset Row Filter
    * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
@@ -4314,7 +4314,7 @@ export interface NotebookStateInput {
  */
 export interface NotebookStateOutput {
   /** Dataset reference */
-  dataset_ref?: DatasetRef | null;
+  dataset_ref?: DatasetRefInput | null;
   /**
    * Dataset Row Filter
    * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
