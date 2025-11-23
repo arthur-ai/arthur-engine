@@ -54,6 +54,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
       evaluators: "Evaluators",
       datasets: "Datasets",
       transforms: "Transforms",
+      notebooks: "Notebooks",
       "prompt-experiments": "Prompt Experiments",
       "rag-experiments": "RAG Experiments",
       "agent-experiments": "Agent Experiments",
