@@ -24,6 +24,7 @@ from schemas.prompt_experiment_schemas import ExperimentStatus, TestCaseStatus
 # This avoids circular import errors (notebook_models imports this file)
 # while still providing type hints for IDEs and mypy.
 if TYPE_CHECKING:
+    from db_models.dataset_models import DatabaseDataset
     from db_models.notebook_models import DatabaseNotebook
 
 
