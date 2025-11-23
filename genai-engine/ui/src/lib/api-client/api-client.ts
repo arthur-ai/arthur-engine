@@ -347,6 +347,23 @@ export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData = any;
 
 export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError = HTTPValidationError;
 
+export type AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchData = PromptExperimentSummary;
+
+export type AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchError = HTTPValidationError;
+
+export interface AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchParams {
+  /**
+   * Experiment Id
+   * ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Notebook Id
+   * ID of the notebook to attach
+   */
+  notebook_id: string;
+}
+
 /** AuthUserRole */
 export interface AuthUserRole {
   /** Composite */
@@ -655,6 +672,29 @@ export interface CreateEvalRequest {
   model_provider: ModelProvider;
 }
 
+export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
+
+export type CreateNotebookApiV1TasksTaskIdNotebooksPostError = HTTPValidationError;
+
+/**
+ * CreateNotebookRequest
+ * Request to create a new notebook
+ */
+export interface CreateNotebookRequest {
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the notebook
+   */
+  name: string;
+  /** Initial state */
+  state?: NotebookStateInput | null;
+}
+
 export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostData = PromptExperimentSummary;
 
 export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostError = HTTPValidationError;
@@ -686,8 +726,23 @@ export interface CreatePromptExperimentRequest {
    * Name for the experiment
    */
   name: string;
-  /** Reference to the prompt configuration */
-  prompt_ref: PromptRefInput;
+  /**
+   * Prompt Configs
+   * List of prompt configurations (saved or unsaved)
+   */
+  prompt_configs: (
+    | ({
+        type: "saved";
+      } & SavedPromptConfig)
+    | ({
+        type: "unsaved";
+      } & UnsavedPromptConfig)
+  )[];
+  /**
+   * Prompt Variable Mapping
+   * Shared variable mapping for all prompts
+   */
+  prompt_variable_mapping: PromptVariableMappingInput[];
 }
 
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
@@ -1102,6 +1157,10 @@ export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError = HTTPValid
 export type DeleteModelProviderApiV1ModelProvidersProviderDeleteData = any;
 
 export type DeleteModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
+
+export type DeleteNotebookApiV1NotebooksNotebookIdDeleteData = any;
+
+export type DeleteNotebookApiV1NotebooksNotebookIdDeleteError = HTTPValidationError;
 
 export type DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteData = any;
 
@@ -2003,16 +2062,52 @@ export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailable
 
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
 
+export type GetNotebookApiV1NotebooksNotebookIdGetData = NotebookDetail;
+
+export type GetNotebookApiV1NotebooksNotebookIdGetError = HTTPValidationError;
+
+export type GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGetData = PromptExperimentListResponse;
+
+export type GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGetError = HTTPValidationError;
+
+export interface GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGetParams {
+  /**
+   * Notebook Id
+   * Notebook ID
+   */
+  notebookId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetNotebookStateApiV1NotebooksNotebookIdStateGetData = NotebookStateOutput;
+
+export type GetNotebookStateApiV1NotebooksNotebookIdStateGetError = HTTPValidationError;
+
 export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetData = PromptExperimentDetail;
 
 export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetError = HTTPValidationError;
 
-export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData =
-  PromptVersionResultListResponse;
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetData = PromptVersionResultListResponse;
 
-export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError = HTTPValidationError;
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetError = HTTPValidationError;
 
-export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams {
+export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetParams {
   /**
    * Experiment ID
    * The ID of the experiment
@@ -2031,15 +2126,10 @@ export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPrompt
    */
   page_size?: number;
   /**
-   * Prompt Name
-   * The name of the prompt
+   * Prompt Key
+   * The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A
    */
-  promptName: string;
-  /**
-   * Prompt Version
-   * The version of the prompt
-   */
-  promptVersion: number;
+  promptKey: string;
   /**
    * Sort the results (asc/desc)
    * @default "desc"
@@ -3072,6 +3162,37 @@ export interface ListDatasetVersionsResponse {
   versions: DatasetVersionMetadataResponse[];
 }
 
+export type ListNotebooksApiV1TasksTaskIdNotebooksGetData = NotebookListResponse;
+
+export type ListNotebooksApiV1TasksTaskIdNotebooksGetError = HTTPValidationError;
+
+export interface ListNotebooksApiV1TasksTaskIdNotebooksGetParams {
+  /** Name */
+  name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
 export type ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetData = PromptExperimentListResponse;
 
 export type ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetError = HTTPValidationError;
@@ -4074,6 +4195,207 @@ export interface NewTaskRequest {
 }
 
 /**
+ * NotebookDetail
+ * Detailed notebook information
+ */
+export interface NotebookDetail {
+  /**
+   * Created At
+   * ISO timestamp when created
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Experiments
+   * History of experiments run from this notebook
+   */
+  experiments: PromptExperimentSummary[];
+  /**
+   * Id
+   * Notebook ID
+   */
+  id: string;
+  /**
+   * Name
+   * Notebook name
+   */
+  name: string;
+  /** Current draft state */
+  state: NotebookStateOutput;
+  /**
+   * Task Id
+   * Associated task ID
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * ISO timestamp when last updated
+   */
+  updated_at: string;
+}
+
+/**
+ * NotebookListResponse
+ * Paginated list of notebooks
+ */
+export interface NotebookListResponse {
+  /**
+   * Data
+   * List of notebook summaries
+   */
+  data: NotebookSummary[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of notebooks
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * NotebookState
+ * Draft state of a notebook - mirrors experiment config but all fields optional.
+ */
+export interface NotebookStateInput {
+  /** Dataset reference */
+  dataset_ref?: DatasetRef | null;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Eval List
+   * List of evaluations
+   */
+  eval_list?: EvalRefInput[] | null;
+  /**
+   * Prompt Configs
+   * List of prompt configurations
+   */
+  prompt_configs?:
+    | (
+        | ({
+            type: "saved";
+          } & SavedPromptConfig)
+        | ({
+            type: "unsaved";
+          } & UnsavedPromptConfig)
+      )[]
+    | null;
+  /**
+   * Prompt Variable Mapping
+   * Variable mappings for prompts
+   */
+  prompt_variable_mapping?: PromptVariableMappingInput[] | null;
+}
+
+/**
+ * NotebookState
+ * Draft state of a notebook - mirrors experiment config but all fields optional.
+ */
+export interface NotebookStateOutput {
+  /** Dataset reference */
+  dataset_ref?: DatasetRef | null;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Eval List
+   * List of evaluations
+   */
+  eval_list?: EvalRefOutput[] | null;
+  /**
+   * Prompt Configs
+   * List of prompt configurations
+   */
+  prompt_configs?:
+    | (
+        | ({
+            type: "saved";
+          } & SavedPromptConfig)
+        | ({
+            type: "unsaved";
+          } & UnsavedPromptConfig)
+      )[]
+    | null;
+  /**
+   * Prompt Variable Mapping
+   * Variable mappings for prompts
+   */
+  prompt_variable_mapping?: PromptVariableMappingOutput[] | null;
+}
+
+/**
+ * NotebookSummary
+ * Summary of a notebook
+ */
+export interface NotebookSummary {
+  /**
+   * Created At
+   * ISO timestamp when created
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Id
+   * Notebook ID
+   */
+  id: string;
+  /**
+   * Latest Run Id
+   * ID of most recent experiment run
+   */
+  latest_run_id?: string | null;
+  /** Status of most recent experiment */
+  latest_run_status?: ExperimentStatus | null;
+  /**
+   * Name
+   * Notebook name
+   */
+  name: string;
+  /**
+   * Run Count
+   * Number of experiments run from this notebook
+   */
+  run_count: number;
+  /**
+   * Task Id
+   * Associated task ID
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * ISO timestamp when last updated
+   */
+  updated_at: string;
+}
+
+/**
  * OpenAIMessage
  * The message schema class for the prompts playground.
  * This class adheres to OpenAI's message schema.
@@ -4299,15 +4621,25 @@ export interface PromptEvalResultSummaries {
    */
   eval_results: EvalResultSummary[];
   /**
-   * Prompt Name
-   * Name of the prompt
+   * Prompt Key
+   * Prompt key: 'saved:name:version' or 'unsaved:auto_name'
    */
-  prompt_name: string;
+  prompt_key?: string | null;
+  /**
+   * Prompt Name
+   * Name of the prompt (for saved prompts, or auto_name for unsaved)
+   */
+  prompt_name?: string | null;
+  /**
+   * Prompt Type
+   * Type: 'saved' or 'unsaved'
+   */
+  prompt_type?: string | null;
   /**
    * Prompt Version
-   * Version of the prompt
+   * Version of the prompt (for saved prompts only)
    */
-  prompt_version: string;
+  prompt_version?: string | null;
 }
 
 /**
@@ -4363,12 +4695,27 @@ export interface PromptExperimentDetail {
    */
   name: string;
   /**
-   * Prompt Name
-   * Name of the prompt being tested
+   * Notebook Id
+   * Optional notebook ID this experiment is linked to
    */
-  prompt_name: string;
-  /** Reference to the prompt configuration */
-  prompt_ref: PromptRefOutput;
+  notebook_id?: string | null;
+  /**
+   * Prompt Configs
+   * List of prompts being tested
+   */
+  prompt_configs: (
+    | ({
+        type: "saved";
+      } & SavedPromptConfig)
+    | ({
+        type: "unsaved";
+      } & UnsavedPromptConfig)
+  )[];
+  /**
+   * Prompt Variable Mapping
+   * Shared variable mapping for all prompts
+   */
+  prompt_variable_mapping: PromptVariableMappingOutput[];
   /** Current status of the experiment */
   status: ExperimentStatus;
   /** Summary of results across all test cases */
@@ -4474,10 +4821,17 @@ export interface PromptExperimentSummary {
    */
   name: string;
   /**
-   * Prompt Name
-   * Name of the prompt being tested
+   * Prompt Configs
+   * List of prompts being tested
    */
-  prompt_name: string;
+  prompt_configs: (
+    | ({
+        type: "saved";
+      } & SavedPromptConfig)
+    | ({
+        type: "unsaved";
+      } & UnsavedPromptConfig)
+  )[];
   /** Current status of the experiment */
   status: ExperimentStatus;
   /**
@@ -4515,50 +4869,6 @@ export interface PromptOutput {
 }
 
 /**
- * PromptRef
- * Reference to a prompt configuration
- */
-export interface PromptRefInput {
-  /**
-   * Name
-   * Name of the prompt
-   */
-  name: string;
-  /**
-   * Variable Mapping
-   * Mapping of prompt variables to dataset columns
-   */
-  variable_mapping: PromptVariableMappingInput[];
-  /**
-   * Version List
-   * List of prompt versions to test in the experiment
-   */
-  version_list: number[];
-}
-
-/**
- * PromptRef
- * Reference to a prompt configuration
- */
-export interface PromptRefOutput {
-  /**
-   * Name
-   * Name of the prompt
-   */
-  name: string;
-  /**
-   * Variable Mapping
-   * Mapping of prompt variables to dataset columns
-   */
-  variable_mapping: PromptVariableMappingOutput[];
-  /**
-   * Version List
-   * List of prompt versions to test in the experiment
-   */
-  version_list: number[];
-}
-
-/**
  * PromptResult
  * Results from a prompt execution with evals
  */
@@ -4570,11 +4880,21 @@ export interface PromptResult {
   evals: EvalExecution[];
   /**
    * Name
-   * Name of the prompt
+   * Name of the prompt (for saved prompts)
    */
-  name: string;
+  name?: string | null;
   /** Output from the prompt (None if not yet executed) */
   output?: PromptOutput | null;
+  /**
+   * Prompt Key
+   * Prompt key: 'saved:name:version' or 'unsaved:auto_name'
+   */
+  prompt_key: string;
+  /**
+   * Prompt Type
+   * Type: 'saved' or 'unsaved'
+   */
+  prompt_type: string;
   /**
    * Rendered Prompt
    * Prompt with variables replaced
@@ -4582,9 +4902,9 @@ export interface PromptResult {
   rendered_prompt: string;
   /**
    * Version
-   * Version of the prompt
+   * Version of the prompt (for saved prompts)
    */
-  version: string;
+  version?: string | null;
 }
 
 /** PromptValidationRequest */
@@ -5844,6 +6164,28 @@ export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
 
 /**
+ * SavedPromptConfig
+ * Configuration for a saved prompt
+ */
+export interface SavedPromptConfig {
+  /**
+   * Name
+   * Name of the saved prompt
+   */
+  name: string;
+  /**
+   * Type
+   * @default "saved"
+   */
+  type?: "saved";
+  /**
+   * Version
+   * Version of the saved prompt
+   */
+  version: number;
+}
+
+/**
  * SavedPromptRenderingRequest
  * Request schema for rendering an unsaved agentic prompt with variables
  */
@@ -6171,6 +6513,19 @@ export interface SessionTracesResponse {
 export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
+
+export type SetNotebookStateApiV1NotebooksNotebookIdStatePutData = NotebookDetail;
+
+export type SetNotebookStateApiV1NotebooksNotebookIdStatePutError = HTTPValidationError;
+
+/**
+ * SetNotebookStateRequest
+ * Request to set the notebook state
+ */
+export interface SetNotebookStateRequest {
+  /** New state for the notebook */
+  state: NotebookStateInput;
+}
 
 export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteData = any;
 
@@ -7003,6 +7358,50 @@ export interface TraceUserMetadataResponse {
 }
 
 /**
+ * UnsavedPromptConfig
+ * Configuration for an unsaved prompt
+ */
+export interface UnsavedPromptConfig {
+  /**
+   * Auto Name
+   * Auto-generated name (set by backend)
+   */
+  auto_name?: string | null;
+  /**
+   * Config
+   * LLM config settings
+   */
+  config?: Record<string, any> | null;
+  /**
+   * Messages
+   * Prompt messages
+   */
+  messages: Record<string, any>[];
+  /**
+   * Model Name
+   * LLM model name
+   */
+  model_name: string;
+  /** LLM provider */
+  model_provider: ModelProvider;
+  /**
+   * Tools
+   * Available tools
+   */
+  tools?: Record<string, any>[] | null;
+  /**
+   * Type
+   * @default "unsaved"
+   */
+  type?: "unsaved";
+  /**
+   * Variables
+   * Variables (auto-detected if not provided)
+   */
+  variables?: string[] | null;
+}
+
+/**
  * UnsavedPromptRenderingRequest
  * Request schema for rendering an unsaved agentic prompt with variables
  */
@@ -7052,6 +7451,27 @@ export interface UpdateMetricRequest {
    * Boolean value to enable or disable the metric.
    */
   enabled: boolean;
+}
+
+export type UpdateNotebookApiV1NotebooksNotebookIdPutData = NotebookDetail;
+
+export type UpdateNotebookApiV1NotebooksNotebookIdPutError = HTTPValidationError;
+
+/**
+ * UpdateNotebookRequest
+ * Request to update a notebook
+ */
+export interface UpdateNotebookRequest {
+  /**
+   * Description
+   * New description
+   */
+  description?: string | null;
+  /**
+   * Name
+   * New name
+   */
+  name?: string | null;
 }
 
 export type UpdateRagProviderApiV1RagProvidersProviderIdPatchData = RagProviderConfigurationResponse;
@@ -8116,7 +8536,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.214
+ * @version 2.1.215
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -8271,6 +8691,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Attach a notebook to an existing experiment
+     *
+     * @tags Prompt Experiments
+     * @name AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatch
+     * @summary Attach notebook to experiment
+     * @request PATCH:/api/v1/prompt_experiments/{experiment_id}/notebook
+     * @secure
+     */
+    attachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatch: (
+      { experimentId, ...query }: AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchData,
+        AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchError
+      >({
+        path: `/api/v1/prompt_experiments/${experimentId}/notebook`,
+        method: "PATCH",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Chat request for Arthur Chat
      *
      * @tags Chat
@@ -8400,6 +8845,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     createDefaultRuleApiV2DefaultRulesPost: (data: NewRuleRequest, params: RequestParams = {}) =>
       this.request<CreateDefaultRuleApiV2DefaultRulesPostData, CreateDefaultRuleApiV2DefaultRulesPostError>({
         path: `/api/v2/default_rules`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new notebook for organizing experiments within a task
+     *
+     * @tags Notebooks
+     * @name CreateNotebookApiV1TasksTaskIdNotebooksPost
+     * @summary Create a notebook
+     * @request POST:/api/v1/tasks/{task_id}/notebooks
+     * @secure
+     */
+    createNotebookApiV1TasksTaskIdNotebooksPost: (taskId: string, data: CreateNotebookRequest, params: RequestParams = {}) =>
+      this.request<CreateNotebookApiV1TasksTaskIdNotebooksPostData, CreateNotebookApiV1TasksTaskIdNotebooksPostError>({
+        path: `/api/v1/tasks/${taskId}/notebooks`,
         method: "POST",
         body: data,
         secure: true,
@@ -8742,6 +9207,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
       this.request<DeleteModelProviderApiV1ModelProvidersProviderDeleteData, DeleteModelProviderApiV1ModelProvidersProviderDeleteError>({
         path: `/api/v1/model_providers/${provider}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a notebook (experiments are kept)
+     *
+     * @tags Notebooks
+     * @name DeleteNotebookApiV1NotebooksNotebookIdDelete
+     * @summary Delete notebook
+     * @request DELETE:/api/v1/notebooks/{notebook_id}
+     * @secure
+     */
+    deleteNotebookApiV1NotebooksNotebookIdDelete: (notebookId: string, params: RequestParams = {}) =>
+      this.request<DeleteNotebookApiV1NotebooksNotebookIdDeleteData, DeleteNotebookApiV1NotebooksNotebookIdDeleteError>({
+        path: `/api/v1/notebooks/${notebookId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -9466,6 +9948,64 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get detailed information about a notebook including state and experiment history
+     *
+     * @tags Notebooks
+     * @name GetNotebookApiV1NotebooksNotebookIdGet
+     * @summary Get notebook details
+     * @request GET:/api/v1/notebooks/{notebook_id}
+     * @secure
+     */
+    getNotebookApiV1NotebooksNotebookIdGet: (notebookId: string, params: RequestParams = {}) =>
+      this.request<GetNotebookApiV1NotebooksNotebookIdGetData, GetNotebookApiV1NotebooksNotebookIdGetError>({
+        path: `/api/v1/notebooks/${notebookId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of experiments run from this notebook
+     *
+     * @tags Notebooks
+     * @name GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGet
+     * @summary Get notebook history
+     * @request GET:/api/v1/notebooks/{notebook_id}/history
+     * @secure
+     */
+    getNotebookHistoryApiV1NotebooksNotebookIdHistoryGet: (
+      { notebookId, ...query }: GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGetData, GetNotebookHistoryApiV1NotebooksNotebookIdHistoryGetError>({
+        path: `/api/v1/notebooks/${notebookId}/history`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the current state (draft configuration) of a notebook
+     *
+     * @tags Notebooks
+     * @name GetNotebookStateApiV1NotebooksNotebookIdStateGet
+     * @summary Get notebook state
+     * @request GET:/api/v1/notebooks/{notebook_id}/state
+     * @secure
+     */
+    getNotebookStateApiV1NotebooksNotebookIdStateGet: (notebookId: string, params: RequestParams = {}) =>
+      this.request<GetNotebookStateApiV1NotebooksNotebookIdStateGetData, GetNotebookStateApiV1NotebooksNotebookIdStateGetError>({
+        path: `/api/v1/notebooks/${notebookId}/state`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get detailed information about a specific prompt experiment including summary results
      *
      * @tags Prompt Experiments
@@ -9484,28 +10024,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get paginated list of results for a specific prompt version within an experiment
+     * @description Get paginated list of results for a specific prompt within an experiment (supports both saved and unsaved prompts)
      *
      * @tags Prompt Experiments
-     * @name GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet
-     * @summary Get prompt version results
-     * @request GET:/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results
+     * @name GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet
+     * @summary Get prompt results
+     * @request GET:/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results
      * @secure
      */
-    getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet: (
-      {
-        experimentId,
-        promptName,
-        promptVersion,
-        ...query
-      }: GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams,
+    getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet: (
+      { experimentId, promptKey, ...query }: GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetParams,
       params: RequestParams = {}
     ) =>
       this.request<
-        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData,
-        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetData,
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGetError
       >({
-        path: `/api/v1/prompt_experiments/${experimentId}/prompts/${promptName}/versions/${promptVersion}/results`,
+        path: `/api/v1/prompt_experiments/${experimentId}/prompts/${promptKey}/results`,
         method: "GET",
         query: query,
         secure: true,
@@ -9802,6 +10337,25 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getUserDetailsApiV1TracesUsersUserIdGet: ({ userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams, params: RequestParams = {}) =>
       this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
         path: `/api/v1/traces/users/${userId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all notebooks for a task with pagination and optional name search
+     *
+     * @tags Notebooks
+     * @name ListNotebooksApiV1TasksTaskIdNotebooksGet
+     * @summary List notebooks
+     * @request GET:/api/v1/tasks/{task_id}/notebooks
+     * @secure
+     */
+    listNotebooksApiV1TasksTaskIdNotebooksGet: ({ taskId, ...query }: ListNotebooksApiV1TasksTaskIdNotebooksGetParams, params: RequestParams = {}) =>
+      this.request<ListNotebooksApiV1TasksTaskIdNotebooksGetData, ListNotebooksApiV1TasksTaskIdNotebooksGetError>({
+        path: `/api/v1/tasks/${taskId}/notebooks`,
         method: "GET",
         query: query,
         secure: true,
@@ -10310,6 +10864,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Set the state (draft configuration) of a notebook
+     *
+     * @tags Notebooks
+     * @name SetNotebookStateApiV1NotebooksNotebookIdStatePut
+     * @summary Set notebook state
+     * @request PUT:/api/v1/notebooks/{notebook_id}/state
+     * @secure
+     */
+    setNotebookStateApiV1NotebooksNotebookIdStatePut: (notebookId: string, data: SetNotebookStateRequest, params: RequestParams = {}) =>
+      this.request<SetNotebookStateApiV1NotebooksNotebookIdStatePutData, SetNotebookStateApiV1NotebooksNotebookIdStatePutError>({
+        path: `/api/v1/notebooks/${notebookId}/state`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Deletes a specific version of an llm eval
      *
      * @tags LLMEvals
@@ -10394,6 +10968,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/chat/default_task`,
         method: "PUT",
         body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update notebook name or description (not the state)
+     *
+     * @tags Notebooks
+     * @name UpdateNotebookApiV1NotebooksNotebookIdPut
+     * @summary Update notebook metadata
+     * @request PUT:/api/v1/notebooks/{notebook_id}
+     * @secure
+     */
+    updateNotebookApiV1NotebooksNotebookIdPut: (notebookId: string, data: UpdateNotebookRequest, params: RequestParams = {}) =>
+      this.request<UpdateNotebookApiV1NotebooksNotebookIdPutData, UpdateNotebookApiV1NotebooksNotebookIdPutError>({
+        path: `/api/v1/notebooks/${notebookId}`,
+        method: "PUT",
+        body: data,
+        secure: true,
         type: ContentType.Json,
         format: "json",
         ...params,

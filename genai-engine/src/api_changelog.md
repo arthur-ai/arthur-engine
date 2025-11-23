@@ -2,6 +2,45 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/23/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the response property 'summary_results/prompt_eval_summaries/items/prompt_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  response property 'summary_results/prompt_eval_summaries/items/prompt_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  response property 'summary_results/prompt_eval_summaries/items/prompt_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_name' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the required property 'prompt_ref' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  response property 'data/items/prompt_results/items/name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  response property 'data/items/prompt_results/items/version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the required property 'data/items/prompt_name' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_configs'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_variable_mapping'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the required property 'prompt_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the request property 'prompt_ref'
+- **CHANGE** for Component/Schema:  removed the schema 'PromptRef-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'PromptRef-Output'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'summary_results/prompt_eval_summaries/items/prompt_key' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'summary_results/prompt_eval_summaries/items/prompt_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_configs' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/notebook  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the required property 'data/items/prompt_results/items/prompt_key' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the required property 'data/items/prompt_results/items/prompt_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/prompt_configs' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'prompt_configs' to the response with the '200' status
+
 # 11/21/2025
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the new required request property 'definition/columns'
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed 'subschema #1' from the 'definition' request property 'anyOf' list

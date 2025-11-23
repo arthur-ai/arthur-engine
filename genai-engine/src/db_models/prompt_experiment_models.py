@@ -25,8 +25,6 @@ from schemas.prompt_experiment_schemas import ExperimentStatus, TestCaseStatus
 # while still providing type hints for IDEs and mypy.
 if TYPE_CHECKING:
     from db_models.notebook_models import DatabaseNotebook
-    from typing import TYPE_CHECKING, Any, Dict, List, Optional
-
 
 
 class DatabasePromptExperiment(Base):
