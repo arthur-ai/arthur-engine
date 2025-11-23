@@ -1,12 +1,14 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import BookIcon from "@mui/icons-material/Book";
+import CheckIcon from "@mui/icons-material/Check";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import EditIcon from "@mui/icons-material/Edit";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SaveIcon from "@mui/icons-material/Save";
 import TuneIcon from "@mui/icons-material/Tune";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
@@ -1139,24 +1141,38 @@ const PromptsPlayground = () => {
                               ? "All changes saved"
                               : saveStatus === "saving"
                               ? "Saving changes..."
-                              : "Unsaved changes"
+                              : "Click to save changes"
                           }
                           arrow
                         >
-                          <Box
-                            sx={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              backgroundColor:
-                                saveStatus === "saved"
-                                  ? "#10b981"
-                                  : saveStatus === "saving"
-                                  ? "#f59e0b"
-                                  : "#6b7280",
-                              cursor: "help",
-                            }}
-                          />
+                          <span>
+                            <Button
+                              size="small"
+                              variant={saveStatus === "unsaved" ? "contained" : "outlined"}
+                              onClick={() => {
+                                if (saveStatus === "unsaved") {
+                                  autoSaveNotebookState();
+                                }
+                              }}
+                              disabled={saveStatus !== "unsaved"}
+                              startIcon={saveStatus === "saved" ? <CheckIcon /> : <SaveIcon />}
+                              sx={{
+                                minWidth: "auto",
+                                px: 1.5,
+                                py: 0.5,
+                                fontSize: "0.75rem",
+                                textTransform: "none",
+                                color: saveStatus === "saved" ? "success.main" : undefined,
+                                borderColor: saveStatus === "saved" ? "success.main" : undefined,
+                                "&.Mui-disabled": {
+                                  color: saveStatus === "saved" ? "success.main" : undefined,
+                                  borderColor: saveStatus === "saved" ? "success.main" : undefined,
+                                },
+                              }}
+                            >
+                              {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save"}
+                            </Button>
+                          </span>
                         </Tooltip>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
                           {notebookName || "Notebook"}
