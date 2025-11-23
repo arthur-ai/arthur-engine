@@ -8435,14 +8435,14 @@ wasabi = ">=0.9.1,<1.2.0"
 
 [[package]]
 name = "weaviate-client"
-version = "4.18.0"
+version = "4.18.1"
 description = "A python native Weaviate client"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "weaviate_client-4.18.0-py3-none-any.whl", hash = "sha256:e5dda0b07520c26e1213b26dd2d7ef742d09fde6316d01bb0caae03a3c920c6d"},
-    {file = "weaviate_client-4.18.0.tar.gz", hash = "sha256:12e04e3361884191a82aff7a8b6e8f5ead7e8bf6f2c09e03d46a67347b4a0f9b"},
+    {file = "weaviate_client-4.18.1-py3-none-any.whl", hash = "sha256:18929badab8b5c05b8464467029972aabccd19d0bad79624c0067abc2ca3c05e"},
+    {file = "weaviate_client-4.18.1.tar.gz", hash = "sha256:df682f7e91b51ac4428d85a092297203ab688a532851ac11f855a97ea85b7283"},
 ]
 
 [package.dependencies]
