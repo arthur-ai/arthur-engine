@@ -21,15 +21,35 @@ export interface GetTemplatedPromptOptions {
 }
 
 export interface TemplatedPromptResult {
+  /** The name of the agentic prompt */
+  name: string;
   /** The rendered messages ready for agent consumption */
   messages: MessageInput[];
+  /** Name of the LLM model */
+  model_name: string;
+  /** Provider of the LLM model */
+  model_provider: string;
+  /** Version of the agentic prompt */
+  version: number;
+  /** Available tools/functions for the model to call */
+  tools?: any[];
+  /** List of variable names for the agentic prompt */
+  variables: string[];
+  /** List of tags for this agentic prompt version */
+  tags: string[];
+  /** LLM configurations for this prompt */
+  config?: any;
+  /** Timestamp when the prompt was created */
+  created_at: string;
+  /** Time that this prompt was deleted (if applicable) */
+  deleted_at?: string | null;
 }
 
 /**
  * Retrieves a templated prompt from Arthur GenAI Engine with tracing support
  *
  * @param options - Configuration for retrieving and templating the prompt
- * @returns The templated prompt messages
+ * @returns The complete agentic prompt object including rendered messages and metadata
  *
  * @example
  * ```typescript
@@ -45,6 +65,14 @@ export interface TemplatedPromptResult {
  *   },
  *   tracingContext
  * });
+ *
+ * // Access the rendered messages
+ * console.log(result.messages);
+ *
+ * // Access prompt metadata
+ * console.log(result.model_name); // e.g., "gpt-4"
+ * console.log(result.version); // e.g., 1
+ * console.log(result.config); // LLM configuration
  *
  * // Or using an array of PromptVariable
  * const result = await getTemplatedPrompt({
@@ -115,12 +143,19 @@ export async function getTemplatedPrompt(
         }
       );
 
+    // Extract the full agentic prompt response
+    const agenticPrompt = response.data as TemplatedPromptResult;
+
     // Cast the messages to the expected format for Mastra agent
-    const messages = response.data.messages as MessageInput[];
+    const messages = agenticPrompt.messages as MessageInput[];
 
     // End the span with success
     promptSpan?.end({
       output: {
+        promptName: agenticPrompt.name,
+        promptVersion: agenticPrompt.version,
+        modelName: agenticPrompt.model_name,
+        modelProvider: agenticPrompt.model_provider,
         messagesCount: messages.length,
         messages,
       },
@@ -129,7 +164,10 @@ export async function getTemplatedPrompt(
       },
     });
 
-    return { messages };
+    return {
+      ...agenticPrompt,
+      messages,
+    };
   } catch (error) {
     // End the span with error
     promptSpan?.end({

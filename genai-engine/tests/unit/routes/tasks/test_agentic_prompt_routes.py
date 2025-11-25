@@ -1328,7 +1328,13 @@ def test_run_agentic_prompt_strict_mode(
     else:
         assert response.status_code == 200
         rendered_prompt = response.json()
+        # Verify full AgenticPrompt response object
+        assert rendered_prompt["name"] == prompt_name
         assert rendered_prompt["messages"] is not None
+        assert rendered_prompt["model_name"] == "gpt-4"
+        assert rendered_prompt["model_provider"] == "openai"
+        assert rendered_prompt["version"] == 1
+        assert "created_at" in rendered_prompt
         # Verify the template was actually rendered if we have variables
         if variables:
             for message in rendered_prompt["messages"]:
@@ -1365,7 +1371,13 @@ def test_run_agentic_prompt_strict_mode(
     )
     assert response.status_code == 200
     rendered_prompt = response.json()
+    # Verify full AgenticPrompt response object
+    assert rendered_prompt["name"] == prompt_name
     assert rendered_prompt["messages"] is not None
+    assert rendered_prompt["model_name"] == "gpt-4"
+    assert rendered_prompt["model_provider"] == "openai"
+    assert rendered_prompt["version"] == 1
+    assert "created_at" in rendered_prompt
 
 
 @pytest.mark.unit_tests
@@ -1496,7 +1508,18 @@ def test_render_endpoints(
         assert response.json()["detail"] == expected_error
     else:
         rendered_prompt = response.json()
-        assert rendered_prompt["messages"] is not None
+
+        if endpoint_type == "saved":
+            # Verify full AgenticPrompt response object for saved endpoints
+            assert rendered_prompt["name"] == prompt_name
+            assert rendered_prompt["messages"] is not None
+            assert rendered_prompt["model_name"] == "gpt-4"
+            assert rendered_prompt["model_provider"] == "openai"
+            assert rendered_prompt["version"] == 1
+            assert "created_at" in rendered_prompt
+        else:
+            # Unsaved endpoint still returns RenderedPromptResponse (only messages)
+            assert rendered_prompt["messages"] is not None
 
         # Check that expected content is in the rendered messages
         if expected_content:
