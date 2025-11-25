@@ -1751,14 +1751,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/form-core@npm:1.25.0":
-  version: 1.25.0
-  resolution: "@tanstack/form-core@npm:1.25.0"
+"@tanstack/form-core@npm:1.26.0":
+  version: 1.26.0
+  resolution: "@tanstack/form-core@npm:1.26.0"
   dependencies:
     "@tanstack/devtools-event-client": "npm:^0.3.5"
     "@tanstack/pacer": "npm:^0.15.3"
     "@tanstack/store": "npm:^0.7.7"
-  checksum: 10c0/d16cb25bd83bf4ea186d090e8b0b26d15947d4a0f25218bb3f216d40de56d6b56d4a10177101f59246d1bcf72ee639fe74b8f640f2ad8959b8284ff2f29122b3
+  checksum: 10c0/e7d7552604a4ba5b5449c1f380a59e65df6407e5982ede6e554e940fa1afb0fc38820c4d714d16590c1c6edafdc66c6824c58b4e796bfd55869c677bbb43378e
   languageName: node
   linkType: hard
 
@@ -1797,17 +1797,17 @@ __metadata:
   linkType: hard
 
 "@tanstack/react-form@npm:^1.23.7":
-  version: 1.25.0
-  resolution: "@tanstack/react-form@npm:1.25.0"
+  version: 1.26.0
+  resolution: "@tanstack/react-form@npm:1.26.0"
   dependencies:
-    "@tanstack/form-core": "npm:1.25.0"
+    "@tanstack/form-core": "npm:1.26.0"
     "@tanstack/react-store": "npm:^0.7.7"
   peerDependencies:
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
     "@tanstack/react-start":
       optional: true
-  checksum: 10c0/0064fecad416ae6c5142183389d3027d80b83616eccc7c066b17bbba28788c5a9baef3aa4477668ac92e03f26f8fd0b4f78d1f9c5a38424aed47a4b0de80159d
+  checksum: 10c0/83736364d11e5891042245f9b3ca92f0c5c36c4b2975924bf806dd1f2ad6b604bd8597f7b6b8c3c39d033f3254d2886249c352e421bf5b3f704ce41017d2b940
   languageName: node
   linkType: hard
 
