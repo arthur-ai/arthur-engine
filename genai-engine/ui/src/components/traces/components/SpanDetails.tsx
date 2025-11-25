@@ -9,7 +9,7 @@ import { createContext, Fragment, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
-import { useTracesHistoryStore } from "../stores/history.store";
+import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
@@ -52,7 +52,7 @@ export const SpanDetails = ({ span, children }: Props) => {
 };
 
 export const SpanDetailsHeader = () => {
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
   const navigate = useNavigate();
   const { span } = useSpanDetails();
 
@@ -61,10 +61,7 @@ export const SpanDetailsHeader = () => {
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
 
   const onOpenSpanDrawer = () => {
-    push({
-      type: "span",
-      id: span.span_id,
-    });
+    setDrawerTarget({ target: "span", id: span.span_id });
   };
 
   const handleOpenInPlayground = () => {

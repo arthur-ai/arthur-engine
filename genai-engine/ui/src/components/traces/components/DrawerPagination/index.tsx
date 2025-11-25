@@ -1,16 +1,14 @@
 import { Button, ButtonGroup } from "@mui/material";
-import { v4 as uuidv4 } from "uuid";
 
-import { useTracesHistoryStore } from "../../stores/history.store";
+import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { usePaginationContext } from "../../stores/pagination-context";
 
 export const DrawerPagination = () => {
   const context = usePaginationContext((state) => state.context);
-  const current = useTracesHistoryStore((state) => state.current());
-  const reset = useTracesHistoryStore((state) => state.reset);
+  const [current, setDrawerTarget] = useDrawerTarget();
 
   if (!current) return null;
-  if (context.type !== current.target.type)
+  if (context.type !== current.target)
     return (
       <span className="text-sm text-gray-400">
         Currently navigating on <code className="font-mono bg-gray-700 text-white px-1 py-0.5 rounded-md">{context.type}</code> level.
@@ -19,7 +17,7 @@ export const DrawerPagination = () => {
 
   if (!context.ids.length) return <span className="text-sm text-gray-400">No context available.</span>;
 
-  const idx = context.ids.indexOf(current.target.id.toString());
+  const idx = current.id ? context.ids.indexOf(current.id) : -1;
 
   if (idx === -1) return <span className="text-sm text-gray-400">Current item not found in context.</span>;
 
@@ -27,30 +25,13 @@ export const DrawerPagination = () => {
   const hasPrevious = idx > 0;
 
   const handlePrevious = () => {
-    reset([
-      {
-        key: uuidv4(),
-        target: {
-          type: context.type,
-          id: context.ids[idx - 1],
-        },
-        ts: Date.now(),
-      },
-    ]);
+    setDrawerTarget({ target: context.type, id: context.ids[idx - 1] });
   };
 
   const handleNext = () => {
-    reset([
-      {
-        key: uuidv4(),
-        target: {
-          type: context.type,
-          id: context.ids[idx + 1],
-        },
-        ts: Date.now(),
-      },
-    ]);
+    setDrawerTarget({ target: context.type, id: context.ids[idx + 1] });
   };
+
   return (
     <ButtonGroup size="small">
       <Button disabled={!hasPrevious} onClick={handlePrevious}>
