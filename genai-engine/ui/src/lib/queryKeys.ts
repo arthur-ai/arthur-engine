@@ -30,6 +30,7 @@ export const queryKeys = {
   },
   traces: {
     listPaginated: (params: GetFilteredTracesParams) => ["listTracesMetadataApiV1TracesGet", params] as const,
+    list: ["listTracesMetadataApiV1TracesGet"] as const,
     byId: (traceId: string) => ["getTraceByIdApiV1TracesTraceIdGet", traceId] as const,
   },
   users: {
