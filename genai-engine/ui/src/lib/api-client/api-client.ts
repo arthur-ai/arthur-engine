@@ -6037,7 +6037,7 @@ export interface RelevanceMetricConfig {
   use_llm_judge?: boolean;
 }
 
-export type RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPostData = RenderedPromptResponse;
+export type RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPostData = AgenticPrompt;
 
 export type RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPostError = HTTPValidationError;
 
@@ -8536,7 +8536,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.216
+ * @version 2.1.217
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -10613,7 +10613,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the rendered messages.
+     * @description Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the complete prompt object with rendered messages.
      *
      * @tags Prompts
      * @name RenderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPost
