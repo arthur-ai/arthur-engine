@@ -5548,7 +5548,7 @@
                     "Prompts"
                 ],
                 "summary": "Render a specific version of an agentic prompt with variables",
-                "description": "Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the rendered messages.",
+                "description": "Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the complete prompt object with rendered messages.",
                 "operationId": "render_saved_agentic_prompt_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__renders_post",
                 "security": [
                     {
@@ -5610,7 +5610,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/RenderedPromptResponse"
+                                    "$ref": "#/components/schemas/AgenticPrompt"
                                 }
                             }
                         }
