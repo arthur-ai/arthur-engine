@@ -97,6 +97,7 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetTransformResponse,
     DatasetVersionResponse,
+    DatasetVersionRowResponse,
     ExecuteTransformResponse,
     ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
@@ -1910,6 +1911,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         tool_name: str | None = None,
         span_types: list | None = None,
         user_ids: list[str] | None = None,
+        annotation_score: int | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1954,6 +1956,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["tool_name"] = tool_name
         if span_types is not None:
             params["span_types"] = span_types
+        if annotation_score is not None:
+            params["annotation_score"] = annotation_score
         if user_ids is not None:
             params["user_ids"] = user_ids
         # Query relevance filters
@@ -2591,6 +2595,31 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_version_row(
+        self,
+        dataset_id: str,
+        version_number: int,
+        row_id: str,
+    ) -> tuple[int, DatasetVersionRowResponse]:
+        """Get a specific row from a dataset version."""
+        path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}"
+
+        resp = self.base_client.get(
+            path,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionRowResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),

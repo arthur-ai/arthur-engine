@@ -29,3 +29,5 @@ export type TimeRange = (typeof TIME_RANGES)[keyof typeof TIME_RANGES];
 
 export const LEVELS = ["trace", "span", "session", "user"] as const;
 export type Level = (typeof LEVELS)[number];
+
+export const DEFAULT_TITLE = "Arthur GenAI Engine";

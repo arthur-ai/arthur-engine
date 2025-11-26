@@ -28,8 +28,8 @@ interface Message {
 interface PromptResultDetailModalProps {
   open: boolean;
   onClose: () => void;
-  promptName: string;
-  promptVersion: string | number;
+  promptName?: string;
+  promptVersion?: string | number;
   inputVariables: InputVariable[];
   renderedPrompt: string;
   output: PromptOutput | null | undefined;

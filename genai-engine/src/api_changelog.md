@@ -2,6 +2,34 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/25/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tools' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_provider' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'name' to the response with the '200' status
+
+# 11/21/2025
+- `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
+- `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
+
+# 11/20/2025
+- `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Made `name` and `version` optional in `data.items.prompt_results.items` (changed from required string to optional with multiple types)
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Removed required fields `prompt_name`, `prompt_ref` from request/response; added required request fields `prompt_configs`, `prompt_variable_mapping`
+- Added endpoint: `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results`
+- Added endpoint: `/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}`
+- `/api/v1/prompt_experiments/{experiment_id}`: Added required response fields `prompt_configs`, `prompt_variable_mapping`
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Added required fields `prompt_key`, `prompt_type` to `data.items.prompt_results.items` response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added required response field `prompt_configs` to both root and `data.items`
+- Removed schemas: `PromptRef-Input`, `PromptRef-Output`
+
 # 11/19/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'

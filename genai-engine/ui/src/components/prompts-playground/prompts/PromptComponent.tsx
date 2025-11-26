@@ -19,6 +19,7 @@ import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";
 import PromptSelectors from "./PromptSelectors";
 import ResizableSplitter from "./ResizableSplitter";
+import ResultsTable from "./ResultsTable";
 import SavePromptDialog from "./SavePromptDialog";
 import ToolsDialog from "./ToolsDialog";
 
@@ -43,7 +44,8 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
   const hasTriggeredRunRef = useRef<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { dispatch } = usePromptContext();
+  const { dispatch, experimentConfig } = usePromptContext();
+  const isConfigMode = !!experimentConfig;
 
   // Use container width to determine icon-only mode (container queries approach)
   // Switch to icon-only mode when container is less than 600px wide
@@ -213,14 +215,18 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
             }}
           >
             <Paper elevation={2} className="p-1" sx={{ overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
-              <OutputField
-                promptId={prompt.id}
-                running={prompt.running || false}
-                runResponse={prompt.runResponse}
-                responseFormat={prompt.responseFormat}
-                dialogOpen={responseSchemaDialogOpen}
-                onCloseDialog={() => setResponseSchemaDialogOpen(false)}
-              />
+              {isConfigMode ? (
+                <ResultsTable promptId={prompt.id} />
+              ) : (
+                <OutputField
+                  promptId={prompt.id}
+                  running={prompt.running || false}
+                  runResponse={prompt.runResponse}
+                  responseFormat={prompt.responseFormat}
+                  dialogOpen={responseSchemaDialogOpen}
+                  onCloseDialog={() => setResponseSchemaDialogOpen(false)}
+                />
+              )}
             </Paper>
           </div>
         </div>

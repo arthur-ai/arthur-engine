@@ -17,7 +17,7 @@ export const PromptExperimentsEmptyState: React.FC<PromptExperimentsEmptyStatePr
         No experiments yet
       </Typography>
       <Typography variant="body1" className="text-gray-600 mb-6">
-        Get started by creating your first prompt experiment
+        Get started by creating your first experiment
       </Typography>
       <Button
         variant="contained"

@@ -1,6 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SettingsIcon from "@mui/icons-material/Settings";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -19,12 +18,15 @@ import Radio from "@mui/material/Radio";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVersionMutation";
 import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
 import type { PromptDetailViewProps } from "../types";
 
 import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
+import { useCreateNotebookMutation } from "@/hooks/useNotebooks";
+import { useApi } from "@/hooks/useApi";
 import { formatDate } from "@/utils/formatters";
 
 const PromptDetailView = ({ promptData, isLoading, error, promptName, version, latestVersion, taskId, onClose, onRefetch }: PromptDetailViewProps) => {
@@ -36,6 +38,14 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
 
   const addTagMutation = useAddTagToPromptVersionMutation();
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
+  const apiClient = useApi();
+  const navigate = useNavigate();
+
+  const createNotebookMutation = useCreateNotebookMutation(taskId, (notebook) => {
+    // Navigate to the notebook with the prompt loaded (same tab)
+    const url = `/tasks/${taskId}/playgrounds/prompts?notebookId=${notebook.id}&promptName=${encodeURIComponent(promptName)}&version=${version}`;
+    navigate(url);
+  });
 
   const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setTagAnchorEl(event.currentTarget);
@@ -121,11 +131,40 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
     }
   }, [taskId, version, promptName, deleteTagMutation, onRefetch]);
 
-  const handleEditInPlayground = useCallback(() => {
-    if (!taskId || version === null) return;
-    const url = `/tasks/${taskId}/playgrounds/prompts?promptName=${encodeURIComponent(promptName)}&version=${version}`;
-    window.open(url, '_blank');
-  }, [taskId, promptName, version]);
+  const handleOpenInNotebook = useCallback(async () => {
+    if (!taskId || version === null || !apiClient) return;
+
+    try {
+      const notebookName = `${promptName} v${version}`;
+
+      // Search for a notebook with this exact name using the name filter
+      // This is more efficient than fetching all notebooks and filtering client-side
+      const response = await apiClient.api.listNotebooksApiV1TasksTaskIdNotebooksGet({
+        taskId,
+        page: 0,
+        page_size: 1, // Only need to check if one exists
+        name: notebookName, // Filter by exact name match
+      });
+
+      // Check if we found a matching notebook
+      const existingNotebook = response.data.data?.[0];
+
+      if (existingNotebook && existingNotebook.name === notebookName) {
+        // Navigate to existing notebook (same tab)
+        const url = `/tasks/${taskId}/playgrounds/prompts?notebookId=${existingNotebook.id}`;
+        navigate(url);
+      } else {
+        // Create a new notebook with a descriptive name
+        await createNotebookMutation.mutateAsync({
+          name: notebookName,
+          description: `Notebook for prompt ${promptName} version ${version}`,
+        });
+        // Navigation happens in the onSuccess callback
+      }
+    } catch (err) {
+      console.error("Failed to open notebook:", err);
+    }
+  }, [taskId, promptName, version, apiClient, createNotebookMutation]);
 
   if (isLoading) {
     return (
@@ -196,11 +235,11 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
             <Button
               variant="outlined"
               size="small"
-              endIcon={<OpenInNewIcon />}
-              onClick={handleEditInPlayground}
+              onClick={handleOpenInNotebook}
+              disabled={createNotebookMutation.isPending}
               sx={{ minWidth: 80 }}
             >
-              Edit in Playground
+              {createNotebookMutation.isPending ? "Opening..." : "Open in Notebook"}
             </Button>
           )}
           {onClose && (

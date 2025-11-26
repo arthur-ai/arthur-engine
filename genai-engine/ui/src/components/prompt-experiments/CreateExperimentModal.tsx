@@ -47,8 +47,9 @@ interface CreateExperimentModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: ExperimentFormData) => Promise<{ id: string }>;
-  initialData?: PromptExperimentDetail;
+  initialData?: Partial<PromptExperimentDetail>;
   isLoadingInitialData?: boolean;
+  disableNavigation?: boolean; // Don't navigate after creation (for notebook config mode)
 }
 
 export interface PromptVersionSelection {
@@ -86,15 +87,22 @@ export interface EvalVariableMappings {
   };
 }
 
+export interface DatasetRowFilter {
+  column_name: string;
+  column_value: string;
+}
+
 export interface ExperimentFormData {
   name: string;
   description: string;
   promptVersions: PromptVersionSelection[];
   datasetId: string;
+  datasetName: string;
   datasetVersion: number | "";
   evaluators: EvaluatorSelection[];
   promptVariableMappings?: PromptVariableMappings;
   evalVariableMappings?: EvalVariableMappings[];
+  datasetRowFilter?: DatasetRowFilter[];
 }
 
 export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
@@ -103,6 +111,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   onSubmit,
   initialData,
   isLoadingInitialData = false,
+  disableNavigation = false,
 }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -121,10 +130,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     description: "",
     promptVersions: [],
     datasetId: "",
+    datasetName: "",
     datasetVersion: "",
     evaluators: [],
     promptVariableMappings: {},
     evalVariableMappings: [],
+    datasetRowFilter: [],
   });
 
   // Prompts state
@@ -196,69 +207,99 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setIsInitializing(true);
 
       try {
-        // Transform the initial data to form data format
-        const promptVersions: PromptVersionSelection[] = initialData.prompt_ref.version_list.map((v) => ({
-          promptName: initialData.prompt_ref.name,
-          version: v,
-        }));
+        // Check if we're initializing from a full experiment or just a dataset
+        const isFullExperiment = initialData.prompt_configs && initialData.eval_list;
 
-        const evaluators: EvaluatorSelection[] = initialData.eval_list.map((e) => ({
-          name: e.name,
-          version: e.version,
-        }));
+        // Transform the initial data to form data format
+        const promptVersions: PromptVersionSelection[] = isFullExperiment && initialData.prompt_configs
+          ? initialData.prompt_configs
+              .filter((pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved")
+              .map((pc) => ({
+                promptName: pc.name,
+                version: pc.version,
+              }))
+          : [];
+
+        const evaluators: EvaluatorSelection[] = isFullExperiment && initialData.eval_list
+          ? initialData.eval_list.map((e) => ({
+              name: e.name,
+              version: e.version,
+            }))
+          : [];
 
         // Transform prompt variable mappings
         const promptVariableMappings: PromptVariableMappings = {};
-        initialData.prompt_ref.variable_mapping.forEach((mapping) => {
-          if (mapping.source.type === "dataset_column") {
-            promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
-          }
-        });
-
-        // Transform eval variable mappings
-        const evalVariableMappings: EvalVariableMappings[] = initialData.eval_list.map((evalConfig) => {
-          const mappings: EvalVariableMappings["mappings"] = {};
-          evalConfig.variable_mapping.forEach((mapping) => {
+        if (isFullExperiment && initialData.prompt_variable_mapping) {
+          initialData.prompt_variable_mapping.forEach((mapping) => {
             if (mapping.source.type === "dataset_column") {
-              mappings[mapping.variable_name] = {
-                sourceType: "dataset_column",
-                datasetColumn: mapping.source.dataset_column.name,
-              };
-            } else if (mapping.source.type === "experiment_output") {
-              mappings[mapping.variable_name] = {
-                sourceType: "experiment_output",
-                jsonPath: mapping.source.experiment_output.json_path || "",
-              };
+              promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
             }
           });
-          return {
-            evalName: evalConfig.name,
-            evalVersion: evalConfig.version,
-            mappings,
-          };
-        });
+        }
 
-        // Set the selected prompt name first
-        setSelectedPromptName(initialData.prompt_ref.name);
+        // Transform eval variable mappings
+        const evalVariableMappings: EvalVariableMappings[] = isFullExperiment && initialData.eval_list
+          ? initialData.eval_list.map((evalConfig) => {
+              const mappings: EvalVariableMappings["mappings"] = {};
+              evalConfig.variable_mapping.forEach((mapping) => {
+                if (mapping.source.type === "dataset_column") {
+                  mappings[mapping.variable_name] = {
+                    sourceType: "dataset_column",
+                    datasetColumn: mapping.source.dataset_column.name,
+                  };
+                } else if (mapping.source.type === "experiment_output") {
+                  mappings[mapping.variable_name] = {
+                    sourceType: "experiment_output",
+                    jsonPath: mapping.source.experiment_output.json_path || "",
+                  };
+                }
+              });
+              return {
+                evalName: evalConfig.name,
+                evalVersion: evalConfig.version,
+                mappings,
+              };
+            })
+          : [];
+
+        // Set the selected prompt name first (from first saved prompt config)
+        const firstSavedPrompt = initialData.prompt_configs?.find(
+          (pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved"
+        );
+        if (isFullExperiment && firstSavedPrompt) {
+          setSelectedPromptName(firstSavedPrompt.name);
+        }
 
         // Load all necessary data in parallel
         // Pass the desired version to preserve the original dataset version
-        await Promise.all([
-          loadDatasetVersions(initialData.dataset_ref.id, initialData.dataset_ref.version),
-          loadPromptVersions(initialData.prompt_ref.name),
-          ...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)),
-        ]);
+        const loadTasks = [
+          loadDatasetVersions(initialData.dataset_ref!.id, initialData.dataset_ref!.version),
+        ];
+
+        if (isFullExperiment && firstSavedPrompt) {
+          loadTasks.push(loadPromptVersions(firstSavedPrompt.name));
+          loadTasks.push(...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)));
+        }
+
+        await Promise.all(loadTasks);
+
+        // Transform dataset row filter from initial data
+        const datasetRowFilter: DatasetRowFilter[] = isFullExperiment && initialData.dataset_row_filter
+          ? initialData.dataset_row_filter
+          : [];
 
         // Now set the form data after all dropdowns are populated
         setFormData({
-          name: `${initialData.name} (Copy)`,
-          description: initialData.description || "",
+          name: isFullExperiment && initialData.name ? `${initialData.name} (Copy)` : "",
+          description: isFullExperiment ? (initialData.description || "") : "",
           promptVersions,
-          datasetId: initialData.dataset_ref.id,
-          datasetVersion: initialData.dataset_ref.version,
+          datasetId: initialData.dataset_ref!.id,
+          datasetName: initialData.dataset_ref!.name,
+          datasetVersion: initialData.dataset_ref!.version,
           evaluators,
           promptVariableMappings,
           evalVariableMappings,
+          datasetRowFilter,
         });
 
         // Clear the "add evaluator" form state that was set during loadEvaluatorVersions
@@ -551,10 +592,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         description: "",
         promptVersions: [],
         datasetId: "",
+        datasetName: "",
         datasetVersion: "",
         evaluators: [],
         promptVariableMappings: {},
         evalVariableMappings: [],
+        datasetRowFilter: [],
       });
       setSelectedPromptName("");
       setVisibleOlderVersions([]);
@@ -568,8 +611,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setCompletedSteps(new Set());
       setErrors({});
       onClose();
-      // Navigate to the experiment detail page
-      navigate(`/tasks/${taskId}/prompt-experiments/${result.id}`);
+      // Navigate to the experiment detail page (unless disabled for notebook config mode)
+      if (!disableNavigation) {
+        navigate(`/tasks/${taskId}/prompt-experiments/${result.id}`);
+      }
     } catch (error) {
       console.error("Failed to create experiment:", error);
       setErrors({ general: "Failed to create experiment. Please try again." });
@@ -586,10 +631,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       description: "",
       promptVersions: [],
       datasetId: "",
+      datasetName: "",
       datasetVersion: "",
       evaluators: [],
       promptVariableMappings: {},
       evalVariableMappings: [],
+      datasetRowFilter: [],
     });
     setSelectedPromptName("");
     setVisibleOlderVersions([]);
@@ -952,6 +999,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
               setFormData((prev) => ({
                 ...prev,
                 datasetId: value?.id || "",
+                datasetName: value?.name || "",
               }));
               if (value?.id) {
                 loadDatasetVersions(value.id);
@@ -1010,6 +1058,90 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           <Typography variant="caption" className="text-red-600">
             {errors.datasetId || errors.datasetVersion}
           </Typography>
+        )}
+
+        {/* Dataset Row Filter (Optional) */}
+        {formData.datasetId && formData.datasetVersion && datasetColumns.length > 0 && (
+          <Box className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded">
+            <Box className="flex items-center gap-2 mb-2">
+              <Typography variant="body2" className="font-medium text-gray-700">
+                Filter Dataset Rows (Optional)
+              </Typography>
+              <Tooltip
+                title="Optionally filter which dataset rows are included in this experiment. Only rows matching ALL specified conditions will be used."
+                arrow
+                placement="right"
+              >
+                <InfoOutlinedIcon
+                  sx={{
+                    fontSize: 16,
+                    color: "text.secondary",
+                    cursor: "help",
+                  }}
+                />
+              </Tooltip>
+            </Box>
+
+            {formData.datasetRowFilter && formData.datasetRowFilter.length > 0 && (
+              <Box className="flex flex-col gap-2 mb-2">
+                {formData.datasetRowFilter.map((filter, index) => (
+                  <Box key={index} className="flex gap-2 items-center">
+                    <FormControl size="small" className="flex-1">
+                      <InputLabel>Column</InputLabel>
+                      <Select
+                        value={filter.column_name}
+                        onChange={(e) => {
+                          const newFilters = [...(formData.datasetRowFilter || [])];
+                          newFilters[index] = { ...filter, column_name: e.target.value };
+                          setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+                        }}
+                        label="Column"
+                      >
+                        {datasetColumns.map((column) => (
+                          <MenuItem key={column} value={column}>
+                            {column}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <TextField
+                      size="small"
+                      label="Value"
+                      value={filter.column_value}
+                      onChange={(e) => {
+                        const newFilters = [...(formData.datasetRowFilter || [])];
+                        newFilters[index] = { ...filter, column_value: e.target.value };
+                        setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        const newFilters = formData.datasetRowFilter?.filter((_, i) => i !== index) || [];
+                        setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+                      }}
+                      color="error"
+                    >
+                      <CloseIcon fontSize="small" />
+                    </Button>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                const newFilters = [...(formData.datasetRowFilter || []), { column_name: "", column_value: "" }];
+                setFormData((prev) => ({ ...prev, datasetRowFilter: newFilters }));
+              }}
+            >
+              Add Filter Condition
+            </Button>
+          </Box>
         )}
       </Box>
 

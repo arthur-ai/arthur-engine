@@ -18,11 +18,12 @@ export function usePromptExperiments(
   taskId: string | undefined,
   page: number = 0,
   pageSize: number = 100,
-  search?: string
+  search?: string,
+  datasetId?: string
 ) {
   const { data, error, isLoading, refetch } = useApiQuery<"listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet">({
     method: "listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet",
-    args: [{ taskId: taskId!, page, page_size: pageSize, search }] as const,
+    args: [{ taskId: taskId!, page, page_size: pageSize, search, dataset_id: datasetId }] as const,
     enabled: !!taskId,
     queryOptions: {
       staleTime: 5000,
@@ -95,19 +96,19 @@ export function useExperimentTestCases(
 }
 
 /**
- * Hook to fetch results for a specific prompt version in an experiment
+ * Hook to fetch results for a specific prompt in an experiment using prompt_key
+ * @param promptKey Format: "saved:name:version" or "unsaved:auto_name"
  */
 export function usePromptVersionResults(
   experimentId: string | undefined,
-  promptName: string | undefined,
-  promptVersion: string | undefined,
+  promptKey: string | undefined,
   page: number = 0,
   pageSize: number = 20
 ) {
-  const { data, error, isLoading, refetch } = useApiQuery<"getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet">({
-    method: "getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet",
-    args: [{ experimentId: experimentId!, promptName: promptName!, promptVersion: parseInt(promptVersion!), page, page_size: pageSize }] as const,
-    enabled: !!experimentId && !!promptName && !!promptVersion,
+  const { data, error, isLoading, refetch } = useApiQuery<"getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet">({
+    method: "getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet",
+    args: [{ experimentId: experimentId!, promptKey: promptKey!, page, page_size: pageSize }] as const,
+    enabled: !!experimentId && !!promptKey,
     queryOptions: {
       staleTime: 5000,
       refetchOnWindowFocus: true,

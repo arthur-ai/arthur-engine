@@ -97,7 +97,9 @@ class ExperimentExecutor:
             self._execute_experiment_with_session(db_session, experiment_id)
 
     def _execute_experiment_with_session(
-        self, db_session: Session, experiment_id: str
+        self,
+        db_session: Session,
+        experiment_id: str,
     ) -> None:
         """
         Execute an experiment using the provided database session.
@@ -170,7 +172,7 @@ class ExperimentExecutor:
 
                     logger.info(
                         f"Experiment {experiment_id} progress: "
-                        f"{completed_count}/{len(test_cases)} completed, {failed_count} failed"
+                        f"{completed_count}/{len(test_cases)} completed, {failed_count} failed",
                     )
 
             # Mark experiment as completed or failed based on final counts
@@ -188,12 +190,13 @@ class ExperimentExecutor:
                         total_experiment_cost += float(test_case.total_cost)
                     except (ValueError, TypeError):
                         logger.warning(
-                            f"Could not parse test case cost: {test_case.total_cost}"
+                            f"Could not parse test case cost: {test_case.total_cost}",
                         )
 
             # Calculate summary results now that all test cases have finished
             experiment.summary_results = self._calculate_summary_results(
-                db_session, experiment_id
+                db_session,
+                experiment_id,
             )
 
             # Truncate total cost to 6 decimal places
@@ -204,21 +207,22 @@ class ExperimentExecutor:
                 experiment.finished_at = datetime.now()
                 experiment.total_cost = total_cost_str
                 logger.warning(
-                    f"Experiment {experiment_id} completed with {failed_count} failed test cases. Total cost: ${total_cost_str}"
+                    f"Experiment {experiment_id} completed with {failed_count} failed test cases. Total cost: ${total_cost_str}",
                 )
             else:
                 experiment.status = ExperimentStatus.COMPLETED.value
                 experiment.finished_at = datetime.now()
                 experiment.total_cost = total_cost_str
                 logger.info(
-                    f"Experiment {experiment_id} completed successfully. Total cost: ${total_cost_str}"
+                    f"Experiment {experiment_id} completed successfully. Total cost: ${total_cost_str}",
                 )
 
             db_session.commit()
 
         except Exception as e:
             logger.error(
-                f"Error executing experiment {experiment_id}: {e}", exc_info=True
+                f"Error executing experiment {experiment_id}: {e}",
+                exc_info=True,
             )
             try:
                 experiment = (
@@ -250,7 +254,9 @@ class ExperimentExecutor:
             return self._execute_test_case_with_session(db_session, test_case_id)
 
     def _execute_test_case_with_session(
-        self, db_session: Session, test_case_id: str
+        self,
+        db_session: Session,
+        test_case_id: str,
     ) -> bool:
         """
         Execute a single test case using the provided database session.
@@ -284,7 +290,7 @@ class ExperimentExecutor:
                 if not success:
                     any_prompt_failed = True
                     logger.warning(
-                        f"Prompt {prompt_result.name} v{prompt_result.version} failed in test case {test_case_id}, continuing with other prompts"
+                        f"Prompt {prompt_result.prompt_key} failed in test case {test_case_id}, continuing with other prompts",
                     )
 
             # If any prompts failed, mark test case as failed and return
@@ -292,7 +298,7 @@ class ExperimentExecutor:
                 test_case.status = TestCaseStatus.FAILED.value
                 db_session.commit()
                 logger.error(
-                    f"Test case {test_case_id} failed due to prompt execution failures"
+                    f"Test case {test_case_id} failed due to prompt execution failures",
                 )
                 return False
 
@@ -308,7 +314,7 @@ class ExperimentExecutor:
                 if not success:
                     any_eval_failed = True
                     logger.warning(
-                        f"Evaluations failed for prompt {prompt_result.name} v{prompt_result.version} in test case {test_case_id}, continuing with other evaluations"
+                        f"Evaluations failed for prompt {prompt_result.name} v{prompt_result.version} in test case {test_case_id}, continuing with other evaluations",
                     )
 
             # If any evaluations failed, mark test case as failed and return
@@ -316,7 +322,7 @@ class ExperimentExecutor:
                 test_case.status = TestCaseStatus.FAILED.value
                 db_session.commit()
                 logger.error(
-                    f"Test case {test_case_id} failed due to evaluation failures"
+                    f"Test case {test_case_id} failed due to evaluation failures",
                 )
                 return False
 
@@ -329,7 +335,7 @@ class ExperimentExecutor:
                         total_cost += float(prompt_result.output_cost)
                     except (ValueError, TypeError):
                         logger.warning(
-                            f"Could not parse prompt cost: {prompt_result.output_cost}"
+                            f"Could not parse prompt cost: {prompt_result.output_cost}",
                         )
 
                 # Add eval costs
@@ -339,7 +345,7 @@ class ExperimentExecutor:
                             total_cost += float(eval_score.eval_result_cost)
                         except (ValueError, TypeError):
                             logger.warning(
-                                f"Could not parse eval cost: {eval_score.eval_result_cost}"
+                                f"Could not parse eval cost: {eval_score.eval_result_cost}",
                             )
 
             # Mark test case as completed and store total cost (truncated to 6 decimal places)
@@ -347,13 +353,14 @@ class ExperimentExecutor:
             test_case.total_cost = f"{total_cost:.6f}"
             db_session.commit()
             logger.info(
-                f"Test case {test_case_id} completed successfully with total cost ${total_cost}"
+                f"Test case {test_case_id} completed successfully with total cost ${total_cost}",
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"Error executing test case {test_case_id}: {e}", exc_info=True
+                f"Error executing test case {test_case_id}: {e}",
+                exc_info=True,
             )
             try:
                 test_case = (
@@ -366,7 +373,8 @@ class ExperimentExecutor:
                     db_session.commit()
             except Exception as commit_error:
                 logger.error(
-                    f"Failed to mark test case as failed: {commit_error}", exc_info=True
+                    f"Failed to mark test case as failed: {commit_error}",
+                    exc_info=True,
                 )
             return False
 
@@ -390,22 +398,24 @@ class ExperimentExecutor:
             test_cases = (
                 db_session.query(DatabasePromptExperimentTestCase)
                 .filter_by(
-                    experiment_id=experiment_id, status=TestCaseStatus.COMPLETED.value
+                    experiment_id=experiment_id,
+                    status=TestCaseStatus.COMPLETED.value,
                 )
                 .all()
             )
 
             if not test_cases:
                 return SummaryResults(prompt_eval_summaries=[]).model_dump(
-                    mode="python", exclude_none=True
+                    mode="python",
+                    exclude_none=True,
                 )
 
-            # Build a structure to aggregate results: {(prompt_name, prompt_version): {(eval_name, eval_version): [scores]}}
-            results_by_prompt: Dict[tuple, Dict[tuple, list]] = {}
+            # Build a structure to aggregate results: {prompt_key: {(eval_name, eval_version): [scores]}}
+            results_by_prompt: Dict[str, Dict[tuple, list]] = {}
 
             for test_case in test_cases:
                 for prompt_result in test_case.prompt_results:
-                    prompt_key = (prompt_result.name, prompt_result.version)
+                    prompt_key = prompt_result.prompt_key
 
                     if prompt_key not in results_by_prompt:
                         results_by_prompt[prompt_key] = {}
@@ -419,14 +429,30 @@ class ExperimentExecutor:
                         # Add the score if eval result exists
                         if eval_score.eval_result_score is not None:
                             results_by_prompt[prompt_key][eval_key].append(
-                                eval_score.eval_result_score
+                                eval_score.eval_result_score,
                             )
 
             # Build the summary structure using Pydantic models
             prompt_eval_summaries = []
-            for (prompt_name, prompt_version), eval_results in sorted(
-                results_by_prompt.items()
-            ):
+            for prompt_key, eval_results in sorted(results_by_prompt.items()):
+                # Parse prompt_key to get type and display name/version
+                # Format: "saved:name:version" or "unsaved:auto_name"
+                if prompt_key.startswith("saved:"):
+                    prompt_type = "saved"
+                    parts = prompt_key.split(":", 2)
+                    prompt_name = parts[1] if len(parts) > 1 else prompt_key
+                    prompt_version = parts[2] if len(parts) > 2 else "1"
+                elif prompt_key.startswith("unsaved:"):
+                    prompt_type = "unsaved"
+                    parts = prompt_key.split(":", 1)
+                    prompt_name = parts[1] if len(parts) > 1 else prompt_key
+                    prompt_version = None  # Unsaved prompts don't have versions
+                else:
+                    # Fallback for legacy format
+                    prompt_type = "saved"
+                    prompt_name = prompt_key
+                    prompt_version = "1"
+
                 eval_result_list = []
                 for (eval_name, eval_version), scores in sorted(eval_results.items()):
                     # Count how many passed (score >= 0.5, assuming 0-1 scale)
@@ -439,19 +465,21 @@ class ExperimentExecutor:
                             eval_version=str(eval_version),
                             pass_count=pass_count,
                             total_count=total_count,
-                        )
+                        ),
                     )
 
                 prompt_eval_summaries.append(
                     PromptEvalResultSummaries(
+                        prompt_key=prompt_key,
+                        prompt_type=prompt_type,
                         prompt_name=prompt_name,
-                        prompt_version=str(prompt_version),
+                        prompt_version=prompt_version,
                         eval_results=eval_result_list,
-                    )
+                    ),
                 )
 
             return SummaryResults(
-                prompt_eval_summaries=prompt_eval_summaries
+                prompt_eval_summaries=prompt_eval_summaries,
             ).model_dump(mode="python", exclude_none=True)
 
         except Exception as e:
@@ -460,7 +488,8 @@ class ExperimentExecutor:
                 exc_info=True,
             )
             return SummaryResults(prompt_eval_summaries=[]).model_dump(
-                mode="python", exclude_none=True
+                mode="python",
+                exclude_none=True,
             )
 
     def _execute_prompt(
@@ -470,7 +499,7 @@ class ExperimentExecutor:
         test_case: DatabasePromptExperimentTestCase,
     ) -> bool:
         """
-        Execute a single prompt and save the output.
+        Execute a single prompt (saved or unsaved) and save the output.
 
         Args:
             db_session: Database session
@@ -484,24 +513,63 @@ class ExperimentExecutor:
             # Get the experiment using the test_case relationship
             experiment = test_case.experiment
 
-            # Get the prompt using repository
-            prompt_repo = AgenticPromptRepository(db_session)
-            try:
-                prompt = prompt_repo.get_llm_item(
-                    task_id=experiment.task_id,
-                    item_name=prompt_result.name,
-                    item_version=str(prompt_result.version),
+            # Get or construct the prompt based on type
+            if prompt_result.prompt_type == "saved":
+                # Load saved prompt from repository
+                prompt_repo = AgenticPromptRepository(db_session)
+                try:
+                    prompt = prompt_repo.get_llm_item(
+                        task_id=experiment.task_id,
+                        item_name=prompt_result.name,
+                        item_version=str(prompt_result.version),
+                    )
+                except ValueError as e:
+                    logger.error(
+                        f"Saved prompt {prompt_result.name} v{prompt_result.version} not found: {e}",
+                    )
+                    return False
+
+            elif prompt_result.prompt_type == "unsaved":
+                # Construct prompt from unsaved config in experiment
+                # Find the matching config by auto_name
+                from schemas.agentic_prompt_schemas import AgenticPrompt
+
+                unsaved_config = None
+                for config in experiment.prompt_configs:
+                    if (
+                        config.get("type") == "unsaved"
+                        and config.get("auto_name")
+                        == prompt_result.unsaved_prompt_auto_name
+                    ):
+                        unsaved_config = config
+                        break
+
+                if not unsaved_config:
+                    logger.error(
+                        f"Unsaved prompt config '{prompt_result.unsaved_prompt_auto_name}' not found in experiment",
+                    )
+                    return False
+
+                # Construct AgenticPrompt object from unsaved config
+                prompt = AgenticPrompt(
+                    name=unsaved_config.get("auto_name", "unsaved_prompt"),
+                    messages=unsaved_config.get("messages", []),
+                    model_name=unsaved_config.get("model_name"),
+                    model_provider=unsaved_config.get("model_provider"),
+                    version=1,  # Unsaved prompts don't have versions
+                    tools=unsaved_config.get("tools"),
+                    variables=unsaved_config.get("variables", []),
+                    created_at=datetime.now(),
                 )
-            except ValueError as e:
-                logger.error(
-                    f"Prompt {prompt_result.name} v{prompt_result.version} not found: {e}"
-                )
+
+            else:
+                logger.error(f"Unknown prompt type: {prompt_result.prompt_type}")
                 return False
 
             # Get LLM client
             model_provider_repo = ModelProviderRepository(db_session)
             llm_client = model_provider_repo.get_model_provider_client(
-                prompt.model_provider
+                prompt.model_provider,
             )
 
             # Build variable map from test case input variables
@@ -522,7 +590,7 @@ class ExperimentExecutor:
             for msg in rendered_messages:
                 # Pydantic model
                 messages_as_dicts.append(
-                    msg.model_dump(mode="python", exclude_none=True)
+                    msg.model_dump(mode="python", exclude_none=True),
                 )
 
             rendered_prompt_text = json.dumps(messages_as_dicts, indent=2)
@@ -536,7 +604,7 @@ class ExperimentExecutor:
                 variables=[
                     VariableTemplateValue(name=k, value=v)
                     for k, v in variable_map.items()
-                ]
+                ],
             )
 
             response = self.chat_completion_service.run_chat_completion(
@@ -556,13 +624,13 @@ class ExperimentExecutor:
             db_session.commit()
 
             logger.info(
-                f"Executed prompt {prompt_result.name} v{prompt_result.version} for test case {test_case.id}"
+                f"Executed prompt {prompt_result.prompt_key} for test case {test_case.id}",
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"Error executing prompt {prompt_result.name} v{prompt_result.version}: {e}",
+                f"Error executing prompt {prompt_result.prompt_key}: {e}",
                 exc_info=True,
             )
             return False
@@ -587,12 +655,14 @@ class ExperimentExecutor:
             any_eval_failed = False
             for eval_score in prompt_result.eval_scores:
                 success = self._execute_single_eval(
-                    db_session, eval_score, prompt_result
+                    db_session,
+                    eval_score,
+                    prompt_result,
                 )
                 if not success:
                     any_eval_failed = True
                     logger.warning(
-                        f"Eval {eval_score.eval_name} v{eval_score.eval_version} failed for prompt result {prompt_result.id}, continuing with other evals"
+                        f"Eval {eval_score.eval_name} v{eval_score.eval_version} failed for prompt result {prompt_result.id}, continuing with other evals",
                     )
 
             return not any_eval_failed
@@ -635,7 +705,7 @@ class ExperimentExecutor:
                 )
             except ValueError as e:
                 logger.error(
-                    f"Eval {eval_score.eval_name} v{eval_score.eval_version} not found: {e}"
+                    f"Eval {eval_score.eval_name} v{eval_score.eval_version} not found: {e}",
                 )
                 return False
 
@@ -643,14 +713,14 @@ class ExperimentExecutor:
             eval_config = None
             for config in experiment.eval_configs:
                 if config["name"] == eval_score.eval_name and str(
-                    config["version"]
+                    config["version"],
                 ) == str(eval_score.eval_version):
                     eval_config = config
                     break
 
             if not eval_config:
                 logger.error(
-                    f"Eval config for {eval_score.eval_name} v{eval_score.eval_version} not found in experiment"
+                    f"Eval config for {eval_score.eval_name} v{eval_score.eval_version} not found in experiment",
                 )
                 return False
 
@@ -675,7 +745,8 @@ class ExperimentExecutor:
                     elif prompt_result.output_tool_calls:
                         # If no content but tool calls exist, use JSON string of tool calls
                         variable_map[variable_name] = json.dumps(
-                            prompt_result.output_tool_calls, indent=2
+                            prompt_result.output_tool_calls,
+                            indent=2,
                         )
                     else:
                         # If neither content nor tool calls, use default message
@@ -692,7 +763,7 @@ class ExperimentExecutor:
                     {
                         "variable_name": variable_name,
                         "value": variable_map[variable_name],
-                    }
+                    },
                 )
             eval_score.eval_input_variables = updated_eval_input_variables
             db_session.commit()
@@ -700,7 +771,7 @@ class ExperimentExecutor:
             # Get LLM client
             model_provider_repo = ModelProviderRepository(db_session)
             llm_client = model_provider_repo.get_model_provider_client(
-                llm_eval.model_provider
+                llm_eval.model_provider,
             )
 
             # Convert eval to agentic prompt
@@ -732,10 +803,11 @@ class ExperimentExecutor:
                 return False
 
             if not isinstance(
-                llm_model_response.structured_output_response, ReasonedScore
+                llm_model_response.structured_output_response,
+                ReasonedScore,
             ):
                 logger.error(
-                    f"Unexpected structured output type from eval {eval_score.eval_name}"
+                    f"Unexpected structured output type from eval {eval_score.eval_name}",
                 )
                 return False
 
@@ -752,7 +824,7 @@ class ExperimentExecutor:
             db_session.commit()
 
             logger.info(
-                f"Executed eval {eval_score.eval_name} v{eval_score.eval_version} for prompt result {prompt_result.id}"
+                f"Executed eval {eval_score.eval_name} v{eval_score.eval_version} for prompt result {prompt_result.id}",
             )
             return True
 

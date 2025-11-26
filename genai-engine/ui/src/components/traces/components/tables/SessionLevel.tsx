@@ -4,8 +4,8 @@ import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from 
 import { useMemo, useState } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
+import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
-import { useTracesHistoryStore } from "../../stores/history.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
@@ -26,7 +26,7 @@ export const SessionLevel = () => {
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
 
   const params = {
     taskId: task?.id ?? "",
@@ -79,10 +79,7 @@ export const SessionLevel = () => {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              push({
-                type: "session",
-                id: row.original.session_id,
-              });
+              setDrawerTarget({ target: "session", id: row.original.session_id });
             }}
           />
           <TablePagination

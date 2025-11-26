@@ -5,8 +5,8 @@ import { useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
+import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
-import { useTracesHistoryStore } from "../../stores/history.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
@@ -28,7 +28,7 @@ export function TraceLevel() {
   const { task } = useTask();
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
 
   const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
@@ -79,10 +79,7 @@ export function TraceLevel() {
       ids: data?.traces.map((trace) => trace.trace_id) ?? [],
     });
 
-    push({
-      type: "trace",
-      id: row.trace_id,
-    });
+    setDrawerTarget({ target: "trace", id: row.trace_id });
   };
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);

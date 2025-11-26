@@ -55,6 +55,7 @@ from db_models.agentic_prompt_models import (
 )
 from db_models.secret_storage_models import DatabaseSecretStorage
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
+from db_models.notebook_models import DatabaseNotebook
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
@@ -121,6 +122,8 @@ __all__ = [
     # LLM Eval models
     "DatabaseLLMEval",
     "DatabaseLLMEvalVersionTag",
+    # Notebook models
+    "DatabaseNotebook",
     # Prompt Experiment models
     "DatabasePromptExperiment",
     "DatabasePromptExperimentTestCase",

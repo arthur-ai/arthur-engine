@@ -163,6 +163,7 @@ class DatabaseRagSearchSettingConfigurationVersion(SoftDeletedModel, Base):
     tags: Mapped[Optional[List["DatabaseRagSearchVersionTag"]]] = relationship(
         cascade="all,delete",
         lazy="select",
+        overlaps="all_possible_tags",
     )
 
 

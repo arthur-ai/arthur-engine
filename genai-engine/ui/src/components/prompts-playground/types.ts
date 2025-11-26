@@ -29,6 +29,8 @@ type PromptAction =
   | { type: "deletePrompt"; payload: { id: string } }
   | { type: "duplicatePrompt"; payload: { id: string } }
   | { type: "hydratePrompt"; payload: { promptData: Partial<PromptType> } }
+  | { type: "clearPrompts" }
+  | { type: "hydrateNotebookState"; payload: { prompts: PromptType[]; keywords: Map<string, string> } }
   | { type: "updatePromptName"; payload: { promptId: string; name: string } }
   | {
       type: "updatePromptProvider";
