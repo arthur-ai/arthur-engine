@@ -5,6 +5,7 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "react-router-dom";
 
 import { AllTasks } from "./components/AllTasks";
+import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
@@ -81,6 +82,17 @@ function App() {
                         <ProtectedRoute>
                           <TaskLayout>
                             <ModelProviders />
+                          </TaskLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/tasks/:id/api-keys"
+                      element={
+                        <ProtectedRoute>
+                          <TaskLayout>
+                            <ApiKeysManagement />
                           </TaskLayout>
                         </ProtectedRoute>
                       }

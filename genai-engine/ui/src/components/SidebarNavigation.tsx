@@ -63,6 +63,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       items: [
         { id: "task-details", label: "Task Details" },
         { id: "model-providers", label: "Model Providers" },
+        { id: "api-keys", label: "API Keys" },
       ],
     },
   ];
