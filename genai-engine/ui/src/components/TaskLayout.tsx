@@ -49,6 +49,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
     const titleMap: Record<string, string> = {
       "task-details": "Task Details",
       "model-providers": "Model Providers",
+      "api-keys": "API Keys",
       traces: "Traces",
       retrievals: "Retrievals",
       evaluators: "Evaluators",
