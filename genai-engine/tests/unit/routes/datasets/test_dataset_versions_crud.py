@@ -46,8 +46,12 @@ def test_dataset_versions_basic_functionality(
     dataset_name = "Dataset for Versions"
     dataset_description = "dataset for version operations"
 
+    status_code, agentic_task = client.create_task(name="test_dataset_versions_crud_task", is_agentic=True)
+    assert status_code == 200
+
     status_code, created_dataset = client.create_dataset(
         name=dataset_name,
+        task_id=agentic_task.id,
         description=dataset_description,
     )
     assert status_code == 200
@@ -371,6 +375,9 @@ def test_dataset_versions_basic_functionality(
     )
     assert status_code == 404
 
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_dataset_versions_with_rows_to_delete_filter(
@@ -381,8 +388,12 @@ def test_dataset_versions_with_rows_to_delete_filter(
     dataset_name = "Dataset for Filter Delete Test"
     dataset_description = "Testing rows_to_delete_filter parameter"
 
+    status_code, agentic_task = client.create_task(name="test_dataset_versions_with_rows_to_delete_filter_task", is_agentic=True)
+    assert status_code == 200
+
     status_code, created_dataset = client.create_dataset(
         name=dataset_name,
+        task_id=agentic_task.id,
         description=dataset_description,
     )
     assert status_code == 200
@@ -550,4 +561,7 @@ def test_dataset_versions_with_rows_to_delete_filter(
 
     # Cleanup
     status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+
+    status_code = client.delete_task(agentic_task.id)
     assert status_code == 204

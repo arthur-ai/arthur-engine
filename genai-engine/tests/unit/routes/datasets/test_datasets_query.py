@@ -143,3 +143,6 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
             response_desc.datasets[i].updated_at
             >= response_desc.datasets[i + 1].updated_at
         )
+
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204

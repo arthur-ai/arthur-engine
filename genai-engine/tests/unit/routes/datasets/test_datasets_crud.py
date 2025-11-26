@@ -13,8 +13,12 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     dataset_description = "Test dataset for CRUD operations"
     dataset_metadata = {"test_key": "test_value", "version": 1.0}
 
+    status_code, agentic_task = client.create_task(name="test_user_story_datasets_crud_task", is_agentic=True)
+    assert status_code == 200
+
     status_code, created_dataset = client.create_dataset(
         name=dataset_name,
+        task_id=agentic_task.id,
         description=dataset_description,
         metadata=dataset_metadata,
     )
@@ -87,6 +91,9 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     status_code = client.delete_dataset(created_dataset.id)
     assert status_code == 404
 
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
 
 def test_create_dataset_with_task_errors(client: GenaiEngineTestClientBase) -> None:
     """Test dataset creation with task errors."""
@@ -105,7 +112,7 @@ def test_create_dataset_with_task_errors(client: GenaiEngineTestClientBase) -> N
     assert status_code == 404
 
     # create a non-agentic task
-    task_name = "non-agentic-task"
+    task_name = "non-agentic-dataset-task"
     status_code, non_agentic_task = client.create_task(task_name, is_agentic=False)
     assert status_code == 200
 
@@ -118,6 +125,9 @@ def test_create_dataset_with_task_errors(client: GenaiEngineTestClientBase) -> N
     )
     assert status_code == 400
 
+    status_code = client.delete_task(non_agentic_task.id)
+    assert status_code == 204
+
 
 def test_search_datasets_with_task_errors(client: GenaiEngineTestClientBase) -> None:
     """Test dataset creation with task errors."""
@@ -126,10 +136,13 @@ def test_search_datasets_with_task_errors(client: GenaiEngineTestClientBase) -> 
     assert status_code == 404
 
     # search datasets with a non-agentic task
-    task_name = "non-agentic-task"
+    task_name = "non-agentic-dataset-task"
     status_code, non_agentic_task = client.create_task(task_name, is_agentic=False)
     assert status_code == 200
 
     # search datasets with a non-agentic task
     status_code, _ = client.search_datasets(task_id=non_agentic_task.id)
     assert status_code == 400
+
+    status_code = client.delete_task(non_agentic_task.id)
+    assert status_code == 204

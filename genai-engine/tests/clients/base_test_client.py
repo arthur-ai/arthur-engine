@@ -934,12 +934,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         description: str = None,
         metadata: dict = None,
     ) -> tuple[int, DatasetResponse]:
-        if task_id is None:
-            task_name = str(random.random())
-            status_code, agentic_task = self.create_task(task_name, is_agentic=True)
-            assert status_code == 200
-            task_id = agentic_task.id
-
         request = NewDatasetRequest(
             name=name,
             description=description,
@@ -1155,7 +1149,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def search_datasets(
         self,
-        task_id: str = None,
+        task_id: str,
         sort: PaginationSortMethod = None,
         page: int = None,
         page_size: int = None,
@@ -1163,12 +1157,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         dataset_name: str = None,
     ) -> tuple[int, SearchDatasetsResponse]:
         """Search datasets with optional filters and pagination."""
-        if task_id is None:
-            task_name = str(random.random())
-            status_code, agentic_task = self.create_task(task_name, is_agentic=True)
-            assert status_code == 200
-            task_id = agentic_task.id
-
         path = f"api/v2/tasks/{task_id}/datasets/search?"
         params = get_base_pagination_parameters(
             sort=sort,
