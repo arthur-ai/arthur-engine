@@ -22,6 +22,12 @@ from db_models.base import Base
 class DatabaseDataset(Base):
     __tablename__ = "datasets"
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True)
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(String, nullable=True)
     # metadata is a reserved sqlalchemy name so we'll use dataset_metadata

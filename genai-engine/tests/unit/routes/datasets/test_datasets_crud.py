@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
@@ -84,3 +86,50 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     # fail to delete dataset that doesn't exist
     status_code = client.delete_dataset(created_dataset.id)
     assert status_code == 404
+
+
+def test_create_dataset_with_task_errors(client: GenaiEngineTestClientBase) -> None:
+    """Test dataset creation with task errors."""
+    # test dataset creation with task errors
+    dataset_name = f"My Test Dataset"
+    dataset_description = "Test dataset for CRUD operations"
+    dataset_metadata = {"test_key": "test_value", "version": 1.0}
+
+    # create a dataset with a non-existent task
+    status_code, _ = client.create_dataset(
+        name=dataset_name,
+        task_id=str(uuid.uuid4()),
+        description=dataset_description,
+        metadata=dataset_metadata,
+    )
+    assert status_code == 404
+
+    # create a non-agentic task
+    task_name = "non-agentic-task"
+    status_code, non_agentic_task = client.create_task(task_name, is_agentic=False)
+    assert status_code == 200
+
+    # create a dataset with a non-agentic task
+    status_code, _ = client.create_dataset(
+        name=dataset_name,
+        task_id=non_agentic_task.id,
+        description=dataset_description,
+        metadata=dataset_metadata,
+    )
+    assert status_code == 400
+
+
+def test_search_datasets_with_task_errors(client: GenaiEngineTestClientBase) -> None:
+    """Test dataset creation with task errors."""
+    # search datasets with a non-existent task
+    status_code, _ = client.search_datasets(task_id=str(uuid.uuid4()))
+    assert status_code == 404
+
+    # search datasets with a non-agentic task
+    task_name = "non-agentic-task"
+    status_code, non_agentic_task = client.create_task(task_name, is_agentic=False)
+    assert status_code == 200
+
+    # search datasets with a non-agentic task
+    status_code, _ = client.search_datasets(task_id=non_agentic_task.id)
+    assert status_code == 400

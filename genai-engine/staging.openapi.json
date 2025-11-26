@@ -5976,23 +5976,40 @@
                 }
             }
         },
-        "/api/v2/datasets": {
+        "/api/v2/tasks/{task_id}/datasets": {
             "post": {
                 "tags": [
                     "Datasets"
                 ],
                 "summary": "Create Dataset",
                 "description": "Register a new dataset.",
-                "operationId": "create_dataset_api_v2_datasets_post",
+                "operationId": "create_dataset_api_v2_tasks__task_id__datasets_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
                 "requestBody": {
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/NewDatasetRequest"
                             }
                         }
-                    },
-                    "required": true
+                    }
                 },
                 "responses": {
                     "200": {
@@ -6015,12 +6032,7 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
+                }
             }
         },
         "/api/v2/datasets/{dataset_id}": {
@@ -6175,20 +6187,30 @@
                 }
             }
         },
-        "/api/v2/datasets/search": {
+        "/api/v2/tasks/{task_id}/datasets/search": {
             "get": {
                 "tags": [
                     "Datasets"
                 ],
                 "summary": "Get Datasets",
                 "description": "Search datasets. Optionally can filter by dataset IDs and dataset name.",
-                "operationId": "get_datasets_api_v2_datasets_search_get",
+                "operationId": "get_datasets_api_v2_tasks__task_id__datasets_search_get",
                 "security": [
                     {
                         "API Key": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
                     {
                         "name": "dataset_ids",
                         "in": "query",
@@ -12542,6 +12564,11 @@
                         "title": "Id",
                         "description": "ID of the dataset."
                     },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the task the dataset belongs to."
+                    },
                     "name": {
                         "type": "string",
                         "title": "Name",
@@ -12598,6 +12625,7 @@
                 "type": "object",
                 "required": [
                     "id",
+                    "task_id",
                     "name",
                     "created_at",
                     "updated_at"
