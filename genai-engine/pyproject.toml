@@ -64,7 +64,7 @@ torch = [
 ]
 commonmark = "0.9.1"
 gunicorn = "^23.0.0"
-fastapi-pagination = "0.14.3"
+fastapi-pagination = "0.15.0"
 pydantic-settings = "^2.3.4"
 spacy = ">=3.8.3"
 date-spacy = "^0.0.1"
