@@ -53,14 +53,12 @@ export const ApiKeysManagement: React.FC = () => {
   const [copied, setCopied] = useState(false);
 
   const fetchApiKeys = async () => {
+    if (!api) return;
+
     try {
       setIsLoading(true);
       setError(null);
       setPermissionError(false);
-
-      if (!api) {
-        throw new Error("API client not available");
-      }
 
       const response = await api.auth.getAllActiveApiKeysAuthApiKeysGet();
       setApiKeys(response.data || []);
@@ -73,14 +71,10 @@ export const ApiKeysManagement: React.FC = () => {
       // Check if it's a permission error (403 or 401)
       if (status === 403 || status === 401) {
         setPermissionError(true);
-        setError(
-          "You do not have permissions for this, please use an authorized API key or contact your administrator."
-        );
+        setError("You do not have permissions for this, please use an authorized API key or contact your administrator.");
       } else {
         // Show the actual error message from the API
-        setError(
-          `Failed to load API keys: ${errorMessage}`
-        );
+        setError(`Failed to load API keys: ${errorMessage}`);
       }
     } finally {
       setIsLoading(false);
@@ -126,9 +120,7 @@ export const ApiKeysManagement: React.FC = () => {
       setIsDeleting(true);
       setError(null);
 
-      await api.auth.deactivateApiKeyAuthApiKeysDeactivateApiKeyIdDelete(
-        deleteModal.apiKey.id
-      );
+      await api.auth.deactivateApiKeyAuthApiKeysDeactivateApiKeyIdDelete(deleteModal.apiKey.id);
 
       // Refresh the API keys list
       await fetchApiKeys();
@@ -143,9 +135,7 @@ export const ApiKeysManagement: React.FC = () => {
 
       // Check if it's a permission error
       if (status === 403 || status === 401) {
-        setError(
-          "You do not have permissions for this, please use an authorized API key or contact your administrator."
-        );
+        setError("You do not have permissions for this, please use an authorized API key or contact your administrator.");
         setPermissionError(true);
       } else {
         setError(`Failed to delete API key: ${errorMessage}`);
@@ -196,9 +186,7 @@ export const ApiKeysManagement: React.FC = () => {
 
       // Check if it's a permission error
       if (status === 403 || status === 401) {
-        setError(
-          "You do not have permissions for this, please use an authorized API key or contact your administrator."
-        );
+        setError("You do not have permissions for this, please use an authorized API key or contact your administrator.");
         setPermissionError(true);
       } else {
         setError(`Failed to create API key: ${errorMessage}`);
@@ -258,24 +246,14 @@ export const ApiKeysManagement: React.FC = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Box>
-          <Typography
-            variant="h5"
-            component="h2"
-            gutterBottom
-            color="text.primary"
-            fontWeight="bold"
-          >
+          <Typography variant="h5" component="h2" gutterBottom color="text.primary" fontWeight="bold">
             API Keys Management
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Create and manage API keys for accessing the GenAI Engine.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={handleCreateClick}
-        >
+        <Button variant="contained" startIcon={<Add />} onClick={handleCreateClick}>
           Create New Key
         </Button>
       </Box>
@@ -288,9 +266,7 @@ export const ApiKeysManagement: React.FC = () => {
 
       <Card>
         <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-          <TableContainer
-            sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}
-          >
+          <TableContainer sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
             <Table stickyHeader size="small" sx={{ width: "100%" }}>
               <TableHead>
                 <TableRow>
@@ -358,23 +334,14 @@ export const ApiKeysManagement: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {apiKey.roles && apiKey.roles.length > 0
-                            ? apiKey.roles.map(getRoleDisplayName).join(", ")
-                            : "No role assigned"}
+                          {apiKey.roles && apiKey.roles.length > 0 ? apiKey.roles.map(getRoleDisplayName).join(", ") : "No role assigned"}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">
-                          {formatDate(apiKey.created_at)}
-                        </Typography>
+                        <Typography variant="body2">{formatDate(apiKey.created_at)}</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteClick(apiKey)}
-                          title="Delete API key"
-                        >
+                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(apiKey)} title="Delete API key">
                           <Delete />
                         </IconButton>
                       </TableCell>
@@ -388,12 +355,7 @@ export const ApiKeysManagement: React.FC = () => {
       </Card>
 
       {/* Create API Key Modal */}
-      <Dialog
-        open={createModal}
-        onClose={handleCreateCancel}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={createModal} onClose={handleCreateCancel} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
           <Box
             sx={{
@@ -435,9 +397,7 @@ export const ApiKeysManagement: React.FC = () => {
               <MenuItem value="ORG-AUDITOR">Organization Auditor</MenuItem>
               <MenuItem value="ORG-ADMIN">Organization Admin</MenuItem>
             </Select>
-            <FormHelperText>
-              Select the role that will be assigned to this API key
-            </FormHelperText>
+            <FormHelperText>Select the role that will be assigned to this API key</FormHelperText>
           </FormControl>
           <TextField
             margin="dense"
@@ -454,11 +414,7 @@ export const ApiKeysManagement: React.FC = () => {
           />
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={handleCreateCancel}
-            disabled={isCreating}
-            variant="outlined"
-          >
+          <Button onClick={handleCreateCancel} disabled={isCreating} variant="outlined">
             Cancel
           </Button>
           <Button
@@ -473,20 +429,11 @@ export const ApiKeysManagement: React.FC = () => {
       </Dialog>
 
       {/* Created Key Display Modal */}
-      <Dialog
-        open={showCreatedKeyModal}
-        onClose={handleCloseCreatedKeyModal}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
-          API Key Created Successfully
-        </DialogTitle>
+      <Dialog open={showCreatedKeyModal} onClose={handleCloseCreatedKeyModal} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>API Key Created Successfully</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mt: 2, mb: 3 }}>
-            <Typography variant="body2">
-              Make sure to copy your API key now. You won't be able to see it again!
-            </Typography>
+            <Typography variant="body2">Make sure to copy your API key now. You won't be able to see it again!</Typography>
           </Alert>
           <Box
             sx={{
@@ -506,29 +453,17 @@ export const ApiKeysManagement: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={handleCopyKey}
-            variant="outlined"
-            disabled={copied}
-          >
+          <Button onClick={handleCopyKey} variant="outlined" disabled={copied}>
             {copied ? "Copied!" : "Copy to Clipboard"}
           </Button>
-          <Button
-            onClick={handleCloseCreatedKeyModal}
-            variant="contained"
-          >
+          <Button onClick={handleCloseCreatedKeyModal} variant="contained">
             Done
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Modal */}
-      <Dialog
-        open={deleteModal.isOpen}
-        onClose={handleDeleteCancel}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={deleteModal.isOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
           <Error sx={{ color: "error.main" }} />
           Delete API Key
@@ -547,11 +482,7 @@ export const ApiKeysManagement: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={handleDeleteCancel}
-            disabled={isDeleting}
-            variant="outlined"
-          >
+          <Button onClick={handleDeleteCancel} disabled={isDeleting} variant="outlined">
             Cancel
           </Button>
           <Button
