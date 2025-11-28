@@ -626,7 +626,7 @@ class ExperimentExecutor:
             prompt_result.output_tool_calls = (
                 response.tool_calls if response.tool_calls else None
             )
-            prompt_result.output_cost = response.cost if response.cost else None
+            prompt_result.output_cost = response.cost or ""
             db_session.commit()
 
             logger.info(

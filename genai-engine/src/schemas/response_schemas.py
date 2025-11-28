@@ -303,7 +303,7 @@ class TraceUserListResponse(BaseModel):
 class AgenticPromptRunResponse(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
-    cost: str | None
+    cost: str
 
 
 class ModelProviderResponse(BaseModel):
