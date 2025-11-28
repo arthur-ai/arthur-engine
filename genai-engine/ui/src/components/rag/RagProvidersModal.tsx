@@ -8,6 +8,7 @@ import {
   DialogContentText,
   DialogTitle,
   IconButton,
+  Paper,
   Table,
   TableBody,
   TableCell,
@@ -15,9 +16,9 @@ import {
   TableHead,
   TableRow,
   Typography,
-  Paper,
 } from "@mui/material";
-import React, { useState } from "react";
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
 import { RagProvidersEmptyState } from "@/components/rag/RagProvidersEmptyState";
@@ -26,6 +27,7 @@ import { RagProvidersLoadingState } from "@/components/rag/RagProvidersLoadingSt
 import { useRagProviderMutations } from "@/hooks/rag/useRagProviderMutations";
 import { useRagProviders } from "@/hooks/rag/useRagProviders";
 import type { RagProviderConfigurationResponse } from "@/lib/api-client/api-client";
+import { formatDate } from "@/utils/formatters";
 
 interface RagProvidersModalProps {
   open: boolean;
@@ -44,33 +46,33 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
 
   const isDeleting = deleteProvider.isPending;
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = useCallback(() => {
     setCreateModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseCreateModal = () => {
+  const handleCloseCreateModal = useCallback(() => {
     setCreateModalOpen(false);
-  };
+  }, []);
 
-  const handleOpenEditModal = (provider: RagProviderConfigurationResponse) => {
+  const handleOpenEditModal = useCallback((provider: RagProviderConfigurationResponse) => {
     setEditingProvider(provider);
-  };
+  }, []);
 
-  const handleCloseEditModal = () => {
+  const handleCloseEditModal = useCallback(() => {
     setEditingProvider(null);
-  };
+  }, []);
 
-  const handleOpenDeleteModal = (provider: RagProviderConfigurationResponse) => {
+  const handleOpenDeleteModal = useCallback((provider: RagProviderConfigurationResponse) => {
     setDeletingProvider(provider);
     setDeleteModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseDeleteModal = () => {
+  const handleCloseDeleteModal = useCallback(() => {
     setDeleteModalOpen(false);
     setDeletingProvider(null);
-  };
+  }, []);
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = useCallback(() => {
     if (!deletingProvider) return;
 
     deleteProvider.mutate(
@@ -81,18 +83,91 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
         },
       }
     );
-  };
+  }, [deleteProvider, deletingProvider, handleCloseDeleteModal]);
 
-  const handleSuccess = () => {
+  const handleSuccess = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const columns = useMemo<ColumnDef<RagProviderConfigurationResponse>[]>(() => {
+    return [
+      {
+        header: "Name",
+        accessorKey: "name",
+        cell: ({ row }) => {
+          const provider = row.original;
+          return (
+            <Box>
+              <Typography variant="body2" fontWeight="medium">
+                {provider.name}
+              </Typography>
+              {provider.description && (
+                <Typography variant="caption" color="text.secondary">
+                  {provider.description}
+                </Typography>
+              )}
+            </Box>
+          );
+        },
+      },
+      {
+        header: "Host URL",
+        accessorFn: (provider) => provider.authentication_config.host_url,
+        cell: ({ row }) => (
+          <Typography
+            variant="body2"
+            sx={{
+              fontFamily: "monospace",
+              fontSize: "0.75rem",
+            }}
+          >
+            {row.original.authentication_config.host_url}
+          </Typography>
+        ),
+      },
+      {
+        header: "Provider",
+        accessorFn: (provider) => provider.authentication_config.rag_provider,
+        cell: ({ row }) => <Typography variant="body2">{row.original.authentication_config.rag_provider}</Typography>,
+      },
+      {
+        header: "Created",
+        accessorKey: "created_at",
+        cell: ({ row }) => (
+          <Typography variant="body2" color="text.secondary">
+            {formatDate(new Date(row.original.created_at))}
+          </Typography>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        meta: { align: "right" },
+        cell: ({ row }) => (
+          <>
+            <IconButton size="small" onClick={() => handleOpenEditModal(row.original)} title="Edit provider">
+              <Edit fontSize="small" />
+            </IconButton>
+            <IconButton size="small" onClick={() => handleOpenDeleteModal(row.original)} title="Delete provider" color="error">
+              <Delete fontSize="small" />
+            </IconButton>
+          </>
+        ),
+      },
+    ];
+  }, [handleOpenDeleteModal, handleOpenEditModal]);
+
+  const providerRows = providers ?? [];
+
+  const table = useReactTable({
+    data: providerRows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  const tableAlign = (id: string) => {
+    const column = table.getAllLeafColumns().find((col) => col.id === id);
+    return (column?.columnDef.meta as { align?: "left" | "right" | "center" })?.align ?? "left";
   };
 
   return (
@@ -119,64 +194,34 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
           </Box>
         </DialogTitle>
         <DialogContent>
-          {isLoading && providers.length === 0 ? (
+          {isLoading && providerRows.length === 0 ? (
             <RagProvidersLoadingState />
-          ) : error && providers.length === 0 ? (
+          ) : error && providerRows.length === 0 ? (
             <RagProvidersErrorState error={error} onRetry={refetch} />
-          ) : providers.length === 0 ? (
+          ) : providerRows.length === 0 ? (
             <RagProvidersEmptyState />
           ) : (
             <TableContainer component={Paper} sx={{ boxShadow: 0, border: 1, borderColor: "divider" }}>
               <Table size="small">
                 <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Host URL</TableCell>
-                    <TableCell>Provider</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableCell key={header.id} align={tableAlign(header.column.id)}>
+                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableHead>
                 <TableBody>
-                  {providers.map((provider) => (
-                    <TableRow key={provider.id} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {provider.name}
-                        </Typography>
-                        {provider.description && (
-                          <Typography variant="caption" color="text.secondary">
-                            {provider.description}
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontFamily: "monospace",
-                            fontSize: "0.75rem",
-                          }}
-                        >
-                          {provider.authentication_config.host_url}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{provider.authentication_config.rag_provider}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(provider.created_at)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" onClick={() => handleOpenEditModal(provider)} title="Edit provider">
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleOpenDeleteModal(provider)} title="Delete provider" color="error">
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </TableCell>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} align={tableAlign(cell.column.id)}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                 </TableBody>

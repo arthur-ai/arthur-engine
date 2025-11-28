@@ -1,22 +1,33 @@
+import { createSerializer, parseAsInteger, parseAsString } from "nuqs";
 import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { ConfigurationsListView } from "./ConfigurationsListView";
 
 import { useApi } from "@/hooks/useApi";
 
+const configSerializer = createSerializer({
+  configId: parseAsString,
+  version: parseAsInteger,
+});
+
 export const RagConfigurationsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: taskId } = useParams<{ id: string }>();
   const api = useApi();
 
   const handleConfigSelect = (configId: string, versionNumber?: number) => {
-    const params = new URLSearchParams();
-    params.set("configId", configId);
-    if (versionNumber !== undefined) {
-      params.set("version", versionNumber.toString());
-    }
-    navigate(`/tasks/${taskId}/playgrounds/retrievals?${params.toString()}`);
+    const params = configSerializer({
+      configId,
+      version: versionNumber ?? null,
+    });
+
+    navigate({
+      pathname: `/tasks/${taskId}/playgrounds/retrievals`,
+      search: params,
+      hash: location.hash,
+    });
   };
 
   const handleConfigDelete = async (configId: string) => {
@@ -34,4 +45,3 @@ export const RagConfigurationsPage: React.FC = () => {
 
   return <ConfigurationsListView onConfigSelect={handleConfigSelect} onConfigDelete={handleConfigDelete} />;
 };
-

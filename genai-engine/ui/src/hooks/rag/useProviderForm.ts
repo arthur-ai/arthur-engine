@@ -1,22 +1,43 @@
-import { useState, useCallback } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
+import { useCallback, useMemo } from "react";
 
 import type { RagProviderConfigurationResponse } from "@/lib/api-client/api-client";
 
-interface FormData {
+interface FormValues {
   name: string;
   description: string;
   host_url: string;
   api_key: string;
 }
 
-interface FormErrors {
-  name?: string;
-  description?: string;
-  host_url?: string;
-  api_key?: string;
+type FieldValidator<TValue> = ({ value }: { value: TValue }) => string | undefined;
+
+interface ProviderFieldValidators {
+  name: {
+    onChange: FieldValidator<string>;
+  };
+  description: {
+    onChange: FieldValidator<string>;
+  };
+  host_url: {
+    onChange: FieldValidator<string>;
+  };
+  api_key: {
+    onChange: FieldValidator<string>;
+  };
 }
 
-function getInitialFormData(mode: "create" | "edit", initialData?: RagProviderConfigurationResponse): FormData {
+const hostnamePattern = /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+
+function sanitizeHostUrl(url: string): string {
+  return url
+    .trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/:\d+$/, "")
+    .replace(/\/+$/, "");
+}
+
+function getInitialFormData(mode: "create" | "edit", initialData?: RagProviderConfigurationResponse): FormValues {
   if (mode === "edit" && initialData) {
     const urlWithoutProtocol = initialData.authentication_config.host_url.replace(/^https?:\/\//, "");
     return {
@@ -35,70 +56,87 @@ function getInitialFormData(mode: "create" | "edit", initialData?: RagProviderCo
 }
 
 export function useProviderForm(mode: "create" | "edit", initialData?: RagProviderConfigurationResponse) {
-  const [formData, setFormData] = useState<FormData>(() => getInitialFormData(mode, initialData));
-  const [errors, setErrors] = useState<FormErrors>({});
+  const defaultValues = useMemo(() => getInitialFormData(mode, initialData), [mode, initialData]);
+
+  const form = useForm({
+    defaultValues,
+  });
 
   const resetForm = useCallback(() => {
-    setFormData(getInitialFormData(mode, initialData));
-    setErrors({});
-  }, [mode, initialData]);
-
-  const updateField = useCallback((field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
-  }, []);
-
-  const validateForm = useCallback((): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    } else if (formData.name.length > 255) {
-      newErrors.name = "Name must be less than 255 characters";
-    }
-
-    if (formData.description.length > 1000) {
-      newErrors.description = "Description must be less than 1000 characters";
-    }
-
-    if (!formData.host_url.trim()) {
-      newErrors.host_url = "Host URL is required";
-    } else {
-      const urlToValidate = formData.host_url
-        .replace(/^https?:\/\//, "")
-        .replace(/:\d+$/, "")
-        .replace(/\/+$/, "");
-
-      const hostnamePattern = /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
-
-      if (!hostnamePattern.test(urlToValidate) || urlToValidate.length === 0) {
-        newErrors.host_url = "Please enter a valid host URL or domain";
-      }
-    }
-
-    if (!formData.api_key.trim() && (mode === "create" || formData.api_key !== "")) {
-      newErrors.api_key = "API Key is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData, mode]);
+    form.reset(defaultValues);
+  }, [form, defaultValues]);
 
   const normalizeHostUrl = useCallback((url: string): string => {
     const trimmed = url.trim();
-    if (!trimmed) return trimmed;
-
+    if (!trimmed) {
+      return trimmed;
+    }
     const withoutProtocol = trimmed.replace(/^https?:\/\//, "");
     return `https://${withoutProtocol}`;
   }, []);
 
-  const isFormValid = formData.name.trim() !== "" && formData.host_url.trim() !== "" && (mode === "edit" || formData.api_key.trim() !== "");
+  const fieldValidators = useMemo<ProviderFieldValidators>(() => {
+    return {
+      name: {
+        onChange: ({ value }) => {
+          if (!value.trim()) {
+            return "Name is required";
+          }
+          if (value.length > 255) {
+            return "Name must be less than 255 characters";
+          }
+          return undefined;
+        },
+      },
+      description: {
+        onChange: ({ value }) => {
+          if (value.length > 1000) {
+            return "Description must be less than 1000 characters";
+          }
+          return undefined;
+        },
+      },
+      host_url: {
+        onChange: ({ value }) => {
+          if (!value.trim()) {
+            return "Host URL is required";
+          }
+          const sanitized = sanitizeHostUrl(value);
+          if (!sanitized || !hostnamePattern.test(sanitized)) {
+            return "Please enter a valid host URL or domain";
+          }
+          return undefined;
+        },
+      },
+      api_key: {
+        onChange: ({ value }) => {
+          const trimmed = value.trim();
+          if (mode === "create" && trimmed === "") {
+            return "API Key is required";
+          }
+          if (mode === "edit" && value !== "" && trimmed === "") {
+            return "API Key is required";
+          }
+          return undefined;
+        },
+      },
+    };
+  }, [mode]);
+
+  const values = useStore(form.store, (state) => state.values);
+
+  const isFormValid = values.name.trim() !== "" && values.host_url.trim() !== "" && (mode === "edit" || values.api_key.trim() !== "");
+
+  const validateForm = useCallback(async () => {
+    await form.validateAllFields("submit");
+    return form.store.state.isValid;
+  }, [form]);
 
   return {
-    formData,
-    errors,
+    form,
+    values,
+    fieldValidators,
     isFormValid,
-    updateField,
     validateForm,
     resetForm,
     normalizeHostUrl,
