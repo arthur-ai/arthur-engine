@@ -184,7 +184,8 @@ class ToxicityScorer(RuleScorer):
         if self.harmfulrequest_classifier is None:
             return [0.0] * len(texts)
         with tracer.start_as_current_span("toxicity: run harmful request classifier"):
-            return self.harmfulrequest_classifier(texts)["prob"]  # type: ignore[no-any-return]
+            results: list[float] = self.harmfulrequest_classifier(texts)["prob"]
+            return results
 
     def score_toxic_text(self, texts: list[str]) -> list[float]:
         """Scores toxicity using toxicity / hate speech classifier

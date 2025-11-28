@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Protocol, Union, overload
+from typing import Protocol, Union, overload
 
 from arthur_common.models.enums import MetricType, RuleType
 from arthur_common.models.metric_schemas import MetricRequest
@@ -27,7 +27,7 @@ class ScorerMapping(Protocol):
 class ScorerClient:
     def __init__(
         self,
-        name_version_mapping: Dict[
+        name_version_mapping: dict[
             Union[RuleType, MetricType],
             Union[RuleScorer, MetricScorer],
         ],
