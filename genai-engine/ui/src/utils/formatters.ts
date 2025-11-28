@@ -16,8 +16,23 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 5,
 });
 
-export function formatDate(date: string | Date) {
-  return dateFormatter.format(new Date(date));
+export function formatDate(date: string | null | undefined) {
+  if (!date) return "-";
+
+  let isoString = date;
+
+  if (!isoString.endsWith("Z") && !isoString.match(/[+-]\d{2}:\d{2}$/)) {
+    isoString = isoString.replace(" ", "T") + "Z";
+  }
+
+  try {
+    const newDate = new Date(isoString);
+    if (isNaN(newDate.getTime())) return dateFormatter.format(new Date(date));
+
+    return dateFormatter.format(newDate);
+  } catch {
+    return dateFormatter.format(new Date(date));
+  }
 }
 
 /**
@@ -28,34 +43,7 @@ export function formatDate(date: string | Date) {
  * @returns Formatted date string in local timezone or "-" if invalid/null
  */
 export function formatUTCTimestamp(dateString: string | null | undefined): string {
-  if (!dateString) return "-";
-
-  try {
-    // If the timestamp doesn't have a 'Z' or timezone offset, append 'Z' to treat it as UTC
-    let isoString = dateString;
-    if (!dateString.endsWith('Z') && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
-      // Replace space with 'T' if needed and add 'Z'
-      isoString = dateString.replace(' ', 'T') + 'Z';
-    }
-
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) {
-      return dateString;
-    }
-
-    // Format with timezone name
-    return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZoneName: "short",
-    });
-  } catch {
-    return dateString;
-  }
+  return formatDate(dateString);
 }
 
 export function formatCurrency(amount: number) {
@@ -77,10 +65,7 @@ export function formatDuration(duration: number) {
  * @param endTime - End timestamp (UTC string or Date)
  * @returns Formatted duration string (e.g., "2h 34m", "5m 42s", "23s") or null if invalid
  */
-export function formatTimestampDuration(
-  startTime: string | Date,
-  endTime: string | null | undefined
-): string | null {
+export function formatTimestampDuration(startTime: string | Date, endTime: string | null | undefined): string | null {
   if (!endTime) return null;
 
   try {
@@ -88,9 +73,7 @@ export function formatTimestampDuration(
     const parseDate = (dateInput: string | Date): Date => {
       if (dateInput instanceof Date) return dateInput;
       const dateString = dateInput;
-      const isoString = dateString.includes('Z') || dateString.match(/[+-]\d{2}:\d{2}$/)
-        ? dateString
-        : dateString.replace(' ', 'T') + 'Z';
+      const isoString = dateString.includes("Z") || dateString.match(/[+-]\d{2}:\d{2}$/) ? dateString : dateString.replace(" ", "T") + "Z";
       return new Date(isoString);
     };
 
