@@ -219,6 +219,83 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    logger.debug("Cleaning up models...")
+    try:
+        import gc
+
+        from utils import model_load
+
+        model_globals = [
+            "CLAIM_CLASSIFIER_EMBEDDING_MODEL",
+            "PROMPT_INJECTION_MODEL",
+            "PROMPT_INJECTION_TOKENIZER",
+            "PROMPT_INJECTION_CLASSIFIER",
+            "TOXICITY_MODEL",
+            "TOXICITY_TOKENIZER",
+            "TOXICITY_CLASSIFIER",
+            "RELEVANCE_MODEL",
+            "RELEVANCE_TOKENIZER",
+            "PROFANITY_CLASSIFIER",
+            "BERT_SCORER",
+            "RELEVANCE_RERANKER",
+            "PII_GLINER_MODEL",
+            "PII_GLINER_TOKENIZER",
+            "PII_PRESIDIO_ANALYZER",
+        ]
+
+        cleanup_count = 0
+        for model_name in model_globals:
+            if hasattr(model_load, model_name):
+                model_obj = getattr(model_load, model_name)
+                if model_obj is not None:
+                    cleanup_count += 1
+                    logger.debug(f"Cleaning up {model_name}...")
+                    if hasattr(model_obj, "_cleanup_resources"):
+                        try:
+                            model_obj._cleanup_resources()
+                        except Exception:
+                            pass
+                    if (
+                        hasattr(model_obj, "tokenizer")
+                        and model_obj.tokenizer is not None
+                    ):
+                        try:
+                            del model_obj.tokenizer
+                        except Exception:
+                            pass
+                    del model_obj
+                    setattr(model_load, model_name, None)
+
+        logger.debug(f"Cleaned up {cleanup_count} model objects")
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            logger.debug("Cleared PyTorch CUDA cache")
+
+        try:
+            import torch.distributed.nn.jit.instantiator as torch_instantiator
+
+            if (
+                hasattr(torch_instantiator, "_TEMP_DIR")
+                and torch_instantiator._TEMP_DIR is not None
+            ):
+                logger.debug("Cleaning up PyTorch's temporary directory...")
+                torch_instantiator._TEMP_DIR.cleanup()
+                torch_instantiator._TEMP_DIR = None
+                logger.debug("PyTorch temporary directory cleaned up successfully")
+        except Exception as e:
+            logger.debug(f"Could not cleanup PyTorch temp directory: {e}")
+
+        for i in range(3):
+            collected = gc.collect()
+            logger.debug(f"Garbage collection pass {i+1}: freed {collected} objects")
+
+        time.sleep(0.2)
+
+        logger.debug("Model cleanup complete")
+    except Exception as e:
+        logger.error(f"Error during model cleanup: {e}", exc_info=True)
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __get_default_csp_header_list(self, keycloak_uri: str) -> list[str]:
