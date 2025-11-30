@@ -1893,14 +1893,14 @@ files = [
 
 [[package]]
 name = "lazy-imports"
-version = "1.0.1"
+version = "1.1.0"
 description = "Tool to support lazy imports"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "lazy_imports-1.0.1-py3-none-any.whl", hash = "sha256:eb5accc33bf9987e5197e79476bbeb960b74a2c16619bdf41281b3240f730846"},
-    {file = "lazy_imports-1.0.1.tar.gz", hash = "sha256:7d3e4b1547cb574ec7ef3c47a074673e2612330b2b50bf7eec939f2c393fc261"},
+    {file = "lazy_imports-1.1.0-py3-none-any.whl", hash = "sha256:49fb1034ffe325fbec6e1f0e1e5b47eaaf43989b17be6c090added97c2b3ec24"},
+    {file = "lazy_imports-1.1.0.tar.gz", hash = "sha256:e6ea5a1e4f09a861357e670b7aa61efcbce6fe29361785dd253df66f8ddbc36b"},
 ]
 
 [package.extras]
@@ -4306,4 +4306,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "57fbadafa05c7f541dc7274ae84ca5126a5456e79e9e83a28f28097358988651"
+content-hash = "48cba49598086b9d177258aed6473979245648c295d09d60fdb6d07d4010bbb1"
