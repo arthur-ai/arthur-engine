@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.223"
+version = "2.1.224"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
