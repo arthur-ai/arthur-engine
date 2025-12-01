@@ -23,6 +23,7 @@ const NAME_TO_LABEL = {
   tool_usage: "Tool Usage",
   trace_ids: "Trace IDs",
   user_ids: "User IDs",
+  annotation_score: "Annotation Score",
 } as const;
 
 export const getFieldLabel = (name: string) => {
@@ -36,7 +37,5 @@ const ENUM_OPTION_TO_LABEL = {
 } as const;
 
 export const getEnumOptionLabel = (option: string) => {
-  return (
-    ENUM_OPTION_TO_LABEL[option as keyof typeof ENUM_OPTION_TO_LABEL] ?? option
-  );
+  return ENUM_OPTION_TO_LABEL[option as keyof typeof ENUM_OPTION_TO_LABEL] ?? option;
 };

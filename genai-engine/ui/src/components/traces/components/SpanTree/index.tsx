@@ -5,9 +5,9 @@ import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
-import { DurationCell } from "../../data/common";
 import { useSelection } from "../../hooks/useSelection";
 import { getSpanDuration, getSpanType } from "../../utils/spans";
+import { DurationCell } from "../DurationCell";
 
 import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";

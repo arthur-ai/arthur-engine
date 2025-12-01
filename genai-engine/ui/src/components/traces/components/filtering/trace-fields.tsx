@@ -89,4 +89,11 @@ export const TRACE_FIELDS = [
       return firstValue + additionalValues;
     },
   }),
+  createPrimitiveField({
+    name: "annotation_score",
+    type: "enum",
+    operators: [EnumOperators.EQUALS],
+    options: [0, 1].map(String),
+    itemToStringLabel: (option) => (option === "0" ? "Unhelpful" : "Helpful"),
+  }),
 ] as const satisfies Field[];
