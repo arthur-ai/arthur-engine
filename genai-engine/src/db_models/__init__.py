@@ -62,6 +62,7 @@ from db_models.prompt_experiment_models import (
     DatabasePromptExperimentTestCasePromptResult,
     DatabasePromptExperimentTestCasePromptResultEvalScore,
 )
+from db_models.transform_models import DatabaseTraceTransform
 
 __all__ = [
     # Base classes
@@ -129,4 +130,6 @@ __all__ = [
     "DatabasePromptExperimentTestCase",
     "DatabasePromptExperimentTestCasePromptResult",
     "DatabasePromptExperimentTestCasePromptResultEvalScore",
+    # Transform models
+    "DatabaseTraceTransform",
 ]
