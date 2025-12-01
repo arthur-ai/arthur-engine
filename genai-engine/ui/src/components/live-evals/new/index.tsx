@@ -1,4 +1,6 @@
+import AddIcon from "@mui/icons-material/Add";
 import {
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -35,7 +37,7 @@ type Evaluator = {
 
 type Transform = {
   datasetId: string | null;
-  name: string | null;
+  transformId: string | null;
 };
 
 export const LiveEvalsNew = () => {
@@ -50,7 +52,7 @@ export const LiveEvalsNew = () => {
       } as Evaluator,
       transform: {
         datasetId: null,
-        name: null,
+        transformId: null,
       } as Transform,
     },
     validators: {
@@ -62,7 +64,7 @@ export const LiveEvalsNew = () => {
         }),
         transform: z.object({
           datasetId: z.string().min(1, "Dataset ID is required"),
-          name: z.string().min(1, "Transform name is required"),
+          transformId: z.string().min(1, "Transform ID is required"),
         }),
       }),
     },
@@ -152,7 +154,7 @@ export const LiveEvalsNew = () => {
         <TransformSelector taskId={task?.id ?? ""} form={form} fields="transform" />
       </Stack>
 
-      <Box sx={{ p: 3 }} className="mt-auto w-full">
+      <Box sx={{ p: 3, borderTop: 1, borderColor: "divider" }} className="mt-auto w-full">
         <form.Subscribe selector={(state) => [state.canSubmit, state.isDirty]}>
           {([canSubmit, isDirty]) => (
             <Button variant="contained" size="large" color="primary" disabled={!canSubmit || !isDirty} fullWidth>
@@ -236,50 +238,79 @@ const EvaluatorSelector = withFieldGroup({
 const TransformSelector = withFieldGroup({
   defaultValues: {
     datasetId: null,
-    name: null,
-    version: null,
+    transformId: null,
   } as Transform,
   props: {} as {
     taskId: string;
   },
   render: function Render({ group, taskId }) {
-    const datasetId = useStore(group.store, ({ values }) => values.datasetId);
+    const [datasetId] = useStore(group.store, ({ values }) => [values.datasetId]);
 
     const datasets = useDatasets(taskId, { page: 0, pageSize: 10, sortOrder: "desc" });
     const transforms = useTransforms(datasetId ?? undefined);
 
     return (
       <Stack gap={2}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
-          Select a transform
-        </Typography>
+        <Stack direction="row" gap={2} width="100%" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6" color="text.primary" fontWeight="bold">
+            Select a transform
+          </Typography>
+          <Button variant="contained" size="small" color="primary" startIcon={<AddIcon />} onClick={() => {}}>
+            Create New Transform
+          </Button>
+        </Stack>
         <Stack direction="row" gap={2} width="100%">
           <group.AppField
             name="datasetId"
             listeners={{
               onChange: () => {
-                group.setFieldValue("name", null);
+                group.setFieldValue("transformId", null);
               },
             }}
-            children={(field) => (
-              <field.MaterialAutocompleteField
-                sx={{ flex: 1 }}
-                options={datasets.datasets.map((dataset) => dataset.id)}
-                renderInput={(params) => <TextField {...params} label="Dataset" />}
-              />
-            )}
+            children={(field) => {
+              const selected = datasets.datasets.find((dataset) => dataset.id === field.state.value);
+
+              return (
+                <Autocomplete
+                  sx={{ flex: 1 }}
+                  value={selected}
+                  loading={datasets.isLoading}
+                  options={datasets.datasets}
+                  onChange={(_, value) => {
+                    field.handleChange(value?.id ?? "");
+                  }}
+                  getOptionLabel={(option) => option.name}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  getOptionKey={(option) => option.id}
+                  renderInput={(params) => <TextField {...params} label="Dataset" />}
+                />
+              );
+            }}
           />
 
           <group.AppField
-            name="name"
-            children={(field) => (
-              <field.MaterialAutocompleteField
-                sx={{ flex: 1 }}
-                disabled={!datasetId}
-                options={transforms.data?.map((transform) => transform.name) ?? []}
-                renderInput={(params) => <TextField {...params} label="Transform" />}
-              />
-            )}
+            name="transformId"
+            children={(field) => {
+              const selected = transforms.data?.find((transform) => transform.id === field.state.value);
+
+              return (
+                <Autocomplete
+                  sx={{ flex: 1 }}
+                  loading={transforms.isLoading}
+                  options={transforms.data ?? []}
+                  multiple={false}
+                  value={selected}
+                  onChange={(_, value) => {
+                    field.handleChange(value?.id ?? "");
+                  }}
+                  getOptionLabel={(option) => option.name}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  getOptionKey={(option) => option.id}
+                  disabled={!datasetId}
+                  renderInput={(params) => <TextField {...params} label="Transform" />}
+                />
+              );
+            }}
           />
         </Stack>
       </Stack>
