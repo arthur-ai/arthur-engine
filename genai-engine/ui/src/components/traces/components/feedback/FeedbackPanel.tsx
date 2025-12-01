@@ -62,6 +62,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.traces.list });
     },
   });
 
@@ -90,6 +91,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.traces.list });
 
       handle.close();
       form.reset();

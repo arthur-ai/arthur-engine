@@ -55,7 +55,7 @@ export function TraceLevel() {
   const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const table = useReactTable({
-    data: data?.traces ?? DEFAULT_DATA, // Use test data to verify scrolling
+    data: data?.traces ?? DEFAULT_DATA,
     columns,
     getCoreRowModel: getCoreRowModel(),
     state: {
