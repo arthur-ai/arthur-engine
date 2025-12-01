@@ -4956,19 +4956,6 @@
             "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
           },
           {
-            "name": "annotation_score",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 1,
-              "minimum": 0,
-              "description": "Filter by trace annotation score (0 or 1).",
-              "title": "Annotation Score"
-            },
-            "description": "Filter by trace annotation score (0 or 1)."
-          },
-          {
             "name": "span_ids",
             "in": "query",
             "required": false,
@@ -5031,6 +5018,19 @@
               "title": "Span Name Contains"
             },
             "description": "Return only results where span name contains this substring."
+          },
+          {
+            "name": "annotation_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1,
+              "minimum": 0,
+              "description": "Filter by trace annotation score (0 or 1).",
+              "title": "Annotation Score"
+            },
+            "description": "Filter by trace annotation score (0 or 1)."
           },
           {
             "name": "query_relevance_eq",
@@ -5394,19 +5394,6 @@
             "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
           },
           {
-            "name": "annotation_score",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 1,
-              "minimum": 0,
-              "description": "Filter by trace annotation score (0 or 1).",
-              "title": "Annotation Score"
-            },
-            "description": "Filter by trace annotation score (0 or 1)."
-          },
-          {
             "name": "span_ids",
             "in": "query",
             "required": false,
@@ -5469,6 +5456,19 @@
               "title": "Span Name Contains"
             },
             "description": "Return only results where span name contains this substring."
+          },
+          {
+            "name": "annotation_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1,
+              "minimum": 0,
+              "description": "Filter by trace annotation score (0 or 1).",
+              "title": "Annotation Score"
+            },
+            "description": "Filter by trace annotation score (0 or 1)."
           },
           {
             "name": "query_relevance_eq",
@@ -5748,6 +5748,70 @@
             "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
           },
           {
+            "name": "span_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Span IDs to filter on. Optional.",
+              "title": "Span Ids"
+            },
+            "description": "Span IDs to filter on. Optional."
+          },
+          {
+            "name": "session_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Session IDs to filter on. Optional.",
+              "title": "Session Ids"
+            },
+            "description": "Session IDs to filter on. Optional."
+          },
+          {
+            "name": "user_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "User IDs to filter on. Optional.",
+              "title": "User Ids"
+            },
+            "description": "User IDs to filter on. Optional."
+          },
+          {
+            "name": "span_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Return only results with this span name.",
+              "title": "Span Name"
+            },
+            "description": "Return only results with this span name."
+          },
+          {
+            "name": "span_name_contains",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Return only results where span name contains this substring.",
+              "title": "Span Name Contains"
+            },
+            "description": "Return only results where span name contains this substring."
+          },
+          {
             "name": "start_time",
             "in": "query",
             "required": false,
@@ -5940,6 +6004,20 @@
         ],
         "parameters": [
           {
+            "name": "user_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "User IDs to filter on. Optional.",
+              "title": "User Ids"
+            },
+            "description": "User IDs to filter on. Optional."
+          },
+          {
             "name": "sort",
             "in": "query",
             "required": false,
@@ -6053,19 +6131,6 @@
             "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
           },
           {
-            "name": "annotation_score",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 1,
-              "minimum": 0,
-              "description": "Filter by trace annotation score (0 or 1).",
-              "title": "Annotation Score"
-            },
-            "description": "Filter by trace annotation score (0 or 1)."
-          },
-          {
             "name": "span_ids",
             "in": "query",
             "required": false,
@@ -6128,6 +6193,19 @@
               "title": "Span Name Contains"
             },
             "description": "Return only results where span name contains this substring."
+          },
+          {
+            "name": "annotation_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1,
+              "minimum": 0,
+              "description": "Filter by trace annotation score (0 or 1).",
+              "title": "Annotation Score"
+            },
+            "description": "Filter by trace annotation score (0 or 1)."
           },
           {
             "name": "query_relevance_eq",
@@ -6490,19 +6568,6 @@
             "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
           },
           {
-            "name": "annotation_score",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 1,
-              "minimum": 0,
-              "description": "Filter by trace annotation score (0 or 1).",
-              "title": "Annotation Score"
-            },
-            "description": "Filter by trace annotation score (0 or 1)."
-          },
-          {
             "name": "span_ids",
             "in": "query",
             "required": false,
@@ -6565,6 +6630,19 @@
               "title": "Span Name Contains"
             },
             "description": "Return only results where span name contains this substring."
+          },
+          {
+            "name": "annotation_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1,
+              "minimum": 0,
+              "description": "Filter by trace annotation score (0 or 1).",
+              "title": "Annotation Score"
+            },
+            "description": "Filter by trace annotation score (0 or 1)."
           },
           {
             "name": "query_relevance_eq",
@@ -18470,22 +18548,7 @@
           },
           "definition": {
             "$ref": "#/components/schemas/DatasetTransformDefinition",
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Definition",
-            "description": "Transform definition in JSON format specifying extraction rules.",
-            "examples": [
-              {
-                "columns": [
-                  {
-                    "attribute_path": "attributes.input.value.sqlQuery",
-                    "column_name": "sqlQuery",
-                    "span_name": "rag-retrieval-savedQueries"
-                  }
-                ],
-                "version": "1.0"
-              }
-            ]
+            "description": "Transform definition specifying extraction rules."
           }
         },
         "type": "object",

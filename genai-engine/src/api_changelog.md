@@ -7,6 +7,26 @@ The intention of this changelog is to document API changes as they happen to eff
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/search  api path removed without deprecation
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets  endpoint added
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
 
 # 11/25/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
