@@ -304,6 +304,10 @@ class ChatCompletionService:
                     yield f"event: chunk\ndata: {chunk.model_dump_json()}\n\n"
             elif isinstance(response, ModelResponse):
                 collected_chunks.append(response)
+            else:
+                raise NotImplementedError(
+                    f"Unsupported response type: {type(response)}",
+                )
 
             complete_response = stream_chunk_builder(
                 collected_chunks,
