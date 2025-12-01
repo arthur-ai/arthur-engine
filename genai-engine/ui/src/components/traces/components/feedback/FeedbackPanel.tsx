@@ -7,6 +7,7 @@ import { Button, ButtonGroup, Paper, Stack, TextField, Tooltip, Typography } fro
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
+import { useRef } from "react";
 import z from "zod";
 
 import { useApi } from "@/hooks/useApi";
@@ -27,6 +28,8 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
   const api = useApi()!;
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
+
+  const anhor = useRef<HTMLDivElement>(null);
 
   const sendFeedbackMutation = useMutation({
     mutationFn: async (data: { feedback: Feedback; details: string }) => {
@@ -122,7 +125,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
 
   return (
     <>
-      <ButtonGroup size="small" disableElevation disabled={isMutating}>
+      <ButtonGroup ref={anhor} size="small" disableElevation disabled={isMutating}>
         <Tooltip title="Helpful">
           <Popover.Trigger
             handle={handle}
@@ -165,7 +168,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
 
           return (
             <Popover.Portal container={containerRef.current}>
-              <Popover.Positioner sideOffset={8} side="bottom" align="end">
+              <Popover.Positioner sideOffset={8} side="bottom" align="end" anchor={anhor.current}>
                 <Popover.Popup render={<Paper />} className="origin-(--transform-origin) p-4 w-80 outline-none">
                   <Stack direction="column" gap={1}>
                     <Stack direction="column" gap={0}>

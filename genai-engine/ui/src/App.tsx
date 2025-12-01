@@ -4,6 +4,7 @@ import { SnackbarProvider } from "notistack";
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "react-router-dom";
 
+import "./App.css";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ComingSoon } from "./components/ComingSoon";
@@ -11,6 +12,9 @@ import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
 import Evaluators from "./components/evaluators/Evaluators";
+import { LiveEvals } from "./components/live-evals";
+import { LiveEvalDetail } from "./components/live-evals/[evalId]";
+import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
 import Notebooks from "./components/notebooks/Notebooks";
@@ -23,7 +27,6 @@ import { RagConfigurationsPage } from "./components/retrievals/RagConfigurations
 import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
-import "./App.css";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -174,6 +177,41 @@ function App() {
                         </ProtectedRoute>
                       }
                     />
+
+                    <Route path="/tasks/:id/live-evals">
+                      <Route
+                        index
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <LiveEvals />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path=":evalId"
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <LiveEvalDetail />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="new"
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <LiveEvalsNew />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                    </Route>
 
                     <Route
                       path="/tasks/:id/evaluators/:evaluatorName"
