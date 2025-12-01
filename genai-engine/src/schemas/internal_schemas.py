@@ -2098,6 +2098,7 @@ class TraceQuerySchema(BaseModel):
 
 class Dataset(BaseModel):
     id: uuid.UUID
+    task_id: str
     created_at: datetime
     updated_at: datetime
     name: str
@@ -2108,6 +2109,7 @@ class Dataset(BaseModel):
     def to_response_model(self) -> DatasetResponse:
         return DatasetResponse(
             id=self.id,
+            task_id=self.task_id,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             name=self.name,
@@ -2119,6 +2121,7 @@ class Dataset(BaseModel):
     def _to_database_model(self) -> DatabaseDataset:
         return DatabaseDataset(
             id=self.id,
+            task_id=self.task_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             name=self.name,
@@ -2128,10 +2131,11 @@ class Dataset(BaseModel):
         )
 
     @staticmethod
-    def _from_request_model(request: NewDatasetRequest) -> "Dataset":
+    def _from_request_model(task_id: str, request: NewDatasetRequest) -> "Dataset":
         curr_time = datetime.now()
         return Dataset(
             id=uuid.uuid4(),
+            task_id=task_id,
             created_at=curr_time,
             updated_at=curr_time,
             name=request.name,
@@ -2144,6 +2148,7 @@ class Dataset(BaseModel):
     def _from_database_model(db_dataset: DatabaseDataset) -> "Dataset":
         return Dataset(
             id=db_dataset.id,
+            task_id=db_dataset.task_id,
             created_at=db_dataset.created_at,
             updated_at=db_dataset.updated_at,
             name=db_dataset.name,
@@ -2210,7 +2215,7 @@ class DatasetTransform(BaseModel):
             name=db_transform.name,
             description=db_transform.description,
             definition=DatasetTransformDefinition.model_validate(
-                db_transform.definition
+                db_transform.definition,
             ),
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,

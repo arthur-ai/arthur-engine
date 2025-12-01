@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from dependencies import get_db_session
+from dependencies import get_db_session, get_validated_agentic_task
 from repositories.datasets_repository import DatasetRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
@@ -15,7 +15,7 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import Dataset, DatasetTransform, User
+from schemas.internal_schemas import Dataset, DatasetTransform, Task, User
 from schemas.request_schemas import (
     DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
@@ -52,7 +52,7 @@ datasets_router_tag = "Datasets"
 
 
 @dataset_management_routes.post(
-    "/datasets",
+    "/tasks/{task_id}/datasets",
     description="Register a new dataset.",
     response_model=DatasetResponse,
     tags=[datasets_router_tag],
@@ -62,10 +62,11 @@ def create_dataset(
     request: NewDatasetRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
 ) -> DatasetResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
-        dataset = Dataset._from_request_model(request)
+        dataset = Dataset._from_request_model(task.id, request)
         dataset_repo.create_dataset(dataset)
         return dataset.to_response_model()
     finally:
@@ -115,7 +116,7 @@ def delete_dataset(
 
 
 @dataset_management_routes.get(
-    "/datasets/search",
+    "/tasks/{task_id}/datasets/search",
     description="Search datasets. Optionally can filter by dataset IDs and dataset name.",
     tags=[datasets_router_tag],
     response_model=SearchDatasetsResponse,
@@ -136,10 +137,12 @@ def get_datasets(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
 ) -> SearchDatasetsResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
         datasets, count = dataset_repo.query_datasets(
+            task.id,
             pagination_parameters,
             dataset_ids,
             dataset_name,

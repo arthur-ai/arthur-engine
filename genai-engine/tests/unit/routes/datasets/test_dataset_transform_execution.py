@@ -203,9 +203,13 @@ def test_execute_transform_success(
     """Test successful transform execution against a trace."""
     test_data = setup_test_data
 
+    status_code, agentic_task = client.create_task(name="test_execute_transform_success_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, dataset = client.create_dataset(
         name="Test Dataset for Transform Execution",
+        task_id=agentic_task.id,
         description="Testing transform execution",
     )
     assert status_code == 200
@@ -269,6 +273,9 @@ def test_execute_transform_success(
     finally:
         client.delete_dataset(dataset.id)
 
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_execute_transform_with_fallback_values(
@@ -278,9 +285,13 @@ def test_execute_transform_with_fallback_values(
     """Test transform execution with fallback values for missing spans/attributes."""
     test_data = setup_test_data
 
+    status_code, agentic_task = client.create_task(name="test_execute_transform_with_fallback_values_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, dataset = client.create_dataset(
         name="Test Dataset for Fallback Values",
+        task_id=agentic_task.id,
         description="Testing fallback values",
     )
     assert status_code == 200
@@ -341,6 +352,9 @@ def test_execute_transform_with_fallback_values(
     finally:
         client.delete_dataset(dataset.id)
 
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_execute_transform_missing_transform(
@@ -350,9 +364,13 @@ def test_execute_transform_missing_transform(
     """Test transform execution with a non-existent transform."""
     test_data = setup_test_data
 
+    status_code, agentic_task = client.create_task(name="test_execute_transform_missing_transform_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, dataset = client.create_dataset(
         name="Test Dataset for Missing Transform",
+        task_id=agentic_task.id,
         description="Testing missing transform error",
     )
     assert status_code == 200
@@ -374,6 +392,9 @@ def test_execute_transform_missing_transform(
     finally:
         client.delete_dataset(dataset.id)
 
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_execute_transform_missing_trace(
@@ -383,9 +404,13 @@ def test_execute_transform_missing_trace(
     """Test transform execution with a non-existent trace."""
     test_data = setup_test_data
 
+    status_code, agentic_task = client.create_task(name="test_execute_transform_missing_trace_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, dataset = client.create_dataset(
         name="Test Dataset for Missing Trace",
+        task_id=agentic_task.id,
         description="Testing missing trace error",
     )
     assert status_code == 200
@@ -427,6 +452,9 @@ def test_execute_transform_missing_trace(
     finally:
         client.delete_dataset(dataset.id)
 
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_execute_transform_complex_nested_data(
@@ -436,9 +464,13 @@ def test_execute_transform_complex_nested_data(
     """Test transform execution with complex nested object extraction."""
     test_data = setup_test_data
 
+    status_code, agentic_task = client.create_task(name="test_execute_transform_complex_nested_data_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, dataset = client.create_dataset(
         name="Test Dataset for Complex Data",
+        task_id=agentic_task.id,
         description="Testing complex nested data extraction",
     )
     assert status_code == 200
@@ -497,6 +529,9 @@ def test_execute_transform_complex_nested_data(
     finally:
         client.delete_dataset(dataset.id)
 
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_execute_transform_with_multiple_matching_spans(
@@ -515,6 +550,7 @@ def test_execute_transform_with_multiple_matching_spans(
         name="Test Task",
         created_at=datetime.now(),
         updated_at=datetime.now(),
+        is_agentic=True,
     )
     db_session.add(task)
     db_session.commit()
@@ -595,6 +631,7 @@ def test_execute_transform_with_multiple_matching_spans(
         # Create a dataset and transform
         status_code, dataset = client.create_dataset(
             name="Test Dataset for Duplicate Spans",
+            task_id=task_id,
             description="Testing first match selection",
         )
         assert status_code == 200

@@ -77,11 +77,15 @@ class DatasetRepository:
 
     def query_datasets(
         self,
+        task_id: str,
         pagination_params: PaginationParameters,
         dataset_ids: Optional[list[UUID]] = None,
         dataset_name: Optional[str] = None,
     ) -> Tuple[List[Dataset], int]:
-        base_query = self.db_session.query(DatabaseDataset)
+        base_query = self.db_session.query(DatabaseDataset).where(
+            DatabaseDataset.task_id == task_id,
+        )
+
         # apply filters
         if dataset_ids is not None:
             base_query = base_query.where(DatabaseDataset.id.in_(dataset_ids))

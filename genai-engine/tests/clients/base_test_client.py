@@ -930,6 +930,7 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_dataset(
         self,
         name: str,
+        task_id: str = None,
         description: str = None,
         metadata: dict = None,
     ) -> tuple[int, DatasetResponse]:
@@ -940,7 +941,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         resp = self.base_client.post(
-            "/api/v2/datasets",
+            f"/api/v2/tasks/{task_id}/datasets",
             json=request.model_dump(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -1148,6 +1149,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def search_datasets(
         self,
+        task_id: str,
         sort: PaginationSortMethod = None,
         page: int = None,
         page_size: int = None,
@@ -1155,7 +1157,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         dataset_name: str = None,
     ) -> tuple[int, SearchDatasetsResponse]:
         """Search datasets with optional filters and pagination."""
-        path = "api/v2/datasets/search?"
+        path = f"api/v2/tasks/{task_id}/datasets/search?"
         params = get_base_pagination_parameters(
             sort=sort,
             page=page,

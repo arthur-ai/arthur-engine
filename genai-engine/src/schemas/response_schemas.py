@@ -63,6 +63,7 @@ class HealthResponse(BaseModel):
 
 class DatasetResponse(BaseModel):
     id: UUID = Field(description="ID of the dataset.")
+    task_id: str = Field(description="ID of the task the dataset belongs to.")
     name: str = Field(
         description="Name of the dataset.",
     )

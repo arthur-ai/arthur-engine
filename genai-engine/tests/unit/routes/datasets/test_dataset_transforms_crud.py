@@ -10,8 +10,12 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
     dataset_name = "Test Dataset for Transforms"
     dataset_description = "Dataset to test transform operations"
 
+    status_code, agentic_task = client.create_task(name="test_user_story_transforms_crud_task", is_agentic=True)
+    assert status_code == 200
+
     status_code, created_dataset = client.create_dataset(
         name=dataset_name,
+        task_id=agentic_task.id,
         description=dataset_description,
     )
     assert status_code == 200
@@ -193,13 +197,20 @@ def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
         # Clean up: delete the dataset
         client.delete_dataset(created_dataset.id)
 
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_transform_unique_name_constraint(client: GenaiEngineTestClientBase) -> None:
     """Test that transform names must be unique within a dataset."""
+    status_code, agentic_task = client.create_task(name="test_transform_unique_name_constraint_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, created_dataset = client.create_dataset(
         name="Test Dataset for Name Uniqueness",
+        task_id=agentic_task.id,
         description="Testing unique constraint",
     )
     assert status_code == 200
@@ -237,15 +248,22 @@ def test_transform_unique_name_constraint(client: GenaiEngineTestClientBase) -> 
         # Clean up
         client.delete_dataset(created_dataset.id)
 
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_transform_update_unique_name_constraint(
     client: GenaiEngineTestClientBase,
 ) -> None:
     """Test that updating a transform to a duplicate name fails."""
+    status_code, agentic_task = client.create_task(name="test_transform_update_unique_name_constraint_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, created_dataset = client.create_dataset(
         name="Test Dataset for Update Name Uniqueness",
+        task_id=agentic_task.id,
         description="Testing unique constraint on update",
     )
     assert status_code == 200
@@ -289,6 +307,9 @@ def test_transform_update_unique_name_constraint(
     finally:
         # Clean up
         client.delete_dataset(created_dataset.id)
+        
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
 
 
 @pytest.mark.unit_tests
@@ -296,9 +317,13 @@ def test_transform_cascade_delete_with_dataset(
     client: GenaiEngineTestClientBase,
 ) -> None:
     """Test that transforms are automatically deleted when their parent dataset is deleted."""
+    status_code, agentic_task = client.create_task(name="test_transform_cascade_delete_with_dataset_task", is_agentic=True)
+    assert status_code == 200
+
     # Create a dataset
     status_code, created_dataset = client.create_dataset(
         name="Test Dataset for Cascade Delete",
+        task_id=agentic_task.id,
         description="Testing cascade deletion",
     )
     assert status_code == 200
@@ -332,6 +357,9 @@ def test_transform_cascade_delete_with_dataset(
         transform_id=created_transform.id,
     )
     assert status_code == 404
+
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
 
 
 @pytest.mark.unit_tests
