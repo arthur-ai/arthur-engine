@@ -103,17 +103,19 @@ class DatabaseDatasetTransform(Base):
         ForeignKey("datasets.id", ondelete="CASCADE"),
         nullable=False,
     )
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    definition: Mapped[dict] = mapped_column(postgresql.JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
-    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
+    transform_id: Mapped[uuid.UUID] = mapped_column(
+        UUID,
+        ForeignKey("trace_transforms.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
 
     __table_args__ = (
         UniqueConstraint(
             "dataset_id",
-            "name",
-            name="uq_dataset_transforms_dataset_id_name",
+            "transform_id",
+            name="uq_dataset_transforms_dataset_id_transform_id",
         ),
         Index("idx_dataset_transforms_dataset_id", "dataset_id"),
+        Index("idx_dataset_transforms_transform_id", "transform_id"),
     )

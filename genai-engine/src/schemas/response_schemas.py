@@ -29,7 +29,7 @@ from schemas.enums import (
     RagSearchKind,
 )
 from schemas.llm_schemas import OpenAIMessage
-from schemas.request_schemas import DatasetTransformDefinition
+from schemas.request_schemas import TraceTransformDefinition
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -147,22 +147,37 @@ class ListDatasetVersionsResponse(BaseModel):
     )
 
 
-class DatasetTransformResponse(BaseModel):
+class TraceTransformResponse(BaseModel):
     id: UUID = Field(description="ID of the transform.")
-    dataset_id: UUID = Field(description="ID of the parent dataset.")
+    task_id: str = Field(description="ID of the parent task.")
     name: str = Field(description="Name of the transform.")
     description: Optional[str] = Field(
         default=None,
         description="Description of the transform.",
     )
-    definition: DatasetTransformDefinition = Field(
+    definition: TraceTransformDefinition = Field(
         description="Transform definition specifying extraction rules.",
     )
-    created_at: int = Field(
-        description="Timestamp representing the time of transform creation in unix milliseconds.",
+    created_at: datetime = Field(
+        description="Timestamp representing the time of transform creation",
     )
-    updated_at: int = Field(
-        description="Timestamp representing the time of the last transform update in unix milliseconds.",
+    updated_at: datetime = Field(
+        description="Timestamp representing the time of the last transform update",
+    )
+
+
+class ListTraceTransformsResponse(BaseModel):
+    transforms: List[TraceTransformResponse] = Field(
+        description="List of transforms for the task.",
+    )
+
+
+class DatasetTransformResponse(BaseModel):
+    id: UUID = Field(description="ID of the transform.")
+    dataset_id: UUID = Field(description="ID of the parent dataset.")
+    transform_id: UUID = Field(description="ID of the transform.")
+    created_at: datetime = Field(
+        description="Timestamp representing the time the transform was added to the dataset.",
     )
 
 
@@ -172,7 +187,7 @@ class ListDatasetTransformsResponse(BaseModel):
     )
 
 
-class ExecuteTransformResponse(BaseModel):
+class ExecuteDatasetTransformResponse(BaseModel):
     rows_extracted: List[NewDatasetVersionRowRequest] = Field(
         description="List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.",
     )

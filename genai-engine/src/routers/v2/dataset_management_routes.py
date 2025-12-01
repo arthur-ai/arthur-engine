@@ -12,16 +12,15 @@ from repositories.datasets_repository import DatasetRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
+from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import Dataset, DatasetTransform, Task, User
+from schemas.internal_schemas import Dataset, Task, User
 from schemas.request_schemas import (
-    DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     ExecuteTransformRequest,
     NewDatasetRequest,
-    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowRequest,
 )
@@ -30,12 +29,12 @@ from schemas.response_schemas import (
     DatasetTransformResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
-    ExecuteTransformResponse,
+    ExecuteDatasetTransformResponse,
     ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
-from utils.transform_executor import execute_transform
+from utils.transform_executor import execute_transform_for_dataset
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -305,27 +304,45 @@ def get_dataset_version_row(
 
 
 @dataset_management_routes.post(
-    "/datasets/{dataset_id}/transforms",
-    description="Create a new transform for a dataset.",
+    "/datasets/{dataset_id}/transforms/{transform_id}",
+    description="Add an existing transform to a dataset.",
     response_model=DatasetTransformResponse,
     tags=[datasets_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
-def create_transform(
-    request: NewDatasetTransformRequest,
-    dataset_id: UUID = Path(
-        description="ID of the dataset to create the transform for.",
-    ),
+def add_transform_to_dataset(
+    dataset_id: UUID = Path(description="ID of the dataset to add the transform to."),
+    transform_id: UUID = Path(description="ID of the transform to add to the dataset."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> DatasetTransformResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
-        transform = DatasetTransform._from_request_model(dataset_id, request)
-        dataset_repo.create_transform(transform)
-        return transform.to_response_model()
-    finally:
-        db_session.close()
+        transform_repo = TraceTransformRepository(db_session)
+
+        dataset = dataset_repo.get_dataset(dataset_id)
+        if not dataset:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset with ID {dataset_id} not found",
+            )
+
+        transform = transform_repo.get_transform_by_id(dataset.task_id, transform_id)
+        if not transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform with ID {transform_id} not found for task {dataset.task_id}",
+            )
+
+        dataset_transform = dataset_repo.add_transform_to_dataset(
+            dataset_id,
+            transform_id,
+        )
+        return dataset_transform.to_response_model()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @dataset_management_routes.get(
@@ -346,8 +363,8 @@ def list_transforms(
         return ListDatasetTransformsResponse(
             transforms=[transform.to_response_model() for transform in transforms],
         )
-    finally:
-        db_session.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @dataset_management_routes.get(
@@ -366,36 +383,15 @@ def get_transform(
     try:
         dataset_repo = DatasetRepository(db_session)
         return dataset_repo.get_transform(dataset_id, transform_id).to_response_model()
-    finally:
-        db_session.close()
-
-
-@dataset_management_routes.put(
-    "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Update a transform.",
-    response_model=DatasetTransformResponse,
-    tags=[datasets_router_tag],
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
-def update_transform(
-    request: DatasetTransformUpdateRequest,
-    dataset_id: UUID = Path(description="ID of the dataset."),
-    transform_id: UUID = Path(description="ID of the transform to update."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> DatasetTransformResponse:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        dataset_repo.update_transform(dataset_id, transform_id, request)
-        transform = dataset_repo.get_transform(dataset_id, transform_id)
-        return transform.to_response_model()
-    finally:
-        db_session.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @dataset_management_routes.delete(
     "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Delete a transform.",
+    description="Remove a transform from a dataset.",
     tags=[datasets_router_tag],
     status_code=HTTP_204_NO_CONTENT,
 )
@@ -408,17 +404,19 @@ def delete_transform(
 ) -> Response:
     try:
         dataset_repo = DatasetRepository(db_session)
-        dataset_repo.delete_transform(dataset_id, transform_id)
+        dataset_repo.delete_transform_from_dataset(dataset_id, transform_id)
         return Response(status_code=HTTP_204_NO_CONTENT)
-    finally:
-        db_session.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @dataset_management_routes.post(
     "/datasets/{dataset_id}/transforms/{transform_id}/extractions",
     description="Execute a transform against a trace to extract data for dataset rows. "
     "Returns data in the format expected by the create dataset version API's rows_to_add parameter.",
-    response_model=ExecuteTransformResponse,
+    response_model=ExecuteDatasetTransformResponse,
     tags=[datasets_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
@@ -428,7 +426,7 @@ def execute_transform_endpoint(
     transform_id: UUID = Path(description="ID of the transform to execute."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> ExecuteTransformResponse:
+) -> ExecuteDatasetTransformResponse:
     """Execute a transform against a trace to extract dataset rows.
 
     This endpoint:
@@ -440,6 +438,14 @@ def execute_transform_endpoint(
     try:
         # Fetch the transform
         dataset_repo = DatasetRepository(db_session)
+        dataset = dataset_repo.get_dataset(dataset_id)
+
+        if not dataset:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset with ID {dataset_id} not found",
+            )
+
         transform = dataset_repo.get_transform(dataset_id, transform_id)
 
         if not transform:
@@ -447,6 +453,12 @@ def execute_transform_endpoint(
                 status_code=404,
                 detail=f"Transform with ID {transform_id} not found for dataset {dataset_id}",
             )
+
+        trace_transform_repo = TraceTransformRepository(db_session)
+        trace_transform = trace_transform_repo.get_transform_by_id(
+            dataset.task_id,
+            transform.transform_id,
+        )
 
         # Fetch the trace
         tasks_metrics_repo = TasksMetricsRepository(db_session)
@@ -466,15 +478,17 @@ def execute_transform_endpoint(
             )
 
         # Execute the transform
-        columns = execute_transform(
+        columns = execute_transform_for_dataset(
             trace=trace,
-            transform_definition=transform.definition,
+            transform_definition=trace_transform.definition,
         )
 
         # Create the row for the response
         row = NewDatasetVersionRowRequest(data=columns)
 
-        return ExecuteTransformResponse(rows_extracted=[row])
+        return ExecuteDatasetTransformResponse(rows_extracted=[row])
 
-    finally:
-        db_session.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

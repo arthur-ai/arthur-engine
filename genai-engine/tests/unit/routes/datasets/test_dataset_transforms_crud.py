@@ -1,392 +1,484 @@
+import uuid
+
 import pytest
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
+@pytest.fixture
+def transform_definition() -> dict:
+    return {
+        "variables": [
+            {
+                "variable_name": "test_variable",
+                "span_name": "test-span",
+                "attribute_path": "attributes.test",
+                "fallback": None,
+            },
+        ],
+    }
+
+
 @pytest.mark.unit_tests
-def test_user_story_transforms_crud(client: GenaiEngineTestClientBase) -> None:
-    """Test the basic happy path for dataset transform CRUD operations: create, get, list, update, delete."""
-    # First create a dataset to attach transforms to
-    dataset_name = "Test Dataset for Transforms"
-    dataset_description = "Dataset to test transform operations"
-
-    status_code, agentic_task = client.create_task(name="test_user_story_transforms_crud_task", is_agentic=True)
-    assert status_code == 200
-
-    status_code, created_dataset = client.create_dataset(
-        name=dataset_name,
-        task_id=agentic_task.id,
-        description=dataset_description,
+def test_add_transform_to_dataset_success(
+    client: GenaiEngineTestClientBase,
+    transform_definition: dict,
+) -> None:
+    """Test adding a transform to a dataset successfully."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_transforms_crud_task",
+        is_agentic=True,
     )
     assert status_code == 200
-    assert created_dataset.id is not None
 
     try:
-        # Test transform creation
-        transform_name = "Extract SQL Queries"
-        transform_description = "Extracts SQL queries from RAG spans"
-        transform_definition = {
-            "columns": [
-                {
-                    "column_name": "sqlQuery",
-                    "span_name": "rag-retrieval-savedQueries",
-                    "attribute_path": "attributes.input.value.sqlQuery",
-                    "fallback": None,
-                },
-                {
-                    "column_name": "trace_id",
-                    "span_name": "rag-retrieval-savedQueries",
-                    "attribute_path": "traceId",
-                    "fallback": None,
-                },
-            ],
-        }
+        # Create a dataset
+        status_code, dataset = client.create_dataset(
+            name="test_transforms_crud_dataset",
+            task_id=agentic_task.id,
+        )
+        assert status_code == 200
 
-        status_code, created_transform = client.create_transform(
-            dataset_id=created_dataset.id,
-            name=transform_name,
-            description=transform_description,
+        # Create a transform
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_transforms_crud_transform",
             definition=transform_definition,
         )
         assert status_code == 200
-        assert created_transform.id is not None
-        assert created_transform.dataset_id == created_dataset.id
-        assert created_transform.name == transform_name
-        assert created_transform.description == transform_description
-        assert created_transform.definition.model_dump() == transform_definition
-        assert created_transform.created_at is not None
-        assert created_transform.updated_at is not None
 
-        # Test transform fetch
-        status_code, retrieved_transform = client.get_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform.id,
+        # Verify no transforms are associated with the dataset
+        status_code, transforms = client.list_dataset_transforms(dataset_id=dataset.id)
+        assert status_code == 200
+        assert len(transforms.transforms) == 0
+
+        # Add the transform to the dataset
+        status_code, dataset_transform = client.add_transform_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
         )
         assert status_code == 200
-        assert retrieved_transform.id == created_transform.id
-        assert retrieved_transform.name == transform_name
-        assert retrieved_transform.description == transform_description
-        assert retrieved_transform.definition.model_dump() == transform_definition
+        assert dataset_transform.id is not None
+        assert dataset_transform.dataset_id == dataset.id
+        assert dataset_transform.transform_id == transform.id
+        assert dataset_transform.created_at is not None
 
-        # Test list transforms (should have 1)
-        status_code, transforms_list = client.list_transforms(created_dataset.id)
+        # Verify the transform is associated with the dataset
+        status_code, transforms = client.list_dataset_transforms(dataset_id=dataset.id)
         assert status_code == 200
-        assert len(transforms_list.transforms) == 1
-        assert transforms_list.transforms[0].id == created_transform.id
+        assert len(transforms.transforms) == 1
+        assert transforms.transforms[0].id == dataset_transform.id
+    finally:
+        client.delete_task(agentic_task.id)
 
-        # Create a second transform
-        transform_name_2 = "Extract Token Costs"
-        transform_definition_2 = {
-            "columns": [
-                {
-                    "column_name": "token_count",
-                    "span_name": "llm: 'gpt-4.1'",
-                    "attribute_path": "attributes.llm.token_cost",
-                    "fallback": "0",
-                },
-            ],
-        }
 
-        status_code, created_transform_2 = client.create_transform(
-            dataset_id=created_dataset.id,
-            name=transform_name_2,
-            definition=transform_definition_2,
+@pytest.mark.unit_tests
+def test_add_transform_to_dataset_failures(
+    client: GenaiEngineTestClientBase,
+    transform_definition: dict,
+) -> None:
+    """Test adding a transform to a dataset failures."""
+    fake_dataset_id = str(uuid.uuid4())
+    fake_transform_id = str(uuid.uuid4())
+
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_transforms_crud_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Create a dataset
+        status_code, dataset = client.create_dataset(
+            name="test_transforms_crud_dataset",
+            task_id=agentic_task.id,
         )
         assert status_code == 200
-        assert created_transform_2.id is not None
-        assert created_transform_2.id != created_transform.id
 
-        # Test list transforms (should now have 2)
-        status_code, transforms_list = client.list_transforms(created_dataset.id)
-        assert status_code == 200
-        assert len(transforms_list.transforms) == 2
-        transform_ids = {t.id for t in transforms_list.transforms}
-        assert created_transform.id in transform_ids
-        assert created_transform_2.id in transform_ids
-
-        # Test transform update
-        updated_name = "Updated Transform Name"
-        updated_description = "Updated description"
-        updated_definition = {
-            "columns": [
-                {
-                    "column_name": "updated_column",
-                    "span_name": "updated-span",
-                    "attribute_path": "attributes.updated",
-                    "fallback": "default",
-                },
-            ],
-        }
-
-        status_code, updated_transform = client.update_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform.id,
-            name=updated_name,
-            description=updated_description,
-            definition=updated_definition,
+        # Create a transform
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_transforms_crud_transform",
+            definition=transform_definition,
         )
         assert status_code == 200
-        assert updated_transform.id == created_transform.id
-        assert updated_transform.name == updated_name
-        assert updated_transform.description == updated_description
-        assert updated_transform.definition.model_dump() == updated_definition
-        assert updated_transform.updated_at > updated_transform.created_at
 
-        # Validate updates persisted on fetch
-        status_code, final_transform = client.get_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform.id,
-        )
+        # Verify no transforms are associated with the dataset
+        status_code, transforms = client.list_dataset_transforms(dataset_id=dataset.id)
         assert status_code == 200
-        assert final_transform.name == updated_name
-        assert final_transform.description == updated_description
-        assert final_transform.definition.model_dump() == updated_definition
+        assert len(transforms.transforms) == 0
 
-        # Test partial update (only name)
-        partial_updated_name = "Partially Updated Name"
-        status_code, partial_updated_transform = client.update_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform.id,
-            name=partial_updated_name,
-        )
-        assert status_code == 200
-        assert partial_updated_transform.name == partial_updated_name
-        assert partial_updated_transform.description == updated_description  # unchanged
-        assert partial_updated_transform.definition.model_dump() == updated_definition  # unchanged
-
-        # Delete first transform
-        status_code = client.delete_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform.id,
-        )
-        assert status_code == 204
-
-        # Verify transform was deleted
-        status_code, _ = client.get_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform.id,
+        # Adding a transform to a nonexistent dataset returns a 404 error
+        status_code, error = client.add_transform_to_dataset(
+            dataset_id=fake_dataset_id,
+            transform_id=transform.id,
         )
         assert status_code == 404
+        assert error is not None
+        assert f"dataset {fake_dataset_id} not found" in error.get("detail", "").lower()
 
-        # List should now only have the second transform
-        status_code, transforms_list = client.list_transforms(created_dataset.id)
-        assert status_code == 200
-        assert len(transforms_list.transforms) == 1
-        assert transforms_list.transforms[0].id == created_transform_2.id
-
-        # Delete second transform
-        status_code = client.delete_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform_2.id,
+        # Adding a non-existent transform to an existing dataset returns a 404 error
+        status_code, error = client.add_transform_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=fake_transform_id,
         )
-        assert status_code == 204
+        assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {fake_transform_id} not found for task {agentic_task.id}"
+            in error.get("detail", "").lower()
+        )
 
-        # List should now be empty
-        status_code, transforms_list = client.list_transforms(created_dataset.id)
+        # successfully add a transform to a dataset
+        status_code, error = client.add_transform_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 200
+
+        # successfully adding a transform to a dataset that already has it returns a 400 error
+        status_code, error = client.add_transform_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 400
+        assert error is not None
+        assert (
+            f"transform {transform.id} is already associated with dataset {dataset.id}."
+            in error.get("detail", "").lower()
+        )
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_list_transforms_for_dataset_success(
+    client: GenaiEngineTestClientBase,
+    transform_definition: dict,
+) -> None:
+    """Test listing transforms for a dataset successfully."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_transforms_crud_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Create a dataset
+        status_code, dataset = client.create_dataset(
+            name="test_transforms_crud_dataset",
+            task_id=agentic_task.id,
+        )
+        assert status_code == 200
+
+        # Create transforms
+        transforms = []
+        for i in range(10):
+            status_code, transform = client.create_transform(
+                task_id=agentic_task.id,
+                name=f"test_transforms_crud_transform_{i}",
+                definition=transform_definition,
+            )
+            assert status_code == 200
+            transforms.append(transform)
+
+        # Verify no transforms are associated with the dataset
+        status_code, transforms_list = client.list_dataset_transforms(
+            dataset_id=dataset.id,
+        )
         assert status_code == 200
         assert len(transforms_list.transforms) == 0
 
-        # Fail to delete transform that doesn't exist
-        status_code = client.delete_transform(
-            dataset_id=created_dataset.id,
-            transform_id=created_transform.id,
+        # Add the transforms to the dataset
+        for transform in transforms:
+            status_code, dataset_transform = client.add_transform_to_dataset(
+                dataset_id=dataset.id,
+                transform_id=transform.id,
+            )
+            assert status_code == 200
+            assert dataset_transform.id is not None
+            assert dataset_transform.dataset_id == dataset.id
+            assert dataset_transform.transform_id == transform.id
+            assert dataset_transform.created_at is not None
+
+        # Verify the transform is associated with the dataset
+        status_code, transforms_list = client.list_dataset_transforms(
+            dataset_id=dataset.id,
+        )
+        assert status_code == 200
+        assert len(transforms_list.transforms) == len(transforms)
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_get_dataset_transform_by_id_success(
+    client: GenaiEngineTestClientBase,
+    transform_definition: dict,
+) -> None:
+    """Test getting a dataset transform by id successfully."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_transforms_crud_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Create a dataset
+        status_code, dataset = client.create_dataset(
+            name="test_transforms_crud_dataset",
+            task_id=agentic_task.id,
+        )
+        assert status_code == 200
+
+        # Create a transform
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_transforms_crud_transform",
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        # Add the transform to the dataset
+        status_code, _ = client.add_transform_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 200
+
+        # Verify you can now get the transform by id
+        status_code, dataset_transform = client.get_dataset_transform_by_id(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 200
+        assert dataset_transform.id is not None
+        assert dataset_transform.dataset_id == dataset.id
+        assert dataset_transform.transform_id == transform.id
+        assert dataset_transform.created_at is not None
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_get_dataset_transform_by_id_failures(
+    client: GenaiEngineTestClientBase,
+    transform_definition: dict,
+) -> None:
+    """Test getting a dataset transform by id failures."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_transforms_crud_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Create a dataset
+        status_code, dataset = client.create_dataset(
+            name="test_transforms_crud_dataset",
+            task_id=agentic_task.id,
+        )
+        assert status_code == 200
+
+        # Create a transform
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_transforms_crud_transform",
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        # Test getting a transform by id for one not associated with the dataset returns a 404 error
+        status_code, error = client.get_dataset_transform_by_id(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
         )
         assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {transform.id} not found for dataset {dataset.id}"
+            in error.get("detail", "").lower()
+        )
+
+        # Test getting a transform for a non-existent dataset returns a 404 error
+        fake_dataset_id = str(uuid.uuid4())
+        status_code, error = client.get_dataset_transform_by_id(
+            dataset_id=fake_dataset_id,
+            transform_id=transform.id,
+        )
+        assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {transform.id} not found for dataset {fake_dataset_id}"
+            in error.get("detail", "").lower()
+        )
+
+        # Test getting a dataset transform for a non-existent transform returns a 404 error
+        fake_transform_id = str(uuid.uuid4())
+        status_code, error = client.get_dataset_transform_by_id(
+            dataset_id=dataset.id,
+            transform_id=fake_transform_id,
+        )
+        assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {fake_transform_id} not found for dataset {dataset.id}"
+            in error.get("detail", "").lower()
+        )
 
     finally:
-        # Clean up: delete the dataset
-        client.delete_dataset(created_dataset.id)
-
-        status_code = client.delete_task(agentic_task.id)
-        assert status_code == 204
+        client.delete_task(agentic_task.id)
 
 
 @pytest.mark.unit_tests
-def test_transform_unique_name_constraint(client: GenaiEngineTestClientBase) -> None:
-    """Test that transform names must be unique within a dataset."""
-    status_code, agentic_task = client.create_task(name="test_transform_unique_name_constraint_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, created_dataset = client.create_dataset(
-        name="Test Dataset for Name Uniqueness",
-        task_id=agentic_task.id,
-        description="Testing unique constraint",
+def test_remove_transform_from_dataset_success(
+    client: GenaiEngineTestClientBase,
+    transform_definition: dict,
+) -> None:
+    """Test removing a transform from a dataset successfully."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_transforms_crud_task",
+        is_agentic=True,
     )
     assert status_code == 200
 
     try:
-        # Create first transform
-        transform_name = "Duplicate Name Test"
-        transform_definition = {
-            "columns": [
-                {
-                    "column_name": "test_column",
-                    "span_name": "test-span",
-                    "attribute_path": "attributes.test",
-                    "fallback": None,
-                },
-            ],
-        }
+        # Create a dataset
+        status_code, dataset = client.create_dataset(
+            name="test_transforms_crud_dataset",
+            task_id=agentic_task.id,
+        )
+        assert status_code == 200
 
-        status_code, transform_1 = client.create_transform(
-            dataset_id=created_dataset.id,
-            name=transform_name,
+        # Create a transform
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_transforms_crud_transform",
             definition=transform_definition,
         )
         assert status_code == 200
 
-        # Try to create another transform with the same name (should fail with 409 Conflict)
-        status_code, _ = client.create_transform(
-            dataset_id=created_dataset.id,
-            name=transform_name,
-            definition=transform_definition,
+        # Add the transform to the dataset
+        status_code, _ = client.add_transform_to_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
         )
-        assert status_code == 409  # Conflict - unique constraint violation
+        assert status_code == 200
+
+        # Verify the transform is associated with the dataset
+        status_code, retrieved_transform = client.get_dataset_transform_by_id(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 200
+        assert retrieved_transform.id is not None
+        assert retrieved_transform.dataset_id == dataset.id
+        assert retrieved_transform.transform_id == transform.id
+        assert retrieved_transform.created_at is not None
+
+        # Remove the transform from the dataset
+        status_code, _ = client.remove_transform_from_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 204
+
+        # Verify the transform is no longer associated with the dataset
+        status_code, error = client.get_dataset_transform_by_id(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {transform.id} not found for dataset {dataset.id}"
+            in error.get("detail", "").lower()
+        )
+
+        # Verify the transform still exists globally
+        status_code, retrieved_transform = client.get_transform(
+            task_id=agentic_task.id,
+            transform_id=transform.id,
+        )
+        assert status_code == 200
+        assert retrieved_transform.id == transform.id
+        assert retrieved_transform.task_id == agentic_task.id
+
+        # Verify the dataset still exists
+        status_code, retrieved_dataset = client.get_dataset(dataset_id=dataset.id)
+        assert status_code == 200
+        assert retrieved_dataset.id == dataset.id
+        assert retrieved_dataset.task_id == agentic_task.id
 
     finally:
-        # Clean up
-        client.delete_dataset(created_dataset.id)
-
-        status_code = client.delete_task(agentic_task.id)
-        assert status_code == 204
+        client.delete_task(agentic_task.id)
 
 
 @pytest.mark.unit_tests
-def test_transform_update_unique_name_constraint(
+def test_get_dataset_transform_by_id_failures(
     client: GenaiEngineTestClientBase,
+    transform_definition: dict,
 ) -> None:
-    """Test that updating a transform to a duplicate name fails."""
-    status_code, agentic_task = client.create_task(name="test_transform_update_unique_name_constraint_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, created_dataset = client.create_dataset(
-        name="Test Dataset for Update Name Uniqueness",
-        task_id=agentic_task.id,
-        description="Testing unique constraint on update",
+    """Test getting a dataset transform by id failures."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_transforms_crud_task",
+        is_agentic=True,
     )
     assert status_code == 200
 
     try:
-        # Create first transform
-        transform_definition = {
-            "columns": [
-                {
-                    "column_name": "test_column",
-                    "span_name": "test-span",
-                    "attribute_path": "attributes.test",
-                    "fallback": None,
-                },
-            ],
-        }
+        # Create a dataset
+        status_code, dataset = client.create_dataset(
+            name="test_transforms_crud_dataset",
+            task_id=agentic_task.id,
+        )
+        assert status_code == 200
 
-        status_code, transform_1 = client.create_transform(
-            dataset_id=created_dataset.id,
-            name="Transform 1",
+        # Create a transform
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_transforms_crud_transform",
             definition=transform_definition,
         )
         assert status_code == 200
 
-        # Create second transform
-        status_code, transform_2 = client.create_transform(
-            dataset_id=created_dataset.id,
-            name="Transform 2",
-            definition=transform_definition,
+        # Test removing a transform by id for one not associated with the dataset returns a 404 error
+        status_code, error = client.remove_transform_from_dataset(
+            dataset_id=dataset.id,
+            transform_id=transform.id,
         )
-        assert status_code == 200
+        assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {transform.id} not found for dataset {dataset.id}"
+            in error.get("detail", "").lower()
+        )
 
-        # Try to update transform_2 to have the same name as transform_1 (should fail)
-        status_code, _ = client.update_transform(
-            dataset_id=created_dataset.id,
-            transform_id=transform_2.id,
-            name="Transform 1",  # Duplicate name
+        # Test removing a transform for a non-existent dataset returns a 404 error
+        fake_dataset_id = str(uuid.uuid4())
+        status_code, error = client.remove_transform_from_dataset(
+            dataset_id=fake_dataset_id,
+            transform_id=transform.id,
         )
-        assert status_code == 409  # Conflict - unique constraint violation
+        assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {transform.id} not found for dataset {fake_dataset_id}"
+            in error.get("detail", "").lower()
+        )
+
+        # Test removing a dataset transform for a non-existent transform returns a 404 error
+        fake_transform_id = str(uuid.uuid4())
+        status_code, error = client.remove_transform_from_dataset(
+            dataset_id=dataset.id,
+            transform_id=fake_transform_id,
+        )
+        assert status_code == 404
+        assert error is not None
+        assert (
+            f"transform {fake_transform_id} not found for dataset {dataset.id}"
+            in error.get("detail", "").lower()
+        )
 
     finally:
-        # Clean up
-        client.delete_dataset(created_dataset.id)
-        
-        status_code = client.delete_task(agentic_task.id)
-        assert status_code == 204
-
-
-@pytest.mark.unit_tests
-def test_transform_cascade_delete_with_dataset(
-    client: GenaiEngineTestClientBase,
-) -> None:
-    """Test that transforms are automatically deleted when their parent dataset is deleted."""
-    status_code, agentic_task = client.create_task(name="test_transform_cascade_delete_with_dataset_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, created_dataset = client.create_dataset(
-        name="Test Dataset for Cascade Delete",
-        task_id=agentic_task.id,
-        description="Testing cascade deletion",
-    )
-    assert status_code == 200
-
-    # Create a transform
-    transform_definition = {
-        "columns": [
-            {
-                "column_name": "test_column",
-                "span_name": "test-span",
-                "attribute_path": "attributes.test",
-                "fallback": None,
-            },
-        ],
-    }
-
-    status_code, created_transform = client.create_transform(
-        dataset_id=created_dataset.id,
-        name="Transform to be cascade deleted",
-        definition=transform_definition,
-    )
-    assert status_code == 200
-
-    # Delete the dataset
-    status_code = client.delete_dataset(created_dataset.id)
-    assert status_code == 204
-
-    # Verify transform is also gone (accessing it should fail)
-    status_code, _ = client.get_transform(
-        dataset_id=created_dataset.id,
-        transform_id=created_transform.id,
-    )
-    assert status_code == 404
-
-    status_code = client.delete_task(agentic_task.id)
-    assert status_code == 204
-
-
-@pytest.mark.unit_tests
-def test_transform_operations_on_nonexistent_dataset(
-    client: GenaiEngineTestClientBase,
-) -> None:
-    """Test that transform operations fail gracefully on non-existent datasets."""
-    fake_dataset_id = "00000000-0000-0000-0000-000000000000"
-    transform_definition = {
-        "columns": [
-            {
-                "column_name": "test_column",
-                "span_name": "test-span",
-                "attribute_path": "attributes.test",
-                "fallback": None,
-            },
-        ],
-    }
-
-    # Try to create transform on non-existent dataset
-    status_code, _ = client.create_transform(
-        dataset_id=fake_dataset_id,
-        name="Test Transform",
-        definition=transform_definition,
-    )
-    assert status_code == 404
-
-    # Try to list transforms on non-existent dataset
-    status_code, _ = client.list_transforms(fake_dataset_id)
-    assert status_code == 404
+        client.delete_task(agentic_task.id)

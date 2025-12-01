@@ -6881,14 +6881,14 @@
                 }
             }
         },
-        "/api/v2/datasets/{dataset_id}/transforms": {
+        "/api/v2/datasets/{dataset_id}/transforms/{transform_id}": {
             "post": {
                 "tags": [
                     "Datasets"
                 ],
-                "summary": "Create Transform",
-                "description": "Create a new transform for a dataset.",
-                "operationId": "create_transform_api_v2_datasets__dataset_id__transforms_post",
+                "summary": "Add Transform To Dataset",
+                "description": "Add an existing transform to a dataset.",
+                "operationId": "add_transform_to_dataset_api_v2_datasets__dataset_id__transforms__transform_id__post",
                 "security": [
                     {
                         "API Key": []
@@ -6902,22 +6902,24 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid",
-                            "description": "ID of the dataset to create the transform for.",
+                            "description": "ID of the dataset to add the transform to.",
                             "title": "Dataset Id"
                         },
-                        "description": "ID of the dataset to create the transform for."
+                        "description": "ID of the dataset to add the transform to."
+                    },
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to add to the dataset.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to add to the dataset."
                     }
                 ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/NewDatasetTransformRequest"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -6941,57 +6943,6 @@
                     }
                 }
             },
-            "get": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "List Transforms",
-                "description": "List all transforms for a dataset.",
-                "operationId": "list_transforms_api_v2_datasets__dataset_id__transforms_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset to list transforms for.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset to list transforms for."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ListDatasetTransformsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v2/datasets/{dataset_id}/transforms/{transform_id}": {
             "get": {
                 "tags": [
                     "Datasets"
@@ -7053,83 +7004,12 @@
                     }
                 }
             },
-            "put": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Update Transform",
-                "description": "Update a transform.",
-                "operationId": "update_transform_api_v2_datasets__dataset_id__transforms__transform_id__put",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform to update.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform to update."
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/DatasetTransformUpdateRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DatasetTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
             "delete": {
                 "tags": [
                     "Datasets"
                 ],
                 "summary": "Delete Transform",
-                "description": "Delete a transform.",
+                "description": "Remove a transform from a dataset.",
                 "operationId": "delete_transform_api_v2_datasets__dataset_id__transforms__transform_id__delete",
                 "security": [
                     {
@@ -7165,6 +7045,57 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/datasets/{dataset_id}/transforms": {
+            "get": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "List Transforms",
+                "description": "List all transforms for a dataset.",
+                "operationId": "list_transforms_api_v2_datasets__dataset_id__transforms_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset to list transforms for.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset to list transforms for."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListDatasetTransformsResponse"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -7234,7 +7165,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ExecuteTransformResponse"
+                                    "$ref": "#/components/schemas/ExecuteDatasetTransformResponse"
                                 }
                             }
                         }
@@ -10819,6 +10750,383 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/transforms": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "List Transforms For Task",
+                "description": "List all transforms for a task.",
+                "operationId": "list_transforms_for_task_api_v1_tasks__task_id__transforms_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the transform to filter on using partial matching.",
+                            "title": "Name"
+                        },
+                        "description": "Name of the transform to filter on using partial matching."
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTraceTransformsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Create Transform For Task",
+                "description": "Create a new transform for a task.",
+                "operationId": "create_transform_for_task_api_v1_tasks__task_id__transforms_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewTraceTransformRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/transforms/{transform_id}": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform",
+                "description": "Get a specific transform.",
+                "operationId": "get_transform_api_v1_tasks__task_id__transforms__transform_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to fetch.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to fetch."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Update Transform",
+                "description": "Update a transform.",
+                "operationId": "update_transform_api_v1_tasks__task_id__transforms__transform_id__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to update.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to update."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceTransformUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Delete Transform",
+                "description": "Delete a transform.",
+                "operationId": "delete_transform_api_v1_tasks__task_id__transforms__transform_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to delete.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to delete."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -12879,61 +13187,6 @@
                 ],
                 "title": "DatasetResponse"
             },
-            "DatasetTransformColumnDefinition": {
-                "properties": {
-                    "column_name": {
-                        "type": "string",
-                        "title": "Column Name",
-                        "description": "Name of the column to extract."
-                    },
-                    "span_name": {
-                        "type": "string",
-                        "title": "Span Name",
-                        "description": "Name of the span to extract data from."
-                    },
-                    "attribute_path": {
-                        "type": "string",
-                        "title": "Attribute Path",
-                        "description": "Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery')."
-                    },
-                    "fallback": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Fallback",
-                        "description": "Fallback value to use if the attribute is not found."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "column_name",
-                    "span_name",
-                    "attribute_path"
-                ],
-                "title": "DatasetTransformColumnDefinition"
-            },
-            "DatasetTransformDefinition": {
-                "properties": {
-                    "columns": {
-                        "items": {
-                            "$ref": "#/components/schemas/DatasetTransformColumnDefinition"
-                        },
-                        "type": "array",
-                        "title": "Columns",
-                        "description": "List of column extraction rules."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "columns"
-                ],
-                "title": "DatasetTransformDefinition"
-            },
             "DatasetTransformResponse": {
                 "properties": {
                     "id": {
@@ -12948,89 +13201,27 @@
                         "title": "Dataset Id",
                         "description": "ID of the parent dataset."
                     },
-                    "name": {
+                    "transform_id": {
                         "type": "string",
-                        "title": "Name",
-                        "description": "Name of the transform."
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of the transform."
-                    },
-                    "definition": {
-                        "$ref": "#/components/schemas/DatasetTransformDefinition",
-                        "description": "Transform definition specifying extraction rules."
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform."
                     },
                     "created_at": {
-                        "type": "integer",
+                        "type": "string",
+                        "format": "date-time",
                         "title": "Created At",
-                        "description": "Timestamp representing the time of transform creation in unix milliseconds."
-                    },
-                    "updated_at": {
-                        "type": "integer",
-                        "title": "Updated At",
-                        "description": "Timestamp representing the time of the last transform update in unix milliseconds."
+                        "description": "Timestamp representing the time the transform was added to the dataset."
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
                     "dataset_id",
-                    "name",
-                    "definition",
-                    "created_at",
-                    "updated_at"
+                    "transform_id",
+                    "created_at"
                 ],
                 "title": "DatasetTransformResponse"
-            },
-            "DatasetTransformUpdateRequest": {
-                "properties": {
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name",
-                        "description": "Name of the transform."
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of the transform."
-                    },
-                    "definition": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetTransformDefinition"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Transform definition specifying extraction rules."
-                    }
-                },
-                "type": "object",
-                "title": "DatasetTransformUpdateRequest"
             },
             "DatasetUpdateRequest": {
                 "properties": {
@@ -13535,21 +13726,7 @@
                     "hint": "specific individual's blood type"
                 }
             },
-            "ExecuteTransformRequest": {
-                "properties": {
-                    "trace_id": {
-                        "type": "string",
-                        "title": "Trace Id",
-                        "description": "ID of the trace to execute the transform against."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "trace_id"
-                ],
-                "title": "ExecuteTransformRequest"
-            },
-            "ExecuteTransformResponse": {
+            "ExecuteDatasetTransformResponse": {
                 "properties": {
                     "rows_extracted": {
                         "items": {
@@ -13564,7 +13741,21 @@
                 "required": [
                     "rows_extracted"
                 ],
-                "title": "ExecuteTransformResponse"
+                "title": "ExecuteDatasetTransformResponse"
+            },
+            "ExecuteTransformRequest": {
+                "properties": {
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the trace to execute the transform against."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "trace_id"
+                ],
+                "title": "ExecuteTransformRequest"
             },
             "ExperimentOutputSource": {
                 "properties": {
@@ -15786,6 +15977,23 @@
                 ],
                 "title": "ListRagSearchSettingConfigurationsResponse"
             },
+            "ListTraceTransformsResponse": {
+                "properties": {
+                    "transforms": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTransformResponse"
+                        },
+                        "type": "array",
+                        "title": "Transforms",
+                        "description": "List of transforms for the task."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "transforms"
+                ],
+                "title": "ListTraceTransformsResponse"
+            },
             "LogitBiasItem": {
                 "properties": {
                     "token_id": {
@@ -16386,37 +16594,6 @@
                 ],
                 "title": "NewDatasetRequest"
             },
-            "NewDatasetTransformRequest": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the transform."
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of the transform."
-                    },
-                    "definition": {
-                        "$ref": "#/components/schemas/DatasetTransformDefinition",
-                        "description": "Transform definition specifying extraction rules."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "definition"
-                ],
-                "title": "NewDatasetTransformRequest"
-            },
             "NewDatasetVersionRequest": {
                 "properties": {
                     "rows_to_add": {
@@ -16813,6 +16990,37 @@
                     "name"
                 ],
                 "title": "NewTaskRequest"
+            },
+            "NewTraceTransformRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the transform."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the transform."
+                    },
+                    "definition": {
+                        "$ref": "#/components/schemas/TraceTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "definition"
+                ],
+                "title": "NewTraceTransformRequest"
             },
             "NotebookDetail": {
                 "properties": {
@@ -21294,6 +21502,160 @@
                 ],
                 "title": "TraceResponse",
                 "description": "Response model for a single trace containing nested spans"
+            },
+            "TraceTransformDefinition": {
+                "properties": {
+                    "variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTransformVariableDefinition"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of variable extraction rules."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variables"
+                ],
+                "title": "TraceTransformDefinition"
+            },
+            "TraceTransformResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the transform."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the transform."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the transform."
+                    },
+                    "definition": {
+                        "$ref": "#/components/schemas/TraceTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time of transform creation"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Timestamp representing the time of the last transform update"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "definition",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "TraceTransformResponse"
+            },
+            "TraceTransformUpdateRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Name of the transform."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the transform."
+                    },
+                    "definition": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TraceTransformDefinition"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Transform definition specifying extraction rules."
+                    }
+                },
+                "type": "object",
+                "title": "TraceTransformUpdateRequest"
+            },
+            "TraceTransformVariableDefinition": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the variable to extract."
+                    },
+                    "span_name": {
+                        "type": "string",
+                        "title": "Span Name",
+                        "description": "Name of the span to extract data from."
+                    },
+                    "attribute_path": {
+                        "type": "string",
+                        "title": "Attribute Path",
+                        "description": "Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery')."
+                    },
+                    "fallback": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Fallback",
+                        "description": "Fallback value to use if the attribute is not found."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "span_name",
+                    "attribute_path"
+                ],
+                "title": "TraceTransformVariableDefinition"
             },
             "TraceUserListResponse": {
                 "properties": {

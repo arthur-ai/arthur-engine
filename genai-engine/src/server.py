@@ -51,6 +51,7 @@ from routers.v1.rag_routes import rag_routes
 from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
+from routers.v1.transform_routes import transform_routes
 from routers.v2.routers import (
     dataset_management_routes,
     feedback_routes,
@@ -391,6 +392,7 @@ def get_app_with_routes() -> FastAPI:
             llm_eval_routes,
             notebook_routes,
             prompt_experiment_routes,
+            transform_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -424,6 +426,7 @@ def get_test_app() -> FastAPI:
             llm_eval_routes,
             notebook_routes,
             prompt_experiment_routes,
+            transform_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -467,6 +470,7 @@ def get_app() -> FastAPI:
             llm_eval_routes,
             notebook_routes,
             prompt_experiment_routes,
+            transform_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:

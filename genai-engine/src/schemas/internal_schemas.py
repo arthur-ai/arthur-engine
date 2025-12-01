@@ -117,6 +117,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchSettingConfigurationVersion,
     DatabaseRagSearchVersionTag,
 )
+from db_models.transform_models import DatabaseTraceTransform
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
@@ -131,15 +132,15 @@ from schemas.enums import (
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
-    DatasetTransformDefinition,
     NewDatasetRequest,
-    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
+    NewTraceTransformRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
+    TraceTransformDefinition,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
@@ -161,6 +162,7 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
+    TraceTransformResponse,
     TraceUserMetadataResponse,
     WeaviateHybridSearchSettingsConfigurationResponse,
     WeaviateKeywordSearchSettingsConfigurationResponse,
@@ -2182,27 +2184,61 @@ class Dataset(BaseModel):
 class DatasetTransform(BaseModel):
     id: uuid.UUID
     dataset_id: uuid.UUID
-    name: str
-    description: Optional[str]
-    definition: DatasetTransformDefinition
+    transform_id: uuid.UUID
     created_at: datetime
-    updated_at: datetime
 
     def to_response_model(self) -> DatasetTransformResponse:
         return DatasetTransformResponse(
             id=self.id,
             dataset_id=self.dataset_id,
-            name=self.name,
-            description=self.description,
-            definition=self.definition,
+            transform_id=self.transform_id,
             created_at=_serialize_datetime(self.created_at),
-            updated_at=_serialize_datetime(self.updated_at),
         )
 
-    def _to_database_model(self) -> DatabaseDatasetTransform:
+    def to_db_model(self) -> DatabaseDatasetTransform:
         return DatabaseDatasetTransform(
             id=self.id,
             dataset_id=self.dataset_id,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+        )
+
+    @staticmethod
+    def from_db_model(
+        db_transform: DatabaseDatasetTransform,
+    ) -> "DatasetTransform":
+        return DatasetTransform(
+            id=db_transform.id,
+            dataset_id=db_transform.dataset_id,
+            transform_id=db_transform.transform_id,
+            created_at=db_transform.created_at,
+        )
+
+
+class TraceTransform(BaseModel):
+    id: uuid.UUID
+    task_id: str
+    name: str
+    description: Optional[str]
+    definition: TraceTransformDefinition
+    created_at: datetime
+    updated_at: datetime
+
+    def to_response_model(self) -> TraceTransformResponse:
+        return TraceTransformResponse(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            definition=self.definition,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_db_model(self) -> DatabaseTraceTransform:
+        return DatabaseTraceTransform(
+            id=self.id,
+            task_id=self.task_id,
             name=self.name,
             description=self.description,
             definition=self.definition.model_dump(),
@@ -2211,14 +2247,14 @@ class DatasetTransform(BaseModel):
         )
 
     @staticmethod
-    def _from_request_model(
-        dataset_id: uuid.UUID,
-        request: NewDatasetTransformRequest,
-    ) -> "DatasetTransform":
+    def from_request_model(
+        task_id: str,
+        request: NewTraceTransformRequest,
+    ) -> "TraceTransform":
         curr_time = datetime.now()
-        return DatasetTransform(
+        return TraceTransform(
             id=uuid.uuid4(),
-            dataset_id=dataset_id,
+            task_id=task_id,
             name=request.name,
             description=request.description,
             definition=request.definition,
@@ -2227,15 +2263,15 @@ class DatasetTransform(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(
-        db_transform: DatabaseDatasetTransform,
-    ) -> "DatasetTransform":
-        return DatasetTransform(
+    def from_db_model(
+        db_transform: DatabaseTraceTransform,
+    ) -> "TraceTransform":
+        return TraceTransform(
             id=db_transform.id,
-            dataset_id=db_transform.dataset_id,
+            task_id=db_transform.task_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=DatasetTransformDefinition.model_validate(
+            definition=TraceTransformDefinition.model_validate(
                 db_transform.definition,
             ),
             created_at=db_transform.created_at,

@@ -1,4 +1,5 @@
 import logging
+import uuid
 from datetime import datetime
 from typing import List, Optional, Tuple
 from uuid import UUID
@@ -23,7 +24,6 @@ from schemas.internal_schemas import (
     ListDatasetVersions,
 )
 from schemas.request_schemas import (
-    DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetVersionRequest,
 )
@@ -303,31 +303,38 @@ class DatasetRepository:
         )
 
     # Transform methods
-    def create_transform(self, transform: DatasetTransform) -> None:
-        # Verify dataset exists
-        self._get_db_dataset(transform.dataset_id)
-        db_transform = transform._to_database_model()
-        self.db_session.add(db_transform)
+    def add_transform_to_dataset(
+        self,
+        dataset_id: UUID,
+        transform_id: UUID,
+    ) -> DatasetTransform:
+        db_dataset_transform = DatabaseDatasetTransform(
+            id=uuid.uuid4(),
+            dataset_id=dataset_id,
+            transform_id=transform_id,
+            created_at=datetime.now(),
+        )
+
         try:
+            self.db_session.add(db_dataset_transform)
             self.db_session.commit()
         except IntegrityError as e:
             self.db_session.rollback()
-            # Check if it's a unique constraint violation
-            if (
-                "UNIQUE constraint failed" in str(e)
-                or "duplicate key" in str(e).lower()
-            ):
+            if "foreign key constraint" in str(e).lower():
                 raise HTTPException(
-                    status_code=409,
-                    detail=f"A transform with name '{transform.name}' already exists for this dataset.",
+                    status_code=404,
+                    detail=f"Dataset {dataset_id} or transform {transform_id} not found.",
                     headers={"full_stacktrace": "false"},
                 )
-            # Re-raise if it's a different integrity error
-            raise HTTPException(
-                status_code=400,
-                detail="Database constraint violation.",
-                headers={"full_stacktrace": "false"},
-            )
+            elif "unique constraint" in str(e).lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Transform {transform_id} is already associated with dataset {dataset_id}.",
+                    headers={"full_stacktrace": "false"},
+                )
+            raise
+
+        return DatasetTransform.from_db_model(db_dataset_transform)
 
     def _get_db_transform(
         self,
@@ -337,7 +344,7 @@ class DatasetRepository:
         return (
             self.db_session.query(DatabaseDatasetTransform)
             .filter(DatabaseDatasetTransform.dataset_id == dataset_id)
-            .filter(DatabaseDatasetTransform.id == transform_id)
+            .filter(DatabaseDatasetTransform.transform_id == transform_id)
             .first()
         )
 
@@ -350,7 +357,7 @@ class DatasetRepository:
                 % (transform_id, dataset_id),
                 headers={"full_stacktrace": "false"},
             )
-        return DatasetTransform._from_database_model(db_transform)
+        return DatasetTransform.from_db_model(db_transform)
 
     def list_transforms(self, dataset_id: UUID) -> List[DatasetTransform]:
         # Verify dataset exists
@@ -362,55 +369,15 @@ class DatasetRepository:
             .all()
         )
         return [
-            DatasetTransform._from_database_model(db_transform)
+            DatasetTransform.from_db_model(db_transform)
             for db_transform in db_transforms
         ]
 
-    def update_transform(
+    def delete_transform_from_dataset(
         self,
         dataset_id: UUID,
         transform_id: UUID,
-        update_request: DatasetTransformUpdateRequest,
     ) -> None:
-        db_transform = self._get_db_transform(dataset_id, transform_id)
-        if not db_transform:
-            raise HTTPException(
-                status_code=404,
-                detail="Transform %s not found for dataset %s."
-                % (transform_id, dataset_id),
-                headers={"full_stacktrace": "false"},
-            )
-
-        if update_request.name is not None:
-            db_transform.name = update_request.name
-        if update_request.description is not None:
-            db_transform.description = update_request.description
-        if update_request.definition is not None:
-            db_transform.definition = update_request.definition.model_dump()
-
-        db_transform.updated_at = datetime.now()
-        try:
-            self.db_session.commit()
-        except IntegrityError as e:
-            self.db_session.rollback()
-            # Check if it's a unique constraint violation
-            if (
-                "UNIQUE constraint failed" in str(e)
-                or "duplicate key" in str(e).lower()
-            ):
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"A transform with name '{update_request.name}' already exists for this dataset.",
-                    headers={"full_stacktrace": "false"},
-                )
-            # Re-raise if it's a different integrity error
-            raise HTTPException(
-                status_code=400,
-                detail="Database constraint violation.",
-                headers={"full_stacktrace": "false"},
-            )
-
-    def delete_transform(self, dataset_id: UUID, transform_id: UUID) -> None:
         db_transform = self._get_db_transform(dataset_id, transform_id)
         if not db_transform:
             raise HTTPException(
