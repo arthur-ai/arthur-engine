@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/26/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/search  api path removed without deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search  endpoint added
+
 # 11/25/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'deleted_at' to the response with the '200' status
