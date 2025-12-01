@@ -24,6 +24,7 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     )
     assert status_code == 200
     assert created_dataset.name == dataset_name
+    assert created_dataset.task_id == agentic_task.id
     assert created_dataset.description == dataset_description
     assert created_dataset.metadata == dataset_metadata
     assert created_dataset.id is not None
@@ -35,6 +36,7 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     status_code, retrieved_dataset = client.get_dataset(created_dataset.id)
     assert status_code == 200
     assert retrieved_dataset.id == created_dataset.id
+    assert retrieved_dataset.task_id == created_dataset.task_id
     assert retrieved_dataset.name == dataset_name
     assert retrieved_dataset.description == dataset_description
     assert retrieved_dataset.metadata == dataset_metadata
