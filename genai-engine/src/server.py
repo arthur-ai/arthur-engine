@@ -1,4 +1,5 @@
 import fcntl
+import gc
 import logging
 import os
 import random
@@ -218,6 +219,46 @@ async def lifespan(app: FastAPI):
     send_telemetry_event(TelemetryEventTypes.SERVER_START_COMPLETED)
 
     yield
+
+    # We need to explicitly clean up models to prevent ResourceWarning when the server is stopped
+    logger.debug("Cleaning up models...")
+    try:
+        from utils import model_load
+
+        cleanup_count = 0
+        for model_name in model_load.MODEL_NAMES:
+            if hasattr(model_load, model_name):
+                model_obj = getattr(model_load, model_name)
+                if model_obj is not None:
+                    cleanup_count += 1
+                    logger.debug(f"Cleaning up {model_name}...")
+                    if (
+                        hasattr(model_obj, "tokenizer")
+                        and model_obj.tokenizer is not None
+                    ):
+                        try:
+                            del model_obj.tokenizer
+                        except Exception:
+                            pass
+                    del model_obj
+                    setattr(model_load, model_name, None)
+
+        logger.debug(f"Cleaned up {cleanup_count} model objects")
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            logger.debug("Cleared PyTorch CUDA cache")
+
+        for i in range(3):
+            collected = gc.collect()
+            logger.debug(f"Garbage collection pass {i+1}: freed {collected} objects")
+
+        # Wait for 0.2 seconds to ensure all objects are cleaned up
+        time.sleep(0.2)
+
+        logger.debug("Model cleanup complete")
+    except Exception as e:
+        logger.error(f"Error during model cleanup: {e}", exc_info=True)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
