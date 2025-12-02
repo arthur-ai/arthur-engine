@@ -108,6 +108,26 @@ def trace_query_parameters(
         le=1,
         description="Filter by trace annotation score (0 or 1).",
     ),
+    span_ids: list[str] = Query(
+        None,
+        description="Span IDs to filter on. Optional.",
+    ),
+    session_ids: list[str] = Query(
+        None,
+        description="Session IDs to filter on. Optional.",
+    ),
+    user_ids: list[str] = Query(
+        None,
+        description="User IDs to filter on. Optional.",
+    ),
+    span_name: str = Query(
+        None,
+        description="Return only results with this span name.",
+    ),
+    span_name_contains: str = Query(
+        None,
+        description="Return only results where span name contains this substring.",
+    ),
     # Query relevance filters
     query_relevance_eq: float = Query(
         None,
@@ -215,6 +235,11 @@ def trace_query_parameters(
         tool_name=tool_name,
         span_types=span_types,
         annotation_score=annotation_score,
+        span_ids=span_ids,
+        session_ids=session_ids,
+        user_ids=user_ids,
+        span_name=span_name,
+        span_name_contains=span_name_contains,
         query_relevance_eq=query_relevance_eq,
         query_relevance_gt=query_relevance_gt,
         query_relevance_gte=query_relevance_gte,

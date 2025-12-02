@@ -48,4 +48,3 @@ export function validateTransform(transform: TransformDefinition): string[] {
 
   return errors;
 }
-

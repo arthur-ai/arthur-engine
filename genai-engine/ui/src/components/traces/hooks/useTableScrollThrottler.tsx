@@ -7,11 +7,7 @@ type Params = {
   enabled: boolean;
 };
 
-export const useTableScrollThrottler = ({
-  onOffsetReached,
-  offsetThreshold = 50,
-  enabled,
-}: Params) => {
+export const useTableScrollThrottler = ({ onOffsetReached, offsetThreshold = 50, enabled }: Params) => {
   const ref = useRef<HTMLDivElement | null>(null);
 
   const scrollThrottler = useThrottler(

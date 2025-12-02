@@ -1,15 +1,6 @@
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Typography, Alert, Stack } from "@mui/material";
 import { useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  Stack,
-} from "@mui/material";
+
 import { Column, TransformDefinition } from "./form/shared";
 import { buildTransformFromColumns, validateTransform } from "./utils/transformBuilder";
 
@@ -21,12 +12,7 @@ interface SaveTransformDialogProps {
 }
 
 // Dialog for saving manually extracted columns as a reusable transform
-export function SaveTransformDialog({
-  open,
-  onClose,
-  columns,
-  onSave,
-}: SaveTransformDialogProps) {
+export function SaveTransformDialog({ open, onClose, columns, onSave }: SaveTransformDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -141,4 +127,3 @@ export function SaveTransformDialog({
     </Dialog>
   );
 }
-

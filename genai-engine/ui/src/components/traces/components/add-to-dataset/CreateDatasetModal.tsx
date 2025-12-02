@@ -1,12 +1,4 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Stack,
-} from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Stack } from "@mui/material";
 import { useState } from "react";
 
 interface CreateDatasetModalProps {
@@ -16,12 +8,7 @@ interface CreateDatasetModalProps {
   isLoading: boolean;
 }
 
-export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
-  open,
-  onClose,
-  onSubmit,
-  isLoading,
-}) => {
+export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({ open, onClose, onSubmit, isLoading }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);

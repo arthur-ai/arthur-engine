@@ -1,9 +1,6 @@
 import { formOptions } from "@tanstack/react-form";
-import type {
-  DatasetTransformDefinition,
-  DatasetTransformColumnDefinition,
-  DatasetTransformResponse,
-} from "@/lib/api-client/api-client";
+
+import type { DatasetTransformDefinition, DatasetTransformColumnDefinition, DatasetTransformResponse } from "@/lib/api-client/api-client";
 
 export type Column = {
   name: string;
@@ -28,7 +25,7 @@ export type DatasetTransform = DatasetTransformResponse;
 export const addToDatasetFormOptions = formOptions({
   defaultValues: {
     dataset: "",
-    transform: "manual",         // Selected transform ID or "manual"
+    transform: "manual", // Selected transform ID or "manual"
     columns: [] as Column[],
   },
 });
