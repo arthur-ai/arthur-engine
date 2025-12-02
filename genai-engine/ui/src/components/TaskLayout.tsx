@@ -50,6 +50,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
       "task-details": "Task Details",
       "model-providers": "Model Providers",
       "api-keys": "API Keys",
+      "rag-configurations": "RAG Configurations",
       traces: "Traces",
       retrievals: "Retrievals",
       evaluators: "Evaluators",
@@ -105,14 +106,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   };
 
   if (loading) {
-    return (
-      <TaskLoadingState
-        onBackToDashboard={handleBack}
-        onLogout={handleLogout}
-        onNavigate={handleNavigate}
-        activeSection={activeSection}
-      />
-    );
+    return <TaskLoadingState onBackToDashboard={handleBack} onLogout={handleLogout} onNavigate={handleNavigate} activeSection={activeSection} />;
   }
 
   if (error) {
@@ -128,14 +122,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   }
 
   if (!task) {
-    return (
-      <TaskNotFoundState
-        onBackToDashboard={handleBack}
-        onLogout={handleLogout}
-        onNavigate={handleNavigate}
-        activeSection={activeSection}
-      />
-    );
+    return <TaskNotFoundState onBackToDashboard={handleBack} onLogout={handleLogout} onNavigate={handleNavigate} activeSection={activeSection} />;
   }
 
   return (
@@ -144,21 +131,14 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="py-4">
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {getPageTitle(activeSection)}
-              </h1>
+              <h1 className="text-2xl font-semibold text-gray-900">{getPageTitle(activeSection)}</h1>
               <p className="text-gray-600">{task.name}</p>
             </div>
           </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          <SidebarNavigation
-            onBackToDashboard={handleBack}
-            onNavigate={handleNavigate}
-            onLogout={handleLogout}
-            activeSection={activeSection}
-          />
+          <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} onLogout={handleLogout} activeSection={activeSection} />
 
           <main className="flex-1 overflow-auto">{children}</main>
         </div>

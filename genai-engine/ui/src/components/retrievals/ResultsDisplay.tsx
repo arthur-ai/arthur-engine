@@ -1,3 +1,4 @@
+import { ErrorOutline, Search, SearchOff, ExpandMore } from "@mui/icons-material";
 import React, { useState } from "react";
 
 import type { SearchMethod } from "./types";
@@ -13,6 +14,46 @@ interface ResultsDisplayProps {
   query: string;
   searchMethod: SearchMethod;
 }
+
+interface EmptyStateContainerProps {
+  children: React.ReactNode;
+  centered?: boolean;
+}
+
+const EmptyStateContainer: React.FC<EmptyStateContainerProps> = ({ children, centered = true }) => {
+  return (
+    <div className={`bg-white rounded-lg shadow h-full ${centered ? "flex items-center justify-center" : ""} p-6`} style={{ minHeight: "600px" }}>
+      {children}
+    </div>
+  );
+};
+
+interface VectorEmbeddingDisplayProps {
+  vector: Record<string, number[] | number[][]> | null | undefined;
+}
+
+const VectorEmbeddingDisplay: React.FC<VectorEmbeddingDisplayProps> = ({ vector }) => {
+  const vectorArray = extractVectorArray(vector);
+  if (!vectorArray) return null;
+
+  const stats = getVectorStats(vectorArray);
+
+  return (
+    <div>
+      <h4 className="text-sm font-medium text-gray-900 mb-2">Vector Embedding ({vectorArray.length} dimensions)</h4>
+      <div className="bg-white rounded border p-3">
+        <div className="text-xs text-gray-600">
+          <div className="mb-2">First 10 dimensions: {formatVectorPreview(vectorArray, 10)}</div>
+          {stats && (
+            <div className="text-gray-500">
+              Min: {stats.min.toFixed(4)}, Max: {stats.max.toFixed(4)}, Mean: {stats.mean.toFixed(4)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ results, isLoading, error, query, searchMethod }) => {
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
@@ -73,22 +114,18 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
+      <EmptyStateContainer>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </EmptyStateContainer>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+      <EmptyStateContainer>
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 max-w-md w-full">
           <div className="flex">
-            <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <ErrorOutline className="h-5 w-5 text-red-400" fontSize="small" />
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">Search Error</h3>
               <div className="mt-2 text-sm text-red-700">
@@ -97,21 +134,19 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
             </div>
           </div>
         </div>
-      </div>
+      </EmptyStateContainer>
     );
   }
 
   if (!results) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-center py-8">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+      <EmptyStateContainer>
+        <div className="text-center">
+          <Search className="mx-auto text-gray-400" sx={{ fontSize: 48 }} />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No results yet</h3>
           <p className="mt-1 text-sm text-gray-600">Execute a search query to see results here.</p>
         </div>
-      </div>
+      </EmptyStateContainer>
     );
   }
 
@@ -135,17 +170,12 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
       )}
 
       {results.objects.length === 0 ? (
-        <div className="text-center py-8">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-1.009-5.824-2.709M15 6.708A7.962 7.962 0 0112 5c-2.34 0-4.29 1.009-5.824 2.709"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No results found</h3>
-          <p className="mt-1 text-sm text-gray-600">Try adjusting your search query or settings.</p>
+        <div className="flex items-center justify-center" style={{ minHeight: "400px" }}>
+          <div className="text-center">
+            <SearchOff className="mx-auto text-gray-400" sx={{ fontSize: 48 }} />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No results found</h3>
+            <p className="mt-1 text-sm text-gray-600">Try adjusting your search query or settings.</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -216,14 +246,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                         </div>
                       )}
 
-                      <svg
-                        className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <ExpandMore className={`text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} fontSize="small" />
                     </div>
                   </div>
                 </div>
@@ -291,28 +314,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                         </div>
                       )}
 
-                      {(() => {
-                        const vectorArray = extractVectorArray(result.vector);
-                        if (!vectorArray) return null;
-
-                        const stats = getVectorStats(vectorArray);
-
-                        return (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Vector Embedding ({vectorArray.length} dimensions)</h4>
-                            <div className="bg-white rounded border p-3">
-                              <div className="text-xs text-gray-600">
-                                <div className="mb-2">First 10 dimensions: {formatVectorPreview(vectorArray, 10)}</div>
-                                {stats && (
-                                  <div className="text-gray-500">
-                                    Min: {stats.min.toFixed(4)}, Max: {stats.max.toFixed(4)}, Mean: {stats.mean.toFixed(4)}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      <VectorEmbeddingDisplay vector={result.vector} />
                     </div>
                   </div>
                 )}
