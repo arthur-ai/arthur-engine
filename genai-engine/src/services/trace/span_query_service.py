@@ -580,7 +580,7 @@ class SpanQueryService:
             or filters.start_time
             or filters.end_time
             or filters.trace_duration_filters
-            or filters.annotation_score is not None,
+            or filters.annotation_score is not None
             or filters.user_ids
             or filters.session_ids
         )

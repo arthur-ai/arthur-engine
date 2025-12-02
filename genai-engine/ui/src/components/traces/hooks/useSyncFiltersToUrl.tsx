@@ -1,83 +1,49 @@
-import { useEffect, useEffectEvent, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { parseAsJson, useQueryState } from "nuqs";
+import { useEffect, useRef } from "react";
+import { z } from "zod";
 
 import type { IncomingFilter } from "../components/filtering/mapper";
 import { useFilterStore } from "../stores/filter.store";
 
-const FILTERS_URL_KEY = "filters";
-
 /**
- * Serialize filters to URL-safe string
+ * Zod schema for validating filter objects from URL
  */
-function serializeFilters(filters: IncomingFilter[]): string {
-  if (filters.length === 0) return "";
-  return JSON.stringify(filters);
-}
-
-/**
- * Deserialize filters from URL string
- */
-function deserializeFilters(filterString: string | null): IncomingFilter[] {
-  if (!filterString) return [];
-  try {
-    const parsed = JSON.parse(filterString);
-    // Validate that it's an array of filters
-    if (Array.isArray(parsed)) {
-      return parsed.filter(
-        (f): f is IncomingFilter =>
-          f &&
-          typeof f === "object" &&
-          typeof f.name === "string" &&
-          typeof f.operator === "string" &&
-          (typeof f.value === "string" || Array.isArray(f.value))
-      );
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
+const filterSchema = z.array(
+  z.object({
+    name: z.string(),
+    operator: z.string(),
+    value: z.union([z.string(), z.array(z.string())]),
+  })
+);
 
 /**
  * Hook to sync filters with URL search parameters
  * Reads filters from URL on mount and writes filters to URL when they change
  */
 export function useSyncFiltersToUrl() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const filters = useFilterStore((state) => state.filters);
-  const setFilters = useFilterStore((state) => state.setFilters);
-  const isInitialMount = useRef(true);
+  const [urlFilters, setUrlFilters] = useQueryState("filters", parseAsJson(filterSchema.parse).withDefault([]).withOptions({ history: "replace" }));
 
-  // Read filters from URL on initial mount
+  const storeFilters = useFilterStore((state) => state.filters);
+  const setStoreFilters = useFilterStore((state) => state.setFilters);
+
+  const hasInitializedFromUrl = useRef(false);
+
+  // Sync from URL to store on mount (only once)
   useEffect(() => {
-    const filtersParam = searchParams.get(FILTERS_URL_KEY);
-    if (filtersParam) {
-      const urlFilters = deserializeFilters(filtersParam);
-      if (urlFilters.length > 0) {
-        setFilters(urlFilters);
-      }
+    if (!hasInitializedFromUrl.current && urlFilters.length > 0) {
+      setStoreFilters(urlFilters as IncomingFilter[]);
+      hasInitializedFromUrl.current = true;
     }
-    isInitialMount.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Write filters to URL when they change (but not on initial mount)
-  const onFiltersChange = useEffectEvent((newFilters: IncomingFilter[]) => {
-    if (isInitialMount.current) return;
-
-    const newSearchParams = new URLSearchParams(searchParams);
-    if (newFilters.length > 0) {
-      newSearchParams.set(FILTERS_URL_KEY, serializeFilters(newFilters));
-    } else {
-      newSearchParams.delete(FILTERS_URL_KEY);
-    }
-    setSearchParams(newSearchParams, { replace: true });
-  });
-
+  // Sync from store to URL when store changes
   useEffect(() => {
-    if (!isInitialMount.current) {
-      onFiltersChange(filters);
+    // Skip the initial sync if we just loaded from URL
+    if (!hasInitializedFromUrl.current) {
+      hasInitializedFromUrl.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+
+    setUrlFilters(storeFilters.length > 0 ? storeFilters : null);
+  }, [storeFilters, setUrlFilters]);
 }

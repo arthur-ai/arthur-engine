@@ -44,25 +44,6 @@ The intention of this changelog is to document API changes as they happen to eff
 - `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
 - `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
 - `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
 
 # 11/20/2025
 - `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed
