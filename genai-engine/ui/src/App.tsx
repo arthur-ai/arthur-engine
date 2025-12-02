@@ -20,6 +20,7 @@ import { PromptExperimentsView } from "./components/prompt-experiments/PromptExp
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
@@ -93,6 +94,16 @@ function App() {
                         <ProtectedRoute>
                           <TaskLayout>
                             <ApiKeysManagement />
+                          </TaskLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/tasks/:id/rag-configurations"
+                      element={
+                        <ProtectedRoute>
+                          <TaskLayout>
+                            <RagConfigurationsPage />
                           </TaskLayout>
                         </ProtectedRoute>
                       }
