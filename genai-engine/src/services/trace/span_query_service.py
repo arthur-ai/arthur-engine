@@ -212,6 +212,8 @@ class SpanQueryService:
             conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
         if filters.user_ids:
             conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
+        if filters.session_ids:
+            conditions.append(DatabaseTraceMetadata.session_id.in_(filters.session_ids))
 
         # Duration filters with optimized calculation
         if filters.trace_duration_filters:
@@ -262,8 +264,53 @@ class SpanQueryService:
         - Simple span filters (tool_name, span_types): Use JOINs
         - Metric filters: Use EXISTS clauses
         - Multiple span types: Use OR logic with proper grouping
+        - Span name filters: Applied via EXISTS clause to work with trace-based queries
         """
         span_types = self.filter_service.auto_detect_span_types(filters)
+
+        # Apply span name filters even when no span_types are detected
+        # Use EXISTS clause to filter traces that contain matching spans
+        span_name_conditions = []
+        if filters.span_name:
+            # EQUALS operator does exact match
+            span_name_conditions.append(DatabaseSpan.span_name == filters.span_name)
+        if filters.span_name_contains:
+            # Use ilike for case-insensitive substring matching
+            span_name_conditions.append(
+                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%")
+            )
+
+        if span_name_conditions:
+            # Use EXISTS to find traces containing spans with matching names
+            # Combine multiple span_name conditions with AND (both must match)
+            span_name_exists = exists(
+                select(1)
+                .select_from(DatabaseSpan)
+                .where(
+                    and_(
+                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
+                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        *span_name_conditions,  # AND all conditions together
+                    ),
+                ),
+            )
+            query = query.where(span_name_exists)
+
+        # Apply span_ids filter even when no span_types are detected
+        # Use EXISTS clause to filter traces that contain spans with matching IDs
+        if filters.span_ids:
+            span_ids_exists = exists(
+                select(1)
+                .select_from(DatabaseSpan)
+                .where(
+                    and_(
+                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
+                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        DatabaseSpan.span_id.in_(filters.span_ids),
+                    ),
+                ),
+            )
+            query = query.where(span_ids_exists)
 
         if not span_types:
             return query
@@ -533,7 +580,9 @@ class SpanQueryService:
             or filters.start_time
             or filters.end_time
             or filters.trace_duration_filters
-            or filters.annotation_score is not None,
+            or filters.annotation_score is not None
+            or filters.user_ids
+            or filters.session_ids
         )
 
     def _apply_trace_filters_with_join(
@@ -560,6 +609,10 @@ class SpanQueryService:
             conditions.append(DatabaseTraceMetadata.start_time >= filters.start_time)
         if filters.end_time:
             conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
+        if filters.user_ids:
+            conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
+        if filters.session_ids:
+            conditions.append(DatabaseTraceMetadata.session_id.in_(filters.session_ids))
 
         # Duration filters
         if filters.trace_duration_filters:
@@ -608,8 +661,23 @@ class SpanQueryService:
         Strategy for span-based queries:
         - Single Span Type: Direct WHERE conditions + metric EXISTS clauses
         - Multiple Span Types: OR conditions grouping span type + filters
+        - Span name filters: Applied to all spans regardless of type
         """
         span_types = self.filter_service.auto_detect_span_types(filters)
+
+        # Apply span name filters first (these apply to all span types)
+        span_name_conditions = []
+        if filters.span_name:
+            # EQUALS operator does exact match
+            span_name_conditions.append(DatabaseSpan.span_name == filters.span_name)
+        if filters.span_name_contains:
+            # Use ilike for case-insensitive substring matching
+            span_name_conditions.append(
+                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%")
+            )
+
+        if span_name_conditions:
+            query = query.where(and_(*span_name_conditions))
 
         if not span_types:
             return query

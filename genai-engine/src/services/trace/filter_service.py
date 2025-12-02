@@ -91,6 +91,9 @@ class FilterService:
         return bool(
             filters.tool_name
             or filters.span_types
+            or filters.span_name
+            or filters.span_name_contains
+            or filters.span_ids
             or self.has_llm_metric_filters(filters),
         )
 
@@ -306,6 +309,9 @@ class FilterService:
         # Type-specific filters
         if span_type == SPAN_KIND_TOOL and filters.tool_name:
             conditions.append(DatabaseSpan.span_name == filters.tool_name)
+
+        # Note: span_name and span_name_contains filters are applied at a higher level
+        # in _apply_span_level_filters_direct to ensure they apply to all span types
 
         return conditions
 
