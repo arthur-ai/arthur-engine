@@ -8,12 +8,6 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets  endpoint added
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search  endpoint added
 
-# 11/28/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  the 'cost' response's property type/format changed from ''/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  the 'cost' response's property type/format changed from ''/'' to 'string'/'' for status '200'
-- **CHANGE** for **URL**: /api/v1/completions  removed 'subschema #1, subschema #2' from the 'cost' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  removed 'subschema #1, subschema #2' from the 'cost' response property 'anyOf' list for the response status '200'
-
 # 11/25/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'deleted_at' to the response with the '200' status
