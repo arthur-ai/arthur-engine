@@ -1,5 +1,4 @@
 import logging
-import uuid
 from datetime import datetime
 from typing import List, Optional, Tuple
 from uuid import UUID
@@ -8,18 +7,15 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy import and_, asc, desc
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseDataset
 from db_models.dataset_models import (
-    DatabaseDatasetTransform,
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
 from schemas.internal_schemas import (
     Dataset,
-    DatasetTransform,
     DatasetVersion,
     ListDatasetVersions,
 )
@@ -301,90 +297,3 @@ class DatasetRepository:
             total_count,
             pagination_params,
         )
-
-    # Transform methods
-    def add_transform_to_dataset(
-        self,
-        dataset_id: UUID,
-        transform_id: UUID,
-    ) -> DatasetTransform:
-        db_dataset_transform = DatabaseDatasetTransform(
-            id=uuid.uuid4(),
-            dataset_id=dataset_id,
-            transform_id=transform_id,
-            created_at=datetime.now(),
-        )
-
-        try:
-            self.db_session.add(db_dataset_transform)
-            self.db_session.commit()
-        except IntegrityError as e:
-            self.db_session.rollback()
-            if "foreign key constraint" in str(e).lower():
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Dataset {dataset_id} or transform {transform_id} not found.",
-                    headers={"full_stacktrace": "false"},
-                )
-            elif "unique constraint" in str(e).lower():
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Transform {transform_id} is already associated with dataset {dataset_id}.",
-                    headers={"full_stacktrace": "false"},
-                )
-            raise
-
-        return DatasetTransform.from_db_model(db_dataset_transform)
-
-    def _get_db_transform(
-        self,
-        dataset_id: UUID,
-        transform_id: UUID,
-    ) -> Optional[DatabaseDatasetTransform]:
-        return (
-            self.db_session.query(DatabaseDatasetTransform)
-            .filter(DatabaseDatasetTransform.dataset_id == dataset_id)
-            .filter(DatabaseDatasetTransform.transform_id == transform_id)
-            .first()
-        )
-
-    def get_transform(self, dataset_id: UUID, transform_id: UUID) -> DatasetTransform:
-        db_transform = self._get_db_transform(dataset_id, transform_id)
-        if not db_transform:
-            raise HTTPException(
-                status_code=404,
-                detail="Transform %s not found for dataset %s."
-                % (transform_id, dataset_id),
-                headers={"full_stacktrace": "false"},
-            )
-        return DatasetTransform.from_db_model(db_transform)
-
-    def list_transforms(self, dataset_id: UUID) -> List[DatasetTransform]:
-        # Verify dataset exists
-        self._get_db_dataset(dataset_id)
-        db_transforms = (
-            self.db_session.query(DatabaseDatasetTransform)
-            .filter(DatabaseDatasetTransform.dataset_id == dataset_id)
-            .order_by(DatabaseDatasetTransform.created_at.desc())
-            .all()
-        )
-        return [
-            DatasetTransform.from_db_model(db_transform)
-            for db_transform in db_transforms
-        ]
-
-    def delete_transform_from_dataset(
-        self,
-        dataset_id: UUID,
-        transform_id: UUID,
-    ) -> None:
-        db_transform = self._get_db_transform(dataset_id, transform_id)
-        if not db_transform:
-            raise HTTPException(
-                status_code=404,
-                detail="Transform %s not found for dataset %s."
-                % (transform_id, dataset_id),
-                headers={"full_stacktrace": "false"},
-            )
-        self.db_session.delete(db_transform)
-        self.db_session.commit()

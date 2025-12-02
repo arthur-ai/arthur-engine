@@ -172,21 +172,6 @@ class ListTraceTransformsResponse(BaseModel):
     )
 
 
-class DatasetTransformResponse(BaseModel):
-    id: UUID = Field(description="ID of the transform.")
-    dataset_id: UUID = Field(description="ID of the parent dataset.")
-    transform_id: UUID = Field(description="ID of the transform.")
-    created_at: datetime = Field(
-        description="Timestamp representing the time the transform was added to the dataset.",
-    )
-
-
-class ListDatasetTransformsResponse(BaseModel):
-    transforms: List[DatasetTransformResponse] = Field(
-        description="List of transforms for the dataset.",
-    )
-
-
 class ExecuteDatasetTransformResponse(BaseModel):
     rows_extracted: List[NewDatasetVersionRowRequest] = Field(
         description="List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.",

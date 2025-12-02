@@ -3,6 +3,22 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 12/02/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **CHANGE** for Component/Schema:  removed the schema 'DatasetTransformResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'ListDatasetTransformsResponse'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
@@ -33,32 +49,36 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json 
 - **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
 
-# 12/01/2025
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  the 'transforms/items/created_at' response's property type/format changed from 'integer'/'' to 'string'/'date-time' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the required property 'transforms/items/definition' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the required property 'transforms/items/name' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the required property 'transforms/items/updated_at' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  api removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  the 'created_at' response's property type/format changed from 'integer'/'' to 'string'/'date-time' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the required property 'definition' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the required property 'name' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the required property 'updated_at' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api removed without deprecation
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  removed the optional property 'transforms/items/description' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  removed the optional property 'description' from the response with the '200' status
-- **CHANGE** for Component/Schema:  removed the schema 'DatasetTransformColumnDefinition'
-- **CHANGE** for Component/Schema:  removed the schema 'DatasetTransformDefinition'
-- **CHANGE** for Component/Schema:  removed the schema 'DatasetTransformUpdateRequest'
-- **CHANGE** for Component/Schema:  removed the schema 'ExecuteTransformResponse'
-- **CHANGE** for Component/Schema:  removed the schema 'NewDatasetTransformRequest'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  added the required property 'transforms/items/transform_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  added the required property 'transform_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json 
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json 
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
 
 # 11/26/2025
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets  api path removed without deprecation

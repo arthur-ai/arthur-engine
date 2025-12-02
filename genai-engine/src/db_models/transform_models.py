@@ -9,12 +9,12 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from db_models.base import Base
 
 if TYPE_CHECKING:
-    from db_models.task_models import DatabaseTask
+    pass
 
 
 class DatabaseTraceTransform(Base):
@@ -23,7 +23,6 @@ class DatabaseTraceTransform(Base):
         UUID,
         primary_key=True,
         default=uuid.uuid4,
-        index=True,
     )
     task_id: Mapped[str] = mapped_column(
         String,
@@ -36,6 +35,3 @@ class DatabaseTraceTransform(Base):
     definition: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
-
-    # Relationships
-    task: Mapped["DatabaseTask"] = relationship(back_populates="trace_transforms")

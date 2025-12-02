@@ -26,11 +26,9 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     DatasetResponse,
-    DatasetTransformResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
     ExecuteDatasetTransformResponse,
-    ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
@@ -304,115 +302,6 @@ def get_dataset_version_row(
 
 
 @dataset_management_routes.post(
-    "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Add an existing transform to a dataset.",
-    response_model=DatasetTransformResponse,
-    tags=[datasets_router_tag],
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
-def add_transform_to_dataset(
-    dataset_id: UUID = Path(description="ID of the dataset to add the transform to."),
-    transform_id: UUID = Path(description="ID of the transform to add to the dataset."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> DatasetTransformResponse:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        transform_repo = TraceTransformRepository(db_session)
-
-        dataset = dataset_repo.get_dataset(dataset_id)
-        if not dataset:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Dataset with ID {dataset_id} not found",
-            )
-
-        transform = transform_repo.get_transform_by_id(dataset.task_id, transform_id)
-        if not transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform with ID {transform_id} not found for task {dataset.task_id}",
-            )
-
-        dataset_transform = dataset_repo.add_transform_to_dataset(
-            dataset_id,
-            transform_id,
-        )
-        return dataset_transform.to_response_model()
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@dataset_management_routes.get(
-    "/datasets/{dataset_id}/transforms",
-    description="List all transforms for a dataset.",
-    response_model=ListDatasetTransformsResponse,
-    tags=[datasets_router_tag],
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
-def list_transforms(
-    dataset_id: UUID = Path(description="ID of the dataset to list transforms for."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> ListDatasetTransformsResponse:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        transforms = dataset_repo.list_transforms(dataset_id)
-        return ListDatasetTransformsResponse(
-            transforms=[transform.to_response_model() for transform in transforms],
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@dataset_management_routes.get(
-    "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Get a specific transform.",
-    response_model=DatasetTransformResponse,
-    tags=[datasets_router_tag],
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
-def get_transform(
-    dataset_id: UUID = Path(description="ID of the dataset."),
-    transform_id: UUID = Path(description="ID of the transform to fetch."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> DatasetTransformResponse:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        return dataset_repo.get_transform(dataset_id, transform_id).to_response_model()
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@dataset_management_routes.delete(
-    "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Remove a transform from a dataset.",
-    tags=[datasets_router_tag],
-    status_code=HTTP_204_NO_CONTENT,
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
-def delete_transform(
-    dataset_id: UUID = Path(description="ID of the dataset."),
-    transform_id: UUID = Path(description="ID of the transform to delete."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> Response:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        dataset_repo.delete_transform_from_dataset(dataset_id, transform_id)
-        return Response(status_code=HTTP_204_NO_CONTENT)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@dataset_management_routes.post(
     "/datasets/{dataset_id}/transforms/{transform_id}/extractions",
     description="Execute a transform against a trace to extract data for dataset rows. "
     "Returns data in the format expected by the create dataset version API's rows_to_add parameter.",
@@ -446,19 +335,16 @@ def execute_transform_endpoint(
                 detail=f"Dataset with ID {dataset_id} not found",
             )
 
-        transform = dataset_repo.get_transform(dataset_id, transform_id)
-
-        if not transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform with ID {transform_id} not found for dataset {dataset_id}",
-            )
-
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.get_transform_by_id(
-            dataset.task_id,
-            transform.transform_id,
+            transform_id,
         )
+
+        if not trace_transform or trace_transform.task_id != dataset.task_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform with ID {transform_id} not found for task {dataset.task_id}",
+            )
 
         # Fetch the trace
         tasks_metrics_repo = TasksMetricsRepository(db_session)

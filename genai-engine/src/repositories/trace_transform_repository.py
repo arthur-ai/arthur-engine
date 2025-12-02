@@ -55,12 +55,10 @@ class TraceTransformRepository:
 
     def _get_db_transform_by_id(
         self,
-        task_id: str,
         transform_id: UUID,
     ) -> DatabaseTraceTransform:
         db_transform = (
             self.db_session.query(DatabaseTraceTransform)
-            .filter(DatabaseTraceTransform.task_id == task_id)
             .filter(DatabaseTraceTransform.id == transform_id)
             .one_or_none()
         )
@@ -68,13 +66,13 @@ class TraceTransformRepository:
         if not db_transform:
             raise HTTPException(
                 status_code=404,
-                detail=f"Transform {transform_id} not found for task {task_id}.",
+                detail=f"Transform {transform_id} not found",
             )
 
         return db_transform
 
-    def get_transform_by_id(self, task_id: str, transform_id: UUID) -> TraceTransform:
-        db_transform = self._get_db_transform_by_id(task_id, transform_id)
+    def get_transform_by_id(self, transform_id: UUID) -> TraceTransform:
+        db_transform = self._get_db_transform_by_id(transform_id)
         return TraceTransform.from_db_model(db_transform)
 
     def list_transforms(
@@ -139,11 +137,10 @@ class TraceTransformRepository:
 
     def update_transform(
         self,
-        task_id: str,
         transform_id: UUID,
         transform: TraceTransformUpdateRequest,
     ) -> TraceTransform:
-        db_transform = self._get_db_transform_by_id(task_id, transform_id)
+        db_transform = self._get_db_transform_by_id(transform_id)
 
         updated_transform = False
         if transform.name is not None:
@@ -163,7 +160,7 @@ class TraceTransformRepository:
 
         return TraceTransform.from_db_model(db_transform)
 
-    def delete_transform(self, task_id: str, transform_id: UUID) -> None:
-        db_transform = self._get_db_transform_by_id(task_id, transform_id)
+    def delete_transform(self, transform_id: UUID) -> None:
+        db_transform = self._get_db_transform_by_id(transform_id)
         self.db_session.delete(db_transform)
         self.db_session.commit()

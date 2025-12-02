@@ -11,7 +11,6 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,10 +36,6 @@ class DatabaseDataset(Base):
     # versions relationship include for cascade-delete functionality
     versions: Mapped[List["DatabaseDatasetVersion"]] = relationship(
         cascade="all,delete",
-    )
-    # transforms relationship include for cascade-delete functionality
-    transforms: Mapped[List["DatabaseDatasetTransform"]] = relationship(
-        cascade="all, delete-orphan",
     )
     latest_version_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
@@ -91,31 +86,4 @@ class DatabaseDatasetVersionRow(Base):
             ["version_number", "dataset_id"],
             ["dataset_versions.version_number", "dataset_versions.dataset_id"],
         ),
-    )
-
-
-class DatabaseDatasetTransform(Base):
-    __tablename__ = "dataset_transforms"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    dataset_id: Mapped[uuid.UUID] = mapped_column(
-        UUID,
-        ForeignKey("datasets.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    transform_id: Mapped[uuid.UUID] = mapped_column(
-        UUID,
-        ForeignKey("trace_transforms.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
-
-    __table_args__ = (
-        UniqueConstraint(
-            "dataset_id",
-            "transform_id",
-            name="uq_dataset_transforms_dataset_id_transform_id",
-        ),
-        Index("idx_dataset_transforms_dataset_id", "dataset_id"),
-        Index("idx_dataset_transforms_transform_id", "transform_id"),
     )

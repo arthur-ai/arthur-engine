@@ -249,12 +249,6 @@ def test_execute_transform_success(
         )
         assert status_code == 200
 
-        status_code, _ = client.add_transform_to_dataset(
-            dataset_id=dataset.id,
-            transform_id=transform.id,
-        )
-        assert status_code == 200
-
         # Execute the transform
         status_code, result = client.execute_dataset_transform_extraction(
             dataset_id=dataset.id,
@@ -279,7 +273,7 @@ def test_execute_transform_success(
         assert columns["token_cost"] == "0.05"
 
     finally:
-        client.delete_transform(agentic_task.id, transform.id)
+        client.delete_transform(transform.id)
         client.delete_dataset(dataset.id)
 
         status_code = client.delete_task(agentic_task.id)
@@ -340,12 +334,6 @@ def test_execute_transform_with_fallback_values(
         )
         assert status_code == 200
 
-        status_code, _ = client.add_transform_to_dataset(
-            dataset_id=dataset.id,
-            transform_id=transform.id,
-        )
-        assert status_code == 200
-
         # Execute the transform
         status_code, result = client.execute_dataset_transform_extraction(
             dataset_id=dataset.id,
@@ -367,7 +355,7 @@ def test_execute_transform_with_fallback_values(
         assert columns["null_fallback"] == ""  # None fallback becomes empty string
 
     finally:
-        client.delete_transform(agentic_task.id, transform.id)
+        client.delete_transform(transform.id)
         client.delete_dataset(dataset.id)
 
         status_code = client.delete_task(agentic_task.id)
@@ -418,70 +406,6 @@ def test_execute_transform_missing_transform(
 
 
 @pytest.mark.unit_tests
-def test_execute_transform_not_added_to_dataset(
-    client: GenaiEngineTestClientBase,
-    setup_test_data,
-) -> None:
-    """Test transform execution with a transform that has not been added to the dataset."""
-    test_data = setup_test_data
-
-    status_code, agentic_task = client.create_task(
-        name="test_execute_transform_not_added_to_dataset_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, dataset = client.create_dataset(
-        name="Test Dataset for Missing Transform",
-        task_id=agentic_task.id,
-        description="Testing missing transform error",
-    )
-    assert status_code == 200
-
-    try:
-        # Create a transform
-        transform_definition = {
-            "variables": [
-                {
-                    "variable_name": "test_column",
-                    "span_name": "test-span",
-                    "attribute_path": "attributes.test",
-                    "fallback": None,
-                },
-            ],
-        }
-
-        status_code, transform = client.create_transform(
-            task_id=agentic_task.id,
-            name="test_transform",
-            definition=transform_definition,
-        )
-        assert status_code == 200
-
-        # Try to execute with a transform that has not been added to the dataset
-        status_code, error = client.execute_dataset_transform_extraction(
-            dataset_id=dataset.id,
-            transform_id=transform.id,
-            trace_id=test_data["trace_id"],
-        )
-
-        assert status_code == 404
-        assert error is not None
-        assert (
-            f"transform {transform.id} not found for dataset {dataset.id}"
-            in error.get("detail", "").lower()
-        )
-
-    finally:
-        client.delete_transform(agentic_task.id, transform.id)
-        client.delete_dataset(dataset.id)
-
-        status_code = client.delete_task(agentic_task.id)
-        assert status_code == 204
-
-
-@pytest.mark.unit_tests
 def test_execute_transform_missing_trace(
     client: GenaiEngineTestClientBase,
 ) -> None:
@@ -517,12 +441,6 @@ def test_execute_transform_missing_trace(
             task_id=agentic_task.id,
             name="test_transform",
             definition=transform_definition,
-        )
-        assert status_code == 200
-
-        status_code, _ = client.add_transform_to_dataset(
-            dataset_id=dataset.id,
-            transform_id=transform.id,
         )
         assert status_code == 200
 
@@ -594,12 +512,6 @@ def test_execute_transform_complex_nested_data(
         )
         assert status_code == 200
 
-        status_code, _ = client.add_transform_to_dataset(
-            dataset_id=dataset.id,
-            transform_id=transform.id,
-        )
-        assert status_code == 200
-
         # Execute the transform
         status_code, result = client.execute_dataset_transform_extraction(
             dataset_id=dataset.id,
@@ -625,7 +537,7 @@ def test_execute_transform_complex_nested_data(
         assert columns["context"] == "User query context"
 
     finally:
-        client.delete_transform(agentic_task.id, transform.id)
+        client.delete_transform(transform.id)
         client.delete_dataset(dataset.id)
 
         status_code = client.delete_task(agentic_task.id)
@@ -753,12 +665,6 @@ def test_execute_transform_with_multiple_matching_spans(
         )
         assert status_code == 200
 
-        status_code, _ = client.add_transform_to_dataset(
-            dataset_id=dataset.id,
-            transform_id=transform.id,
-        )
-        assert status_code == 200
-
         # Execute the transform
         status_code, result = client.execute_dataset_transform_extraction(
             dataset_id=dataset.id,
@@ -780,7 +686,7 @@ def test_execute_transform_with_multiple_matching_spans(
         client.delete_dataset(dataset.id)
 
     finally:
-        client.delete_transform(task_id, transform.id)
+        client.delete_transform(transform.id)
         # Cleanup
         db_session.query(DatabaseSpan).filter(
             DatabaseSpan.trace_id == trace_id,

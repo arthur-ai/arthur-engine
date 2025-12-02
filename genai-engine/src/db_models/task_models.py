@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from db_models.llm_eval_models import DatabaseLLMEval
     from db_models.rule_models import DatabaseRule
     from db_models.telemetry_models import DatabaseTaskToMetrics
-    from db_models.transform_models import DatabaseTraceTransform
 
 
 class DatabaseTask(Base, IsArchivable):
@@ -36,10 +35,6 @@ class DatabaseTask(Base, IsArchivable):
         lazy="select",
     )
     llm_evals: Mapped[list["DatabaseLLMEval"]] = relationship(
-        back_populates="task",
-        lazy="select",
-    )
-    trace_transforms: Mapped[list["DatabaseTraceTransform"]] = relationship(
         back_populates="task",
         lazy="select",
     )

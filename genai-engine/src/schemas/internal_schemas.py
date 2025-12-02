@@ -106,7 +106,6 @@ from db_models import (
     DatabaseUser,
 )
 from db_models.dataset_models import (
-    DatabaseDatasetTransform,
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
@@ -149,7 +148,6 @@ from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
     DatasetResponse,
-    DatasetTransformResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
     DatasetVersionRowColumnItemResponse,
@@ -2178,40 +2176,6 @@ class Dataset(BaseModel):
             description=db_dataset.description,
             metadata=db_dataset.dataset_metadata,
             latest_version_number=db_dataset.latest_version_number,
-        )
-
-
-class DatasetTransform(BaseModel):
-    id: uuid.UUID
-    dataset_id: uuid.UUID
-    transform_id: uuid.UUID
-    created_at: datetime
-
-    def to_response_model(self) -> DatasetTransformResponse:
-        return DatasetTransformResponse(
-            id=self.id,
-            dataset_id=self.dataset_id,
-            transform_id=self.transform_id,
-            created_at=_serialize_datetime(self.created_at),
-        )
-
-    def to_db_model(self) -> DatabaseDatasetTransform:
-        return DatabaseDatasetTransform(
-            id=self.id,
-            dataset_id=self.dataset_id,
-            transform_id=self.transform_id,
-            created_at=self.created_at,
-        )
-
-    @staticmethod
-    def from_db_model(
-        db_transform: DatabaseDatasetTransform,
-    ) -> "DatasetTransform":
-        return DatasetTransform(
-            id=db_transform.id,
-            dataset_id=db_transform.dataset_id,
-            transform_id=db_transform.transform_id,
-            created_at=db_transform.created_at,
         )
 
 

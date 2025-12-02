@@ -33,7 +33,7 @@ transform_routes = APIRouter(
 
 
 @transform_routes.get(
-    "/tasks/{task_id}/transforms",
+    "/tasks/{task_id}/traces/transforms",
     description="List all transforms for a task.",
     response_model=ListTraceTransformsResponse,
     tags=["Transforms"],
@@ -67,7 +67,7 @@ def list_transforms_for_task(
 
 
 @transform_routes.get(
-    "/tasks/{task_id}/transforms/{transform_id}",
+    "/traces/transforms/{transform_id}",
     description="Get a specific transform.",
     response_model=TraceTransformResponse,
     tags=["Transforms"],
@@ -77,14 +77,10 @@ def get_transform(
     transform_id: UUID = Path(description="ID of the transform to fetch."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.get_transform_by_id(
-            task.id,
-            transform_id,
-        )
+        trace_transform = trace_transform_repo.get_transform_by_id(transform_id)
         return trace_transform.to_response_model()
     except HTTPException:
         raise
@@ -93,7 +89,7 @@ def get_transform(
 
 
 @transform_routes.post(
-    "/tasks/{task_id}/transforms",
+    "/tasks/{task_id}/traces/transforms",
     description="Create a new transform for a task.",
     response_model=TraceTransformResponse,
     tags=["Transforms"],
@@ -116,7 +112,7 @@ def create_transform_for_task(
 
 
 @transform_routes.patch(
-    "/tasks/{task_id}/transforms/{transform_id}",
+    "/traces/transforms/{transform_id}",
     description="Update a transform.",
     response_model=TraceTransformResponse,
     tags=["Transforms"],
@@ -127,12 +123,10 @@ def update_transform(
     transform_id: UUID = Path(description="ID of the transform to update."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.update_transform(
-            task.id,
             transform_id,
             request,
         )
@@ -144,7 +138,7 @@ def update_transform(
 
 
 @transform_routes.delete(
-    "/tasks/{task_id}/transforms/{transform_id}",
+    "/traces/transforms/{transform_id}",
     description="Delete a transform.",
     tags=["Transforms"],
     status_code=HTTP_204_NO_CONTENT,
@@ -154,11 +148,10 @@ def delete_transform(
     transform_id: UUID = Path(description="ID of the transform to delete."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
 ) -> Response:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform_repo.delete_transform(task.id, transform_id)
+        trace_transform_repo.delete_transform(transform_id)
         return Response(status_code=HTTP_204_NO_CONTENT)
     except HTTPException:
         raise

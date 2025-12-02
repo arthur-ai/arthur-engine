@@ -6881,235 +6881,6 @@
                 }
             }
         },
-        "/api/v2/datasets/{dataset_id}/transforms/{transform_id}": {
-            "post": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Add Transform To Dataset",
-                "description": "Add an existing transform to a dataset.",
-                "operationId": "add_transform_to_dataset_api_v2_datasets__dataset_id__transforms__transform_id__post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset to add the transform to.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset to add the transform to."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform to add to the dataset.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform to add to the dataset."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DatasetTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Get Transform",
-                "description": "Get a specific transform.",
-                "operationId": "get_transform_api_v2_datasets__dataset_id__transforms__transform_id__get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform to fetch.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform to fetch."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DatasetTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Delete Transform",
-                "description": "Remove a transform from a dataset.",
-                "operationId": "delete_transform_api_v2_datasets__dataset_id__transforms__transform_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform to delete.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform to delete."
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v2/datasets/{dataset_id}/transforms": {
-            "get": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "List Transforms",
-                "description": "List all transforms for a dataset.",
-                "operationId": "list_transforms_api_v2_datasets__dataset_id__transforms_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset to list transforms for.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset to list transforms for."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ListDatasetTransformsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions": {
             "post": {
                 "tags": [
@@ -10750,14 +10521,14 @@
                 }
             }
         },
-        "/api/v1/tasks/{task_id}/transforms": {
+        "/api/v1/tasks/{task_id}/traces/transforms": {
             "get": {
                 "tags": [
                     "Transforms"
                 ],
                 "summary": "List Transforms For Task",
                 "description": "List all transforms for a task.",
-                "operationId": "list_transforms_for_task_api_v1_tasks__task_id__transforms_get",
+                "operationId": "list_transforms_for_task_api_v1_tasks__task_id__traces_transforms_get",
                 "security": [
                     {
                         "API Key": []
@@ -10893,7 +10664,7 @@
                 ],
                 "summary": "Create Transform For Task",
                 "description": "Create a new transform for a task.",
-                "operationId": "create_transform_for_task_api_v1_tasks__task_id__transforms_post",
+                "operationId": "create_transform_for_task_api_v1_tasks__task_id__traces_transforms_post",
                 "security": [
                     {
                         "API Key": []
@@ -10945,14 +10716,14 @@
                 }
             }
         },
-        "/api/v1/tasks/{task_id}/transforms/{transform_id}": {
+        "/api/v1/traces/transforms/{transform_id}": {
             "get": {
                 "tags": [
                     "Transforms"
                 ],
                 "summary": "Get Transform",
                 "description": "Get a specific transform.",
-                "operationId": "get_transform_api_v1_tasks__task_id__transforms__transform_id__get",
+                "operationId": "get_transform_api_v1_traces_transforms__transform_id__get",
                 "security": [
                     {
                         "API Key": []
@@ -10970,16 +10741,6 @@
                             "title": "Transform Id"
                         },
                         "description": "ID of the transform to fetch."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
                     }
                 ],
                 "responses": {
@@ -11011,7 +10772,7 @@
                 ],
                 "summary": "Update Transform",
                 "description": "Update a transform.",
-                "operationId": "update_transform_api_v1_tasks__task_id__transforms__transform_id__patch",
+                "operationId": "update_transform_api_v1_traces_transforms__transform_id__patch",
                 "security": [
                     {
                         "API Key": []
@@ -11029,16 +10790,6 @@
                             "title": "Transform Id"
                         },
                         "description": "ID of the transform to update."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
                     }
                 ],
                 "requestBody": {
@@ -11080,7 +10831,7 @@
                 ],
                 "summary": "Delete Transform",
                 "description": "Delete a transform.",
-                "operationId": "delete_transform_api_v1_tasks__task_id__transforms__transform_id__delete",
+                "operationId": "delete_transform_api_v1_traces_transforms__transform_id__delete",
                 "security": [
                     {
                         "API Key": []
@@ -11098,16 +10849,6 @@
                             "title": "Transform Id"
                         },
                         "description": "ID of the transform to delete."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
                     }
                 ],
                 "responses": {
@@ -13186,42 +12927,6 @@
                     "updated_at"
                 ],
                 "title": "DatasetResponse"
-            },
-            "DatasetTransformResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id",
-                        "description": "ID of the transform."
-                    },
-                    "dataset_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Dataset Id",
-                        "description": "ID of the parent dataset."
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Transform Id",
-                        "description": "ID of the transform."
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Timestamp representing the time the transform was added to the dataset."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "dataset_id",
-                    "transform_id",
-                    "created_at"
-                ],
-                "title": "DatasetTransformResponse"
             },
             "DatasetUpdateRequest": {
                 "properties": {
@@ -15872,23 +15577,6 @@
                     "model_name"
                 ],
                 "title": "LLMVersionResponse"
-            },
-            "ListDatasetTransformsResponse": {
-                "properties": {
-                    "transforms": {
-                        "items": {
-                            "$ref": "#/components/schemas/DatasetTransformResponse"
-                        },
-                        "type": "array",
-                        "title": "Transforms",
-                        "description": "List of transforms for the dataset."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "transforms"
-                ],
-                "title": "ListDatasetTransformsResponse"
             },
             "ListDatasetVersionsResponse": {
                 "properties": {

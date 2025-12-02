@@ -104,7 +104,6 @@ def test_get_transform_by_id_success(
 
         # Get the transform by id
         status_code, retrieved_transform = client.get_transform(
-            task_id=task.id,
             transform_id=transform.id,
         )
         assert status_code == 200
@@ -123,75 +122,15 @@ def test_get_transform_by_id_failures(
     transform_definition: dict,
 ) -> None:
     """Test getting a transform by id failures."""
-    task_id = str(uuid.uuid4())
     transform_id = str(uuid.uuid4())
 
-    # Create two tasks
-    status_code, task = client.create_task(
-        name="test_transform_routes_task",
-        is_agentic=True,
+    # Test getting a transform that doesn't exist for a real task returns a 404 err
+    status_code, error = client.get_transform(
+        transform_id=transform_id,
     )
-    assert status_code == 200
-
-    status_code, task2 = client.create_task(
-        name="test_transform_routes_task2",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
-    try:
-        # Create a transform and add it to the second task
-        status_code, transform = client.create_transform(
-            task_id=task2.id,
-            name="test_transform",
-            definition=transform_definition,
-            description="test transform description",
-        )
-        assert status_code == 200
-
-        # Test getting a transform for a task that doesn't exist returns a 404 err
-        status_code, error = client.get_transform(
-            task_id=task_id,
-            transform_id=transform_id,
-        )
-        assert status_code == 404
-        assert error is not None
-        assert f"task {task_id} not found" in error.get("detail", "").lower()
-
-        # Test getting a transform that doesn't exist for a real task returns a 404 err
-        status_code, error = client.get_transform(
-            task_id=task.id,
-            transform_id=transform_id,
-        )
-        assert status_code == 404
-        assert error is not None
-        assert (
-            f"transform {transform_id} not found for task {task.id}"
-            in error.get("detail", "").lower()
-        )
-
-        # Test getting the transform by id for the wrong task returns a 404 err
-        status_code, error = client.get_transform(
-            task_id=task.id,
-            transform_id=transform.id,
-        )
-        assert status_code == 404
-        assert error is not None
-        assert (
-            f"transform {transform.id} not found for task {task.id}"
-            in error.get("detail", "").lower()
-        )
-
-        # Test getting the transform by id for the correct task returns a 200
-        status_code, _ = client.get_transform(
-            task_id=task2.id,
-            transform_id=transform.id,
-        )
-        assert status_code == 200
-
-    finally:
-        client.delete_task(task2.id)
-        client.delete_task(task.id)
+    assert status_code == 404
+    assert error is not None
+    assert f"transform {transform_id} not found" in error.get("detail", "").lower()
 
 
 @pytest.mark.unit_tests
@@ -406,7 +345,6 @@ def test_update_transform_success(
 
         # Update the transform
         status_code, updated_transform = client.update_transform(
-            task_id=task.id,
             transform_id=transform.id,
             name="test_updated_transform",
             description="test updated transform description",
@@ -426,43 +364,17 @@ def test_update_transform_success(
 @pytest.mark.unit_tests
 def test_update_transform_failures(client: GenaiEngineTestClientBase) -> None:
     """Test updating a transform failures."""
-    # Create a task
-    status_code, task = client.create_task(
-        name="test_transform_routes_task",
-        is_agentic=True,
+    transform_id = str(uuid.uuid4())
+
+    # updating a nonexistent transform returns a 404 error
+    status_code, error = client.update_transform(
+        transform_id=transform_id,
+        name="test_updated_transform",
+        description="test updated transform description",
     )
-    assert status_code == 200
-
-    try:
-        task_id = str(uuid.uuid4())
-        transform_id = str(uuid.uuid4())
-
-        # updating a transform for a nonexistent task returns a 404 error
-        status_code, error = client.update_transform(
-            task_id=task_id,
-            transform_id=transform_id,
-            name="test_updated_transform",
-            description="test updated transform description",
-        )
-        assert status_code == 404
-        assert error is not None
-        assert f"task {task_id} not found" in error.get("detail", "").lower()
-
-        # updating a nonexistent transform returns a 404 error
-        status_code, error = client.update_transform(
-            task_id=task.id,
-            transform_id=transform_id,
-            name="test_updated_transform",
-            description="test updated transform description",
-        )
-        assert status_code == 404
-        assert error is not None
-        assert (
-            f"transform {transform_id} not found for task {task.id}"
-            in error.get("detail", "").lower()
-        )
-    finally:
-        client.delete_task(task.id)
+    assert status_code == 404
+    assert error is not None
+    assert f"transform {transform_id} not found" in error.get("detail", "").lower()
 
 
 @pytest.mark.unit_tests
@@ -497,7 +409,6 @@ def test_deleting_transform_success(
 
         # Delete the transform
         status_code, _ = client.delete_transform(
-            task_id=task.id,
             transform_id=transform.id,
         )
         assert status_code == 204
@@ -508,36 +419,13 @@ def test_deleting_transform_success(
 @pytest.mark.unit_tests
 def test_deleting_transform_failures(client: GenaiEngineTestClientBase) -> None:
     """Test deleting a transform failures."""
-    # Create a task
-    status_code, task = client.create_task(
-        name="test_transform_routes_task",
-        is_agentic=True,
+
+    transform_id = str(uuid.uuid4())
+
+    # deleting a nonexistent transform returns a 404 error
+    status_code, error = client.delete_transform(
+        transform_id=transform_id,
     )
-    assert status_code == 200
-
-    try:
-        task_id = str(uuid.uuid4())
-        transform_id = str(uuid.uuid4())
-
-        # deleting a transform with a nonexistent task returns a 404 error
-        status_code, error = client.delete_transform(
-            task_id=task_id,
-            transform_id=transform_id,
-        )
-        assert status_code == 404
-        assert error is not None
-        assert f"task {task_id} not found" in error.get("detail", "").lower()
-
-        # deleting a nonexistent transform returns a 404 error
-        status_code, error = client.delete_transform(
-            task_id=task.id,
-            transform_id=transform_id,
-        )
-        assert status_code == 404
-        assert error is not None
-        assert (
-            f"transform {transform_id} not found for task {task.id}"
-            in error.get("detail", "").lower()
-        )
-    finally:
-        client.delete_task(task.id)
+    assert status_code == 404
+    assert error is not None
+    assert f"transform {transform_id} not found" in error.get("detail", "").lower()
