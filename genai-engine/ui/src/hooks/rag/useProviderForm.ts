@@ -124,20 +124,20 @@ export function useProviderForm(mode: "create" | "edit", initialData?: RagProvid
   }, [mode]);
 
   const values = useStore(form.store, (state) => state.values);
+  const canSubmit = useStore(form.store, (state) => state.canSubmit);
+  const isPristine = useStore(form.store, (state) => state.isPristine);
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
-  const isFormValid = values.name.trim() !== "" && values.host_url.trim() !== "" && (mode === "edit" || values.api_key.trim() !== "");
-
-  const validateForm = useCallback(async () => {
-    await form.validateAllFields("submit");
-    return form.store.state.isValid;
-  }, [form]);
+  const canSubmitForm = canSubmit && !isPristine;
 
   return {
     form,
     values,
     fieldValidators,
-    isFormValid,
-    validateForm,
+    canSubmit,
+    canSubmitForm,
+    isPristine,
+    isSubmitting,
     resetForm,
     normalizeHostUrl,
   };

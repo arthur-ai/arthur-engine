@@ -20,7 +20,7 @@ interface RagProviderFormModalProps {
 
 export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open, onClose, onSuccess, taskId, mode, initialData }) => {
   const { createProvider, updateProvider, testConnection } = useRagProviderMutations();
-  const { form, values, fieldValidators, isFormValid, validateForm, resetForm, normalizeHostUrl } = useProviderForm(mode, initialData);
+  const { form, values, fieldValidators, canSubmitForm, isSubmitting, resetForm, normalizeHostUrl } = useProviderForm(mode, initialData);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -37,8 +37,7 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
   };
 
   const handleTestConnection = async () => {
-    const isValid = await validateForm();
-    if (!isValid) {
+    if (!canSubmitForm) {
       return;
     }
 
@@ -85,8 +84,7 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
   };
 
   const handleSave = async () => {
-    const isValid = await validateForm();
-    if (!isValid) {
+    if (!canSubmitForm) {
       return;
     }
 
@@ -170,7 +168,7 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
     }
   };
 
-  const canSave = mode === "edit" ? isFormValid && (connectionTested || !values.api_key.trim()) : isFormValid && connectionTested;
+  const canSave = mode === "edit" ? canSubmitForm && (connectionTested || !values.api_key.trim()) : canSubmitForm && connectionTested;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth TransitionProps={{ onEnter: handleModalEnter }}>
@@ -256,7 +254,7 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
           <Button
             variant="outlined"
             onClick={handleTestConnection}
-            disabled={!isFormValid || isTesting}
+            disabled={!canSubmitForm || isTesting}
             startIcon={isTesting ? <CircularProgress size={20} /> : null}
             fullWidth
           >
@@ -270,8 +268,13 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
         <Button onClick={onClose} disabled={isSaving}>
           Cancel
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={!canSave || isSaving} startIcon={isSaving ? <CircularProgress size={20} /> : null}>
-          {isSaving ? "Saving..." : "Save"}
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={!canSave || isSaving || isSubmitting}
+          startIcon={isSaving || isSubmitting ? <CircularProgress size={20} /> : null}
+        >
+          {isSaving || isSubmitting ? "Saving..." : "Save"}
         </Button>
       </DialogActions>
     </Dialog>
