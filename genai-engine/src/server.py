@@ -1,4 +1,5 @@
 import fcntl
+import gc
 import logging
 import os
 import random
@@ -219,42 +220,18 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    # We need to explicitly clean up models to prevent ResourceWarning when the server is stopped
     logger.debug("Cleaning up models...")
     try:
-        import gc
-
         from utils import model_load
 
-        model_globals = [
-            "CLAIM_CLASSIFIER_EMBEDDING_MODEL",
-            "PROMPT_INJECTION_MODEL",
-            "PROMPT_INJECTION_TOKENIZER",
-            "PROMPT_INJECTION_CLASSIFIER",
-            "TOXICITY_MODEL",
-            "TOXICITY_TOKENIZER",
-            "TOXICITY_CLASSIFIER",
-            "RELEVANCE_MODEL",
-            "RELEVANCE_TOKENIZER",
-            "PROFANITY_CLASSIFIER",
-            "BERT_SCORER",
-            "RELEVANCE_RERANKER",
-            "PII_GLINER_MODEL",
-            "PII_GLINER_TOKENIZER",
-            "PII_PRESIDIO_ANALYZER",
-        ]
-
         cleanup_count = 0
-        for model_name in model_globals:
+        for model_name in model_load.MODEL_NAMES:
             if hasattr(model_load, model_name):
                 model_obj = getattr(model_load, model_name)
                 if model_obj is not None:
                     cleanup_count += 1
                     logger.debug(f"Cleaning up {model_name}...")
-                    if hasattr(model_obj, "_cleanup_resources"):
-                        try:
-                            model_obj._cleanup_resources()
-                        except Exception:
-                            pass
                     if (
                         hasattr(model_obj, "tokenizer")
                         and model_obj.tokenizer is not None
@@ -272,24 +249,11 @@ async def lifespan(app: FastAPI):
             torch.cuda.empty_cache()
             logger.debug("Cleared PyTorch CUDA cache")
 
-        try:
-            import torch.distributed.nn.jit.instantiator as torch_instantiator
-
-            if (
-                hasattr(torch_instantiator, "_TEMP_DIR")
-                and torch_instantiator._TEMP_DIR is not None
-            ):
-                logger.debug("Cleaning up PyTorch's temporary directory...")
-                torch_instantiator._TEMP_DIR.cleanup()
-                torch_instantiator._TEMP_DIR = None
-                logger.debug("PyTorch temporary directory cleaned up successfully")
-        except Exception as e:
-            logger.debug(f"Could not cleanup PyTorch temp directory: {e}")
-
         for i in range(3):
             collected = gc.collect()
             logger.debug(f"Garbage collection pass {i+1}: freed {collected} objects")
 
+        # Wait for 0.2 seconds to ensure all objects are cleaned up
         time.sleep(0.2)
 
         logger.debug("Model cleanup complete")
