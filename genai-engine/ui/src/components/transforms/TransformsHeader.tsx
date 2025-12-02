@@ -1,6 +1,6 @@
-import { Box, Button, IconButton, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { Box, Button, IconButton, Typography } from "@mui/material";
 
 interface TransformsHeaderProps {
   onCreateTransform: () => void;
@@ -34,7 +34,7 @@ const TransformsHeader: React.FC<TransformsHeaderProps> = ({ onCreateTransform, 
               Transforms
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage reusable data extraction transforms for this dataset
+              Manage reusable data extraction transforms for this task
             </Typography>
           </Box>
         </Box>

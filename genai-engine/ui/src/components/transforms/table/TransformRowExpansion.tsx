@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+
 import { TransformRowExpansionProps } from "../types";
 
 export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ transform }) => {
@@ -10,10 +11,10 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
 
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" fontWeight="medium" gutterBottom>
-          Column Mappings ({transform.definition.columns.length})
+          Variable Mappings ({transform.definition.variables.length})
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          {transform.definition.columns.map((col, idx) => (
+          {transform.definition.variables.map((variable, idx) => (
             <Box
               key={idx}
               sx={{
@@ -25,14 +26,14 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
               }}
             >
               <Typography variant="body2" fontWeight="medium">
-                {col.column_name}
+                {variable.variable_name}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Span: <code>{col.span_name}</code> → Path: <code>{col.attribute_path}</code>
+                Span: <code>{variable.span_name}</code> → Path: <code>{variable.attribute_path}</code>
               </Typography>
-              {col.fallback !== undefined && (
+              {variable.fallback !== undefined && (
                 <Typography variant="caption" color="text.secondary" display="block">
-                  Fallback: {JSON.stringify(col.fallback)}
+                  Fallback: {JSON.stringify(variable.fallback)}
                 </Typography>
               )}
             </Box>

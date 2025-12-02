@@ -13,7 +13,6 @@ import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
 import { useTransforms } from "./hooks/useTransforms";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
-import { executeTransform } from "./utils/transformExecutor";
 
 import { Drawer } from "@/components/common/Drawer";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
@@ -125,7 +124,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
 
   // Get columns from the selected transform
   const selectedTransform = transformsQuery.data?.find((t) => t.id === selectedTransformId);
-  const transformColumns = selectedTransform?.definition.columns.map((col) => col.column_name) || [];
+  const transformColumns = selectedTransform?.definition.variables.map((varDef) => varDef.variable_name) || [];
 
   // Merge dataset columns with transform columns to get union of all columns
   const datasetOnlyColumns = selectedDataset?.id ? pendingColumns[selectedDataset.id] || latestVersion?.column_names || [] : [];
@@ -184,13 +183,13 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
   };
 
   const handleSaveTransform = async (name: string, description: string, definition: TransformDefinition) => {
-    if (!selectedDataset) return;
+    if (!task?.id) return;
 
     try {
-      const response = await api.api.createTransformApiV2DatasetsDatasetIdTransformsPost(selectedDataset.id, {
+      const response = await api.api.createTransformForTaskApiV1TasksTaskIdTracesTransformsPost(task.id, {
         name,
         description: description || null,
-        definition: definition as any,
+        definition,
       });
 
       setSavedTransformId(response.data.id);
@@ -202,6 +201,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
       }, 100);
     } catch (error: any) {
       let errorMessage = "Failed to save transform";
+
 
       if (error.response?.status === 409) {
         errorMessage = `A transform named "${name}" already exists. Please use a different name.`;
@@ -331,30 +331,59 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
                             }
                           />
                         )}
-                        onChange={(_event, value) => {
+                        onChange={async (_event, value) => {
                           const transformId = value?.id ?? "";
                           field.handleChange(transformId);
 
-                          if (transformId && value) {
-                            const executedColumns = executeTransform(flatSpans, value.definition);
-                            if (executedColumns) {
-                              // Get existing dataset columns
-                              const existingDatasetColumns = latestVersion?.column_names || [];
-                              const executedColumnNames = new Set(executedColumns.map((col) => col.name));
+                          if (transformId && value && selectedDataset && traceId) {
+                            try {
+                              const response = await api.api.executeTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost(
+                                selectedDataset.id,
+                                transformId,
+                                { trace_id: traceId }
+                              );
 
-                              // Create columns for dataset columns that aren't in the transform
-                              const datasetOnlyColumns = existingDatasetColumns
-                                .filter((columnName) => !executedColumnNames.has(columnName))
-                                .map((columnName) => ({
-                                  name: columnName,
-                                  value: "",
-                                  path: "",
-                                  span_name: "",
-                                  attribute_path: "",
-                                }));
+                              if (response.data.rows_extracted && response.data.rows_extracted.length > 0) {
+                                const extractedRow = response.data.rows_extracted[0];
 
-                              // Merge transform columns with dataset-only columns (union)
-                              form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
+                                // Map extracted columns with path information from transform definition
+                                const executedColumns = extractedRow.data.map(col => {
+                                  const variableDef = value.definition.variables.find(
+                                    v => v.variable_name === col.column_name
+                                  );
+
+                                  const path = variableDef
+                                    ? `${variableDef.span_name}.${variableDef.attribute_path}`
+                                    : "";
+
+                                  return {
+                                    name: col.column_name,
+                                    value: col.column_value,
+                                    path,
+                                    span_name: variableDef?.span_name || "",
+                                    attribute_path: variableDef?.attribute_path || "",
+                                  };
+                                });
+
+                                const existingDatasetColumns = latestVersion?.column_names || [];
+                                const executedColumnNames = new Set(executedColumns.map(col => col.name));
+
+                                const datasetOnlyColumns = existingDatasetColumns
+                                  .filter(columnName => !executedColumnNames.has(columnName))
+                                  .map(columnName => ({
+                                    name: columnName,
+                                    value: "",
+                                    path: "",
+                                    span_name: "",
+                                    attribute_path: "",
+                                  }));
+
+                                form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
+                              }
+                            } catch (error) {
+                              console.error("Failed to execute transform:", error);
+                              snackbar.showSnackbar("Failed to execute transform", "error");
+                              form.setFieldValue("columns", []);
                             }
                           } else {
                             form.setFieldValue("columns", []);

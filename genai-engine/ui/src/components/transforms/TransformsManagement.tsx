@@ -2,55 +2,55 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import TablePagination from "@mui/material/TablePagination";
 import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
+import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
-import DialogActions from "@mui/material/DialogActions";
+import DialogTitle from "@mui/material/DialogTitle";
+import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
-import TransformsHeader from "./TransformsHeader";
-import TransformsTable from "./table/TransformsTable";
-import TransformFormModal from "./TransformFormModal";
-import TransformDetailsModal from "./TransformDetailsModal";
-import { useTransforms } from "./hooks/useTransforms";
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
-import { useUpdateTransformMutation } from "./hooks/useUpdateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
-import { DatasetTransform } from "./types";
-import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
+import { useTransforms } from "./hooks/useTransforms";
+import { useUpdateTransformMutation } from "./hooks/useUpdateTransformMutation";
+import TransformsTable from "./table/TransformsTable";
+import TransformDetailsModal from "./TransformDetailsModal";
+import TransformFormModal from "./TransformFormModal";
+import TransformsHeader from "./TransformsHeader";
+import { TraceTransform } from "./types";
 
+import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { getContentHeight } from "@/constants/layout";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const TransformsManagement: React.FC = () => {
-  const { datasetId, id: taskId } = useParams<{ datasetId: string; id: string }>();
+  const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [sortColumn, setSortColumn] = useState<string | null>("updated_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingTransform, setEditingTransform] = useState<DatasetTransform | null>(null);
+  const [editingTransform, setEditingTransform] = useState<TraceTransform | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [viewingTransform, setViewingTransform] = useState<DatasetTransform | null>(null);
+  const [viewingTransform, setViewingTransform] = useState<TraceTransform | null>(null);
 
-  const { data: transforms, error, isLoading, refetch } = useTransforms(datasetId);
+  const { data: transforms, error, isLoading, refetch } = useTransforms(taskId);
 
-  const createMutation = useCreateTransformMutation(datasetId, () => {
+  const createMutation = useCreateTransformMutation(taskId, () => {
     setIsCreateModalOpen(false);
     refetch();
   });
 
-  const updateMutation = useUpdateTransformMutation(datasetId, () => {
+  const updateMutation = useUpdateTransformMutation(taskId, () => {
     setEditingTransform(null);
     refetch();
   });
 
-  const deleteMutation = useDeleteTransformMutation(datasetId, () => {
+  const deleteMutation = useDeleteTransformMutation(taskId, () => {
     setDeleteConfirmId(null);
     refetch();
   });
@@ -61,16 +61,19 @@ const TransformsManagement: React.FC = () => {
     const sorted = [...transforms];
     if (sortColumn) {
       sorted.sort((a, b) => {
-        let aVal: any = a[sortColumn as keyof DatasetTransform];
-        let bVal: any = b[sortColumn as keyof DatasetTransform];
+        const aVal = a[sortColumn as keyof TraceTransform];
+        const bVal = b[sortColumn as keyof TraceTransform];
+
+        let aCompare: string | number = aVal as string | number;
+        let bCompare: string | number = bVal as string | number;
 
         if (sortColumn === "name") {
-          aVal = aVal?.toString().toLowerCase() || "";
-          bVal = bVal?.toString().toLowerCase() || "";
+          aCompare = String(aVal || "").toLowerCase();
+          bCompare = String(bVal || "").toLowerCase();
         }
 
-        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        if (aCompare < bCompare) return sortDirection === "asc" ? -1 : 1;
+        if (aCompare > bCompare) return sortDirection === "asc" ? 1 : -1;
         return 0;
       });
     }
@@ -102,11 +105,11 @@ const TransformsManagement: React.FC = () => {
     [editingTransform, updateMutation]
   );
 
-  const handleView = useCallback((transform: DatasetTransform) => {
+  const handleView = useCallback((transform: TraceTransform) => {
     setViewingTransform(transform);
   }, []);
 
-  const handleEdit = useCallback((transform: DatasetTransform) => {
+  const handleEdit = useCallback((transform: TraceTransform) => {
     setEditingTransform(transform);
   }, []);
 
@@ -142,8 +145,8 @@ const TransformsManagement: React.FC = () => {
   }, []);
 
   const handleBack = useCallback(() => {
-    navigate(`/tasks/${taskId}/datasets/${datasetId}`);
-  }, [navigate, taskId, datasetId]);
+    navigate(-1);
+  }, [navigate]);
 
   if (isLoading && !transforms) {
     return (
@@ -264,7 +267,7 @@ const TransformsManagement: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateTransform}
         isLoading={createMutation.isPending}
-        datasetId={datasetId}
+        taskId={taskId}
       />
 
       <TransformFormModal
@@ -272,7 +275,7 @@ const TransformsManagement: React.FC = () => {
         onClose={() => setEditingTransform(null)}
         onSubmit={handleUpdateTransform}
         isLoading={updateMutation.isPending}
-        datasetId={datasetId}
+        taskId={taskId}
         initialTransform={editingTransform || undefined}
       />
 
