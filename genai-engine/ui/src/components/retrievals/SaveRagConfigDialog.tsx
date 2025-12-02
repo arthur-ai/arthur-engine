@@ -10,7 +10,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import { useForm, useStore } from "@tanstack/react-form";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 
 import type { SearchMethod, SearchSettings } from "./types";
 
@@ -76,6 +76,12 @@ function buildApiSettings(
   }
 }
 
+const blankValues: SaveRagConfigFormValues = {
+  name: "",
+  description: "",
+  tags: [],
+};
+
 export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
   open,
   setOpen,
@@ -94,15 +100,6 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
 
   const { data } = useRagSearchSettings(taskId);
   const existingConfigs = data?.rag_provider_setting_configurations ?? [];
-
-  const blankValues: SaveRagConfigFormValues = useMemo(
-    () => ({
-      name: "",
-      description: "",
-      tags: [],
-    }),
-    []
-  );
 
   const form = useForm({
     defaultValues: {
@@ -175,7 +172,7 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
         name: currentConfigName ?? "",
       });
     }
-  }, [open, currentConfigName, form, blankValues]);
+  }, [open, currentConfigName, form]);
 
   return (
     <>
