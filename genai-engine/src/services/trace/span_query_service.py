@@ -4,12 +4,32 @@ SpanQueryService with optimized query strategies.
 
 import logging
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import (
+    Any,
+    List,
+    Optional,
+    Tuple,
+)
+from typing import cast as typing_cast
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
-from sqlalchemy import and_, asc, cast, desc, exists, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import (
+    ColumnElement,
+    Label,
+    Select,
+    and_,
+    asc,
+)
+from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy import (
+    desc,
+    exists,
+    func,
+    or_,
+    select,
+)
+from sqlalchemy.orm import InstrumentedAttribute, Session
 from sqlalchemy.types import Numeric
 
 from db_models import (
@@ -101,7 +121,7 @@ class SpanQueryService:
 
         # Always get total count before pagination
         count_query = select(func.count()).select_from(base_query.subquery())
-        total_count = self.db_session.execute(count_query).scalar()
+        total_count = typing_cast(int, self.db_session.execute(count_query).scalar())
 
         # Apply pagination if provided
         query = base_query
@@ -134,7 +154,7 @@ class SpanQueryService:
             )
         return valid_spans
 
-    def validate_span_for_metrics(self, span: Span, span_id: str):
+    def validate_span_for_metrics(self, span: Span, span_id: str) -> None:
         """Validate that a span can have metrics computed for it."""
         if span.span_kind != SPAN_KIND_LLM:
             raise ValueError(
@@ -144,7 +164,10 @@ class SpanQueryService:
         if not span.task_id:
             raise ValueError(f"Span {span_id} has no task_id")
 
-    def _build_unified_trace_query(self, filters: TraceQuerySchema) -> select:
+    def _build_unified_trace_query(
+        self,
+        filters: TraceQuerySchema,
+    ) -> Select[Tuple[DatabaseTraceMetadata]]:
         """
         Build a single query that combines all filtering logic using JOINs.
         This implements the trace-based filtering pattern from the TDD.
@@ -174,11 +197,11 @@ class SpanQueryService:
 
     def _apply_trace_level_filters(
         self,
-        query: select,
+        query: Select[Tuple[DatabaseTraceMetadata]],
         filters: TraceQuerySchema,
-    ) -> select:
+    ) -> Select[Tuple[DatabaseTraceMetadata]]:
         """Apply fast indexed trace-level filters."""
-        conditions = []
+        conditions: list[ColumnElement[bool]] = []
 
         # Direct trace metadata filters
         if filters.trace_ids:
@@ -197,7 +220,10 @@ class SpanQueryService:
                 # Database-level duration calculation
                 start_epoch = func.extract("epoch", DatabaseTraceMetadata.start_time)
                 end_epoch = func.extract("epoch", DatabaseTraceMetadata.end_time)
-                duration_seconds = func.round(cast(end_epoch - start_epoch, Numeric), 3)
+                duration_seconds = func.round(
+                    sqlalchemy_cast(end_epoch - start_epoch, Numeric),
+                    3,
+                )
 
                 duration_conditions.append(
                     self.filter_service.build_comparison_condition(
@@ -226,9 +252,9 @@ class SpanQueryService:
 
     def _apply_span_level_filters_with_joins(
         self,
-        query: select,
+        query: Select[Tuple[DatabaseTraceMetadata]],
         filters: TraceQuerySchema,
-    ) -> select:
+    ) -> Select[Tuple[DatabaseTraceMetadata]]:
         """
         Apply span-level filters using optimized JOINs for simple filters and EXISTS for metrics.
 
@@ -263,10 +289,10 @@ class SpanQueryService:
 
     def _apply_single_span_type_filters(
         self,
-        query: select,
+        query: Select[Tuple[Any]],
         filters: TraceQuerySchema,
         span_type: str,
-    ) -> select:
+    ) -> Select[Tuple[Any]]:
         """Apply filters for a single span type using JOINs for better performance."""
         # Join with spans for direct filtering
         query = query.join(
@@ -293,10 +319,10 @@ class SpanQueryService:
 
     def _apply_multiple_span_types_filters(
         self,
-        query: select,
+        query: Select[Tuple[Any]],
         filters: TraceQuerySchema,
         span_types: List[str],
-    ) -> select:
+    ) -> Select[Tuple[Any]]:
         """Apply filters for multiple span types using EXISTS clauses."""
         # For multiple span types, use EXISTS with OR logic
         or_conditions = self.filter_service.build_multiple_span_types_or_conditions(
@@ -323,10 +349,12 @@ class SpanQueryService:
 
     def _apply_sorting_and_pagination(
         self,
-        query: select,
+        query: Select[Tuple[Any]],
         pagination_parameters: PaginationParameters,
-        sort_column=None,
-    ) -> select:
+        sort_column: (
+            InstrumentedAttribute[Any] | ColumnElement[Any] | Label[Any] | str | None
+        ) = None,
+    ) -> Select[Tuple[Any]]:
         """Apply database-level sorting and pagination."""
         # Default to trace metadata start_time if no column specified
         if sort_column is None:
@@ -346,31 +374,37 @@ class SpanQueryService:
 
     def _apply_sorting(
         self,
-        query: select,
+        query: Select[Tuple[Any]],
         pagination_parameters: PaginationParameters,
-        sort_column_or_label,
-    ) -> select:
+        sort_column_or_label: (
+            InstrumentedAttribute[Any] | ColumnElement[Any] | Label[Any] | str
+        ),
+    ) -> Select[Tuple[Any]]:
         """Apply sorting to a query."""
         if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
             return query.order_by(desc(sort_column_or_label))
         else:
             return query.order_by(asc(sort_column_or_label))
 
-    def _get_count_from_query(self, query: select) -> int:
+    def _get_count_from_query(self, query: Select[Tuple[Any]]) -> int:
         """Get total count from a query using subquery approach."""
         count_query = select(func.count()).select_from(query.subquery())
-        return self.db_session.execute(count_query).scalar()
+        return typing_cast(int, self.db_session.execute(count_query).scalar())
 
-    def _get_count_with_where(self, count_column, where_clause) -> int:
+    def _get_count_with_where(
+        self,
+        count_column: InstrumentedAttribute[str],
+        where_clause: ColumnElement[bool],
+    ) -> int:
         """Get count with custom WHERE clause (for edge cases)."""
         count_query = select(func.count(count_column)).where(where_clause)
-        return self.db_session.execute(count_query).scalar()
+        return typing_cast(int, self.db_session.execute(count_query).scalar())
 
     def _apply_pagination(
         self,
-        query: select,
+        query: Select[Tuple[Any]],
         pagination_parameters: PaginationParameters,
-    ) -> select:
+    ) -> Select[Tuple[Any]]:
         """Apply OFFSET and LIMIT to a query."""
         offset = pagination_parameters.page * pagination_parameters.page_size
         return query.offset(offset).limit(pagination_parameters.page_size)
@@ -383,12 +417,12 @@ class SpanQueryService:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-    ) -> select:
+    ) -> Select[Tuple[DatabaseSpan]]:
         """Build a query for spans with the given filters."""
-        query = select(DatabaseSpan)
+        query: Select[Tuple[DatabaseSpan]] = select(DatabaseSpan)
 
         # Build filter conditions
-        conditions = []
+        conditions: list[ColumnElement[bool]] = []
         if trace_ids is not None:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
         if task_ids:
@@ -464,12 +498,15 @@ class SpanQueryService:
         )
 
         # Execute with database-level pagination
-        results = self.db_session.execute(query).scalars().unique().all()
+        results = typing_cast(
+            list[DatabaseSpan],
+            self.db_session.execute(query).scalars().unique().all(),
+        )
         spans = [Span._from_database_model(span) for span in results]
 
         return spans, total_count
 
-    def _build_unified_span_query(self, filters: TraceQuerySchema) -> select:
+    def _build_unified_span_query(self, filters: TraceQuerySchema) -> Any:
         """
         Build a single query that starts from spans and finds individual matching spans.
         This implements the span-based filtering pattern from the TDD.
@@ -501,9 +538,9 @@ class SpanQueryService:
 
     def _apply_trace_filters_with_join(
         self,
-        query: select,
+        query: Select[Tuple[DatabaseSpan]],
         filters: TraceQuerySchema,
-    ) -> select:
+    ) -> Select[Tuple[DatabaseSpan]]:
         """Apply trace-level filters by joining with trace metadata."""
         # Join with trace metadata
         query = query.join(
@@ -514,7 +551,7 @@ class SpanQueryService:
             ),
         )
 
-        conditions = []
+        conditions: list[ColumnElement[bool]] = []
 
         # Direct trace metadata filters
         if filters.trace_ids:
@@ -530,7 +567,10 @@ class SpanQueryService:
             for filter_item in filters.trace_duration_filters:
                 start_epoch = func.extract("epoch", DatabaseTraceMetadata.start_time)
                 end_epoch = func.extract("epoch", DatabaseTraceMetadata.end_time)
-                duration_seconds = func.round(cast(end_epoch - start_epoch, Numeric), 3)
+                duration_seconds = func.round(
+                    sqlalchemy_cast(end_epoch - start_epoch, Numeric),
+                    3,
+                )
 
                 duration_conditions.append(
                     self.filter_service.build_comparison_condition(
@@ -559,9 +599,9 @@ class SpanQueryService:
 
     def _apply_span_level_filters_direct(
         self,
-        query: select,
+        query: Select[Tuple[DatabaseSpan]],
         filters: TraceQuerySchema,
-    ) -> select:
+    ) -> Select[Tuple[DatabaseSpan]]:
         """
         Apply span-level filters directly on the span query.
 
@@ -595,10 +635,10 @@ class SpanQueryService:
 
     def _apply_single_span_type_direct(
         self,
-        query: select,
+        query: Select[Tuple[DatabaseSpan]],
         filters: TraceQuerySchema,
         span_type: str,
-    ) -> select:
+    ) -> Select[Tuple[DatabaseSpan]]:
         """Apply direct WHERE conditions for a single span type."""
         span_conditions = self.filter_service.build_single_span_type_conditions(
             span_type,
@@ -612,10 +652,10 @@ class SpanQueryService:
 
     def _apply_multiple_span_types_direct(
         self,
-        query: select,
+        query: Select[Tuple[DatabaseSpan]],
         filters: TraceQuerySchema,
         span_types: List[str],
-    ) -> select:
+    ) -> Select[Tuple[DatabaseSpan]]:
         """Apply OR conditions for multiple span types."""
         or_conditions = self.filter_service.build_multiple_span_types_or_conditions(
             span_types,
@@ -671,7 +711,7 @@ class SpanQueryService:
             return None
 
         # Use database-appropriate aggregation functions
-        if self.db_session.bind.dialect.name == "postgresql":
+        if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
             session_ids_agg = (
                 func.array_agg(func.distinct(DatabaseSpan.session_id))
                 .filter(DatabaseSpan.session_id.is_not(None))
@@ -712,7 +752,7 @@ class SpanQueryService:
             return None
 
         # Handle session_ids and trace_ids based on database type
-        if self.db_session.bind.dialect.name == "postgresql":
+        if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
             session_ids = [sid for sid in result.session_ids if sid is not None]
             trace_ids = list(set(result.trace_ids))  # Remove duplicates
         else:  # SQLite and others
@@ -747,7 +787,7 @@ class SpanQueryService:
         # Group by both session_id and task_id to ensure clean session boundaries
 
         # Use database-appropriate aggregation function
-        if self.db_session.bind.dialect.name == "postgresql":
+        if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
             trace_ids_agg = func.array_agg(DatabaseTraceMetadata.trace_id).label(
                 "trace_ids",
             )
@@ -797,7 +837,10 @@ class SpanQueryService:
         sessions = []
         for row in results:
             # Handle trace_ids based on database type
-            if self.db_session.bind.dialect.name == "postgresql":
+            if (
+                self.db_session.bind
+                and self.db_session.bind.dialect.name == "postgresql"
+            ):
                 trace_ids = row.trace_ids  # Already a list from array_agg
             else:  # SQLite - split the group_concat result
                 trace_ids = row.trace_ids.split(",") if row.trace_ids else []
@@ -861,7 +904,7 @@ class SpanQueryService:
             return 0, []
 
         # Use database-appropriate aggregation functions
-        if self.db_session.bind.dialect.name == "postgresql":
+        if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
             session_ids_agg = (
                 func.array_agg(func.distinct(DatabaseTraceMetadata.session_id))
                 .filter(DatabaseTraceMetadata.session_id.is_not(None))
@@ -914,7 +957,10 @@ class SpanQueryService:
         users = []
         for row in results:
             # Handle aggregated IDs based on database type
-            if self.db_session.bind.dialect.name == "postgresql":
+            if (
+                self.db_session.bind
+                and self.db_session.bind.dialect.name == "postgresql"
+            ):
                 session_ids = [
                     sid for sid in (row.session_ids or []) if sid
                 ]  # Filter nulls
@@ -947,7 +993,7 @@ class SpanQueryService:
 
         return total_count, users
 
-    def _build_trace_metadata_aggregations(self):
+    def _build_trace_metadata_aggregations(self) -> list[Label[int] | Label[datetime]]:
         """Build aggregation expressions for common trace metadata fields.
 
         Returns a list of labeled aggregation expressions for:
@@ -961,7 +1007,9 @@ class SpanQueryService:
             func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
         ]
 
-    def _build_token_cost_aggregations(self):
+    def _build_token_cost_aggregations(
+        self,
+    ) -> list[Label[int | None] | Label[float | None]]:
         """Build aggregation expressions for token counts and costs.
 
         Returns a list of labeled aggregation expressions for use in SELECT statements.

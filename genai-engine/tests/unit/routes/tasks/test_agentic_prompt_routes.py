@@ -188,10 +188,10 @@ def test_run_agentic_prompt_success(
     """Test running an agentic prompt"""
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Test LLM response",
-        "tool_calls": None,
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Test LLM response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
@@ -241,10 +241,10 @@ def test_run_saved_agentic_prompt_success(
     """Test running a saved agentic prompt"""
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Saved prompt response",
-        "tool_calls": [{"id": "call_123", "function": {"name": "test_tool"}}],
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Saved prompt response"
+    mock_message.tool_calls = [{"id": "call_123", "function": {"name": "test_tool"}}]
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
@@ -979,10 +979,10 @@ def test_run_deleted_prompt_spawns_error(
     """Test running a deleted version of a saved prompt spawns an error"""
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Test LLM response",
-        "tool_calls": None,
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Test LLM response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
@@ -1248,10 +1248,10 @@ def test_run_agentic_prompt_strict_mode(
 
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Test LLM response",
-        "tool_calls": None,
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Test LLM response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 

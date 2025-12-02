@@ -11905,6 +11905,11 @@
                 "type": "object",
                 "title": "BaseDetailsResponse"
             },
+            "BaseModel": {
+                "properties": {},
+                "type": "object",
+                "title": "BaseModel"
+            },
             "Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put": {
                 "properties": {
                     "tag": {
