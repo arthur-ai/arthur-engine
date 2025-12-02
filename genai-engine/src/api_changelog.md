@@ -2,6 +2,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json 
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json 
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+
 # 11/26/2025
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets  api path removed without deprecation
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/search  api path removed without deprecation
