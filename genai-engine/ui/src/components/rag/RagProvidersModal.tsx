@@ -135,7 +135,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
         accessorKey: "created_at",
         cell: ({ row }) => (
           <Typography variant="body2" color="text.secondary">
-            {formatDate(new Date(row.original.created_at))}
+            {formatDate(new Date(row.original.created_at).toISOString())}
           </Typography>
         ),
       },
