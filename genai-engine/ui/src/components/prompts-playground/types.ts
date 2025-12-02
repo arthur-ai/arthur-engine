@@ -80,6 +80,10 @@ type PromptAction =
       payload: { id: string; messageKeywords: string[] };
     }
   | {
+      type: "extractPromptVariables";
+      payload: { promptId: string; variables: string[] };
+    }
+  | {
       type: "updateKeywordValue";
       payload: { keyword: string; value: string };
     }

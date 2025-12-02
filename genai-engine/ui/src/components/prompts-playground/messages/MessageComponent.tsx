@@ -12,7 +12,6 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
-import extractMustacheKeywords from "../utils/mustacheExtractor";
 
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
 
@@ -123,37 +122,6 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
       }
     }
   }, [toolCalls, toolCallsValue]);
-
-  // When the content changes, whether by user or hydration, update the keyword values
-  useEffect(() => {
-    const allKeywords = new Set<string>();
-
-    if (typeof content === "string") {
-      // Extract mustache keywords from string content
-      const keywords = extractMustacheKeywords(content).keywords;
-      keywords.forEach((keyword) => allKeywords.add(keyword));
-    } else if (Array.isArray(content)) {
-      // Extract mustache keywords from each OpenAIMessageItem with string text field
-      content.forEach((item) => {
-        // Only extract keywords if the item has a text field that is a string
-        if (item.text && typeof item.text === "string") {
-          const keywords = extractMustacheKeywords(item.text).keywords;
-          keywords.forEach((keyword) => allKeywords.add(keyword));
-        }
-        // Skip items without text or with non-string text (e.g., image_url items)
-      });
-    }
-
-    const extractedKeywords = Array.from(allKeywords);
-
-    // Always update keywords, even if empty (for cleanup)
-    dispatch({
-      type: "updateKeywords",
-      payload: { id, messageKeywords: extractedKeywords },
-    });
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, content]);
 
   return (
     <div className="p-2">

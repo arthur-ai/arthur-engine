@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
 
+import cleanupAndRecalculateKeywords from "./cleanUpAndRecalculateKeywords";
 import convertToolChoiceForBackend from "./convertToolChoiceForBackend";
 import extractContext from "./extractContext";
 import extractStatusCode from "./extractStatusCode";
 import filterNullParams from "./filterNullParams";
 import getToolChoiceDisplayValue from "./getToolChoiceDisplayValue";
-import { extractMustacheKeywords, replaceKeywords } from "./mustacheExtractor";
+import { convertMessagesToApiFormat } from "./messageUtils";
+import { replaceKeywords } from "./mustacheExtractor";
 import toBackendPrompt from "./toBackendPrompt";
 import toCompletionRequest from "./toCompletionRequest";
 import toFrontendPrompt from "./toFrontendPrompt";
@@ -30,7 +32,6 @@ const arrayUtils = {
 };
 
 export {
-  extractMustacheKeywords,
   replaceKeywords,
   extractStatusCode,
   extractContext,
@@ -38,8 +39,10 @@ export {
   toBackendPrompt,
   toCompletionRequest,
   toFrontendPrompt,
+  cleanupAndRecalculateKeywords,
   generateId,
   arrayUtils,
   convertToolChoiceForBackend,
   filterNullParams,
+  convertMessagesToApiFormat,
 };
