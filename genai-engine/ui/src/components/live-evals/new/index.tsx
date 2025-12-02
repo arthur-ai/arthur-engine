@@ -1,9 +1,11 @@
 import AddIcon from "@mui/icons-material/Add";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import {
   Autocomplete,
   Box,
   Button,
   Checkbox,
+  Chip,
   FormControl,
   FormControlLabel,
   FormGroup,
@@ -15,16 +17,17 @@ import {
   useTheme,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import z from "zod";
 
-import { useTransforms } from "@/components/datasets/transforms/hooks/useTransforms";
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { VariableChip } from "@/components/evaluators/VariableChip";
 import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { useTransforms } from "@/components/transforms/hooks/useTransforms";
+import { TraceTransform } from "@/components/transforms/types";
 import { getContentHeight } from "@/constants/layout";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useTask } from "@/hooks/useTask";
@@ -40,6 +43,8 @@ type Transform = {
   transformId: string | null;
 };
 
+type VariableMappings = Record<string, string | null>;
+
 export const LiveEvalsNew = () => {
   const { task } = useTask();
   const { spacing } = useTheme();
@@ -54,6 +59,7 @@ export const LiveEvalsNew = () => {
         datasetId: null,
         transformId: null,
       } as Transform,
+      mappings: {} as VariableMappings,
     },
     validators: {
       onChange: z.object({
@@ -66,14 +72,20 @@ export const LiveEvalsNew = () => {
           datasetId: z.string().min(1, "Dataset ID is required"),
           transformId: z.string().min(1, "Transform ID is required"),
         }),
+        mappings: z.record(z.string(), z.string().nullable()),
       }),
     },
   });
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
+  const transform = useStore(form.store, (state) => state.values.transform);
 
   const { eval: evaluatorData } = useEval(task?.id, evaluator.name ?? undefined, evaluator.version ?? undefined);
+  const transforms = useTransforms(task?.id ?? undefined);
 
+  const selectedTransform = useMemo(() => transforms.data?.find((t) => t.id === transform.transformId), [transforms.data, transform.transformId]);
+
+  // Initialize variables when evaluator data loads
   useEffect(() => {
     if (evaluatorData) {
       const variables =
@@ -88,12 +100,29 @@ export const LiveEvalsNew = () => {
     }
   }, [evaluatorData, form]);
 
+  // Initialize mappings when evaluator variables change
+  useEffect(() => {
+    if (evaluatorData?.variables) {
+      const currentMappings = form.getFieldValue("mappings");
+      const newMappings: VariableMappings = {};
+
+      evaluatorData.variables.forEach((variable) => {
+        newMappings[variable] = currentMappings[variable] ?? null;
+      });
+
+      form.setFieldValue("mappings", newMappings);
+    }
+  }, [evaluatorData?.variables, form]);
+
+  // All variables from the evaluator
+  const allVariables = useMemo(() => {
+    return Object.keys(evaluator.variables ?? {});
+  }, [evaluator.variables]);
+
+  const showMappingEditor = allVariables.length > 0 && selectedTransform;
+
   return (
-    <Stack
-      sx={{
-        height: getContentHeight(),
-      }}
-    >
+    <Stack sx={{ height: getContentHeight() }}>
       <Box
         sx={{
           px: 3,
@@ -115,22 +144,18 @@ export const LiveEvalsNew = () => {
       </Box>
       <Stack sx={{ p: 3, width: "100%", flex: 1, overflow: "auto" }} gap={2}>
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" />
+
         {evaluatorData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 items-start" style={{ gap: spacing(2) }}>
             <Paper variant="outlined" sx={{ p: 2 }}>
-              <NunjucksHighlightedTextField
-                value={evaluatorData?.instructions ?? ""}
-                onChange={() => {}} // Read-only, no-op
-                readOnly
-                size="small"
-              />
+              <NunjucksHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
             </Paper>
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="body1" color="text.primary" fontWeight="bold">
-                Required Variables
+                Variable Requirements
               </Typography>
               <FormControl component="fieldset" variant="standard">
-                <FormLabel component="legend">Assign Required Variables</FormLabel>
+                <FormLabel component="legend">Mark as required (eval won't run if missing)</FormLabel>
                 <FormGroup>
                   {Object.entries(evaluator.variables ?? {}).map(([variable]) => (
                     <form.AppField
@@ -151,7 +176,10 @@ export const LiveEvalsNew = () => {
             </Paper>
           </div>
         )}
+
         <TransformSelector taskId={task?.id ?? ""} form={form} fields="transform" />
+
+        {showMappingEditor && <VariableMappingEditor variables={allVariables} transform={selectedTransform} form={form} fields="mappings" />}
       </Stack>
 
       <Box sx={{ p: 3, borderTop: 1, borderColor: "divider" }} className="mt-auto w-full">
@@ -313,6 +341,110 @@ const TransformSelector = withFieldGroup({
             }}
           />
         </Stack>
+      </Stack>
+    );
+  },
+});
+
+const VariableMappingEditor = withFieldGroup({
+  defaultValues: {} as VariableMappings,
+  props: {} as {
+    variables: string[];
+    transform: TraceTransform;
+  },
+  render: function Render({ group, variables, transform }) {
+    const mappings = useStore(group.store, (state) => state.values);
+    const transformColumns = transform.definition.variables;
+
+    const mappedCount = Object.entries(mappings).filter(([key, value]) => variables.includes(key) && value !== null && value !== "").length;
+
+    return (
+      <Stack gap={2}>
+        <Stack direction="row" gap={2} alignItems="center" justifyContent="space-between">
+          <Typography variant="h6" color="text.primary" fontWeight="bold">
+            Map variables to columns
+          </Typography>
+          <Chip
+            label={`${mappedCount}/${variables.length} mapped`}
+            size="small"
+            color={mappedCount === variables.length ? "success" : "default"}
+            variant="outlined"
+          />
+        </Stack>
+
+        <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+          <Stack divider={<Box sx={{ borderBottom: 1, borderColor: "divider" }} />}>
+            {variables.map((variable) => (
+              <group.AppField
+                key={variable}
+                name={variable}
+                validators={{
+                  onChange: z.string().min(1, "Column is required"),
+                }}
+                children={(field) => {
+                  const selectedColumn = transformColumns.find((col) => col.variable_name === field.state.value);
+
+                  return (
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      gap={2}
+                      sx={{
+                        px: 2,
+                        py: 1.5,
+                        "&:hover": { backgroundColor: "action.hover" },
+                      }}
+                    >
+                      <VariableChip variable={variable} sx={{ minWidth: 120 }} />
+
+                      <ArrowForwardIcon sx={{ color: "text.disabled", fontSize: 18 }} />
+
+                      <Autocomplete
+                        size="small"
+                        sx={{ flex: 1, maxWidth: 300 }}
+                        value={selectedColumn ?? null}
+                        options={transformColumns}
+                        onChange={(_, value) => {
+                          field.handleChange(value?.variable_name ?? null);
+                        }}
+                        getOptionLabel={(option) => option.variable_name}
+                        isOptionEqualToValue={(option, value) => option.variable_name === value.variable_name}
+                        renderInput={(params) => <TextField {...params} placeholder="Select column..." size="small" />}
+                        renderOption={(props, option) => {
+                          const { key, ...rest } = props;
+                          return (
+                            <li key={key} {...rest}>
+                              <Stack>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {option.variable_name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+                                  {option.span_name}.{option.attribute_path}
+                                </Typography>
+                              </Stack>
+                            </li>
+                          );
+                        }}
+                      />
+
+                      {selectedColumn && (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace", flexShrink: 0 }}>
+                          {selectedColumn.span_name}.{selectedColumn.attribute_path}
+                        </Typography>
+                      )}
+                    </Stack>
+                  );
+                }}
+              />
+            ))}
+          </Stack>
+        </Paper>
+
+        {mappedCount < variables.length && (
+          <Typography variant="caption" color="warning.main">
+            All variables must be mapped before creating the live eval
+          </Typography>
+        )}
       </Stack>
     );
   },

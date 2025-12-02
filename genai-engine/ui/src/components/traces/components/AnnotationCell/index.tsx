@@ -2,13 +2,12 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
-import Modal from "@mui/material/Modal";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
 
-import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { CopyableChip } from "@/components/common";
+import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 
 type Props = {
   annotation: AgenticAnnotationResponse;

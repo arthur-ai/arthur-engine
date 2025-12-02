@@ -143,7 +143,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
                       <ListItemText primary="Add to Dataset" secondary="Add this trace to a dataset" />
                     </Menu.Item>
                     <Menu.Separator />
-                    <Menu.Item render={<ListItemButton to={`/tasks/${task!.id}/live-evals/new`} component={Link} />}>
+                    <Menu.Item render={<ListItemButton to={`/tasks/${task!.id}/live-evals/new?traceId=${id}`} component={Link} />}>
                       <TroubleshootIcon sx={{ mr: 1, fontSize: 16 }} />
                       <ListItemText primary="Evaluate Traces Like This" secondary="Evaluate traces that are similar to this one" />
                     </Menu.Item>

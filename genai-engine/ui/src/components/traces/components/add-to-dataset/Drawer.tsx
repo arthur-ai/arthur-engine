@@ -67,7 +67,6 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       // If there are pending columns for this dataset, merge them with the submitted columns
       const columnsForDataset = pendingColumns[datasetId] || [];
       const allColumnNames = new Set([...columnsForDataset, ...columns.map((c) => c.name)]);
-      const allColumnNames = new Set([...columnsForDataset, ...columns.map((c) => c.name)]);
 
       // Create the row data with all columns (pending + submitted)
       const rowData = Array.from(allColumnNames).map((columnName) => {
