@@ -37,9 +37,15 @@ class BinaryPIIDataClassifierV1(RuleScorer):
                 if entity not in disabled_pii_entities
             ]
 
+        if not request.scoring_text:
+            return RuleScore(
+                result=RuleResultEnum.PASS,
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
+
         results = self.analyzer.analyze(
-            text=request.scoring_text
-            or "",  # TODO: should we analyze if scoring_text is None? or just return PASS since there is no PII violation?
+            text=request.scoring_text,
             entities=entities_to_check,
             allow_list=request.allow_list,
             language="en",

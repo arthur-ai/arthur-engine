@@ -329,7 +329,8 @@ class BinaryPIIDataClassifier:
     ) -> list[DateTimeSpan]:
         """Process text using GLiNER model."""
         if not self.model or not self.tokenizer:
-            return []  # TODO: Should we raise an error here?
+            # Returning empty list to avoid raising an error
+            return []
 
         # Get GLiNER entities, excluding those that are disabled
         gliner_entities = [

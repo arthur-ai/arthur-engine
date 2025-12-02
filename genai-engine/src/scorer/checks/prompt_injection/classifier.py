@@ -38,9 +38,10 @@ class BinaryPromptInjectionClassifier(RuleScorer):
 
     def chunk_text(self, text: str) -> list[str]:
         if not self.tokenizer:
+            # Raising an error to avoid silent failures
             raise ValueError(
                 "Tokenizer is not available",
-            )  # TODO: confirm that if tokenizer is not available we should raise an error
+            )
         chunk_iterator = SlidingWindowChunkIterator(
             text=text,
             tokenizer=self.tokenizer,
@@ -80,7 +81,7 @@ class BinaryPromptInjectionClassifier(RuleScorer):
             )
         user_prompt = request.user_prompt
         if not user_prompt:
-            return RuleScore(  # TODO: confirm that if user prompt is empty we should return PASS
+            return RuleScore(
                 result=RuleResultEnum.PASS,
                 prompt_tokens=0,
                 completion_tokens=0,

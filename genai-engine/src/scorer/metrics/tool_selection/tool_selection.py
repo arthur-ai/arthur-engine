@@ -177,19 +177,19 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
 
         # Create lambda for tool selection chain
         tool_selection_call = lambda: tool_selection_chain.invoke(
-            {
+            input={  # In newer versions of langchain this is a general type for input, ignore type for now
                 "system_prompt": system_prompt,
                 "user_query": user_query,
-                "context": context,  # TODO: here tool expect RunableConfig which is TypedDict should we use the the type from library here?
+                "context": context,  # type: ignore[dict-item]
             },
         )
 
         # Create lambda for tool usage chain
         tool_usage_call = lambda: tool_usage_chain.invoke(
-            {
+            input={  # In newer versions of langchain this is a general type for input
                 "system_prompt": system_prompt,
                 "user_query": user_query,
-                "context": context,  # TODO: here tool expect RunableConfig which is TypedDict should we use the the type from library here?
+                "context": context,  # type: ignore[dict-item]
             },
         )
 
