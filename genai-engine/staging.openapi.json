@@ -2417,6 +2417,70 @@
                         "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -2791,6 +2855,70 @@
                             "title": "Annotation Score"
                         },
                         "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3270,20 +3398,6 @@
                 ],
                 "parameters": [
                     {
-                        "name": "user_ids",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "User IDs to filter on. Optional.",
-                            "title": "User Ids"
-                        },
-                        "description": "User IDs to filter on. Optional."
-                    },
-                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -3408,6 +3522,70 @@
                             "title": "Annotation Score"
                         },
                         "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3783,6 +3961,70 @@
                             "title": "Annotation Score"
                         },
                         "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
                     },
                     {
                         "name": "query_relevance_eq",
