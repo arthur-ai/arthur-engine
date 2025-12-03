@@ -30,6 +30,8 @@ from schemas.response_schemas import (
     TraceListResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
+    UnregisteredRootSpanGroup,
+    UnregisteredRootSpansResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -516,6 +518,49 @@ def get_user_details(
         db_session.close()
 
 
+# ============================================================================
+# UNREGISTERED TRACES ENDPOINTS
+# ============================================================================
+
+
+@trace_api_routes.get(
+    "/traces/unregistered",
+    summary="Get Unregistered Root Spans",
+    description="Get grouped root spans for traces without task_id. Groups are ordered by count descending.",
+    response_model=UnregisteredRootSpansResponse,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def get_unregistered_root_spans(
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> UnregisteredRootSpansResponse:
+    """Get grouped root spans for traces without task_id."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        groups_dict, total_count = span_repo.get_unregistered_root_spans_grouped()
+
+        # Convert dicts to UnregisteredRootSpanGroup objects
+        groups = [
+            UnregisteredRootSpanGroup(
+                span_name=group["span_name"],
+                count=group["count"],
+            )
+            for group in groups_dict
+        ]
+
+        return UnregisteredRootSpansResponse(
+            groups=groups,
+            total_count=total_count,
+        )
+    except Exception as e:
+        logger.error(f"Error getting unregistered root spans: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
 ### TRACE ID-BASED ENDPOINTS
 
 
@@ -654,3 +699,5 @@ def delete_annotation_from_trace(
     except Exception as e:
         logger.error(f"Error annotating trace: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()

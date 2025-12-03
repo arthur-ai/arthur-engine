@@ -1103,3 +1103,38 @@ class SpanQueryService:
                 "total_token_cost",
             ),
         ]
+
+    def get_unregistered_root_spans_grouped(
+        self,
+    ) -> tuple[list[tuple[str, int]], int]:
+        """
+        Query root spans (parent_span_id IS NULL) for traces without task_id (task_id IS NULL),
+        grouped by span_name.
+
+        Returns:
+            tuple[list[tuple[str, int]], int]: (groups, total_count) where groups contains
+                (span_name, count) tuples ordered by count descending,
+                and total_count is the total number of root spans (each trace has one root span)
+        """
+        query = (
+            select(
+                DatabaseSpan.span_name,
+                func.count().label("count"),
+            )
+            .where(DatabaseSpan.parent_span_id.is_(None))
+            .where(DatabaseSpan.task_id.is_(None))
+            .group_by(DatabaseSpan.span_name)
+            .order_by(func.count().desc())
+        )
+
+        results = self.db_session.execute(query).all()
+
+        groups = [
+            (row.span_name or "Unknown", row.count)
+            for row in results
+        ]
+
+        # Calculate total number of root spans (sum of count across all groups)
+        total_count = sum(count for _, count in groups)
+
+        return groups, total_count

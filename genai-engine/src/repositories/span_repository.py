@@ -574,6 +574,31 @@ class SpanRepository:
             trace_id=trace_id,
         )
 
+    def get_unregistered_root_spans_grouped(
+        self,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """
+        Get grouped root spans for traces without task_id.
+
+        Returns:
+            tuple[list[dict], int]: (groups, total_count) where groups contains
+                dicts with span_name and count, and total_count is the total number
+                of root spans (each trace has one root span)
+        """
+        results, total_count = (
+            self.span_query_service.get_unregistered_root_spans_grouped()
+        )
+
+        groups = [
+            {
+                "span_name": span_name,
+                "count": count,
+            }
+            for span_name, count in results
+        ]
+
+        return groups, total_count
+
     # ============================================================================
     # Testing/Utility Methods
     # ============================================================================

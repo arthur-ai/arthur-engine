@@ -559,12 +559,10 @@ def test_get_unregistered_root_spans_grouped(
     for group in groups:
         if isinstance(group, dict):
             assert "span_name" in group, "Group should have 'span_name' key"
-            assert "span_count" in group, "Group should have 'span_count' key"
-            assert "trace_count" in group, "Group should have 'trace_count' key"
+            assert "count" in group, "Group should have 'count' key"
         else:
             assert hasattr(group, "span_name"), "Group should have 'span_name' attribute"
-            assert hasattr(group, "span_count"), "Group should have 'span_count' attribute"
-            assert hasattr(group, "trace_count"), "Group should have 'trace_count' attribute"
+            assert hasattr(group, "count"), "Group should have 'count' attribute"
 
     # Helper function to get group value
     def get_group_value(group, key):
@@ -576,43 +574,35 @@ def test_get_unregistered_root_spans_grouped(
     )
     assert group_a is not None, "Group 'AppA' not found"
     assert (
-        get_group_value(group_a, "span_count") == 2
-    ), f"Expected AppA span_count=2, got {get_group_value(group_a, 'span_count')}"
-    assert (
-        get_group_value(group_a, "trace_count") == 2
-    ), f"Expected AppA trace_count=2, got {get_group_value(group_a, 'trace_count')}"
+        get_group_value(group_a, "count") == 2
+    ), f"Expected AppA count=2, got {get_group_value(group_a, 'count')}"
 
     group_b = next(
         (g for g in groups if get_group_value(g, "span_name") == "AppB"), None
     )
     assert group_b is not None, "Group 'AppB' not found"
     assert (
-        get_group_value(group_b, "span_count") == 2
-    ), f"Expected AppB span_count=2, got {get_group_value(group_b, 'span_count')}"
-    assert (
-        get_group_value(group_b, "trace_count") == 2
-    ), f"Expected AppB trace_count=2, got {get_group_value(group_b, 'trace_count')}"
+        get_group_value(group_b, "count") == 2
+    ), f"Expected AppB count=2, got {get_group_value(group_b, 'count')}"
 
     group_c = next(
         (g for g in groups if get_group_value(g, "span_name") == "AppC"), None
     )
     assert group_c is not None, "Group 'AppC' not found"
     assert (
-        get_group_value(group_c, "span_count") == 1
-    ), f"Expected AppC span_count=1, got {get_group_value(group_c, 'span_count')}"
-    assert (
-        get_group_value(group_c, "trace_count") == 1
-    ), f"Expected AppC trace_count=1, got {get_group_value(group_c, 'trace_count')}"
+        get_group_value(group_c, "count") == 1
+    ), f"Expected AppC count=1, got {get_group_value(group_c, 'count')}"
 
-    # Verify total_count equals total number of root spans (5)
+    # Verify total_count equals total number of distinct traces (5)
+    # Since each trace has one root span, total_count should equal the number of traces
     assert (
         total_count == 5
-    ), f"Expected total_count=5, got {total_count}"
+    ), f"Expected total_count=5 (total distinct traces), got {total_count}"
 
-    # Verify groups are ordered by span_count descending (most common first)
-    # AppA and AppB both have span_count=2, AppC has span_count=1
+    # Verify groups are ordered by count descending (most common first)
+    # AppA and AppB both have count=2, AppC has count=1
     # So AppA and AppB should come before AppC
-    span_counts = [get_group_value(g, "span_count") for g in groups]
-    assert span_counts == sorted(
-        span_counts, reverse=True
-    ), f"Groups should be ordered by span_count descending. Got: {span_counts}"
+    counts = [get_group_value(g, "count") for g in groups]
+    assert counts == sorted(
+        counts, reverse=True
+    ), f"Groups should be ordered by count descending. Got: {counts}"
