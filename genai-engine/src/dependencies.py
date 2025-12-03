@@ -41,6 +41,7 @@ from schemas.internal_schemas import (
     Task,
 )
 from schemas.request_schemas import (
+    LLMEvalTransformListFilterRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
     TransformListFilterRequest,
@@ -415,6 +416,30 @@ def transform_list_filter_parameters(
     """Create a LLMGetAllFilterRequest from query parameters."""
     return TransformListFilterRequest(
         name=name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+def llm_eval_transform_list_filter_parameters(
+    llm_eval_name: Optional[str] = Query(
+        None,
+        description="Name of the llm eval to filter on",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> LLMEvalTransformListFilterRequest:
+    """Create a LLMEvalTransformListFilterRequest from query parameters."""
+    return LLMEvalTransformListFilterRequest(
+        llm_eval_name=llm_eval_name,
         created_after=datetime.fromisoformat(created_after) if created_after else None,
         created_before=(
             datetime.fromisoformat(created_before) if created_before else None

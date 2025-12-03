@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/03/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/transforms/{transform_id}  endpoint added
+
 # 12/02/2025
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  api path removed without deprecation
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation

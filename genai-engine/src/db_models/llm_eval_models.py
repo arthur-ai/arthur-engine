@@ -1,8 +1,10 @@
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     TIMESTAMP,
+    UUID,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -98,4 +100,46 @@ class DatabaseLLMEvalVersionTag(Base):
             name="fk_llm_eval_version_tags_eval",
         ),
         UniqueConstraint("task_id", "name", "tag", name="uq_llm_eval_task_name_tag"),
+    )
+
+
+class DatabaseLLMEvalTransform(Base):
+    __tablename__ = "llm_eval_transforms"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    # llm eval composite primary key
+    task_id: Mapped[str] = mapped_column(String, nullable=False)
+    llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
+    llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    transform_id: Mapped[uuid.UUID] = mapped_column(
+        UUID,
+        ForeignKey("trace_transforms.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "llm_eval_name", "llm_eval_version"],
+            ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
+            ondelete="CASCADE",
+            name="fk_llm_eval_transforms_eval",
+        ),
+        UniqueConstraint(
+            "task_id",
+            "llm_eval_name",
+            "transform_id",
+            name="uq_llm_eval_transforms_task_id_name_transform_id",
+        ),
     )

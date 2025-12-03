@@ -821,3 +821,21 @@ class TransformListFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+
+
+class LLMEvalTransformListFilterRequest(BaseModel):
+    """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
+
+    # Optional filters
+    llm_eval_name: Optional[str] = Field(
+        None,
+        description="LLM eval name to filter on",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )

@@ -748,3 +748,21 @@ class TransformExtractionResponseList(BaseModel):
     variables: list[TransformExtractionResponseVariable] = Field(
         description="List of extracted variables.",
     )
+
+
+class LLMEvalTransformResponse(BaseModel):
+    id: UUID = Field(description="ID of the transform.")
+    task_id: str = Field(description="ID of the parent task.")
+    llm_eval_name: str = Field(description="Name of the llm eval.")
+    llm_eval_version: int = Field(description="Version of the llm eval.")
+    transform_id: UUID = Field(description="ID of the transform.")
+    created_at: datetime = Field(
+        description="Timestamp representing the time the transform was added to the llm eval.",
+    )
+
+
+class ListLLMEvalTransformsResponse(BaseModel):
+    transforms: List[LLMEvalTransformResponse] = Field(
+        description="List of transforms for the llm eval.",
+    )
+    count: int = Field(description="Total number of transforms")

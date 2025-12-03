@@ -1,19 +1,30 @@
+import uuid
+from datetime import datetime
 from typing import List, Optional, Type, Union, cast
 
+from arthur_common.models.common_schemas import PaginationParameters
+from fastapi import HTTPException
 from litellm import supports_response_schema
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db_models.base import Base
-from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
+from db_models.llm_eval_models import (
+    DatabaseLLMEval,
+    DatabaseLLMEvalTransform,
+    DatabaseLLMEvalVersionTag,
+)
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.internal_schemas import LLMEvalTransform
 from schemas.llm_eval_schemas import LLMEval, ReasonedScore
 from schemas.llm_schemas import LLMConfigSettings, LLMResponseFormat
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
+    LLMEvalTransformListFilterRequest,
     PromptCompletionRequest,
 )
 from schemas.response_schemas import (
@@ -199,3 +210,167 @@ class LLMEvalsRepository(BaseLLMRepository):
             LLMEval,
             super().get_llm_item(task_id, item_name, item_version),
         )
+
+    def _get_db_llm_eval_transform_by_id(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        llm_eval_version: int,
+        transform_id: str,
+    ) -> DatabaseLLMEvalTransform:
+        db_eval_transform = (
+            self.db_session.query(DatabaseLLMEvalTransform)
+            .filter(DatabaseLLMEvalTransform.task_id == task_id)
+            .filter(DatabaseLLMEvalTransform.llm_eval_name == llm_eval_name)
+            .filter(DatabaseLLMEvalTransform.llm_eval_version == llm_eval_version)
+            .filter(DatabaseLLMEvalTransform.transform_id == transform_id)
+            .first()
+        )
+
+        return db_eval_transform
+
+    def add_transform_to_llm_eval_version(
+        self,
+        task_id: str,
+        llm_eval: LLMEval,
+        transform_id: uuid.UUID,
+    ) -> LLMEvalTransform:
+        existing_transform = (
+            self.db_session.query(DatabaseLLMEvalTransform)
+            .filter(DatabaseLLMEvalTransform.task_id == task_id)
+            .filter(DatabaseLLMEvalTransform.llm_eval_name == llm_eval.name)
+            .filter(DatabaseLLMEvalTransform.transform_id == transform_id)
+            .first()
+        )
+
+        if existing_transform:
+            if existing_transform.llm_eval_version == llm_eval.version:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Transform {transform_id} is already associated with eval {llm_eval.name} (version {llm_eval.version}).",
+                    headers={"full_stacktrace": "false"},
+                )
+
+            existing_transform.llm_eval_version = llm_eval.version
+            self.db_session.commit()
+            return LLMEvalTransform.from_db_model(existing_transform)
+
+        db_eval_transform = DatabaseLLMEvalTransform(
+            id=uuid.uuid4(),
+            task_id=task_id,
+            llm_eval_name=llm_eval.name,
+            llm_eval_version=llm_eval.version,
+            transform_id=transform_id,
+            created_at=datetime.now(),
+        )
+
+        try:
+            self.db_session.add(db_eval_transform)
+            self.db_session.commit()
+        except IntegrityError as e:
+            self.db_session.rollback()
+            if "foreign key constraint" in str(e).lower():
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Transform {transform_id} not found.",
+                    headers={"full_stacktrace": "false"},
+                )
+            elif "unique constraint" in str(e).lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Transform {transform_id} is already associated with eval {llm_eval.name} (version {llm_eval.version}).",
+                    headers={"full_stacktrace": "false"},
+                )
+            raise
+
+        return LLMEvalTransform.from_db_model(db_eval_transform)
+
+    def get_llm_eval_transform_by_id(
+        self,
+        task_id: str,
+        llm_eval: LLMEval,
+        transform_id: uuid.UUID,
+    ) -> LLMEvalTransform:
+        db_eval_transform = self._get_db_llm_eval_transform_by_id(
+            task_id,
+            llm_eval.name,
+            llm_eval.version,
+            transform_id,
+        )
+
+        if not db_eval_transform:
+            raise HTTPException(
+                status_code=404,
+                detail="Transform %s not found for eval %s (version %s)."
+                % (transform_id, llm_eval.name, llm_eval.version),
+                headers={"full_stacktrace": "false"},
+            )
+
+        return LLMEvalTransform.from_db_model(db_eval_transform)
+
+    def list_llm_eval_transforms(
+        self,
+        task_id: str,
+        pagination_parameters: PaginationParameters = None,
+        filter_request: Optional[LLMEvalTransformListFilterRequest] = None,
+    ) -> List[LLMEvalTransform]:
+        base_query = self.db_session.query(DatabaseLLMEvalTransform).filter(
+            DatabaseLLMEvalTransform.task_id == task_id,
+        )
+
+        if filter_request:
+            if filter_request.llm_eval_name:
+                base_query = base_query.filter(
+                    DatabaseLLMEvalTransform.llm_eval_name.ilike(
+                        f"%{filter_request.llm_eval_name}%",
+                    ),
+                )
+
+            if filter_request.created_after:
+                base_query = base_query.filter(
+                    DatabaseLLMEvalTransform.created_at >= filter_request.created_after,
+                )
+
+            if filter_request.created_before:
+                base_query = base_query.filter(
+                    DatabaseLLMEvalTransform.created_at < filter_request.created_before,
+                )
+
+        if pagination_parameters:
+            base_query, _ = self._apply_sorting_pagination_and_count(
+                base_query,
+                pagination_parameters,
+                DatabaseLLMEvalTransform.created_at,
+            )
+
+        db_eval_transforms = base_query.all()
+
+        return [
+            LLMEvalTransform.from_db_model(db_eval_transform)
+            for db_eval_transform in db_eval_transforms
+        ]
+
+    def remove_transform_from_llm_eval(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        llm_eval_version: int,
+        transform_id: uuid.UUID,
+    ) -> None:
+        db_eval_transform = self._get_db_llm_eval_transform_by_id(
+            task_id,
+            llm_eval_name,
+            llm_eval_version,
+            transform_id,
+        )
+
+        if not db_eval_transform:
+            raise HTTPException(
+                status_code=404,
+                detail="Transform %s not found for eval %s (version '%s')."
+                % (transform_id, llm_eval_name, llm_eval_version),
+                headers={"full_stacktrace": "false"},
+            )
+
+        self.db_session.delete(db_eval_transform)
+        self.db_session.commit()

@@ -109,6 +109,7 @@ from db_models.dataset_models import (
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
+from db_models.llm_eval_models import DatabaseLLMEvalTransform
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
@@ -154,6 +155,7 @@ from schemas.response_schemas import (
     DatasetVersionRowResponse,
     DocumentStorageConfigurationResponse,
     ListDatasetVersionsResponse,
+    LLMEvalTransformResponse,
     RagProviderConfigurationResponse,
     RagSearchSettingConfigurationResponse,
     RagSearchSettingConfigurationVersionResponse,
@@ -3282,4 +3284,46 @@ class RagSearchSettingConfiguration(BaseModel):
             ),
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
+        )
+
+
+class LLMEvalTransform(BaseModel):
+    id: uuid.UUID
+    task_id: str
+    llm_eval_name: str
+    llm_eval_version: int
+    transform_id: uuid.UUID
+    created_at: datetime
+
+    def to_db_model(self) -> DatabaseLLMEvalTransform:
+        return DatabaseLLMEvalTransform(
+            id=self.id,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+        )
+
+    @staticmethod
+    def from_db_model(
+        db_transform: DatabaseLLMEvalTransform,
+    ) -> "LLMEvalTransform":
+        return LLMEvalTransform(
+            id=db_transform.id,
+            task_id=db_transform.task_id,
+            llm_eval_name=db_transform.llm_eval_name,
+            llm_eval_version=db_transform.llm_eval_version,
+            transform_id=db_transform.transform_id,
+            created_at=db_transform.created_at,
+        )
+
+    def to_response_model(self) -> LLMEvalTransformResponse:
+        return LLMEvalTransformResponse(
+            id=self.id,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
         )

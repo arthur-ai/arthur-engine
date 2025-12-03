@@ -122,6 +122,7 @@ __all__ = [
     # LLM Eval models
     "DatabaseLLMEval",
     "DatabaseLLMEvalVersionTag",
+    "DatabaseLLMEvalTransform",
     # Notebook models
     "DatabaseNotebook",
     # Prompt Experiment models
