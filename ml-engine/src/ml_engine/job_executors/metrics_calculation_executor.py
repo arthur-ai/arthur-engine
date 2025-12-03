@@ -539,8 +539,8 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
     ) -> List[Dataset]:
         model = self.models_client.get_model(job_spec.scope_model_id)
         datasets = []
-        for dsr in model.datasets:
-            datasets.append(self.datasets_client.get_dataset(dsr.dataset_id))
+        for dataset in model.datasets:
+            datasets.append(self.datasets_client.get_dataset(dataset.dataset_id))
         return datasets
 
     def _aggregation_specs_for_calculation(
@@ -575,7 +575,7 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
         """Uploads metrics to model metrics endpoint, creates new version, and creates alert check job
         to run over newly uploaded metrics."""
         model = self.models_client.get_model(job_spec.scope_model_id)
-        mv = self.metrics_client.post_model_metrics_version(
+        metrics_version = self.metrics_client.post_model_metrics_version(
             model_id=model.id,
             post_metrics_versions=PostMetricsVersions(
                 range_start=job_spec.start_timestamp,
@@ -585,7 +585,7 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
 
         self.metrics_client.post_model_metrics_by_version(
             model_id=model.id,
-            metric_version_num=mv.version_num,
+            metric_version_num=metrics_version.version_num,
             metrics_upload=metrics_upload,
         )
         alert_check_batch = _create_alert_check_job(model, job_spec)
@@ -726,12 +726,11 @@ def _limit_metrics_by_name(
 
     # Limit points for each numeric metric name group
     for metric_name, metric_list in numeric_metrics_by_name.items():
-        limited_numeric_metric = _limit_numeric_metric_points(
+        if limited_numeric_metric := _limit_numeric_metric_points(
             metric_name,
             metric_list,
             max_points_per_name,
-        )
-        if limited_numeric_metric is not None:
+        ):
             limited_metrics.append(limited_numeric_metric)
 
     # Limit points for each sketch metric name group
