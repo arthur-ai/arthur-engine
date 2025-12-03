@@ -433,6 +433,14 @@ Parameters:
     Type: Number
     Description: 'The desired number of tasks running for ML Engine ECS service'
     Default: 2
+  MLEngineFargateTaskCPUValue:
+    Type: Number
+    Default: 1024
+    Description: 'CPU value for AWS Fargate per ML Engine ECS task'
+  MLEngineFargateTaskMemoryValue:
+    Type: Number
+    Default: 2048
+    Description: 'Memory value for AWS Fargate per ML Engine ECS task'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -545,8 +553,6 @@ Metadata:
         default: 'Arthur Platform Resource Namespace'
       ArthurResourceNameSuffix:
         default: 'Arthur Platform Resource Name Suffix'
-      MLEngineContainerImageLocation:
-        default: 'ML Engine Container Image Location'
       ContainerRepositoryUsername:
         default: 'Container Repository Username'
       ContainerRepositoryPassword:
@@ -900,6 +906,8 @@ Resources:
         MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
         GenaiEngineInternalAPIKeySecretARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
         GenaiEngineInternalIngressHost: !Ref GenaiEngineIngressURL
+        MLEngineFargateTaskCPUValue: !Ref MLEngineFargateTaskCPUValue
+        MLEngineFargateTaskMemoryValue: !Ref MLEngineFargateTaskMemoryValue
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack
