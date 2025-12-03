@@ -45,9 +45,28 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
     }
 
     const attributePath = remainingPath.split('.');
+    const navigationKeys = attributePath.slice(0, -1); // Navigate to parent of final attribute
+
+    // Validate that the navigation path exists in the span's data
+    if (navigationKeys.length > 0) {
+      const navPath = navigationKeys.join('.');
+      const data = getNestedValue(matchedSpan.raw_data, navPath);
+
+      // If the navigation path doesn't exist or isn't an object, don't use it
+      if (!data || typeof data !== 'object') {
+        return { spanId: null, keys: [] };
+      }
+
+      // Also check if the final attribute exists in the data
+      const finalAttribute = attributePath[attributePath.length - 1];
+      if (finalAttribute && !(finalAttribute in data)) {
+        return { spanId: null, keys: [] };
+      }
+    }
+
     return {
       spanId: matchedSpan.span_id,
-      keys: attributePath.slice(0, -1), // Navigate to parent of final attribute
+      keys: navigationKeys,
     };
   }, [path, spans]);
 

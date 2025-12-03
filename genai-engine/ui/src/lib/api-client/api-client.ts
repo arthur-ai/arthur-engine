@@ -1312,15 +1312,6 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
-/** ExecuteDatasetTransformResponse */
-export interface ExecuteDatasetTransformResponse {
-  /**
-   * Rows Extracted
-   * List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.
-   */
-  rows_extracted: NewDatasetVersionRowRequest[];
-}
-
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError = HTTPValidationError;
@@ -1333,18 +1324,9 @@ export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityText
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
 
-export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData = ExecuteDatasetTransformResponse;
+export type ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostData = TransformExtractionResponseList;
 
-export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError = HTTPValidationError;
-
-/** ExecuteTransformRequest */
-export interface ExecuteTransformRequest {
-  /**
-   * Trace Id
-   * ID of the trace to execute the transform against.
-   */
-  trace_id: string;
-}
+export type ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostError = HTTPValidationError;
 
 /**
  * ExperimentOutputSource
@@ -3414,6 +3396,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
 /** ListTraceTransformsResponse */
@@ -7501,6 +7488,29 @@ export interface TraceUserMetadataResponse {
   user_id: string;
 }
 
+/** TransformExtractionResponseList */
+export interface TransformExtractionResponseList {
+  /**
+   * Variables
+   * List of extracted variables.
+   */
+  variables: TransformExtractionResponseVariable[];
+}
+
+/** TransformExtractionResponseVariable */
+export interface TransformExtractionResponseVariable {
+  /**
+   * Value
+   * Value of the extracted variable.
+   */
+  value: string;
+  /**
+   * Variable Name
+   * Name of the extracted variable.
+   */
+  variable_name: string;
+}
+
 /**
  * UnsavedPromptConfig
  * Configuration for an unsaved prompt
@@ -8680,7 +8690,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.224
+ * @version 2.1.227
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -9595,29 +9605,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Execute a transform against a trace to extract data for dataset rows. Returns data in the format expected by the create dataset version API's rows_to_add parameter.
+     * @description Execute a transform against a trace to extract variables.
      *
-     * @tags Datasets
-     * @name ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost
-     * @summary Execute Transform Endpoint
-     * @request POST:/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions
+     * @tags Transforms
+     * @name ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost
+     * @summary Execute Trace Transform Extraction
+     * @request POST:/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions
      * @secure
      */
-    executeTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost: (
-      datasetId: string,
+    executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost: (
+      traceId: string,
       transformId: string,
-      data: ExecuteTransformRequest,
       params: RequestParams = {}
     ) =>
       this.request<
-        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData,
-        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError
+        ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostData,
+        ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostError
       >({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}/extractions`,
+        path: `/api/v1/traces/${traceId}/transforms/${transformId}/extractions`,
         method: "POST",
-        body: data,
         secure: true,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),

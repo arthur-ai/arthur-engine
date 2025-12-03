@@ -9,7 +9,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
@@ -28,7 +28,6 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const TransformsManagement: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [sortColumn, setSortColumn] = useState<string | null>("updated_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
@@ -144,10 +143,6 @@ const TransformsManagement: React.FC = () => {
     setPage(0);
   }, []);
 
-  const handleBack = useCallback(() => {
-    navigate(-1);
-  }, [navigate]);
-
   if (isLoading && !transforms) {
     return (
       <Box
@@ -183,7 +178,7 @@ const TransformsManagement: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      <TransformsHeader onCreateTransform={() => setIsCreateModalOpen(true)} onBack={handleBack} />
+      <TransformsHeader onCreateTransform={() => setIsCreateModalOpen(true)} />
 
       {error && transforms && transforms.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>

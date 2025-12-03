@@ -3,7 +3,7 @@ import { Alert, Autocomplete, Button, Snackbar, Stack, TextField, Typography } f
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useState } from "react";
 
-import { flattenSpans } from "../../utils/spans";
+import { flattenSpans, getNestedValue } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
 
 import { AddColumnDialog } from "./AddColumnDialog";
@@ -23,6 +23,7 @@ import { useDatasets } from "@/hooks/useDatasets";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
+import { TransformExtractionResponseVariable } from "@/lib/api-client/api-client";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 type Props = {
@@ -337,31 +338,50 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
 
                           if (transformId && value && selectedDataset && traceId) {
                             try {
-                              const response = await api.api.executeTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost(
-                                selectedDataset.id,
-                                transformId,
-                                { trace_id: traceId }
+                              const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
+                                traceId,
+                                transformId
                               );
 
-                              if (response.data.rows_extracted && response.data.rows_extracted.length > 0) {
-                                const extractedRow = response.data.rows_extracted[0];
-
-                                // Map extracted columns with path information from transform definition
-                                const executedColumns = extractedRow.data.map(col => {
+                              if (response.data.variables && response.data.variables.length > 0) {
+                                // Map extracted variables with path information from transform definition
+                                const executedColumns = response.data.variables.map((variable: TransformExtractionResponseVariable) => {
                                   const variableDef = value.definition.variables.find(
-                                    v => v.variable_name === col.column_name
+                                    v => v.variable_name === variable.variable_name
                                   );
 
-                                  const path = variableDef
-                                    ? `${variableDef.span_name}.${variableDef.attribute_path}`
-                                    : "";
+                                  if (!variableDef) {
+                                    return {
+                                      name: variable.variable_name,
+                                      value: variable.value,
+                                      path: "",
+                                      span_name: "",
+                                      attribute_path: "",
+                                    };
+                                  }
+
+                                  // Validate that the path exists in the trace data
+                                  const span = flatSpans.find(s => s.span_name === variableDef.span_name);
+                                  let validatedPath = "";
+                                  let validatedSpanName = "";
+                                  let validatedAttributePath = "";
+
+                                  if (span) {
+                                    // Check if the attribute path exists
+                                    const data = getNestedValue(span.raw_data, variableDef.attribute_path);
+                                    if (data !== undefined) {
+                                      validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
+                                      validatedSpanName = variableDef.span_name;
+                                      validatedAttributePath = variableDef.attribute_path;
+                                    }
+                                  }
 
                                   return {
-                                    name: col.column_name,
-                                    value: col.column_value,
-                                    path,
-                                    span_name: variableDef?.span_name || "",
-                                    attribute_path: variableDef?.attribute_path || "",
+                                    name: variable.variable_name,
+                                    value: variable.value,
+                                    path: validatedPath,
+                                    span_name: validatedSpanName,
+                                    attribute_path: validatedAttributePath,
                                   };
                                 });
 
