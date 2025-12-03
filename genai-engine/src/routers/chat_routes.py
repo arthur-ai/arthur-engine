@@ -1,32 +1,7 @@
 from datetime import datetime
-from typing import Annotated, List
+from typing import Annotated
 from uuid import UUID
 
-from auth.oauth_validator import validate_token
-from chat.chat import ArthurChat
-from chat.embedding import EmbeddingModel
-from dependencies import (
-    get_application_config,
-    get_db_session,
-    get_s3_client,
-    get_scorer_client,
-)
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi_pagination import Page, Params
-from repositories.configuration_repository import ConfigurationRepository
-from repositories.documents_repository import DocumentRepository
-from repositories.embedding_repository import EmbeddingRepository
-from repositories.feedback_repository import save_feedback
-from repositories.inference_repository import InferenceRepository
-from repositories.metrics_repository import MetricRepository
-from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
-from repositories.tasks_rules_repository import TasksRulesRepository
-from routers.route_handler import GenaiEngineRoute
-from schemas.custom_exceptions import LLMContentFilterException
-from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import ApplicationConfiguration, User, _serialize_datetime
-from schemas.request_schemas import ApplicationConfigurationUpdateRequest
 from arthur_common.models.request_schemas import (
     ChatDefaultTaskRequest,
     ChatRequest,
@@ -42,10 +17,37 @@ from arthur_common.models.response_schemas import (
     ExternalDocument,
     FileUploadResult,
 )
-from scorer.score import ScorerClient
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi_pagination import Page, Params
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response
+
+from auth.oauth_validator import validate_token
+from chat.chat import ArthurChat
+from chat.embedding import EmbeddingModel
+from clients.s3.S3Client import S3Client
+from dependencies import (
+    get_application_config,
+    get_db_session,
+    get_s3_client,
+    get_scorer_client,
+)
+from repositories.configuration_repository import ConfigurationRepository
+from repositories.documents_repository import DocumentRepository
+from repositories.embedding_repository import EmbeddingRepository
+from repositories.feedback_repository import save_feedback
+from repositories.inference_repository import InferenceRepository
+from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
+from repositories.tasks_repository import TaskRepository
+from repositories.tasks_rules_repository import TasksRulesRepository
+from routers.route_handler import GenaiEngineRoute
+from schemas.custom_exceptions import LLMContentFilterException
+from schemas.enums import PermissionLevelsEnum
+from schemas.internal_schemas import ApplicationConfiguration, User, _serialize_datetime
+from schemas.request_schemas import ApplicationConfigurationUpdateRequest
+from scorer.score import ScorerClient
 from utils import constants as constants
 from utils.file_parsing import parse_file_words
 from utils.users import permission_checker
@@ -69,10 +71,10 @@ app_chat_routes = APIRouter(
 def upload_embeddings_file(
     file: UploadFile,
     current_user: Annotated[User, Depends(validate_token)],
-    s3_client=Depends(get_s3_client),
+    s3_client: S3Client = Depends(get_s3_client),
     db_session: Session = Depends(get_db_session),
     is_global: bool = False,
-):
+) -> FileUploadResult:
     try:
         if (
             file.content_type != "application/pdf"
@@ -83,7 +85,11 @@ def upload_embeddings_file(
                 400,
                 detail=constants.ERROR_INVALID_DOCUMENT_TYPE,
             )
-
+        if not file.filename:
+            raise HTTPException(
+                400,
+                detail="File name is required",
+            )
         # Add the document to the database
         doc_repo = DocumentRepository(db_session, s3_client)
         doc = doc_repo.create_document(file, current_user.email, is_global)
@@ -97,7 +103,7 @@ def upload_embeddings_file(
 
         return FileUploadResult(
             id=doc.id,
-            name=file.filename,
+            name=file.filename,  # type: ignore[arg-type]
             type=doc.type,
             word_count=len(parsed_words),
             success=True,
@@ -117,9 +123,9 @@ def upload_embeddings_file(
 @permission_checker(permissions=PermissionLevelsEnum.CHAT_WRITE.value)
 def get_files(
     current_user: Annotated[User, Depends(validate_token)],
-    s3_client=Depends(get_s3_client),
+    s3_client: S3Client = Depends(get_s3_client),
     db_session: Session = Depends(get_db_session),
-):
+) -> list[ExternalDocument]:
     try:
         doc_repo = DocumentRepository(db_session, s3_client)
         docs = doc_repo.get_documents(current_user.email)
@@ -140,9 +146,9 @@ def get_files(
 def delete_file(
     file_id: UUID,
     current_user: Annotated[User, Depends(validate_token)],
-    s3_client=Depends(get_s3_client),
+    s3_client: S3Client = Depends(get_s3_client),
     db_session: Session = Depends(get_db_session),
-):
+) -> Response:
     try:
         doc_repo = DocumentRepository(db_session, s3_client)
         file = doc_repo.get_document_by_id(str(file_id))
@@ -173,7 +179,7 @@ def chat(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     application_config: ApplicationConfiguration = Depends(get_application_config),
-):
+) -> ChatResponse:
     try:
         # Get the relevant data repositories
         inference_repo = InferenceRepository(db_session)
@@ -181,6 +187,11 @@ def chat(
         embedding_repo = EmbeddingRepository(db_session, embedding_model)
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_id = application_config.chat_task_id
+        if not task_id:
+            raise HTTPException(
+                400,
+                detail="Task ID is required",
+            )
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(task_id)
         rules_repo = RuleRepository(db_session)
         prompt_rules, _ = rules_repo.query_rules(
@@ -206,11 +217,6 @@ def chat(
             task_id=task_id,
             body=PromptValidationRequest(
                 prompt=body.user_prompt,
-                context=(
-                    retrieval_info.prompts_to_str()
-                    if len(retrieval_info.embeddings) > 0
-                    else None
-                ),
                 conversation_id=body.conversation_id,
                 user_id=current_user.id,
             ),
@@ -234,7 +240,7 @@ def chat(
                 ],
                 llm_response="The response was filtered due to the prompt triggering LLM provider content management "
                 "policy. Please modify your prompt and retry.",
-                prompt_results=validation_prompt_request.rule_results,
+                prompt_results=validation_prompt_request.rule_results or [],
                 response_results=[],
             )
 
@@ -248,7 +254,6 @@ def chat(
                     if len(retrieval_info.embeddings) > 0
                     else None
                 ),
-                conversation_id=body.conversation_id,
             ),
             db_session=db_session,
             scorer_client=scorer_client,
@@ -268,8 +273,8 @@ def chat(
                 dc._to_response_model() for dc in retrieval_info.embeddings
             ],
             llm_response=chat_response,
-            prompt_results=validation_prompt_request.rule_results,
-            response_results=validation_response_request.rule_results,
+            prompt_results=validation_prompt_request.rule_results or [],
+            response_results=validation_response_request.rule_results or [],
         )
     except Exception as err:
         raise err
@@ -288,7 +293,7 @@ def get_inference_document_context(
     inference_id: UUID,
     current_user: Annotated[User, Depends(validate_token)],
     db_session: Session = Depends(get_db_session),
-):
+) -> list[ChatDocumentContext]:
     try:
         inference_repo = InferenceRepository(db_session)
         embeddings = inference_repo.get_inference_document_context(str(inference_id))
@@ -313,29 +318,35 @@ def post_chat_feedback(
     inference_id: UUID,
     current_user: Annotated[User, Depends(validate_token)],
     db_session: Session = Depends(get_db_session),
-) -> None:
-    save_feedback(
-        str(inference_id),
-        body.target,
-        body.score,
-        body.reason,
-        current_user.id,
-        db_session,
-    )
+) -> Response:
+    try:
+        save_feedback(
+            str(inference_id),
+            body.target,
+            body.score,
+            body.reason or "",
+            current_user.id,
+            db_session,
+        )
+        return Response(status_code=status.HTTP_201_CREATED)
+    except Exception as e:
+        raise e
+    finally:
+        db_session.close()
 
 
 @app_chat_routes.get(
     "/conversations",
     description="Get list of conversation IDs.",
     include_in_schema=True,
-    responses={200: {"model": Page[List[ConversationBaseResponse]]}},
+    responses={200: {"model": Page[ConversationBaseResponse]}},
 )
 @permission_checker(permissions=PermissionLevelsEnum.CHAT_WRITE.value)
 def get_conversations(
     current_user: Annotated[User, Depends(validate_token)],
     db_session: Session = Depends(get_db_session),
     query_params: Params = Depends(),
-):
+) -> Page[ConversationBaseResponse]:
     inference_repo = InferenceRepository(db_session)
     return inference_repo.get_all_user_conversations(current_user.id, query_params)
 
@@ -349,7 +360,12 @@ def get_conversations(
 def get_default_task(
     current_user: Annotated[User, Depends(validate_token)],
     application_config: ApplicationConfiguration = Depends(get_application_config),
-):
+) -> ChatDefaultTaskResponse:
+    if not application_config.chat_task_id:
+        raise HTTPException(
+            status_code=404,
+            detail="No default task found",
+        )
     return ChatDefaultTaskResponse(task_id=application_config.chat_task_id)
 
 
@@ -364,7 +380,7 @@ def update_default_task(
     current_user: Annotated[User, Depends(validate_token)],
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
-):
+) -> ChatDefaultTaskResponse:
     try:
         tasks_repo = TaskRepository(
             db_session,

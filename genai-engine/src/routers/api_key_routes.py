@@ -1,22 +1,23 @@
 import logging
 from uuid import UUID
 
+from arthur_common.models.enums import APIKeysRolesEnum
+from arthur_common.models.request_schemas import NewApiKeyRequest
+from arthur_common.models.response_schemas import ApiKeyResponse
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from starlette import status
+from starlette.responses import Response
+
 from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
 from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from auth.multi_validator import MultiMethodValidator
 from config.config import Config
 from dependencies import get_db_session
-from fastapi import APIRouter, Depends
 from repositories.api_key_repository import ApiKeyRepository
 from routers.route_handler import GenaiEngineRoute
-from arthur_common.models.enums import APIKeysRolesEnum
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from arthur_common.models.request_schemas import NewApiKeyRequest
-from arthur_common.models.response_schemas import ApiKeyResponse
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import Response
 from utils.users import permission_checker
 
 api_key_validator_creators = [APIKeyValidatorCreator(APIKeyValidatorType.MASTER)]
@@ -41,12 +42,12 @@ def create_api_key(
     new_api_key: NewApiKeyRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ApiKeyResponse:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.create_api_key(
-            description=new_api_key.description,
-            roles=new_api_key.roles,
+            description=new_api_key.description or "",
+            roles=new_api_key.roles or [],
         )
         return api_key._to_response_model(
             message="The provided key is only available for display now. "
@@ -71,7 +72,7 @@ def get_api_key(
     api_key_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ApiKeyResponse:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.get_api_key_by_id(str(api_key_id))
@@ -91,7 +92,7 @@ def get_api_key(
 def get_all_active_api_keys(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[ApiKeyResponse]:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         active_api_keys = api_key_repo.get_all_active_api_keys()
@@ -112,7 +113,7 @@ def deactivate_api_key(
     api_key_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key_repo.deactivate_api_key(str(api_key_id))

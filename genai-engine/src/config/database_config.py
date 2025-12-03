@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import StaticPool
@@ -31,7 +33,7 @@ class DatabaseConfig(BaseSettings):
             ssl_key_path="postgres-cert.pem" if self.POSTGRES_USE_SSL else None,
         )
 
-    def get_connection_params(self) -> dict:
+    def get_connection_params(self) -> dict[str, Any]:
         params = {
             "url": self.url,
             "echo": False,
@@ -53,7 +55,9 @@ class DatabaseConfig(BaseSettings):
                 },
             )
             if self.POSTGRES_USE_SSL:
-                params["connect_args"]["sslrootcert"] = "postgres-cert.pem"
+                connect_args: dict[str, Any] = params.get("connect_args", {})  # type: ignore[assignment]
+                connect_args["sslrootcert"] = "postgres-cert.pem"
+                params["connect_args"] = connect_args
         else:
             params.update(
                 {
@@ -67,7 +71,7 @@ class DatabaseConfig(BaseSettings):
         return params
 
     @model_validator(mode="after")
-    def validate_parameters(self):
+    def validate_parameters(self) -> "DatabaseConfig":
         if not self.TEST_DATABASE:
             if not all(
                 [
@@ -84,7 +88,7 @@ class DatabaseConfig(BaseSettings):
         return self
 
     @field_validator("POSTGRES_PORT")
-    def validate_postgres_port(cls, v):
+    def validate_postgres_port(cls, v: Any) -> int | None:
         if not v:
             return None
         elif isinstance(v, str):

@@ -1,11 +1,11 @@
 import logging
 import uuid
 from datetime import datetime
+from typing import Any, List
 
 from fastapi import HTTPException
 from pydantic import SecretStr
 from sqlalchemy.orm import Session
-from typing import List
 
 from clients.llm.llm_client import LLMClient
 from db_models.secret_storage_models import DatabaseSecretStorage
@@ -25,17 +25,23 @@ class ModelProviderRepository:
         return {self.API_KEY_SECRET_FIELD: api_key.get_secret_value()}
 
     def _retrieve_api_key_from_secret(
-        self, provider: ModelProvider, secret: dict
+        self,
+        provider: ModelProvider,
+        secret: dict[str, Any],
     ) -> str:
-        key = secret.get(self.API_KEY_SECRET_FIELD)
+        key: str | None = secret.get(self.API_KEY_SECRET_FIELD)
         if not key:
+            # TODO: should we raise an error here or return None and handle it in the result?
             logger.warning(
-                f"api_key not found in credential secret for provider {provider}"
+                f"api_key not found in credential secret for provider {provider}",
             )
+            return ""
         return key
 
     def set_model_provider_credentials(
-        self, provider: ModelProvider, api_key: SecretStr
+        self,
+        provider: ModelProvider,
+        api_key: SecretStr,
     ) -> None:
         # first check if this provider already exists
         existing_provider = (
@@ -57,7 +63,7 @@ class ModelProviderRepository:
                     secret_type=SecretType.MODEL_PROVIDER,
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
-                )
+                ),
             )
         self.db_session.commit()
 
@@ -71,8 +77,8 @@ class ModelProviderRepository:
             .where(DatabaseSecretStorage.name == provider)
             .all()
         )
-        for provider in providers:
-            self.db_session.delete(provider)
+        for provider_db in providers:
+            self.db_session.delete(provider_db)
         self.db_session.commit()
 
     def get_model_provider_client(self, provider: ModelProvider) -> LLMClient:
@@ -86,12 +92,10 @@ class ModelProviderRepository:
         if not secret:
             raise HTTPException(
                 status_code=400,
-                detail=f"model provider {provider.value} is not configured",
+                detail=f"model provider {provider} is not configured",
             )
 
-        api_key = self._retrieve_api_key_from_secret(
-            provider, secret.value  # type:ignore
-        )
+        api_key = self._retrieve_api_key_from_secret(provider, secret.value)
         return LLMClient(provider=provider, api_key=api_key)
 
     def list_model_providers(self) -> List[ModelProviderResponse]:
@@ -108,9 +112,9 @@ class ModelProviderRepository:
         for provider in ModelProvider:
             providers.append(
                 ModelProviderResponse(
-                    provider=provider,  # type:ignore
+                    provider=provider,
                     enabled=provider in enabled_providers,
-                )
+                ),
             )
 
         return providers

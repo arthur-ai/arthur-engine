@@ -4,9 +4,9 @@
 
 import type {
   AnyExportedAISpan,
-  LLMGenerationAttributes,
+  ModelGenerationAttributes,
   AgentRunAttributes,
-  LLMChunkAttributes,
+  ModelChunkAttributes,
   ToolCallAttributes,
   MCPToolCallAttributes,
   WorkflowRunAttributes,
@@ -26,6 +26,123 @@ import {
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
 import { OISpan } from "@arizeai/openinference-core";
+
+/**
+ * Helper function to convert Mastra tool calls to OpenInference format
+ */
+function convertToolCallsToOpenInference(toolCalls: any[]): any[] {
+  return toolCalls.map((tc) => ({
+    tool_call: {
+      id: tc.toolCallId,
+      function: {
+        name: tc.toolName,
+        arguments: JSON.stringify(tc.input || {}),
+      },
+    },
+  }));
+}
+
+/**
+ * Helper function to extract content from a tool result
+ */
+function extractToolResultContent(result: any): string {
+  let outputValue = result.output?.value;
+  if (typeof outputValue === "string") {
+    // Try to parse if it's a JSON string
+    try {
+      outputValue = JSON.parse(outputValue);
+      return JSON.stringify(outputValue);
+    } catch {
+      return outputValue;
+    }
+  } else if (outputValue !== undefined) {
+    return JSON.stringify(outputValue);
+  }
+  return "";
+}
+
+/**
+ * Helper function to process content that might contain tool calls or results
+ * Returns an object with the appropriate message attributes
+ */
+function processContentForToolCallsOrResults(
+  content: unknown,
+  defaultRole?: string
+): Partial<Record<string, unknown>> {
+  const result: Record<string, unknown> = {};
+
+  // Handle string content (might be stringified JSON)
+  if (typeof content === "string") {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      // Not JSON, return as regular content
+      result[SemanticConventions.MESSAGE_CONTENT] = content;
+      return result;
+    }
+
+    if (parsed !== null) {
+      // Check if it's a tool call array
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-call") {
+        result[SemanticConventions.MESSAGE_TOOL_CALLS] = convertToolCallsToOpenInference(parsed);
+        return result;
+      }
+      // Check if it's a tool result array
+      else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-result") {
+        if (defaultRole) {
+          result[SemanticConventions.MESSAGE_ROLE] = "tool";
+        }
+        result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(parsed[0]);
+        if (parsed[0].toolCallId) {
+          result[SemanticConventions.MESSAGE_TOOL_CALL_ID] = parsed[0].toolCallId;
+        }
+        return result;
+      }
+      // Otherwise, it's JSON but not a tool call/result
+      else {
+        result[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(parsed);
+        return result;
+      }
+    }
+  }
+  // Handle array content
+  else if (Array.isArray(content)) {
+    if (content.length > 0 && content[0]?.type === "tool-call") {
+      result[SemanticConventions.MESSAGE_TOOL_CALLS] = convertToolCallsToOpenInference(content);
+      return result;
+    } else if (content.length > 0 && content[0]?.type === "tool-result") {
+      result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(content[0]);
+      if (content[0].toolCallId) {
+        result[SemanticConventions.MESSAGE_TOOL_CALL_ID] = content[0].toolCallId;
+      }
+      return result;
+    }
+    // Check for special single-item text array format
+    else if (
+      content.length === 1 &&
+      isObject(content[0]) &&
+      typeof content[0].text === "string"
+    ) {
+      result[SemanticConventions.MESSAGE_CONTENT] = content[0].text;
+      return result;
+    }
+    // Regular array
+    else {
+      result[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(content);
+      return result;
+    }
+  }
+  // Handle other types
+  else {
+    result[SemanticConventions.MESSAGE_CONTENT] = typeof content === "string" 
+      ? content 
+      : JSON.stringify(content);
+    return result;
+  }
+
+  return result;
+}
 
 export function setSpanErrorInfo(
   otelSpan: OISpan,
@@ -66,11 +183,11 @@ export function setSpanAttributes(
     case AISpanType.AGENT_RUN:
       additionalAttributes = setAgentRunAttributes(otelSpan, span);
       break;
-    case AISpanType.LLM_GENERATION:
-      additionalAttributes = setLLMGenerationAttributes(otelSpan, span);
+    case AISpanType.MODEL_GENERATION:
+      additionalAttributes = setModelGenerationAttributes(otelSpan, span);
       break;
-    case AISpanType.LLM_CHUNK:
-      additionalAttributes = setLLMChunkAttributes(otelSpan, span);
+    case AISpanType.MODEL_CHUNK:
+      additionalAttributes = setModelChunkAttributes(otelSpan, span);
       break;
     case AISpanType.TOOL_CALL:
       additionalAttributes = setToolCallAttributes(otelSpan, span);
@@ -133,8 +250,7 @@ export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
       return OpenInferenceSpanKind.AGENT;
 
     // all map to LLM in OpenInference
-    case AISpanType.LLM_GENERATION:
-    case AISpanType.LLM_CHUNK:
+    case AISpanType.MODEL_GENERATION:
       return OpenInferenceSpanKind.LLM;
 
     // all map to TOOL in OpenInference
@@ -262,15 +378,19 @@ function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
   };
 
   // Handle different output formats
-  if (typeof output === "string") {
-    message[SemanticConventions.MESSAGE_CONTENT] = output;
+  if (typeof output === "string" || Array.isArray(output)) {
+    // Use helper function to process content
+    const processed = processContentForToolCallsOrResults(output, "assistant");
+    Object.assign(message, processed);
   } else if (isObject(output)) {
     // If it's already a message-like object, preserve its structure
     if (output.role) {
       message[SemanticConventions.MESSAGE_ROLE] = output.role;
     }
     if (output.content !== undefined) {
-      message[SemanticConventions.MESSAGE_CONTENT] = output.content;
+      // Use helper function to process content
+      const processed = processContentForToolCallsOrResults(output.content);
+      Object.assign(message, processed);
     } else if (output.contents !== undefined) {
       message[SemanticConventions.MESSAGE_CONTENTS] = output.contents;
     } else {
@@ -376,10 +496,9 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
 
   // Extract content
   if (item.content !== undefined) {
-    message[SemanticConventions.MESSAGE_CONTENT] =
-      typeof item.content === "string"
-        ? item.content
-        : JSON.stringify(item.content);
+    // Use helper function to process content
+    const processed = processContentForToolCallsOrResults(item.content);
+    Object.assign(message, processed);
   } else if (item.contents !== undefined) {
     // Handle contents array (multimodal content)
     message[SemanticConventions.MESSAGE_CONTENTS] = item.contents;
@@ -412,9 +531,10 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
     }
   }
 
-  // Only return message if it has content or contents
+  // Only return message if it has content or contents or tool_calls
   return message[SemanticConventions.MESSAGE_CONTENT] !== undefined ||
-    message[SemanticConventions.MESSAGE_CONTENTS] !== undefined
+    message[SemanticConventions.MESSAGE_CONTENTS] !== undefined ||
+    message[SemanticConventions.MESSAGE_TOOL_CALLS] !== undefined
     ? message
     : null;
 }
@@ -453,12 +573,12 @@ function setAgentRunAttributes(
   return additionalAttributes;
 }
 
-function setLLMGenerationAttributes(
+function setModelGenerationAttributes(
   otelSpan: OISpan,
   span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
-  const llmAttr = span.attributes as LLMGenerationAttributes;
+  const llmAttr = span.attributes as ModelGenerationAttributes;
   if (llmAttr) {
     if (llmAttr.model) {
       otelSpan.setAttributes({
@@ -524,12 +644,12 @@ function setLLMGenerationAttributes(
   return additionalAttributes;
 }
 
-function setLLMChunkAttributes(
+function setModelChunkAttributes(
   otelSpan: OISpan,
   span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
-  const attr = span.attributes as LLMChunkAttributes;
+  const attr = span.attributes as ModelChunkAttributes;
   if (attr) {
     if (attr.chunkType) {
       additionalAttributes["chunk_type"] = attr.chunkType;

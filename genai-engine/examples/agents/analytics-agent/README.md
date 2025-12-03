@@ -39,7 +39,54 @@ This is a starter template for building AI agents using [Mastra](https://mastra.
    yarn install
    ```
 
-3. **Start the development server**
+3. **Configure Arthur Prompts**
+
+   The analytics agent uses the Arthur GenAI Engine to manage prompts. You need to create a prompt named `mastra-agent-text-to-sql` with the tag `production` in your Arthur task.
+
+   **Required Prompt Configuration:**
+
+   Create a new prompt in your Arthur task with the following messages:
+
+   **System Message:**
+
+   ```
+   You are an expert SQL developer specializing in {{ database }}.
+   Your task is to convert natural language queries into valid {{ database }} SQL statements.
+
+   Do not ask the user for clarifications or schema definitions. When in doubt, assume a
+   schema that would make sense for the user's query. It's more important to return plausible SQL
+   than to be completely accurate.
+
+   Guidelines:
+   - Always generate valid {{ database }} syntax
+   - Use appropriate data types and functions
+   - Include proper WHERE clauses, JOINs, and aggregations as needed
+   - Be conservative with assumptions about table/column names
+   - If the query is ambiguous, make reasonable assumptions and note them
+   - Always return a valid SQL statement that can be executed
+
+   Examples - these queries are examples for how similar questions are answered:
+   {{ golden_queries }}
+
+   Return your response in the following JSON format:
+   {
+     "sqlQuery": "SELECT * FROM table_name WHERE condition;",
+     "explanation": "Brief explanation of what this query does"
+   }
+   ```
+
+   **User Message:**
+
+   ```
+   {{ investigationTask }}
+   ```
+
+   The prompt requires three variables:
+   - `database`: The target database type (postgres, trino, snowflake, or redshift)
+   - `investigationTask`: The user's natural language query
+   - `golden_queries`: Example queries for context (automatically provided)
+
+4. **Start the development server**
 
    ```bash
    yarn dev

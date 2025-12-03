@@ -11,7 +11,7 @@ from db_models.base import (
 # Import all models
 from db_models.auth_models import DatabaseApiKey, DatabaseUser
 from db_models.configuration_models import DatabaseApplicationConfiguration
-from db_models.dataset_models import DatabaseDataset
+from db_models.dataset_models import DatabaseDataset, DatabaseDatasetTransform
 from db_models.document_models import (
     DatabaseDocument,
     DatabaseEmbedding,
@@ -24,6 +24,10 @@ from db_models.inference_models import (
     DatabaseInferencePromptContent,
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
+)
+from db_models.rag_provider_models import (
+    DatabaseRagProviderConfiguration,
+    DatabaseApiKeyRagProviderConfiguration,
 )
 from db_models.rule_models import DatabaseRule, DatabaseRuleData
 from db_models.rule_result_models import (
@@ -38,14 +42,26 @@ from db_models.rule_result_models import (
 )
 from db_models.task_models import DatabaseTask, DatabaseTaskToRules
 from db_models.telemetry_models import (
+    DatabaseAgenticAnnotation,
     DatabaseMetric,
     DatabaseMetricResult,
     DatabaseSpan,
     DatabaseTaskToMetrics,
     DatabaseTraceMetadata,
 )
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.agentic_prompt_models import (
+    DatabaseAgenticPrompt,
+    DatabaseAgenticPromptVersionTag,
+)
 from db_models.secret_storage_models import DatabaseSecretStorage
+from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
+from db_models.notebook_models import DatabaseNotebook
+from db_models.prompt_experiment_models import (
+    DatabasePromptExperiment,
+    DatabasePromptExperimentTestCase,
+    DatabasePromptExperimentTestCasePromptResult,
+    DatabasePromptExperimentTestCasePromptResultEvalScore,
+)
 
 __all__ = [
     # Base classes
@@ -90,10 +106,27 @@ __all__ = [
     "DatabaseMetric",
     "DatabaseTaskToMetrics",
     "DatabaseMetricResult",
+    # Annotation models
+    "DatabaseAgenticAnnotation",
     # Agentic Prompt models
     "DatabaseAgenticPrompt",
+    "DatabaseAgenticPromptVersionTag",
     # Dataset models
     "DatabaseDataset",
+    "DatabaseDatasetTransform",
     # Secret storage models
     "DatabaseSecretStorage",
+    # RAG provider models
+    "DatabaseRagProviderConfiguration",
+    "DatabaseApiKeyRagProviderConfiguration",
+    # LLM Eval models
+    "DatabaseLLMEval",
+    "DatabaseLLMEvalVersionTag",
+    # Notebook models
+    "DatabaseNotebook",
+    # Prompt Experiment models
+    "DatabasePromptExperiment",
+    "DatabasePromptExperimentTestCase",
+    "DatabasePromptExperimentTestCasePromptResult",
+    "DatabasePromptExperimentTestCasePromptResultEvalScore",
 ]

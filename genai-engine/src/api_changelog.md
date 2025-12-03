@@ -2,8 +2,479 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json 
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json 
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+
+# 11/26/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/search  api path removed without deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 11/25/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tools' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_provider' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'name' to the response with the '200' status
+
+# 11/21/2025
+- `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
+- `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
+
+# 11/20/2025
+- `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Made `name` and `version` optional in `data.items.prompt_results.items` (changed from required string to optional with multiple types)
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Removed required fields `prompt_name`, `prompt_ref` from request/response; added required request fields `prompt_configs`, `prompt_variable_mapping`
+- Added endpoint: `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results`
+- Added endpoint: `/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}`
+- `/api/v1/prompt_experiments/{experiment_id}`: Added required response fields `prompt_configs`, `prompt_variable_mapping`
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Added required fields `prompt_key`, `prompt_type` to `data.items.prompt_results.items` response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added required response field `prompt_configs` to both root and `data.items`
+- Removed schemas: `PromptRef-Input`, `PromptRef-Output`
+
+# 11/19/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotation' to the response with the '200' status
+-
+
+# 11/18/2025
+- **CHANGE** for **URL**: /api/v1/prompt_variables  endpoint added
+
+# 11/17/2025
+- **CHANGE** for **URL**: /api/v1/prompt_renders  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  endpoint added
+
+# 11/17/2025
+- **CHANGE** for **URL**: /api/v1/prompt_renders  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  endpoint added
+
+# 11/16/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags/{tag}  endpoint added
+
+# 11/16/2025
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
+
+# 11/16/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the response property 'created_at' became required for the status '200'
+
+# 11/15/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'min_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'min_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'min_score' from the response with the '200' status
+
+# 11/15/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'variables' to the response with the '200' status
+
+# 11/14/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/LLMConfigSettings' from the 'config' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'frequency_penalty'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'logit_bias'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'logprobs'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'max_completion_tokens'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'max_tokens'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'presence_penalty'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'reasoning_effort'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'response_format'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'seed'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'stop'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'stream_options'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'temperature'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'thinking'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'timeout'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'tool_choice'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'top_logprobs'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'top_p'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'frequency_penalty'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'logit_bias'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'logprobs'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'max_completion_tokens'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'max_tokens'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'presence_penalty'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'reasoning_effort'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'response_format'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'seed'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'stop'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'stream_options'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'temperature'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'thinking'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'timeout'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'tool_choice'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'top_logprobs'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'top_p'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'frequency_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'logit_bias' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'max_completion_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'max_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'presence_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'reasoning_effort' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'response_format' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'seed' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'stop' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'stream_options' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'temperature' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'thinking' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'timeout' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'tool_choice' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'top_logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'top_p' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'frequency_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'logit_bias' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'max_completion_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'max_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'presence_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'reasoning_effort' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'response_format' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'seed' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'stop' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'stream_options' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'temperature' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'thinking' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'timeout' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'tool_choice' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'top_logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'top_p' from the response with the '200' status
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticPromptMessage-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticPromptMessage-Output'
+- **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'config'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/LLMRequestConfigSettings' to the 'config' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new optional request property 'config'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'config' to the response with the '200' status
+
+# 11/13/2025
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'created_at'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'deleted_at'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'created_at'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'deleted_at'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  endpoint added
+
+# 11/12/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed 'subschema #2' from the 'response_format' request property 'anyOf' list
+
+# 11/12/2025
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
+-
+# 11/07/2025
+- **CHANGE** for Component/Schema:  removed the schema 'LLMEvalsVersionResponse'
+
+# 11/04/2025
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'items/items/' response's property type/format changed from 'array'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  removed the request property 'metric_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  removed the request property 'name'
+- **CHANGE** for Component/Schema:  removed the schema 'Page_List_ConversationBaseResponse__'
+- **CHANGE** for **URL**: /api/chat/conversations  added the required property 'items/items/id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/chat/conversations  added the required property 'items/items/updated_at' to the response with the '200' status
+
+# 11/06/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  removed the required property 'prompt_metadata' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  deleted the 'query' request parameter 'prompt_names'
+- **CHANGE** in components/schemas
+- **CHANGE** in components/schemas
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+
+# 11/06/2025
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
+
+# 11/06/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed the request property 'settings/search_kind'
+
+# 11/05/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  endpoint added
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'rag_provider_setting_configurations/items/latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'latest_version/settings' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'rag_provider_setting_configurations/items/latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added 'subschema #4' to the 'rag_provider_setting_configurations/items/latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+
+# 11/04/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'all_possible_tags' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'all_possible_tags' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  endpoint added
+
+# 11/04/2025
+- **CHANGE** for **URL**: /api/v1/rag_provider_settings/{setting_configuration_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_provider_settings  endpoint added
+
+# 11/04/2025
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  endpoint added
+
+# 11/03/2025
+- Removed context, response, system_prompt, user_query from span properties
+- **CHANGE** for **URL**: Added prompt_token_cost, prompt_token_count, completion_token_cost, completion_token_count, total_token_cost, total_token_count, input_content, output_content to spans, traces, sessions and users.
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  added the new optional request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  added the new optional request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added the new optional request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection  removed the request property 'description'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection  removed the request property 'name'
+
+# 10/31/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  endpoint added
+
+# 10/31/2025
+- **CHANGE** for **URL**: /api/v2/inferences/query  removed the optional property 'inferences/items/inference_prompt/model_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  removed the request property 'model_name'
+- **CHANGE** for **URL**: /api/v2/validate_prompt  removed the request property 'model_name'
+- **CHANGE** for Component/Schema:  removed the schema 'RagVectorKeywordSearchSettingRequest'
+
+# 10/30/2025
+- **CHANGE** for Component/Schema:  removed the schema 'RagProviderSimilarityTextSearchResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilaritySearchMetadata'
+- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilaritySearchTextResult'
+- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilarityTextSearchResponse'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added '#/components/schemas/WeaviateQueryResultMetadata' to the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed '#/components/schemas/WeaviateSimilaritySearchMetadata' from the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'developer' enum value to the 'messages/items/role' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/collections  endpoint added
+
+
+# 10/30/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection  endpoint added
+
+# 10/30/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers  endpoint added
+
+# 10/28/2025
+- **CHANGE** for **URL**: /api/v2/inferences/query  added the optional property 'inferences/items/inference_prompt/model_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  added the new optional request property 'model_name'
+- **CHANGE** for **URL**: /api/v2/validate_prompt  added the new optional request property 'model_name'
+
+# 10/29/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  the response's body type/format changed from ''/'' to 'object'/'' for status '201'
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  the response's body type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  api operation id 'set_model_provider_api_v1_model_providers__provider__delete' removed and replaced with 'delete_model_provider_api_v1_model_providers__provider__delete'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  api operation id 'get_model_providers_api_v1_model_providers__provider__available_models_get' removed and replaced with 'get_model_providers_available_models_api_v1_model_providers__provider__available_models_get'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the optional property 'config' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the optional property 'enabled' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'created_at' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'id' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'metric_metadata' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'name' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'type' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'updated_at' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_agentic' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'rules' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'updated_at' to the response with the '200' status
+
+# 10/28/2025
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'metric_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'name'
+
+# 10/23/2025
+- **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'completion_request/strict'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the new optional request property 'strict'
+
+# 10/22/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  api path removed without deprecation
+- **CHANGE** for **URL**: /api/v1/completions  api tag 'Prompts' added
+- **CHANGE** for **URL**: /api/v1/completions  api tag 'AgenticPrompt' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  endpoint added
+
+# 10/22/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'sessions/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/users  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/users/{user_id}  endpoint added
+
 # 10/21/2025
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
+
+# 10/20/2025
+- **CHANGE** for **URL**: /api/v1/users  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/traces  endpoint added
+
+# 10/21/2025
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
+
+# 10/20/2025
+- **CHANGE** for **URL**: /api/v2/datasets  added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/search  added the optional property 'datasets/items/latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the required property 'rows/items/created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  added the required property 'rows/items/created_at' to the response with the '200' status
 
 # 10/20/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'' to 'string'/'password'
@@ -420,43 +891,8 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  endpoint added
 
-# 10/15/2025
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_eq'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_gt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_gte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_lt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_lte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_eq'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_gt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_gte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_lt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_lte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_name'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_selection'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_usage'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_eq'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_gt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_gte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_lt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_lte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_ids'
-
-# 10/15/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/sessions  removed the required property 'sessions/items/task_ids' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/task_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/trace_ids' to the response with the '200' status
 
 # 10/14/2025
-- **CHANGE** for **URL**: /api/v1/sessions  endpoint added
-- **CHANGE** for **URL**: /api/v1/sessions/{session_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/sessions/{session_id}/metrics  endpoint added
-- **CHANGE** for **URL**: /api/v1/spans  endpoint added
-- **CHANGE** for **URL**: /api/v1/spans/{span_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/spans/{span_id}/metrics  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  endpoint added
 - **CHANGE** for **URL**: /api/v1/completions  endpoint added
 - **CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  endpoint added
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  endpoint added

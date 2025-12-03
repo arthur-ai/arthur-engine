@@ -1,10 +1,20 @@
-from datetime import datetime
-from typing import List
+from __future__ import annotations
 
+from datetime import datetime
+from typing import TYPE_CHECKING, List
+
+from arthur_common.models.enums import InferenceFeedbackTarget
 from sqlalchemy import TIMESTAMP, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, CustomerDataString
+
+if TYPE_CHECKING:
+    from db_models.rule_result_models import (
+        DatabasePromptRuleResult,
+        DatabaseResponseRuleResult,
+    )
+    from db_models.task_models import DatabaseTask
 
 
 class DatabaseInference(Base):
@@ -29,6 +39,7 @@ class DatabaseInference(Base):
         lazy="joined",
     )
     task: Mapped["DatabaseTask"] = relationship(lazy="joined")
+    model_name: Mapped[str] = mapped_column(String, nullable=True)
 
     __table_args__ = (
         Index(
@@ -75,6 +86,7 @@ class DatabaseInferenceResponse(Base):
     )
     content: Mapped["DatabaseInferenceResponseContent"] = relationship(lazy="joined")
     tokens: Mapped[int] = mapped_column(Integer, nullable=True)
+    model_name: Mapped[str] = mapped_column(String, nullable=True)
 
 
 # Store in seperate table as its TBD if this database will always hold the more sensitive customer data
@@ -112,7 +124,7 @@ class DatabaseInferenceFeedback(Base):
         ForeignKey("inferences.id"),
         index=True,
     )
-    target: Mapped[str] = mapped_column(String)
+    target: Mapped[InferenceFeedbackTarget] = mapped_column(String)
     score: Mapped[int] = mapped_column(Integer)
     reason: Mapped[str] = mapped_column(String, nullable=True)
     user_id: Mapped[str] = mapped_column(String, nullable=True)

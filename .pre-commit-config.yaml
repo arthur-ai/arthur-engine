@@ -32,7 +32,7 @@ repos:
         fail_fast: true
         exclude: (^genai-engine/src/routers/v2/routers.py)
   - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+    rev: 7.0.0
     hooks:
       - id: isort
         name: "sort imports"
@@ -81,4 +81,11 @@ repos:
         types: [python]
         pass_filenames: false
         always_run: false
+        files: ^ml-engine/src/
+      - id: ml-engine-mypy-check
+        name: "ml-engine: mypy type checking"
+        entry: poetry -C ml-engine run mypy src/ml_engine
+        language: system
+        types: [python]
+        pass_filenames: false
         files: ^ml-engine/src/

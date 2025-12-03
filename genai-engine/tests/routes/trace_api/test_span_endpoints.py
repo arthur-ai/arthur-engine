@@ -16,8 +16,16 @@ def assert_valid_span_metadata_response(spans):
         assert span.trace_id and isinstance(span.trace_id, str)
         assert span.span_kind and isinstance(span.span_kind, str)
         assert span.task_id and isinstance(span.task_id, str)
+        assert span.user_id is not None  # Should have user_id
         assert span.start_time is not None
         assert span.end_time is not None
+        # Verify token count/cost fields are present (may be None for non-LLM spans)
+        assert hasattr(span, "prompt_token_count")
+        assert hasattr(span, "completion_token_count")
+        assert hasattr(span, "total_token_count")
+        assert hasattr(span, "prompt_token_cost")
+        assert hasattr(span, "completion_token_cost")
+        assert hasattr(span, "total_token_cost")
 
 
 def assert_valid_span_full_response(span):
@@ -30,6 +38,13 @@ def assert_valid_span_full_response(span):
     assert span.end_time is not None
     assert span.raw_data and isinstance(span.raw_data, dict)
     assert hasattr(span, "metric_results")  # Can be None or list
+    # Verify token count/cost fields are present (may be None for non-LLM spans)
+    assert hasattr(span, "prompt_token_count")
+    assert hasattr(span, "completion_token_count")
+    assert hasattr(span, "total_token_count")
+    assert hasattr(span, "prompt_token_cost")
+    assert hasattr(span, "completion_token_cost")
+    assert hasattr(span, "total_token_cost")
 
 
 def assert_spans_match_types(spans, expected_types):
@@ -116,14 +131,32 @@ def test_list_spans_metadata_with_span_type_filtering(
     if expected_count > 0:
         assert_spans_match_types(data.spans, span_types)
 
+        # Verify all spans have input_content and output_content fields
+        for span in data.spans:
+            assert hasattr(span, "input_content")
+            assert hasattr(span, "output_content")
+
+        # If filtering for LLM spans only, verify token counts/costs are present
+        if span_types == ["LLM"]:
+            llm_spans = data.spans
+            # api_span1 and api_span3 should both have token data
+            for span in llm_spans:
+                assert span.prompt_token_count is not None
+                assert span.completion_token_count is not None
+                assert span.total_token_count is not None
+                assert span.prompt_token_cost is not None
+                assert span.completion_token_cost is not None
+                assert span.total_token_cost is not None
+
 
 @pytest.mark.unit_tests
-def test_list_spans_metadata_pagination(
+def test_list_spans_metadata_pagination_sorting_and_validation(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test span metadata pagination functionality."""
+    """Test span metadata pagination, sorting, and validation."""
 
+    # Test pagination
     status_code, data = client.trace_api_list_spans_metadata(
         task_ids=["api_task1", "api_task2"],
         page=0,
@@ -133,14 +166,7 @@ def test_list_spans_metadata_pagination(
     assert data.count == 6  # Total count
     assert len(data.spans) <= 2  # Page size (might be less if last page)
 
-
-@pytest.mark.unit_tests
-def test_list_spans_metadata_sorting(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test span metadata sorting functionality."""
-
+    # Test sorting
     status_code, data = client.trace_api_list_spans_metadata(
         task_ids=["api_task1", "api_task2"],
         sort="desc",
@@ -153,35 +179,18 @@ def test_list_spans_metadata_sorting(
             next_time = data.spans[i + 1].start_time
             assert current_time >= next_time
 
+    # Test validation errors
+    # Empty task_ids (should return 400)
+    status_code, response = client.trace_api_list_spans_metadata(task_ids=[])
+    assert status_code == 400
 
-@pytest.mark.unit_tests
-@pytest.mark.parametrize(
-    "task_ids,expected_status",
-    [
-        ([], 400),  # Empty task_ids should return 400
-        (
-            ["non_existent_task"],
-            200,
-        ),  # Non-existent task should return 200 with 0 results
-    ],
-)
-def test_list_spans_metadata_validation_errors(
-    client: GenaiEngineTestClientBase,
-    task_ids,
-    expected_status,
-):
-    """Test validation errors for span metadata listing."""
-
-    status_code, response = client.trace_api_list_spans_metadata(task_ids=task_ids)
-    assert status_code == expected_status
-
-    if expected_status == 200:
-        # Should have valid response structure even with no results
-        assert hasattr(response, "count")
-        assert hasattr(response, "spans")
-        if task_ids == ["non_existent_task"]:
-            assert response.count == 0
-    # For 400 status, response will be error text
+    # Non-existent task (should return 200 with 0 results)
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["non_existent_task"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.spans) == 0
 
 
 # ============================================================================
@@ -213,13 +222,13 @@ def test_get_span_by_id_basic_functionality(
 
 
 @pytest.mark.unit_tests
-def test_get_span_by_id_with_existing_metrics(
+def test_get_span_by_id_comprehensive(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test span retrieval includes existing metrics but doesn't compute new ones."""
+    """Test span retrieval with metrics, input/output content, and error handling."""
 
-    # Get an LLM span which should have existing metrics (api_span1)
+    # Test successful span retrieval with metrics and features
     status_code, span_data = client.trace_api_get_span_by_id("api_span1")
     assert status_code == 200
     assert span_data.span_id == "api_span1"
@@ -234,43 +243,71 @@ def test_get_span_by_id_with_existing_metrics(
             assert hasattr(metric, "completion_tokens")
             assert hasattr(metric, "latency_ms")
 
+    # Verify new standardized input_content and output_content fields
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    assert span_data.input_content == "What is the weather like today?"
+    assert (
+        span_data.output_content
+        == "I don't have access to real-time weather information."
+    )
 
-@pytest.mark.unit_tests
-def test_get_span_by_id_not_found(
-    client: GenaiEngineTestClientBase,
-):
-    """Test retrieving non-existent span returns 404."""
+    # Verify token count/cost for LLM span
+    assert span_data.prompt_token_count == 100
+    assert span_data.completion_token_count == 50
+    assert span_data.total_token_count == 150
+    assert span_data.prompt_token_cost == 0.001
+    assert span_data.completion_token_cost == 0.002
+    assert span_data.total_token_cost == 0.003
 
+    # Test JSON format span (api_span3)
+    status_code, span_data = client.trace_api_get_span_by_id("api_span3")
+    assert status_code == 200
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    # Verify JSON content - should be stringified even if normalizer parsed it
+    import json
+
+    expected_input = {
+        "question": "Follow-up question",
+        "context": "previous conversation",
+    }
+    expected_output = {"answer": "Follow-up response", "sources": ["doc1", "doc2"]}
+    assert json.loads(span_data.input_content) == expected_input
+    assert json.loads(span_data.output_content) == expected_output
+    # Verify mime_type for JSON
+    attributes = span_data.raw_data["attributes"]
+    assert attributes["input"]["mime_type"] == "application/json"
+    assert attributes["output"]["mime_type"] == "application/json"
+
+    # Verify token count/cost for api_span3 (LLM span)
+    assert span_data.prompt_token_count == 200
+    assert span_data.completion_token_count == 100
+    assert span_data.total_token_count == 300
+    assert span_data.prompt_token_cost == 0.002
+    assert span_data.completion_token_cost == 0.003
+    assert span_data.total_token_cost == 0.005
+
+    # Test non-existent span
     status_code, response_data = client.trace_api_get_span_by_id("non_existent_span")
     assert status_code == 404
     assert "not found" in response_data.lower()
-
-
-@pytest.mark.unit_tests
-def test_get_span_by_id_llm_features(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test span retrieval includes proper LLM span features."""
-
-    # Get LLM span with features
-    status_code, span_data = client.trace_api_get_span_by_id("api_span1")
-    assert status_code == 200
-
-    # Verify LLM span features are extracted
-    assert span_data.system_prompt == "You are a helpful assistant."
-    assert span_data.user_query == "What is the weather like today?"
-    assert span_data.response == "I don't have access to real-time weather information."
-    assert span_data.span_kind == "LLM"
 
     # Get non-LLM span
     status_code, span_data = client.trace_api_get_span_by_id("api_span2")
     assert status_code == 200
     assert span_data.span_kind == "CHAIN"
-    # Non-LLM spans should not have these features
-    assert getattr(span_data, "system_prompt", None) is None
-    assert getattr(span_data, "user_query", None) is None
-    assert getattr(span_data, "response", None) is None
+    # Non-LLM spans should have input_content/output_content fields (may be None)
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+
+    # Verify that non-LLM spans have None token counts/costs
+    assert span_data.prompt_token_count is None
+    assert span_data.completion_token_count is None
+    assert span_data.total_token_count is None
+    assert span_data.prompt_token_cost is None
+    assert span_data.completion_token_cost is None
+    assert span_data.total_token_cost is None
 
 
 # ============================================================================
@@ -279,13 +316,13 @@ def test_get_span_by_id_llm_features(
 
 
 @pytest.mark.unit_tests
-def test_compute_span_metrics_basic_functionality(
+def test_compute_span_metrics_comprehensive(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test computing missing metrics for a span."""
+    """Test computing span metrics with success and error cases."""
 
-    # Get an LLM span and compute metrics
+    # Test successful metrics computation
     status_code, span_data = client.trace_api_compute_span_metrics("api_span1")
     assert status_code == 200
     assert span_data.span_id == "api_span1"
@@ -294,13 +331,16 @@ def test_compute_span_metrics_basic_functionality(
     # Should have the same structure as regular span response
     assert_valid_span_full_response(span_data)
 
+    # Verify input_content and output_content are present after metrics computation
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    assert span_data.input_content == "What is the weather like today?"
+    assert (
+        span_data.output_content
+        == "I don't have access to real-time weather information."
+    )
 
-@pytest.mark.unit_tests
-def test_compute_span_metrics_not_found(
-    client: GenaiEngineTestClientBase,
-):
-    """Test computing metrics for non-existent span returns 404."""
-
+    # Test non-existent span
     status_code, response_data = client.trace_api_compute_span_metrics(
         "non_existent_span",
     )
@@ -327,25 +367,19 @@ def test_compute_span_metrics_non_llm_span(
 
 
 @pytest.mark.unit_tests
-def test_list_spans_metadata_empty_results(
+def test_span_api_error_handling_and_edge_cases(
     client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
 ):
-    """Test listing spans with no results."""
+    """Test error handling and edge cases in span API."""
 
+    # Test empty results
     status_code, data = client.trace_api_list_spans_metadata(
         task_ids=["non_existent_task"],
     )
     assert status_code == 200
     assert data.count == 0
     assert len(data.spans) == 0
-
-
-@pytest.mark.unit_tests
-def test_span_api_error_handling(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test various error conditions in span API."""
 
     # Test server error in span metadata listing
     with patch(

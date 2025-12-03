@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import Annotated
 
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import RuleResultEnum, RuleType
+from arthur_common.models.response_schemas import QueryInferencesResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -8,12 +11,8 @@ from dependencies import get_db_session
 from repositories.inference_repository import InferenceRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleResultEnum, RuleType
-from schemas.internal_schemas import Inference, User
 from schemas.enums import PermissionLevelsEnum
-from arthur_common.models.response_schemas import QueryInferencesResponse
-
+from schemas.internal_schemas import Inference, User
 from utils import constants as constants
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -74,7 +73,7 @@ def query_inferences(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> QueryInferencesResponse:
     try:
         valid_stage_results = {RuleResultEnum.PASS, RuleResultEnum.FAIL}
 

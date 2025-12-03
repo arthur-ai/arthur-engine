@@ -1,11 +1,18 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { NuqsAdapter } from "nuqs/adapters/react";
+import { StrictMode } from "react";
+import "./index.css";
+import { createRoot } from "react-dom/client";
 
-import './index.css'
-import App from './App.tsx'
+import App from "./App.tsx";
+import { initAmplitude } from "./services/amplitude";
 
-createRoot(document.getElementById('root')!).render(
+// Initialize Amplitude before rendering the app
+initAmplitude();
+
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
-  </StrictMode>,
-)
+    <NuqsAdapter>
+      <App />
+    </NuqsAdapter>
+  </StrictMode>
+);

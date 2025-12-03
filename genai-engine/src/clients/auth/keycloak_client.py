@@ -3,16 +3,17 @@ import logging
 from copy import deepcopy
 from typing import Any, List
 
-from clients.auth.abc_keycloak_client import ABCAuthClient
-from clients.auth.permission_mappings import ROLE_NAMES_TO_PERMISSIONS
-from config.keycloak_config import KeyCloakSettings
+from arthur_common.models.common_schemas import AuthUserRole, UserPermission
+from arthur_common.models.request_schemas import CreateUserRequest
 from fastapi import HTTPException
 from keycloak import KeycloakAdmin
 from keycloak.exceptions import KeycloakGetError, KeycloakPostError
 from pydantic import BaseModel, TypeAdapter
-from arthur_common.models.common_schemas import AuthUserRole, UserPermission
+
+from clients.auth.abc_keycloak_client import ABCAuthClient
+from clients.auth.permission_mappings import ROLE_NAMES_TO_PERMISSIONS
+from config.keycloak_config import KeyCloakSettings
 from schemas.internal_schemas import User
-from arthur_common.models.request_schemas import CreateUserRequest
 from utils import constants
 from utils.utils import get_env_var, is_api_only_mode_enabled
 
@@ -105,8 +106,9 @@ class KeycloakClient(ABCAuthClient):
         keycloak_settings: KeyCloakSettings,
     ):
         self.kc_settings = keycloak_settings
+        master_admin_parameters = self.kc_settings.get_master_admin_parameters()
         self.master_realm_admin = KeycloakAdmin(
-            **self.kc_settings.get_master_admin_parameters(),
+            **master_admin_parameters,
         )
 
     def get_genai_engine_realm_admin_connection(self) -> None:
@@ -115,7 +117,7 @@ class KeycloakClient(ABCAuthClient):
         except KeycloakGetError as err:
             if err.response_code == 404:
                 logger.warning(
-                    self.kc_settings.GENAI_ENGINE_REALM + "realm not created yet.",
+                    f"{self.kc_settings.GENAI_ENGINE_REALM} realm not created yet.",
                 )
             return
         self.genai_engine_realm_admin = KeycloakAdmin(
@@ -164,7 +166,7 @@ class KeycloakClient(ABCAuthClient):
         return permissions
 
     def search_users(self, search_string: str, page: int, page_size: int) -> list[User]:
-        search_body = {}
+        search_body: dict[str, str | int] = {}
         if search_string:
             search_body["search"] = search_string
         if page:
@@ -187,12 +189,12 @@ class KeycloakClient(ABCAuthClient):
             )
         return users
 
-    def delete_user(self, user_id: str):
+    def delete_user(self, user_id: str) -> None:
         self.verify_user_exists(user_id)
         self.genai_engine_realm_admin.delete_user(user_id)
         return None
 
-    def create_user(self, user_request: CreateUserRequest) -> str:
+    def create_user(self, user_request: CreateUserRequest) -> str:  # type: ignore[override]
         user_exists = self.get_user_id(user_request.email)
         if user_exists:
             raise HTTPException(
@@ -227,7 +229,7 @@ class KeycloakClient(ABCAuthClient):
             )
         except KeycloakPostError as e:
             if e.response_code == 400:
-                error_description = e.error_message.decode("utf-8")
+                error_description = e.error_message
                 parsed_error_description = json.loads(error_description)
                 raise HTTPException(
                     status_code=400,
@@ -243,12 +245,12 @@ class KeycloakClient(ABCAuthClient):
             # This function needs both id and name to refer to a role, only one doesn't suffice
             self.genai_engine_realm_admin.assign_realm_roles(
                 user_id,
-                {"id": role.id, "name": role.name},
+                [{"id": role.id, "name": role.name}],
             )
 
         return user_id
 
-    def create_ui_client(self):
+    def create_ui_client(self) -> None:
         genai_engine_ui_client_config = create_client_config(
             client_id=f"{get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR)}-ui",
             client_name="Arthur GenAI Engine UI",
@@ -287,7 +289,7 @@ class KeycloakClient(ABCAuthClient):
                 logger.info("GenAI Engine client config is up to date.")
         logger.info("GenAI Engine client for UI authentication flow created.")
 
-    def create_admin_client(self):
+    def create_admin_client(self) -> None:
         genai_engine_admin_client = create_confidential_client_config(
             client_id=self.kc_settings.genai_engine_realm_admin_client_id,
             client_name="Arthur GenAI Engine Admin",
@@ -327,7 +329,7 @@ class KeycloakClient(ABCAuthClient):
             else:
                 logger.info("GenAI Engine admin client config is up to date.")
 
-    def create_api_client(self):
+    def create_api_client(self) -> None:
         genai_engine_api_client_config = create_client_config(
             client_id=f"{get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR)}-api",
             client_name="Arthur GenAI Engine API",
@@ -458,12 +460,12 @@ class KeycloakClient(ABCAuthClient):
             )
             admin_roles = get_admin_roles(
                 self.master_realm_admin,
-                realm_management_client_internal_id,
+                realm_management_client_internal_id or "",
             )
             assign_client_roles(
                 self.master_realm_admin,
                 self.kc_settings.genai_engine_realm_admin_client_id,
-                realm_management_client_internal_id,
+                realm_management_client_internal_id or "",
                 admin_roles,
             )
             logger.info(
@@ -637,7 +639,9 @@ def assign_client_roles(
     roles: list[dict[str, Any]],
 ) -> None:
     client_internal_id = keycloak_client.get_client_id(client_id)
-    service_user = keycloak_client.get_client_service_account_user(client_internal_id)
+    service_user = keycloak_client.get_client_service_account_user(
+        client_internal_id or "",
+    )
     if service_user is not None:
         service_user_id = service_user["id"]
     else:

@@ -38,6 +38,10 @@ FROM preinstall AS cpu-install
 # UI Build Stage: Build the React SPA
 FROM node:20-alpine AS ui-build
 
+# Accept Meticulous tokens as build arguments
+ARG METICULOUS_RECORDING_TOKEN
+ARG METICULOUS_API_TOKEN
+
 WORKDIR /app/ui
 
 # Copy UI source code
@@ -47,6 +51,8 @@ COPY ui/ ./
 RUN corepack enable && yarn install --immutable
 
 # Build the UI as static files
+ENV METICULOUS_RECORDING_TOKEN=${METICULOUS_RECORDING_TOKEN}
+ENV METICULOUS_API_TOKEN=${METICULOUS_API_TOKEN}
 RUN yarn build
 
 # Copy the built static files
@@ -116,4 +122,4 @@ WORKDIR /home/nonroot/app
 # Expose the necessary ports
 EXPOSE 3030
 
-ENTRYPOINT ["bash", "-c", "src/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "src/docker-entrypoint.sh"]

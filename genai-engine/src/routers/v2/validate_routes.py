@@ -1,22 +1,23 @@
 from uuid import UUID
 
-from config.cache_config import cache_config
-from dependencies import get_db_session, get_scorer_client
-from fastapi import APIRouter, Depends
-from repositories.rules_repository import RuleRepository
-from repositories.tasks_rules_repository import TasksRulesRepository
-from routers.route_handler import GenaiEngineRoute
-from routers.v2 import multi_validator
 from arthur_common.models.enums import RuleScope
-from schemas.internal_schemas import User
-from schemas.enums import PermissionLevelsEnum
 from arthur_common.models.request_schemas import (
     PromptValidationRequest,
     ResponseValidationRequest,
 )
 from arthur_common.models.response_schemas import HTTPError, ValidationResult
-from scorer.score import ScorerClient
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
+from config.cache_config import cache_config
+from dependencies import get_db_session, get_scorer_client
+from repositories.rules_repository import RuleRepository
+from repositories.tasks_rules_repository import TasksRulesRepository
+from routers.route_handler import GenaiEngineRoute
+from routers.v2 import multi_validator
+from schemas.enums import PermissionLevelsEnum
+from schemas.internal_schemas import User
+from scorer.score import ScorerClient
 from utils.users import permission_checker
 from validation.prompt import validate_prompt
 from validation.response import validate_response
@@ -41,14 +42,14 @@ def default_validate_prompt(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         rules_repo = RuleRepository(db_session)
         default_rules, _ = rules_repo.query_rules(
             prompt_enabled=True,
             rule_scopes=[RuleScope.DEFAULT],
         )
-        if not body.user_id:
+        if not body.user_id and current_user:
             body.user_id = current_user.id
         return validate_prompt(
             body=body,
@@ -79,7 +80,7 @@ def default_validate_response(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         rules_repo = RuleRepository(db_session)
 
@@ -119,7 +120,7 @@ def validate_prompt_endpoint(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
@@ -161,7 +162,7 @@ def validate_response_endpoint(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))

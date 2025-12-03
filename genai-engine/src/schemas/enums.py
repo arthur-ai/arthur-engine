@@ -160,7 +160,7 @@ class PermissionLevelsEnum(Enum):
 
 class SecretType(str, Enum):
     MODEL_PROVIDER = "model_provider"
-    VECTOR_DB_PROVIDER = "vector_db_provider"
+    RAG_PROVIDER = "rag_provider"
 
 
 class ModelProvider(str, Enum):
@@ -198,10 +198,17 @@ class ModelProvider(str, Enum):
 
 
 class MessageRole(Enum):
+    DEVELOPER = "developer"
     SYSTEM = "system"
     USER = "user"
     AI = "assistant"
     TOOL = "tool"
+
+
+class OpenAIMessageType(str, Enum):
+    TEXT = "text"
+    IMAGE_URL = "image_url"
+    INPUT_AUDIO = "input_audio"
 
 
 class ReasoningEffortEnum(str, Enum):
@@ -223,3 +230,26 @@ class LLMResponseFormatEnum(str, Enum):
     TEXT = "text"
     JSON_OBJECT = "json_object"
     JSON_SCHEMA = "json_schema"
+
+
+class RagProviderAuthenticationMethodEnum(str, Enum):
+    API_KEY_AUTHENTICATION = "api_key"
+
+
+class RagAPIKeyAuthenticationProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"
+
+
+class ConnectionCheckOutcome(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+
+
+class RagProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"
+
+
+class RagSearchKind(str, Enum):
+    VECTOR_SIMILARITY_TEXT_SEARCH = "vector_similarity_text_search"
+    KEYWORD_SEARCH = "keyword_search"
+    HYBRID_SEARCH = "hybrid_search"

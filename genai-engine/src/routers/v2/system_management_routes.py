@@ -1,8 +1,14 @@
 import json
 from datetime import datetime
 
-from dependencies import get_application_config, get_db_session, logger
+from arthur_common.models.enums import TokenUsageScope
+from arthur_common.models.response_schemas import TokenUsageResponse
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy.orm import Session
+from starlette import status
+from starlette.responses import Response
+
+from dependencies import get_application_config, get_db_session, logger
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
@@ -10,15 +16,10 @@ from repositories.tasks_repository import TaskRepository
 from repositories.usage_repository import UsageRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.enums import TokenUsageScope
-from arthur_common.models.response_schemas import TokenUsageResponse
-from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.enums import PermissionLevelsEnum
+from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import ApplicationConfigurationUpdateRequest
 from schemas.response_schemas import ApplicationConfigurationResponse
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import Response
 from utils.users import permission_checker
 from utils.utils import public_endpoint
 
@@ -50,7 +51,7 @@ def get_token_usage(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[TokenUsageResponse]:
     try:
         usage_repo = UsageRepository(db_session)
         return usage_repo.get_tokens_usage(
@@ -74,7 +75,7 @@ def get_token_usage(
 def get_configuration(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ApplicationConfigurationResponse:
     try:
         config_repo = ConfigurationRepository(db_session)
         config = config_repo.get_configurations()
@@ -98,7 +99,7 @@ def update_configuration(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     application_config: ApplicationConfiguration = Depends(get_application_config),
-):
+) -> ApplicationConfigurationResponse:
     try:
         if body.chat_task_id:
             tasks_repo = TaskRepository(
@@ -125,7 +126,7 @@ def update_configuration(
     include_in_schema=False,
 )
 @public_endpoint
-async def process_csp_report(request: Request):
+async def process_csp_report(request: Request) -> Response:
     try:
         body = await request.body()
         csp_report = json.loads(body.decode("utf-8"))

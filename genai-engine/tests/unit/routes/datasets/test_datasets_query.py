@@ -13,8 +13,14 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
     dataset2_name = "Test Dataset Two"
     dataset3_name = "Another Dataset"
 
+    # create an agentic task
+    task_name = "test_datasets_query_task"
+    status_code, agentic_task = client.create_task(name=task_name, is_agentic=True)
+    assert status_code == 200
+
     status_code, dataset1 = client.create_dataset(
         name=dataset1_name,
+        task_id=agentic_task.id,
         description="First test dataset",
         metadata={
             "type": "test",
@@ -24,6 +30,7 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
 
     status_code, dataset2 = client.create_dataset(
         name=dataset2_name,
+        task_id=agentic_task.id,
         description="Second test dataset",
         metadata={
             "type": "test",
@@ -33,6 +40,7 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
 
     status_code, dataset3 = client.create_dataset(
         name=dataset3_name,
+        task_id=agentic_task.id,
         description="Third test dataset",
         metadata={
             "type": "production",
@@ -42,7 +50,7 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
 
     # Test Case 1: Basic functionality without filters
     # Test basic search without filters - should return all datasets
-    status_code, response = client.search_datasets()
+    status_code, response = client.search_datasets(task_id=agentic_task.id)
     assert status_code == 200
     assert response.count >= 3
     assert len(response.datasets) >= 3
@@ -53,14 +61,21 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
     assert dataset2.id in dataset_ids
     assert dataset3.id in dataset_ids
 
+    # default sort is descending sort on created_at
+    assert response.datasets[0].id == dataset3.id
+
     # Test Case 2: Name-based filtering
     # Test case insensitive search
-    status_code, response = client.search_datasets(dataset_name="test dataset")
+    status_code, response = client.search_datasets(
+        task_id=agentic_task.id,
+        dataset_name="test dataset",
+    )
     assert status_code == 200
     assert response.count == 2
 
     # Test no matches
     status_code, response = client.search_datasets(
+        task_id=agentic_task.id,
         dataset_name="NonExistentDataset",
     )
     assert status_code == 200
@@ -70,6 +85,7 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
     # Test Case 3: ID-based filtering
     # Test multiple IDs filter
     status_code, response = client.search_datasets(
+        task_id=agentic_task.id,
         dataset_ids=[str(dataset1.id), str(dataset2.id)],
     )
     assert status_code == 200
@@ -81,6 +97,7 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
 
     # Test non-existent ID
     status_code, response = client.search_datasets(
+        task_id=agentic_task.id,
         dataset_ids=["00000000-0000-0000-0000-000000000000"],
     )
     assert status_code == 200
@@ -89,31 +106,43 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
 
     # Test Case 4: Pagination functionality
     # Test page size
-    status_code, response = client.search_datasets(page_size=2)
+    status_code, response = client.search_datasets(task_id=agentic_task.id, page_size=2)
     assert status_code == 200
     assert len(response.datasets) == 2
     assert response.count >= 3
 
     # Test page navigation
-    status_code, response_page1 = client.search_datasets(page=0, page_size=2)
+    status_code, response_page1 = client.search_datasets(
+        task_id=agentic_task.id,
+        page=0,
+        page_size=2,
+    )
     assert status_code == 200
     assert len(response_page1.datasets) == 2
 
-    status_code, response_page2 = client.search_datasets(page=1, page_size=2)
+    status_code, response_page2 = client.search_datasets(
+        task_id=agentic_task.id,
+        page=1,
+        page_size=2,
+    )
     assert status_code == 200
     # there may be datasets from other unit tests, but there are at least 3 total
     assert len(response_page2.datasets) >= 1
 
     # Test Case 5: Sorting functionality
     status_code, response_desc = client.search_datasets(
+        task_id=agentic_task.id,
         sort=PaginationSortMethod.DESCENDING,
     )
     assert status_code == 200
     assert len(response_desc.datasets) >= 3
 
-    # Verify that the order is descending (newest first) based on created_at
+    # Verify that the order is descending (newest first) based on updated_at
     for i in range(len(response_desc.datasets) - 1):
         assert (
-            response_desc.datasets[i].created_at
-            >= response_desc.datasets[i + 1].created_at
+            response_desc.datasets[i].updated_at
+            >= response_desc.datasets[i + 1].updated_at
         )
+
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204

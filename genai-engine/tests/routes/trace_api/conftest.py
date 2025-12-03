@@ -29,7 +29,8 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import Span as InternalSpan
-from services.trace_ingestion_service import TraceIngestionService
+from services.trace.span_normalization_service import SpanNormalizationService
+from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
 
@@ -176,6 +177,13 @@ def _create_database_span(
     parent_span_id: str = None,
     span_kind: str = "LLM",
     session_id: str = None,
+    user_id: str = None,
+    prompt_token_count: int = None,
+    completion_token_count: int = None,
+    total_token_count: int = None,
+    prompt_token_cost: float = None,
+    completion_token_cost: float = None,
+    total_token_cost: float = None,
 ) -> DatabaseSpan:
     """Helper to create a test DatabaseSpan for trace metadata testing."""
     return DatabaseSpan(
@@ -188,6 +196,8 @@ def _create_database_span(
         end_time=end_time,
         task_id=task_id,
         session_id=session_id,
+        user_id=user_id,
+        status_code="Ok",
         raw_data={
             "name": f"Test Span {span_id}",
             "spanId": span_id,
@@ -195,6 +205,12 @@ def _create_database_span(
             "attributes": {"openinference.span.kind": span_kind},
             "arthur_span_version": "arthur_span_v1",
         },
+        prompt_token_count=prompt_token_count,
+        completion_token_count=completion_token_count,
+        total_token_count=total_token_count,
+        prompt_token_cost=prompt_token_cost,
+        completion_token_cost=completion_token_cost,
+        total_token_cost=total_token_cost,
     )
 
 
@@ -243,23 +259,15 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     tasks_metrics_repo = TasksMetricsRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    span_normalizer = SpanNormalizationService()
 
     # Create spans with different attributes for comprehensive testing
     spans = []
     base_time = datetime.now()
 
-    # Session 1, Task1, Trace1 - LLM span with features
-    span1 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="api_trace1",
-        span_id="api_span1",
-        task_id="api_task1",
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=base_time - timedelta(days=2),
-        end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
-        session_id="session1",
-        raw_data={
+    # Session 1, Task1, Trace1 - LLM span with text input/output
+    span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
             "spanId": "api_span1",
@@ -273,16 +281,58 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.1.message.content": "What is the weather like today?",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
+                "input.value": "What is the weather like today?",
+                "input.mime_type": "text/plain",
+                "output.value": "I don't have access to real-time weather information.",
+                "output.mime_type": "text/plain",
+                "session.id": "session1",
+                "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
             },
-            "arthur_span_version": "arthur_span_v1",
         },
+    )
+    span1_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span1 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="api_trace1",
+        span_id="api_span1",
+        task_id="api_task1",
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=base_time - timedelta(days=2),
+        end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
+        session_id="session1",
+        user_id="user1",
+        raw_data=span1_raw_data,
         created_at=base_time - timedelta(days=2) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=2) + timedelta(seconds=1),
+        prompt_token_count=100,
+        completion_token_count=50,
+        total_token_count=150,
+        prompt_token_cost=0.001,
+        completion_token_cost=0.002,
+        total_token_cost=0.003,
     )
     spans.append(span1)
 
     # Session 1, Task1, Trace1 - CHAIN span with parent
+    span2_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Chain",
+            "spanId": "api_span2",
+            "traceId": "api_trace1",
+            "attributes": {
+                "openinference.span.kind": "CHAIN",
+                "session.id": "session1",
+                "user.id": "user1",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
+            },
+        },
+    )
+    span2_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span2 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace1",
@@ -293,34 +343,22 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time - timedelta(days=1),
         end_time=base_time - timedelta(days=1) + timedelta(seconds=1),
         session_id="session1",
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Chain",
-            "spanId": "api_span2",
-            "traceId": "api_trace1",
-            "attributes": {
-                "openinference.span.kind": "CHAIN",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        user_id="user1",
+        raw_data=span2_raw_data,
         created_at=base_time - timedelta(days=1) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=1) + timedelta(seconds=1),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span2)
 
-    # Session 1, Task1, Trace2 - Another LLM span in same session
-    span3 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="api_trace2",
-        span_id="api_span3",
-        task_id="api_task1",
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=base_time - timedelta(hours=12),
-        end_time=base_time - timedelta(hours=12) + timedelta(seconds=2),
-        session_id="session1",
-        raw_data={
+    # Session 1, Task1, Trace2 - LLM span with JSON input/output
+    span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
             "spanId": "api_span3",
@@ -332,16 +370,58 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.0.message.content": "Follow-up question",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "Follow-up response",
+                "input.value": '{"question": "Follow-up question", "context": "previous conversation"}',
+                "input.mime_type": "application/json",
+                "output.value": '{"answer": "Follow-up response", "sources": ["doc1", "doc2"]}',
+                "output.mime_type": "application/json",
+                "session.id": "session1",
+                "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-3.5-turbo", "ls_model_type": "chat"}',
             },
-            "arthur_span_version": "arthur_span_v1",
         },
+    )
+    span3_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span3 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="api_trace2",
+        span_id="api_span3",
+        task_id="api_task1",
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=base_time - timedelta(hours=12),
+        end_time=base_time - timedelta(hours=12) + timedelta(seconds=2),
+        session_id="session1",
+        user_id="user1",
+        raw_data=span3_raw_data,
         created_at=base_time - timedelta(hours=12) + timedelta(seconds=2),
         updated_at=base_time - timedelta(hours=12) + timedelta(seconds=2),
+        prompt_token_count=200,
+        completion_token_count=100,
+        total_token_count=300,
+        prompt_token_cost=0.002,
+        completion_token_cost=0.003,
+        total_token_cost=0.005,
     )
     spans.append(span3)
 
     # Session 2, Task2, Trace3 - AGENT span in different session/task
+    span4_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Agent",
+            "spanId": "api_span4",
+            "traceId": "api_trace3",
+            "attributes": {
+                "openinference.span.kind": "AGENT",
+                "session.id": "session2",
+                "user.id": "user2",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
+            },
+        },
+    )
+    span4_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span4 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace3",
@@ -352,23 +432,36 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time,
         end_time=base_time + timedelta(seconds=1),
         session_id="session2",
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Agent",
-            "spanId": "api_span4",
-            "traceId": "api_trace3",
-            "attributes": {
-                "openinference.span.kind": "AGENT",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        user_id="user2",
+        raw_data=span4_raw_data,
         created_at=base_time + timedelta(seconds=1),
         updated_at=base_time + timedelta(seconds=1),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span4)
 
     # Session 2, Task2, Trace3 - RETRIEVER span with parent
+    span5_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Retriever",
+            "spanId": "api_span5",
+            "traceId": "api_trace3",
+            "attributes": {
+                "openinference.span.kind": "RETRIEVER",
+                "session.id": "session2",
+                "user.id": "user2",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
+            },
+        },
+    )
+    span5_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span5 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace3",
@@ -379,23 +472,36 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time + timedelta(seconds=30),
         end_time=base_time + timedelta(seconds=31),
         session_id="session2",
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Retriever",
-            "spanId": "api_span5",
-            "traceId": "api_trace3",
-            "attributes": {
-                "openinference.span.kind": "RETRIEVER",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        user_id="user2",
+        raw_data=span5_raw_data,
         created_at=base_time + timedelta(seconds=31),
         updated_at=base_time + timedelta(seconds=31),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span5)
 
     # No session, Task1, Trace4 - TOOL span for tool filtering tests
+    span6_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "test_tool",
+            "spanId": "api_span6",
+            "traceId": "api_trace4",
+            "attributes": {
+                "openinference.span.kind": "TOOL",
+                "tool.name": "test_tool",
+                "user.id": "user1",
+                "metadata": '{"ls_provider": "custom", "ls_model_name": "tool_model", "ls_model_type": "tool"}',
+            },
+        },
+    )
+    span6_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span6 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace4",
@@ -406,20 +512,16 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time + timedelta(hours=1),
         end_time=base_time + timedelta(hours=1) + timedelta(seconds=1),
         session_id=None,
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "test_tool",
-            "spanId": "api_span6",
-            "traceId": "api_trace4",
-            "attributes": {
-                "openinference.span.kind": "TOOL",
-                "tool.name": "test_tool",
-                "metadata": '{"ls_provider": "custom", "ls_model_name": "tool_model", "ls_model_type": "tool"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        user_id="user1",
+        raw_data=span6_raw_data,
         created_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
         updated_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span6)
 
@@ -437,9 +539,17 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             end_time=span.end_time,
             task_id=span.task_id,
             session_id=span.session_id,
+            user_id=span.user_id,
+            status_code="Ok",
             raw_data=span.raw_data,
             created_at=span.created_at,
             updated_at=span.updated_at,
+            prompt_token_count=span.prompt_token_count,
+            completion_token_count=span.completion_token_count,
+            total_token_count=span.total_token_count,
+            prompt_token_cost=span.prompt_token_cost,
+            completion_token_cost=span.completion_token_cost,
+            total_token_cost=span.total_token_cost,
         )
         database_spans.append(database_span)
 
@@ -454,15 +564,69 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         trace_start_time = min(span.start_time for span in trace_spans)
         trace_end_time = max(span.end_time for span in trace_spans)
 
+        # Extract input/output from root span (earliest span without parent)
+        root_spans = [span for span in trace_spans if span.parent_span_id is None]
+        input_content = None
+        output_content = None
+        if root_spans:
+            # Find the earliest root span
+            earliest_root = min(root_spans, key=lambda s: s.start_time)
+            # Extract using same logic as TraceIngestionService
+            from utils import trace as trace_utils
+
+            input_value = trace_utils.get_nested_value(
+                earliest_root.raw_data,
+                "attributes.input.value",
+            )
+            output_value = trace_utils.get_nested_value(
+                earliest_root.raw_data,
+                "attributes.output.value",
+            )
+            input_content = trace_utils.value_to_string(input_value)
+            output_content = trace_utils.value_to_string(output_value)
+
+        # Aggregate token counts/costs from all spans in this trace
+        from utils.token_count import safe_add
+
+        prompt_token_count = None
+        completion_token_count = None
+        total_token_count = None
+        prompt_token_cost = None
+        completion_token_cost = None
+        total_token_cost = None
+
+        for span in trace_spans:
+            prompt_token_count = safe_add(prompt_token_count, span.prompt_token_count)
+            completion_token_count = safe_add(
+                completion_token_count,
+                span.completion_token_count,
+            )
+            total_token_count = safe_add(total_token_count, span.total_token_count)
+            prompt_token_cost = safe_add(prompt_token_cost, span.prompt_token_cost)
+            completion_token_cost = safe_add(
+                completion_token_cost,
+                span.completion_token_cost,
+            )
+            total_token_cost = safe_add(total_token_cost, span.total_token_cost)
+
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
             trace_id=trace_id,
             session_id=trace_spans[0].session_id,
+            user_id=trace_spans[0].user_id,
             span_count=len(trace_spans),
             start_time=trace_start_time,
             end_time=trace_end_time,
             created_at=trace_start_time,
             updated_at=trace_end_time,
+            input_content=input_content,
+            output_content=output_content,
+            prompt_token_count=prompt_token_count,
+            completion_token_count=completion_token_count,
+            total_token_count=total_token_count,
+            prompt_token_cost=prompt_token_cost,
+            completion_token_cost=completion_token_cost,
+            total_token_cost=total_token_cost,
         )
         trace_metadatas.append(trace_metadata)
 

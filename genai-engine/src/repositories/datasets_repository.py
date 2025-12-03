@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import List, Optional, Tuple
 from uuid import UUID
 
@@ -6,12 +7,26 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy import and_, asc, desc
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseDataset
-from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVersionRow
-from schemas.internal_schemas import Dataset, DatasetVersion, ListDatasetVersions
-from schemas.request_schemas import DatasetUpdateRequest, NewDatasetVersionRequest
+from db_models.dataset_models import (
+    DatabaseDatasetTransform,
+    DatabaseDatasetVersion,
+    DatabaseDatasetVersionRow,
+)
+from schemas.internal_schemas import (
+    Dataset,
+    DatasetTransform,
+    DatasetVersion,
+    ListDatasetVersions,
+)
+from schemas.request_schemas import (
+    DatasetTransformUpdateRequest,
+    DatasetUpdateRequest,
+    NewDatasetVersionRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,15 +71,21 @@ class DatasetRepository:
         if update_dataset_request.metadata is not None:
             db_dataset.dataset_metadata = update_dataset_request.metadata
 
+        db_dataset.updated_at = datetime.now()
+
         self.db_session.commit()
 
     def query_datasets(
         self,
+        task_id: str,
         pagination_params: PaginationParameters,
         dataset_ids: Optional[list[UUID]] = None,
         dataset_name: Optional[str] = None,
     ) -> Tuple[List[Dataset], int]:
-        base_query = self.db_session.query(DatabaseDataset)
+        base_query = self.db_session.query(DatabaseDataset).where(
+            DatabaseDataset.task_id == task_id,
+        )
+
         # apply filters
         if dataset_ids is not None:
             base_query = base_query.where(DatabaseDataset.id.in_(dataset_ids))
@@ -73,11 +94,11 @@ class DatasetRepository:
                 DatabaseDataset.name.ilike(f"%{dataset_name}%"),
             )
 
-        # apply roting
+        # apply sorting - sort by updated_at field
         if pagination_params.sort == PaginationSortMethod.DESCENDING:
-            base_query = base_query.order_by(desc(DatabaseDataset.created_at))
+            base_query = base_query.order_by(desc(DatabaseDataset.updated_at))
         elif pagination_params.sort == PaginationSortMethod.ASCENDING:
-            base_query = base_query.order_by(asc(DatabaseDataset.created_at))
+            base_query = base_query.order_by(asc(DatabaseDataset.updated_at))
 
         # calculate total count before offset to apply pagination
         count = base_query.count()
@@ -91,7 +112,7 @@ class DatasetRepository:
             Dataset._from_database_model(db_dataset) for db_dataset in db_datasets
         ], count
 
-    def delete_dataset(self, dataset_id: UUID):
+    def delete_dataset(self, dataset_id: UUID) -> None:
         db_dataset = self._get_db_dataset(dataset_id)
         self.db_session.delete(db_dataset)
         self.db_session.commit()
@@ -152,9 +173,11 @@ class DatasetRepository:
         total_count = base_query.count()
 
         if pagination_params.sort == PaginationSortMethod.ASCENDING:
-            base_query = base_query.order_by(DatabaseDatasetVersionRow.id.asc())
+            base_query = base_query.order_by(DatabaseDatasetVersionRow.created_at.asc())
         else:
-            base_query = base_query.order_by(DatabaseDatasetVersionRow.id.desc())
+            base_query = base_query.order_by(
+                DatabaseDatasetVersionRow.created_at.desc(),
+            )
 
         offset = pagination_params.page * pagination_params.page_size
         paginated_results = (
@@ -184,23 +207,52 @@ class DatasetRepository:
             pagination_params,
         )
 
+    def get_dataset_version_row(
+        self,
+        dataset_id: UUID,
+        dataset_version: int,
+        row_id: UUID,
+    ) -> DatabaseDatasetVersionRow:
+        """Get a specific row by ID from a dataset version"""
+        db_row = (
+            self.db_session.query(DatabaseDatasetVersionRow)
+            .filter(
+                DatabaseDatasetVersionRow.dataset_id == dataset_id,
+                DatabaseDatasetVersionRow.version_number == dataset_version,
+                DatabaseDatasetVersionRow.id == row_id,
+            )
+            .first()
+        )
+
+        if not db_row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Row {row_id} not found in dataset {dataset_id} version {dataset_version}",
+                headers={"full_stacktrace": "false"},
+            )
+
+        return db_row
+
     def create_dataset_version(
         self,
         dataset_id: UUID,
         dataset_version: NewDatasetVersionRequest,
     ) -> None:
+        db_dataset = self._get_db_dataset(dataset_id)
         try:
             latest_version = self._get_latest_db_dataset_version(dataset_id)
         except HTTPException:
             # no version exists for this dataset yet
             latest_version = None
 
-        dataset_version = DatasetVersion._from_request_model(
+        internal_dataset_version = DatasetVersion._from_request_model(
             dataset_id,
             latest_version,
             dataset_version,
         )
-        self.db_session.add(dataset_version._to_database_model())
+        self.db_session.add(internal_dataset_version._to_database_model())
+        db_dataset.updated_at = datetime.now()
+        db_dataset.latest_version_number = internal_dataset_version.version_number
         self.db_session.commit()
 
     def get_dataset_versions(
@@ -249,3 +301,123 @@ class DatasetRepository:
             total_count,
             pagination_params,
         )
+
+    # Transform methods
+    def create_transform(self, transform: DatasetTransform) -> None:
+        # Verify dataset exists
+        self._get_db_dataset(transform.dataset_id)
+        db_transform = transform._to_database_model()
+        self.db_session.add(db_transform)
+        try:
+            self.db_session.commit()
+        except IntegrityError as e:
+            self.db_session.rollback()
+            # Check if it's a unique constraint violation
+            if (
+                "UNIQUE constraint failed" in str(e)
+                or "duplicate key" in str(e).lower()
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"A transform with name '{transform.name}' already exists for this dataset.",
+                    headers={"full_stacktrace": "false"},
+                )
+            # Re-raise if it's a different integrity error
+            raise HTTPException(
+                status_code=400,
+                detail="Database constraint violation.",
+                headers={"full_stacktrace": "false"},
+            )
+
+    def _get_db_transform(
+        self,
+        dataset_id: UUID,
+        transform_id: UUID,
+    ) -> Optional[DatabaseDatasetTransform]:
+        return (
+            self.db_session.query(DatabaseDatasetTransform)
+            .filter(DatabaseDatasetTransform.dataset_id == dataset_id)
+            .filter(DatabaseDatasetTransform.id == transform_id)
+            .first()
+        )
+
+    def get_transform(self, dataset_id: UUID, transform_id: UUID) -> DatasetTransform:
+        db_transform = self._get_db_transform(dataset_id, transform_id)
+        if not db_transform:
+            raise HTTPException(
+                status_code=404,
+                detail="Transform %s not found for dataset %s."
+                % (transform_id, dataset_id),
+                headers={"full_stacktrace": "false"},
+            )
+        return DatasetTransform._from_database_model(db_transform)
+
+    def list_transforms(self, dataset_id: UUID) -> List[DatasetTransform]:
+        # Verify dataset exists
+        self._get_db_dataset(dataset_id)
+        db_transforms = (
+            self.db_session.query(DatabaseDatasetTransform)
+            .filter(DatabaseDatasetTransform.dataset_id == dataset_id)
+            .order_by(DatabaseDatasetTransform.created_at.desc())
+            .all()
+        )
+        return [
+            DatasetTransform._from_database_model(db_transform)
+            for db_transform in db_transforms
+        ]
+
+    def update_transform(
+        self,
+        dataset_id: UUID,
+        transform_id: UUID,
+        update_request: DatasetTransformUpdateRequest,
+    ) -> None:
+        db_transform = self._get_db_transform(dataset_id, transform_id)
+        if not db_transform:
+            raise HTTPException(
+                status_code=404,
+                detail="Transform %s not found for dataset %s."
+                % (transform_id, dataset_id),
+                headers={"full_stacktrace": "false"},
+            )
+
+        if update_request.name is not None:
+            db_transform.name = update_request.name
+        if update_request.description is not None:
+            db_transform.description = update_request.description
+        if update_request.definition is not None:
+            db_transform.definition = update_request.definition.model_dump()
+
+        db_transform.updated_at = datetime.now()
+        try:
+            self.db_session.commit()
+        except IntegrityError as e:
+            self.db_session.rollback()
+            # Check if it's a unique constraint violation
+            if (
+                "UNIQUE constraint failed" in str(e)
+                or "duplicate key" in str(e).lower()
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"A transform with name '{update_request.name}' already exists for this dataset.",
+                    headers={"full_stacktrace": "false"},
+                )
+            # Re-raise if it's a different integrity error
+            raise HTTPException(
+                status_code=400,
+                detail="Database constraint violation.",
+                headers={"full_stacktrace": "false"},
+            )
+
+    def delete_transform(self, dataset_id: UUID, transform_id: UUID) -> None:
+        db_transform = self._get_db_transform(dataset_id, transform_id)
+        if not db_transform:
+            raise HTTPException(
+                status_code=404,
+                detail="Transform %s not found for dataset %s."
+                % (transform_id, dataset_id),
+                headers={"full_stacktrace": "false"},
+            )
+        self.db_session.delete(db_transform)
+        self.db_session.commit()

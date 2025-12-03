@@ -210,7 +210,7 @@ def contains_possessive_patterns(text: str, entity_keywords: Set[str]) -> bool:
 def meets_minimum_format_requirements(
     text: str,
     min_length: int = 5,
-    required_chars: str = None,
+    required_chars: Optional[str] = None,
     min_digits: int = 0,
 ) -> bool:
     """Check if text meets minimum format requirements for being valid PII."""

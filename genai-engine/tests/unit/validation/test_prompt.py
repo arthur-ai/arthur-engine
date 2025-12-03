@@ -1,6 +1,7 @@
 import pytest
-from schemas.internal_schemas import Rule, Task
 from arthur_common.models.request_schemas import PromptValidationRequest
+
+from schemas.internal_schemas import Rule, Task
 from tests.clients.base_test_client import (
     override_get_db_session,
     override_get_scorer_client,

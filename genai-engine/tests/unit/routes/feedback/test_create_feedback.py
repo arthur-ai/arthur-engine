@@ -137,7 +137,7 @@ def cleanup_create_feedback_test_data(
         pytest.param(
             InferenceFeedbackTarget.CONTEXT,
             0,
-            None,
+            "",
             "user_id",
             201,
             id="no reason",

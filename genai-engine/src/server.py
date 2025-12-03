@@ -43,7 +43,12 @@ from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
 from routers.v1.legacy_span_routes import span_routes
+from routers.v1.llm_eval_routes import llm_eval_routes
 from routers.v1.model_provider_routes import model_provider_routes
+from routers.v1.notebook_routes import notebook_routes
+from routers.v1.prompt_experiment_routes import prompt_experiment_routes
+from routers.v1.rag_routes import rag_routes
+from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
 from routers.v2.routers import (
@@ -128,6 +133,22 @@ tags_metadata = [
     {
         "name": "Model Providers",
         "description": "Endpoints for model provider management",
+    },
+    {
+        "name": "RAG Settings",
+        "description": "Endpoints for RAG setting management",
+    },
+    {
+        "name": "RAG Providers",
+        "description": "Endpoints for RAG provider management",
+    },
+    {
+        "name": "Prompt Experiments",
+        "description": "Endpoints for managing prompt experiments",
+    },
+    {
+        "name": "Notebooks",
+        "description": "Endpoints for managing experiment notebooks",
     },
 ]
 
@@ -365,6 +386,11 @@ def get_app_with_routes() -> FastAPI:
             dataset_management_routes,
             model_provider_routes,
             secrets_routes,
+            rag_routes,
+            rag_setting_routes,
+            llm_eval_routes,
+            notebook_routes,
+            prompt_experiment_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -393,6 +419,11 @@ def get_test_app() -> FastAPI:
             dataset_management_routes,
             model_provider_routes,
             secrets_routes,
+            rag_routes,
+            rag_setting_routes,
+            llm_eval_routes,
+            notebook_routes,
+            prompt_experiment_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -431,6 +462,11 @@ def get_app() -> FastAPI:
             dataset_management_routes,
             model_provider_routes,
             secrets_routes,
+            rag_routes,
+            rag_setting_routes,
+            llm_eval_routes,
+            notebook_routes,
+            prompt_experiment_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:

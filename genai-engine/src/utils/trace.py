@@ -1,88 +1,60 @@
+"""
+Trace utility functions.
+
+This module contains pure utility functions for trace/span processing.
+For span normalization and validation, see services.trace.SpanNormalizationService.
+"""
+
 import base64
 import json
 import logging
 import re
 from datetime import datetime
+from typing import Any, Dict, Optional
 
-from openinference.semconv.trace import (
-    MessageAttributes,
-    OpenInferenceMimeTypeValues,
-    SpanAttributes,
+from openinference.semconv.trace import MessageAttributes, SpanAttributes
+
+from utils.constants import EXPECTED_SPAN_VERSION, SPAN_KIND_LLM, SPAN_VERSION_KEY
+from utils.token_count import (
+    TokenCountCost,
+    compute_cost_from_tokens,
+    count_tokens_from_messages,
 )
-
-from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
 
 logger = logging.getLogger(__name__)
 
-# Compile regex patterns once for better performance
+# Compiled regex patterns for query extraction (all case-insensitive)
 _QUERY_PATTERNS = [
-    # Direct query indicators
-    re.compile(r"(?:query|Query):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:prompt|Prompt):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:question|Question):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:task|Task):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:request|Request):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    # User-specific patterns
+    # Direct indicators with optional colon (query, prompt, question, task, request)
     re.compile(
-        r"(?:user query|User query|USER QUERY):\s*(.+?)(?:\n|$)",
+        r"(?:query|prompt|question|task|request):?\s+(.+?)(?:\n|$)",
         re.IGNORECASE | re.DOTALL,
     ),
+    # User-specific patterns with optional colon
     re.compile(
-        r"(?:user prompt|User prompt|USER PROMPT):\s*(.+?)(?:\n|$)",
+        r"user\s+(?:query|prompt|question|asks?|wants?\s+to\s+know|is\s+asking):?\s+(.+?)(?:\n|$)",
         re.IGNORECASE | re.DOTALL,
     ),
+    # Context-based patterns (these naturally have prepositions, no colon expected)
     re.compile(
-        r"(?:user question|User question|USER QUESTION):\s*(.+?)(?:\n|$)",
+        r"(?:based\s+on|given|answer|respond\s+to|help\s+(?:me\s+)?with)\s+(?:the\s+following:?)?\s*(.+?)(?:\n|$)",
         re.IGNORECASE | re.DOTALL,
     ),
-    re.compile(
-        r"(?:user asks?|User asks?):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:user wants? to know|User wants? to know):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:user is asking|User is asking):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    # Context-based patterns
-    re.compile(
-        r"(?:based on the following|Based on the following):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:given the following|Given the following):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:answer the following|Answer the following):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:respond to|Respond to):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(r"(?:help with|Help with):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    # Quoted content (might be the actual query)
+    # Quoted content (direct quotes likely contain the query)
     re.compile(r'"([^"]+)"'),
     re.compile(r"'([^']+)'"),
-    # Multi-line patterns with newlines
+    # Multi-line patterns with optional colon
     re.compile(
-        r"(?:query|Query):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)",
+        r"(?:query|prompt):?\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)",
         re.IGNORECASE | re.DOTALL,
     ),
+    # Questions (anything ending with ?)
+    re.compile(r"([^.!?]*\?[^.!?]*)"),
+    # Polite requests (please/can you/could you/would you)
     re.compile(
-        r"(?:prompt|Prompt):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    # Fallback: look for sentences that seem like questions or requests
-    re.compile(r"([^.!?]*\?[^.!?]*)"),  # Questions
-    re.compile(
-        r"((?:please|Please|can you|Can you|could you|Could you|would you|Would you)[^.!?]*[.!?])",
+        r"((?:please|can\s+you|could\s+you|would\s+you)\s+[^.!?]*[.!?])",
         re.IGNORECASE,
-    ),  # Polite requests
+    ),
 ]
 
 _WHITESPACE_PATTERN = re.compile(r"\s+")
@@ -94,33 +66,7 @@ _PREFIX_PATTERNS = [
     re.compile(r"^(?:please\s+)?(?:help\s+)?(?:me\s+)?(?:with\s+)?", re.IGNORECASE),
     re.compile(r"^(?:i\s+)?(?:need\s+)?(?:you\s+)?(?:to\s+)?", re.IGNORECASE),
 ]
-
-# Additional compiled patterns for fallback sentence extraction
 _SENTENCE_SPLIT_PATTERN = re.compile(r"[.!?]+")
-
-
-def validate_span_version(raw_data: dict) -> bool:
-    """
-    Validate that a span's raw data contains the expected version.
-
-    Args:
-        raw_data: The raw span data dictionary
-
-    Returns:
-        bool: True if the span has the expected version, False otherwise
-    """
-    if not isinstance(raw_data, dict):
-        logger.warning("Span has invalid raw_data format")
-        return False
-
-    version = raw_data.get(SPAN_VERSION_KEY)
-    if version != EXPECTED_SPAN_VERSION:
-        logger.warning(
-            f"Span has unexpected version: {version}, expected: {EXPECTED_SPAN_VERSION}",
-        )
-        return False
-
-    return True
 
 
 def clean_extracted_text(text: str) -> str:
@@ -147,30 +93,37 @@ def clean_extracted_text(text: str) -> str:
     return cleaned.strip()
 
 
-def extract_span_features(span_dict):
+def extract_span_features(span_dict: dict[str, Any]) -> dict[str, Any]:
     """
-    Extract and clean LLM-specific features from a span dictionary.
-    Optimized version that expects normalized attributes.
+    Extract LLM-specific features from a normalized span dictionary.
+
+    Note: This function expects spans to be normalized by SpanNormalizationService.
+    The normalization service handles OTEL format conversion, JSON deserialization,
+    and nested structure creation.
 
     Args:
-        span_dict: Dictionary containing span data with normalized attributes
+        span_dict: Dictionary containing span data with normalized nested attributes
 
     Returns:
         Dictionary containing processed span with extracted LLM features
     """
     try:
-        # Get normalized attributes (should already be normalized)
         attributes = span_dict.get("attributes", {})
 
-        # Fallback for backward compatibility with OpenTelemetry format
-        if isinstance(attributes, list):
-            attributes = extract_attributes_from_raw_data(span_dict)
-
-        # Extract LLM-specific data
-        llm_data = extract_llm_data(attributes)
+        # Access already-normalized nested messages
+        input_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_INPUT_MESSAGES,
+            default=[],
+        )
+        output_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_OUTPUT_MESSAGES,
+            default=[],
+        )
 
         # Early exit if no conversation data
-        if not llm_data["input_conversation"]:
+        if not input_messages:
             return {
                 "system_prompt": "",
                 "user_query": "",
@@ -178,44 +131,58 @@ def extract_span_features(span_dict):
                 "context": [],
             }
 
-        # Extract data with optimized logic
-        system_prompt = ""
-        query = ""
+        # Extract system prompt and user query (data is already normalized)
+        # Using OpenInference semantic convention constants for message attributes
+        system_prompt = next(
+            (
+                get_nested_value(msg, MessageAttributes.MESSAGE_CONTENT, "")
+                for msg in input_messages
+                if get_nested_value(msg, MessageAttributes.MESSAGE_ROLE) == "system"
+            ),
+            "",
+        )
 
-        # Use more efficient extraction
-        for message in llm_data["input_conversation"]:
-            if message["role"] == "system" and not system_prompt:
-                system_prompt = message.get("content", "")
-            elif message["role"] == "user" and not query:
-                query = message.get("content", "")
+        user_query = next(
+            (
+                get_nested_value(msg, MessageAttributes.MESSAGE_CONTENT, "")
+                for msg in input_messages
+                if get_nested_value(msg, MessageAttributes.MESSAGE_ROLE) == "user"
+            ),
+            "",
+        )
 
-            # Early exit if we have both
-            if system_prompt and query:
-                break
-
-        # Extract response more efficiently
+        # Extract response from output messages
         response = ""
-        if llm_data["output_conversation"]:
-            first_output = llm_data["output_conversation"][0]
-            if isinstance(first_output, dict):
-                if "content" in first_output:
-                    response = first_output["content"]
-                elif "tool_calls" in first_output:
-                    response = json.dumps(first_output["tool_calls"])
-                else:
-                    response = json.dumps(first_output)
-            else:
-                response = str(first_output)
+        if output_messages:
+            first_output_msg = output_messages[0]
+            content = get_nested_value(
+                first_output_msg,
+                MessageAttributes.MESSAGE_CONTENT,
+            )
+            tool_calls = get_nested_value(
+                first_output_msg,
+                MessageAttributes.MESSAGE_TOOL_CALLS,
+            )
 
-        # Only use fuzzy extraction if query is still empty
-        if not query and system_prompt:
-            query = fuzzy_extract_query(system_prompt)
+            if content is not None:
+                response = content
+            elif tool_calls is not None:
+                response = json.dumps(tool_calls)
+            else:
+                # Fallback: serialize the entire message dict
+                response = json.dumps(get_nested_value(first_output_msg, "message", {}))
+
+        # Fuzzy extraction fallback: only if user_query is missing or matches system_prompt
+        if (not user_query or user_query == system_prompt) and system_prompt:
+            extracted = fuzzy_extract_query(system_prompt)
+            if extracted and extracted != system_prompt:
+                user_query = extracted
 
         return {
             "system_prompt": system_prompt,
-            "user_query": query,
+            "user_query": user_query,
             "response": response,
-            "context": llm_data["input_conversation"],
+            "context": input_messages,  # Already properly structured by normalization
         }
 
     except Exception as e:
@@ -278,7 +245,7 @@ def timestamp_ns_to_datetime(timestamp_ns: int) -> datetime:
     return datetime.fromtimestamp(timestamp_s)
 
 
-def value_dict_to_value(value: dict):
+def value_dict_to_value(value: dict[str, Any]) -> str | int | float | bool | Any:
     """
     Convert a OpenTelemetry-standard value dictionary from string to a value
     """
@@ -301,252 +268,6 @@ def convert_id_to_hex(id: str) -> str:
     return base64.b64decode(id).hex()
 
 
-def clean_null_values(obj):
-    """Remove any null values from a dictionary recursively"""
-    if isinstance(obj, dict):
-        return {k: clean_null_values(v) for k, v in obj.items() if v is not None}
-    elif isinstance(obj, list):
-        return [clean_null_values(item) for item in obj if item is not None]
-    return obj
-
-
-def extract_llm_data(attributes):
-    """
-    Extract LLM-specific data from a span's attributes.
-
-    Args:
-        span_dict: Dictionary containing span data including attributes
-
-    Returns:
-        Dictionary containing extracted LLM data
-    """
-    llm_data = {
-        "input": None,
-        "output": None,
-        "model_name": None,
-        "invocation_parameters": None,
-        "input_conversation": [],
-        "output_conversation": [],
-    }
-
-    # Extract input if it exists and is JSON
-    if (
-        SpanAttributes.INPUT_MIME_TYPE in attributes
-        and attributes[SpanAttributes.INPUT_MIME_TYPE]
-        == OpenInferenceMimeTypeValues.JSON.value
-    ):
-        if SpanAttributes.INPUT_VALUE in attributes:
-            llm_data["input"] = json_to_dict(attributes[SpanAttributes.INPUT_VALUE])
-
-    # Extract output if it exists and is JSON
-    if (
-        SpanAttributes.OUTPUT_MIME_TYPE in attributes
-        and attributes[SpanAttributes.OUTPUT_MIME_TYPE]
-        == OpenInferenceMimeTypeValues.JSON.value
-    ):
-        if SpanAttributes.OUTPUT_VALUE in attributes:
-            llm_data["output"] = json_to_dict(attributes[SpanAttributes.OUTPUT_VALUE])
-
-    # Extract model name
-    llm_data["model_name"] = attributes.get(SpanAttributes.LLM_MODEL_NAME)
-
-    # Extract invocation parameters
-    if SpanAttributes.LLM_INVOCATION_PARAMETERS in attributes:
-        llm_data["invocation_parameters"] = json_to_dict(
-            attributes[SpanAttributes.LLM_INVOCATION_PARAMETERS],
-        )
-
-    def extract_tool_calls(attributes, base_key):
-        """
-        Extract tool calls from a message's attributes.
-
-        Args:
-            attributes: Dictionary containing all attributes
-            base_key: Base key for the message (e.g., "llm.input_messages.0.message")
-
-        Returns:
-            List of tool call dictionaries, each containing name and arguments
-        """
-        TOOL_INDEX_POSITION = 5
-        tool_calls = []
-        tool_call_keys = [
-            k for k in attributes.keys() if k.startswith(f"{base_key}.tool_calls.")
-        ]
-
-        if tool_call_keys:
-            # Get unique tool call indices by finding all numbers in the path
-            tool_indices = set()
-            for key in tool_call_keys:
-                parts = key.split(".")
-                if parts[TOOL_INDEX_POSITION].isdigit():
-                    tool_indices.add(int(parts[TOOL_INDEX_POSITION]))
-
-            tool_indices = sorted(tool_indices)
-
-            for tool_idx in tool_indices:
-                tool_call = {"index": tool_idx}
-
-                # Try both possible paths for tool call data
-                tool_base_key = f"{base_key}.tool_calls.{tool_idx}.tool_call.function"
-
-                if f"{tool_base_key}.name" in attributes:
-                    tool_call["name"] = attributes[f"{tool_base_key}.name"]
-                if f"{tool_base_key}.arguments" in attributes:
-                    tool_call["arguments"] = json_to_dict(
-                        attributes[f"{tool_base_key}.arguments"],
-                    )
-
-                if tool_call:  # Only add if we found any tool call data
-                    tool_calls.append(tool_call)
-
-        return tool_calls
-
-    def extract_message(message_type, msg_idx, tool_queue=None):
-        """Helper function to extract a single message with its tool calls"""
-        message = {"index": msg_idx}
-        base_key = f"llm.{message_type}_messages.{msg_idx}"
-
-        # Extract basic message fields
-        role_key = f"{base_key}.{MessageAttributes.MESSAGE_ROLE}"
-        content_key = f"{base_key}.{MessageAttributes.MESSAGE_CONTENT}"
-        if role_key in attributes:
-            message["role"] = attributes[role_key]
-        if content_key in attributes:
-            content = attributes[content_key]
-
-            # If this is a tool message, get the tool name from the queue
-            if message.get("role") == "tool" and tool_queue:
-                try:
-                    tool_name = tool_queue.pop(0)
-                    message["name"] = tool_name
-                    message["result"] = content
-                except IndexError:
-                    message["name"] = "unknown_tool"
-                    message["result"] = content
-            else:
-                message["content"] = content
-
-        # Extract tool calls if this is an assistant message
-        if message.get("role") == "assistant":
-            tool_calls = extract_tool_calls(attributes, f"{base_key}.message")
-            if tool_calls:
-                message["tool_calls"] = tool_calls
-
-        return message if message else None
-
-    MESSAGE_INDEX_POSITION = 2
-
-    # Extract input messages
-    input_keys = [
-        k
-        for k in attributes.keys()
-        if k.startswith(f"{SpanAttributes.LLM_INPUT_MESSAGES}.")
-    ]
-    input_indices = sorted(
-        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in input_keys),
-    )
-    tool_queue = []
-    for msg_idx in input_indices:
-        message = extract_message("input", msg_idx, tool_queue)
-        if message:
-            llm_data["input_conversation"].append(message)
-            # If this was an assistant message, update the tool queue
-            if message.get("role") == "assistant":
-                tool_queue = [
-                    tool_call["name"] for tool_call in message.get("tool_calls", [])
-                ]
-            elif message.get("role") != "tool":
-                tool_queue = []
-
-    # Extract output messages
-    output_keys = [
-        k
-        for k in attributes.keys()
-        if k.startswith(f"{SpanAttributes.LLM_OUTPUT_MESSAGES}.")
-    ]
-    output_indices = sorted(
-        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in output_keys),
-    )
-    tool_queue = []
-    for msg_idx in output_indices:
-        message = extract_message("output", msg_idx, tool_queue)
-        if message:
-            llm_data["output_conversation"].append(message)
-            # If this was an assistant message, update the tool queue
-            if message.get("role") == "assistant":
-                tool_queue = [
-                    tool_call["name"] for tool_call in message.get("tool_calls", [])
-                ]
-            elif message.get("role") != "tool":
-                tool_queue = []
-
-    return llm_data
-
-
-def extract_attributes_from_raw_data(span_dict):
-    """
-    Extract and normalize attributes from a span dictionary.
-
-    This function converts OpenTelemetry attribute format (list of key-value pairs)
-    to a flat dictionary format for easier querying and processing.
-
-    Args:
-        span_dict: Dictionary containing span data with attributes
-
-    Returns:
-        dict: Normalized attributes as flat key-value pairs
-
-    Example:
-        Input (OpenTelemetry format):
-        {
-            "attributes": [
-                {"key": "input.value", "value": {"stringValue": "test"}},
-                {"key": "llm.model_name", "value": {"stringValue": "gpt-4"}}
-            ]
-        }
-
-        Output (normalized format):
-        {
-            "input.value": "test",
-            "llm.model_name": "gpt-4"
-        }
-    """
-    raw_attributes = span_dict.get("attributes", {})
-    attributes = {}
-
-    # Convert attributes to flat dictionary format
-    if isinstance(raw_attributes, list):
-        # Handle OpenTelemetry format: list of {key: str, value: {stringValue: str, ...}}
-        for attr in raw_attributes:
-            key = attr.get("key")
-            value_dict = attr.get("value", {})
-            if key:
-                attributes[key] = value_dict_to_value(value_dict)
-    elif isinstance(raw_attributes, dict):
-        # Handle already flattened format or convert if needed
-        for key, value in raw_attributes.items():
-            if isinstance(value, dict) and any(
-                k in value
-                for k in ["stringValue", "intValue", "doubleValue", "boolValue"]
-            ):
-                # This is still in OpenTelemetry structured format
-                attributes[key] = value_dict_to_value(value)
-            else:
-                # Already converted to flat format
-                attributes[key] = value
-    else:
-        attributes = {}
-
-    return attributes
-
-
-def json_to_dict(json_str):
-    try:
-        return json.loads(json_str)
-    except json.JSONDecodeError:
-        return json_str
-
-
 def clean_status_code(status_code: str) -> str:
     """
     Clean a status code string by converting to OTEL Semantic Conventions format.
@@ -559,3 +280,189 @@ def clean_status_code(status_code: str) -> str:
         return "Unset"
     else:
         return status_code
+
+
+def get_nested_value(
+    obj: dict[str, Any],
+    path: str,
+    default: Optional[Any] = None,
+) -> Any:
+    """
+    Safely navigate nested dictionary structure using dot-separated path.
+
+    Args:
+        obj: Dictionary to navigate
+        path: Dot-separated path (e.g., 'llm.model_name')
+        default: Default value to return if path not found (defaults to None)
+
+    Returns:
+        Value at the path, or default if not found
+
+    Examples:
+        get_nested_value({"a": {"b": 1}}, "a.b") -> 1
+        get_nested_value({"a": {"b": 1}}, "a.c") -> None
+        get_nested_value({"a": {"b": 1}}, "a.c", default=0) -> 0
+        get_nested_value(None, "a.b", default="missing") -> "missing"
+    """
+    if not isinstance(obj, dict):
+        return default
+
+    keys = path.split(".")
+    current = obj
+
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+
+    return current
+
+
+def validate_span_version(raw_data: Dict[str, Any]) -> bool:
+    """
+    Validate that a span's raw data contains the expected version.
+
+    Args:
+        raw_data: The raw span data dictionary
+
+    Returns:
+        bool: True if the span has the expected version, False otherwise
+    """
+    if not isinstance(raw_data, dict):
+        logger.warning("Span has invalid raw_data format")
+        return False
+
+    version = raw_data.get(SPAN_VERSION_KEY)
+    if version != EXPECTED_SPAN_VERSION:
+        logger.warning(
+            f"Span has unexpected version: {version}, expected: {EXPECTED_SPAN_VERSION}",
+        )
+        return False
+
+    return True
+
+
+# New functions for span processing
+
+
+def extract_token_cost_from_span(
+    span_raw_data: dict[str, Any],
+    span_kind: str | None = None,
+) -> TokenCountCost:
+    """
+    Extract token counts and costs from span attributes.
+    Calculates missing token counts and costs from message content when needed.
+
+    Returns:
+        TokenCountCost object with token_count and token_cost
+    """
+
+    if span_kind is None or span_kind != SPAN_KIND_LLM:
+        return TokenCountCost(
+            prompt_token_count=None,
+            completion_token_count=None,
+            total_token_count=None,
+            prompt_token_cost=None,
+            completion_token_cost=None,
+            total_token_cost=None,
+        )
+
+    attributes = span_raw_data.get("attributes", {})
+
+    # Extract token counts from attributes
+    prompt_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_PROMPT)
+    completion_tokens = get_nested_value(
+        attributes,
+        SpanAttributes.LLM_TOKEN_COUNT_COMPLETION,
+    )
+    total_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_TOTAL)
+
+    # Extract costs from attributes
+    prompt_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_PROMPT)
+    completion_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_COMPLETION)
+    total_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_TOTAL)
+
+    # Get model name for token/cost calculation
+    model_name = get_nested_value(attributes, SpanAttributes.LLM_MODEL_NAME)
+
+    # Track if we computed any token counts (to ensure total is recalculated)
+    computed_tokens = False
+
+    # Calculate prompt tokens if missing
+    if prompt_tokens is None:
+        input_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_INPUT_MESSAGES,
+            default=[],
+        )
+        if input_messages:
+            prompt_tokens = count_tokens_from_messages(input_messages, model_name)
+            computed_tokens = True
+        else:
+            prompt_tokens = 0
+
+    # Calculate completion tokens if missing
+    if completion_tokens is None:
+        output_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_OUTPUT_MESSAGES,
+            default=[],
+        )
+        if output_messages:
+            # Use all output messages, same as input messages
+            completion_tokens = count_tokens_from_messages(output_messages, model_name)
+            computed_tokens = True
+        else:
+            completion_tokens = 0
+
+    # Calculate prompt cost if missing (requires model_name and prompt_tokens)
+    if prompt_cost is None and (model_name and prompt_tokens is not None):
+        prompt_cost = compute_cost_from_tokens(model_name, input_tokens=prompt_tokens)
+
+    # Calculate completion cost if missing (requires model_name and completion_tokens)
+    if completion_cost is None and (model_name and completion_tokens is not None):
+        completion_cost = compute_cost_from_tokens(
+            model_name,
+            output_tokens=completion_tokens,
+        )
+
+    # Calculate total tokens: always recalculate if we computed any tokens, or if total is missing
+    # This ensures consistency when we estimate missing values
+    if computed_tokens or total_tokens is None:
+        if prompt_tokens is not None and completion_tokens is not None:
+            total_tokens = prompt_tokens + completion_tokens
+
+    # Calculate total cost if missing
+    if total_cost is None and prompt_cost is not None and completion_cost is not None:
+        total_cost = prompt_cost + completion_cost
+
+    return TokenCountCost(
+        prompt_token_count=prompt_tokens,
+        completion_token_count=completion_tokens,
+        total_token_count=total_tokens,
+        prompt_token_cost=prompt_cost,
+        completion_token_cost=completion_cost,
+        total_token_cost=total_cost,
+    )
+
+
+def value_to_string(value: Any) -> Optional[str]:
+    """Convert a value to string, handling dicts/lists by JSON serialization.
+
+    This is used to ensure consistent string representation for input/output
+    content across spans and trace metadata. The normalizer may parse JSON
+    strings into dicts/lists based on mime_type, and this function converts
+    them back to strings for storage and API responses.
+
+    Args:
+        value: Any value to convert to string
+
+    Returns:
+        String representation of the value, or None if value is None
+    """
+    if value is None:
+        return None
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return str(value)

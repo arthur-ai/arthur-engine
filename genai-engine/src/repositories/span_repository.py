@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.request_schemas import TraceQueryRequest
+from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
 from sqlalchemy.orm import Session
@@ -12,16 +13,20 @@ from sqlalchemy.orm import Session
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import (
+    AgenticAnnotation,
     SessionMetadata,
     Span,
     TraceMetadata,
     TraceQuerySchema,
+    TraceUserMetadata,
 )
-from services.metrics_integration_service import MetricsIntegrationService
-from services.span_query_service import SpanQueryService
-from services.trace_ingestion_service import TraceIngestionService
-from services.tree_building_service import TreeBuildingService
-from utils import trace as trace_utils
+from schemas.request_schemas import AgenticAnnotationRequest
+from services.trace.metrics_integration_service import MetricsIntegrationService
+from services.trace.span_query_service import SpanQueryService
+from services.trace.trace_annotation_service import TraceAnnotationService
+from services.trace.trace_ingestion_service import TraceIngestionService
+from services.trace.tree_building_service import TreeBuildingService
+from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -42,6 +47,7 @@ class SpanRepository:
         self.metrics_repo = metrics_repo
 
         # Initialize services
+        self.trace_annotation_service = TraceAnnotationService(db_session)
         self.trace_ingestion_service = TraceIngestionService(db_session)
         self.span_query_service = SpanQueryService(db_session)
         self.metrics_integration_service = MetricsIntegrationService(
@@ -59,21 +65,28 @@ class SpanRepository:
         self,
         filters: TraceQueryRequest,
         pagination_parameters: PaginationParameters,
+        user_ids: Optional[list[str]] = None,
     ) -> tuple[int, list[TraceMetadata]]:
         """Get lightweight trace metadata for browsing/filtering operations.
 
         Returns metadata only without spans or metrics for fast performance.
         """
         # Convert to internal schema format
-        filters = TraceQuerySchema._from_request_model(filters)
+        internal_filters: TraceQuerySchema = TraceQuerySchema._from_request_model(
+            filters,
+        )
 
-        if not filters.task_ids:
+        # Add user_ids to filters if provided
+        if user_ids:
+            internal_filters.user_ids = user_ids
+
+        if not internal_filters.task_ids:
             raise ValueError("task_ids are required for trace queries")
 
         # Get trace metadata without loading spans
         paginated_trace_ids, total_count = (
             self.span_query_service.get_paginated_trace_ids_with_filters(
-                filters=filters,
+                filters=internal_filters,
                 pagination_parameters=pagination_parameters,
             )
         )
@@ -87,14 +100,38 @@ class SpanRepository:
             sort_method=pagination_parameters.sort,
         )
 
+        # add annotation info to trace metadata list
+        trace_metadata_list = (
+            self.trace_annotation_service.append_annotation_info_to_trace_metadata(
+                trace_metadata_list,
+            )
+        )
+
         return total_count, trace_metadata_list
+
+    def get_user_details(
+        self,
+        user_id: str,
+        task_ids: list[str],
+    ) -> Optional[TraceUserMetadata]:
+        """Get detailed information for a single user."""
+        if not task_ids:
+            raise ValueError("task_ids are required for user queries")
+
+        # Get user metadata
+        user_metadata = self.span_query_service.get_user_metadata_by_id(
+            user_id=user_id,
+            task_ids=task_ids,
+        )
+
+        return user_metadata
 
     def get_trace_by_id(
         self,
         trace_id: str,
         include_metrics: bool = False,
         compute_new_metrics: bool = False,
-    ):
+    ) -> Optional[TraceResponse]:
         """Get complete trace tree with existing metrics (no computation).
 
         Returns full trace structure with spans.
@@ -115,18 +152,33 @@ class SpanRepository:
                 compute_new_metrics,
             )
 
-        # Build trace tree structure
+        # Fetch trace metadata for input/output content
+        trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
+            [trace_id],
+            PaginationSortMethod.DESCENDING,
+        )
+        # Convert to database models for tree building service
+        trace_metadata_db = [tm._to_database_model() for tm in trace_metadata_list]
+
+        # Build trace tree structure with trace metadata
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
             PaginationSortMethod.DESCENDING,
+            trace_metadata=trace_metadata_db,
         )
 
-        return traces[0] if traces else None
+        if not traces or traces[0] is None:
+            return None
+
+        # add annotation info to trace responses if it exists
+        return self.trace_annotation_service.append_annotation_info_to_trace_response(
+            traces[0],
+        )
 
     def compute_trace_metrics(
         self,
         trace_id: str,
-    ):
+    ) -> Optional[TraceResponse]:
         """Compute all missing metrics for trace spans on-demand.
 
         Returns full trace tree with computed metrics.
@@ -154,7 +206,7 @@ class SpanRepository:
             return None
 
         # Validate span version
-        if not trace_utils.validate_span_version(span.raw_data):
+        if not validate_span_version(span.raw_data):
             logger.warning(f"Span {span_id} failed version validation")
             return None
 
@@ -183,7 +235,7 @@ class SpanRepository:
             return None
 
         # Validate span version
-        if not trace_utils.validate_span_version(span.raw_data):
+        if not validate_span_version(span.raw_data):
             raise ValueError(f"Span {span_id} failed version validation")
 
         # Validate that this is an LLM span (required for metrics computation)
@@ -202,6 +254,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        user_ids: Optional[list[str]] = None,
     ) -> tuple[int, list[SessionMetadata]]:
         """Return session aggregation data.
 
@@ -216,6 +269,7 @@ class SpanRepository:
             pagination_parameters=pagination_parameters,
             start_time=start_time,
             end_time=end_time,
+            user_ids=user_ids,
         )
 
         return count, session_metadata_list
@@ -224,7 +278,7 @@ class SpanRepository:
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list]:
+    ) -> tuple[int, list[TraceResponse]]:
         """Get all trace trees in a session.
 
         Returns list of full trace trees with existing metrics (no computation).
@@ -258,13 +312,20 @@ class SpanRepository:
             pagination_parameters.sort,
         )
 
+        # add annotation info to trace responses if it exists
+        traces = (
+            self.trace_annotation_service.append_annotation_info_to_trace_responses(
+                traces,
+            )
+        )
+
         return count, traces
 
     def compute_session_metrics(
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list]:
+    ) -> tuple[int, list[TraceResponse]]:
         """Get all traces in a session and compute missing metrics.
 
         Returns list of full trace trees with computed metrics.
@@ -298,7 +359,35 @@ class SpanRepository:
             pagination_parameters.sort,
         )
 
+        # add annotation info to trace responses if it exists
+        traces = (
+            self.trace_annotation_service.append_annotation_info_to_trace_responses(
+                traces,
+            )
+        )
+
         return count, traces
+
+    def get_users_metadata(
+        self,
+        task_ids: list[str],
+        pagination_parameters: PaginationParameters,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[int, list[TraceUserMetadata]]:
+        """Return user aggregation data with pagination."""
+        if not task_ids:
+            raise ValueError("task_ids are required for user queries")
+
+        # Get user aggregation data from query service
+        count, user_metadata_list = self.span_query_service.get_users_aggregated(
+            task_ids=task_ids,
+            pagination_parameters=pagination_parameters,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        return count, user_metadata_list
 
     # ============================================================================
     # Public API Methods - Used by Legacy Endpoints (ML Engine)
@@ -399,7 +488,7 @@ class SpanRepository:
             raise ValueError(f"Span with ID {span_id} not found")
 
         # Validate span version
-        if not trace_utils.validate_span_version(span.raw_data):
+        if not validate_span_version(span.raw_data):
             raise ValueError(f"Span {span_id} failed version validation")
 
         # Validate that this is an LLM span
@@ -417,18 +506,20 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
-    ) -> tuple[int, list]:
+    ) -> tuple[int, list[TraceResponse]]:
         """Query traces with comprehensive filtering and optional metrics computation."""
         # Validate parameters
 
-        filters = TraceQuerySchema._from_request_model(filters)
+        internal_filters: TraceQuerySchema = TraceQuerySchema._from_request_model(
+            filters,
+        )
 
         if not filters.task_ids:
             raise ValueError("task_ids are required for trace queries")
 
         # Trace-level pagination: get paginated trace IDs using optimized two-phase filtering
         result = self.span_query_service.get_paginated_trace_ids_with_filters(
-            filters=filters,
+            filters=internal_filters,
             pagination_parameters=pagination_parameters,
         )
 
@@ -456,13 +547,38 @@ class SpanRepository:
             valid_spans,
             pagination_parameters.sort,
         )
+
+        # add annotation info to trace responses if it exists
+        traces = (
+            self.trace_annotation_service.append_annotation_info_to_trace_responses(
+                traces,
+            )
+        )
+
         return total_count, traces
+
+    def annotate_trace(
+        self,
+        trace_id: str,
+        annotation_request: AgenticAnnotationRequest,
+    ) -> AgenticAnnotation:
+        """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
+        return self.trace_annotation_service.annotate_trace(
+            trace_id=trace_id,
+            annotation_request=annotation_request,
+        )
+
+    def delete_annotation_from_trace(self, trace_id: str) -> None:
+        """Delete an annotation from a trace."""
+        self.trace_annotation_service.delete_annotation_by_trace_id(
+            trace_id=trace_id,
+        )
 
     # ============================================================================
     # Testing/Utility Methods
     # ============================================================================
 
-    def _store_spans(self, spans: list[dict], commit: bool = True):
+    def _store_spans(self, spans: list[dict[str, Any]], commit: bool = True) -> None:
         """Store spans in the database with optional commit control.
 
         This method is primarily used for testing and direct span insertion.

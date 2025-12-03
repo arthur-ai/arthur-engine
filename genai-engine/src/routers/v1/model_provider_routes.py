@@ -8,11 +8,10 @@ from dependencies import get_db_session
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.enums import PermissionLevelsEnum, ModelProvider
+from schemas.enums import ModelProvider, PermissionLevelsEnum
 from schemas.internal_schemas import User
 from schemas.request_schemas import PutModelProviderCredentials
 from schemas.response_schemas import (
-    ModelProviderResponse,
     ModelProviderList,
     ModelProviderModelList,
 )
@@ -64,7 +63,7 @@ def set_model_provider(
     responses={HTTP_204_NO_CONTENT: {"description": "Provider deleted."}},
 )
 @permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
-def set_model_provider(
+def delete_model_provider(
     provider: ModelProvider,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -108,7 +107,7 @@ def get_model_providers(
     response_model=ModelProviderModelList,
 )
 @permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_READ.value)
-def get_model_providers(
+def get_model_providers_available_models(
     provider: ModelProvider,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),

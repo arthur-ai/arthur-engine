@@ -54,7 +54,7 @@ export class ArthurExporter implements AITracingExporter {
     const baseUrl = config.url.endsWith("/")
       ? config.url.slice(0, -1)
       : config.url;
-    const tracesUrl = `${baseUrl}/v1/traces`;
+    const tracesUrl = `${baseUrl}/api/v1/traces`;
 
     const exporter = new OTLPTraceExporter({
       url: tracesUrl,

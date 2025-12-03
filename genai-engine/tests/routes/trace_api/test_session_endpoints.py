@@ -14,6 +14,7 @@ def assert_valid_session_metadata_response(sessions):
     for session in sessions:
         assert session.session_id and isinstance(session.session_id, str)
         assert session.task_id and isinstance(session.task_id, str)
+        assert session.user_id is not None  # Should have user_id
         assert (
             session.span_count is not None
             and isinstance(session.span_count, int)
@@ -21,6 +22,13 @@ def assert_valid_session_metadata_response(sessions):
         )
         assert session.earliest_start_time is not None
         assert session.latest_end_time is not None
+        # Verify token count/cost fields are present (may be None if no LLM spans)
+        assert hasattr(session, "prompt_token_count")
+        assert hasattr(session, "completion_token_count")
+        assert hasattr(session, "total_token_count")
+        assert hasattr(session, "prompt_token_cost")
+        assert hasattr(session, "completion_token_cost")
+        assert hasattr(session, "total_token_cost")
 
 
 def assert_valid_session_traces_response(traces):
@@ -60,11 +68,11 @@ def find_spans_by_kind(spans, span_kind):
 
 
 @pytest.mark.unit_tests
-def test_list_sessions_metadata_basic_functionality(
+def test_list_sessions_metadata_functionality(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test basic session metadata listing functionality."""
+    """Test session metadata listing functionality for single and multiple tasks."""
 
     # Test single task
     status_code, data = client.trace_api_list_sessions_metadata(task_ids=["api_task1"])
@@ -81,21 +89,20 @@ def test_list_sessions_metadata_basic_functionality(
     assert session.span_count > 0
     assert session.earliest_start_time is not None
     assert session.latest_end_time is not None
+    # Session1 has api_trace1 (span1: 100/50/150, span2: None) and api_trace2 (span3: 200/100/300)
+    # Total: 300 prompt, 150 completion, 450 total
+    assert session.prompt_token_count == 300
+    assert session.completion_token_count == 150
+    assert session.total_token_count == 450
+    assert session.prompt_token_cost == 0.003  # 0.001 + 0.002
+    assert session.completion_token_cost == 0.005  # 0.002 + 0.003
+    assert session.total_token_cost == 0.008  # 0.003 + 0.005
 
-
-@pytest.mark.unit_tests
-def test_list_sessions_metadata_multiple_tasks(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test listing sessions for multiple tasks."""
-
-    # Use trace_api method for proper response handling
+    # Test multiple tasks
     status_code, data = client.trace_api_list_sessions_metadata(
         task_ids=["api_task1", "api_task2"],
     )
     assert status_code == 200
-
     assert data.count == 2  # session1 (api_task1) and session2 (api_task2)
     assert len(data.sessions) == 2
 
@@ -106,11 +113,56 @@ def test_list_sessions_metadata_multiple_tasks(
 
 
 @pytest.mark.unit_tests
-def test_list_sessions_metadata_sorting(
+def test_list_sessions_metadata_filtering_by_user_ids(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test session metadata sorting by earliest_start_time."""
+    """Test filtering sessions by user IDs."""
+
+    # Filter sessions by user1
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1"],
+        user_ids=["user1"],
+    )
+    assert status_code == 200
+    assert data.count == 1  # user1 has 1 session in api_task1
+    assert len(data.sessions) == 1
+
+    # Verify session belongs to user1
+    session = data.sessions[0]
+    assert session.user_id == "user1"
+    assert session.task_id == "api_task1"
+    assert session.session_id == "session1"
+
+    # Filter by multiple users
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        user_ids=["user1", "user2"],
+    )
+    assert status_code == 200
+    assert data.count == 2  # user1 has 1 session, user2 has 1 session
+    assert len(data.sessions) == 2
+
+    # Verify we have sessions from both users
+    user_ids = {session.user_id for session in data.sessions}
+    assert user_ids == {"user1", "user2"}
+
+    # Filter by non-existent user
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1"],
+        user_ids=["non_existent_user"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.sessions) == 0
+
+
+@pytest.mark.unit_tests
+def test_list_sessions_metadata_sorting_pagination_and_validation(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test session metadata sorting, pagination, and validation."""
 
     # Test default sorting (descending)
     status_code, data = client.trace_api_list_sessions_metadata(
@@ -125,15 +177,7 @@ def test_list_sessions_metadata_sorting(
         next_time = sessions[i + 1].earliest_start_time
         assert current_time >= next_time
 
-
-@pytest.mark.unit_tests
-def test_list_sessions_metadata_pagination(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test session metadata pagination."""
-
-    # Test first page
+    # Test pagination
     status_code, data = client.trace_api_list_sessions_metadata(
         task_ids=["api_task1", "api_task2"],
         page=0,
@@ -143,39 +187,18 @@ def test_list_sessions_metadata_pagination(
     assert data.count == 2  # Total count
     assert len(data.sessions) == 1  # Page size
 
+    # Test validation errors
+    # Empty task_ids (should return 400)
+    status_code, response = client.trace_api_list_sessions_metadata(task_ids=[])
+    assert status_code == 400
 
-@pytest.mark.unit_tests
-@pytest.mark.parametrize(
-    "task_ids,expected_status",
-    [
-        ([], 400),  # Empty task_ids should return 400
-        (
-            ["non_existent_task"],
-            200,
-        ),  # Non-existent task should return 200 with 0 results
-    ],
-)
-def test_list_sessions_metadata_validation_errors(
-    client: GenaiEngineTestClientBase,
-    task_ids,
-    expected_status,
-):
-    """Test validation errors for session metadata listing."""
-
-    status_code, response = client.trace_api_list_sessions_metadata(task_ids=task_ids)
-    assert status_code == expected_status
-
-    if expected_status == 200:
-        # Should have valid response structure even with no results
-        assert (
-            response.count is not None
-            and isinstance(response.count, int)
-            and response.count >= 0
-        )
-        assert isinstance(response.sessions, list)
-        if task_ids == ["non_existent_task"]:
-            assert response.count == 0
-    # For 400 status, response will be error text
+    # Non-existent task (should return 200 with 0 results)
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["non_existent_task"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.sessions) == 0
 
 
 @pytest.mark.unit_tests

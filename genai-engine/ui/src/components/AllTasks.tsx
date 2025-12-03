@@ -1,9 +1,16 @@
+import AddIcon from "@mui/icons-material/Add";
+import MenuIcon from "@mui/icons-material/Menu";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { CreateTaskForm } from "./CreateTaskForm";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+import { CopyableChip } from "./common";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +20,7 @@ export const AllTasks: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -71,6 +79,35 @@ export const AllTasks: React.FC = () => {
     navigate(`/tasks/${taskId}/traces`);
   };
 
+  const handleTaskCreated = async (taskId: string) => {
+    // Refresh the tasks list
+    const fetchTasks = async () => {
+      try {
+        if (!api) {
+          throw new Error("API client not available");
+        }
+
+        const response = await api.api.searchTasksApiV2TasksSearchPost(
+          {
+            page_size: 50,
+            page: 0,
+          },
+          {}
+        );
+
+        setTasks(response.data.tasks || []);
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        setError("Failed to load tasks. Please check your authentication.");
+      }
+    };
+
+    await fetchTasks();
+
+    // Navigate to the new task
+    navigate(`/tasks/${taskId}/traces`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -78,46 +115,40 @@ export const AllTasks: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Arthur GenAI Engine
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900">Arthur GenAI Engine</h1>
               <p className="text-gray-600">All Tasks</p>
             </div>
-            <div className="relative">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex items-center p-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
-
-              {/* Dropdown menu */}
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                  >
-                    Logout
-                  </button>
-                </div>
+            <div className="flex items-center space-x-4">
+              {tasks.length > 0 && (
+                <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                  Create Task
+                </Button>
               )}
+              &nbsp;
+              <div className="relative">
+                <IconButton
+                  aria-label="menu"
+                  onClick={() => setIsMenuOpen((prev) => !prev)}
+                  sx={{
+                    backgroundColor: "white",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    width: "40px",
+                    height: "40px",
+                  }}
+                >
+                  <MenuIcon />
+                </IconButton>
+                {/* Dropdown menu */}
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "black" }}>
+                      Logout
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -134,9 +165,7 @@ export const AllTasks: React.FC = () => {
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Error loading tasks
-                  </h3>
+                  <h3 className="text-sm font-medium text-red-800">Error loading tasks</h3>
                   <div className="mt-2 text-sm text-red-700">
                     <p>{error}</p>
                   </div>
@@ -145,22 +174,15 @@ export const AllTasks: React.FC = () => {
             </div>
           ) : tasks.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-500 text-lg font-medium mb-2">
-                No tasks found
-              </div>
-              <p className="text-gray-400">
-                There are no tasks available at the moment.
-              </p>
+              <div className="text-gray-500 text-lg font-medium mb-2">No tasks found</div>
+              <p className="text-gray-400 mb-8">Get started by creating your first agent task.</p>
+              <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
             </div>
           ) : (
             <>
               <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Tasks ({tasks.length})
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Click on any task to view details
-                </p>
+                <h2 className="text-lg font-medium text-gray-900">Tasks ({tasks.length})</h2>
+                <p className="text-sm text-gray-500">Click on any task to view details</p>
               </div>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {tasks.map((task) => (
@@ -169,23 +191,18 @@ export const AllTasks: React.FC = () => {
                     onClick={() => handleTaskClick(task.id)}
                     className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200 hover:bg-gray-50"
                   >
-                    <div className="px-4 py-5 sm:p-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {task.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Created:{" "}
-                        {new Date(task.created_at).toLocaleDateString()}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          ID: {task.id}
-                        </span>
+                    <div className="px-4 py-5 sm:p-6 h-full flex flex-col">
+                      <div className="flex items-start">
+                        <h3 className="text-lg font-medium text-gray-900 leading-none">{task.name}</h3>
                         {task.is_agentic && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ml-auto">
                             Agentic
                           </span>
                         )}
+                      </div>
+                      <p className="text-sm text-gray-500 mb-4">Created: {new Date(task.created_at).toLocaleDateString()}</p>
+                      <div className="flex items-center mt-auto">
+                        <CopyableChip label={task.id} />
                       </div>
                     </div>
                   </div>
@@ -195,6 +212,16 @@ export const AllTasks: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Create Task Modal */}
+      <CreateTaskForm
+        open={showCreateForm}
+        onTaskCreated={(taskId) => {
+          setShowCreateForm(false);
+          handleTaskCreated(taskId);
+        }}
+        onCancel={() => setShowCreateForm(false)}
+      />
     </div>
   );
 };

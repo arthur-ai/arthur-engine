@@ -6,12 +6,12 @@ from typing import List
 
 import numpy as np
 import torch
+from arthur_common.models.enums import RuleResultEnum, ToxicityViolationType
 from opentelemetry import trace
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
-from arthur_common.models.enums import RuleResultEnum, ToxicityViolationType
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,
@@ -90,7 +90,7 @@ class ToxicityScorer(RuleScorer):
         self.model = get_toxicity_classifier(TOXICITY_MODEL, TOXICITY_TOKENIZER)
         logger.info("Model and tokenizer downloaded and classifier initialized.")
 
-    def chunk_text(self, text: str, chunk_size):
+    def chunk_text(self, text: str, chunk_size: int) -> list[str]:
         chunk_iterator = ChunkIterator(
             text,
             self.toxicity_tokenizer,
@@ -190,7 +190,7 @@ class ToxicityScorer(RuleScorer):
             # so for now, we apply repetition padding to the input sequences
             with torch.no_grad():
                 tox_results = self.model(
-                    pad_text(texts, type="repetition"),
+                    pad_text(texts, pad_type="repetition"),
                     batch_size=TOXICITY_MODEL_BATCH_SIZE,
                 )
 

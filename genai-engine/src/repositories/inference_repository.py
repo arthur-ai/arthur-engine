@@ -46,11 +46,11 @@ class InferenceRepository:
     def __init__(
         self,
         db_session: Session,
-    ):
+    ) -> None:
         self.db_session: Session = db_session
         self.token_counter = TokenCounter()
 
-    def get_inference(self, inference_id: str):
+    def get_inference(self, inference_id: str) -> DatabaseInference:
         inference = (
             self.db_session.query(DatabaseInference)
             .filter(DatabaseInference.id == inference_id)
@@ -72,9 +72,10 @@ class InferenceRepository:
         task_name: str | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
+        model_name: str | None = None,
         page_size: int = 10,
-        start_time: datetime = None,
-        end_time: datetime = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
         rule_types: list[RuleType] = [],
         rule_results: list[RuleResultEnum] = [],
         prompt_statuses: list[RuleResultEnum] = [],
@@ -124,6 +125,8 @@ class InferenceRepository:
             stmt = stmt.where(DatabaseInference.conversation_id == conversation_id)
         if user_id:
             stmt = stmt.where(DatabaseInference.user_id == user_id)
+        if model_name:
+            stmt = stmt.where(DatabaseInference.model_name.ilike(f"%{model_name}%"))
         if start_time:
             stmt = stmt.where(DatabaseInference.created_at >= start_time)
         if end_time:
@@ -168,6 +171,9 @@ class InferenceRepository:
             count = stmt.count()
         else:
             count = -1
+
+        if count == 0:
+            return [], 0
 
         if page is not None:
             stmt = stmt.offset(page * page_size)
@@ -260,7 +266,7 @@ class InferenceRepository:
         # and increased memory usage. Using techniques like selectinload can help avoid
         # this problem by fetching related data without multiplying the number of rows.
         # Remember, we only have 2 posts but now have 32 rows.
-        stmt = (
+        inference_stmt = (
             self.db_session.query(DatabaseInference)
             .options(
                 selectinload(DatabaseInference.inference_prompt)
@@ -276,10 +282,10 @@ class InferenceRepository:
         )
 
         if sort == PaginationSortMethod.DESCENDING or sort is None:
-            stmt = stmt.order_by(desc(DatabaseInference.created_at))
+            inference_stmt = inference_stmt.order_by(desc(DatabaseInference.created_at))
         elif sort == PaginationSortMethod.ASCENDING:
-            stmt = stmt.order_by(asc(DatabaseInference.created_at))
-        results = stmt.all()
+            inference_stmt = inference_stmt.order_by(asc(DatabaseInference.created_at))
+        results: list[DatabaseInference] = inference_stmt.all()
 
         inferences = [Inference._from_database_model(di) for di in results]
         return inferences, count
@@ -323,13 +329,15 @@ class InferenceRepository:
         response: str,
         response_context: str,
         response_rule_results: List[RuleEngineResult],
-    ):
+        model_name: str | None = None,
+    ) -> InferenceResponse:
         inference_response = get_inference_response(
             inference_id,
             response,
             response_context,
             response_rule_results,
             tokens=self.token_counter.count(response),
+            model_name=model_name,
         )
 
         db_inference_response = inference_response._to_database_model()
@@ -345,6 +353,7 @@ class InferenceRepository:
                 )
                 else RuleResultEnum.FAIL
             )
+            db_inference.model_name = model_name
             self.db_session.commit()
         except IntegrityError as err:
             logger.warning("Response was already validated.")
@@ -367,7 +376,7 @@ class InferenceRepository:
         self,
         inference_id: str,
         context_embeddings: list[Embedding],
-    ):
+    ) -> None:
         embedding_references = [
             e._to_reference_database_model(inference_id) for e in context_embeddings
         ]
@@ -385,7 +394,7 @@ class InferenceRepository:
         self,
         user_id: str,
         query_params: Params = Params(),
-    ) -> Page[List[ConversationBaseResponse]]:
+    ) -> Page[ConversationBaseResponse]:
         subquery = (
             self.db_session.query(
                 DatabaseInference.conversation_id,
@@ -403,7 +412,7 @@ class InferenceRepository:
                 DatabaseInference.updated_at == subquery.c.newest_entry,
             ),
         )
-        paginated_user_inferences = paginate(
+        paginated_user_inferences: Page[ConversationBaseResponse] = paginate(
             self.db_session,
             query,
             params=query_params,
@@ -449,7 +458,10 @@ class InferenceRepository:
         self.db_session.commit()
 
 
-def get_new_inference(task_id: str = None, conversation_id: str = None) -> Inference:
+def get_new_inference(
+    task_id: Optional[str] = None,
+    conversation_id: Optional[str] = None,
+) -> Inference:
     inference = Inference(
         id=str(uuid.uuid4()),
         result=RuleResultEnum.PASS,
@@ -468,7 +480,7 @@ def get_inference_prompt(
     inference_id: str,
     prompt: str,
     rule_engine_results: List[RuleEngineResult],
-    user_id: str = None,
+    user_id: Optional[str] = None,
     tokens: Optional[int] = None,
 ) -> InferencePrompt:
     prompt_rule_results = [
@@ -499,6 +511,7 @@ def get_inference_response(
     response_context: str,
     rule_engine_results: List[RuleEngineResult],
     tokens: Optional[int] = None,
+    model_name: str | None = None,
 ) -> InferenceResponse:
     response_rule_results = [
         ResponseRuleResult._from_rule_engine_model(r) for r in rule_engine_results
@@ -520,6 +533,7 @@ def get_inference_response(
         context=response_context,
         response_rule_results=response_rule_results,
         tokens=tokens,
+        model_name=model_name,
     )
 
     return inference_response
