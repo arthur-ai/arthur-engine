@@ -4826,6 +4826,33 @@
                 }
             }
         },
+        "/api/v1/traces/unregistered": {
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Unregistered Root Spans",
+                "description": "Get grouped root spans for traces without task_id. Groups are ordered by count descending.",
+                "operationId": "get_unregistered_root_spans_api_v1_traces_unregistered_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnregisteredRootSpansResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v1/traces/{trace_id}": {
             "get": {
                 "tags": [
@@ -22019,6 +22046,51 @@
                     "value"
                 ],
                 "title": "TransformExtractionResponseVariable"
+            },
+            "UnregisteredRootSpanGroup": {
+                "properties": {
+                    "span_name": {
+                        "type": "string",
+                        "title": "Span Name",
+                        "description": "Name of the root span"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Number of root spans (and traces) in this group"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "span_name",
+                    "count"
+                ],
+                "title": "UnregisteredRootSpanGroup",
+                "description": "Group of root spans with the same span_name for unregistered traces"
+            },
+            "UnregisteredRootSpansResponse": {
+                "properties": {
+                    "groups": {
+                        "items": {
+                            "$ref": "#/components/schemas/UnregisteredRootSpanGroup"
+                        },
+                        "type": "array",
+                        "title": "Groups",
+                        "description": "List of grouped root spans, ordered by count descending"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of root spans (and traces) across all groups"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "groups",
+                    "total_count"
+                ],
+                "title": "UnregisteredRootSpansResponse",
+                "description": "Response for unregistered root spans endpoint"
             },
             "UnsavedPromptConfig": {
                 "properties": {
