@@ -1129,10 +1129,7 @@ class SpanQueryService:
 
         results = self.db_session.execute(query).all()
 
-        groups = [
-            (row.span_name or "Unknown", row.count)
-            for row in results
-        ]
+        groups = [(row.span_name or "Unknown", row.count) for row in results]
 
         # Calculate total number of root spans (sum of count across all groups)
         total_count = sum(count for _, count in groups)
