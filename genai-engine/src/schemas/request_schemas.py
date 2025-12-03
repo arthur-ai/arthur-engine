@@ -125,9 +125,9 @@ class NewDatasetVersionRequest(BaseModel):
     )
 
 
-class DatasetTransformColumnDefinition(BaseModel):
-    column_name: str = Field(
-        description="Name of the column to extract.",
+class TraceTransformVariableDefinition(BaseModel):
+    variable_name: str = Field(
+        description="Name of the variable to extract.",
     )
     span_name: str = Field(
         description="Name of the span to extract data from.",
@@ -141,13 +141,13 @@ class DatasetTransformColumnDefinition(BaseModel):
     )
 
 
-class DatasetTransformDefinition(BaseModel):
-    columns: list[DatasetTransformColumnDefinition] = Field(
-        description="List of column extraction rules.",
+class TraceTransformDefinition(BaseModel):
+    variables: list[TraceTransformVariableDefinition] = Field(
+        description="List of variable extraction rules.",
     )
 
 
-class NewDatasetTransformRequest(BaseModel):
+class NewTraceTransformRequest(BaseModel):
     name: str = Field(
         description="Name of the transform.",
     )
@@ -155,12 +155,12 @@ class NewDatasetTransformRequest(BaseModel):
         default=None,
         description="Description of the transform.",
     )
-    definition: DatasetTransformDefinition = Field(
+    definition: TraceTransformDefinition = Field(
         description="Transform definition specifying extraction rules.",
     )
 
 
-class DatasetTransformUpdateRequest(BaseModel):
+class TraceTransformUpdateRequest(BaseModel):
     name: Optional[str] = Field(
         default=None,
         description="Name of the transform.",
@@ -169,15 +169,9 @@ class DatasetTransformUpdateRequest(BaseModel):
         default=None,
         description="Description of the transform.",
     )
-    definition: Optional[DatasetTransformDefinition] = Field(
+    definition: Optional[TraceTransformDefinition] = Field(
         default=None,
         description="Transform definition specifying extraction rules.",
-    )
-
-
-class ExecuteTransformRequest(BaseModel):
-    trace_id: str = Field(
-        description="ID of the trace to execute the transform against.",
     )
 
 
@@ -809,4 +803,21 @@ class AgenticAnnotationRequest(BaseModel):
     annotation_description: Optional[str] = Field(
         default=None,
         description="Description of the annotation",
+    )
+
+
+class TransformListFilterRequest(BaseModel):
+    """Request schema for filtering transforms with comprehensive filtering options."""
+
+    name: Optional[str] = Field(
+        None,
+        description="Name of the transform to filter on using partial matching.",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )

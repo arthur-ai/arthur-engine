@@ -350,10 +350,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   };
 
   const loadDatasets = async () => {
-    if (!api) return;
+    if (!api || !taskId) return;
     try {
       setLoadingDatasets(true);
-      const response = await api.api.getDatasetsApiV2DatasetsSearchGet({
+      const response = await api.api.getDatasetsApiV2TasksTaskIdDatasetsSearchGet({
+        taskId,
         page_size: 100,
       });
       setDatasets(response.data.datasets);
