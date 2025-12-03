@@ -699,7 +699,7 @@ def test_execute_transform_array_index_extraction(
         assert variables["output_id_1"] == "2"
         assert variables["output_name_1"] == "Jane"
 
-        # Test the failing case where the index is out of bounds
+        # Test the failing case where the index is out of bounds returns the default value
         transform_definition = {
             "variables": [
                 {
@@ -707,6 +707,12 @@ def test_execute_transform_array_index_extraction(
                     "span_name": "rag-retrieval-savedQueries",
                     "attribute_path": "attributes.output.value.results.10.id",
                     "fallback": None,
+                },
+                {
+                    "variable_name": "output_id_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.10.name",
+                    "fallback": "fallback_value",
                 },
             ],
         }
@@ -720,12 +726,10 @@ def test_execute_transform_array_index_extraction(
             transform_id=transform.id,
             trace_id=test_data["trace_id"],
         )
-        assert status_code == 400
+        assert status_code == 200
         assert result is not None
-        assert (
-            f"index 10 not in range for list of length 2"
-            == result.get("detail", "").lower()
-        )
+        assert result.variables[0].value == ""
+        assert result.variables[1].value == "fallback_value"
 
         # Test the failing case where the key is not a valid integer index
         transform_definition = {
@@ -736,6 +740,12 @@ def test_execute_transform_array_index_extraction(
                     "attribute_path": "attributes.output.value.results.invalid_index.id",
                     "fallback": None,
                 },
+                {
+                    "variable_name": "output_id_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.invalid_index.id",
+                    "fallback": "fallback_value",
+                },
             ],
         }
         status_code, transform = client.update_transform(
@@ -748,12 +758,10 @@ def test_execute_transform_array_index_extraction(
             transform_id=transform.id,
             trace_id=test_data["trace_id"],
         )
-        assert status_code == 400
+        assert status_code == 200
         assert result is not None
-        assert (
-            f"key 'invalid_index' is not a valid integer index"
-            == result.get("detail", "").lower()
-        )
+        assert result.variables[0].value == ""
+        assert result.variables[1].value == "fallback_value"
 
     finally:
         client.delete_transform(transform.id)

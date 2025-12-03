@@ -318,15 +318,13 @@ def get_nested_value(
         elif isinstance(current, list):
             # Try to parse key as integer index
             if not key.isdigit():
-                raise ValueError(f"Key '{key}' is not a valid integer index")
+                return default
 
             index = int(key)
             if 0 <= index < len(current):
                 current = current[index]
             else:
-                raise ValueError(
-                    f"Index {index} not in range for list of length {len(current)}",
-                )
+                return default
         else:
             return default
 
