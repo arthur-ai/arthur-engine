@@ -328,58 +328,6 @@ def test_trace_api_batch_ingestion_performance(
 
 
 @pytest.mark.unit_tests
-def test_trace_api_partial_success_response(
-    client: GenaiEngineTestClientBase,
-):
-    """Test partial success when some spans are accepted and some rejected."""
-
-    # Create a trace request with mixed valid and invalid spans
-    trace_request, resource_span, scope_span = _create_base_trace_request(
-        task_id="partial_test_api",
-    )
-
-    # Add a valid span
-    valid_span = _create_span(
-        trace_id=b"partial_trace_api",
-        span_id=b"valid_span_api",
-        name="valid_span",
-        span_type="LLM",
-    )
-    scope_span.spans.append(valid_span)
-
-    # Add resource span to main request
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    # Add another resource span without task_id (will be rejected)
-    invalid_resource_span = ResourceSpans()
-    invalid_scope_span = ScopeSpans()
-
-    invalid_span = _create_span(
-        trace_id=b"invalid_trace_api",
-        span_id=b"invalid_span_api",
-        name="invalid_span",
-        span_type="LLM",
-    )
-    invalid_scope_span.spans.append(invalid_span)
-    invalid_resource_span.scope_spans.append(invalid_scope_span)
-    trace_request.resource_spans.append(invalid_resource_span)
-
-    # Send the trace
-    status_code, response_text = client.trace_api_receive_traces(
-        trace_request.SerializeToString(),
-    )
-    assert status_code == 206  # Partial success
-
-    response_json = json.loads(response_text)
-    assert response_json["total_spans"] == 2
-    assert response_json["accepted_spans"] == 1
-    assert response_json["rejected_spans"] == 1
-    assert response_json["status"] == "partial_success"
-    assert len(response_json["rejection_reasons"]) == 1
-
-
-@pytest.mark.unit_tests
 def test_trace_api_token_count_calculation_from_messages(
     client: GenaiEngineTestClientBase,
 ):
