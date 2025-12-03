@@ -63,7 +63,7 @@ def test_trace_api_receive_traces_with_resource_attributes(
 def test_trace_api_receive_traces_missing_task_id(
     client: GenaiEngineTestClientBase,
 ):
-    """Test trace ingestion with missing task ID should be rejected."""
+    """Test trace ingestion with missing task ID should be accepted (unregistered trace)."""
 
     # Create trace without task ID in resource attributes
     trace_request, resource_span, scope_span = _create_base_trace_request(task_id=None)
@@ -84,15 +84,12 @@ def test_trace_api_receive_traces_missing_task_id(
     status_code, response_text = client.trace_api_receive_traces(
         trace_request.SerializeToString(),
     )
-    assert status_code == 422
+    assert status_code == 200
 
     response_json = json.loads(response_text)
-    assert response_json["accepted_spans"] == 0
-    assert response_json["rejected_spans"] == 1
-    assert (
-        "Missing or invalid task ID in resource attributes"
-        in response_json["rejection_reasons"][0]
-    )
+    assert response_json["accepted_spans"] == 1
+    assert response_json["rejected_spans"] == 0
+    assert response_json["status"] == "success"
 
 
 @pytest.mark.unit_tests

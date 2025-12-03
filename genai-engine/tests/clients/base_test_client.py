@@ -2078,6 +2078,27 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def trace_api_get_unregistered_root_spans(
+        self,
+    ) -> tuple[int, Any]:
+        """Get grouped root spans for traces without task_id.
+
+        Returns:
+            tuple[int, Any]: Status code and response (response schema to be defined)
+        """
+        resp = self.base_client.get(
+            "/api/v1/traces/unregistered",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                resp.json() if resp.status_code == 200 else resp.text
+            ),
+        )
+
     def trace_api_list_spans_metadata(
         self,
         task_ids: list[str],

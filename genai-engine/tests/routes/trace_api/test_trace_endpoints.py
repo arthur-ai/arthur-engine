@@ -411,3 +411,208 @@ def test_trace_api_error_handling(
     ):
         status_code, _ = client.trace_api_get_trace_by_id("api_trace1")
         assert status_code == 500
+
+
+# ============================================================================
+# UNREGISTERED TRACES ENDPOINT TESTS
+# ============================================================================
+# Note: Tests for trace ingestion without task_id are in:
+# - test_trace_api_receive_traces_missing_task_id (test_trace_ingestion.py)
+# - test_receive_traces_with_resource_attributes (legacy_span/test_span_ingestion.py)
+# These will be updated after implementing support for traces without task_id
+
+
+@pytest.mark.unit_tests
+def test_get_unregistered_root_spans_grouped(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting grouped root spans for traces without task_id via endpoint."""
+    from tests.routes.trace_api.conftest import (
+        _create_base_trace_request,
+        _create_span,
+    )
+
+    # Create 5 traces without task_id with 3 distinct span_name groups:
+    # Group 1: "AppA" - 2 traces (trace1, trace2) with 2 root spans total
+    # Group 2: "AppB" - 2 traces (trace3, trace4) with 2 root spans total
+    # Group 3: "AppC" - 1 trace (trace5) with 1 root span total
+
+    # Group 1: AppA - Trace 1
+    trace_request1, resource_span1, scope_span1 = _create_base_trace_request(
+        task_id=None,
+    )
+    span1 = _create_span(
+        trace_id=b"unregistered_endpoint_trace1",
+        span_id=b"unregistered_endpoint_span1",
+        name="AppA",
+        span_type="LLM",
+    )
+    scope_span1.spans.append(span1)
+    resource_span1.scope_spans.append(scope_span1)
+    trace_request1.resource_spans.append(resource_span1)
+
+    # Group 1: AppA - Trace 2
+    trace_request2, resource_span2, scope_span2 = _create_base_trace_request(
+        task_id=None,
+    )
+    span2 = _create_span(
+        trace_id=b"unregistered_endpoint_trace2",
+        span_id=b"unregistered_endpoint_span2",
+        name="AppA",
+        span_type="LLM",
+    )
+    scope_span2.spans.append(span2)
+    resource_span2.scope_spans.append(scope_span2)
+    trace_request2.resource_spans.append(resource_span2)
+
+    # Group 2: AppB - Trace 3
+    trace_request3, resource_span3, scope_span3 = _create_base_trace_request(
+        task_id=None,
+    )
+    span3 = _create_span(
+        trace_id=b"unregistered_endpoint_trace3",
+        span_id=b"unregistered_endpoint_span3",
+        name="AppB",
+        span_type="LLM",
+    )
+    scope_span3.spans.append(span3)
+    resource_span3.scope_spans.append(scope_span3)
+    trace_request3.resource_spans.append(resource_span3)
+
+    # Group 2: AppB - Trace 4
+    trace_request4, resource_span4, scope_span4 = _create_base_trace_request(
+        task_id=None,
+    )
+    span4 = _create_span(
+        trace_id=b"unregistered_endpoint_trace4",
+        span_id=b"unregistered_endpoint_span4",
+        name="AppB",
+        span_type="LLM",
+    )
+    scope_span4.spans.append(span4)
+    resource_span4.scope_spans.append(scope_span4)
+    trace_request4.resource_spans.append(resource_span4)
+
+    # Group 3: AppC - Trace 5
+    trace_request5, resource_span5, scope_span5 = _create_base_trace_request(
+        task_id=None,
+    )
+    span5 = _create_span(
+        trace_id=b"unregistered_endpoint_trace5",
+        span_id=b"unregistered_endpoint_span5",
+        name="AppC",
+        span_type="LLM",
+    )
+    scope_span5.spans.append(span5)
+    resource_span5.scope_spans.append(scope_span5)
+    trace_request5.resource_spans.append(resource_span5)
+
+    # Send all 5 traces
+    status_code1, _ = client.trace_api_receive_traces(
+        trace_request1.SerializeToString(),
+    )
+    status_code2, _ = client.trace_api_receive_traces(
+        trace_request2.SerializeToString(),
+    )
+    status_code3, _ = client.trace_api_receive_traces(
+        trace_request3.SerializeToString(),
+    )
+    status_code4, _ = client.trace_api_receive_traces(
+        trace_request4.SerializeToString(),
+    )
+    status_code5, _ = client.trace_api_receive_traces(
+        trace_request5.SerializeToString(),
+    )
+
+    # All traces should be accepted
+    assert status_code1 == 200, "Trace 1 should be accepted"
+    assert status_code2 == 200, "Trace 2 should be accepted"
+    assert status_code3 == 200, "Trace 3 should be accepted"
+    assert status_code4 == 200, "Trace 4 should be accepted"
+    assert status_code5 == 200, "Trace 5 should be accepted"
+
+    # Call the unregistered traces endpoint
+    status_code, response = client.trace_api_get_unregistered_root_spans()
+
+    # Verify response status code
+    # Note: This will fail initially (404) until we implement the endpoint
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+
+    # Handle both dict (current) and object (future schema) responses
+    if isinstance(response, dict):
+        # Response is a dict (before schema is implemented)
+        assert "groups" in response, "Response should have 'groups' key"
+        assert "total_count" in response, "Response should have 'total_count' key"
+        groups = response["groups"]
+        total_count = response["total_count"]
+    else:
+        # Response is an object (after schema is implemented)
+        groups = response.groups
+        total_count = response.total_count
+
+    # Verify we have 3 groups
+    assert (
+        len(groups) == 3
+    ), f"Expected 3 groups, got {len(groups)}. Groups: {groups}"
+
+    # Verify each group has the correct structure
+    for group in groups:
+        if isinstance(group, dict):
+            assert "span_name" in group, "Group should have 'span_name' key"
+            assert "span_count" in group, "Group should have 'span_count' key"
+            assert "trace_count" in group, "Group should have 'trace_count' key"
+        else:
+            assert hasattr(group, "span_name"), "Group should have 'span_name' attribute"
+            assert hasattr(group, "span_count"), "Group should have 'span_count' attribute"
+            assert hasattr(group, "trace_count"), "Group should have 'trace_count' attribute"
+
+    # Helper function to get group value
+    def get_group_value(group, key):
+        return group[key] if isinstance(group, dict) else getattr(group, key)
+
+    # Find groups by span_name and verify counts
+    group_a = next(
+        (g for g in groups if get_group_value(g, "span_name") == "AppA"), None
+    )
+    assert group_a is not None, "Group 'AppA' not found"
+    assert (
+        get_group_value(group_a, "span_count") == 2
+    ), f"Expected AppA span_count=2, got {get_group_value(group_a, 'span_count')}"
+    assert (
+        get_group_value(group_a, "trace_count") == 2
+    ), f"Expected AppA trace_count=2, got {get_group_value(group_a, 'trace_count')}"
+
+    group_b = next(
+        (g for g in groups if get_group_value(g, "span_name") == "AppB"), None
+    )
+    assert group_b is not None, "Group 'AppB' not found"
+    assert (
+        get_group_value(group_b, "span_count") == 2
+    ), f"Expected AppB span_count=2, got {get_group_value(group_b, 'span_count')}"
+    assert (
+        get_group_value(group_b, "trace_count") == 2
+    ), f"Expected AppB trace_count=2, got {get_group_value(group_b, 'trace_count')}"
+
+    group_c = next(
+        (g for g in groups if get_group_value(g, "span_name") == "AppC"), None
+    )
+    assert group_c is not None, "Group 'AppC' not found"
+    assert (
+        get_group_value(group_c, "span_count") == 1
+    ), f"Expected AppC span_count=1, got {get_group_value(group_c, 'span_count')}"
+    assert (
+        get_group_value(group_c, "trace_count") == 1
+    ), f"Expected AppC trace_count=1, got {get_group_value(group_c, 'trace_count')}"
+
+    # Verify total_count equals total number of root spans (5)
+    assert (
+        total_count == 5
+    ), f"Expected total_count=5, got {total_count}"
+
+    # Verify groups are ordered by span_count descending (most common first)
+    # AppA and AppB both have span_count=2, AppC has span_count=1
+    # So AppA and AppB should come before AppC
+    span_counts = [get_group_value(g, "span_count") for g in groups]
+    assert span_counts == sorted(
+        span_counts, reverse=True
+    ), f"Groups should be ordered by span_count descending. Got: {span_counts}"

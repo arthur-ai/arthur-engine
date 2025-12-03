@@ -56,16 +56,13 @@ def test_receive_traces_with_resource_attributes(
     assert response_json["rejected_spans"] == 0
     assert response_json["status"] == "success"
 
-    # Test spans without task IDs in resource attributes (should be rejected)
+    # Test spans without task IDs in resource attributes (should be accepted as unregistered trace)
     status_code, response = client.receive_traces(sample_span_missing_task_id)
-    assert status_code == 422
+    assert status_code == 200
     response_json = json.loads(response)
-    assert response_json["accepted_spans"] == 0
-    assert response_json["rejected_spans"] == 1
-    assert (
-        "Missing or invalid task ID in resource attributes"
-        in response_json["rejection_reasons"][0]
-    )
+    assert response_json["accepted_spans"] == 1
+    assert response_json["rejected_spans"] == 0
+    assert response_json["status"] == "success"
 
     # test inserting trace with spans with and without parent_span_id
     status_code, response = client.receive_traces(
