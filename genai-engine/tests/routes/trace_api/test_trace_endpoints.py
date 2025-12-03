@@ -619,13 +619,31 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     )
 
     # Create 10 traces without task_id with 5 distinct span_name groups:
-    # Group 1: "AppA" - 3 traces (count=3)
-    # Group 2: "AppB" - 3 traces (count=3)
-    # Group 3: "AppC" - 2 traces (count=2)
-    # Group 4: "AppD" - 1 trace (count=1)
-    # Group 5: "AppE" - 1 trace (count=1)
+    # Use unique span names to avoid conflicts with other tests
+    # Group 1: "PaginationAppA" - 3 traces (count=3)
+    # Group 2: "PaginationAppB" - 3 traces (count=3)
+    # Group 3: "PaginationAppC" - 2 traces (count=2)
+    # Group 4: "PaginationAppD" - 1 trace (count=1)
+    # Group 5: "PaginationAppE" - 1 trace (count=1)
 
-    span_names = ["AppA", "AppA", "AppA", "AppB", "AppB", "AppB", "AppC", "AppC", "AppD", "AppE"]
+    # Get baseline count before creating test traces
+    status_code, baseline_response = client.trace_api_get_unregistered_root_spans(
+        page=0, page_size=1
+    )
+    assert status_code == 200
+    baseline_total_count = (
+        baseline_response.total_count 
+        if hasattr(baseline_response, "total_count") 
+        else baseline_response["total_count"]
+    )
+
+    span_names = [
+        "PaginationAppA", "PaginationAppA", "PaginationAppA",
+        "PaginationAppB", "PaginationAppB", "PaginationAppB",
+        "PaginationAppC", "PaginationAppC",
+        "PaginationAppD",
+        "PaginationAppE"
+    ]
     
     for i, span_name in enumerate(span_names):
         trace_request, resource_span, scope_span = _create_base_trace_request(
@@ -659,13 +677,18 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     groups = response.groups if hasattr(response, "groups") else response["groups"]
     total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
     
-    # Should get 2 groups (AppA and AppB, both with count=3)
+    # Should get 2 groups (PaginationAppA and PaginationAppB, both with count=3)
     assert len(groups) == 2, f"Expected 2 groups on first page, got {len(groups)}"
-    assert total_count == 10, f"Expected total_count=10, got {total_count}"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
     
     # Verify we got the top groups (ordered by count descending)
     assert get_group_value(groups[0], "count") == 3, "First group should have count=3"
     assert get_group_value(groups[1], "count") == 3, "Second group should have count=3"
+    # Verify span names are from our test data
+    assert get_group_value(groups[0], "span_name") in ["PaginationAppA", "PaginationAppB"], "First group should be PaginationAppA or PaginationAppB"
+    assert get_group_value(groups[1], "span_name") in ["PaginationAppA", "PaginationAppB"], "Second group should be PaginationAppA or PaginationAppB"
 
     # Test 2: Second page with page_size=2 (should get next 2 groups)
     status_code, response = client.trace_api_get_unregistered_root_spans(
@@ -676,13 +699,18 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     groups = response.groups if hasattr(response, "groups") else response["groups"]
     total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
     
-    # Should get 2 groups (AppC with count=2, and one of AppD/AppE with count=1)
+    # Should get 2 groups (PaginationAppC with count=2, and one of PaginationAppD/PaginationAppE with count=1)
     assert len(groups) == 2, f"Expected 2 groups on second page, got {len(groups)}"
-    assert total_count == 10, f"Expected total_count=10, got {total_count}"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
     
     # Verify we got the next groups
     assert get_group_value(groups[0], "count") == 2, "First group on page 2 should have count=2"
     assert get_group_value(groups[1], "count") == 1, "Second group on page 2 should have count=1"
+    # Verify span names are from our test data
+    assert get_group_value(groups[0], "span_name") == "PaginationAppC", "First group on page 2 should be PaginationAppC"
+    assert get_group_value(groups[1], "span_name") in ["PaginationAppD", "PaginationAppE"], "Second group on page 2 should be PaginationAppD or PaginationAppE"
 
     # Test 3: Third page with page_size=2 (should get remaining 1 group)
     status_code, response = client.trace_api_get_unregistered_root_spans(
@@ -695,7 +723,9 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     
     # Should get 1 group (the last one)
     assert len(groups) == 1, f"Expected 1 group on third page, got {len(groups)}"
-    assert total_count == 10, f"Expected total_count=10, got {total_count}"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
     assert get_group_value(groups[0], "count") == 1, "Last group should have count=1"
 
     # Test 4: Page beyond available data (should return empty list but same total_count)
@@ -708,7 +738,9 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
     
     assert len(groups) == 0, f"Expected 0 groups on page beyond data, got {len(groups)}"
-    assert total_count == 10, f"Expected total_count=10 even on empty page, got {total_count}"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10) even on empty page, got {total_count}"
 
     # Test 5: Large page_size (should get all groups)
     status_code, response = client.trace_api_get_unregistered_root_spans(
@@ -719,6 +751,16 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     groups = response.groups if hasattr(response, "groups") else response["groups"]
     total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
     
-    # Should get all 5 groups
-    assert len(groups) == 5, f"Expected 5 groups with large page_size, got {len(groups)}"
-    assert total_count == 10, f"Expected total_count=10, got {total_count}"
+    # Should get at least our 5 groups (may be more from other tests)
+    pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
+    assert len(pagination_groups) == 5, f"Expected 5 Pagination groups with large page_size, got {len(pagination_groups)}"
+    # Verify our test groups are present
+    pagination_span_names = [get_group_value(g, "span_name") for g in pagination_groups]
+    assert "PaginationAppA" in pagination_span_names, "PaginationAppA should be present"
+    assert "PaginationAppB" in pagination_span_names, "PaginationAppB should be present"
+    assert "PaginationAppC" in pagination_span_names, "PaginationAppC should be present"
+    assert "PaginationAppD" in pagination_span_names, "PaginationAppD should be present"
+    assert "PaginationAppE" in pagination_span_names, "PaginationAppE should be present"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
