@@ -113,7 +113,7 @@ class TraceIngestionService:
                 resource_task_id,
             ):
                 logger.debug(
-                    f"Invalid task ID found (empty string), treating as unregistered trace: {resource_task_id}",
+                    f"Invalid task ID found (eg: empty string or non-existent task), treating as unregistered trace: {resource_task_id}",
                 )
                 resource_task_id = None
 
