@@ -40,7 +40,11 @@ from schemas.internal_schemas import (
     DocumentStorageConfiguration,
     Task,
 )
-from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
+from schemas.request_schemas import (
+    LLMGetAllFilterRequest,
+    LLMGetVersionsFilterRequest,
+    TransformListFilterRequest,
+)
 from scorer import (
     BinaryPIIDataClassifier,
     BinaryPIIDataClassifierV1,
@@ -387,6 +391,30 @@ def llm_get_all_filter_parameters(
         llm_asset_names=llm_asset_names,
         model_provider=model_provider,
         model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+def transform_list_filter_parameters(
+    name: Optional[str] = Query(
+        None,
+        description="Name of the transform to filter on using partial matching.",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> TransformListFilterRequest:
+    """Create a LLMGetAllFilterRequest from query parameters."""
+    return TransformListFilterRequest(
+        name=name,
         created_after=datetime.fromisoformat(created_after) if created_after else None,
         created_before=(
             datetime.fromisoformat(created_before) if created_before else None

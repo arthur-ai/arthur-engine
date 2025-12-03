@@ -16,8 +16,63 @@ type UseSpanSelectorParams = {
 };
 
 export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSelectorParams) => {
-  const [selectedSpanId, setSelectedSpanId] = useState<string | null>(null);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Track if user has manually navigated (overriding path)
+  const [manualNavigation, setManualNavigation] = useState<{ spanId: string | null; keys: string[] } | null>(null);
+
+  // Parse path to get initial state
+  const pathState = useMemo(() => {
+    if (!path) {
+      return { spanId: null, keys: [] };
+    }
+
+    // Try to match the path against each span's name to find the longest matching span name
+    // This handles span names that contain dots or special characters
+    let matchedSpan: NestedSpanWithMetricsResponse | undefined;
+    let remainingPath = '';
+
+    for (const span of spans) {
+      if (span.span_name && path.startsWith(span.span_name + '.')) {
+        // Check if this is a longer match than what we have
+        if (!matchedSpan || span.span_name.length > matchedSpan.span_name!.length) {
+          matchedSpan = span;
+          remainingPath = path.slice(span.span_name.length + 1); // +1 for the dot
+        }
+      }
+    }
+
+    if (!matchedSpan) {
+      return { spanId: null, keys: [] };
+    }
+
+    const attributePath = remainingPath.split('.');
+    const navigationKeys = attributePath.slice(0, -1); // Navigate to parent of final attribute
+
+    // Validate that the navigation path exists in the span's data
+    if (navigationKeys.length > 0) {
+      const navPath = navigationKeys.join('.');
+      const data = getNestedValue(matchedSpan.raw_data, navPath);
+
+      // If the navigation path doesn't exist or isn't an object, don't use it
+      if (!data || typeof data !== 'object') {
+        return { spanId: null, keys: [] };
+      }
+
+      // Also check if the final attribute exists in the data
+      const finalAttribute = attributePath[attributePath.length - 1];
+      if (finalAttribute && !(finalAttribute in data)) {
+        return { spanId: null, keys: [] };
+      }
+    }
+
+    return {
+      spanId: matchedSpan.span_id,
+      keys: navigationKeys,
+    };
+  }, [path, spans]);
+
+  // Use manual navigation if available, otherwise use path-derived state
+  const selectedSpanId = manualNavigation?.spanId ?? pathState.spanId;
+  const selectedKeys = manualNavigation?.keys ?? pathState.keys;
 
   const navigationPath = selectedKeys.join(".");
 
@@ -44,14 +99,14 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
   }, [path, selectedSpan, navigationPath, availableAttributes]);
 
   const handleSelectKey = (key: string) => {
-    setSelectedKeys((prev) => [...prev, key]);
+    setManualNavigation({ spanId: selectedSpanId, keys: [...selectedKeys, key] });
   };
 
   const handleGoBack = () => {
     if (selectedKeys.length === 0) {
-      setSelectedSpanId(null);
+      setManualNavigation({ spanId: null, keys: [] });
     } else {
-      setSelectedKeys((prev) => prev.slice(0, -1));
+      setManualNavigation({ spanId: selectedSpanId, keys: selectedKeys.slice(0, -1) });
     }
   };
 
@@ -68,11 +123,13 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
       span_name: selectedSpan.span_name || undefined,
       attribute_path: fullPath,
     });
+
+    // Clear manual navigation since we've made a selection
+    setManualNavigation(null);
   };
 
   const handleSelectSpan = (spanId: string) => {
-    setSelectedSpanId(spanId);
-    setSelectedKeys([]);
+    setManualNavigation({ spanId, keys: [] });
   };
 
   const handleNavigateToAttribute = (e: React.MouseEvent, attribute: string) => {

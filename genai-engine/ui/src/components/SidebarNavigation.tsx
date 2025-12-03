@@ -50,6 +50,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       items: [
         { id: "evaluators", label: "Evals Management" },
         { id: "datasets", label: "Datasets" },
+        { id: "transforms", label: "Transforms" },
       ],
     },
     {
