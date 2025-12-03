@@ -823,10 +823,63 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
-class LLMEvalTransformListFilterRequest(BaseModel):
-    """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
+class ContinuousEvalCreateRequest(BaseModel):
+    """Request schema for creating a continuous eval"""
+
+    name: str = Field(description="Name of the continuous eval")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval",
+    )
+    llm_eval_name: str = Field(
+        description="Name of the llm eval to create the continuous eval for",
+    )
+    llm_eval_version: Union[str, int] = Field(
+        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    )
+    transform_id: UUID = Field(
+        description="ID of the transform to create the continuous eval for",
+    )
+
+
+class UpdateContinuousEvalRequest(BaseModel):
+    """Request schema for creating a continuous eval"""
+
+    name: Optional[str] = Field(default=None, description="Name of the continuous eval")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval",
+    )
+    llm_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the llm eval to create the continuous eval for",
+    )
+    llm_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    )
+    transform_id: Optional[UUID] = Field(
+        default=None,
+        description="ID of the transform to create the continuous eval for",
+    )
+
+    @model_validator(mode="after")
+    def validate_request(self):
+        if self.llm_eval_name is not None and self.llm_eval_version is None:
+            raise ValueError(
+                "Must specify which version of the llm eval this continuous eval should be associated with",
+            )
+        return self
+
+
+class ContinuousEvalListFilterRequest(BaseModel):
+    """Request schema for filtering continuous evals with comprehensive filtering options."""
 
     # Optional filters
+    name: Optional[str] = Field(
+        None,
+        description="Name of the continuous eval to filter on",
+    )
     llm_eval_name: Optional[str] = Field(
         None,
         description="LLM eval name to filter on",

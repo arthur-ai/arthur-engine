@@ -109,7 +109,7 @@ from db_models.dataset_models import (
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
-from db_models.llm_eval_models import DatabaseLLMEvalTransform
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
@@ -148,6 +148,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
+    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
@@ -155,7 +156,6 @@ from schemas.response_schemas import (
     DatasetVersionRowResponse,
     DocumentStorageConfigurationResponse,
     ListDatasetVersionsResponse,
-    LLMEvalTransformResponse,
     RagProviderConfigurationResponse,
     RagSearchSettingConfigurationResponse,
     RagSearchSettingConfigurationVersionResponse,
@@ -3287,43 +3287,55 @@ class RagSearchSettingConfiguration(BaseModel):
         )
 
 
-class LLMEvalTransform(BaseModel):
+class ContinuousEval(BaseModel):
     id: uuid.UUID
+    name: str
+    description: Optional[str]
     task_id: str
     llm_eval_name: str
     llm_eval_version: int
     transform_id: uuid.UUID
     created_at: datetime
+    updated_at: datetime
 
-    def to_db_model(self) -> DatabaseLLMEvalTransform:
-        return DatabaseLLMEvalTransform(
+    def to_db_model(self) -> DatabaseContinuousEval:
+        return DatabaseContinuousEval(
             id=self.id,
+            name=self.name,
+            description=self.description,
             task_id=self.task_id,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
             created_at=self.created_at,
+            updated_at=self.updated_at,
         )
 
     @staticmethod
     def from_db_model(
-        db_transform: DatabaseLLMEvalTransform,
-    ) -> "LLMEvalTransform":
-        return LLMEvalTransform(
-            id=db_transform.id,
-            task_id=db_transform.task_id,
-            llm_eval_name=db_transform.llm_eval_name,
-            llm_eval_version=db_transform.llm_eval_version,
-            transform_id=db_transform.transform_id,
-            created_at=db_transform.created_at,
+        db_eval: DatabaseContinuousEval,
+    ) -> "ContinuousEval":
+        return ContinuousEval(
+            id=db_eval.id,
+            name=db_eval.name,
+            description=db_eval.description,
+            task_id=db_eval.task_id,
+            llm_eval_name=db_eval.llm_eval_name,
+            llm_eval_version=db_eval.llm_eval_version,
+            transform_id=db_eval.transform_id,
+            created_at=db_eval.created_at,
+            updated_at=db_eval.updated_at,
         )
 
-    def to_response_model(self) -> LLMEvalTransformResponse:
-        return LLMEvalTransformResponse(
+    def to_response_model(self) -> ContinuousEvalResponse:
+        return ContinuousEvalResponse(
             id=self.id,
+            name=self.name,
+            description=self.description,
             task_id=self.task_id,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
             created_at=self.created_at,
+            updated_at=self.updated_at,
         )

@@ -3,7 +3,6 @@ import random
 import urllib
 from datetime import datetime
 from typing import Any, Dict, Union
-from uuid import UUID
 
 import httpx
 from arthur_common.models.common_schemas import (
@@ -69,6 +68,7 @@ from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
+    ContinuousEvalCreateRequest,
     CreateAgenticPromptRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
@@ -88,6 +88,7 @@ from schemas.request_schemas import (
     RagSearchSettingConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
     TraceTransformUpdateRequest,
+    UpdateContinuousEvalRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsRequest,
@@ -96,15 +97,15 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
+    ListContinuousEvalsResponse,
     ListDatasetVersionsResponse,
-    ListLLMEvalTransformsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
     ListTraceTransformsResponse,
-    LLMEvalTransformResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -3521,18 +3522,39 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def add_transform_to_llm_eval(
+    def delete_llm_eval(
         self,
         task_id: str,
         llm_eval_name: str,
-        llm_eval_version: str,
-        transform_id: UUID,
-    ) -> tuple[int, LLMEvalTransformResponse]:
-        """Add a transform to an llm eval."""
+    ) -> tuple[int, Any]:
+        """Delete an llm eval."""
+        resp = self.base_client.delete(
+            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
+
+    def save_continuous_eval(
+        self,
+        task_id: str,
+        continuous_eval_data: Union[ContinuousEvalCreateRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Create a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, ContinuousEvalCreateRequest)
+            else continuous_eval_data
+        )
         resp = self.base_client.post(
-            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}/versions/{llm_eval_version}/transforms/{transform_id}",
+            f"/api/v1/tasks/{task_id}/continuous_evals",
+            json=payload,
             headers=self.authorized_user_api_key_headers,
-            json={},
         )
 
         log_response(resp)
@@ -3540,22 +3562,26 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                LLMEvalTransformResponse.model_validate(resp.json())
+                ContinuousEvalResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),
         )
 
-    def get_llm_eval_transform_by_id(
+    def update_continuous_eval(
         self,
-        task_id: str,
-        llm_eval_name: str,
-        llm_eval_version: str,
-        transform_id: str,
-    ) -> tuple[int, LLMEvalTransformResponse]:
-        """Add a transform to an llm eval."""
-        resp = self.base_client.get(
-            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}/versions/{llm_eval_version}/transforms/{transform_id}",
+        continuous_eval_id: str,
+        continuous_eval_data: Union[UpdateContinuousEvalRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Update a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, UpdateContinuousEvalRequest)
+            else continuous_eval_data
+        )
+        resp = self.base_client.patch(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            json=payload,
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3564,19 +3590,40 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                LLMEvalTransformResponse.model_validate(resp.json())
+                ContinuousEvalResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),
         )
 
-    def list_llm_eval_transforms(
+    def get_continuous_eval_by_id(
+        self,
+        continuous_eval_id: str,
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Get a continuous eval by id."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_continuous_evals(
         self,
         task_id: str,
         search_url: str = None,
-    ) -> tuple[int, ListLLMEvalTransformsResponse]:
-        """Add a transform to an llm eval."""
-        base_url = f"/api/v1/tasks/{task_id}/llm_evals/transforms"
+    ) -> tuple[int, ListContinuousEvalsResponse]:
+        """List continuous evals."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals"
         if search_url:
             base_url = base_url + "?" + search_url
         resp = self.base_client.get(
@@ -3589,22 +3636,19 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                ListLLMEvalTransformsResponse.model_validate(resp.json())
+                ListContinuousEvalsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),
         )
 
-    def remove_transform_from_llm_eval(
+    def delete_continuous_eval(
         self,
-        task_id: str,
-        llm_eval_name: str,
-        llm_eval_version: str,
-        transform_id: UUID,
+        continuous_eval_id: str,
     ) -> tuple[int, Any]:
-        """Delete a transform from an llm eval."""
+        """Delete a continuous eval."""
         resp = self.base_client.delete(
-            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}/versions/{llm_eval_version}/transforms/{transform_id}",
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
             headers=self.authorized_user_api_key_headers,
         )
 

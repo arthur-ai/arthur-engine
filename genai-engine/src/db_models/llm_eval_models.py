@@ -103,14 +103,17 @@ class DatabaseLLMEvalVersionTag(Base):
     )
 
 
-class DatabaseLLMEvalTransform(Base):
-    __tablename__ = "llm_eval_transforms"
+class DatabaseContinuousEval(Base):
+    __tablename__ = "continuous_evals"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID,
         primary_key=True,
         default=uuid.uuid4,
     )
+
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # llm eval composite primary key
     task_id: Mapped[str] = mapped_column(String, nullable=False)
@@ -128,6 +131,11 @@ class DatabaseLLMEvalTransform(Base):
         default=datetime.now,
         nullable=False,
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -139,7 +147,8 @@ class DatabaseLLMEvalTransform(Base):
         UniqueConstraint(
             "task_id",
             "llm_eval_name",
+            "llm_eval_version",
             "transform_id",
-            name="uq_llm_eval_transforms_task_id_name_transform_id",
+            name="uq_continuous_eval_eval_transform",
         ),
     )

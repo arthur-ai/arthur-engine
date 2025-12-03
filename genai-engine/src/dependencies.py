@@ -41,7 +41,7 @@ from schemas.internal_schemas import (
     Task,
 )
 from schemas.request_schemas import (
-    LLMEvalTransformListFilterRequest,
+    ContinuousEvalListFilterRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
     TransformListFilterRequest,
@@ -423,7 +423,11 @@ def transform_list_filter_parameters(
     )
 
 
-def llm_eval_transform_list_filter_parameters(
+def continuous_eval_list_filter_parameters(
+    name: Optional[str] = Query(
+        None,
+        description="Name of the continuous eval to filter on.",
+    ),
     llm_eval_name: Optional[str] = Query(
         None,
         description="Name of the llm eval to filter on",
@@ -436,9 +440,10 @@ def llm_eval_transform_list_filter_parameters(
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     ),
-) -> LLMEvalTransformListFilterRequest:
-    """Create a LLMEvalTransformListFilterRequest from query parameters."""
-    return LLMEvalTransformListFilterRequest(
+) -> ContinuousEvalListFilterRequest:
+    """Create a ContinuousEvalListFilterRequest from query parameters."""
+    return ContinuousEvalListFilterRequest(
+        name=name,
         llm_eval_name=llm_eval_name,
         created_after=datetime.fromisoformat(created_after) if created_after else None,
         created_before=(

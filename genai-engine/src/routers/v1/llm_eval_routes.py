@@ -1,5 +1,4 @@
 from typing import Annotated
-from uuid import UUID
 
 import jinja2
 from arthur_common.models.common_schemas import PaginationParameters
@@ -9,7 +8,6 @@ from sqlalchemy.orm import Session
 from dependencies import (
     get_db_session,
     get_validated_agentic_task,
-    llm_eval_transform_list_filter_parameters,
     llm_get_all_filter_parameters,
     llm_get_versions_filter_parameters,
 )
@@ -22,15 +20,12 @@ from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
-    LLMEvalTransformListFilterRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
 )
 from schemas.response_schemas import (
-    ListLLMEvalTransformsResponse,
     LLMEvalRunResponse,
     LLMEvalsVersionListResponse,
-    LLMEvalTransformResponse,
     LLMGetAllMetadataListResponse,
 )
 from utils.users import permission_checker
@@ -438,211 +433,5 @@ def delete_tag_from_llm_eval_version(
             raise HTTPException(status_code=404, detail=str(e))
         else:
             raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-########################################################
-# Eval Transform Management Routes
-########################################################
-
-
-@llm_eval_routes.get(
-    "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/transforms/{transform_id}",
-    summary="Get a transform attached to an llm eval by id",
-    description="Get a transform attached to an llm eval by id",
-    response_model=LLMEvalTransformResponse,
-    response_model_exclude_none=True,
-    tags=["LLMEvals"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def get_llm_eval_transform_by_id(
-    eval_name: str = Path(
-        ...,
-        description="The name of the llm eval to retrieve.",
-        title="LLM Eval Name",
-    ),
-    eval_version: str = Path(
-        ...,
-        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
-        title="LLM Eval Version",
-    ),
-    transform_id: UUID = Path(
-        ...,
-        description="The id of the transform to add to the llm eval version.",
-        title="Transform ID",
-    ),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-) -> LLMEvalTransformResponse:
-    try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval = llm_eval_service.get_llm_item(task.id, eval_name, eval_version)
-        if not llm_eval:
-            raise HTTPException(
-                status_code=404,
-                detail=f"LLM eval {eval_name} (version {eval_version}) not found.",
-            )
-
-        eval_transform = llm_eval_service.get_llm_eval_transform_by_id(
-            task.id,
-            llm_eval,
-            transform_id,
-        )
-        return eval_transform.to_response_model()
-    except ValueError as e:
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@llm_eval_routes.get(
-    "/tasks/{task_id}/llm_evals/transforms",
-    summary="Get all transforms attached to llm evals for a specific task",
-    description="Get all transforms attached to llm evals for a specific task",
-    response_model=ListLLMEvalTransformsResponse,
-    response_model_exclude_none=True,
-    tags=["LLMEvals"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def list_llm_eval_transforms(
-    pagination_parameters: Annotated[
-        PaginationParameters,
-        Depends(common_pagination_parameters),
-    ],
-    filter_request: Annotated[
-        LLMEvalTransformListFilterRequest,
-        Depends(llm_eval_transform_list_filter_parameters),
-    ],
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-) -> LLMEvalTransformResponse:
-    try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        eval_transforms = llm_eval_service.list_llm_eval_transforms(
-            task.id,
-            pagination_parameters,
-            filter_request,
-        )
-        return ListLLMEvalTransformsResponse(
-            transforms=[
-                eval_transform.to_response_model() for eval_transform in eval_transforms
-            ],
-            count=len(eval_transforms),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@llm_eval_routes.post(
-    "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/transforms/{transform_id}",
-    summary="Add a transform to an llm eval version",
-    description="Add a transform to an llm eval version",
-    response_model=LLMEvalTransformResponse,
-    response_model_exclude_none=True,
-    tags=["LLMEvals"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def add_transform_to_llm_eval_version(
-    eval_name: str = Path(
-        ...,
-        description="The name of the llm eval to retrieve.",
-        title="LLM Eval Name",
-    ),
-    eval_version: str = Path(
-        ...,
-        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
-        title="LLM Eval Version",
-    ),
-    transform_id: UUID = Path(
-        ...,
-        description="The id of the transform to add to the llm eval version.",
-        title="Transform ID",
-    ),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-) -> LLMEvalTransformResponse:
-    try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval = llm_eval_service.get_llm_item(task.id, eval_name, eval_version)
-        if not llm_eval:
-            raise HTTPException(
-                status_code=404,
-                detail=f"LLM eval {eval_name} (version {eval_version}) not found.",
-            )
-
-        eval_transform = llm_eval_service.add_transform_to_llm_eval_version(
-            task.id,
-            llm_eval,
-            transform_id,
-        )
-        return eval_transform.to_response_model()
-    except ValueError as e:
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@llm_eval_routes.delete(
-    "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/transforms/{transform_id}",
-    summary="Remove a transform from an llm eval",
-    description="Remove a transform from an llm eval",
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses={
-        status.HTTP_204_NO_CONTENT: {"description": "Transform removed from llm eval."},
-    },
-    tags=["LLMEvals"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def remove_transform_from_llm_eval(
-    eval_name: str = Path(
-        ...,
-        description="The name of the llm eval to retrieve.",
-        title="LLM Eval Name",
-    ),
-    eval_version: str = Path(
-        ...,
-        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
-        title="LLM Eval Version",
-    ),
-    transform_id: UUID = Path(
-        ...,
-        description="The id of the transform to remove from the llm eval version.",
-        title="Transform ID",
-    ),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-) -> None:
-    try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval = llm_eval_service.get_llm_item(task.id, eval_name, eval_version)
-
-        llm_eval_service.remove_transform_from_llm_eval(
-            task.id,
-            llm_eval.name,
-            llm_eval.version,
-            transform_id,
-        )
-    except ValueError as e:
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

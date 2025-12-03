@@ -9438,382 +9438,6 @@
                 }
             }
         },
-        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/transforms/{transform_id}": {
-            "get": {
-                "tags": [
-                    "LLMEvals"
-                ],
-                "summary": "Get a transform attached to an llm eval by id",
-                "description": "Get a transform attached to an llm eval by id",
-                "operationId": "get_llm_eval_transform_by_id_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__transforms__transform_id__get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
-                    },
-                    {
-                        "name": "eval_version",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                        },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Transform ID",
-                            "description": "The id of the transform to add to the llm eval version."
-                        },
-                        "description": "The id of the transform to add to the llm eval version."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LLMEvalTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "LLMEvals"
-                ],
-                "summary": "Add a transform to an llm eval version",
-                "description": "Add a transform to an llm eval version",
-                "operationId": "add_transform_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__transforms__transform_id__post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
-                    },
-                    {
-                        "name": "eval_version",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                        },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Transform ID",
-                            "description": "The id of the transform to add to the llm eval version."
-                        },
-                        "description": "The id of the transform to add to the llm eval version."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LLMEvalTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "LLMEvals"
-                ],
-                "summary": "Remove a transform from an llm eval",
-                "description": "Remove a transform from an llm eval",
-                "operationId": "remove_transform_from_llm_eval_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__transforms__transform_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
-                    },
-                    {
-                        "name": "eval_version",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                        },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Transform ID",
-                            "description": "The id of the transform to remove from the llm eval version."
-                        },
-                        "description": "The id of the transform to remove from the llm eval version."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Transform removed from llm eval."
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/tasks/{task_id}/llm_evals/transforms": {
-            "get": {
-                "tags": [
-                    "LLMEvals"
-                ],
-                "summary": "Get all transforms attached to llm evals for a specific task",
-                "description": "Get all transforms attached to llm evals for a specific task",
-                "operationId": "list_llm_eval_transforms_api_v1_tasks__task_id__llm_evals_transforms_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
-                        },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
-                    },
-                    {
-                        "name": "llm_eval_name",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Name of the llm eval to filter on",
-                            "title": "Llm Eval Name"
-                        },
-                        "description": "Name of the llm eval to filter on"
-                    },
-                    {
-                        "name": "created_after",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-                            "title": "Created After"
-                        },
-                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
-                    },
-                    {
-                        "name": "created_before",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-                            "title": "Created Before"
-                        },
-                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ListLLMEvalTransformsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/tasks/{task_id}/notebooks": {
             "post": {
                 "tags": [
@@ -11216,6 +10840,371 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TransformExtractionResponseList"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/{eval_id}": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get a continuous eval by id",
+                "description": "Get a continuous eval by id",
+                "operationId": "get_continuous_eval_by_id_api_v1_continuous_evals__eval_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to retrieve."
+                        },
+                        "description": "The id of the continuous eval to retrieve."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Update a continuous eval",
+                "description": "Update a continuous eval",
+                "operationId": "update_continuous_eval_api_v1_continuous_evals__eval_id__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to update."
+                        },
+                        "description": "The id of the continuous eval to update."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateContinuousEvalRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Delete a continuous eval",
+                "description": "Delete a continuous eval",
+                "operationId": "delete_continuous_eval_api_v1_continuous_evals__eval_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to delete."
+                        },
+                        "description": "The id of the continuous eval to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Continuous eval deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/continuous_evals": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get all continuous evals for a specific task",
+                "description": "Get all continuous evals for a specific task",
+                "operationId": "list_continuous_evals_api_v1_tasks__task_id__continuous_evals_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the continuous eval to filter on.",
+                            "title": "Name"
+                        },
+                        "description": "Name of the continuous eval to filter on."
+                    },
+                    {
+                        "name": "llm_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the llm eval to filter on",
+                            "title": "Llm Eval Name"
+                        },
+                        "description": "Name of the llm eval to filter on"
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListContinuousEvalsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Create a continuous eval",
+                "description": "Create a continuous eval",
+                "operationId": "create_continuous_eval_api_v1_tasks__task_id__continuous_evals_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContinuousEvalCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalResponse"
                                 }
                             }
                         }
@@ -12854,6 +12843,131 @@
                     "connection_check_outcome"
                 ],
                 "title": "ConnectionCheckResult"
+            },
+            "ContinuousEvalCreateRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the continuous eval"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the continuous eval"
+                    },
+                    "llm_eval_name": {
+                        "type": "string",
+                        "title": "Llm Eval Name",
+                        "description": "Name of the llm eval to create the continuous eval for"
+                    },
+                    "llm_eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "integer"
+                            }
+                        ],
+                        "title": "Llm Eval Version",
+                        "description": "Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                    },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform to create the continuous eval for"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "llm_eval_name",
+                    "llm_eval_version",
+                    "transform_id"
+                ],
+                "title": "ContinuousEvalCreateRequest",
+                "description": "Request schema for creating a continuous eval"
+            },
+            "ContinuousEvalResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the transform."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the continuous eval."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the continuous eval."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "llm_eval_name": {
+                        "type": "string",
+                        "title": "Llm Eval Name",
+                        "description": "Name of the llm eval."
+                    },
+                    "llm_eval_version": {
+                        "type": "integer",
+                        "title": "Llm Eval Version",
+                        "description": "Version of the llm eval."
+                    },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time the transform was added to the llm eval."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Timestamp representing the time the continuous eval was last updated."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "task_id",
+                    "llm_eval_name",
+                    "llm_eval_version",
+                    "transform_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ContinuousEvalResponse"
             },
             "ConversationBaseResponse": {
                 "properties": {
@@ -15165,53 +15279,6 @@
                 ],
                 "title": "LLMEvalRunResponse"
             },
-            "LLMEvalTransformResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id",
-                        "description": "ID of the transform."
-                    },
-                    "task_id": {
-                        "type": "string",
-                        "title": "Task Id",
-                        "description": "ID of the parent task."
-                    },
-                    "llm_eval_name": {
-                        "type": "string",
-                        "title": "Llm Eval Name",
-                        "description": "Name of the llm eval."
-                    },
-                    "llm_eval_version": {
-                        "type": "integer",
-                        "title": "Llm Eval Version",
-                        "description": "Version of the llm eval."
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Transform Id",
-                        "description": "ID of the transform."
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Timestamp representing the time the transform was added to the llm eval."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "task_id",
-                    "llm_eval_name",
-                    "llm_eval_version",
-                    "transform_id",
-                    "created_at"
-                ],
-                "title": "LLMEvalTransformResponse"
-            },
             "LLMEvalsVersionListResponse": {
                 "properties": {
                     "versions": {
@@ -15959,6 +16026,29 @@
                 ],
                 "title": "LLMVersionResponse"
             },
+            "ListContinuousEvalsResponse": {
+                "properties": {
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContinuousEvalResponse"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "List of continuous evals."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of evals"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "evals",
+                    "count"
+                ],
+                "title": "ListContinuousEvalsResponse"
+            },
             "ListDatasetVersionsResponse": {
                 "properties": {
                     "versions": {
@@ -15999,29 +16089,6 @@
                     "total_count"
                 ],
                 "title": "ListDatasetVersionsResponse"
-            },
-            "ListLLMEvalTransformsResponse": {
-                "properties": {
-                    "transforms": {
-                        "items": {
-                            "$ref": "#/components/schemas/LLMEvalTransformResponse"
-                        },
-                        "type": "array",
-                        "title": "Transforms",
-                        "description": "List of transforms for the llm eval."
-                    },
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "Total number of transforms"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "transforms",
-                    "count"
-                ],
-                "title": "ListLLMEvalTransformsResponse"
             },
             "ListRagSearchSettingConfigurationVersionsResponse": {
                 "properties": {
@@ -22101,6 +22168,77 @@
                 ],
                 "title": "UnsavedPromptVariablesRequest",
                 "description": "Request schema for getting the list of variables needed from an unsaved prompt's messages"
+            },
+            "UpdateContinuousEvalRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Name of the continuous eval"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the continuous eval"
+                    },
+                    "llm_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Llm Eval Name",
+                        "description": "Name of the llm eval to create the continuous eval for"
+                    },
+                    "llm_eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Llm Eval Version",
+                        "description": "Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                    },
+                    "transform_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Id",
+                        "description": "ID of the transform to create the continuous eval for"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateContinuousEvalRequest",
+                "description": "Request schema for creating a continuous eval"
             },
             "UpdateMetricRequest": {
                 "properties": {
