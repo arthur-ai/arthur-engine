@@ -1,4 +1,4 @@
-"""Tests for dataset transform execution endpoint."""
+"""Tests for transform execution endpoint."""
 
 import json
 import uuid
@@ -49,7 +49,10 @@ def setup_test_data():
                 "openinference.span.kind": "RETRIEVER",
                 "input.value.sqlQuery": "SELECT * FROM users WHERE id = 1",
                 "input.value.context": "User query context",
-                "output.value.results": [{"id": 1, "name": "John"}],
+                "output.value.results": [
+                    {"id": 1, "name": "John"},
+                    {"id": 2, "name": "Jane"},
+                ],
             },
         },
     )
@@ -203,36 +206,30 @@ def test_execute_transform_success(
     """Test successful transform execution against a trace."""
     test_data = setup_test_data
 
-    status_code, agentic_task = client.create_task(name="test_execute_transform_success_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, dataset = client.create_dataset(
-        name="Test Dataset for Transform Execution",
-        task_id=agentic_task.id,
-        description="Testing transform execution",
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_success_task",
+        is_agentic=True,
     )
     assert status_code == 200
 
     try:
         # Create a transform that extracts data from the test spans
         transform_definition = {
-            "version": "1.0",
-            "columns": [
+            "variables": [
                 {
-                    "column_name": "sqlQuery",
+                    "variable_name": "sqlQuery",
                     "span_name": "rag-retrieval-savedQueries",
                     "attribute_path": "attributes.input.value.sqlQuery",
                     "fallback": None,
                 },
                 {
-                    "column_name": "trace_id",
+                    "variable_name": "trace_id",
                     "span_name": "rag-retrieval-savedQueries",
                     "attribute_path": "traceId",
                     "fallback": None,
                 },
                 {
-                    "column_name": "token_cost",
+                    "variable_name": "token_cost",
                     "span_name": "llm_call",
                     "attribute_path": "attributes.llm.token_cost",
                     "fallback": "0",
@@ -241,37 +238,33 @@ def test_execute_transform_success(
         }
 
         status_code, transform = client.create_transform(
-            dataset_id=dataset.id,
-            name="Test Transform",
+            task_id=agentic_task.id,
+            name="test_transform",
             definition=transform_definition,
         )
         assert status_code == 200
 
         # Execute the transform
         status_code, result = client.execute_transform_extraction(
-            dataset_id=dataset.id,
             transform_id=transform.id,
             trace_id=test_data["trace_id"],
         )
 
         assert status_code == 200
         assert result is not None
-        assert len(result.rows_extracted) == 1
-
-        row = result.rows_extracted[0]
-        assert len(row.data) == 3
+        assert len(result.variables) == 3
 
         # Verify extracted data
-        columns = {col.column_name: col.column_value for col in row.data}
-        assert "sqlQuery" in columns
-        assert columns["sqlQuery"] == "SELECT * FROM users WHERE id = 1"
-        assert "trace_id" in columns
-        assert columns["trace_id"] == test_data["trace_id"]
-        assert "token_cost" in columns
-        assert columns["token_cost"] == "0.05"
+        variables = {var.variable_name: var.value for var in result.variables}
+        assert "sqlQuery" in variables
+        assert variables["sqlQuery"] == "SELECT * FROM users WHERE id = 1"
+        assert "trace_id" in variables
+        assert variables["trace_id"] == test_data["trace_id"]
+        assert "token_cost" in variables
+        assert variables["token_cost"] == "0.05"
 
     finally:
-        client.delete_dataset(dataset.id)
+        client.delete_transform(transform.id)
 
         status_code = client.delete_task(agentic_task.id)
         assert status_code == 204
@@ -285,36 +278,30 @@ def test_execute_transform_with_fallback_values(
     """Test transform execution with fallback values for missing spans/attributes."""
     test_data = setup_test_data
 
-    status_code, agentic_task = client.create_task(name="test_execute_transform_with_fallback_values_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, dataset = client.create_dataset(
-        name="Test Dataset for Fallback Values",
-        task_id=agentic_task.id,
-        description="Testing fallback values",
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_with_fallback_values_task",
+        is_agentic=True,
     )
     assert status_code == 200
 
     try:
         # Create a transform that references non-existent spans and attributes
         transform_definition = {
-            "version": "1.0",
-            "columns": [
+            "variables": [
                 {
-                    "column_name": "nonexistent_span",
+                    "variable_name": "nonexistent_span",
                     "span_name": "span-that-does-not-exist",
                     "attribute_path": "attributes.some.path",
                     "fallback": "default_value",
                 },
                 {
-                    "column_name": "nonexistent_attribute",
+                    "variable_name": "nonexistent_attribute",
                     "span_name": "rag-retrieval-savedQueries",
                     "attribute_path": "attributes.path.that.does.not.exist",
                     "fallback": "fallback_attribute",
                 },
                 {
-                    "column_name": "null_fallback",
+                    "variable_name": "null_fallback",
                     "span_name": "missing-span",
                     "attribute_path": "attributes.test",
                     "fallback": None,
@@ -323,34 +310,30 @@ def test_execute_transform_with_fallback_values(
         }
 
         status_code, transform = client.create_transform(
-            dataset_id=dataset.id,
-            name="Test Transform with Fallbacks",
+            task_id=agentic_task.id,
+            name="test_transform_with_fallbacks",
             definition=transform_definition,
         )
         assert status_code == 200
 
         # Execute the transform
         status_code, result = client.execute_transform_extraction(
-            dataset_id=dataset.id,
             transform_id=transform.id,
             trace_id=test_data["trace_id"],
         )
 
         assert status_code == 200
         assert result is not None
-        assert len(result.rows_extracted) == 1
-
-        row = result.rows_extracted[0]
-        assert len(row.data) == 3
+        assert len(result.variables) == 3
 
         # Verify fallback values were used
-        columns = {col.column_name: col.column_value for col in row.data}
-        assert columns["nonexistent_span"] == "default_value"
-        assert columns["nonexistent_attribute"] == "fallback_attribute"
-        assert columns["null_fallback"] == ""  # None fallback becomes empty string
+        variables = {var.variable_name: var.value for var in result.variables}
+        assert variables["nonexistent_span"] == "default_value"
+        assert variables["nonexistent_attribute"] == "fallback_attribute"
+        assert variables["null_fallback"] == ""  # None fallback becomes empty string
 
     finally:
-        client.delete_dataset(dataset.id)
+        client.delete_transform(transform.id)
 
         status_code = client.delete_task(agentic_task.id)
         assert status_code == 204
@@ -364,14 +347,9 @@ def test_execute_transform_missing_transform(
     """Test transform execution with a non-existent transform."""
     test_data = setup_test_data
 
-    status_code, agentic_task = client.create_task(name="test_execute_transform_missing_transform_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, dataset = client.create_dataset(
-        name="Test Dataset for Missing Transform",
-        task_id=agentic_task.id,
-        description="Testing missing transform error",
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_missing_transform_task",
+        is_agentic=True,
     )
     assert status_code == 200
 
@@ -380,7 +358,6 @@ def test_execute_transform_missing_transform(
 
         # Try to execute with non-existent transform
         status_code, error = client.execute_transform_extraction(
-            dataset_id=dataset.id,
             transform_id=fake_transform_id,
             trace_id=test_data["trace_id"],
         )
@@ -390,8 +367,6 @@ def test_execute_transform_missing_transform(
         assert "not found" in error.get("detail", "").lower()
 
     finally:
-        client.delete_dataset(dataset.id)
-
         status_code = client.delete_task(agentic_task.id)
         assert status_code == 204
 
@@ -399,29 +374,20 @@ def test_execute_transform_missing_transform(
 @pytest.mark.unit_tests
 def test_execute_transform_missing_trace(
     client: GenaiEngineTestClientBase,
-    setup_test_data,
 ) -> None:
     """Test transform execution with a non-existent trace."""
-    test_data = setup_test_data
-
-    status_code, agentic_task = client.create_task(name="test_execute_transform_missing_trace_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, dataset = client.create_dataset(
-        name="Test Dataset for Missing Trace",
-        task_id=agentic_task.id,
-        description="Testing missing trace error",
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_missing_trace_task",
+        is_agentic=True,
     )
     assert status_code == 200
 
     try:
         # Create a transform
         transform_definition = {
-            "version": "1.0",
-            "columns": [
+            "variables": [
                 {
-                    "column_name": "test_column",
+                    "variable_name": "test_column",
                     "span_name": "test-span",
                     "attribute_path": "attributes.test",
                     "fallback": None,
@@ -430,8 +396,8 @@ def test_execute_transform_missing_trace(
         }
 
         status_code, transform = client.create_transform(
-            dataset_id=dataset.id,
-            name="Test Transform",
+            task_id=agentic_task.id,
+            name="test_transform",
             definition=transform_definition,
         )
         assert status_code == 200
@@ -440,7 +406,6 @@ def test_execute_transform_missing_trace(
 
         # Try to execute with non-existent trace
         status_code, error = client.execute_transform_extraction(
-            dataset_id=dataset.id,
             transform_id=transform.id,
             trace_id=fake_trace_id,
         )
@@ -450,8 +415,6 @@ def test_execute_transform_missing_trace(
         assert "not found" in error.get("detail", "").lower()
 
     finally:
-        client.delete_dataset(dataset.id)
-
         status_code = client.delete_task(agentic_task.id)
         assert status_code == 204
 
@@ -464,30 +427,24 @@ def test_execute_transform_complex_nested_data(
     """Test transform execution with complex nested object extraction."""
     test_data = setup_test_data
 
-    status_code, agentic_task = client.create_task(name="test_execute_transform_complex_nested_data_task", is_agentic=True)
-    assert status_code == 200
-
-    # Create a dataset
-    status_code, dataset = client.create_dataset(
-        name="Test Dataset for Complex Data",
-        task_id=agentic_task.id,
-        description="Testing complex nested data extraction",
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_complex_nested_data_task",
+        is_agentic=True,
     )
     assert status_code == 200
 
     try:
         # Create a transform that extracts nested JSON data
         transform_definition = {
-            "version": "1.0",
-            "columns": [
+            "variables": [
                 {
-                    "column_name": "query_results",
+                    "variable_name": "query_results",
                     "span_name": "rag-retrieval-savedQueries",
                     "attribute_path": "attributes.output.value.results",
                     "fallback": "[]",
                 },
                 {
-                    "column_name": "context",
+                    "variable_name": "context",
                     "span_name": "rag-retrieval-savedQueries",
                     "attribute_path": "attributes.input.value.context",
                     "fallback": None,
@@ -496,7 +453,7 @@ def test_execute_transform_complex_nested_data(
         }
 
         status_code, transform = client.create_transform(
-            dataset_id=dataset.id,
+            task_id=agentic_task.id,
             name="Test Complex Transform",
             definition=transform_definition,
         )
@@ -504,30 +461,28 @@ def test_execute_transform_complex_nested_data(
 
         # Execute the transform
         status_code, result = client.execute_transform_extraction(
-            dataset_id=dataset.id,
             transform_id=transform.id,
             trace_id=test_data["trace_id"],
         )
 
         assert status_code == 200
         assert result is not None
-        assert len(result.rows_extracted) == 1
+        assert len(result.variables) == 2
 
-        row = result.rows_extracted[0]
-        columns = {col.column_name: col.column_value for col in row.data}
+        variables = {var.variable_name: var.value for var in result.variables}
 
         # Verify complex data is JSON stringified
-        assert "query_results" in columns
-        results = json.loads(columns["query_results"])
+        assert "query_results" in variables
+        results = json.loads(variables["query_results"])
         assert isinstance(results, list)
-        assert len(results) == 1
+        assert len(results) == 2
         assert results[0]["name"] == "John"
 
-        assert "context" in columns
-        assert columns["context"] == "User query context"
+        assert "context" in variables
+        assert variables["context"] == "User query context"
 
     finally:
-        client.delete_dataset(dataset.id)
+        client.delete_transform(transform.id)
 
         status_code = client.delete_task(agentic_task.id)
         assert status_code == 204
@@ -628,19 +583,10 @@ def test_execute_transform_with_multiple_matching_spans(
     db_session.commit()
 
     try:
-        # Create a dataset and transform
-        status_code, dataset = client.create_dataset(
-            name="Test Dataset for Duplicate Spans",
-            task_id=task_id,
-            description="Testing first match selection",
-        )
-        assert status_code == 200
-
         transform_definition = {
-            "version": "1.0",
-            "columns": [
+            "variables": [
                 {
-                    "column_name": "extracted_value",
+                    "variable_name": "extracted_value",
                     "span_name": "duplicate_span",
                     "attribute_path": "attributes.test.value",
                     "fallback": None,
@@ -649,37 +595,176 @@ def test_execute_transform_with_multiple_matching_spans(
         }
 
         status_code, transform = client.create_transform(
-            dataset_id=dataset.id,
-            name="Test Transform",
+            task_id=task_id,
+            name="test_transform",
             definition=transform_definition,
         )
         assert status_code == 200
 
         # Execute the transform
         status_code, result = client.execute_transform_extraction(
-            dataset_id=dataset.id,
             transform_id=transform.id,
             trace_id=trace_id,
         )
 
         assert status_code == 200
         assert result is not None
-        assert len(result.rows_extracted) == 1
+        assert len(result.variables) == 1
 
-        row = result.rows_extracted[0]
-        columns = {col.column_name: col.column_value for col in row.data}
+        variables = {var.variable_name: var.value for var in result.variables}
 
         # Should use value from the first matching span
-        assert "extracted_value" in columns
-        assert columns["extracted_value"] == "value_0"
-
-        client.delete_dataset(dataset.id)
+        assert "extracted_value" in variables
+        assert variables["extracted_value"] == "value_0"
 
     finally:
+        client.delete_transform(transform.id)
         # Cleanup
-        db_session.query(DatabaseSpan).filter(DatabaseSpan.trace_id == trace_id).delete()
+        db_session.query(DatabaseSpan).filter(
+            DatabaseSpan.trace_id == trace_id,
+        ).delete()
         db_session.query(DatabaseTraceMetadata).filter(
             DatabaseTraceMetadata.trace_id == trace_id,
         ).delete()
         db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
         db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_execute_transform_array_index_extraction(
+    client: GenaiEngineTestClientBase,
+    setup_test_data,
+) -> None:
+    """Test transform execution with array index extraction."""
+    test_data = setup_test_data
+
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_array_index_extraction_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Create a transform that is meant to extract data from the test spans successfully
+        transform_definition = {
+            "variables": [
+                {
+                    "variable_name": "output_id_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.0.id",
+                    "fallback": None,
+                },
+                {
+                    "variable_name": "output_name_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.0.name",
+                    "fallback": None,
+                },
+                {
+                    "variable_name": "output_id_1",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.1.id",
+                    "fallback": None,
+                },
+                {
+                    "variable_name": "output_name_1",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.1.name",
+                    "fallback": None,
+                },
+            ],
+        }
+
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_transform",
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        # Execute the transform
+        status_code, result = client.execute_transform_extraction(
+            transform_id=transform.id,
+            trace_id=test_data["trace_id"],
+        )
+
+        assert status_code == 200
+        assert result is not None
+        assert len(result.variables) == 4
+
+        # Verify extracted data
+        variables = {var.variable_name: var.value for var in result.variables}
+        assert variables["output_id_0"] == "1"
+        assert variables["output_name_0"] == "John"
+        assert variables["output_id_1"] == "2"
+        assert variables["output_name_1"] == "Jane"
+
+        # Test the failing case where the index is out of bounds returns the default value
+        transform_definition = {
+            "variables": [
+                {
+                    "variable_name": "output_id_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.10.id",
+                    "fallback": None,
+                },
+                {
+                    "variable_name": "output_id_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.10.name",
+                    "fallback": "fallback_value",
+                },
+            ],
+        }
+        status_code, transform = client.update_transform(
+            transform_id=transform.id,
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        status_code, result = client.execute_transform_extraction(
+            transform_id=transform.id,
+            trace_id=test_data["trace_id"],
+        )
+        assert status_code == 200
+        assert result is not None
+        assert result.variables[0].value == ""
+        assert result.variables[1].value == "fallback_value"
+
+        # Test the failing case where the key is not a valid integer index
+        transform_definition = {
+            "variables": [
+                {
+                    "variable_name": "output_id_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.invalid_index.id",
+                    "fallback": None,
+                },
+                {
+                    "variable_name": "output_id_0",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.invalid_index.id",
+                    "fallback": "fallback_value",
+                },
+            ],
+        }
+        status_code, transform = client.update_transform(
+            transform_id=transform.id,
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        status_code, result = client.execute_transform_extraction(
+            transform_id=transform.id,
+            trace_id=test_data["trace_id"],
+        )
+        assert status_code == 200
+        assert result is not None
+        assert result.variables[0].value == ""
+        assert result.variables[1].value == "fallback_value"
+
+    finally:
+        client.delete_transform(transform.id)
+
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204

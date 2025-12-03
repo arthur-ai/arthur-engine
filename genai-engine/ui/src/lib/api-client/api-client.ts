@@ -394,6 +394,9 @@ export interface BaseDetailsResponse {
   score?: boolean | null;
 }
 
+/** BaseModel */
+export type BaseModel = object;
+
 /** Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put */
 export interface BodyAddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut {
   /**
@@ -642,9 +645,9 @@ export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
 
 export type CreateApiKeyAuthApiKeysPostError = HTTPValidationError;
 
-export type CreateDatasetApiV2DatasetsPostData = DatasetResponse;
+export type CreateDatasetApiV2TasksTaskIdDatasetsPostData = DatasetResponse;
 
-export type CreateDatasetApiV2DatasetsPostError = HTTPValidationError;
+export type CreateDatasetApiV2TasksTaskIdDatasetsPostError = HTTPValidationError;
 
 export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData = DatasetVersionResponse;
 
@@ -769,9 +772,9 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 
-export type CreateTransformApiV2DatasetsDatasetIdTransformsPostData = DatasetTransformResponse;
+export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
-export type CreateTransformApiV2DatasetsDatasetIdTransformsPostError = HTTPValidationError;
+export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostError = HTTPValidationError;
 
 /** CreateUserRequest */
 export interface CreateUserRequest {
@@ -897,97 +900,15 @@ export interface DatasetResponse {
    */
   name: string;
   /**
+   * Task Id
+   * ID of the task the dataset belongs to.
+   */
+  task_id: string;
+  /**
    * Updated At
    * Timestamp representing the time of the last dataset update in unix milliseconds.
    */
   updated_at: number;
-}
-
-/** DatasetTransformColumnDefinition */
-export interface DatasetTransformColumnDefinition {
-  /**
-   * Attribute Path
-   * Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').
-   */
-  attribute_path: string;
-  /**
-   * Column Name
-   * Name of the column to extract.
-   */
-  column_name: string;
-  /**
-   * Fallback
-   * Fallback value to use if the attribute is not found.
-   */
-  fallback?: string | null;
-  /**
-   * Span Name
-   * Name of the span to extract data from.
-   */
-  span_name: string;
-}
-
-/** DatasetTransformDefinition */
-export interface DatasetTransformDefinition {
-  /**
-   * Columns
-   * List of column extraction rules.
-   */
-  columns: DatasetTransformColumnDefinition[];
-}
-
-/** DatasetTransformResponse */
-export interface DatasetTransformResponse {
-  /**
-   * Created At
-   * Timestamp representing the time of transform creation in unix milliseconds.
-   */
-  created_at: number;
-  /**
-   * Dataset Id
-   * ID of the parent dataset.
-   * @format uuid
-   */
-  dataset_id: string;
-  /** Transform definition specifying extraction rules. */
-  definition: DatasetTransformDefinition;
-  /**
-   * Description
-   * Description of the transform.
-   */
-  description?: string | null;
-  /**
-   * Id
-   * ID of the transform.
-   * @format uuid
-   */
-  id: string;
-  /**
-   * Name
-   * Name of the transform.
-   */
-  name: string;
-  /**
-   * Updated At
-   * Timestamp representing the time of the last transform update in unix milliseconds.
-   */
-  updated_at: number;
-}
-
-/** DatasetTransformUpdateRequest */
-export interface DatasetTransformUpdateRequest {
-  /** Transform definition specifying extraction rules. */
-  definition?: DatasetTransformDefinition | null;
-  /**
-   * Description
-   * Description of the transform.
-   */
-  description?: string | null;
-  /**
-   * Name
-   * Name of the transform.
-   */
-  name?: string | null;
 }
 
 /** DatasetUpdateRequest */
@@ -1186,9 +1107,9 @@ export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsE
 
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
 
-export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData = any;
+export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
-export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError = HTTPValidationError;
+export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -1403,27 +1324,9 @@ export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityText
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
 
-export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData = ExecuteTransformResponse;
+export type ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostData = TransformExtractionResponseList;
 
-export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError = HTTPValidationError;
-
-/** ExecuteTransformRequest */
-export interface ExecuteTransformRequest {
-  /**
-   * Trace Id
-   * ID of the trace to execute the transform against.
-   */
-  trace_id: string;
-}
-
-/** ExecuteTransformResponse */
-export interface ExecuteTransformResponse {
-  /**
-   * Rows Extracted
-   * List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.
-   */
-  rows_extracted: NewDatasetVersionRowRequest[];
-}
+export type ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostError = HTTPValidationError;
 
 /**
  * ExperimentOutputSource
@@ -1972,11 +1875,11 @@ export interface GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams {
   sort?: PaginationSortMethod;
 }
 
-export type GetDatasetsApiV2DatasetsSearchGetData = SearchDatasetsResponse;
+export type GetDatasetsApiV2TasksTaskIdDatasetsSearchGetData = SearchDatasetsResponse;
 
-export type GetDatasetsApiV2DatasetsSearchGetError = HTTPValidationError;
+export type GetDatasetsApiV2TasksTaskIdDatasetsSearchGetError = HTTPValidationError;
 
-export interface GetDatasetsApiV2DatasetsSearchGetParams {
+export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
   /**
    * Dataset Ids
    * List of dataset ids to query for.
@@ -2004,6 +1907,11 @@ export interface GetDatasetsApiV2DatasetsSearchGetParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
 }
 
 /** Response Get Default Rules Api V2 Default Rules Get */
@@ -2343,9 +2251,9 @@ export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 
-export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData = DatasetTransformResponse;
+export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
-export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError = HTTPValidationError;
+export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
 
 export type GetUnsavedPromptVariablesListApiV1PromptVariablesPostData = UnsavedPromptVariablesListResponse;
 
@@ -3124,15 +3032,6 @@ export interface LLMVersionResponse {
   version: number;
 }
 
-/** ListDatasetTransformsResponse */
-export interface ListDatasetTransformsResponse {
-  /**
-   * Transforms
-   * List of transforms for the dataset.
-   */
-  transforms: DatasetTransformResponse[];
-}
-
 /** ListDatasetVersionsResponse */
 export interface ListDatasetVersionsResponse {
   /**
@@ -3504,6 +3403,15 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   user_ids?: string[];
 }
 
+/** ListTraceTransformsResponse */
+export interface ListTraceTransformsResponse {
+  /**
+   * Transforms
+   * List of transforms for the task.
+   */
+  transforms: TraceTransformResponse[];
+}
+
 export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
 
 export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
@@ -3697,9 +3605,49 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   user_ids?: string[];
 }
 
-export type ListTransformsApiV2DatasetsDatasetIdTransformsGetData = ListDatasetTransformsResponse;
+export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData = ListTraceTransformsResponse;
 
-export type ListTransformsApiV2DatasetsDatasetIdTransformsGetError = HTTPValidationError;
+export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetError = HTTPValidationError;
+
+export interface ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Name
+   * Name of the transform to filter on using partial matching.
+   */
+  name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
 
 export type ListUsersMetadataApiV1TracesUsersGetData = TraceUserListResponse;
 
@@ -4089,22 +4037,6 @@ export interface NewDatasetRequest {
   name: string;
 }
 
-/** NewDatasetTransformRequest */
-export interface NewDatasetTransformRequest {
-  /** Transform definition specifying extraction rules. */
-  definition: DatasetTransformDefinition;
-  /**
-   * Description
-   * Description of the transform.
-   */
-  description?: string | null;
-  /**
-   * Name
-   * Name of the transform.
-   */
-  name: string;
-}
-
 /** NewDatasetVersionRequest */
 export interface NewDatasetVersionRequest {
   /**
@@ -4235,6 +4167,22 @@ export interface NewTaskRequest {
    * Name
    * Name of the task.
    * @minLength 1
+   */
+  name: string;
+}
+
+/** NewTraceTransformRequest */
+export interface NewTraceTransformRequest {
+  /** Transform definition specifying extraction rules. */
+  definition: TraceTransformDefinition;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
    */
   name: string;
 }
@@ -7351,6 +7299,94 @@ export interface TraceResponse {
   trace_id: string;
 }
 
+/** TraceTransformDefinition */
+export interface TraceTransformDefinition {
+  /**
+   * Variables
+   * List of variable extraction rules.
+   */
+  variables: TraceTransformVariableDefinition[];
+}
+
+/** TraceTransformResponse */
+export interface TraceTransformResponse {
+  /**
+   * Created At
+   * Timestamp representing the time of transform creation
+   * @format date-time
+   */
+  created_at: string;
+  /** Transform definition specifying extraction rules. */
+  definition: TraceTransformDefinition;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the transform.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name: string;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * Timestamp representing the time of the last transform update
+   * @format date-time
+   */
+  updated_at: string;
+}
+
+/** TraceTransformUpdateRequest */
+export interface TraceTransformUpdateRequest {
+  /** Transform definition specifying extraction rules. */
+  definition?: TraceTransformDefinition | null;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name?: string | null;
+}
+
+/** TraceTransformVariableDefinition */
+export interface TraceTransformVariableDefinition {
+  /**
+   * Attribute Path
+   * Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').
+   */
+  attribute_path: string;
+  /**
+   * Fallback
+   * Fallback value to use if the attribute is not found.
+   */
+  fallback?: string | null;
+  /**
+   * Span Name
+   * Name of the span to extract data from.
+   */
+  span_name: string;
+  /**
+   * Variable Name
+   * Name of the variable to extract.
+   */
+  variable_name: string;
+}
+
 /**
  * TraceUserListResponse
  * Response for trace user list endpoint
@@ -7450,6 +7486,29 @@ export interface TraceUserMetadataResponse {
    * User identifier
    */
   user_id: string;
+}
+
+/** TransformExtractionResponseList */
+export interface TransformExtractionResponseList {
+  /**
+   * Variables
+   * List of extracted variables.
+   */
+  variables: TransformExtractionResponseVariable[];
+}
+
+/** TransformExtractionResponseVariable */
+export interface TransformExtractionResponseVariable {
+  /**
+   * Value
+   * Value of the extracted variable.
+   */
+  value: string;
+  /**
+   * Variable Name
+   * Name of the extracted variable.
+   */
+  variable_name: string;
 }
 
 /**
@@ -7599,9 +7658,9 @@ export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData = TaskResponse;
 
 export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidationError;
 
-export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData = DatasetTransformResponse;
+export type UpdateTransformApiV1TracesTransformsTransformIdPatchData = TraceTransformResponse;
 
-export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError = HTTPValidationError;
+export type UpdateTransformApiV1TracesTransformsTransformIdPatchError = HTTPValidationError;
 
 export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
 
@@ -8631,7 +8690,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.220
+ * @version 2.1.227
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -8892,14 +8951,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Register a new dataset.
      *
      * @tags Datasets
-     * @name CreateDatasetApiV2DatasetsPost
+     * @name CreateDatasetApiV2TasksTaskIdDatasetsPost
      * @summary Create Dataset
-     * @request POST:/api/v2/datasets
+     * @request POST:/api/v2/tasks/{task_id}/datasets
      * @secure
      */
-    createDatasetApiV2DatasetsPost: (data: NewDatasetRequest, params: RequestParams = {}) =>
-      this.request<CreateDatasetApiV2DatasetsPostData, CreateDatasetApiV2DatasetsPostError>({
-        path: `/api/v2/datasets`,
+    createDatasetApiV2TasksTaskIdDatasetsPost: (taskId: string, data: NewDatasetRequest, params: RequestParams = {}) =>
+      this.request<CreateDatasetApiV2TasksTaskIdDatasetsPostData, CreateDatasetApiV2TasksTaskIdDatasetsPostError>({
+        path: `/api/v2/tasks/${taskId}/datasets`,
         method: "POST",
         body: data,
         secure: true,
@@ -9115,17 +9174,17 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Create a new transform for a dataset.
+     * @description Create a new transform for a task.
      *
-     * @tags Datasets
-     * @name CreateTransformApiV2DatasetsDatasetIdTransformsPost
-     * @summary Create Transform
-     * @request POST:/api/v2/datasets/{dataset_id}/transforms
+     * @tags Transforms
+     * @name CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPost
+     * @summary Create Transform For Task
+     * @request POST:/api/v1/tasks/{task_id}/traces/transforms
      * @secure
      */
-    createTransformApiV2DatasetsDatasetIdTransformsPost: (datasetId: string, data: NewDatasetTransformRequest, params: RequestParams = {}) =>
-      this.request<CreateTransformApiV2DatasetsDatasetIdTransformsPostData, CreateTransformApiV2DatasetsDatasetIdTransformsPostError>({
-        path: `/api/v2/datasets/${datasetId}/transforms`,
+    createTransformForTaskApiV1TasksTaskIdTracesTransformsPost: (taskId: string, data: NewTraceTransformRequest, params: RequestParams = {}) =>
+      this.request<CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData, CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostError>({
+        path: `/api/v1/tasks/${taskId}/traces/transforms`,
         method: "POST",
         body: data,
         secure: true,
@@ -9450,18 +9509,15 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Delete a transform.
      *
-     * @tags Datasets
-     * @name DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete
+     * @tags Transforms
+     * @name DeleteTransformApiV1TracesTransformsTransformIdDelete
      * @summary Delete Transform
-     * @request DELETE:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @request DELETE:/api/v1/traces/transforms/{transform_id}
      * @secure
      */
-    deleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete: (datasetId: string, transformId: string, params: RequestParams = {}) =>
-      this.request<
-        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData,
-        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError
-      >({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+    deleteTransformApiV1TracesTransformsTransformIdDelete: (transformId: string, params: RequestParams = {}) =>
+      this.request<DeleteTransformApiV1TracesTransformsTransformIdDeleteData, DeleteTransformApiV1TracesTransformsTransformIdDeleteError>({
+        path: `/api/v1/traces/transforms/${transformId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -9549,29 +9605,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Execute a transform against a trace to extract data for dataset rows. Returns data in the format expected by the create dataset version API's rows_to_add parameter.
+     * @description Execute a transform against a trace to extract variables.
      *
-     * @tags Datasets
-     * @name ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost
-     * @summary Execute Transform Endpoint
-     * @request POST:/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions
+     * @tags Transforms
+     * @name ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost
+     * @summary Execute Trace Transform Extraction
+     * @request POST:/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions
      * @secure
      */
-    executeTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost: (
-      datasetId: string,
+    executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost: (
+      traceId: string,
       transformId: string,
-      data: ExecuteTransformRequest,
       params: RequestParams = {}
     ) =>
       this.request<
-        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData,
-        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError
+        ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostData,
+        ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostError
       >({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}/extractions`,
+        path: `/api/v1/traces/${traceId}/transforms/${transformId}/extractions`,
         method: "POST",
-        body: data,
         secure: true,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -9777,14 +9830,17 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Search datasets. Optionally can filter by dataset IDs and dataset name.
      *
      * @tags Datasets
-     * @name GetDatasetsApiV2DatasetsSearchGet
+     * @name GetDatasetsApiV2TasksTaskIdDatasetsSearchGet
      * @summary Get Datasets
-     * @request GET:/api/v2/datasets/search
+     * @request GET:/api/v2/tasks/{task_id}/datasets/search
      * @secure
      */
-    getDatasetsApiV2DatasetsSearchGet: (query: GetDatasetsApiV2DatasetsSearchGetParams, params: RequestParams = {}) =>
-      this.request<GetDatasetsApiV2DatasetsSearchGetData, GetDatasetsApiV2DatasetsSearchGetError>({
-        path: `/api/v2/datasets/search`,
+    getDatasetsApiV2TasksTaskIdDatasetsSearchGet: (
+      { taskId, ...query }: GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<GetDatasetsApiV2TasksTaskIdDatasetsSearchGetData, GetDatasetsApiV2TasksTaskIdDatasetsSearchGetError>({
+        path: `/api/v2/tasks/${taskId}/datasets/search`,
         method: "GET",
         query: query,
         secure: true,
@@ -10385,15 +10441,15 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Get a specific transform.
      *
-     * @tags Datasets
-     * @name GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGet
+     * @tags Transforms
+     * @name GetTransformApiV1TracesTransformsTransformIdGet
      * @summary Get Transform
-     * @request GET:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @request GET:/api/v1/traces/transforms/{transform_id}
      * @secure
      */
-    getTransformApiV2DatasetsDatasetIdTransformsTransformIdGet: (datasetId: string, transformId: string, params: RequestParams = {}) =>
-      this.request<GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData, GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError>({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+    getTransformApiV1TracesTransformsTransformIdGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<GetTransformApiV1TracesTransformsTransformIdGetData, GetTransformApiV1TracesTransformsTransformIdGetError>({
+        path: `/api/v1/traces/transforms/${transformId}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -10559,18 +10615,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description List all transforms for a dataset.
+     * @description List all transforms for a task.
      *
-     * @tags Datasets
-     * @name ListTransformsApiV2DatasetsDatasetIdTransformsGet
-     * @summary List Transforms
-     * @request GET:/api/v2/datasets/{dataset_id}/transforms
+     * @tags Transforms
+     * @name ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGet
+     * @summary List Transforms For Task
+     * @request GET:/api/v1/tasks/{task_id}/traces/transforms
      * @secure
      */
-    listTransformsApiV2DatasetsDatasetIdTransformsGet: (datasetId: string, params: RequestParams = {}) =>
-      this.request<ListTransformsApiV2DatasetsDatasetIdTransformsGetData, ListTransformsApiV2DatasetsDatasetIdTransformsGetError>({
-        path: `/api/v2/datasets/${datasetId}/transforms`,
+    listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet: (
+      { taskId, ...query }: ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData, ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetError>({
+        path: `/api/v1/tasks/${taskId}/traces/transforms`,
         method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -11210,24 +11270,16 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Update a transform.
      *
-     * @tags Datasets
-     * @name UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut
+     * @tags Transforms
+     * @name UpdateTransformApiV1TracesTransformsTransformIdPatch
      * @summary Update Transform
-     * @request PUT:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @request PATCH:/api/v1/traces/transforms/{transform_id}
      * @secure
      */
-    updateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut: (
-      datasetId: string,
-      transformId: string,
-      data: DatasetTransformUpdateRequest,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData,
-        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError
-      >({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
-        method: "PUT",
+    updateTransformApiV1TracesTransformsTransformIdPatch: (transformId: string, data: TraceTransformUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateTransformApiV1TracesTransformsTransformIdPatchData, UpdateTransformApiV1TracesTransformsTransformIdPatchError>({
+        path: `/api/v1/traces/transforms/${transformId}`,
+        method: "PATCH",
         body: data,
         secure: true,
         type: ContentType.Json,

@@ -10,7 +10,6 @@ import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
-import TransformsManagement from "./components/datasets/transforms/TransformsManagement";
 import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
@@ -26,6 +25,7 @@ import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
 import "./App.css";
 import { TracesView } from "./components/TracesView";
+import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
 
@@ -143,7 +143,7 @@ function App() {
                     />
 
                     <Route
-                      path="/tasks/:id/datasets/:datasetId/transforms"
+                      path="/tasks/:id/transforms"
                       element={
                         <ProtectedRoute>
                           <TaskLayout>

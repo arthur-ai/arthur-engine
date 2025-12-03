@@ -1,6 +1,10 @@
 import { formOptions } from "@tanstack/react-form";
 
-import type { DatasetTransformDefinition, DatasetTransformColumnDefinition, DatasetTransformResponse } from "@/lib/api-client/api-client";
+import type {
+  TraceTransformDefinition,
+  TraceTransformVariableDefinition,
+  TraceTransformResponse,
+} from "@/lib/api-client/api-client";
 
 export type Column = {
   name: string;
@@ -18,9 +22,9 @@ export type Column = {
 };
 
 // Re-export API types for convenience
-export type TransformDefinition = DatasetTransformDefinition;
-export type TransformColumnDefinition = DatasetTransformColumnDefinition;
-export type DatasetTransform = DatasetTransformResponse;
+export type TransformDefinition = TraceTransformDefinition;
+export type TransformVariableDefinition = TraceTransformVariableDefinition;
+export type TraceTransform = TraceTransformResponse;
 
 export const addToDatasetFormOptions = formOptions({
   defaultValues: {

@@ -3,8 +3,8 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 export const queryKeys = {
   datasets: {
     search: {
-      all: () => ["getDatasetsApiV2DatasetsSearchGet"] as const,
-      filtered: (filters: Record<string, unknown>) => ["getDatasetsApiV2DatasetsSearchGet", filters] as const,
+      all: () => ["getDatasetsApiV2TasksTaskIdDatasetsSearchGet"] as const,
+      filtered: (filters: Record<string, unknown>) => ["getDatasetsApiV2TasksTaskIdDatasetsSearchGet", filters] as const,
     },
     detail: (datasetId: string) => ["getDatasetApiV2DatasetsDatasetIdGet", datasetId] as const,
     versions: (datasetId: string) =>

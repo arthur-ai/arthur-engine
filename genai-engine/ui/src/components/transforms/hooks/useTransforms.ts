@@ -1,16 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { TraceTransform } from "../form/shared";
+import { TraceTransform } from "../types";
 
 import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/hooks/useTask";
 
-
-// Fetches transforms for a task
-export function useTransforms(datasetId: string | undefined) {
+// Fetches transforms for a task, returns empty array if none exist
+export function useTransforms(taskId: string | undefined) {
   const api = useApi();
-  const { task } = useTask();
-  const taskId = task?.id;
 
   return useQuery({
     queryKey: ["transforms", taskId, api],
@@ -20,12 +16,15 @@ export function useTransforms(datasetId: string | undefined) {
       try {
         const response = await api.api.listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet({ taskId });
         return (response.data.transforms || []) as TraceTransform[];
-      } catch (error: any) {
-        if (error.response?.status === 404) return [];
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'response' in error) {
+          const apiError = error as { response?: { status?: number } };
+          if (apiError.response?.status === 404) return [];
+        }
         throw error;
       }
     },
-    enabled: !!taskId && !!api && !!datasetId,
+    enabled: !!taskId && !!api,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

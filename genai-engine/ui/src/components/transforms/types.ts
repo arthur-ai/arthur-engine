@@ -1,20 +1,20 @@
-import type { DatasetTransform, TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
+import type { TraceTransform, TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 
 // Re-export for convenience
-export type { DatasetTransform, TransformDefinition };
+export type { TraceTransform, TransformDefinition };
 
 export interface TransformsTableProps {
-  transforms: DatasetTransform[];
+  transforms: TraceTransform[];
   sortColumn: string | null;
   sortDirection: "asc" | "desc";
   onSort: (column: string) => void;
-  onView: (transform: DatasetTransform) => void;
-  onEdit: (transform: DatasetTransform) => void;
+  onView: (transform: TraceTransform) => void;
+  onEdit: (transform: TraceTransform) => void;
   onDelete: (transformId: string) => void;
 }
 
 export interface TransformRowExpansionProps {
-  transform: DatasetTransform;
+  transform: TraceTransform;
 }
 
 export interface TransformFormModalProps {
@@ -22,6 +22,6 @@ export interface TransformFormModalProps {
   onClose: () => void;
   onSubmit: (name: string, description: string, definition: TransformDefinition) => Promise<void>;
   isLoading: boolean;
-  datasetId: string | undefined;
-  initialTransform?: DatasetTransform;
+  taskId: string | undefined;
+  initialTransform?: TraceTransform;
 }
