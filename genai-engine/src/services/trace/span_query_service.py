@@ -1139,7 +1139,7 @@ class SpanQueryService:
 
         # Apply sorting and pagination to the grouped results
         query = base_query.order_by(func.count().desc())
-        
+
         if pagination_parameters:
             query = self._apply_pagination(query, pagination_parameters)
 
