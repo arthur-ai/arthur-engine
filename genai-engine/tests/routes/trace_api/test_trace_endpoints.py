@@ -606,3 +606,119 @@ def test_get_unregistered_root_spans_grouped(
     assert counts == sorted(
         counts, reverse=True
     ), f"Groups should be ordered by count descending. Got: {counts}"
+
+
+@pytest.mark.unit_tests
+def test_get_unregistered_root_spans_grouped_with_pagination(
+    client: GenaiEngineTestClientBase,
+):
+    """Test pagination for unregistered root spans endpoint."""
+    from tests.routes.trace_api.conftest import (
+        _create_base_trace_request,
+        _create_span,
+    )
+
+    # Create 10 traces without task_id with 5 distinct span_name groups:
+    # Group 1: "AppA" - 3 traces (count=3)
+    # Group 2: "AppB" - 3 traces (count=3)
+    # Group 3: "AppC" - 2 traces (count=2)
+    # Group 4: "AppD" - 1 trace (count=1)
+    # Group 5: "AppE" - 1 trace (count=1)
+
+    span_names = ["AppA", "AppA", "AppA", "AppB", "AppB", "AppB", "AppC", "AppC", "AppD", "AppE"]
+    
+    for i, span_name in enumerate(span_names):
+        trace_request, resource_span, scope_span = _create_base_trace_request(
+            task_id=None,
+        )
+        span = _create_span(
+            trace_id=f"pagination_test_trace_{i}".encode(),
+            span_id=f"pagination_test_span_{i}".encode(),
+            name=span_name,
+            span_type="LLM",
+        )
+        scope_span.spans.append(span)
+        resource_span.scope_spans.append(scope_span)
+        trace_request.resource_spans.append(resource_span)
+        
+        status_code, _ = client.trace_api_receive_traces(
+            trace_request.SerializeToString(),
+        )
+        assert status_code == 200, f"Trace {i} should be accepted"
+
+    # Helper function to get group value
+    def get_group_value(group, key):
+        return group[key] if isinstance(group, dict) else getattr(group, key)
+
+    # Test 1: First page with page_size=2 (should get top 2 groups)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=0, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # Should get 2 groups (AppA and AppB, both with count=3)
+    assert len(groups) == 2, f"Expected 2 groups on first page, got {len(groups)}"
+    assert total_count == 10, f"Expected total_count=10, got {total_count}"
+    
+    # Verify we got the top groups (ordered by count descending)
+    assert get_group_value(groups[0], "count") == 3, "First group should have count=3"
+    assert get_group_value(groups[1], "count") == 3, "Second group should have count=3"
+
+    # Test 2: Second page with page_size=2 (should get next 2 groups)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=1, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # Should get 2 groups (AppC with count=2, and one of AppD/AppE with count=1)
+    assert len(groups) == 2, f"Expected 2 groups on second page, got {len(groups)}"
+    assert total_count == 10, f"Expected total_count=10, got {total_count}"
+    
+    # Verify we got the next groups
+    assert get_group_value(groups[0], "count") == 2, "First group on page 2 should have count=2"
+    assert get_group_value(groups[1], "count") == 1, "Second group on page 2 should have count=1"
+
+    # Test 3: Third page with page_size=2 (should get remaining 1 group)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=2, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # Should get 1 group (the last one)
+    assert len(groups) == 1, f"Expected 1 group on third page, got {len(groups)}"
+    assert total_count == 10, f"Expected total_count=10, got {total_count}"
+    assert get_group_value(groups[0], "count") == 1, "Last group should have count=1"
+
+    # Test 4: Page beyond available data (should return empty list but same total_count)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=10, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    assert len(groups) == 0, f"Expected 0 groups on page beyond data, got {len(groups)}"
+    assert total_count == 10, f"Expected total_count=10 even on empty page, got {total_count}"
+
+    # Test 5: Large page_size (should get all groups)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=0, page_size=100
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # Should get all 5 groups
+    assert len(groups) == 5, f"Expected 5 groups with large page_size, got {len(groups)}"
+    assert total_count == 10, f"Expected total_count=10, got {total_count}"

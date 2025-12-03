@@ -1106,17 +1106,22 @@ class SpanQueryService:
 
     def get_unregistered_root_spans_grouped(
         self,
+        pagination_parameters: PaginationParameters | None = None,
     ) -> tuple[list[tuple[str, int]], int]:
         """
         Query root spans (parent_span_id IS NULL) for traces without task_id (task_id IS NULL),
         grouped by span_name.
 
+        Args:
+            pagination_parameters: Optional pagination parameters for limiting results
+
         Returns:
             tuple[list[tuple[str, int]], int]: (groups, total_count) where groups contains
                 (span_name, count) tuples ordered by count descending,
-                and total_count is the total number of root spans (each trace has one root span)
+                and total_count is the total number of root spans across ALL groups (before pagination)
         """
-        query = (
+        # Base query for grouping
+        base_query = (
             select(
                 DatabaseSpan.span_name,
                 func.count().label("count"),
@@ -1124,14 +1129,22 @@ class SpanQueryService:
             .where(DatabaseSpan.parent_span_id.is_(None))
             .where(DatabaseSpan.task_id.is_(None))
             .group_by(DatabaseSpan.span_name)
-            .order_by(func.count().desc())
         )
+
+        # Calculate total_count: sum of all counts across all groups (before pagination)
+        # Use a subquery to sum all the grouped counts efficiently
+        count_subquery = base_query.subquery()
+        total_count_query = select(func.sum(count_subquery.c.count))
+        total_count = self.db_session.execute(total_count_query).scalar() or 0
+
+        # Apply sorting and pagination to the grouped results
+        query = base_query.order_by(func.count().desc())
+        
+        if pagination_parameters:
+            query = self._apply_pagination(query, pagination_parameters)
 
         results = self.db_session.execute(query).all()
 
         groups = [(row.span_name or "Unknown", row.count) for row in results]
-
-        # Calculate total number of root spans (sum of count across all groups)
-        total_count = sum(count for _, count in groups)
 
         return groups, total_count

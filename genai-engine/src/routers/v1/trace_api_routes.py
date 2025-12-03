@@ -526,20 +526,26 @@ def get_user_details(
 @trace_api_routes.get(
     "/traces/unregistered",
     summary="Get Unregistered Root Spans",
-    description="Get grouped root spans for traces without task_id. Groups are ordered by count descending.",
+    description="Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination.",
     response_model=UnregisteredRootSpansResponse,
     response_model_exclude_none=True,
     tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def get_unregistered_root_spans(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> UnregisteredRootSpansResponse:
-    """Get grouped root spans for traces without task_id."""
+    """Get grouped root spans for traces without task_id with pagination."""
     try:
         span_repo = _get_span_repository(db_session)
-        groups_dict, total_count = span_repo.get_unregistered_root_spans_grouped()
+        groups_dict, total_count = span_repo.get_unregistered_root_spans_grouped(
+            pagination_parameters=pagination_parameters,
+        )
 
         # Convert dicts to UnregisteredRootSpanGroup objects
         groups = [

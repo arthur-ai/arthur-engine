@@ -4832,8 +4832,50 @@
                     "Traces"
                 ],
                 "summary": "Get Unregistered Root Spans",
-                "description": "Get grouped root spans for traces without task_id. Groups are ordered by count descending.",
+                "description": "Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination.",
                 "operationId": "get_unregistered_root_spans_api_v1_traces_unregistered_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4844,13 +4886,18 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
                     }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
+                }
             }
         },
         "/api/v1/traces/{trace_id}": {

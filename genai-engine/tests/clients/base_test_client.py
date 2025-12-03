@@ -2080,17 +2080,34 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def trace_api_get_unregistered_root_spans(
         self,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
     ) -> tuple[int, Any]:
         """Get grouped root spans for traces without task_id.
+
+        Args:
+            page: Page number (0-indexed)
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
 
         Returns:
             tuple[int, Any]: Status code and response (UnregisteredRootSpansResponse or error text)
         """
         from schemas.response_schemas import UnregisteredRootSpansResponse
 
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
         resp = self.base_client.get(
             "/api/v1/traces/unregistered",
             headers=self.authorized_user_api_key_headers,
+            params=params if params else None,
         )
         log_response(resp)
 
