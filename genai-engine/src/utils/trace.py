@@ -303,6 +303,8 @@ def get_nested_value(
         get_nested_value({"a": {"b": 1}}, "a.c") -> None
         get_nested_value({"a": {"b": 1}}, "a.c", default=0) -> 0
         get_nested_value(None, "a.b", default="missing") -> "missing"
+        get_nested_value({"a": [{"b": 1}, {"b": 2}]}, "a.0.b") -> 1
+        get_nested_value({"attributes": {"input": [{"content": "hello"}]}}, "attributes.input.0.content") -> "hello"
     """
     if not isinstance(obj, dict):
         return default
@@ -313,6 +315,18 @@ def get_nested_value(
     for key in keys:
         if isinstance(current, dict) and key in current:
             current = current[key]
+        elif isinstance(current, list):
+            # Try to parse key as integer index
+            if not key.isdigit():
+                raise ValueError(f"Key '{key}' is not a valid integer index")
+
+            index = int(key)
+            if 0 <= index < len(current):
+                current = current[index]
+            else:
+                raise ValueError(
+                    f"Index {index} not in range for list of length {len(current)}",
+                )
         else:
             return default
 

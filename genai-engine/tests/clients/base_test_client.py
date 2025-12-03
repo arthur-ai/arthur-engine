@@ -97,7 +97,6 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
-    ExecuteDatasetTransformResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
@@ -116,6 +115,7 @@ from schemas.response_schemas import (
     TraceTransformResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
+    TransformExtractionResponseList,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -1131,25 +1131,21 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code, resp.json() if resp.content else None
 
-    def execute_dataset_transform_extraction(
+    def execute_transform_extraction(
         self,
-        dataset_id: str,
         transform_id: str,
         trace_id: str,
     ) -> tuple[int, Any]:
         """Execute a transform against a trace to extract dataset rows."""
         resp = self.base_client.post(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions",
-            json={
-                "trace_id": str(trace_id),
-            },
+            f"/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions",
             headers=self.authorized_user_api_key_headers,
         )
 
         log_response(resp)
 
         if resp.status_code == 200:
-            return resp.status_code, ExecuteDatasetTransformResponse(**resp.json())
+            return resp.status_code, TransformExtractionResponseList(**resp.json())
         return resp.status_code, resp.json() if resp.content else None
 
     def search_datasets(

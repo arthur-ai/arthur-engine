@@ -19,7 +19,6 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
-from schemas.common_schemas import NewDatasetVersionRowRequest
 from schemas.enums import (
     ConnectionCheckOutcome,
     ModelProvider,
@@ -169,12 +168,6 @@ class TraceTransformResponse(BaseModel):
 class ListTraceTransformsResponse(BaseModel):
     transforms: List[TraceTransformResponse] = Field(
         description="List of transforms for the task.",
-    )
-
-
-class ExecuteDatasetTransformResponse(BaseModel):
-    rows_extracted: List[NewDatasetVersionRowRequest] = Field(
-        description="List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.",
     )
 
 
@@ -739,4 +732,19 @@ class RenderedPromptResponse(BaseModel):
 class UnsavedPromptVariablesListResponse(BaseModel):
     variables: List[str] = Field(
         description="List of variables needed to run an unsaved prompt",
+    )
+
+
+class TransformExtractionResponseVariable(BaseModel):
+    variable_name: str = Field(
+        description="Name of the extracted variable.",
+    )
+    value: str = Field(
+        description="Value of the extracted variable.",
+    )
+
+
+class TransformExtractionResponseList(BaseModel):
+    variables: list[TransformExtractionResponseVariable] = Field(
+        description="List of extracted variables.",
     )

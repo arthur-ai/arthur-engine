@@ -6,15 +6,18 @@ genai-engine/ui/src/components/traces/components/add-to-dataset/utils/transformE
 """
 
 import json
-from typing import Any, Dict, List
+from typing import Any, List
 
 from arthur_common.models.response_schemas import (
     NestedSpanWithMetricsResponse,
     TraceResponse,
 )
 
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.request_schemas import TraceTransformDefinition
+from schemas.response_schemas import (
+    TransformExtractionResponseList,
+    TransformExtractionResponseVariable,
+)
 from utils.trace import get_nested_value
 
 
@@ -59,7 +62,7 @@ def _flatten_spans(
 def execute_transform(
     trace: TraceResponse,
     transform_definition: TraceTransformDefinition,
-) -> Dict[str, Any]:
+) -> TransformExtractionResponseList:
     """Execute transform on a trace, returns raw extracted values.
 
     Base extraction function that returns raw variable names and values without
@@ -73,14 +76,14 @@ def execute_transform(
         transform_definition: TraceTransformDefinition object containing variables to extract
 
     Returns:
-        Dict mapping variable names to their extracted values
+        TransformExtractionResponseList containing list of variable names and values
     """
     # Flatten the nested span structure into a flat list
     flat_spans: List[NestedSpanWithMetricsResponse] = []
     for span in trace.root_spans:
         flat_spans.extend(_flatten_spans(span))
 
-    result = {}
+    variables = []
 
     # Iterate through variable definitions
     for var_def in transform_definition.variables:
@@ -104,33 +107,11 @@ def execute_transform(
             if value is None:
                 value = fallback if fallback is not None else ""
 
-        result[variable_name] = value
-
-    return result
-
-
-def execute_transform_for_dataset(
-    trace: TraceResponse,
-    transform_definition: TraceTransformDefinition,
-) -> List[NewDatasetVersionRowColumnItemRequest]:
-    """Execute transform on a trace for dataset extraction.
-
-    Dataset-specific wrapper around execute_transform that formats
-    the extracted values into dataset column items.
-
-    Args:
-        trace: TraceResponse object containing root_spans
-        transform_definition: TraceTransformDefinition object containing variables to extract
-
-    Returns:
-        List of column items ready to be used in NewDatasetVersionRowRequest
-    """
-    raw_values = execute_transform(trace, transform_definition)
-
-    return [
-        NewDatasetVersionRowColumnItemRequest(
-            column_name=variable_name,
-            column_value=stringify_value(value),
+        variables.append(
+            TransformExtractionResponseVariable(
+                variable_name=variable_name,
+                value=stringify_value(value),
+            ),
         )
-        for variable_name, value in raw_values.items()
-    ]
+
+    return TransformExtractionResponseList(variables=variables)

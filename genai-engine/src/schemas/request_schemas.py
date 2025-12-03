@@ -175,12 +175,6 @@ class TraceTransformUpdateRequest(BaseModel):
     )
 
 
-class ExecuteTransformRequest(BaseModel):
-    trace_id: str = Field(
-        description="ID of the trace to execute the transform against.",
-    )
-
-
 class PutModelProviderCredentials(BaseModel):
     api_key: SecretStr = Field(description="The API key for the provider.")
 

@@ -12,6 +12,9 @@ from dependencies import (
     get_validated_agentic_task,
     transform_list_filter_parameters,
 )
+from repositories.metrics_repository import MetricRepository
+from repositories.span_repository import SpanRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -22,7 +25,12 @@ from schemas.request_schemas import (
     TraceTransformUpdateRequest,
     TransformListFilterRequest,
 )
-from schemas.response_schemas import ListTraceTransformsResponse, TraceTransformResponse
+from schemas.response_schemas import (
+    ListTraceTransformsResponse,
+    TraceTransformResponse,
+    TransformExtractionResponseList,
+)
+from utils.transform_executor import execute_transform
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -153,6 +161,59 @@ def delete_transform(
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform_repo.delete_transform(transform_id)
         return Response(status_code=HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.post(
+    "/traces/{trace_id}/transforms/{transform_id}/extractions",
+    description="Execute a transform against a trace to extract variables.",
+    response_model=TransformExtractionResponseList,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def execute_trace_transform_extraction(
+    trace_id: str = Path(
+        description="ID of the trace to execute the transform against.",
+    ),
+    transform_id: UUID = Path(description="ID of the transform to execute."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TransformExtractionResponseList:
+    try:
+        # Fetch the transform
+        trace_transform_repo = TraceTransformRepository(db_session)
+        trace_transform = trace_transform_repo.get_transform_by_id(
+            transform_id,
+        )
+
+        # Fetch the trace
+        tasks_metrics_repo = TasksMetricsRepository(db_session)
+        metrics_repo = MetricRepository(db_session)
+        span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+        trace = span_repo.get_trace_by_id(
+            trace_id=trace_id,
+            include_metrics=False,
+            compute_new_metrics=False,
+        )
+
+        if not trace:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trace with ID {trace_id} not found",
+            )
+
+        # Execute the transform
+        return execute_transform(
+            trace=trace,
+            transform_definition=trace_transform.definition,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
