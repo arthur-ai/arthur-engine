@@ -435,11 +435,11 @@ Parameters:
     Default: 2
   MLEngineFargateTaskCPUValue:
     Type: Number
-    Default: 1024
+    Default: 2048
     Description: 'CPU value for AWS Fargate per ML Engine ECS task'
   MLEngineFargateTaskMemoryValue:
     Type: Number
-    Default: 2048
+    Default: 4096
     Description: 'Memory value for AWS Fargate per ML Engine ECS task'
 Metadata:
   AWS::CloudFormation::Interface:
