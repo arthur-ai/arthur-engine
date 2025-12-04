@@ -42,13 +42,6 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "task_id",
-            "llm_eval_name",
-            "llm_eval_version",
-            "transform_id",
-            name="uq_continuous_eval_eval_transform",
-        ),
     )
     # ### end Alembic commands ###
 

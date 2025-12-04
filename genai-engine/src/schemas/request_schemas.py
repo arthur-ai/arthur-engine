@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_core import Url
@@ -892,3 +892,34 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+
+    @staticmethod
+    def from_query_parameters(
+        name: Optional[str] = Query(
+            None,
+            description="Name of the continuous eval to filter on.",
+        ),
+        llm_eval_name: Optional[str] = Query(
+            None,
+            description="Name of the llm eval to filter on",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "ContinuousEvalListFilterRequest":
+        """Create a ContinuousEvalListFilterRequest from query parameters."""
+        return ContinuousEvalListFilterRequest(
+            name=name,
+            llm_eval_name=llm_eval_name,
+            created_after=(
+                datetime.fromisoformat(created_after) if created_after else None
+            ),
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )

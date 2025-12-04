@@ -90,6 +90,89 @@ def test_create_continuous_eval_success(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+def test_create_continuous_eval_allows_duplicates(client: GenaiEngineTestClientBase):
+    """Test creating a continuous eval allows duplicates."""
+
+    # Create a task
+    status_code, agentic_task = client.create_task(
+        name="test_create_continuous_eval_allows_duplicates",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Save an llm eval
+        status_code, llm_eval = create_test_llm_eval(client, agentic_task.id)
+        assert status_code == 200
+
+        # Create a transform
+        status_code, transform = create_test_transform(client, agentic_task.id)
+        assert status_code == 200
+
+        # Create a continuous eval
+        status_code, continuous_eval1 = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "test_continuous_eval",
+                "description": "Test continuous eval description",
+                "llm_eval_name": llm_eval.name,
+                "llm_eval_version": llm_eval.version,
+                "transform_id": str(transform.id),
+            },
+        )
+        assert status_code == 200
+
+        # Create a duplicate continuous eval
+        status_code, continuous_eval2 = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "test_continuous_eval",
+                "description": "Test continuous eval description",
+                "llm_eval_name": llm_eval.name,
+                "llm_eval_version": llm_eval.version,
+                "transform_id": str(transform.id),
+            },
+        )
+        assert status_code == 200
+
+        status_code, retrieved_evals = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url="sort=asc",
+        )
+        assert status_code == 200
+        assert len(retrieved_evals.evals) == 2
+
+        # verify the ids are different
+        assert retrieved_evals.evals[0].id != retrieved_evals.evals[1].id
+
+        # check the first continuous eval
+        assert retrieved_evals.evals[0].id == continuous_eval1.id
+        assert retrieved_evals.evals[0].name == "test_continuous_eval"
+        assert (
+            retrieved_evals.evals[0].description == "Test continuous eval description"
+        )
+        assert retrieved_evals.evals[0].task_id == agentic_task.id
+        assert retrieved_evals.evals[0].llm_eval_name == llm_eval.name
+        assert retrieved_evals.evals[0].llm_eval_version == llm_eval.version
+        assert retrieved_evals.evals[0].transform_id == transform.id
+        assert retrieved_evals.evals[0].created_at is not None
+
+        # check the duplicate has the same parameters
+        assert retrieved_evals.evals[1].id == continuous_eval2.id
+        assert retrieved_evals.evals[1].name == "test_continuous_eval"
+        assert (
+            retrieved_evals.evals[1].description == "Test continuous eval description"
+        )
+        assert retrieved_evals.evals[1].task_id == agentic_task.id
+        assert retrieved_evals.evals[1].llm_eval_name == llm_eval.name
+        assert retrieved_evals.evals[1].llm_eval_version == llm_eval.version
+        assert retrieved_evals.evals[1].transform_id == transform.id
+        assert retrieved_evals.evals[1].created_at is not None
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
 def test_create_continuous_eval_failures(client: GenaiEngineTestClientBase):
     """Test creating a continuous eval failures."""
 
