@@ -1,7 +1,7 @@
 """make trace_metadata task_id nullable
 
 Revision ID: a1b2c3d4e5f67890
-Revises: 8a2f6f0802a3
+Revises: 714d70516fae
 Create Date: 2025-12-03 14:44:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "a1b2c3d4e5f67890"
-down_revision = "8a2f6f0802a3"
+down_revision = "714d70516fae"
 branch_labels = None
 depends_on = None
 
