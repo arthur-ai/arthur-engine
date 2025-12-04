@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_core import Url
@@ -821,3 +821,105 @@ class TransformListFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+
+
+class ContinuousEvalCreateRequest(BaseModel):
+    """Request schema for creating a continuous eval"""
+
+    name: str = Field(description="Name of the continuous eval")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval",
+    )
+    llm_eval_name: str = Field(
+        description="Name of the llm eval to create the continuous eval for",
+    )
+    llm_eval_version: Union[str, int] = Field(
+        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    )
+    transform_id: UUID = Field(
+        description="ID of the transform to create the continuous eval for",
+    )
+
+
+class UpdateContinuousEvalRequest(BaseModel):
+    """Request schema for creating a continuous eval"""
+
+    name: Optional[str] = Field(default=None, description="Name of the continuous eval")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval",
+    )
+    llm_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the llm eval to create the continuous eval for",
+    )
+    llm_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    )
+    transform_id: Optional[UUID] = Field(
+        default=None,
+        description="ID of the transform to create the continuous eval for",
+    )
+
+    @model_validator(mode="after")
+    def validate_request(self):
+        if self.llm_eval_name is not None and self.llm_eval_version is None:
+            raise ValueError(
+                "Must specify which version of the llm eval this continuous eval should be associated with",
+            )
+        return self
+
+
+class ContinuousEvalListFilterRequest(BaseModel):
+    """Request schema for filtering continuous evals with comprehensive filtering options."""
+
+    # Optional filters
+    name: Optional[str] = Field(
+        None,
+        description="Name of the continuous eval to filter on",
+    )
+    llm_eval_name: Optional[str] = Field(
+        None,
+        description="LLM eval name to filter on",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+    @staticmethod
+    def from_query_parameters(
+        name: Optional[str] = Query(
+            None,
+            description="Name of the continuous eval to filter on.",
+        ),
+        llm_eval_name: Optional[str] = Query(
+            None,
+            description="Name of the llm eval to filter on",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "ContinuousEvalListFilterRequest":
+        """Create a ContinuousEvalListFilterRequest from query parameters."""
+        return ContinuousEvalListFilterRequest(
+            name=name,
+            llm_eval_name=llm_eval_name,
+            created_after=(
+                datetime.fromisoformat(created_after) if created_after else None
+            ),
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )

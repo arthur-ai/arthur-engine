@@ -748,3 +748,29 @@ class TransformExtractionResponseList(BaseModel):
     variables: list[TransformExtractionResponseVariable] = Field(
         description="List of extracted variables.",
     )
+
+
+class ContinuousEvalResponse(BaseModel):
+    id: UUID = Field(description="ID of the transform.")
+    name: str = Field(description="Name of the continuous eval.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval.",
+    )
+    task_id: str = Field(description="ID of the parent task.")
+    llm_eval_name: str = Field(description="Name of the llm eval.")
+    llm_eval_version: int = Field(description="Version of the llm eval.")
+    transform_id: UUID = Field(description="ID of the transform.")
+    created_at: datetime = Field(
+        description="Timestamp representing the time the transform was added to the llm eval.",
+    )
+    updated_at: datetime = Field(
+        description="Timestamp representing the time the continuous eval was last updated.",
+    )
+
+
+class ListContinuousEvalsResponse(BaseModel):
+    evals: List[ContinuousEvalResponse] = Field(
+        description="List of continuous evals.",
+    )
+    count: int = Field(description="Total number of evals")
