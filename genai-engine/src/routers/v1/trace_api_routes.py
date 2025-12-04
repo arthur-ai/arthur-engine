@@ -524,12 +524,12 @@ def get_user_details(
 
 
 @trace_api_routes.get(
-    "/traces/unregistered",
+    "/traces/spans/unregistered",
     summary="Get Unregistered Root Spans",
     description="Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination.",
     response_model=UnregisteredRootSpansResponse,
     response_model_exclude_none=True,
-    tags=["Traces"],
+    tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def get_unregistered_root_spans(

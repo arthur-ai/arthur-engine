@@ -4826,14 +4826,14 @@
                 }
             }
         },
-        "/api/v1/traces/unregistered": {
+        "/api/v1/traces/spans/unregistered": {
             "get": {
                 "tags": [
-                    "Traces"
+                    "Spans"
                 ],
                 "summary": "Get Unregistered Root Spans",
                 "description": "Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination.",
-                "operationId": "get_unregistered_root_spans_api_v1_traces_unregistered_get",
+                "operationId": "get_unregistered_root_spans_api_v1_traces_spans_unregistered_get",
                 "security": [
                     {
                         "API Key": []
