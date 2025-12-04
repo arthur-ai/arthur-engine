@@ -3,6 +3,7 @@ import binascii
 import logging
 import secrets
 import uuid
+from typing import Optional
 
 import bcrypt
 from arthur_common.models.enums import APIKeysRolesEnum
@@ -20,7 +21,11 @@ class ApiKeyRepository:
     def __init__(self, db_session: Session) -> None:
         self.db_session = db_session
 
-    def create_api_key(self, description: str, roles: list[APIKeysRolesEnum]) -> ApiKey:
+    def create_api_key(
+        self,
+        description: Optional[str],
+        roles: list[APIKeysRolesEnum],
+    ) -> ApiKey:
         # Check the number of active keys
         active_keys_count = (
             self.db_session.query(DatabaseApiKey)
