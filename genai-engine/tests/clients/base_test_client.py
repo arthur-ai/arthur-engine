@@ -63,19 +63,20 @@ from schemas.enums import (
     RagProviderEnum,
 )
 from schemas.internal_schemas import AgenticAnnotation
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
+    ContinuousEvalCreateRequest,
     CreateAgenticPromptRequest,
-    DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
-    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
+    NewTraceTransformRequest,
     RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
@@ -86,6 +87,8 @@ from schemas.request_schemas import (
     RagSearchSettingConfigurationRequestTypes,
     RagSearchSettingConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
+    TraceTransformUpdateRequest,
+    UpdateContinuousEvalRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsRequest,
@@ -94,14 +97,15 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    ContinuousEvalResponse,
     DatasetResponse,
-    DatasetTransformResponse,
     DatasetVersionResponse,
-    ExecuteTransformResponse,
-    ListDatasetTransformsResponse,
+    DatasetVersionRowResponse,
+    ListContinuousEvalsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
+    ListTraceTransformsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -113,8 +117,10 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceTransformResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
+    TransformExtractionResponseList,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -929,6 +935,7 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_dataset(
         self,
         name: str,
+        task_id: str = None,
         description: str = None,
         metadata: dict = None,
     ) -> tuple[int, DatasetResponse]:
@@ -939,7 +946,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         resp = self.base_client.post(
-            "/api/v2/datasets",
+            f"/api/v2/tasks/{task_id}/datasets",
             json=request.model_dump(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -1014,19 +1021,19 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def create_transform(
         self,
-        dataset_id: str,
+        task_id: str,
         name: str,
         definition: dict,
         description: str = None,
-    ) -> tuple[int, DatasetTransformResponse]:
-        request = NewDatasetTransformRequest(
+    ) -> tuple[int, TraceTransformResponse]:
+        request = NewTraceTransformRequest(
             name=name,
             description=description,
             definition=definition,
         )
 
         resp = self.base_client.post(
-            f"/api/v2/datasets/{dataset_id}/transforms",
+            f"/api/v1/tasks/{task_id}/traces/transforms",
             json=request.model_dump(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -1036,19 +1043,18 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                DatasetTransformResponse.model_validate(resp.json())
+                TraceTransformResponse.model_validate(resp.json())
                 if resp.status_code == 200
-                else None
+                else resp.json()
             ),
         )
 
     def get_transform(
         self,
-        dataset_id: str,
         transform_id: str,
-    ) -> tuple[int, DatasetTransformResponse]:
+    ) -> tuple[int, TraceTransformResponse]:
         resp = self.base_client.get(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+            f"/api/v1/traces/transforms/{transform_id}",
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -1057,18 +1063,22 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                DatasetTransformResponse.model_validate(resp.json())
+                TraceTransformResponse.model_validate(resp.json())
                 if resp.status_code == 200
-                else None
+                else resp.json()
             ),
         )
 
     def list_transforms(
         self,
-        dataset_id: str,
-    ) -> tuple[int, ListDatasetTransformsResponse]:
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListTraceTransformsResponse]:
+        base_url = f"/api/v1/tasks/{task_id}/traces/transforms"
+        if search_url:
+            base_url = base_url + "?" + search_url
         resp = self.base_client.get(
-            f"/api/v2/datasets/{dataset_id}/transforms",
+            base_url,
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -1077,7 +1087,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                ListDatasetTransformsResponse.model_validate(resp.json())
+                ListTraceTransformsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
@@ -1085,20 +1095,19 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def update_transform(
         self,
-        dataset_id: str,
         transform_id: str,
         name: str = None,
         description: str = None,
         definition: dict = None,
-    ) -> tuple[int, DatasetTransformResponse]:
-        request = DatasetTransformUpdateRequest(
+    ) -> tuple[int, TraceTransformUpdateRequest]:
+        request = TraceTransformUpdateRequest(
             name=name,
             description=description,
             definition=definition,
         )
 
-        resp = self.base_client.put(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+        resp = self.base_client.patch(
+            f"/api/v1/traces/transforms/{transform_id}",
             json=request.model_dump(exclude_none=True),
             headers=self.authorized_user_api_key_headers,
         )
@@ -1108,45 +1117,45 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                DatasetTransformResponse.model_validate(resp.json())
+                TraceTransformResponse.model_validate(resp.json())
                 if resp.status_code == 200
-                else None
+                else resp.json()
             ),
         )
 
-    def delete_transform(self, dataset_id: str, transform_id: str) -> int:
+    def delete_transform(self, transform_id: str) -> tuple[int, Any]:
         resp = self.base_client.delete(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+            f"/api/v1/traces/transforms/{transform_id}",
             headers=self.authorized_user_api_key_headers,
         )
 
         log_response(resp)
 
-        return resp.status_code
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
 
     def execute_transform_extraction(
         self,
-        dataset_id: str,
         transform_id: str,
         trace_id: str,
     ) -> tuple[int, Any]:
         """Execute a transform against a trace to extract dataset rows."""
         resp = self.base_client.post(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions",
-            json={
-                "trace_id": str(trace_id),
-            },
+            f"/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions",
             headers=self.authorized_user_api_key_headers,
         )
 
         log_response(resp)
 
         if resp.status_code == 200:
-            return resp.status_code, ExecuteTransformResponse(**resp.json())
+            return resp.status_code, TransformExtractionResponseList(**resp.json())
         return resp.status_code, resp.json() if resp.content else None
 
     def search_datasets(
         self,
+        task_id: str,
         sort: PaginationSortMethod = None,
         page: int = None,
         page_size: int = None,
@@ -1154,7 +1163,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         dataset_name: str = None,
     ) -> tuple[int, SearchDatasetsResponse]:
         """Search datasets with optional filters and pagination."""
-        path = "api/v2/datasets/search?"
+        path = f"api/v2/tasks/{task_id}/datasets/search?"
         params = get_base_pagination_parameters(
             sort=sort,
             page=page,
@@ -1910,6 +1919,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         tool_name: str | None = None,
         span_types: list | None = None,
         user_ids: list[str] | None = None,
+        annotation_score: int | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1954,6 +1964,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["tool_name"] = tool_name
         if span_types is not None:
             params["span_types"] = span_types
+        if annotation_score is not None:
+            params["annotation_score"] = annotation_score
         if user_ids is not None:
             params["user_ids"] = user_ids
         # Query relevance filters
@@ -2591,6 +2603,31 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_version_row(
+        self,
+        dataset_id: str,
+        version_number: int,
+        row_id: str,
+    ) -> tuple[int, DatasetVersionRowResponse]:
+        """Get a specific row from a dataset version."""
+        path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}"
+
+        resp = self.base_client.get(
+            path,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionRowResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
@@ -3460,6 +3497,167 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             AgenticPrompt.model_validate(resp.json()),
         )
+
+    def save_llm_eval(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        llm_eval_data: dict,
+    ) -> tuple[int, LLMEval]:
+        """Save an llm eval."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
+            json=llm_eval_data,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                LLMEval.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_llm_eval(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+    ) -> tuple[int, Any]:
+        """Delete an llm eval."""
+        resp = self.base_client.delete(
+            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
+
+    def save_continuous_eval(
+        self,
+        task_id: str,
+        continuous_eval_data: Union[ContinuousEvalCreateRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Create a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, ContinuousEvalCreateRequest)
+            else continuous_eval_data
+        )
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/continuous_evals",
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def update_continuous_eval(
+        self,
+        continuous_eval_id: str,
+        continuous_eval_data: Union[UpdateContinuousEvalRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Update a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, UpdateContinuousEvalRequest)
+            else continuous_eval_data
+        )
+        resp = self.base_client.patch(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_continuous_eval_by_id(
+        self,
+        continuous_eval_id: str,
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Get a continuous eval by id."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_continuous_evals(
+        self,
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListContinuousEvalsResponse]:
+        """List continuous evals."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals"
+        if search_url:
+            base_url = base_url + "?" + search_url
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListContinuousEvalsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_continuous_eval(
+        self,
+        continuous_eval_id: str,
+    ) -> tuple[int, Any]:
+        """Delete a continuous eval."""
+        resp = self.base_client.delete(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
 
 
 def get_base_pagination_parameters(

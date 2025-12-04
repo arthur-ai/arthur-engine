@@ -150,7 +150,10 @@ def mock_completion(*args, **kwargs):
 
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {"content": "ok", "tool_calls": None}
+    mock_message = MagicMock()
+    mock_message.content = "ok"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     return mock_response
 
 
@@ -173,10 +176,10 @@ async def test_run_prompt(
     # Mock completion response
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Test response",
-        "tool_calls": [{"id": "call_123", "function": {"name": "test_tool"}}],
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Test response"
+    mock_message.tool_calls = [{"id": "call_123", "function": {"name": "test_tool"}}]
+    mock_response.choices[0].message = mock_message
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
     mock_llm_response.cost = "0.001234"
@@ -406,9 +409,10 @@ async def test_run_saved_prompt(
     # Mock completion response
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Saved prompt response",
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Saved prompt response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
     mock_llm_response.cost = "0.002345"
@@ -491,10 +495,10 @@ def test_chat_completion_service_run_chat_completion(
     # Mock completion response
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Direct completion response",
-        "tool_calls": [{"id": "call_456", "function": {"name": "test_tool"}}],
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Direct completion response"
+    mock_message.tool_calls = [{"id": "call_456", "function": {"name": "test_tool"}}]
+    mock_response.choices[0].message = mock_message
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
     mock_llm_response.cost = "0.003456"
@@ -997,10 +1001,10 @@ def test_agentic_prompt_tool_call_message_serialization(
     # Mock LiteLLM completion response
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Got it!",
-        "tool_calls": None,
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Got it!"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.000123
 
@@ -1566,9 +1570,12 @@ def test_run_saved_agentic_prompt_with_pydantic_response_format(
     # Mock completion response
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": '{"city": "New York", "temperature": 70}',
-    }
+    mock_message = MagicMock()
+    mock_message.content = '{"city": "New York", "temperature": 70}'
+    mock_message.tool_calls = None
+    # Support both attribute access and dict-like .get() access
+    mock_message.get = MagicMock(return_value='{"city": "New York", "temperature": 70}')
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 

@@ -2,8 +2,10 @@ import Tooltip from "@mui/material/Tooltip";
 import { createColumnHelper } from "@tanstack/react-table";
 
 import { CopyableChip } from "../../common";
+import { AnnotationCell } from "../components/AnnotationCell";
+import { DurationCell } from "../components/DurationCell";
 
-import { DurationCell, TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
+import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
@@ -23,6 +25,16 @@ export const columns = [
           </span>
         </Tooltip>
       );
+    },
+  }),
+  columnHelper.accessor("annotation", {
+    header: "Annotation",
+    cell: ({ getValue, row }) => {
+      const annotation = getValue();
+
+      if (!annotation) return;
+
+      return <AnnotationCell annotation={annotation} traceId={row.original.trace_id} />;
     },
   }),
   columnHelper.accessor("input_content", {

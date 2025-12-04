@@ -5,8 +5,9 @@ import { useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
+import { useDrawerTarget } from "../../hooks/useDrawerTarget";
+import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
-import { useTracesHistoryStore } from "../../stores/history.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
@@ -28,10 +29,13 @@ export function TraceLevel() {
   const { task } = useTask();
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
 
   const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
+
+  // Sync filters with URL parameters
+  useSyncFiltersToUrl();
 
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
@@ -55,7 +59,7 @@ export function TraceLevel() {
   const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const table = useReactTable({
-    data: data?.traces ?? DEFAULT_DATA, // Use test data to verify scrolling
+    data: data?.traces ?? DEFAULT_DATA,
     columns,
     getCoreRowModel: getCoreRowModel(),
     state: {
@@ -69,6 +73,9 @@ export function TraceLevel() {
     () =>
       createFilterRow(TRACE_FIELDS, {
         trace_ids: { taskId: task?.id ?? "", api },
+        session_ids: { taskId: task?.id ?? "", api },
+        user_ids: { taskId: task?.id ?? "", api },
+        span_ids: { taskId: task?.id ?? "", api },
       }),
     [task?.id, api]
   );
@@ -79,10 +86,7 @@ export function TraceLevel() {
       ids: data?.traces.map((trace) => trace.trace_id) ?? [],
     });
 
-    push({
-      type: "trace",
-      id: row.trace_id,
-    });
+    setDrawerTarget({ target: "trace", id: row.trace_id });
   };
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);

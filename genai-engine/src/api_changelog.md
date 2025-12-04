@@ -2,6 +2,147 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/03/2025
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
+
+# 12/02/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **CHANGE** for Component/Schema:  removed the schema 'DatasetTransformResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'ListDatasetTransformsResponse'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+
+# 11/26/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/search  api path removed without deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 11/25/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tools' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_provider' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'name' to the response with the '200' status
+
+# 11/21/2025
+- `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
+- `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
+
+# 11/20/2025
+- `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Made `name` and `version` optional in `data.items.prompt_results.items` (changed from required string to optional with multiple types)
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Removed required fields `prompt_name`, `prompt_ref` from request/response; added required request fields `prompt_configs`, `prompt_variable_mapping`
+- Added endpoint: `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results`
+- Added endpoint: `/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}`
+- `/api/v1/prompt_experiments/{experiment_id}`: Added required response fields `prompt_configs`, `prompt_variable_mapping`
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Added required fields `prompt_key`, `prompt_type` to `data.items.prompt_results.items` response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added required response field `prompt_configs` to both root and `data.items`
+- Removed schemas: `PromptRef-Input`, `PromptRef-Output`
+
 # 11/19/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'

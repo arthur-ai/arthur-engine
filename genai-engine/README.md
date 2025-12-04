@@ -295,6 +295,8 @@ poetry run pytest -m "unit_tests" --cov=src --cov-fail-under=79
    export REMOTE_TEST_URL=http://localhost:3030
    export REMOTE_TEST_KEY=changeme123
    ```
+**NOTE**: The `REMOTE_TEST_KEY` needs to match the `GENAI_ENGINE_ADMIN_KEY` configured in your running genai-engine instance.
+Depending on how you ran your engine, it may be different than the one above.
 3. Run the below shell script from the `genai-engine` directory
    ```bash
    ./tests/test_remote.sh

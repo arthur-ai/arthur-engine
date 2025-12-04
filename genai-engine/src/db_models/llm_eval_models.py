@@ -1,8 +1,10 @@
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     TIMESTAMP,
+    UUID,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -78,7 +80,6 @@ class DatabaseLLMEvalVersionTag(Base):
     # Composite primary key: task_id + name + version
     task_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("tasks.id"),
         primary_key=True,
         index=True,
     )
@@ -99,4 +100,48 @@ class DatabaseLLMEvalVersionTag(Base):
             name="fk_llm_eval_version_tags_eval",
         ),
         UniqueConstraint("task_id", "name", "tag", name="uq_llm_eval_task_name_tag"),
+    )
+
+
+class DatabaseContinuousEval(Base):
+    __tablename__ = "continuous_evals"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # llm eval composite primary key
+    task_id: Mapped[str] = mapped_column(String, nullable=False)
+    llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
+    llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    transform_id: Mapped[uuid.UUID] = mapped_column(
+        UUID,
+        ForeignKey("trace_transforms.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "llm_eval_name", "llm_eval_version"],
+            ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
+            ondelete="CASCADE",
+            name="fk_llm_eval_transforms_eval",
+        ),
     )

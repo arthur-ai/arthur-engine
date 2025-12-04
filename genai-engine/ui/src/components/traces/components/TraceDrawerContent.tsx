@@ -5,15 +5,16 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useMemo } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 
 import { BucketProvider } from "../context/bucket-context";
-import { useSelectionStore } from "../stores/selection.store";
+import { useSelection } from "../hooks/useSelection";
 import { buildThresholdsFromSample } from "../utils/duration";
 import { flattenSpans, getSpanDuration } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { DrawerPagination } from "./DrawerPagination";
+import { FeedbackPanel } from "./feedback/FeedbackPanel";
 import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
 import { SpanTree } from "./SpanTree";
 
@@ -31,8 +32,9 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const queryClient = useQueryClient();
 
   const api = useApi();
-  const select = useSelectionStore((state) => state.select);
-  const selectedSpanId = useSelectionStore((state) => state.selection.span);
+  const [selectedSpanId, select] = useSelection("span");
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const { data: trace } = useSuspenseQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -62,11 +64,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
     if (!rootSpan) return;
 
     if (!selectedSpanId) {
-      select("span", rootSpan.span_id);
+      select(rootSpan.span_id, { history: "replace" });
     }
 
     if (flatSpans.findIndex((span) => span.span_id === selectedSpanId) === -1) {
-      select("span", rootSpan.span_id);
+      select(rootSpan.span_id, { history: "replace" });
     }
   });
 
@@ -80,7 +82,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   return (
     <BucketProvider thresholds={thresholds}>
-      <Stack spacing={0} sx={{ height: "100%" }}>
+      <Stack spacing={0} sx={{ height: "100%" }} ref={containerRef}>
         <Stack
           direction="row"
           spacing={0}
@@ -111,8 +113,10 @@ export const TraceDrawerContent = ({ id }: Props) => {
             </Stack>
           </Stack>
 
-          <Stack gap={2} alignItems="flex-end">
-            <ButtonGroup variant="outlined" size="small" disableElevation>
+          <Stack gap={1} alignItems="center" direction="row">
+            <FeedbackPanel containerRef={containerRef} annotation={trace.annotation} traceId={id} />
+
+            <ButtonGroup size="small" variant="contained" disableElevation>
               <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
                 Refresh Metrics
               </Button>
@@ -121,9 +125,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
           </Stack>
         </Stack>
 
-        <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
-          <DrawerPagination />
-        </Box>
+        <Stack direction="row" alignItems="stretch">
+          <Box sx={{ flex: 1, px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
+            <DrawerPagination />
+          </Box>
+        </Stack>
 
         <Box
           sx={{

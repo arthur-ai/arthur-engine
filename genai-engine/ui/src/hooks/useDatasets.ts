@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { useApiQuery } from "./useApiQuery";
 
 import type { DatasetResponse } from "@/lib/api-client/api-client";
@@ -11,11 +9,11 @@ export function useDatasets(
   filters: DatasetFilters,
   options?: { enabled?: boolean }
 ) {
-  const params = buildFetchDatasetsParams(filters);
+  const params = buildFetchDatasetsParams(taskId, filters);
 
   const { data, error, isLoading, refetch } =
-    useApiQuery<"getDatasetsApiV2DatasetsSearchGet">({
-      method: "getDatasetsApiV2DatasetsSearchGet",
+    useApiQuery<"getDatasetsApiV2TasksTaskIdDatasetsSearchGet">({
+      method: "getDatasetsApiV2TasksTaskIdDatasetsSearchGet",
       args: [params] as const,
       enabled: !!taskId && (options?.enabled ?? true),
       queryOptions: {
@@ -25,17 +23,9 @@ export function useDatasets(
       },
     });
 
-  const taskDatasets = useMemo(
-    () =>
-      data?.datasets?.filter(
-        (dataset) => dataset.metadata?.task_id === taskId
-      ) ?? [],
-    [data, taskId]
-  );
-
   return {
-    datasets: taskDatasets as DatasetResponse[],
-    count: taskDatasets.length,
+    datasets: (data?.datasets ?? []) as DatasetResponse[],
+    count: data?.datasets?.length ?? 0,
     error,
     isLoading,
     refetch,

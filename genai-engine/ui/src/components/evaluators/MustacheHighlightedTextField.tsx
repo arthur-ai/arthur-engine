@@ -76,8 +76,8 @@ interface SelectionPosition {
 
 const EditableDiv = styled("div")(() => ({
   width: "100%",
+  height: "100%",
   minHeight: "80px",
-  maxHeight: "250px",
   overflow: "auto",
   padding: "8.5px 14px",
   fontSize: "0.8125rem",
@@ -495,7 +495,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   }, []);
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
       <EditableDiv
         ref={editableRef}
         contentEditable={!disabled && !readOnly}

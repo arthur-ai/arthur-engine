@@ -42,14 +42,17 @@ from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
+from routers.v1.continuous_eval_routes import continuous_eval_routes
 from routers.v1.legacy_span_routes import span_routes
 from routers.v1.llm_eval_routes import llm_eval_routes
 from routers.v1.model_provider_routes import model_provider_routes
+from routers.v1.notebook_routes import notebook_routes
 from routers.v1.prompt_experiment_routes import prompt_experiment_routes
 from routers.v1.rag_routes import rag_routes
 from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
+from routers.v1.transform_routes import transform_routes
 from routers.v2.routers import (
     dataset_management_routes,
     feedback_routes,
@@ -144,6 +147,10 @@ tags_metadata = [
     {
         "name": "Prompt Experiments",
         "description": "Endpoints for managing prompt experiments",
+    },
+    {
+        "name": "Notebooks",
+        "description": "Endpoints for managing experiment notebooks",
     },
 ]
 
@@ -384,7 +391,10 @@ def get_app_with_routes() -> FastAPI:
             rag_routes,
             rag_setting_routes,
             llm_eval_routes,
+            notebook_routes,
             prompt_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -416,7 +426,10 @@ def get_test_app() -> FastAPI:
             rag_routes,
             rag_setting_routes,
             llm_eval_routes,
+            notebook_routes,
             prompt_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -458,7 +471,10 @@ def get_app() -> FastAPI:
             rag_routes,
             rag_setting_routes,
             llm_eval_routes,
+            notebook_routes,
             prompt_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:

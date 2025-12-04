@@ -8,8 +8,8 @@ import { BucketProvider } from "../context/bucket-context";
 import { columns } from "../data/columns";
 import { TokenCostTooltip, TokenCountTooltip } from "../data/common";
 import { sessionLevelColumns } from "../data/session-level-columns";
+import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
-import { useTracesHistoryStore } from "../stores/history.store";
 import { buildThresholdsFromSample } from "../utils/duration";
 
 import { filterFields } from "./filtering/fields";
@@ -125,7 +125,7 @@ type UserTableProps = {
 const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
   const api = useApi()!;
   const ref = useRef<HTMLDivElement | null>(null);
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
@@ -156,7 +156,15 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
 
   const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
 
-  const { FiltersRow } = useMemo(() => createFilterRow(USER_FILTERS, {}), []);
+  const { FiltersRow } = useMemo(
+    () =>
+      createFilterRow(USER_FILTERS, {
+        session_ids: { taskId, api },
+        user_ids: { taskId, api },
+        span_ids: { taskId, api },
+      }),
+    [taskId, api]
+  );
 
   return (
     <Stack gap={1} mt={1}>
@@ -169,10 +177,7 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
               ref={ref}
               loading={traces.isFetching}
               onRowClick={(row) => {
-                push({
-                  type: "trace",
-                  id: row.original.trace_id,
-                });
+                setDrawerTarget({ target: "trace", id: row.original.trace_id });
               }}
             />
           </BucketProvider>
@@ -202,7 +207,7 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
 const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
   const api = useApi()!;
   const ref = useRef<HTMLDivElement | null>(null);
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -236,10 +241,7 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
         ref={ref}
         loading={sessions.isFetching}
         onRowClick={(row) => {
-          push({
-            type: "session",
-            id: row.original.session_id,
-          });
+          setDrawerTarget({ target: "session", id: row.original.session_id });
         }}
       />
       <TablePagination
