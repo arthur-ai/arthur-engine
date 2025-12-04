@@ -11,7 +11,7 @@ from db_models.base import (
 # Import all models
 from db_models.auth_models import DatabaseApiKey, DatabaseUser
 from db_models.configuration_models import DatabaseApplicationConfiguration
-from db_models.dataset_models import DatabaseDataset, DatabaseDatasetTransform
+from db_models.dataset_models import DatabaseDataset
 from db_models.document_models import (
     DatabaseDocument,
     DatabaseEmbedding,
@@ -55,12 +55,14 @@ from db_models.agentic_prompt_models import (
 )
 from db_models.secret_storage_models import DatabaseSecretStorage
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
+from db_models.notebook_models import DatabaseNotebook
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
     DatabasePromptExperimentTestCasePromptResult,
     DatabasePromptExperimentTestCasePromptResultEvalScore,
 )
+from db_models.transform_models import DatabaseTraceTransform
 
 __all__ = [
     # Base classes
@@ -112,7 +114,6 @@ __all__ = [
     "DatabaseAgenticPromptVersionTag",
     # Dataset models
     "DatabaseDataset",
-    "DatabaseDatasetTransform",
     # Secret storage models
     "DatabaseSecretStorage",
     # RAG provider models
@@ -121,9 +122,14 @@ __all__ = [
     # LLM Eval models
     "DatabaseLLMEval",
     "DatabaseLLMEvalVersionTag",
+    "DatabaseContinuousEval",
+    # Notebook models
+    "DatabaseNotebook",
     # Prompt Experiment models
     "DatabasePromptExperiment",
     "DatabasePromptExperimentTestCase",
     "DatabasePromptExperimentTestCasePromptResult",
     "DatabasePromptExperimentTestCasePromptResultEvalScore",
+    # Transform models
+    "DatabaseTraceTransform",
 ]

@@ -14,9 +14,9 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { EvalFormModalProps } from "./types";
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
 import NunjucksHighlightedTextField from "./MustacheHighlightedTextField";
+import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -245,25 +245,43 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
 
   const prevEvalNameRef = useRef("");
 
-  // Combine template names with existing eval names
+  // Create option objects that distinguish between templates and existing evals
+  type EvalOption = {
+    id: string;
+    name: string;
+    type: "template" | "existing";
+    attribution?: string;
+  };
+
   const allEvalNameOptions = useMemo(() => {
-    const templateNames = evaluatorTemplates.map((template) => template.name);
-    // Combine and deduplicate (templates first, then existing evals not in templates)
-    const combined = [...templateNames];
-    existingEvalNames.forEach((name) => {
-      if (!combined.includes(name)) {
-        combined.push(name);
-      }
+    const options: EvalOption[] = [];
+
+    // Add templates
+    evaluatorTemplates.forEach((template) => {
+      options.push({
+        id: `template-${template.name}`,
+        name: template.name,
+        type: "template",
+        attribution: template.attribution,
+      });
     });
-    return combined;
+
+    // Add existing evals
+    existingEvalNames.forEach((name) => {
+      options.push({
+        id: `existing-${name}`,
+        name: name,
+        type: "existing",
+      });
+    });
+
+    return options;
   }, [evaluatorTemplates, existingEvalNames]);
 
   const handleEvalNameChange = useCallback(
-    (_event: React.SyntheticEvent<Element, Event>, newValue: string | null, reason: string) => {
-      const selectedName = newValue || "";
-
+    (_event: React.SyntheticEvent<Element, Event>, newValue: EvalOption | string | null, reason: string) => {
       // If cleared or empty, reset all fields
-      if (!selectedName || reason === "clear") {
+      if (!newValue || reason === "clear") {
         setEvalName("");
         setInstructions("");
         setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
@@ -272,23 +290,28 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         return;
       }
 
+      // Handle both option objects and free text
+      const selectedOption = typeof newValue === "string" ? null : newValue;
+      const selectedName = typeof newValue === "string" ? newValue : newValue.name;
+
       prevEvalNameRef.current = selectedName;
+      setEvalName(selectedName);
 
-      // Check if it's a template
-      const template = evaluatorTemplates.find((t) => t.name === selectedName);
-      if (template && (reason === "selectOption" || reason === "createOption")) {
-        // Populate from template
-        setInstructions(template.instructions);
-        // Keep the default provider and model
-        return;
-      }
-
-      // Only auto-fill when explicitly selecting from dropdown or pressing enter
-      if (existingEvalNames.includes(selectedName) && (reason === "selectOption" || reason === "createOption")) {
-        fetchLatestEvalVersion(selectedName);
+      // Only auto-fill when explicitly selecting from dropdown
+      if (selectedOption && (reason === "selectOption" || reason === "createOption")) {
+        if (selectedOption.type === "template") {
+          // Populate from template
+          const template = evaluatorTemplates.find((t) => t.name === selectedOption.name);
+          if (template) {
+            setInstructions(template.instructions);
+          }
+        } else if (selectedOption.type === "existing") {
+          // Fetch latest version of existing eval
+          fetchLatestEvalVersion(selectedOption.name);
+        }
       }
     },
-    [fetchLatestEvalVersion, enabledProviders, existingEvalNames, evaluatorTemplates]
+    [fetchLatestEvalVersion, enabledProviders, evaluatorTemplates]
   );
 
   const providerDisabled = enabledProviders.length === 0;
@@ -308,82 +331,64 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   Eval Name
                 </Typography>
               </FormLabel>
-              <Autocomplete
+              <Autocomplete<EvalOption, false, false, true>
                 freeSolo
                 options={allEvalNameOptions}
-                value={evalName}
+                value={null}
                 inputValue={evalName}
                 onChange={handleEvalNameChange}
                 onInputChange={(_event, newValue) => {
                   setEvalName(newValue);
                 }}
-                onClose={() => {
-                  if (evalName && prevEvalNameRef.current !== evalName) {
-                    prevEvalNameRef.current = evalName;
-                    const template = evaluatorTemplates.find((t) => t.name === evalName);
-                    if (template) {
-                      setInstructions(template.instructions);
-                    } else if (existingEvalNames.includes(evalName)) {
-                      fetchLatestEvalVersion(evalName);
-                    }
-                  }
-                }}
                 disabled={isLoading}
                 forcePopupIcon={true}
+                getOptionLabel={(option) => (typeof option === "string" ? option : option.name)}
                 filterOptions={(options, state) => {
                   if (!state.inputValue) {
                     return options;
                   }
                   const filtered = options.filter((option) =>
-                    option.toLowerCase().includes(state.inputValue.toLowerCase())
+                    option.name.toLowerCase().includes(state.inputValue.toLowerCase())
                   );
-                  // Add a placeholder message when no matches
-                  if (filtered.length === 0) {
-                    return ["__NO_OPTIONS__"];
-                  }
                   return filtered;
                 }}
-                getOptionDisabled={(option) => option === "__NO_OPTIONS__"}
                 renderOption={(props, option) => {
                   const { key, ...otherProps } = props;
-                  const template = evaluatorTemplates.find((t) => t.name === option);
+                  const isTemplate = option.type === "template";
                   return (
-                    <li key={key} {...otherProps} style={option === "__NO_OPTIONS__" ? { cursor: "default", padding: "6px 16px" } : { padding: "6px 16px" }}>
-                      {option === "__NO_OPTIONS__" ? "No matching evals or templates" : (
-                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, flex: 1 }}>
-                            <span>{option}</span>
-                            {template?.attribution && (
-                              <Typography
-                                variant="caption"
-                                component="span"
-                                sx={{
-                                  color: "rgba(0, 0, 0, 0.3)",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 400,
-                                  fontStyle: "italic",
-                                  display: "inline"
-                                }}
-                              >
-                                {template.attribution}
-                              </Typography>
-                            )}
-                          </Box>
-                          {template && (
-                            <Chip
-                              label="Template"
-                              size="small"
-                              color="primary"
+                    <li key={key} {...otherProps} style={{ padding: "6px 16px" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                        <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, flex: 1 }}>
+                          <span>{option.name}</span>
+                          {option.attribution && (
+                            <Typography
+                              variant="caption"
+                              component="span"
                               sx={{
-                                height: 20,
-                                fontSize: "0.7rem",
-                                fontWeight: 500,
-                                ml: 1,
+                                color: "rgba(0, 0, 0, 0.3)",
+                                fontSize: "0.75rem",
+                                fontWeight: 400,
+                                fontStyle: "italic",
+                                display: "inline"
                               }}
-                            />
+                            >
+                              {option.attribution}
+                            </Typography>
                           )}
                         </Box>
-                      )}
+                        <Chip
+                          label={isTemplate ? "Template" : "Existing"}
+                          size="small"
+                          color={isTemplate ? "primary" : "default"}
+                          variant={isTemplate ? "filled" : "outlined"}
+                          sx={{
+                            height: 20,
+                            fontSize: "0.7rem",
+                            fontWeight: 500,
+                            ml: 1,
+                          }}
+                        />
+                      </Box>
                     </li>
                   );
                 }}
@@ -394,27 +399,6 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                     required
                     size="small"
                     autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && evalName) {
-                        e.preventDefault();
-                        const template = evaluatorTemplates.find((t) => t.name === evalName);
-                        if (template) {
-                          setInstructions(template.instructions);
-                        } else if (existingEvalNames.includes(evalName)) {
-                          fetchLatestEvalVersion(evalName);
-                        }
-                      }
-                    }}
-                    onBlur={() => {
-                      if (evalName) {
-                        const template = evaluatorTemplates.find((t) => t.name === evalName);
-                        if (template) {
-                          setInstructions(template.instructions);
-                        } else if (existingEvalNames.includes(evalName)) {
-                          fetchLatestEvalVersion(evalName);
-                        }
-                      }
-                    }}
                   />
                 )}
               />

@@ -18,7 +18,9 @@ class TasksMetricsRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def get_task_metrics_ids_cached(self, task_id: str) -> list[str]:
+    def get_task_metrics_ids_cached(self, task_id: str | None) -> list[str]:
+        if not task_id:
+            raise ValueError("Task ID is required")
         if not cache_config.TASK_METRICS_CACHE_ENABLED:
             return self._get_task_metrics_ids(task_id)
         CACHED_TASK_METRICS.expire()

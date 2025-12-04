@@ -11,7 +11,6 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -22,6 +21,12 @@ from db_models.base import Base
 class DatabaseDataset(Base):
     __tablename__ = "datasets"
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True)
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(String, nullable=True)
     # metadata is a reserved sqlalchemy name so we'll use dataset_metadata
@@ -31,10 +36,6 @@ class DatabaseDataset(Base):
     # versions relationship include for cascade-delete functionality
     versions: Mapped[List["DatabaseDatasetVersion"]] = relationship(
         cascade="all,delete",
-    )
-    # transforms relationship include for cascade-delete functionality
-    transforms: Mapped[List["DatabaseDatasetTransform"]] = relationship(
-        cascade="all, delete-orphan",
     )
     latest_version_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
@@ -85,29 +86,4 @@ class DatabaseDatasetVersionRow(Base):
             ["version_number", "dataset_id"],
             ["dataset_versions.version_number", "dataset_versions.dataset_id"],
         ),
-    )
-
-
-class DatabaseDatasetTransform(Base):
-    __tablename__ = "dataset_transforms"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
-    dataset_id: Mapped[uuid.UUID] = mapped_column(
-        UUID,
-        ForeignKey("datasets.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    definition: Mapped[dict] = mapped_column(postgresql.JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
-    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
-
-    __table_args__ = (
-        UniqueConstraint(
-            "dataset_id",
-            "name",
-            name="uq_dataset_transforms_dataset_id_name",
-        ),
-        Index("idx_dataset_transforms_dataset_id", "dataset_id"),
     )

@@ -1,12 +1,4 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Stack,
-} from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Stack } from "@mui/material";
 import { useState } from "react";
 import { z } from "zod";
 
@@ -19,12 +11,7 @@ interface AddColumnDialogProps {
   existingColumns: string[];
 }
 
-export const AddColumnDialog: React.FC<AddColumnDialogProps> = ({
-  open,
-  onClose,
-  onSubmit,
-  existingColumns,
-}) => {
+export const AddColumnDialog: React.FC<AddColumnDialogProps> = ({ open, onClose, onSubmit, existingColumns }) => {
   const [columnName, setColumnName] = useState("");
   const [error, setError] = useState<string | null>(null);
 

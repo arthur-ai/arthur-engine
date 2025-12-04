@@ -487,8 +487,8 @@ async def run_saved_agentic_prompt(
 @agentic_prompt_routes.post(
     "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders",
     summary="Render a specific version of an agentic prompt with variables",
-    description="Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the rendered messages.",
-    response_model=RenderedPromptResponse,
+    description="Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the complete prompt object with rendered messages.",
+    response_model=AgenticPrompt,
     response_model_exclude_none=True,
     tags=["Prompts"],
 )
@@ -508,7 +508,7 @@ def render_saved_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-) -> RenderedPromptResponse:
+) -> AgenticPrompt:
     """
     Render an agentic prompt with template variable substitution.
 
@@ -520,7 +520,7 @@ def render_saved_agentic_prompt(
         task: Task
 
     Returns:
-        RenderedPromptResponse with rendered messages
+        AgenticPrompt with rendered messages
     """
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -530,10 +530,7 @@ def render_saved_agentic_prompt(
             prompt_version,
             rendering_request.completion_request,
         )
-        # Convert AgenticPrompt to RenderedPromptResponse
-        return RenderedPromptResponse(
-            messages=rendered_prompt.messages,
-        )
+        return rendered_prompt
     except HTTPException:
         # propagate HTTP exceptions
         raise

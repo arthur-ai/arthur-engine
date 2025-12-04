@@ -46,8 +46,12 @@ def test_dataset_versions_basic_functionality(
     dataset_name = "Dataset for Versions"
     dataset_description = "dataset for version operations"
 
+    status_code, agentic_task = client.create_task(name="test_dataset_versions_crud_task", is_agentic=True)
+    assert status_code == 200
+
     status_code, created_dataset = client.create_dataset(
         name=dataset_name,
+        task_id=agentic_task.id,
         description=dataset_description,
     )
     assert status_code == 200
@@ -229,6 +233,59 @@ def test_dataset_versions_basic_functionality(
     assert version_1_data["Jane Smith"] == "25"  # Still present in v1
     assert version_1_data["Bob Johnson"] == "35"  # Original age in v1
 
+    # Test: Get specific rows by ID
+    # Get John Doe's row ID from version 1
+    john_doe_row_id = _get_id_by_row_name(retrieved_version_1.rows, "John Doe")
+    status_code, john_row = client.get_dataset_version_row(
+        dataset_id=dataset_id,
+        version_number=1,
+        row_id=str(john_doe_row_id),
+    )
+    assert status_code == 200
+    assert john_row.id == john_doe_row_id
+    john_data = {item.column_name: item.column_value for item in john_row.data}
+    assert john_data["name"] == "John Doe"
+    assert john_data["age"] == "30"
+
+    # Get Bob's row from version 1 (should have age 35)
+    bob_row_id = _get_id_by_row_name(retrieved_version_1.rows, "Bob Johnson")
+    status_code, bob_v1_row = client.get_dataset_version_row(
+        dataset_id=dataset_id,
+        version_number=1,
+        row_id=str(bob_row_id),
+    )
+    assert status_code == 200
+    bob_v1_data = {item.column_name: item.column_value for item in bob_v1_row.data}
+    assert bob_v1_data["age"] == "35"  # Original age in version 1
+
+    # Get Bob's row from version 2 (should have age 36)
+    status_code, bob_v2_row = client.get_dataset_version_row(
+        dataset_id=dataset_id,
+        version_number=2,
+        row_id=str(bob_row_id),
+    )
+    assert status_code == 200
+    bob_v2_data = {item.column_name: item.column_value for item in bob_v2_row.data}
+    assert bob_v2_data["age"] == "36"  # Updated age in version 2
+
+    # Try to get a non-existent row ID
+    import uuid
+    fake_row_id = str(uuid.uuid4())
+    status_code, _ = client.get_dataset_version_row(
+        dataset_id=dataset_id,
+        version_number=1,
+        row_id=fake_row_id,
+    )
+    assert status_code == 404
+
+    # Try to get a row from a non-existent version
+    status_code, _ = client.get_dataset_version_row(
+        dataset_id=dataset_id,
+        version_number=999,
+        row_id=str(john_doe_row_id),
+    )
+    assert status_code == 404
+
     # test fetching all versions
     status_code, versions_response = client.get_dataset_versions(created_dataset.id)
     assert status_code == 200
@@ -318,6 +375,9 @@ def test_dataset_versions_basic_functionality(
     )
     assert status_code == 404
 
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
 
 @pytest.mark.unit_tests
 def test_dataset_versions_with_rows_to_delete_filter(
@@ -328,8 +388,12 @@ def test_dataset_versions_with_rows_to_delete_filter(
     dataset_name = "Dataset for Filter Delete Test"
     dataset_description = "Testing rows_to_delete_filter parameter"
 
+    status_code, agentic_task = client.create_task(name="test_dataset_versions_with_rows_to_delete_filter_task", is_agentic=True)
+    assert status_code == 200
+
     status_code, created_dataset = client.create_dataset(
         name=dataset_name,
+        task_id=agentic_task.id,
         description=dataset_description,
     )
     assert status_code == 200
@@ -497,4 +561,7 @@ def test_dataset_versions_with_rows_to_delete_filter(
 
     # Cleanup
     status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+
+    status_code = client.delete_task(agentic_task.id)
     assert status_code == 204

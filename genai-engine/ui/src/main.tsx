@@ -1,3 +1,4 @@
+import { NuqsAdapter } from "nuqs/adapters/react";
 import { StrictMode } from "react";
 import "./index.css";
 import { createRoot } from "react-dom/client";
@@ -10,6 +11,8 @@ initAmplitude();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <NuqsAdapter>
+      <App />
+    </NuqsAdapter>
   </StrictMode>
 );

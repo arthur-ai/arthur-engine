@@ -40,7 +40,11 @@ from schemas.internal_schemas import (
     DocumentStorageConfiguration,
     Task,
 )
-from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
+from schemas.request_schemas import (
+    LLMGetAllFilterRequest,
+    LLMGetVersionsFilterRequest,
+    TransformListFilterRequest,
+)
 from scorer import (
     BinaryPIIDataClassifier,
     BinaryPIIDataClassifierV1,
@@ -124,7 +128,7 @@ def get_db_engine(db_config: DatabaseConfig | None = None):
 
 
 # Access singletons via these functions so test framework can override these via DI
-def get_db_session():
+def get_db_session() -> Generator[Session, None, None]:
     db_config = get_db_config()
     # Make unique session for each request thread
     session_maker = sessionmaker(get_db_engine(db_config))
@@ -184,7 +188,7 @@ def get_scorer_client():
     return SINGLETON_SCORER_CLIENT
 
 
-def get_metrics_engine():
+def get_metrics_engine() -> MetricsEngine:
     global SINGLETON_METRICS_ENGINE
     if not SINGLETON_METRICS_ENGINE:
         scorer_client = get_scorer_client()
@@ -387,6 +391,30 @@ def llm_get_all_filter_parameters(
         llm_asset_names=llm_asset_names,
         model_provider=model_provider,
         model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+def transform_list_filter_parameters(
+    name: Optional[str] = Query(
+        None,
+        description="Name of the transform to filter on using partial matching.",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> TransformListFilterRequest:
+    """Create a LLMGetAllFilterRequest from query parameters."""
+    return TransformListFilterRequest(
+        name=name,
         created_after=datetime.fromisoformat(created_after) if created_after else None,
         created_before=(
             datetime.fromisoformat(created_before) if created_before else None

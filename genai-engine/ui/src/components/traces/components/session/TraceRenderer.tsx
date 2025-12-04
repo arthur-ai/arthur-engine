@@ -1,7 +1,7 @@
 import { Box, Paper, Stack, Typography } from "@mui/material";
 import { green } from "@mui/material/colors";
 
-import { useTracesHistoryStore } from "../../stores/history.store";
+import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { getSpanInput, getSpanOutput } from "../../utils/spans";
 
 import { Highlight } from "@/components/common/Highlight";
@@ -16,15 +16,12 @@ type Props = {
 
 export const TraceRenderer = ({ trace }: Props) => {
   const root = trace.root_spans?.[0];
-  const push = useTracesHistoryStore((state) => state.push);
+  const [, setDrawerTarget] = useDrawerTarget();
 
   if (!root) return null;
 
   function onOpenTraceDrawer() {
-    push({
-      type: "trace",
-      id: trace.trace_id,
-    });
+    setDrawerTarget({ target: "trace", id: trace.trace_id });
   }
 
   const { ...rootSpan } = root;

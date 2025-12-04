@@ -1,6 +1,6 @@
 import { Alert, Box, Button, Snackbar, TablePagination } from "@mui/material";
-import React, { useCallback, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { ConfirmationModal } from "../common/ConfirmationModal";
 
@@ -34,39 +34,29 @@ export const DatasetDetailView: React.FC = () => {
   const { datasetId } = useParams<{ datasetId: string }>();
   const { task } = useTask();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
-  const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<
-    number | null
-  >(null);
+  const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<number | null>(null);
 
-  const {
-    dataset,
-    isLoading: datasetLoading,
-    error: datasetError,
-  } = useDataset(datasetId);
-  const { latestVersion, isLoading: latestVersionLoading } =
-    useDatasetLatestVersion(datasetId);
+  const { dataset, isLoading: datasetLoading, error: datasetError } = useDataset(datasetId);
+  const { latestVersion, isLoading: latestVersionLoading } = useDatasetLatestVersion(datasetId);
 
   const pagination = useDatasetPagination();
 
-  const versionSelection = useDatasetVersionSelection(
-    latestVersion?.version_number,
-    () => {
-      pagination.resetPage();
-    }
-  );
+  // Get version from URL query param
+  const versionFromUrl = searchParams.get("version");
+  const initialVersion = versionFromUrl ? parseInt(versionFromUrl, 10) : undefined;
+
+  const versionSelection = useDatasetVersionSelection(latestVersion?.version_number, () => {
+    pagination.resetPage();
+  });
 
   const {
     version: versionData,
     isLoading: versionLoading,
     error: versionError,
-  } = useDatasetVersionData(
-    datasetId,
-    versionSelection.currentVersion,
-    pagination.page,
-    pagination.rowsPerPage
-  );
+  } = useDatasetVersionData(datasetId, versionSelection.currentVersion, pagination.page, pagination.rowsPerPage);
 
   const localState = useDatasetLocalState(versionData);
 
@@ -84,16 +74,31 @@ export const DatasetDetailView: React.FC = () => {
       showSnackbar("Changes saved successfully!", "success");
     },
     (error) => {
-      showSnackbar(
-        error.message || "Failed to save changes. Please try again.",
-        "error"
-      );
+      showSnackbar(error.message || "Failed to save changes. Please try again.", "error");
     }
   );
 
   const isLoading = datasetLoading || latestVersionLoading;
   const hasError = datasetError || !dataset;
   const totalRows = versionData?.total_count ?? localState.localRows.length;
+
+  // Initialize version from URL on mount
+  useEffect(() => {
+    if (initialVersion && !isNaN(initialVersion)) {
+      versionSelection.handleVersionSwitch(initialVersion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Update URL when version selection changes
+  useEffect(() => {
+    if (versionSelection.selectedVersion !== undefined) {
+      setSearchParams({ version: versionSelection.selectedVersion.toString() }, { replace: true });
+    } else {
+      // Remove version param when showing latest version
+      setSearchParams({}, { replace: true });
+    }
+  }, [versionSelection.selectedVersion, setSearchParams]);
 
   const handleBack = useCallback(() => {
     if (localState.hasUnsavedChanges) {
@@ -107,8 +112,8 @@ export const DatasetDetailView: React.FC = () => {
     navigate(`/tasks/${task?.id}/datasets`);
   }, [navigate, task?.id]);
 
-  const handleManageTransforms = useCallback(() => {
-    navigate(`/tasks/${task?.id}/datasets/${datasetId}/transforms`);
+  const handleViewExperiments = useCallback(() => {
+    navigate(`/tasks/${task?.id}/datasets/${datasetId}/experiments`);
   }, [navigate, task?.id, datasetId]);
 
   const handleVersionSwitch = useCallback(
@@ -145,10 +150,7 @@ export const DatasetDetailView: React.FC = () => {
         localState.addRow(rowData);
         modals.closeAddModal();
       } catch {
-        showSnackbar(
-          `Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`,
-          "error"
-        );
+        showSnackbar(`Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`, "error");
       }
     },
     [localState, modals, showSnackbar]
@@ -163,15 +165,18 @@ export const DatasetDetailView: React.FC = () => {
 
   const handleExport = useCallback(() => {
     if (!dataset || localState.localRows.length === 0) return;
-    exportDatasetToCSV(dataset.name, localState.localRows);
-  }, [dataset, localState.localRows]);
+    try {
+      exportDatasetToCSV(dataset.name, localState.localRows);
+      showSnackbar("Dataset exported successfully!", "success");
+    } catch {
+      showSnackbar("Failed to export dataset. Please try again.", "error");
+    }
+  }, [dataset, localState.localRows, showSnackbar]);
 
   const handleImportData = useCallback(
     (csvColumns: string[], csvRows: Record<string, string>[]) => {
       const existingColumnsSet = new Set(localState.localColumns);
-      const newColumns = csvColumns.filter(
-        (col) => !existingColumnsSet.has(col)
-      );
+      const newColumns = csvColumns.filter((col) => !existingColumnsSet.has(col));
       const mergedColumns = [...localState.localColumns, ...newColumns];
 
       if (newColumns.length > 0) {
@@ -260,7 +265,7 @@ export const DatasetDetailView: React.FC = () => {
           onExport={handleExport}
           onImport={modals.openImportModal}
           onOpenVersions={modals.openVersionDrawer}
-          onManageTransforms={handleManageTransforms}
+          onViewExperiments={handleViewExperiments}
           searchValue={search.searchQuery}
           onSearchChange={search.setSearchQuery}
           onSearchClear={search.handleClearSearch}

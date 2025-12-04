@@ -12,6 +12,7 @@ from arthur_client.api_bindings import (
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
     CustomAggregationsV1Api,
+    CustomAggregationTestsV1Api,
     DataRetrievalV1Api,
     DatasetsV1Api,
     JobKind,
@@ -25,6 +26,7 @@ from arthur_client.api_bindings import (
     ScheduleJobsJobSpec,
     SchemaInspectionJobSpec,
     TasksV1Api,
+    TestCustomAggregationJobSpec,
 )
 from arthur_client.auth import (
     ArthurClientCredentialsAPISession,
@@ -44,7 +46,10 @@ from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.fetch_data_executor import FetchDataExecutor
 from job_executors.list_datasets_executor import ListDatasetsExecutor
-from job_executors.metrics_calculation_executor import MetricsCalculationExecutor
+from job_executors.metrics_calculation_executor import (
+    CustomAggregationTestExecutor,
+    MetricsCalculationExecutor,
+)
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
 from job_executors.task_management_job_executors import (
@@ -119,6 +124,7 @@ class JobExecutor:
         self.metrics_client = MetricsV1Api(client)
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
+        self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
         self.logger.setLevel(logging.INFO)
@@ -160,6 +166,25 @@ class JobExecutor:
                             self.metrics_client,
                             self.jobs_client,
                             self.custom_aggregations_client,
+                            self.custom_aggregation_tests_client,
+                            self.connector_constructor,
+                            self.logger,
+                        ).execute(job, job.job_spec.actual_instance)
+                    case JobKind.TEST_CUSTOM_AGGREGATION:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            TestCustomAggregationJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected TestCustomAggregationJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+                        CustomAggregationTestExecutor(
+                            self.models_client,
+                            self.datasets_client,
+                            self.metrics_client,
+                            self.jobs_client,
+                            self.custom_aggregations_client,
+                            self.custom_aggregation_tests_client,
                             self.connector_constructor,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)

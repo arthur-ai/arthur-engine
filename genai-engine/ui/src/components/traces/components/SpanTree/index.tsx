@@ -5,9 +5,9 @@ import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
-import { DurationCell } from "../../data/common";
-import { useSelectionStore } from "../../stores/selection.store";
+import { useSelection } from "../../hooks/useSelection";
 import { getSpanDuration, getSpanType } from "../../utils/spans";
+import { DurationCell } from "../DurationCell";
 
 import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
@@ -19,8 +19,7 @@ type Props = {
 };
 
 export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => {
-  const selectedSpanId = useSelectionStore((state) => state.selection.span);
-  const select = useSelectionStore((state) => state.select);
+  const [selectedSpanId, select] = useSelection("span");
 
   const values = spans.map((span) => span.span_id);
 
@@ -34,13 +33,13 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => 
           className="group data-selected:*:bg-gray-200"
           onClick={(e) => {
             e.stopPropagation();
-            select("span", span.span_id);
+            select(span.span_id);
           }}
         >
           <SpanTreeItem span={span} level={level} />
           <Accordion.Panel
             render={
-              <Box className="h-(--accordion-panel-height) overflow-hidden text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b" />
+              <Box className="h-(--accordion-panel-height) text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b overflow-hidden" />
             }
           >
             <SpanTree spans={span.children ?? []} level={level + 1} ancestors={new Set(ancestors).add(span.span_id)} />
@@ -52,7 +51,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => 
 };
 
 const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; level: number }) => {
-  const selectedSpanId = useSelectionStore((state) => state.selection.span);
+  const [selectedSpanId] = useSelection("span");
 
   const isSelected = span.span_id === selectedSpanId;
   const hasChildren = span.children && span.children.length > 0;

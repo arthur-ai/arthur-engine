@@ -2,9 +2,10 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { Tooltip } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 
+import { DurationCell } from "../components/DurationCell";
 import { isValidStatusCode, StatusCode } from "../components/StatusCode";
 
-import { DurationCell, TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
+import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { TypeChip } from "@/components/common/span/TypeChip";

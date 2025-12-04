@@ -3,7 +3,6 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import React, { Activity, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
 import { SessionLevel } from "./traces/components/tables/SessionLevel";
@@ -12,20 +11,18 @@ import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
 import { TimeRangeSelect } from "./traces/components/TimeRangeSelect";
 import { Level, TIME_RANGES, TimeRange } from "./traces/constants";
-import { useSyncUrlState } from "./traces/hooks/useSyncUrlState";
+import { useDrawerTarget } from "./traces/hooks/useDrawerTarget";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
 
 export const TracesView: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [current, setDrawerTarget] = useDrawerTarget();
   const [timeRange, setTimeRange] = useState<TimeRange>(TIME_RANGES["1 month"]);
 
-  const level = (searchParams.get("target") as Level) ?? "trace";
+  const level = (current?.target as Level) ?? "trace";
 
   const handleLevelChange = (newValue: Level) => {
-    setSearchParams({ target: newValue });
+    setDrawerTarget({ target: newValue });
   };
-
-  useSyncUrlState({ onLevelChange: handleLevelChange });
 
   return (
     <>

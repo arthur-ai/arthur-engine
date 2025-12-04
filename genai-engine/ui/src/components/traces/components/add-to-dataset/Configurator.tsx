@@ -18,7 +18,6 @@ import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useTask } from "@/hooks/useTask";
 import { DatasetResponse, NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
 
-
 export const Configurator = withForm({
   ...addToDatasetFormOptions,
   props: {} as {
@@ -107,9 +106,7 @@ export const Configurator = withForm({
                           options={column.allMatches}
                           value={column.allMatches.find((m) => m.span_id === column.selectedSpanId) || column.allMatches[0]}
                           sx={{ width: "100%" }}
-                          renderInput={(params) => (
-                            <TextField {...params} label="Select Span" placeholder="Choose which span to use" />
-                          )}
+                          renderInput={(params) => <TextField {...params} label="Select Span" placeholder="Choose which span to use" />}
                           renderOption={(props, option) => (
                             <li {...props} key={option.span_id}>
                               <Stack direction="column" spacing={0.5}>
@@ -149,7 +146,6 @@ export const Configurator = withForm({
                         Extracted Value {column.path && `(${column.path})`}
                       </Typography>
                       <TextField
-                        disabled={!column.path}
                         placeholder="Select a span and drill down through its keys to extract data"
                         multiline
                         minRows={3}
@@ -172,12 +168,7 @@ export const Configurator = withForm({
             </form.Field>
           ))}
         </div>
-        <Button
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={onAddColumn}
-          fullWidth
-        >
+        <Button variant="outlined" startIcon={<AddIcon />} onClick={onAddColumn} fullWidth>
           Add New Column
         </Button>
       </Stack>

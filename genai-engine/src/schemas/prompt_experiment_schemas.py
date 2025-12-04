@@ -1,8 +1,11 @@
 from enum import Enum
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Discriminator, Field
+from pydantic import BaseModel, Discriminator, Field, model_validator
+
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.enums import ModelProvider
 
 
 class ExperimentStatus(str, Enum):
@@ -44,7 +47,7 @@ class DatasetColumnVariableSource(BaseModel):
     """Variable source from a dataset column"""
 
     type: Literal["dataset_column"] = Field(
-        description="Type of source: 'dataset_column'"
+        description="Type of source: 'dataset_column'",
     )
     dataset_column: DatasetColumnSource = Field(description="Dataset column source")
 
@@ -53,10 +56,10 @@ class ExperimentOutputVariableSource(BaseModel):
     """Variable source from experiment output"""
 
     type: Literal["experiment_output"] = Field(
-        description="Type of source: 'experiment_output'"
+        description="Type of source: 'experiment_output'",
     )
     experiment_output: ExperimentOutputSource = Field(
-        description="Experiment output source"
+        description="Experiment output source",
     )
 
 
@@ -74,6 +77,45 @@ class PromptVariableMapping(BaseModel):
     source: DatasetColumnVariableSource = Field(description="Dataset column source")
 
 
+class SavedPromptConfig(BaseModel):
+    """Configuration for a saved prompt"""
+
+    type: Literal["saved"] = "saved"
+    name: str = Field(description="Name of the saved prompt")
+    version: int = Field(description="Version of the saved prompt")
+
+
+class UnsavedPromptConfig(BaseModel):
+    """Configuration for an unsaved prompt"""
+
+    type: Literal["unsaved"] = "unsaved"
+    auto_name: Optional[str] = Field(
+        default=None,
+        description="Auto-generated name (set by backend)",
+    )
+    messages: List[Dict[str, Any]] = Field(description="Prompt messages")
+    model_name: str = Field(description="LLM model name")
+    model_provider: ModelProvider = Field(description="LLM provider")
+    tools: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Available tools",
+    )
+    config: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="LLM config settings",
+    )
+    variables: Optional[List[str]] = Field(
+        default=None,
+        description="Variables (auto-detected if not provided)",
+    )
+
+
+PromptConfig = Annotated[
+    Union[SavedPromptConfig, UnsavedPromptConfig],
+    Discriminator("type"),
+]
+
+
 class EvalVariableMapping(BaseModel):
     """Mapping of an eval variable to its source (dataset column or experiment output)"""
 
@@ -82,10 +124,18 @@ class EvalVariableMapping(BaseModel):
 
 
 # Reference schemas
-class DatasetRef(BaseModel):
-    """Reference to a dataset and version"""
+class DatasetRefInput(BaseModel):
+    """Reference to a dataset and version for input (without name)"""
 
     id: UUID = Field(description="Dataset ID")
+    version: int = Field(description="Dataset version number")
+
+
+class DatasetRef(BaseModel):
+    """Reference to a dataset and version (with name)"""
+
+    id: UUID = Field(description="Dataset ID")
+    name: str = Field(description="Dataset name")
     version: int = Field(description="Dataset version number")
 
 
@@ -94,10 +144,10 @@ class PromptRef(BaseModel):
 
     name: str = Field(description="Name of the prompt")
     version_list: list[int] = Field(
-        description="List of prompt versions to test in the experiment"
+        description="List of prompt versions to test in the experiment",
     )
     variable_mapping: list[PromptVariableMapping] = Field(
-        description="Mapping of prompt variables to dataset columns"
+        description="Mapping of prompt variables to dataset columns",
     )
 
 
@@ -107,7 +157,7 @@ class EvalRef(BaseModel):
     name: str = Field(description="Name of the evaluation")
     version: int = Field(description="Version of the evaluation")
     variable_mapping: list[EvalVariableMapping] = Field(
-        description="Mapping of eval variables to data sources"
+        description="Mapping of eval variables to data sources",
     )
 
 
@@ -118,21 +168,29 @@ class PromptExperimentSummary(BaseModel):
     id: str = Field(description="Unique identifier for the experiment")
     name: str = Field(description="Name of the experiment")
     description: Optional[str] = Field(
-        default=None, description="Description of the experiment"
+        default=None,
+        description="Description of the experiment",
     )
     created_at: str = Field(description="ISO timestamp when experiment was created")
     finished_at: Optional[str] = Field(
-        default=None, description="ISO timestamp when experiment finished"
+        default=None,
+        description="ISO timestamp when experiment finished",
     )
     status: ExperimentStatus = Field(description="Current status of the experiment")
-    prompt_name: str = Field(description="Name of the prompt being tested")
+    prompt_configs: List[PromptConfig] = Field(
+        description="List of prompts being tested",
+    )
+    dataset_id: UUID = Field(description="ID of the dataset used")
+    dataset_name: str = Field(description="Name of the dataset used")
+    dataset_version: int = Field(description="Version of the dataset used")
     total_rows: int = Field(description="Total number of test rows in the experiment")
     completed_rows: int = Field(
-        description="Number of test rows completed successfully"
+        description="Number of test rows completed successfully",
     )
     failed_rows: int = Field(description="Number of test rows that failed")
     total_cost: Optional[str] = Field(
-        default=None, description="Total cost of running the experiment"
+        default=None,
+        description="Total cost of running the experiment",
     )
 
 
@@ -141,11 +199,23 @@ class CreatePromptExperimentRequest(BaseModel):
 
     name: str = Field(description="Name for the experiment")
     description: Optional[str] = Field(
-        default=None, description="Description of the experiment"
+        default=None,
+        description="Description of the experiment",
     )
-    dataset_ref: DatasetRef = Field(description="Reference to the dataset to use")
-    prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
+    dataset_ref: DatasetRefInput = Field(description="Reference to the dataset to use")
+    prompt_configs: List[PromptConfig] = Field(
+        description="List of prompt configurations (saved or unsaved)",
+    )
+    prompt_variable_mapping: list[PromptVariableMapping] = Field(
+        description="Shared variable mapping for all prompts",
+    )
     eval_list: list[EvalRef] = Field(description="List of evaluations to run")
+    dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = Field(
+        default=None,
+        description="Optional list of column name and value filters. "
+        "Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. "
+        "If not specified, all rows from the dataset will be used.",
+    )
 
 
 class EvalResultSummary(BaseModel):
@@ -160,18 +230,53 @@ class EvalResultSummary(BaseModel):
 class PromptEvalResultSummaries(BaseModel):
     """Summary of evaluation results for a prompt version"""
 
-    prompt_name: str = Field(description="Name of the prompt")
-    prompt_version: str = Field(description="Version of the prompt")
-    eval_results: list[EvalResultSummary] = Field(
-        description="Results for each evaluation run on this prompt version"
+    prompt_key: str | None = Field(
+        default=None,
+        description="Prompt key: 'saved:name:version' or 'unsaved:auto_name'",
     )
+    prompt_type: str | None = Field(
+        default=None,
+        description="Type: 'saved' or 'unsaved'",
+    )
+    prompt_name: str | None = Field(
+        default=None,
+        description="Name of the prompt (for saved prompts, or auto_name for unsaved)",
+    )
+    prompt_version: str | None = Field(
+        default=None,
+        description="Version of the prompt (for saved prompts only)",
+    )
+    eval_results: list[EvalResultSummary] = Field(
+        description="Results for each evaluation run on this prompt version",
+    )
+
+    @model_validator(mode="after")
+    def populate_key_and_type(self) -> "PromptEvalResultSummaries":
+        """
+        Populate prompt_key and prompt_type from prompt_name/version if missing.
+        This provides backward compatibility for existing experiments.
+        """
+        # If we already have prompt_key and prompt_type, nothing to do
+        if self.prompt_key and self.prompt_type:
+            return self
+
+        # If we have prompt_name and prompt_version, construct key and type
+        if self.prompt_name and self.prompt_version:
+            self.prompt_key = f"saved:{self.prompt_name}:{self.prompt_version}"
+            self.prompt_type = "saved"
+        elif self.prompt_name:
+            # Fallback for edge cases
+            self.prompt_key = f"saved:{self.prompt_name}:1"
+            self.prompt_type = "saved"
+
+        return self
 
 
 class SummaryResults(BaseModel):
     """Summary results across all prompt versions and evaluations"""
 
     prompt_eval_summaries: list[PromptEvalResultSummaries] = Field(
-        description="Summary for each prompt version tested"
+        description="Summary for each prompt version tested",
     )
 
 
@@ -181,27 +286,43 @@ class PromptExperimentDetail(BaseModel):
     id: str = Field(description="Unique identifier for the experiment")
     name: str = Field(description="Name of the experiment")
     description: Optional[str] = Field(
-        default=None, description="Description of the experiment"
+        default=None,
+        description="Description of the experiment",
     )
     created_at: str = Field(description="ISO timestamp when experiment was created")
     finished_at: Optional[str] = Field(
-        default=None, description="ISO timestamp when experiment finished"
+        default=None,
+        description="ISO timestamp when experiment finished",
     )
     status: ExperimentStatus = Field(description="Current status of the experiment")
-    prompt_name: str = Field(description="Name of the prompt being tested")
+    prompt_configs: List[PromptConfig] = Field(
+        description="List of prompts being tested",
+    )
     total_rows: int = Field(description="Total number of test rows in the experiment")
     completed_rows: int = Field(
-        description="Number of test rows completed successfully"
+        description="Number of test rows completed successfully",
     )
     failed_rows: int = Field(description="Number of test rows that failed")
     total_cost: Optional[str] = Field(
-        default=None, description="Total cost of running the experiment"
+        default=None,
+        description="Total cost of running the experiment",
     )
     dataset_ref: DatasetRef = Field(description="Reference to the dataset used")
-    prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
+    prompt_variable_mapping: list[PromptVariableMapping] = Field(
+        description="Shared variable mapping for all prompts",
+    )
     eval_list: list[EvalRef] = Field(description="List of evaluations being run")
+    dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = Field(
+        default=None,
+        description="Optional list of column name and value filters applied to dataset rows. "
+        "Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.",
+    )
     summary_results: SummaryResults = Field(
-        description="Summary of results across all test cases"
+        description="Summary of results across all test cases",
+    )
+    notebook_id: Optional[str] = Field(
+        default=None,
+        description="Optional notebook ID this experiment is linked to",
     )
 
 
@@ -210,7 +331,7 @@ class PromptExperimentListResponse(BaseModel):
     """Paginated list of prompt experiments"""
 
     data: list[PromptExperimentSummary] = Field(
-        description="List of prompt experiment summaries"
+        description="List of prompt experiment summaries",
     )
     page: int = Field(description="Current page number (0-indexed)")
     page_size: int = Field(description="Number of items per page")
@@ -231,7 +352,8 @@ class PromptOutput(BaseModel):
 
     content: str = Field(description="Content of the prompt response")
     tool_calls: list = Field(
-        default_factory=list, description="Tool calls made by the prompt"
+        default_factory=list,
+        description="Tool calls made by the prompt",
     )
     cost: str = Field(description="Cost of the prompt execution")
 
@@ -250,24 +372,36 @@ class EvalExecution(BaseModel):
     eval_name: str = Field(description="Name of the evaluation")
     eval_version: str = Field(description="Version of the evaluation")
     eval_input_variables: list[InputVariable] = Field(
-        description="Input variables used for the eval"
+        description="Input variables used for the eval",
     )
     eval_results: Optional[EvalExecutionResult] = Field(
-        default=None, description="Results from the eval (None if not yet executed)"
+        default=None,
+        description="Results from the eval (None if not yet executed)",
     )
 
 
 class PromptResult(BaseModel):
     """Results from a prompt execution with evals"""
 
-    name: str = Field(description="Name of the prompt")
-    version: str = Field(description="Version of the prompt")
+    prompt_key: str = Field(
+        description="Prompt key: 'saved:name:version' or 'unsaved:auto_name'",
+    )
+    prompt_type: str = Field(description="Type: 'saved' or 'unsaved'")
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the prompt (for saved prompts)",
+    )
+    version: Optional[str] = Field(
+        default=None,
+        description="Version of the prompt (for saved prompts)",
+    )
     rendered_prompt: str = Field(description="Prompt with variables replaced")
     output: Optional[PromptOutput] = Field(
-        default=None, description="Output from the prompt (None if not yet executed)"
+        default=None,
+        description="Output from the prompt (None if not yet executed)",
     )
     evals: list[EvalExecution] = Field(
-        description="Evaluation results for this prompt output"
+        description="Evaluation results for this prompt output",
     )
 
 
@@ -277,13 +411,14 @@ class TestCase(BaseModel):
     status: TestCaseStatus = Field(description="Status of the test case")
     dataset_row_id: str = Field(description="ID of the dataset row")
     prompt_input_variables: list[InputVariable] = Field(
-        description="Input variables for the prompt"
+        description="Input variables for the prompt",
     )
     prompt_results: list[PromptResult] = Field(
-        description="Results for each prompt version tested"
+        description="Results for each prompt version tested",
     )
     total_cost: Optional[str] = Field(
-        default=None, description="Total cost for this test case"
+        default=None,
+        description="Total cost for this test case",
     )
 
 
@@ -303,17 +438,19 @@ class PromptVersionResult(BaseModel):
     status: TestCaseStatus = Field(description="Status of the test case")
     dataset_row_id: str = Field(description="ID of the dataset row")
     prompt_input_variables: list[InputVariable] = Field(
-        description="Input variables for the prompt"
+        description="Input variables for the prompt",
     )
     rendered_prompt: str = Field(description="Prompt with variables replaced")
     output: Optional[PromptOutput] = Field(
-        default=None, description="Output from the prompt (None if not yet executed)"
+        default=None,
+        description="Output from the prompt (None if not yet executed)",
     )
     evals: list[EvalExecution] = Field(
-        description="Evaluation results for this prompt output"
+        description="Evaluation results for this prompt output",
     )
     total_cost: Optional[str] = Field(
-        default=None, description="Total cost for this specific prompt execution"
+        default=None,
+        description="Total cost for this specific prompt execution",
     )
 
 
@@ -321,7 +458,7 @@ class PromptVersionResultListResponse(BaseModel):
     """Paginated list of results for a specific prompt version"""
 
     data: list[PromptVersionResult] = Field(
-        description="List of results for the prompt version"
+        description="List of results for the prompt version",
     )
     page: int = Field(description="Current page number (0-indexed)")
     page_size: int = Field(description="Number of items per page")

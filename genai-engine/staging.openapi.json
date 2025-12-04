@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.209"
+        "version": "2.1.235"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2404,6 +2404,83 @@
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -2765,6 +2842,83 @@
                             "title": "Span Types"
                         },
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3244,20 +3398,6 @@
                 ],
                 "parameters": [
                     {
-                        "name": "user_ids",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "User IDs to filter on. Optional.",
-                            "title": "User Ids"
-                        },
-                        "description": "User IDs to filter on. Optional."
-                    },
-                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -3369,6 +3509,83 @@
                             "title": "Span Types"
                         },
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3731,6 +3948,83 @@
                             "title": "Span Types"
                         },
                         "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Filter by trace annotation score (0 or 1).",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span IDs to filter on. Optional.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "session_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Session IDs to filter on. Optional.",
+                            "title": "Session Ids"
+                        },
+                        "description": "Session IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "span_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this span name.",
+                            "title": "Span Name"
+                        },
+                        "description": "Return only results with this span name."
+                    },
+                    {
+                        "name": "span_name_contains",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results where span name contains this substring.",
+                            "title": "Span Name Contains"
+                        },
+                        "description": "Return only results where span name contains this substring."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -5496,7 +5790,7 @@
                     "Prompts"
                 ],
                 "summary": "Render a specific version of an agentic prompt with variables",
-                "description": "Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the rendered messages.",
+                "description": "Render a specific version of an existing agentic prompt by replacing template variables with provided values. Returns the complete prompt object with rendered messages.",
                 "operationId": "render_saved_agentic_prompt_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__renders_post",
                 "security": [
                     {
@@ -5558,7 +5852,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/RenderedPromptResponse"
+                                    "$ref": "#/components/schemas/AgenticPrompt"
                                 }
                             }
                         }
@@ -5924,23 +6218,40 @@
                 }
             }
         },
-        "/api/v2/datasets": {
+        "/api/v2/tasks/{task_id}/datasets": {
             "post": {
                 "tags": [
                     "Datasets"
                 ],
                 "summary": "Create Dataset",
                 "description": "Register a new dataset.",
-                "operationId": "create_dataset_api_v2_datasets_post",
+                "operationId": "create_dataset_api_v2_tasks__task_id__datasets_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
                 "requestBody": {
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/NewDatasetRequest"
                             }
                         }
-                    },
-                    "required": true
+                    }
                 },
                 "responses": {
                     "200": {
@@ -5963,12 +6274,7 @@
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
+                }
             }
         },
         "/api/v2/datasets/{dataset_id}": {
@@ -6123,20 +6429,30 @@
                 }
             }
         },
-        "/api/v2/datasets/search": {
+        "/api/v2/tasks/{task_id}/datasets/search": {
             "get": {
                 "tags": [
                     "Datasets"
                 ],
                 "summary": "Get Datasets",
                 "description": "Search datasets. Optionally can filter by dataset IDs and dataset name.",
-                "operationId": "get_datasets_api_v2_datasets_search_get",
+                "operationId": "get_datasets_api_v2_tasks__task_id__datasets_search_get",
                 "security": [
                     {
                         "API Key": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
                     {
                         "name": "dataset_ids",
                         "in": "query",
@@ -6491,124 +6807,14 @@
                 }
             }
         },
-        "/api/v2/datasets/{dataset_id}/transforms": {
-            "post": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Create Transform",
-                "description": "Create a new transform for a dataset.",
-                "operationId": "create_transform_api_v2_datasets__dataset_id__transforms_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset to create the transform for.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset to create the transform for."
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/NewDatasetTransformRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DatasetTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}": {
             "get": {
                 "tags": [
                     "Datasets"
                 ],
-                "summary": "List Transforms",
-                "description": "List all transforms for a dataset.",
-                "operationId": "list_transforms_api_v2_datasets__dataset_id__transforms_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset to list transforms for.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset to list transforms for."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ListDatasetTransformsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v2/datasets/{dataset_id}/transforms/{transform_id}": {
-            "get": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Get Transform",
-                "description": "Get a specific transform.",
-                "operationId": "get_transform_api_v2_datasets__dataset_id__transforms__transform_id__get",
+                "summary": "Get Dataset Version Row",
+                "description": "Fetch a specific row from a dataset version by row ID.",
+                "operationId": "get_dataset_version_row_api_v2_datasets__dataset_id__versions__version_number__rows__row_id__get",
                 "security": [
                     {
                         "API Key": []
@@ -6628,16 +6834,27 @@
                         "description": "ID of the dataset."
                     },
                     {
-                        "name": "transform_id",
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the dataset.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the dataset."
+                    },
+                    {
+                        "name": "row_id",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
                             "format": "uuid",
-                            "description": "ID of the transform to fetch.",
-                            "title": "Transform Id"
+                            "description": "ID of the row to fetch.",
+                            "title": "Row Id"
                         },
-                        "description": "ID of the transform to fetch."
+                        "description": "ID of the row to fetch."
                     }
                 ],
                 "responses": {
@@ -6646,205 +6863,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/DatasetTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Update Transform",
-                "description": "Update a transform.",
-                "operationId": "update_transform_api_v2_datasets__dataset_id__transforms__transform_id__put",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform to update.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform to update."
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/DatasetTransformUpdateRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DatasetTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Delete Transform",
-                "description": "Delete a transform.",
-                "operationId": "delete_transform_api_v2_datasets__dataset_id__transforms__transform_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform to delete.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform to delete."
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions": {
-            "post": {
-                "tags": [
-                    "Datasets"
-                ],
-                "summary": "Execute Transform Endpoint",
-                "description": "Execute a transform against a trace to extract data for dataset rows. Returns data in the format expected by the create dataset version API's rows_to_add parameter.",
-                "operationId": "execute_transform_endpoint_api_v2_datasets__dataset_id__transforms__transform_id__extractions_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "dataset_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the dataset.",
-                            "title": "Dataset Id"
-                        },
-                        "description": "ID of the dataset."
-                    },
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform to execute.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform to execute."
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ExecuteTransformRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ExecuteTransformResponse"
+                                    "$ref": "#/components/schemas/DatasetVersionRowResponse"
                                 }
                             }
                         }
@@ -9419,6 +9438,505 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/notebooks": {
+            "post": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Create a notebook",
+                "description": "Create a new notebook for organizing experiments within a task",
+                "operationId": "create_notebook_api_v1_tasks__task_id__notebooks_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "List notebooks",
+                "description": "List all notebooks for a task with pagination and optional name search",
+                "operationId": "list_notebooks_api_v1_tasks__task_id__notebooks_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Name"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notebooks/{notebook_id}": {
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Get notebook details",
+                "description": "Get detailed information about a notebook including state and experiment history",
+                "operationId": "get_notebook_api_v1_notebooks__notebook_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Update notebook metadata",
+                "description": "Update notebook name or description (not the state)",
+                "operationId": "update_notebook_api_v1_notebooks__notebook_id__put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Delete notebook",
+                "description": "Delete a notebook (experiments are kept)",
+                "operationId": "delete_notebook_api_v1_notebooks__notebook_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notebooks/{notebook_id}/state": {
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Get notebook state",
+                "description": "Get the current state (draft configuration) of a notebook",
+                "operationId": "get_notebook_state_api_v1_notebooks__notebook_id__state_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookState-Output"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Set notebook state",
+                "description": "Set the state (draft configuration) of a notebook",
+                "operationId": "set_notebook_state_api_v1_notebooks__notebook_id__state_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetNotebookStateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notebooks/{notebook_id}/history": {
+            "get": {
+                "tags": [
+                    "Notebooks"
+                ],
+                "summary": "Get notebook history",
+                "description": "Get paginated list of experiments run from this notebook",
+                "operationId": "get_notebook_history_api_v1_notebooks__notebook_id__history_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Notebook ID"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptExperimentListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/prompt_experiments": {
             "get": {
                 "tags": [
@@ -9460,6 +9978,25 @@
                             "title": "Search"
                         },
                         "description": "Search text to filter experiments by name, description, prompt name, or dataset name"
+                    },
+                    {
+                        "name": "dataset_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter experiments by dataset ID",
+                            "title": "Dataset Id"
+                        },
+                        "description": "Filter experiments by dataset ID"
                     },
                     {
                         "name": "sort",
@@ -9754,14 +10291,14 @@
                 }
             }
         },
-        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results": {
+        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results": {
             "get": {
                 "tags": [
                     "Prompt Experiments"
                 ],
-                "summary": "Get prompt version results",
-                "description": "Get paginated list of results for a specific prompt version within an experiment",
-                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_name__versions__prompt_version__results_get",
+                "summary": "Get prompt results",
+                "description": "Get paginated list of results for a specific prompt within an experiment (supports both saved and unsaved prompts)",
+                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_key__results_get",
                 "security": [
                     {
                         "API Key": []
@@ -9780,26 +10317,15 @@
                         "description": "The ID of the experiment"
                     },
                     {
-                        "name": "prompt_name",
+                        "name": "prompt_key",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt"
+                            "title": "Prompt Key",
+                            "description": "The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A"
                         },
-                        "description": "The name of the prompt"
-                    },
-                    {
-                        "name": "prompt_version",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "title": "Prompt Version",
-                            "description": "The version of the prompt"
-                        },
-                        "description": "The version of the prompt"
+                        "description": "The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A"
                     },
                     {
                         "name": "sort",
@@ -9844,6 +10370,841 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PromptVersionResultListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/prompt_experiments/{experiment_id}/notebook": {
+            "patch": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Attach notebook to experiment",
+                "description": "Attach a notebook to an existing experiment",
+                "operationId": "attach_notebook_to_experiment_api_v1_prompt_experiments__experiment_id__notebook_patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the experiment",
+                            "title": "Experiment Id"
+                        },
+                        "description": "ID of the experiment"
+                    },
+                    {
+                        "name": "notebook_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the notebook to attach",
+                            "title": "Notebook Id"
+                        },
+                        "description": "ID of the notebook to attach"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptExperimentSummary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/traces/transforms": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "List Transforms For Task",
+                "description": "List all transforms for a task.",
+                "operationId": "list_transforms_for_task_api_v1_tasks__task_id__traces_transforms_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the transform to filter on using partial matching.",
+                            "title": "Name"
+                        },
+                        "description": "Name of the transform to filter on using partial matching."
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTraceTransformsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Create Transform For Task",
+                "description": "Create a new transform for a task.",
+                "operationId": "create_transform_for_task_api_v1_tasks__task_id__traces_transforms_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewTraceTransformRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform",
+                "description": "Get a specific transform.",
+                "operationId": "get_transform_api_v1_traces_transforms__transform_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to fetch.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to fetch."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Update Transform",
+                "description": "Update a transform.",
+                "operationId": "update_transform_api_v1_traces_transforms__transform_id__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to update.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to update."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceTransformUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Delete Transform",
+                "description": "Delete a transform.",
+                "operationId": "delete_transform_api_v1_traces_transforms__transform_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to delete.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions": {
+            "post": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Execute Trace Transform Extraction",
+                "description": "Execute a transform against a trace to extract variables.",
+                "operationId": "execute_trace_transform_extraction_api_v1_traces__trace_id__transforms__transform_id__extractions_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the trace to execute the transform against.",
+                            "title": "Trace Id"
+                        },
+                        "description": "ID of the trace to execute the transform against."
+                    },
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform to execute.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform to execute."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransformExtractionResponseList"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/{eval_id}": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get a continuous eval by id",
+                "description": "Get a continuous eval by id",
+                "operationId": "get_continuous_eval_by_id_api_v1_continuous_evals__eval_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to retrieve."
+                        },
+                        "description": "The id of the continuous eval to retrieve."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Update a continuous eval",
+                "description": "Update a continuous eval",
+                "operationId": "update_continuous_eval_api_v1_continuous_evals__eval_id__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to update."
+                        },
+                        "description": "The id of the continuous eval to update."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateContinuousEvalRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Delete a continuous eval",
+                "description": "Delete a continuous eval",
+                "operationId": "delete_continuous_eval_api_v1_continuous_evals__eval_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to delete."
+                        },
+                        "description": "The id of the continuous eval to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Continuous eval deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/continuous_evals": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get all continuous evals for a specific task",
+                "description": "Get all continuous evals for a specific task",
+                "operationId": "list_continuous_evals_api_v1_tasks__task_id__continuous_evals_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the continuous eval to filter on.",
+                            "title": "Name"
+                        },
+                        "description": "Name of the continuous eval to filter on."
+                    },
+                    {
+                        "name": "llm_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the llm eval to filter on",
+                            "title": "Llm Eval Name"
+                        },
+                        "description": "Name of the llm eval to filter on"
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListContinuousEvalsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Create a continuous eval",
+                "description": "Create a continuous eval",
+                "operationId": "create_continuous_eval_api_v1_tasks__task_id__continuous_evals_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContinuousEvalCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalResponse"
                                 }
                             }
                         }
@@ -11189,6 +12550,11 @@
                 "type": "object",
                 "title": "BaseDetailsResponse"
             },
+            "BaseModel": {
+                "properties": {},
+                "type": "object",
+                "title": "BaseModel"
+            },
             "Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put": {
                 "properties": {
                     "tag": {
@@ -11478,6 +12844,131 @@
                 ],
                 "title": "ConnectionCheckResult"
             },
+            "ContinuousEvalCreateRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the continuous eval"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the continuous eval"
+                    },
+                    "llm_eval_name": {
+                        "type": "string",
+                        "title": "Llm Eval Name",
+                        "description": "Name of the llm eval to create the continuous eval for"
+                    },
+                    "llm_eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "integer"
+                            }
+                        ],
+                        "title": "Llm Eval Version",
+                        "description": "Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                    },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform to create the continuous eval for"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "llm_eval_name",
+                    "llm_eval_version",
+                    "transform_id"
+                ],
+                "title": "ContinuousEvalCreateRequest",
+                "description": "Request schema for creating a continuous eval"
+            },
+            "ContinuousEvalResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the transform."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the continuous eval."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the continuous eval."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "llm_eval_name": {
+                        "type": "string",
+                        "title": "Llm Eval Name",
+                        "description": "Name of the llm eval."
+                    },
+                    "llm_eval_version": {
+                        "type": "integer",
+                        "title": "Llm Eval Version",
+                        "description": "Version of the llm eval."
+                    },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time the transform was added to the llm eval."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Timestamp representing the time the continuous eval was last updated."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "task_id",
+                    "llm_eval_name",
+                    "llm_eval_version",
+                    "transform_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ContinuousEvalResponse"
+            },
             "ConversationBaseResponse": {
                 "properties": {
                     "id": {
@@ -11587,6 +13078,44 @@
                 ],
                 "title": "CreateEvalRequest"
             },
+            "CreateNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the notebook"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "state": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/NotebookState-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Initial state"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "CreateNotebookRequest",
+                "description": "Request to create a new notebook"
+            },
             "CreatePromptExperimentRequest": {
                 "properties": {
                     "name": {
@@ -11607,12 +13136,38 @@
                         "description": "Description of the experiment"
                     },
                     "dataset_ref": {
-                        "$ref": "#/components/schemas/DatasetRef",
+                        "$ref": "#/components/schemas/DatasetRefInput",
                         "description": "Reference to the dataset to use"
                     },
-                    "prompt_ref": {
-                        "$ref": "#/components/schemas/PromptRef-Input",
-                        "description": "Reference to the prompt configuration"
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompt configurations (saved or unsaved)"
+                    },
+                    "prompt_variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                        },
+                        "type": "array",
+                        "title": "Prompt Variable Mapping",
+                        "description": "Shared variable mapping for all prompts"
                     },
                     "eval_list": {
                         "items": {
@@ -11621,13 +13176,29 @@
                         "type": "array",
                         "title": "Eval List",
                         "description": "List of evaluations to run"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used."
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "dataset_ref",
-                    "prompt_ref",
+                    "prompt_configs",
+                    "prompt_variable_mapping",
                     "eval_list"
                 ],
                 "title": "CreatePromptExperimentRequest",
@@ -11718,6 +13289,34 @@
                         "title": "Id",
                         "description": "Dataset ID"
                     },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Dataset name"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Dataset version number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "version"
+                ],
+                "title": "DatasetRef",
+                "description": "Reference to a dataset and version (with name)"
+            },
+            "DatasetRefInput": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "Dataset ID"
+                    },
                     "version": {
                         "type": "integer",
                         "title": "Version",
@@ -11729,8 +13328,8 @@
                     "id",
                     "version"
                 ],
-                "title": "DatasetRef",
-                "description": "Reference to a dataset and version"
+                "title": "DatasetRefInput",
+                "description": "Reference to a dataset and version for input (without name)"
             },
             "DatasetResponse": {
                 "properties": {
@@ -11739,6 +13338,11 @@
                         "format": "uuid",
                         "title": "Id",
                         "description": "ID of the dataset."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the task the dataset belongs to."
                     },
                     "name": {
                         "type": "string",
@@ -11796,113 +13400,12 @@
                 "type": "object",
                 "required": [
                     "id",
+                    "task_id",
                     "name",
                     "created_at",
                     "updated_at"
                 ],
                 "title": "DatasetResponse"
-            },
-            "DatasetTransformResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id",
-                        "description": "ID of the transform."
-                    },
-                    "dataset_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Dataset Id",
-                        "description": "ID of the parent dataset."
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the transform."
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of the transform."
-                    },
-                    "definition": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules."
-                    },
-                    "created_at": {
-                        "type": "integer",
-                        "title": "Created At",
-                        "description": "Timestamp representing the time of transform creation in unix milliseconds."
-                    },
-                    "updated_at": {
-                        "type": "integer",
-                        "title": "Updated At",
-                        "description": "Timestamp representing the time of the last transform update in unix milliseconds."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "dataset_id",
-                    "name",
-                    "definition",
-                    "created_at",
-                    "updated_at"
-                ],
-                "title": "DatasetTransformResponse"
-            },
-            "DatasetTransformUpdateRequest": {
-                "properties": {
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name",
-                        "description": "Name of the transform."
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of the transform."
-                    },
-                    "definition": {
-                        "anyOf": [
-                            {
-                                "additionalProperties": true,
-                                "type": "object"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules."
-                    }
-                },
-                "type": "object",
-                "title": "DatasetTransformUpdateRequest"
             },
             "DatasetUpdateRequest": {
                 "properties": {
@@ -12406,37 +13909,6 @@
                     ],
                     "hint": "specific individual's blood type"
                 }
-            },
-            "ExecuteTransformRequest": {
-                "properties": {
-                    "trace_id": {
-                        "type": "string",
-                        "title": "Trace Id",
-                        "description": "ID of the trace to execute the transform against."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "trace_id"
-                ],
-                "title": "ExecuteTransformRequest"
-            },
-            "ExecuteTransformResponse": {
-                "properties": {
-                    "rows_extracted": {
-                        "items": {
-                            "$ref": "#/components/schemas/NewDatasetVersionRowRequest"
-                        },
-                        "type": "array",
-                        "title": "Rows Extracted",
-                        "description": "List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "rows_extracted"
-                ],
-                "title": "ExecuteTransformResponse"
             },
             "ExperimentOutputSource": {
                 "properties": {
@@ -14554,22 +16026,28 @@
                 ],
                 "title": "LLMVersionResponse"
             },
-            "ListDatasetTransformsResponse": {
+            "ListContinuousEvalsResponse": {
                 "properties": {
-                    "transforms": {
+                    "evals": {
                         "items": {
-                            "$ref": "#/components/schemas/DatasetTransformResponse"
+                            "$ref": "#/components/schemas/ContinuousEvalResponse"
                         },
                         "type": "array",
-                        "title": "Transforms",
-                        "description": "List of transforms for the dataset."
+                        "title": "Evals",
+                        "description": "List of continuous evals."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of evals"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "transforms"
+                    "evals",
+                    "count"
                 ],
-                "title": "ListDatasetTransformsResponse"
+                "title": "ListContinuousEvalsResponse"
             },
             "ListDatasetVersionsResponse": {
                 "properties": {
@@ -14657,6 +16135,23 @@
                     "rag_provider_setting_configurations"
                 ],
                 "title": "ListRagSearchSettingConfigurationsResponse"
+            },
+            "ListTraceTransformsResponse": {
+                "properties": {
+                    "transforms": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTransformResponse"
+                        },
+                        "type": "array",
+                        "title": "Transforms",
+                        "description": "List of transforms for the task."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "transforms"
+                ],
+                "title": "ListTraceTransformsResponse"
             },
             "LogitBiasItem": {
                 "properties": {
@@ -15258,51 +16753,6 @@
                 ],
                 "title": "NewDatasetRequest"
             },
-            "NewDatasetTransformRequest": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the transform."
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of the transform."
-                    },
-                    "definition": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Definition",
-                        "description": "Transform definition in JSON format specifying extraction rules.",
-                        "examples": [
-                            {
-                                "columns": [
-                                    {
-                                        "attribute_path": "attributes.input.value.sqlQuery",
-                                        "column_name": "sqlQuery",
-                                        "span_name": "rag-retrieval-savedQueries"
-                                    }
-                                ],
-                                "version": "2.1.209"
-                            }
-                        ]
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "definition"
-                ],
-                "title": "NewDatasetTransformRequest"
-            },
             "NewDatasetVersionRequest": {
                 "properties": {
                     "rows_to_add": {
@@ -15699,6 +17149,408 @@
                     "name"
                 ],
                 "title": "NewTaskRequest"
+            },
+            "NewTraceTransformRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the transform."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the transform."
+                    },
+                    "definition": {
+                        "$ref": "#/components/schemas/TraceTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "definition"
+                ],
+                "title": "NewTraceTransformRequest"
+            },
+            "NotebookDetail": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/NotebookState-Output",
+                        "description": "Current draft state"
+                    },
+                    "experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptExperimentSummary"
+                        },
+                        "type": "array",
+                        "title": "Experiments",
+                        "description": "History of experiments run from this notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "state",
+                    "experiments"
+                ],
+                "title": "NotebookDetail",
+                "description": "Detailed notebook information"
+            },
+            "NotebookListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/NotebookSummary"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of notebook summaries"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of notebooks"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "NotebookListResponse",
+                "description": "Paginated list of notebooks"
+            },
+            "NotebookState-Input": {
+                "properties": {
+                    "prompt_configs": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SavedPromptConfig"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    ],
+                                    "discriminator": {
+                                        "propertyName": "type",
+                                        "mapping": {
+                                            "saved": "#/components/schemas/SavedPromptConfig",
+                                            "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    }
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Configs",
+                        "description": "List of prompt configurations"
+                    },
+                    "prompt_variable_mapping": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Variable Mapping",
+                        "description": "Variable mappings for prompts"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference (includes name)"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/EvalRef-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "NotebookState",
+                "description": "Draft state of a notebook - mirrors experiment config but all fields optional."
+            },
+            "NotebookState-Output": {
+                "properties": {
+                    "prompt_configs": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SavedPromptConfig"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    ],
+                                    "discriminator": {
+                                        "propertyName": "type",
+                                        "mapping": {
+                                            "saved": "#/components/schemas/SavedPromptConfig",
+                                            "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                        }
+                                    }
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Configs",
+                        "description": "List of prompt configurations"
+                    },
+                    "prompt_variable_mapping": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Variable Mapping",
+                        "description": "Variable mappings for prompts"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference (includes name)"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/EvalRef-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "NotebookState",
+                "description": "Draft state of a notebook - mirrors experiment config but all fields optional."
+            },
+            "NotebookSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "run_count": {
+                        "type": "integer",
+                        "title": "Run Count",
+                        "description": "Number of experiments run from this notebook"
+                    },
+                    "latest_run_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Latest Run Id",
+                        "description": "ID of most recent experiment run"
+                    },
+                    "latest_run_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ExperimentStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Status of most recent experiment"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "run_count"
+                ],
+                "title": "NotebookSummary",
+                "description": "Summary of a notebook"
             },
             "OpenAIMessage-Input": {
                 "properties": {
@@ -16163,15 +18015,53 @@
             },
             "PromptEvalResultSummaries": {
                 "properties": {
+                    "prompt_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Key",
+                        "description": "Prompt key: 'saved:name:version' or 'unsaved:auto_name'"
+                    },
+                    "prompt_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Type",
+                        "description": "Type: 'saved' or 'unsaved'"
+                    },
                     "prompt_name": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Prompt Name",
-                        "description": "Name of the prompt"
+                        "description": "Name of the prompt (for saved prompts, or auto_name for unsaved)"
                     },
                     "prompt_version": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Prompt Version",
-                        "description": "Version of the prompt"
+                        "description": "Version of the prompt (for saved prompts only)"
                     },
                     "eval_results": {
                         "items": {
@@ -16184,8 +18074,6 @@
                 },
                 "type": "object",
                 "required": [
-                    "prompt_name",
-                    "prompt_version",
                     "eval_results"
                 ],
                 "title": "PromptEvalResultSummaries",
@@ -16236,10 +18124,27 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_name": {
-                        "type": "string",
-                        "title": "Prompt Name",
-                        "description": "Name of the prompt being tested"
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompts being tested"
                     },
                     "total_rows": {
                         "type": "integer",
@@ -16272,9 +18177,13 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "prompt_ref": {
-                        "$ref": "#/components/schemas/PromptRef-Output",
-                        "description": "Reference to the prompt configuration"
+                    "prompt_variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                        },
+                        "type": "array",
+                        "title": "Prompt Variable Mapping",
+                        "description": "Shared variable mapping for all prompts"
                     },
                     "eval_list": {
                         "items": {
@@ -16284,9 +18193,36 @@
                         "title": "Eval List",
                         "description": "List of evaluations being run"
                     },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment."
+                    },
                     "summary_results": {
                         "$ref": "#/components/schemas/SummaryResults",
                         "description": "Summary of results across all test cases"
+                    },
+                    "notebook_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notebook Id",
+                        "description": "Optional notebook ID this experiment is linked to"
                     }
                 },
                 "type": "object",
@@ -16295,12 +18231,12 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_name",
+                    "prompt_configs",
                     "total_rows",
                     "completed_rows",
                     "failed_rows",
                     "dataset_ref",
-                    "prompt_ref",
+                    "prompt_variable_mapping",
                     "eval_list",
                     "summary_results"
                 ],
@@ -16394,10 +18330,43 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_name": {
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompts being tested"
+                    },
+                    "dataset_id": {
                         "type": "string",
-                        "title": "Prompt Name",
-                        "description": "Name of the prompt being tested"
+                        "format": "uuid",
+                        "title": "Dataset Id",
+                        "description": "ID of the dataset used"
+                    },
+                    "dataset_name": {
+                        "type": "string",
+                        "title": "Dataset Name",
+                        "description": "Name of the dataset used"
+                    },
+                    "dataset_version": {
+                        "type": "integer",
+                        "title": "Dataset Version",
+                        "description": "Version of the dataset used"
                     },
                     "total_rows": {
                         "type": "integer",
@@ -16433,7 +18402,10 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_name",
+                    "prompt_configs",
+                    "dataset_id",
+                    "dataset_name",
+                    "dataset_version",
                     "total_rows",
                     "completed_rows",
                     "failed_rows"
@@ -16468,83 +18440,41 @@
                 "title": "PromptOutput",
                 "description": "Output from a prompt execution"
             },
-            "PromptRef-Input": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the prompt"
-                    },
-                    "version_list": {
-                        "items": {
-                            "type": "integer"
-                        },
-                        "type": "array",
-                        "title": "Version List",
-                        "description": "List of prompt versions to test in the experiment"
-                    },
-                    "variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
-                        },
-                        "type": "array",
-                        "title": "Variable Mapping",
-                        "description": "Mapping of prompt variables to dataset columns"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "version_list",
-                    "variable_mapping"
-                ],
-                "title": "PromptRef",
-                "description": "Reference to a prompt configuration"
-            },
-            "PromptRef-Output": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the prompt"
-                    },
-                    "version_list": {
-                        "items": {
-                            "type": "integer"
-                        },
-                        "type": "array",
-                        "title": "Version List",
-                        "description": "List of prompt versions to test in the experiment"
-                    },
-                    "variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
-                        },
-                        "type": "array",
-                        "title": "Variable Mapping",
-                        "description": "Mapping of prompt variables to dataset columns"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "version_list",
-                    "variable_mapping"
-                ],
-                "title": "PromptRef",
-                "description": "Reference to a prompt configuration"
-            },
             "PromptResult": {
                 "properties": {
-                    "name": {
+                    "prompt_key": {
                         "type": "string",
+                        "title": "Prompt Key",
+                        "description": "Prompt key: 'saved:name:version' or 'unsaved:auto_name'"
+                    },
+                    "prompt_type": {
+                        "type": "string",
+                        "title": "Prompt Type",
+                        "description": "Type: 'saved' or 'unsaved'"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Name",
-                        "description": "Name of the prompt"
+                        "description": "Name of the prompt (for saved prompts)"
                     },
                     "version": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Version",
-                        "description": "Version of the prompt"
+                        "description": "Version of the prompt (for saved prompts)"
                     },
                     "rendered_prompt": {
                         "type": "string",
@@ -16573,8 +18503,8 @@
                 },
                 "type": "object",
                 "required": [
-                    "name",
-                    "version",
+                    "prompt_key",
+                    "prompt_type",
                     "rendered_prompt",
                     "evals"
                 ],
@@ -17863,6 +19793,33 @@
                 ],
                 "title": "RuleType"
             },
+            "SavedPromptConfig": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "saved",
+                        "title": "Type",
+                        "default": "saved"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the saved prompt"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the saved prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version"
+                ],
+                "title": "SavedPromptConfig",
+                "description": "Configuration for a saved prompt"
+            },
             "SavedPromptRenderingRequest": {
                 "properties": {
                     "completion_request": {
@@ -18307,6 +20264,20 @@
                 ],
                 "title": "SessionTracesResponse",
                 "description": "Response for session traces endpoint"
+            },
+            "SetNotebookStateRequest": {
+                "properties": {
+                    "state": {
+                        "$ref": "#/components/schemas/NotebookState-Input",
+                        "description": "New state for the notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "state"
+                ],
+                "title": "SetNotebookStateRequest",
+                "description": "Request to set the notebook state"
             },
             "SpanListResponse": {
                 "properties": {
@@ -19679,7 +21650,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Annotation for the trace."
+                        "description": "Annotation for this trace."
                     }
                 },
                 "type": "object",
@@ -19690,6 +21661,160 @@
                 ],
                 "title": "TraceResponse",
                 "description": "Response model for a single trace containing nested spans"
+            },
+            "TraceTransformDefinition": {
+                "properties": {
+                    "variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTransformVariableDefinition"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of variable extraction rules."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variables"
+                ],
+                "title": "TraceTransformDefinition"
+            },
+            "TraceTransformResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the transform."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the transform."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the transform."
+                    },
+                    "definition": {
+                        "$ref": "#/components/schemas/TraceTransformDefinition",
+                        "description": "Transform definition specifying extraction rules."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time of transform creation"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Timestamp representing the time of the last transform update"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "definition",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "TraceTransformResponse"
+            },
+            "TraceTransformUpdateRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Name of the transform."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the transform."
+                    },
+                    "definition": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TraceTransformDefinition"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Transform definition specifying extraction rules."
+                    }
+                },
+                "type": "object",
+                "title": "TraceTransformUpdateRequest"
+            },
+            "TraceTransformVariableDefinition": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the variable to extract."
+                    },
+                    "span_name": {
+                        "type": "string",
+                        "title": "Span Name",
+                        "description": "Name of the span to extract data from."
+                    },
+                    "attribute_path": {
+                        "type": "string",
+                        "title": "Attribute Path",
+                        "description": "Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery')."
+                    },
+                    "fallback": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Fallback",
+                        "description": "Fallback value to use if the attribute is not found."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "span_name",
+                    "attribute_path"
+                ],
+                "title": "TraceTransformVariableDefinition"
             },
             "TraceUserListResponse": {
                 "properties": {
@@ -19858,6 +21983,135 @@
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
             },
+            "TransformExtractionResponseList": {
+                "properties": {
+                    "variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformExtractionResponseVariable"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of extracted variables."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variables"
+                ],
+                "title": "TransformExtractionResponseList"
+            },
+            "TransformExtractionResponseVariable": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the extracted variable."
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value",
+                        "description": "Value of the extracted variable."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "value"
+                ],
+                "title": "TransformExtractionResponseVariable"
+            },
+            "UnsavedPromptConfig": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "unsaved",
+                        "title": "Type",
+                        "default": "unsaved"
+                    },
+                    "auto_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Auto Name",
+                        "description": "Auto-generated name (set by backend)"
+                    },
+                    "messages": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "Prompt messages"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "LLM model name"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "LLM provider"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Config",
+                        "description": "LLM config settings"
+                    },
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "Variables (auto-detected if not provided)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages",
+                    "model_name",
+                    "model_provider"
+                ],
+                "title": "UnsavedPromptConfig",
+                "description": "Configuration for an unsaved prompt"
+            },
             "UnsavedPromptRenderingRequest": {
                 "properties": {
                     "completion_request": {
@@ -19915,6 +22169,77 @@
                 "title": "UnsavedPromptVariablesRequest",
                 "description": "Request schema for getting the list of variables needed from an unsaved prompt's messages"
             },
+            "UpdateContinuousEvalRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Name of the continuous eval"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the continuous eval"
+                    },
+                    "llm_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Llm Eval Name",
+                        "description": "Name of the llm eval to create the continuous eval for"
+                    },
+                    "llm_eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Llm Eval Version",
+                        "description": "Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                    },
+                    "transform_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Id",
+                        "description": "ID of the transform to create the continuous eval for"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateContinuousEvalRequest",
+                "description": "Request schema for creating a continuous eval"
+            },
             "UpdateMetricRequest": {
                 "properties": {
                     "enabled": {
@@ -19928,6 +22253,37 @@
                     "enabled"
                 ],
                 "title": "UpdateMetricRequest"
+            },
+            "UpdateNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "New name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "New description"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateNotebookRequest",
+                "description": "Request to update a notebook"
             },
             "UpdateRuleRequest": {
                 "properties": {

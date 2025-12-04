@@ -66,7 +66,7 @@ def test_create_api_key_no_description():
     assert api_key is not None
     assert api_key.id is not None
     assert api_key.is_active is not None
-    assert api_key.description == ""
+    assert api_key.description is None
     assert api_key.is_active is True
     assert api_key.created_at is not None
     assert api_key.message is not None

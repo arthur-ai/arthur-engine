@@ -3,7 +3,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DownloadIcon from "@mui/icons-material/Download";
 import HistoryIcon from "@mui/icons-material/History";
 import SaveIcon from "@mui/icons-material/Save";
-import TransformIcon from "@mui/icons-material/Transform";
+import ScienceIcon from "@mui/icons-material/Science";
 import UploadIcon from "@mui/icons-material/Upload";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import { Box, Button, IconButton, Typography } from "@mui/material";
@@ -29,7 +29,7 @@ interface DatasetHeaderProps {
   onOpenVersions: () => void;
   onExport: () => void;
   onImport: () => void;
-  onManageTransforms: () => void;
+  onViewExperiments: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
@@ -51,7 +51,7 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   onOpenVersions,
   onExport,
   onImport,
-  onManageTransforms,
+  onViewExperiments,
   searchValue,
   onSearchChange,
   onSearchClear,
@@ -129,13 +129,13 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           Versions
         </Button>
         <Button
-          variant="contained"
+          variant="outlined"
           size="small"
-          startIcon={<TransformIcon />}
-          onClick={onManageTransforms}
-          title="Manage data extraction transforms"
+          startIcon={<ScienceIcon />}
+          onClick={onViewExperiments}
+          title="View experiments using this dataset"
         >
-          Transforms
+          Experiments
         </Button>
       </Box>
 

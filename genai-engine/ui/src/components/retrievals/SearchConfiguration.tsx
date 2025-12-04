@@ -1,14 +1,25 @@
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
+import Snackbar from "@mui/material/Snackbar";
 import React, { useState } from "react";
 
 import { CollectionSelector } from "./CollectionSelector";
 import { ProviderSelector } from "./ProviderSelector";
 import { QueryInput } from "./QueryInput";
+import { RagConfigurationSelector } from "./RagConfigurationSelector";
+import { RagConfigVersionSelector } from "./RagConfigVersionSelector";
+import { SaveRagConfigDialog } from "./SaveRagConfigDialog";
 import { SearchActions } from "./SearchActions";
 import { SearchMethodSelector } from "./SearchMethodSelector";
 import { SearchSettings } from "./SearchSettings";
 import type { SearchSettings as SearchSettingsType, SearchMethod } from "./types";
 
-import type { RagProviderConfigurationResponse, RagProviderCollectionResponse } from "@/lib/api-client/api-client";
+import useSnackbar from "@/hooks/useSnackbar";
+import type {
+  RagProviderConfigurationResponse,
+  RagProviderCollectionResponse,
+  RagSearchSettingConfigurationResponse,
+} from "@/lib/api-client/api-client";
 import { downloadJson } from "@/utils/fileDownload";
 
 interface SearchConfigurationProps {
@@ -27,6 +38,13 @@ interface SearchConfigurationProps {
   onSettingsChange: (settings: SearchSettingsType) => void;
   collections: RagProviderCollectionResponse[];
   onRefresh: () => void;
+  currentConfigId: string | null;
+  currentConfigName: string | null;
+  currentVersion: number | null;
+  onConfigSelect: (config: RagSearchSettingConfigurationResponse | null) => void;
+  onVersionSelect: (version: number) => void;
+  taskId: string;
+  isLoadingConfig: boolean;
 }
 
 export const SearchConfiguration: React.FC<SearchConfigurationProps> = ({
@@ -45,8 +63,17 @@ export const SearchConfiguration: React.FC<SearchConfigurationProps> = ({
   onSettingsChange,
   collections,
   onRefresh,
+  currentConfigId,
+  currentConfigName,
+  currentVersion,
+  onConfigSelect,
+  onVersionSelect,
+  taskId,
+  isLoadingConfig,
 }) => {
   const [query, setQuery] = useState("");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const effectiveCollection = selectedCollection || (collections.length > 0 ? collections[0] : null);
 
@@ -58,10 +85,6 @@ export const SearchConfiguration: React.FC<SearchConfigurationProps> = ({
       }
       onExecuteQuery(query.trim(), searchMethod);
     }
-  };
-
-  const handleClear = (): void => {
-    setQuery("");
   };
 
   const handleExportConfig = (): void => {
@@ -96,11 +119,27 @@ export const SearchConfiguration: React.FC<SearchConfigurationProps> = ({
     downloadJson(exportData, "rag-search-config");
   };
 
-  const isDisabled = !effectiveCollection || !query.trim() || isExecuting;
+  const isDisabled = !effectiveCollection || isExecuting;
+
+  const handleSaveConfigClick = () => {
+    if (!effectiveCollection) {
+      showSnackbar("Please select a collection before saving", "warning");
+      return;
+    }
+    setSaveDialogOpen(true);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="space-y-4">
+        <div className="flex gap-2 items-center">
+          <RagConfigurationSelector currentConfigId={currentConfigId} onConfigSelect={onConfigSelect} />
+          <RagConfigVersionSelector configId={currentConfigId} currentVersion={currentVersion} onVersionSelect={onVersionSelect} />
+          {isLoadingConfig && (
+            <CircularProgress size={20} sx={{ ml: 1 }} />
+          )}
+        </div>
+
         <ProviderSelector
           selectedProviderId={selectedProviderId}
           onProviderChange={onProviderChange}
@@ -122,21 +161,38 @@ export const SearchConfiguration: React.FC<SearchConfigurationProps> = ({
 
             <SearchMethodSelector searchMethod={searchMethod} onSearchMethodChange={onSearchMethodChange} isExecuting={isExecuting} />
 
-            <QueryInput query={query} onQueryChange={setQuery} onClear={handleClear} isExecuting={isExecuting} />
+            <QueryInput query={query} onQueryChange={setQuery} onClear={() => setQuery("")} isExecuting={isExecuting} />
 
             <SearchSettings searchMethod={searchMethod} settings={settings} onSettingsChange={onSettingsChange} isExecuting={isExecuting} />
 
             <SearchActions
               onExportConfig={handleExportConfig}
-              onClear={handleClear}
               onSubmit={handleSubmit}
               isDisabled={isDisabled}
               isExecuting={isExecuting}
               hasQuery={!!query}
+              onSaveConfig={handleSaveConfigClick}
             />
           </>
         )}
       </div>
+
+      {effectiveCollection && selectedProviderId && (
+        <SaveRagConfigDialog
+          open={saveDialogOpen}
+          setOpen={setSaveDialogOpen}
+          currentConfigName={currentConfigName}
+          currentProviderId={selectedProviderId}
+          selectedCollection={effectiveCollection}
+          searchMethod={searchMethod}
+          settings={settings}
+          taskId={taskId}
+        />
+      )}
+
+      <Snackbar {...snackbarProps}>
+        <Alert {...alertProps} />
+      </Snackbar>
     </div>
   );
 };
