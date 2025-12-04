@@ -4261,6 +4261,104 @@
                 }
             }
         },
+        "/api/v1/traces/spans/unregistered": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Get Unregistered Root Spans",
+                "description": "Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination. Time bounds (start_time/end_time) are recommended for performance on large datasets.",
+                "operationId": "get_unregistered_root_spans_api_v1_traces_spans_unregistered_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive end date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Inclusive end date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnregisteredRootSpansResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/traces/spans/{span_id}": {
             "get": {
                 "tags": [
@@ -4809,80 +4907,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TraceUserMetadataResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/traces/spans/unregistered": {
-            "get": {
-                "tags": [
-                    "Spans"
-                ],
-                "summary": "Get Unregistered Root Spans",
-                "description": "Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination.",
-                "operationId": "get_unregistered_root_spans_api_v1_traces_spans_unregistered_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
-                        },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnregisteredRootSpansResponse"
                                 }
                             }
                         }

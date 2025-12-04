@@ -577,12 +577,16 @@ class SpanRepository:
     def get_unregistered_root_spans_grouped(
         self,
         pagination_parameters: PaginationParameters | None = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
     ) -> tuple[list[dict[str, Any]], int]:
         """
         Get grouped root spans for traces without task_id.
 
         Args:
             pagination_parameters: Optional pagination parameters for limiting results
+            start_time: Optional start time filter (inclusive). If not provided, defaults to 7 days ago.
+            end_time: Optional end time filter (exclusive). If not provided, defaults to now.
 
         Returns:
             tuple[list[dict], int]: (groups, total_count) where groups contains
@@ -592,6 +596,8 @@ class SpanRepository:
         results, total_count = (
             self.span_query_service.get_unregistered_root_spans_grouped(
                 pagination_parameters=pagination_parameters,
+                start_time=start_time,
+                end_time=end_time,
             )
         )
 

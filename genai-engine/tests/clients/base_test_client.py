@@ -2105,7 +2105,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["sort"] = sort
 
         resp = self.base_client.get(
-            "/api/v1/traces/unregistered",
+            "/api/v1/traces/spans/unregistered",
             headers=self.authorized_user_api_key_headers,
             params=params if params else None,
         )

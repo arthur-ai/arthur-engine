@@ -427,10 +427,17 @@ def test_get_unregistered_root_spans_grouped(
     client: GenaiEngineTestClientBase,
 ):
     """Test getting grouped root spans for traces without task_id via endpoint."""
+    from tests.clients.base_test_client import override_get_db_session
     from tests.routes.trace_api.conftest import (
         _create_base_trace_request,
         _create_span,
+        _delete_spans_from_db,
+        _delete_trace_metadata_from_db,
     )
+
+    # Track created resources for cleanup
+    created_trace_ids = []
+    created_span_ids = []
 
     # Create 5 traces without task_id with 3 distinct span_name groups:
     # Group 1: "AppA" - 2 traces (trace1, trace2) with 2 root spans total
@@ -506,6 +513,25 @@ def test_get_unregistered_root_spans_grouped(
     scope_span5.spans.append(span5)
     resource_span5.scope_spans.append(scope_span5)
     trace_request5.resource_spans.append(resource_span5)
+
+    # Track trace and span IDs for cleanup (convert bytes to hex strings)
+    trace_id_bytes = [
+        b"unregistered_endpoint_trace1",
+        b"unregistered_endpoint_trace2",
+        b"unregistered_endpoint_trace3",
+        b"unregistered_endpoint_trace4",
+        b"unregistered_endpoint_trace5",
+    ]
+    span_id_bytes = [
+        b"unregistered_endpoint_span1",
+        b"unregistered_endpoint_span2",
+        b"unregistered_endpoint_span3",
+        b"unregistered_endpoint_span4",
+        b"unregistered_endpoint_span5",
+    ]
+    # Convert bytes to hex strings for database lookup
+    created_trace_ids.extend([tid.hex() for tid in trace_id_bytes])
+    created_span_ids.extend([sid.hex() for sid in span_id_bytes])
 
     # Send all 5 traces
     status_code1, _ = client.trace_api_receive_traces(
@@ -607,16 +633,33 @@ def test_get_unregistered_root_spans_grouped(
         counts, reverse=True
     ), f"Groups should be ordered by count descending. Got: {counts}"
 
+    # Cleanup: Delete created traces and spans
+    try:
+        db_session = override_get_db_session()
+        _delete_spans_from_db(db_session, created_span_ids)
+        _delete_trace_metadata_from_db(db_session, created_trace_ids)
+        db_session.close()
+    except Exception as e:
+        # Log but don't fail test on cleanup errors
+        print(f"Warning: Cleanup failed: {e}")
+
 
 @pytest.mark.unit_tests
 def test_get_unregistered_root_spans_grouped_with_pagination(
     client: GenaiEngineTestClientBase,
 ):
     """Test pagination for unregistered root spans endpoint."""
+    from tests.clients.base_test_client import override_get_db_session
     from tests.routes.trace_api.conftest import (
         _create_base_trace_request,
         _create_span,
+        _delete_spans_from_db,
+        _delete_trace_metadata_from_db,
     )
+
+    # Track created resources for cleanup
+    created_trace_ids = []
+    created_span_ids = []
 
     # Create 10 traces without task_id with 5 distinct span_name groups:
     # Use unique span names to avoid conflicts with other tests
@@ -646,12 +689,18 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     ]
     
     for i, span_name in enumerate(span_names):
+        trace_id = f"pagination_test_trace_{i}"
+        span_id = f"pagination_test_span_{i}"
+        # Convert to hex strings for database lookup (trace ingestion converts bytes to hex)
+        created_trace_ids.append(trace_id.encode().hex())
+        created_span_ids.append(span_id.encode().hex())
+        
         trace_request, resource_span, scope_span = _create_base_trace_request(
             task_id=None,
         )
         span = _create_span(
-            trace_id=f"pagination_test_trace_{i}".encode(),
-            span_id=f"pagination_test_span_{i}".encode(),
+            trace_id=trace_id.encode(),
+            span_id=span_id.encode(),
             name=span_name,
             span_type="LLM",
         )
@@ -735,11 +784,16 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     # Filter to only our Pagination groups
     pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
     
-    # We should have at least one Pagination group with count=1 (PaginationAppD or PaginationAppE)
-    if len(pagination_groups) > 0:
-        pagination_counts = [get_group_value(g, "count") for g in pagination_groups]
-        # At least one should have count=1
-        assert 1 in pagination_counts, f"Expected at least one Pagination group with count=1, got {pagination_counts}"
+    # Note: With data from other tests, we may not see count=1 groups on this specific page
+    # Instead, we'll verify all our groups exist in the large page_size test below
+    # Just verify that if Pagination groups are present, they have correct counts
+    for pagination_group in pagination_groups:
+        span_name = get_group_value(pagination_group, "span_name")
+        count = get_group_value(pagination_group, "count")
+        if span_name == "PaginationAppC":
+            assert count == 2, f"PaginationAppC should have count=2, got {count}"
+        elif span_name in ["PaginationAppD", "PaginationAppE"]:
+            assert count == 1, f"{span_name} should have count=1, got {count}"
 
     # Test 4: Page beyond available data (should return empty list but same total_count)
     status_code, response = client.trace_api_get_unregistered_root_spans(
@@ -777,3 +831,13 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     # total_count should be baseline + 10 (our test traces)
     expected_total_count = baseline_total_count + 10
     assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+
+    # Cleanup: Delete created traces and spans
+    try:
+        db_session = override_get_db_session()
+        _delete_spans_from_db(db_session, created_span_ids)
+        _delete_trace_metadata_from_db(db_session, created_trace_ids)
+        db_session.close()
+    except Exception as e:
+        # Log but don't fail test on cleanup errors
+        print(f"Warning: Cleanup failed: {e}")
