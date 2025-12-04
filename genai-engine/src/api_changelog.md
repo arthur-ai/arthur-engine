@@ -2,14 +2,6 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 12/04/2025
-- **CHANGE** for **URL**: /api/v1/traces/spans/unregistered  added the new optional 'query' request parameter 'end_time'
-- **CHANGE** for **URL**: /api/v1/traces/spans/unregistered  added the new optional 'query' request parameter 'start_time'
-
-# 12/04/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/unregistered  api path removed without deprecation
-- **CHANGE** for **URL**: /api/v1/traces/spans/unregistered  endpoint added
-
 # 12/03/2025
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
