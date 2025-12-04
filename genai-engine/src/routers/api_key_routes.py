@@ -46,7 +46,7 @@ def create_api_key(
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.create_api_key(
-            description=new_api_key.description or "",
+            description=new_api_key.description,
             roles=new_api_key.roles or [],
         )
         return api_key._to_response_model(
