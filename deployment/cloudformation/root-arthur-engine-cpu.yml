@@ -412,10 +412,10 @@ Metadata:
           default: 'Advanced ML Engine'
         Parameters:
           - MLEngineVersion
-          - MLEngineClientId
-          - MLEngineClientSecret
           - MLEngineContainerImageLocation
           - MLEngineBYOAppSecurityGroupIDs
+          - MLEngineFargateTaskCPUValue
+          - MLEngineFargateTaskMemoryValue
       - Label:
           default: 'Advanced ML Engine (IAM)'
         Parameters:
@@ -571,6 +571,10 @@ Metadata:
         default: 'Bring-Your-Own ML Engine Task Execution Role'
       MLEngineBYOAppSecurityGroupIDs:
         default: 'Bring-Your-Own ML Engine Application Security Group IDs'
+      MLEngineFargateTaskCPUValue:
+        default: 'ML Engine ECS CPU Value. Must be compatible with ECS Memory Value'
+      MLEngineFargateTaskMemoryValue:
+        default: 'ML Engine ECS Memory Value. Must be compatible with ECS CPU Value'
       ArthurApiHost:
         default: 'Arthur Platform URL'
 Conditions:
