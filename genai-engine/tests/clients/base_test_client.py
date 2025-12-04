@@ -63,10 +63,12 @@ from schemas.enums import (
     RagProviderEnum,
 )
 from schemas.internal_schemas import AgenticAnnotation
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
+    ContinuousEvalCreateRequest,
     CreateAgenticPromptRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
@@ -86,6 +88,7 @@ from schemas.request_schemas import (
     RagSearchSettingConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
     TraceTransformUpdateRequest,
+    UpdateContinuousEvalRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsRequest,
@@ -94,9 +97,11 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
+    ListContinuousEvalsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
@@ -3492,6 +3497,167 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             AgenticPrompt.model_validate(resp.json()),
         )
+
+    def save_llm_eval(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        llm_eval_data: dict,
+    ) -> tuple[int, LLMEval]:
+        """Save an llm eval."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
+            json=llm_eval_data,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                LLMEval.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_llm_eval(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+    ) -> tuple[int, Any]:
+        """Delete an llm eval."""
+        resp = self.base_client.delete(
+            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
+
+    def save_continuous_eval(
+        self,
+        task_id: str,
+        continuous_eval_data: Union[ContinuousEvalCreateRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Create a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, ContinuousEvalCreateRequest)
+            else continuous_eval_data
+        )
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/continuous_evals",
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def update_continuous_eval(
+        self,
+        continuous_eval_id: str,
+        continuous_eval_data: Union[UpdateContinuousEvalRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Update a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, UpdateContinuousEvalRequest)
+            else continuous_eval_data
+        )
+        resp = self.base_client.patch(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_continuous_eval_by_id(
+        self,
+        continuous_eval_id: str,
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Get a continuous eval by id."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_continuous_evals(
+        self,
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListContinuousEvalsResponse]:
+        """List continuous evals."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals"
+        if search_url:
+            base_url = base_url + "?" + search_url
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListContinuousEvalsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_continuous_eval(
+        self,
+        continuous_eval_id: str,
+    ) -> tuple[int, Any]:
+        """Delete a continuous eval."""
+        resp = self.base_client.delete(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
 
 
 def get_base_pagination_parameters(

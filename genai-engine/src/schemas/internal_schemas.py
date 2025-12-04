@@ -109,6 +109,7 @@ from db_models.dataset_models import (
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
@@ -147,6 +148,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
+    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
@@ -3282,4 +3284,58 @@ class RagSearchSettingConfiguration(BaseModel):
             ),
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
+        )
+
+
+class ContinuousEval(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: Optional[str]
+    task_id: str
+    llm_eval_name: str
+    llm_eval_version: int
+    transform_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    def to_db_model(self) -> DatabaseContinuousEval:
+        return DatabaseContinuousEval(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    @staticmethod
+    def from_db_model(
+        db_eval: DatabaseContinuousEval,
+    ) -> "ContinuousEval":
+        return ContinuousEval(
+            id=db_eval.id,
+            name=db_eval.name,
+            description=db_eval.description,
+            task_id=db_eval.task_id,
+            llm_eval_name=db_eval.llm_eval_name,
+            llm_eval_version=db_eval.llm_eval_version,
+            transform_id=db_eval.transform_id,
+            created_at=db_eval.created_at,
+            updated_at=db_eval.updated_at,
+        )
+
+    def to_response_model(self) -> ContinuousEvalResponse:
+        return ContinuousEvalResponse(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
         )
