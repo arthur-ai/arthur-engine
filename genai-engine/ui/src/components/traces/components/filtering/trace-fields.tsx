@@ -51,22 +51,22 @@ export const TRACE_FIELDS = [
   createPrimitiveField({
     type: "text",
     name: "trace_ids",
-    operators: [Operators.EQUALS],
+    operators: [Operators.EQUALS, Operators.IN],
   }),
   createPrimitiveField({
     type: "text",
     name: "session_ids",
-    operators: [Operators.EQUALS],
+    operators: [Operators.EQUALS, Operators.IN],
   }),
   createPrimitiveField({
     type: "text",
     name: "span_ids",
-    operators: [Operators.EQUALS],
+    operators: [Operators.EQUALS, Operators.IN],
   }),
   createPrimitiveField({
     type: "text",
     name: "user_ids",
-    operators: [Operators.EQUALS],
+    operators: [Operators.EQUALS, Operators.IN],
   }),
   createPrimitiveField({
     name: "annotation_score",

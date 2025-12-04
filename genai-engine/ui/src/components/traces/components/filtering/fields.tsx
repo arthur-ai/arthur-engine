@@ -32,7 +32,7 @@ export type DynamicEnumField<TCtx> = {
 
 export type TextField = {
   type: "text";
-  operators: Extract<Operator, "eq" | "contains">[];
+  operators: Extract<Operator, "eq" | "contains" | "in">[];
 };
 
 export type FreeSoloField = {

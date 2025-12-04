@@ -5,6 +5,6 @@ export const SESSION_FIELDS = [
   createPrimitiveField({
     name: "user_ids",
     type: "text",
-    operators: [Operators.EQUALS],
+    operators: [Operators.EQUALS, Operators.IN],
   }),
 ] as const satisfies Field[];
