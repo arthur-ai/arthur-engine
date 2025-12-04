@@ -2046,11 +2046,11 @@ __metadata:
   linkType: hard
 
 "@types/papaparse@npm:^5.3.16":
-  version: 5.5.0
-  resolution: "@types/papaparse@npm:5.5.0"
+  version: 5.5.1
+  resolution: "@types/papaparse@npm:5.5.1"
   dependencies:
     "@types/node": "npm:*"
-  checksum: 10c0/df2db19b602c6d9a049085737fcd3be49e4db528704a25bf4e9a08378053951f7069738b8a3fcb8b1c760ccbc41125f1e358b21db905d6f7e8bcf4062b29df49
+  checksum: 10c0/b9f82061b9e1089f6a51ab5cd8de947f2dc6ca2ff77603ea7493a51f4d25e3988497b310046dd9546d66819dbe011b35c2897eb28989d982c432b85c14ef5921
   languageName: node
   linkType: hard
 
@@ -3900,8 +3900,8 @@ __metadata:
   linkType: hard
 
 "framer-motion@npm:^12.23.21":
-  version: 12.23.24
-  resolution: "framer-motion@npm:12.23.24"
+  version: 12.23.25
+  resolution: "framer-motion@npm:12.23.25"
   dependencies:
     motion-dom: "npm:^12.23.23"
     motion-utils: "npm:^12.23.6"
@@ -3917,7 +3917,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/716addd9fa85dd2c1475ab848e14c4e6d3246ced041de84afc19b1d6534c897256c8f2878864cf057039116e56f5ca1b87a4cbb943f0b1cf37199ef7174c3cf8
+  checksum: 10c0/cfcc2da1f3ffe50abe6f657e08b61912acbafffc0a0652d2518c1928e1e23a01a580a2e7feeb9234d7c8028e573a9896519b38fa0f570390b2e4624bafdf4063
   languageName: node
   linkType: hard
 
@@ -5979,8 +5979,8 @@ __metadata:
   linkType: hard
 
 "nuqs@npm:^2.8.0":
-  version: 2.8.1
-  resolution: "nuqs@npm:2.8.1"
+  version: 2.8.2
+  resolution: "nuqs@npm:2.8.2"
   dependencies:
     "@standard-schema/spec": "npm:1.0.0"
   peerDependencies:
@@ -6001,7 +6001,7 @@ __metadata:
       optional: true
     react-router-dom:
       optional: true
-  checksum: 10c0/7e8d4e2ef6bd0a3eb642747a5feb30da0e5c1525de151d92765862eb08cacbf95c8630f9c7e7dbaf30f0f9dc9ff0b31effb4c682c68d54affd919c032a4d7030
+  checksum: 10c0/b343d03ed14582a86b1a706547b58d9fe7297d094419efad8f055fd427caade075548d4584a9f1ff4c3fa8dd539f455bd76c989a31f0d4fac58210dc01643d7b
   languageName: node
   linkType: hard
 

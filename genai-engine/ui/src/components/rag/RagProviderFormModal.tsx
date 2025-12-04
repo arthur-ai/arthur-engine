@@ -3,7 +3,11 @@ import React, { useState } from "react";
 
 import { useProviderForm } from "@/hooks/rag/useProviderForm";
 import { useRagProviderMutations } from "@/hooks/rag/useRagProviderMutations";
-import type { RagProviderConfigurationRequest, RagProviderConfigurationResponse, RagProviderConfigurationUpdateRequest } from "@/lib/api-client/api-client";
+import type {
+  RagProviderConfigurationRequest,
+  RagProviderConfigurationResponse,
+  RagProviderConfigurationUpdateRequest,
+} from "@/lib/api-client/api-client";
 
 interface RagProviderFormModalProps {
   open: boolean;
@@ -16,7 +20,7 @@ interface RagProviderFormModalProps {
 
 export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open, onClose, onSuccess, taskId, mode, initialData }) => {
   const { createProvider, updateProvider, testConnection } = useRagProviderMutations();
-  const { formData, errors, isFormValid, updateField, validateForm, resetForm, normalizeHostUrl } = useProviderForm(mode, initialData);
+  const { form, values, fieldValidators, canSubmitForm, isSubmitting, resetForm, normalizeHostUrl } = useProviderForm(mode, initialData);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -32,28 +36,20 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
     setTestResult(null);
   };
 
-  const handleChange = (field: "name" | "description" | "host_url" | "api_key") => (event: React.ChangeEvent<HTMLInputElement>) => {
-    updateField(field, event.target.value);
-    if (field === "host_url" || field === "api_key") {
-      setConnectionTested(false);
-      setTestResult(null);
-    }
-  };
-
   const handleTestConnection = async () => {
-    if (!validateForm()) {
+    if (!canSubmitForm) {
       return;
     }
 
     setTestResult(null);
 
-    const normalizedUrl = normalizeHostUrl(formData.host_url);
+    const normalizedUrl = normalizeHostUrl(values.host_url);
 
     const testData = {
       authentication_config: {
         authentication_method: "api_key" as const,
         host_url: normalizedUrl,
-        api_key: formData.api_key,
+        api_key: values.api_key,
         rag_provider: "weaviate" as const,
       },
     };
@@ -88,7 +84,7 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
   };
 
   const handleSave = async () => {
-    if (!validateForm()) {
+    if (!canSubmitForm) {
       return;
     }
 
@@ -100,7 +96,7 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
       return;
     }
 
-    if (mode === "edit" && formData.api_key.trim() && !connectionTested) {
+    if (mode === "edit" && values.api_key.trim() && !connectionTested) {
       setTestResult({
         success: false,
         message: "Please test the connection before saving",
@@ -108,16 +104,16 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
       return;
     }
 
-    const normalizedUrl = normalizeHostUrl(formData.host_url);
+    const normalizedUrl = normalizeHostUrl(values.host_url);
 
     if (mode === "create") {
       const createData: RagProviderConfigurationRequest = {
-        name: formData.name,
-        description: formData.description || undefined,
+        name: values.name,
+        description: values.description || undefined,
         authentication_config: {
           authentication_method: "api_key" as const,
           host_url: normalizedUrl,
-          api_key: formData.api_key,
+          api_key: values.api_key,
           rag_provider: "weaviate" as const,
         },
       };
@@ -139,18 +135,18 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
       );
     } else if (initialData) {
       const updateData: RagProviderConfigurationUpdateRequest = {
-        name: formData.name,
-        description: formData.description || null,
+        name: values.name,
+        description: values.description || null,
       };
 
-      if (formData.api_key.trim() || normalizedUrl !== initialData.authentication_config.host_url) {
+      if (values.api_key.trim() || normalizedUrl !== initialData.authentication_config.host_url) {
         updateData.authentication_config = {
           host_url: normalizedUrl,
           rag_provider: "weaviate",
         };
 
-        if (formData.api_key.trim()) {
-          updateData.authentication_config.api_key = formData.api_key;
+        if (values.api_key.trim()) {
+          updateData.authentication_config.api_key = values.api_key;
         }
       }
 
@@ -172,65 +168,93 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
     }
   };
 
-  const canSave = mode === "edit" ? isFormValid && (connectionTested || !formData.api_key.trim()) : isFormValid && connectionTested;
+  const canSave = mode === "edit" ? canSubmitForm && (connectionTested || !values.api_key.trim()) : canSubmitForm && connectionTested;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth TransitionProps={{ onEnter: handleModalEnter }}>
       <DialogTitle>{mode === "create" ? "Create RAG Provider" : "Edit RAG Provider"}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-          <TextField
-            label="Name"
-            value={formData.name}
-            onChange={handleChange("name")}
-            required
-            fullWidth
-            error={!!errors.name}
-            helperText={errors.name}
-            placeholder="My RAG Provider"
-          />
+          <form.Field name="name" validators={fieldValidators.name}>
+            {(field) => (
+              <TextField
+                label="Name"
+                value={field.state.value}
+                onChange={(event) => field.handleChange(event.target.value)}
+                onBlur={field.handleBlur}
+                required
+                fullWidth
+                error={field.state.meta.errors.length > 0}
+                helperText={field.state.meta.errors[0]}
+                placeholder="My RAG Provider"
+              />
+            )}
+          </form.Field>
 
-          <TextField
-            label="Description"
-            value={formData.description}
-            onChange={handleChange("description")}
-            fullWidth
-            multiline
-            rows={3}
-            error={!!errors.description}
-            helperText={errors.description}
-            placeholder="Optional description for this provider"
-          />
+          <form.Field name="description" validators={fieldValidators.description}>
+            {(field) => (
+              <TextField
+                label="Description"
+                value={field.state.value}
+                onChange={(event) => field.handleChange(event.target.value)}
+                onBlur={field.handleBlur}
+                fullWidth
+                multiline
+                rows={3}
+                error={field.state.meta.errors.length > 0}
+                helperText={field.state.meta.errors[0]}
+                placeholder="Optional description for this provider"
+              />
+            )}
+          </form.Field>
 
-          <TextField
-            label="Host URL"
-            value={formData.host_url}
-            onChange={handleChange("host_url")}
-            required
-            fullWidth
-            error={!!errors.host_url}
-            helperText={errors.host_url || "Enter with or without https://"}
-            placeholder="your-cluster.example.com"
-          />
+          <form.Field name="host_url" validators={fieldValidators.host_url}>
+            {(field) => (
+              <TextField
+                label="Host URL"
+                value={field.state.value}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                  setConnectionTested(false);
+                  setTestResult(null);
+                }}
+                onBlur={field.handleBlur}
+                required
+                fullWidth
+                error={field.state.meta.errors.length > 0}
+                helperText={field.state.meta.errors[0] || "Enter with or without https://"}
+                placeholder="your-cluster.example.com"
+              />
+            )}
+          </form.Field>
 
-          <TextField
-            label="API Key"
-            value={formData.api_key}
-            onChange={handleChange("api_key")}
-            required={mode === "create"}
-            fullWidth
-            type="password"
-            error={!!errors.api_key}
-            helperText={mode === "edit" ? errors.api_key || "Leave blank to keep existing API key" : errors.api_key}
-            placeholder={mode === "edit" ? "(unchanged)" : ""}
-          />
+          <form.Field name="api_key" validators={fieldValidators.api_key}>
+            {(field) => (
+              <TextField
+                label="API Key"
+                value={field.state.value}
+                onChange={(event) => {
+                  field.handleChange(event.target.value);
+                  setConnectionTested(false);
+                  setTestResult(null);
+                }}
+                onBlur={field.handleBlur}
+                required={mode === "create"}
+                fullWidth
+                type="password"
+                error={field.state.meta.errors.length > 0}
+                helperText={mode === "edit" ? field.state.meta.errors[0] || "Leave blank to keep existing API key" : field.state.meta.errors[0]}
+                placeholder={mode === "edit" ? "(unchanged)" : ""}
+              />
+            )}
+          </form.Field>
 
           <TextField label="Provider Type" value="Weaviate" disabled fullWidth helperText="Currently only Weaviate is supported" />
 
           <Button
             variant="outlined"
             onClick={handleTestConnection}
-            disabled={!isFormValid || isTesting}
+            disabled={!canSubmitForm || isTesting}
             startIcon={isTesting ? <CircularProgress size={20} /> : null}
             fullWidth
           >
@@ -244,8 +268,13 @@ export const RagProviderFormModal: React.FC<RagProviderFormModalProps> = ({ open
         <Button onClick={onClose} disabled={isSaving}>
           Cancel
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={!canSave || isSaving} startIcon={isSaving ? <CircularProgress size={20} /> : null}>
-          {isSaving ? "Saving..." : "Save"}
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={!canSave || isSaving || isSubmitting}
+          startIcon={isSaving || isSubmitting ? <CircularProgress size={20} /> : null}
+        >
+          {isSaving || isSubmitting ? "Saving..." : "Save"}
         </Button>
       </DialogActions>
     </Dialog>

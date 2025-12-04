@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
+import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
@@ -32,6 +33,9 @@ export function TraceLevel() {
 
   const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
+
+  // Sync filters with URL parameters
+  useSyncFiltersToUrl();
 
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
@@ -69,6 +73,9 @@ export function TraceLevel() {
     () =>
       createFilterRow(TRACE_FIELDS, {
         trace_ids: { taskId: task?.id ?? "", api },
+        session_ids: { taskId: task?.id ?? "", api },
+        user_ids: { taskId: task?.id ?? "", api },
+        span_ids: { taskId: task?.id ?? "", api },
       }),
     [task?.id, api]
   );

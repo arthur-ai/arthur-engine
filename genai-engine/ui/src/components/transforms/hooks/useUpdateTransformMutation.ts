@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApi } from "@/hooks/useApi";
+
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
+import { useApi } from "@/hooks/useApi";
 
 interface UpdateTransformParams {
   transformId: string;
@@ -10,7 +11,7 @@ interface UpdateTransformParams {
 }
 
 export function useUpdateTransformMutation(
-  datasetId: string | undefined,
+  taskId: string | undefined,
   onSuccess?: () => void
 ) {
   const api = useApi();
@@ -18,12 +19,11 @@ export function useUpdateTransformMutation(
 
   return useMutation({
     mutationFn: async (params: UpdateTransformParams) => {
-      if (!datasetId || !api) {
-        throw new Error("Dataset ID or API client not available");
+      if (!taskId || !api) {
+        throw new Error("Task ID or API client not available");
       }
 
-      const response = await api.api.updateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut(
-        datasetId,
+      const response = await api.api.updateTransformApiV1TracesTransformsTransformIdPatch(
         params.transformId,
         {
           name: params.name,
@@ -35,8 +35,8 @@ export function useUpdateTransformMutation(
       return response.data;
     },
     onSuccess: () => {
-      if (datasetId) {
-        queryClient.invalidateQueries({ queryKey: ["transforms", datasetId] });
+      if (taskId) {
+        queryClient.invalidateQueries({ queryKey: ["transforms", taskId] });
       }
       onSuccess?.();
     },

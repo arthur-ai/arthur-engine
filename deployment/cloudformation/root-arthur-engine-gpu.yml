@@ -433,6 +433,14 @@ Parameters:
     Type: Number
     Description: 'The desired number of tasks running for ML Engine ECS service'
     Default: 2
+  MLEngineFargateTaskCPUValue:
+    Type: Number
+    Default: 2048
+    Description: 'CPU value for AWS Fargate per ML Engine ECS task'
+  MLEngineFargateTaskMemoryValue:
+    Type: Number
+    Default: 4096
+    Description: 'Memory value for AWS Fargate per ML Engine ECS task'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -540,13 +548,39 @@ Metadata:
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
           - GenaiEngineUsePIIModelV2
+      - Label:
+          default: 'Advanced ML Engine'
+        Parameters:
+          - MLEngineVersion
+          - MLEngineContainerImageLocation
+          - MLEngineBYOAppSecurityGroupIDs
+          - MLEngineFargateTaskCPUValue
+          - MLEngineFargateTaskMemoryValue
+      - Label:
+          default: 'Advanced ML Engine (IAM)'
+        Parameters:
+          - MLEngineBYOTaskRoleIAMArn
+          - MLEngineBYOTaskExecutionRoleIAMArn
+      - Label:
+          default: 'Advanced ML Engine (Scalability)'
+        Parameters:
+          - MLEngineECSServiceTaskDesiredCount
+          - MLEngineECSAutoscalingMinCapacity
+          - MLEngineECSAutoscalingMaxCapacity
+          - MLEngineECSScaleCPUTargetValue
+          - MLEngineECSScaleMemoryTargetValue
+          - MLEngineECSScaleInCooldownInSecs
+          - MLEngineECSScaleOutCooldownInSecs
+      - Label:
+          default: 'Advanced ML Engine (Platform Monitoring)'
+        Parameters:
+          - MLEngineECSCPUAlarmThreshold
+          - MLEngineECSMemoryAlarmThreshold
     ParameterLabels:
       ArthurResourceNamespace:
         default: 'Arthur Platform Resource Namespace'
       ArthurResourceNameSuffix:
         default: 'Arthur Platform Resource Name Suffix'
-      MLEngineContainerImageLocation:
-        default: 'ML Engine Container Image Location'
       ContainerRepositoryUsername:
         default: 'Container Repository Username'
       ContainerRepositoryPassword:
@@ -723,6 +757,10 @@ Metadata:
         default: 'ML Engine ECS Autoscaling Minimum Capacity'
       MLEngineECSServiceTaskDesiredCount:
         default: 'ML Engine ECS Service Task Desired Count'
+      MLEngineFargateTaskCPUValue:
+        default: 'ML Engine ECS CPU Value. Must be compatible with ECS Memory Value'
+      MLEngineFargateTaskMemoryValue:
+        default: 'ML Engine ECS Memory Value. Must be compatible with ECS CPU Value'
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
@@ -900,6 +938,8 @@ Resources:
         MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
         GenaiEngineInternalAPIKeySecretARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
         GenaiEngineInternalIngressHost: !Ref GenaiEngineIngressURL
+        MLEngineFargateTaskCPUValue: !Ref MLEngineFargateTaskCPUValue
+        MLEngineFargateTaskMemoryValue: !Ref MLEngineFargateTaskMemoryValue
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack

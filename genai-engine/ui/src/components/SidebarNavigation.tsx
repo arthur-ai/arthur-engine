@@ -50,6 +50,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       items: [
         { id: "evaluators", label: "Evals Management" },
         { id: "datasets", label: "Datasets" },
+        { id: "transforms", label: "Transforms" },
       ],
     },
     {
@@ -64,6 +65,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
         { id: "task-details", label: "Task Details" },
         { id: "model-providers", label: "Model Providers" },
         { id: "api-keys", label: "API Keys" },
+        { id: "rag-configurations", label: "RAG Configurations" },
       ],
     },
   ];
@@ -110,7 +112,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
 
       {/* Logout button at the bottom */}
       {onLogout && (
-        <div className="p-4 border-t border-gray-200 flex-shrink-0">
+        <div className="p-4 border-t border-gray-200 shrink-0">
           <button
             onClick={onLogout}
             className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"

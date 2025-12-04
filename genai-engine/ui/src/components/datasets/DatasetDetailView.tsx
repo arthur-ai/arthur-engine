@@ -112,10 +112,6 @@ export const DatasetDetailView: React.FC = () => {
     navigate(`/tasks/${task?.id}/datasets`);
   }, [navigate, task?.id]);
 
-  const handleManageTransforms = useCallback(() => {
-    navigate(`/tasks/${task?.id}/datasets/${datasetId}/transforms`);
-  }, [navigate, task?.id, datasetId]);
-
   const handleViewExperiments = useCallback(() => {
     navigate(`/tasks/${task?.id}/datasets/${datasetId}/experiments`);
   }, [navigate, task?.id, datasetId]);
@@ -269,7 +265,6 @@ export const DatasetDetailView: React.FC = () => {
           onExport={handleExport}
           onImport={modals.openImportModal}
           onOpenVersions={modals.openVersionDrawer}
-          onManageTransforms={handleManageTransforms}
           onViewExperiments={handleViewExperiments}
           searchValue={search.searchQuery}
           onSearchChange={search.setSearchQuery}

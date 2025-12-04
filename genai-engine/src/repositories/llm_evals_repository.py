@@ -1,4 +1,4 @@
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, Union, cast
 
 from litellm import supports_response_schema
 from pydantic import BaseModel
@@ -187,4 +187,15 @@ class LLMEvalsRepository(BaseLLMRepository):
             reason=llm_model_response.structured_output_response.reason,
             score=llm_model_response.structured_output_response.score,
             cost=llm_model_response.cost,
+        )
+
+    def get_llm_item(
+        self,
+        task_id: str,
+        item_name: str,
+        item_version: str = "latest",
+    ) -> LLMEval:
+        return cast(
+            LLMEval,
+            super().get_llm_item(task_id, item_name, item_version),
         )
