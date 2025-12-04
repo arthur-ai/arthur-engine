@@ -633,6 +633,8 @@ def _group_metrics_by_name_and_type(
             if metric_name not in sketch_metrics_by_name:
                 sketch_metrics_by_name[metric_name] = []
             sketch_metrics_by_name[metric_name].append(metric)
+        else:
+            raise ValueError(f"Metric with type {type(metric)} is not supported.")
 
     return numeric_metrics_by_name, sketch_metrics_by_name
 
