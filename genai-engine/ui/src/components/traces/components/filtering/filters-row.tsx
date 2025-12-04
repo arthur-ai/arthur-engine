@@ -1,6 +1,6 @@
 import { ScrollArea } from "@base-ui-components/react/scroll-area";
 import { Close, Search } from "@mui/icons-material";
-import { Button, Paper, Stack, TextField } from "@mui/material";
+import { Button, Chip, Paper, Stack, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
@@ -12,7 +12,7 @@ import { useAppForm, withForm } from "./hooks/form";
 import { IncomingFilter } from "./mapper";
 import { canBeCombinedWith } from "./rules";
 import { sharedFormOptions, validators } from "./shared";
-import { EnumOperators, Operator } from "./types";
+import { EnumOperators, Operator, Operators } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
 import { NumberField } from "@/components/common/form/NumberField";
@@ -222,6 +222,14 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
           {stage >= 1 && (
             <form.AppField
               name={`config[${index}].operator` as const}
+              listeners={{
+                onChange: ({ value }) => {
+                  const isMultiple = value === EnumOperators.IN;
+
+                  form.resetField(`config[${index}].value`);
+                  form.setFieldValue(`config[${index}].value`, isMultiple ? [] : "");
+                },
+              }}
               validators={{
                 onMount: validators.operator,
                 onChange: validators.operator,
@@ -236,12 +244,6 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                   onClose={() => {
                     field.handleBlur();
                     onClose();
-                  }}
-                  onChange={(_, value) => {
-                    const isMultiple = value === EnumOperators.IN;
-
-                    form.resetField(`config[${index}].value`);
-                    form.setFieldValue(`config[${index}].value`, isMultiple ? [] : "");
                   }}
                   size="small"
                   sx={{
@@ -297,9 +299,10 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
           onChange: validators.numeric(fieldConfig.min ?? -Infinity, fieldConfig.max ?? Infinity),
         };
       } else if (fieldConfig.type === "text") {
+        const multiple = config.operator === Operators.IN;
         fieldValidators = {
-          onMount: validators.value,
-          onChange: validators.value,
+          onMount: multiple ? validators.valueArray : validators.value,
+          onChange: multiple ? validators.valueArray : validators.value,
         };
       }
 
@@ -362,31 +365,98 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
             }
 
             if (fieldConfig.type === "text") {
+              return <TextInput form={form} index={index} onClose={onClose} />;
+            }
+          }}
+        </form.AppField>
+      );
+    },
+  });
+
+  const TextInput = withForm({
+    ...sharedFormOptions,
+    props: {} as {
+      index: number;
+      onClose: () => void;
+    },
+    render: function Render({ form, index, onClose }) {
+      const field = useField({ form, name: `config[${index}]` as const });
+      const operator = useStore(field.store, (state) => state.value.operator);
+
+      const multiple = operator === Operators.IN;
+
+      const fieldValidators = {
+        onMount: multiple ? validators.valueArray : validators.value,
+        onChange: multiple ? validators.valueArray : validators.value,
+      };
+
+      return (
+        <form.AppField name={`config[${index}].value` as const} validators={fieldValidators}>
+          {(field) => {
+            if (multiple) {
               return (
-                <TextField
-                  variant="filled"
-                  label="Value"
-                  size="small"
-                  value={field.state.value || ""}
-                  onChange={(e) => {
-                    field.handleChange(e.target.value);
-                  }}
+                <field.MaterialAutocompleteField
+                  freeSolo
+                  multiple
+                  onClose={onClose}
                   onBlur={() => {
                     field.handleBlur();
                     onClose();
                   }}
-                  sx={{
-                    width: 200,
-                    "& .MuiAutocomplete-inputRoot": {
-                      borderRadius: 0,
-                      "& fieldset": {
-                        borderInlineWidth: 0,
-                      },
-                    },
+                  onChange={(_, value) => {
+                    field.handleChange(value);
                   }}
+                  value={field.state.value as string[]}
+                  options={[]}
+                  size="small"
+                  limitTags={1}
+                  renderValue={(value: readonly string[], getItemProps) =>
+                    value.map((option: string, index: number) => {
+                      const { key, ...itemProps } = getItemProps({ index });
+                      return <Chip variant="outlined" size="small" label={option} key={key} sx={{ fontSize: 12 }} {...itemProps} />;
+                    })
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      variant="filled"
+                      label="Value"
+                      sx={{
+                        minWidth: 200,
+                        "& .MuiAutocomplete-inputRoot": {
+                          borderRadius: 0,
+                          "& fieldset": {
+                            borderInlineWidth: 0,
+                          },
+                        },
+                      }}
+                    />
+                  )}
                 />
               );
             }
+
+            return (
+              <TextField
+                value={field.state.value as string}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={() => {
+                  field.handleBlur();
+                }}
+                sx={{
+                  width: 200,
+                  "& .MuiAutocomplete-inputRoot": {
+                    borderRadius: 0,
+                    "& fieldset": {
+                      borderInlineWidth: 0,
+                    },
+                  },
+                }}
+                variant="filled"
+                label="Value"
+                size="small"
+              />
+            );
           }}
         </form.AppField>
       );

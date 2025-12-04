@@ -29,10 +29,6 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       return (request[key] = [filter.value].flat());
     }
 
-    if (key === "user_ids") {
-      return (request[key] = [filter.value].flat());
-    }
-
     if (key === "annotation_score") {
       return (request[key] = Number(filter.value));
     }
