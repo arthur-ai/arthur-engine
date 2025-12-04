@@ -21,7 +21,6 @@ from arthur_client.api_bindings import (
     JobKind,
     MetricsArgSpec,
     MetricsCalculationJobSpec,
-    MetricsVersion,
     ObjectValue,
     PostJob,
     PostJobBatch,
@@ -74,14 +73,6 @@ def test_create_alert_check_job():
     model_id = str(uuid4())
     model.id = model_id
 
-    mv = MetricsVersion(
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-        version_num=1,
-        scope_model_id=model_id,
-        range_start=datetime.now(),
-        range_end=datetime.now(),
-    )
     metrics_start_time = datetime.now() - timedelta(hours=2)
     metrics_end_time = datetime.now() - timedelta(hours=1)
     metrics_job_spec = MetricsCalculationJobSpec(
@@ -89,7 +80,7 @@ def test_create_alert_check_job():
         start_timestamp=metrics_start_time,
         end_timestamp=metrics_end_time,
     )
-    alert_job_batch = _create_alert_check_job(model, metrics_job_spec, mv)
+    alert_job_batch = _create_alert_check_job(model, metrics_job_spec)
 
     assert isinstance(alert_job_batch, PostJobBatch)
     assert len(alert_job_batch.jobs) == 1
@@ -291,6 +282,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
         mock_jobs_client = Mock()
         mock_custom_aggs_client = Mock()
         mock_model = Mock()
+        mock_custom_aggs_test_client = Mock()
 
         # create a dataset reference with dataset_id attribute
         mock_dataset_ref = Mock()
@@ -317,6 +309,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
             metrics_client=mock_metrics_client,
             jobs_client=mock_jobs_client,
             custom_aggregations_client=mock_custom_aggs_client,
+            custom_aggregation_tests_client=mock_custom_aggs_test_client,
             connector_constructor=connector_constructor,
             logger=logger,
         )
@@ -366,6 +359,7 @@ def test_add_dimensions_to_metrics():
         jobs_client=Mock(),
         connector_constructor=Mock(),
         custom_aggregations_client=Mock(),
+        custom_aggregation_tests_client=Mock(),
         logger=Mock(),
     )
 
