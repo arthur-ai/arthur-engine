@@ -64,11 +64,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
     if (!rootSpan) return;
 
     if (!selectedSpanId) {
-      select(rootSpan.span_id);
+      select(rootSpan.span_id, { history: "replace" });
     }
 
     if (flatSpans.findIndex((span) => span.span_id === selectedSpanId) === -1) {
-      select(rootSpan.span_id);
+      select(rootSpan.span_id, { history: "replace" });
     }
   });
 
