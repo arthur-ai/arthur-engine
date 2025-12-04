@@ -121,7 +121,7 @@ class BaseRelevanceScorer(MetricScorer):
     def _get_bert_score(self, model_input: dict[str, str | None]) -> float | None:
         """Get BERT score using the same input format as reranker"""
         if not self.bert_scorer:
-            return None  # TODO: Should we return None or raise error?
+            raise ValueError("BERT scorer is not available.")
         try:
             _, _, f = self.bert_scorer.score(
                 [model_input["text_pair"]],

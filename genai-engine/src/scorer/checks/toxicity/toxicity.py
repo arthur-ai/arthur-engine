@@ -97,7 +97,7 @@ class ToxicityScorer(RuleScorer):
         if self.toxicity_tokenizer is None:
             raise ValueError(
                 "Toxicity tokenizer is not available.",
-            )  # TODO: confirm that if tokenizer is not available we should raise error
+            )
         chunk_iterator = ChunkIterator(
             text,
             self.toxicity_tokenizer,
@@ -150,7 +150,7 @@ class ToxicityScorer(RuleScorer):
         if self.profanity_classifier is None:
             raise ValueError(
                 "Profanity classifier is not available.",
-            )  # TODO: confirm that if classifier is not available we should raise error
+            )
         with tracer.start_as_current_span("toxicity: profanity detection"):
             for section in texts:
                 # this calls the detect_profanity function found in toxicity_profanity/profanity.py
@@ -198,10 +198,7 @@ class ToxicityScorer(RuleScorer):
             (# texts,) list of toxicity probabilities
         """
         if self.model is None:
-            logger.warning(
-                "Toxicity model is not available.",
-            )  # TODO: confirm that if model is not available we should return an empty list or raise error
-            return []
+            raise ValueError("Toxicity model is not available.")
         with tracer.start_as_current_span("toxicity: run deberta classifier"):
             # note: a flaw in the model was identified Mar 18 2024
             # it was fine-tuned as a classifier on almost 0 examples of text < 20 chars

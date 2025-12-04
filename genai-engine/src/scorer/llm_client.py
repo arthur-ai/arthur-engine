@@ -124,7 +124,7 @@ class LLMExecutor:
             return None
         elif self.azure_openai_enabled:
             return AzureChatOpenAI(
-                model=model_name,
+                azure_deployment=model_name,
                 azure_endpoint=endpoint,
                 api_key=key,
                 temperature=chat_temperature,
@@ -193,8 +193,9 @@ class LLMExecutor:
         )
         if not model_name:
             raise ValueError(
-                "Model name is required for OpenAI embeddings",
-            )  # TODO: Should we raise an error here or return None?
+                "Model name is required for OpenAI embeddings. \
+                Properly set up the GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS environment variable.",
+            )
         model: AzureOpenAIEmbeddings | OpenAIEmbeddings | None = None
         if self.azure_openai_enabled:
             model = AzureOpenAIEmbeddings(
