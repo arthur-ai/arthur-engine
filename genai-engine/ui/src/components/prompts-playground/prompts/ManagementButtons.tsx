@@ -13,6 +13,7 @@ import { PromptType } from "../types";
 
 import ModelParamsDialog from "./ModelParamsDialog";
 import PreviewPromptModal from "./PreviewPromptModal";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 
 interface ManagementButtonsProps {
   prompt: PromptType;
@@ -23,6 +24,8 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
   const { dispatch, state, experimentConfig, handleRunSingleWithConfig, isRunningExperiment } = usePromptContext();
+
+  const actions = usePromptPlaygroundStore((state) => state.actions);
 
   const handleRunPrompt = useCallback(() => {
     // If in config mode, run with experiment
@@ -39,11 +42,8 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   }, [dispatch, prompt.id, experimentConfig, handleRunSingleWithConfig]);
 
   const handleDuplicatePrompt = useCallback(() => {
-    dispatch({
-      type: "duplicatePrompt",
-      payload: { id: prompt.id },
-    });
-  }, [dispatch, prompt.id]);
+    actions.duplicatePrompt(prompt.id);
+  }, [actions, prompt.id]);
 
   const handleParamsModelOpen = useCallback(() => {
     setParamsModelOpen(true);
@@ -58,11 +58,8 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   }, [setSavePromptOpen]);
 
   const handleDeletePrompt = useCallback(() => {
-    dispatch({
-      type: "deletePrompt",
-      payload: { id: prompt.id },
-    });
-  }, [dispatch, prompt.id]);
+    actions.deletePrompt(prompt.id);
+  }, [actions, prompt.id]);
 
   // Check if there are any unset variables
   // In config mode, variables can be empty if they're mapped to dataset columns
@@ -90,10 +87,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   const hasModelConfig = prompt.modelProvider !== "" && prompt.modelName !== "";
 
   // In config mode, disable if experiment is running. In normal mode, disable if prompt is running
-  const runDisabled =
-    !hasModelConfig ||
-    hasUnsetVariables ||
-    (experimentConfig ? isRunningExperiment : prompt.running);
+  const runDisabled = !hasModelConfig || hasUnsetVariables || (experimentConfig ? isRunningExperiment : prompt.running);
   const previewDisabled = !hasModelConfig || hasUnsetVariables;
   const isDirty = prompt.isDirty;
   const saveTooltip = isDirty ? "Save changes as new version" : "Save Prompt";

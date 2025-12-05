@@ -4437,6 +4437,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"immer@npm:^11.0.1":
+  version: 11.0.1
+  resolution: "immer@npm:11.0.1"
+  checksum: 10c0/d505c1aa6d5d7ff03196e0a508af2853839eb1a3d5af51d55ca5815c46981b74765faf357fbd276b151109b07dd6b564077be92b0247b0a4effa78130166030d
+  languageName: node
+  linkType: hard
+
 "import-fresh@npm:^3.2.1":
   version: 3.3.1
   resolution: "import-fresh@npm:3.3.1"
@@ -7781,6 +7788,7 @@ __metadata:
     eslint-plugin-react-refresh: "npm:^0.4.20"
     framer-motion: "npm:^12.23.21"
     globals: "npm:^16.4.0"
+    immer: "npm:^11.0.1"
     monaco-editor: "npm:^0.54.0"
     notistack: "npm:^3.0.2"
     nuqs: "npm:^2.8.0"

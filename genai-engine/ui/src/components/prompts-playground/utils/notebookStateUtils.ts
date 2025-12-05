@@ -8,12 +8,18 @@ import { NotebookStateInput, NotebookStateOutput, SavedPromptConfig, UnsavedProm
  * For Iteration Mode, this only includes prompts
  * For Experiment Mode, includes prompts + dataset + evals + mappings
  */
-export const serializePlaygroundState = (
-  state: PromptPlaygroundState,
-  experimentConfig?: any
-): NotebookStateInput => {
+export const serializePlaygroundState = (state: PromptPlaygroundState, experimentConfig?: any): NotebookStateInput => {
   // Convert prompts to experiment prompt configs
-  const prompt_configs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
+  const prompt_configs = state.prompts
+    .map((prompt) => {
+      try {
+        return toExperimentPromptConfig(prompt);
+      } catch (error) {
+        console.error(`Failed to convert prompt ${prompt.name} to experiment prompt config:`, error);
+        return null;
+      }
+    })
+    .filter(Boolean);
 
   // If experimentConfig is provided, include it in the serialized state (Experiment Mode)
   if (experimentConfig && experimentConfig.dataset_ref) {
@@ -81,13 +87,14 @@ export const deserializeNotebookState = async (
           created_at: undefined,
           modelName: unsavedConfig.model_name || "",
           modelProvider: unsavedConfig.model_provider || "",
-          messages: unsavedConfig.messages?.map((msg, idx) => ({
-            id: `msg-${idx}`,
-            role: msg.role,
-            content: msg.content || "",
-            disabled: false,
-            ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}),
-          })) || [],
+          messages:
+            unsavedConfig.messages?.map((msg, idx) => ({
+              id: `msg-${idx}`,
+              role: msg.role,
+              content: msg.content || "",
+              disabled: false,
+              ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}),
+            })) || [],
           modelParameters: {
             temperature: unsavedConfig.config?.temperature ?? null,
             top_p: unsavedConfig.config?.top_p ?? null,
@@ -108,12 +115,13 @@ export const deserializeNotebookState = async (
           },
           runResponse: null,
           responseFormat: unsavedConfig.config?.response_format,
-          tools: unsavedConfig.tools?.map((tool, idx) => ({
-            id: `tool-${idx}`,
-            type: tool.type,
-            function: tool.function,
-            strict: tool.strict ?? false,
-          })) || [],
+          tools:
+            unsavedConfig.tools?.map((tool, idx) => ({
+              id: `tool-${idx}`,
+              type: tool.type,
+              function: tool.function,
+              strict: tool.strict ?? false,
+            })) || [],
           toolChoice: unsavedConfig.config?.tool_choice,
           running: false,
           version: null,

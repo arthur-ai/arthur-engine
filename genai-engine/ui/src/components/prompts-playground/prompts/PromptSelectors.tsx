@@ -5,7 +5,7 @@ import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
+import { SyntheticEvent, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
@@ -16,7 +16,11 @@ import VersionSelector from "./VersionSelector";
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
-import { ModelProvider, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
+import { ModelProvider, LLMGetAllMetadataResponse, AgenticPrompt } from "@/lib/api-client/api-client";
+import { useAvailableModels, useProviders } from "../hooks/useProviders";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
+import { useBackendPrompts } from "../hooks/useBackendPrompts";
+import { useBackendPromptVersion } from "../hooks/useBackendPromptVersion";
 
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
@@ -75,119 +79,76 @@ const PromptSelectors = ({
   currentPromptName: string;
   onPromptNameChange: (name: string) => void;
 }) => {
-  const apiClient = useApi();
-  const { task } = useTask();
-  const { state, dispatch } = usePromptContext();
-  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+  const { state } = usePromptContext();
+  const { snackbarProps, alertProps } = useSnackbar();
 
-  const fetchAndLoadPromptVersion = async (promptName: string, version: number) => {
-    if (!apiClient || !task?.id) {
-      throw new Error("API client not available");
-    }
+  const [selectedPromptVersion, setSelectedPromptVersion] = useState<number | null>(null);
 
-    try {
-      // Fetch the specific version's full data
-      const response = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-        promptName,
-        version.toString(),
-        task?.id
-      );
-      // Convert to frontend format and update prompt
-      const frontendPrompt = toFrontendPrompt(response.data);
-      dispatch({
-        type: "updatePrompt",
-        payload: { promptId: prompt.id, prompt: frontendPrompt },
-      });
-    } catch (error) {
-      console.error("Failed to fetch prompt version:", error);
-      showSnackbar("Failed to load prompt version", "error");
-      throw error;
-    }
-  };
+  const actions = usePromptPlaygroundStore((state) => state.actions);
+
+  const promptVersion = useBackendPromptVersion(currentPromptName, selectedPromptVersion?.toString() ?? "");
+  const providers = useProviders();
+  const availableModels = useAvailableModels(prompt.modelProvider || undefined);
+  const backendPrompts = useBackendPrompts();
+
+  const enabledProviders = providers.data?.filter((provider) => provider.enabled).map((provider) => provider.provider) ?? [];
+
+  const onPromptVersionChange = useEffectEvent((promptVersion: AgenticPrompt) => {
+    const parsed = toFrontendPrompt(promptVersion);
+
+    actions.setPrompt(prompt.id, parsed);
+  });
+
+  useEffect(() => {
+    if (!promptVersion.data) return;
+
+    onPromptVersionChange(promptVersion.data);
+  }, [promptVersion.data]);
 
   const handleSelectPrompt = async (_event: SyntheticEvent<Element, Event>, newValue: LLMGetAllMetadataResponse | null) => {
     const selection = newValue?.name || "";
+
     if (selection === "") {
       return;
     }
+
     onPromptNameChange(selection);
-
-    const backendPromptData = state.backendPrompts.find((bp) => bp.name === selection);
-
-    if (typeof backendPromptData === "undefined") {
-      showSnackbar("Prompt not found", "error");
-      return;
-    }
-
-    if (!apiClient || !task?.id) {
-      showSnackbar("API client or task not available", "error");
-      return;
-    }
-
-    try {
-      // Fetch the latest version of the prompt
-      await fetchAndLoadPromptVersion(selection, backendPromptData.versions);
-    } catch (error) {
-      console.error("Error handling prompt selection:", error);
-      showSnackbar("Failed to load prompt", "error");
-      onPromptNameChange(""); // Reset on error
-    }
   };
 
   const handleVersionSelect = async (version: number) => {
-    try {
-      await fetchAndLoadPromptVersion(currentPromptName, version);
-    } catch (error) {
-      console.error("Failed to load selected version:", error);
-      showSnackbar("Failed to load prompt version", "error");
-    }
+    setSelectedPromptVersion(version);
   };
 
   const handleProviderChange = (_event: SyntheticEvent<Element, Event>, newValue: ModelProvider | null) => {
-    dispatch({
-      type: "updatePromptProvider",
-      payload: { promptId: prompt.id, modelProvider: newValue || "" },
-    });
+    actions.setPromptProvider(prompt.id, newValue);
   };
 
   const handleModelChange = (_event: SyntheticEvent<Element, Event>, newValue: string | null) => {
-    dispatch({
-      type: "updatePromptModelName",
-      payload: { promptId: prompt.id, modelName: newValue || "" },
-    });
+    actions.setPromptModelName(prompt.id, newValue);
   };
 
-  // Set the first provider as the default provider (only for new prompts without a provider)
-  // Skip this if the prompt already has a provider set (when loading from backend)
-  useEffect(() => {
-    // Only set default provider for truly new prompts (no provider and no version)
-    if (state.enabledProviders.length > 0 && !prompt.modelProvider && !prompt.version) {
-      dispatch({
-        type: "updatePromptProvider",
-        payload: {
-          promptId: prompt.id,
-          modelProvider: state.enabledProviders[0],
-        },
-      });
+  const handleLoad = useEffectEvent(() => {
+    if (enabledProviders?.length && !prompt.modelProvider && !prompt.version) {
+      actions.setPromptProvider(prompt.id, enabledProviders[0]);
     }
-  }, [state.enabledProviders, dispatch, prompt.id, prompt.modelProvider, prompt.version]);
+  });
 
-  const providerDisabled = state.enabledProviders.length === 0;
+  useEffect(() => {
+    handleLoad();
+  }, []);
+
+  const providerDisabled = enabledProviders.length === 0;
   const modelDisabled = prompt.modelProvider === "";
   const tooltipTitle = providerDisabled ? "No providers available. Please configure at least one provider." : "";
-  const backendPromptOptions = state.backendPrompts.map((backendPrompt) => backendPrompt.name);
-  const availableModels = useMemo(
-    () => state.availableModels.get(prompt.modelProvider as ModelProvider) || [],
-    [state.availableModels, prompt.modelProvider]
-  );
+  const backendPromptOptions = backendPrompts.data?.llm_metadata.map((backendPrompt) => backendPrompt.name) ?? [];
 
   return (
     <div className="flex gap-1 min-w-0 flex-wrap">
       <div className="flex-1 min-w-0">
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
-          options={state.backendPrompts}
-          value={state.backendPrompts.find((bp) => bp.name === currentPromptName) || null}
+          options={backendPrompts.data?.llm_metadata ?? []}
+          value={backendPrompts.data?.llm_metadata.find((bp) => bp.name === currentPromptName) || null}
           onChange={(_event, newValue) => handleSelectPrompt(_event, newValue)}
           getOptionLabel={(option) => option.name}
           isOptionEqualToValue={(option, value) => option.name === value?.name}
@@ -230,7 +191,7 @@ const PromptSelectors = ({
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
           <Autocomplete<ModelProvider>
             id={`provider-${prompt.id}`}
-            options={state.enabledProviders}
+            options={enabledProviders}
             value={prompt.modelProvider || null}
             onChange={handleProviderChange}
             disabled={providerDisabled}
@@ -243,7 +204,7 @@ const PromptSelectors = ({
       <div className="flex-1 min-w-0">
         <Autocomplete
           id={`model-${prompt.id}`}
-          options={availableModels}
+          options={availableModels.data ?? []}
           value={prompt.modelName || ""}
           onChange={handleModelChange}
           disabled={modelDisabled}

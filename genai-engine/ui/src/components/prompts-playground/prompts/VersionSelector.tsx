@@ -3,12 +3,10 @@ import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React, { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { SyntheticEvent } from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useBackendPromptVersions } from "../hooks/useBackendPromptVersions";
 
-import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/hooks/useTask";
 import { AgenticPromptVersionResponse } from "@/lib/api-client/api-client";
 
 interface VersionSelectorProps {
@@ -20,44 +18,7 @@ interface VersionSelectorProps {
 }
 
 const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVersionSelect }: VersionSelectorProps) => {
-  const [versions, setVersions] = useState<AgenticPromptVersionResponse[]>([]);
-  const isFetchingVersions = useRef<boolean>(false);
-
-  const { state } = usePromptContext();
-  const apiClient = useApi();
-  const { task } = useTask();
-  const taskId = task?.id;
-
-  const fetchVersions = useCallback(async () => {
-    if (!promptName || !taskId || !apiClient) {
-      return;
-    }
-    if (isFetchingVersions.current) {
-      return;
-    }
-
-    // This case usually happens when duplicating a backend prompt
-    const backendPrompt = state.backendPrompts.find((bp) => bp.name === promptName);
-    if (typeof backendPrompt === "undefined") {
-      return;
-    }
-
-    isFetchingVersions.current = true;
-    try {
-      const response = await apiClient.api.getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet({
-        promptName,
-        taskId,
-        page_size: 100,
-        sort: "desc",
-      });
-      setVersions(response.data.versions);
-    } catch (error) {
-      console.error("Failed to fetch prompt versions:", error);
-      setVersions([]);
-    } finally {
-      isFetchingVersions.current = false;
-    }
-  }, [apiClient, promptName, taskId, state.backendPrompts]);
+  const versions = useBackendPromptVersions(promptName);
 
   const handleAutocompleteChange = (_event: SyntheticEvent<Element, Event>, newValue: AgenticPromptVersionResponse | null) => {
     if (newValue) {
@@ -65,15 +26,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
     }
   };
 
-  // Fetch versions when selected prompt (promptName) changes
-  useEffect(() => {
-    if (promptName && !isFetchingVersions.current) {
-      setVersions([]);
-      fetchVersions();
-    }
-  }, [promptName, fetchVersions, isFetchingVersions]);
-
-  if (versions.length <= 1) {
+  if (!versions.data?.versions?.length) {
     return null;
   }
 
@@ -85,14 +38,14 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
       <Tooltip title={tooltipText} arrow placement="top" disableHoverListener={!isDirty}>
         <Autocomplete<AgenticPromptVersionResponse>
           id={`version-select-${promptId}`}
-          options={versions}
-          value={versions.find((v) => v.version === currentVersion) || null}
+          options={versions.data?.versions ?? []}
+          value={versions.data?.versions.find((v) => v.version === currentVersion) || null}
           onChange={handleAutocompleteChange}
           getOptionLabel={(option) => `${option.version}${isDirty ? "*" : ""}`}
           isOptionEqualToValue={(option, value) => option.version === value?.version}
-          disabled={!promptName || isFetchingVersions.current || versions.length === 0}
-          loading={isFetchingVersions.current}
-          noOptionsText={isFetchingVersions.current ? "Loading versions..." : "No versions available"}
+          disabled={!promptName || versions.isLoading || versions.data?.versions.length === 0}
+          loading={versions.isLoading}
+          noOptionsText={versions.isLoading ? "Loading versions..." : "No versions available"}
           sx={{
             backgroundColor: "white",
             "& .MuiOutlinedInput-root": {

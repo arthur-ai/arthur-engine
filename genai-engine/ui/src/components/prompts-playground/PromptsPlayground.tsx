@@ -1,7 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import BookIcon from "@mui/icons-material/Book";
-import CheckIcon from "@mui/icons-material/Check";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import EditIcon from "@mui/icons-material/Edit";
@@ -27,27 +25,30 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useCallback, useReducer, useEffect, useRef, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
+import { DatasetLoadingState } from "../datasets/DatasetLoadingState";
 
 import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
+import { useSyncNotebookState } from "./hooks/useSyncNotebookState";
 import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
-import { promptsReducer, initialState } from "./reducer";
-import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
-import toFrontendPrompt from "./utils/toFrontendPrompt";
-import { toExperimentPromptConfig } from "./utils/toExperimentPromptConfig";
-import { serializePlaygroundState, deserializeNotebookState } from "./utils/notebookStateUtils";
-import VariableInputs from "./VariableInputs";
+import { initialState, promptsReducer } from "./reducer";
 import SetConfigDrawer from "./SetConfigDrawer";
+import { usePromptPlaygroundStore } from "./stores/playground.store";
+import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
+import { serializePlaygroundState } from "./utils/notebookStateUtils";
+import { toExperimentPromptConfig } from "./utils/toExperimentPromptConfig";
+import toFrontendPrompt from "./utils/toFrontendPrompt";
+import VariableInputs from "./VariableInputs";
 
 import { CreateExperimentModal, type ExperimentFormData } from "@/components/prompt-experiments/CreateExperimentModal";
 import { useApi } from "@/hooks/useApi";
+import { useNotebook, useNotebookHistory, useSetNotebookStateMutation, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import { useTask } from "@/hooks/useTask";
-import { useNotebook, useSetNotebookStateMutation, useUpdateNotebookMutation, useNotebookHistory } from "@/hooks/useNotebooks";
-import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
-import { useNavigate } from "react-router-dom";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { ModelProvider, ModelProviderResponse, PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -64,7 +65,6 @@ const PromptsPlayground = () => {
   const hasFetchedSpan = useRef(false);
   const hasFetchedConfig = useRef(false);
   const hasFetchedPrompt = useRef(false);
-  const hasFetchedNotebookState = useRef(false);
   const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
@@ -81,7 +81,7 @@ const PromptsPlayground = () => {
   const isConfigMode = !!(experimentId && promptName && promptVersion);
   const [configModeActive, setConfigModeActive] = useState(isConfigMode);
   const [experimentConfig, setExperimentConfig] = useState<any>(null);
-  const [experimentRuns, setExperimentRuns] = useState<any[]>([]);
+  const [experimentRuns, setExperimentRuns] = useState<PromptExperimentDetail[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [runDetails, setRunDetails] = useState<Map<string, any>>(new Map());
 
@@ -92,6 +92,7 @@ const PromptsPlayground = () => {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Notebook state management
+  const [latestSavedState, setLatestSavedState] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [notebookName, setNotebookName] = useState<string>("");
   const [isRenaming, setIsRenaming] = useState(false);
@@ -111,11 +112,11 @@ const PromptsPlayground = () => {
   const updateNotebookMutation = useUpdateNotebookMutation(task?.id);
 
   // Fetch notebook history for experiment mode
-  const { experiments: notebookHistory, refetch: refetchNotebookHistory } = useNotebookHistory(
-    notebookId || undefined,
-    0,
-    100
-  );
+  const { experiments: notebookHistory, refetch: refetchNotebookHistory } = useNotebookHistory(notebookId || undefined, 0, 100);
+
+  const hash = usePromptPlaygroundStore((state) => state.actions.hash());
+  const prompts = usePromptPlaygroundStore((state) => state.prompts);
+  const actions = usePromptPlaygroundStore((state) => state.actions);
 
   // Update notebook name when notebook data loads
   useEffect(() => {
@@ -124,67 +125,101 @@ const PromptsPlayground = () => {
     }
   }, [notebook]);
 
-  /**
-   * Load notebook state on mount
-   */
-  const fetchNotebookState = useCallback(async () => {
-    if (hasFetchedNotebookState.current || !notebookId || !apiClient || !task?.id) {
-      return;
-    }
-
-    hasFetchedNotebookState.current = true;
-
-    try {
-      const response = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(notebookId);
-      const notebookState = response.data;
-
-      // Deserialize the notebook state
-      const { prompts: loadedPrompts, keywords: loadedKeywords, fullState } = await deserializeNotebookState(
-        notebookState,
-        apiClient,
-        task.id
-      );
-
-      // If there are URL parameters for loading a prompt and the notebook is empty,
-      // skip hydration to allow the prompt loading logic to populate the first prompt
+  const { loading: notebookStateLoading } = useSyncNotebookState({
+    enabled: !!notebookId,
+    notebookId: notebookId!,
+    onSuccess: (data) => {
+      const isEmpty = data.prompts.length === 0;
       const hasPromptUrlParams = promptNameParam && promptVersionParam;
-      const notebookIsEmpty = !loadedPrompts || loadedPrompts.length === 0;
 
-      if (hasPromptUrlParams && notebookIsEmpty) {
-        // Don't hydrate - let fetchPromptData handle it
+      if (hasPromptUrlParams && isEmpty) {
         console.log("Skipping notebook state hydration - will load prompt from URL params");
       } else {
-        // Replace the entire state with loaded notebook state
-        dispatch({
-          type: "hydrateNotebookState",
-          payload: { prompts: loadedPrompts, keywords: loadedKeywords },
-        });
+        // dispatch({
+        //   type: "hydrateNotebookState",
+        //   payload: { prompts: data.prompts, keywords: data.keywords },
+        // });
       }
 
-      // Check if we're in Experiment Mode (has dataset_ref)
-      if (fullState.dataset_ref) {
-        // Convert notebook state to experimentConfig format
+      if (data.fullState.dataset_ref) {
         setExperimentConfig({
           name: notebook?.name || "Notebook Experiment",
           description: notebook?.description || "",
-          dataset_ref: fullState.dataset_ref,
-          eval_list: fullState.eval_list || [],
-          prompt_variable_mapping: fullState.prompt_variable_mapping || [],
-          dataset_row_filter: fullState.dataset_row_filter || [],
+          dataset_ref: data.fullState.dataset_ref,
+          eval_list: data.fullState.eval_list || [],
+          prompt_variable_mapping: data.fullState.prompt_variable_mapping || [],
+          dataset_row_filter: data.fullState.dataset_row_filter || [],
         });
         setConfigModeActive(true);
       }
 
-      // Initialize the lastSavedStateRef after loading
-      // We'll set it in a setTimeout to ensure state updates have completed
-      setTimeout(() => {
-        lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state, experimentConfig));
-        setSaveStatus("saved");
-      }, 100);
-    } catch (error) {
-      console.error("Failed to load notebook state:", error);
-    }
-  }, [notebookId, apiClient, task?.id, notebook, promptNameParam, promptVersionParam]);
+      const serializedState = serializePlaygroundState(state, experimentConfig);
+      setLatestSavedState(JSON.stringify(serializedState));
+    },
+  });
+
+  const handleSaveNotebookState = () => {
+    const serializedState = serializePlaygroundState(state, experimentConfig);
+    console.log("Serialized state:", serializedState);
+  };
+
+  // /**
+  //  * Load notebook state on mount
+  //  */
+  // const fetchNotebookState = useCallback(async () => {
+  //   if (hasFetchedNotebookState.current || !notebookId || !apiClient || !task?.id) {
+  //     return;
+  //   }
+
+  //   hasFetchedNotebookState.current = true;
+
+  //   try {
+  //     const response = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(notebookId);
+  //     const notebookState = response.data;
+
+  //     // Deserialize the notebook state
+  //     const { prompts: loadedPrompts, keywords: loadedKeywords, fullState } = await deserializeNotebookState(notebookState, apiClient, task.id);
+
+  //     // If there are URL parameters for loading a prompt and the notebook is empty,
+  //     // skip hydration to allow the prompt loading logic to populate the first prompt
+  //     const hasPromptUrlParams = promptNameParam && promptVersionParam;
+  //     const notebookIsEmpty = !loadedPrompts || loadedPrompts.length === 0;
+
+  //     if (hasPromptUrlParams && notebookIsEmpty) {
+  //       // Don't hydrate - let fetchPromptData handle it
+  //       console.log("Skipping notebook state hydration - will load prompt from URL params");
+  //     } else {
+  //       // Replace the entire state with loaded notebook state
+  //       dispatch({
+  //         type: "hydrateNotebookState",
+  //         payload: { prompts: loadedPrompts, keywords: loadedKeywords },
+  //       });
+  //     }
+
+  //     // Check if we're in Experiment Mode (has dataset_ref)
+  //     if (fullState.dataset_ref) {
+  //       // Convert notebook state to experimentConfig format
+  //       setExperimentConfig({
+  //         name: notebook?.name || "Notebook Experiment",
+  //         description: notebook?.description || "",
+  //         dataset_ref: fullState.dataset_ref,
+  //         eval_list: fullState.eval_list || [],
+  //         prompt_variable_mapping: fullState.prompt_variable_mapping || [],
+  //         dataset_row_filter: fullState.dataset_row_filter || [],
+  //       });
+  //       setConfigModeActive(true);
+  //     }
+
+  //     // Initialize the lastSavedStateRef after loading
+  //     // We'll set it in a setTimeout to ensure state updates have completed
+  //     setTimeout(() => {
+  //       lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state, experimentConfig));
+  //       setSaveStatus("saved");
+  //     }, 100);
+  //   } catch (error) {
+  //     console.error("Failed to load notebook state:", error);
+  //   }
+  // }, [notebookId, apiClient, task?.id, notebook, promptNameParam, promptVersionParam]);
 
   /**
    * Auto-save notebook state with debounce
@@ -273,13 +308,6 @@ const PromptsPlayground = () => {
       }
     };
   }, [notebookId, autoSaveNotebookState]);
-
-  // Load notebook state on mount
-  useEffect(() => {
-    if (notebookId) {
-      fetchNotebookState();
-    }
-  }, [fetchNotebookState, notebookId]);
 
   // Handle notebook rename
   const handleStartRename = useCallback(() => {
@@ -430,9 +458,7 @@ const PromptsPlayground = () => {
       });
 
       // Filter experiments with the same name as the current config
-      const matchingExperiments = experimentsListResponse.data.data.filter(
-        (exp: any) => exp.name === configData.name
-      );
+      const matchingExperiments = experimentsListResponse.data.data.filter((exp: any) => exp.name === configData.name);
       setExperimentRuns(matchingExperiments);
 
       // Fetch the specific prompt version using the correct API endpoint
@@ -543,7 +569,7 @@ const PromptsPlayground = () => {
   }, [state.enabledProviders, fetchAvailableModels]);
 
   const handleAddPrompt = () => {
-    dispatch({ type: "addPrompt" });
+    actions.addPrompt();
   };
 
   /**
@@ -565,9 +591,7 @@ const PromptsPlayground = () => {
         page_size: 100,
       });
 
-      const matchingExperiments = experimentsListResponse.data.data.filter(
-        (exp: any) => exp.name === experimentConfig.name
-      );
+      const matchingExperiments = experimentsListResponse.data.data.filter((exp: any) => exp.name === experimentConfig.name);
       setExperimentRuns(matchingExperiments);
     } catch (error) {
       console.error("Failed to refresh experiment runs:", error);
@@ -672,17 +696,13 @@ const PromptsPlayground = () => {
         eval_list: experimentConfig.eval_list,
         prompt_configs: promptConfigs,
         prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
-        dataset_row_filter: experimentConfig.dataset_row_filter && experimentConfig.dataset_row_filter.length > 0
-          ? experimentConfig.dataset_row_filter
-          : undefined,
-        notebook_id: notebookId || undefined,  // Link to current notebook
+        dataset_row_filter:
+          experimentConfig.dataset_row_filter && experimentConfig.dataset_row_filter.length > 0 ? experimentConfig.dataset_row_filter : undefined,
+        notebook_id: notebookId || undefined, // Link to current notebook
       };
 
       // Create and run the experiment
-      const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(
-        task.id,
-        experimentRequest
-      );
+      const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(task.id, experimentRequest);
 
       const newExperimentId = response.data.id;
       setRunningExperimentId(newExperimentId);
@@ -705,60 +725,59 @@ const PromptsPlayground = () => {
   /**
    * Run experiment with a single prompt in config mode
    */
-  const handleRunSingleWithConfig = useCallback(async (promptId: string) => {
-    if (!experimentConfig || !task?.id || !apiClient) {
-      console.error("Missing config, task, or API client");
-      return;
-    }
+  const handleRunSingleWithConfig = useCallback(
+    async (promptId: string) => {
+      if (!experimentConfig || !task?.id || !apiClient) {
+        console.error("Missing config, task, or API client");
+        return;
+      }
 
-    if (isRunningExperiment) {
-      console.warn("An experiment is already running");
-      return;
-    }
+      if (isRunningExperiment) {
+        console.warn("An experiment is already running");
+        return;
+      }
 
-    const prompt = state.prompts.find((p) => p.id === promptId);
-    if (!prompt) {
-      console.error("Prompt not found");
-      return;
-    }
+      const prompt = state.prompts.find((p) => p.id === promptId);
+      if (!prompt) {
+        console.error("Prompt not found");
+        return;
+      }
 
-    try {
-      setIsRunningExperiment(true);
+      try {
+        setIsRunningExperiment(true);
 
-      // Convert the single prompt to experiment prompt config
-      const promptConfig = toExperimentPromptConfig(prompt);
+        // Convert the single prompt to experiment prompt config
+        const promptConfig = toExperimentPromptConfig(prompt);
 
-      // Create experiment request with just this prompt
-      const experimentRequest = {
-        name: experimentConfig.name,
-        description: experimentConfig.description,
-        dataset_ref: experimentConfig.dataset_ref,
-        eval_list: experimentConfig.eval_list,
-        prompt_configs: [promptConfig],
-        prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
-        dataset_row_filter: experimentConfig.dataset_row_filter && experimentConfig.dataset_row_filter.length > 0
-          ? experimentConfig.dataset_row_filter
-          : undefined,
-        notebook_id: notebookId || undefined,  // Link to current notebook
-      };
+        // Create experiment request with just this prompt
+        const experimentRequest = {
+          name: experimentConfig.name,
+          description: experimentConfig.description,
+          dataset_ref: experimentConfig.dataset_ref,
+          eval_list: experimentConfig.eval_list,
+          prompt_configs: [promptConfig],
+          prompt_variable_mapping: experimentConfig.prompt_variable_mapping || [],
+          dataset_row_filter:
+            experimentConfig.dataset_row_filter && experimentConfig.dataset_row_filter.length > 0 ? experimentConfig.dataset_row_filter : undefined,
+          notebook_id: notebookId || undefined, // Link to current notebook
+        };
 
-      // Create and run the experiment
-      const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(
-        task.id,
-        experimentRequest
-      );
+        // Create and run the experiment
+        const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(task.id, experimentRequest);
 
-      const newExperimentId = response.data.id;
-      setRunningExperimentId(newExperimentId);
+        const newExperimentId = response.data.id;
+        setRunningExperimentId(newExperimentId);
 
-      // Start polling for results
-      startPolling(newExperimentId);
-    } catch (error) {
-      console.error("Failed to create experiment:", error);
-      setIsRunningExperiment(false);
-      setRunningExperimentId(null);
-    }
-  }, [experimentConfig, task?.id, apiClient, state.prompts, isRunningExperiment, startPolling]);
+        // Start polling for results
+        startPolling(newExperimentId);
+      } catch (error) {
+        console.error("Failed to create experiment:", error);
+        setIsRunningExperiment(false);
+        setRunningExperimentId(null);
+      }
+    },
+    [experimentConfig, task?.id, apiClient, state.prompts, isRunningExperiment, startPolling]
+  );
 
   const handleRunAllPrompts = () => {
     // If in config mode, run with experiment
@@ -819,174 +838,183 @@ const PromptsPlayground = () => {
     setConfigDrawerOpen((prev) => !prev);
   };
 
-  const handleLoadConfig = useCallback(async (config: any, overwritePrompts: boolean) => {
-    console.log("[handleLoadConfig] Called with overwritePrompts:", overwritePrompts);
-    console.log("[handleLoadConfig] Config:", config);
-    console.log("[handleLoadConfig] prompt_configs:", config.prompt_configs);
+  const handleLoadConfig = useCallback(
+    async (config: PromptExperimentDetail, overwritePrompts: boolean) => {
+      console.log("[handleLoadConfig] Called with overwritePrompts:", overwritePrompts);
+      console.log("[handleLoadConfig] Config:", config);
+      console.log("[handleLoadConfig] prompt_configs:", config.prompt_configs);
 
-    // If overwritePrompts is true, load the prompts from the experiment's prompt configs
-    if (overwritePrompts && config.prompt_configs && config.prompt_configs.length > 0 && apiClient && task?.id) {
-      console.log("[handleLoadConfig] Entering overwrite block");
-      try {
-        const prompts = [];
-        for (const promptConfig of config.prompt_configs) {
-          console.log("[handleLoadConfig] Processing prompt config:", promptConfig);
-          if (promptConfig.type === "saved") {
-            const savedConfig = promptConfig as any;
-            console.log(`[handleLoadConfig] Fetching saved prompt ${savedConfig.name} v${savedConfig.version}`);
-            try {
-              const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-                savedConfig.name,
-                savedConfig.version.toString(),
-                task.id
-              );
-              const frontendPrompt = toFrontendPrompt(promptResponse.data);
-              console.log("[handleLoadConfig] Loaded prompt:", frontendPrompt);
-              prompts.push(frontendPrompt);
-            } catch (error) {
-              console.error(`Failed to fetch saved prompt ${savedConfig.name} v${savedConfig.version}:`, error);
+      // If overwritePrompts is true, load the prompts from the experiment's prompt configs
+      if (overwritePrompts && config.prompt_configs && config.prompt_configs.length > 0 && apiClient && task?.id) {
+        console.log("[handleLoadConfig] Entering overwrite block");
+        try {
+          const prompts = [];
+          for (const promptConfig of config.prompt_configs) {
+            console.log("[handleLoadConfig] Processing prompt config:", promptConfig);
+            if (promptConfig.type === "saved") {
+              const savedConfig = promptConfig as any;
+              console.log(`[handleLoadConfig] Fetching saved prompt ${savedConfig.name} v${savedConfig.version}`);
+              try {
+                const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+                  savedConfig.name,
+                  savedConfig.version.toString(),
+                  task.id
+                );
+                const frontendPrompt = toFrontendPrompt(promptResponse.data);
+                console.log("[handleLoadConfig] Loaded prompt:", frontendPrompt);
+                prompts.push(frontendPrompt);
+              } catch (error) {
+                console.error(`Failed to fetch saved prompt ${savedConfig.name} v${savedConfig.version}:`, error);
+              }
             }
           }
-        }
 
-        // Overwrite prompts if we loaded any using hydrateNotebookState
-        console.log(`[handleLoadConfig] Loaded ${prompts.length} prompts, dispatching hydrateNotebookState`);
-        if (prompts.length > 0) {
-          dispatch({
-            type: "hydrateNotebookState",
-            payload: {
-              prompts,
-              keywords: new Map<string, string>()
-            }
-          });
-          console.log("[handleLoadConfig] Dispatched hydrateNotebookState");
+          // Overwrite prompts if we loaded any using hydrateNotebookState
+          console.log(`[handleLoadConfig] Loaded ${prompts.length} prompts, dispatching hydrateNotebookState`);
+          if (prompts.length > 0) {
+            dispatch({
+              type: "hydrateNotebookState",
+              payload: {
+                prompts,
+                keywords: new Map<string, string>(),
+              },
+            });
+            console.log("[handleLoadConfig] Dispatched hydrateNotebookState");
+          }
+        } catch (error) {
+          console.error("Failed to load prompts from experiment:", error);
         }
-      } catch (error) {
-        console.error("Failed to load prompts from experiment:", error);
+      } else {
+        console.log("[handleLoadConfig] Skipping overwrite block. Conditions:", {
+          overwritePrompts,
+          hasPromptConfigs: config.prompt_configs && config.prompt_configs.length > 0,
+          hasApiClient: !!apiClient,
+          hasTaskId: !!task?.id,
+        });
       }
-    } else {
-      console.log("[handleLoadConfig] Skipping overwrite block. Conditions:", {
-        overwritePrompts,
-        hasPromptConfigs: config.prompt_configs && config.prompt_configs.length > 0,
-        hasApiClient: !!apiClient,
-        hasTaskId: !!task?.id
-      });
-    }
 
-    // Update experiment config and activate experiment mode
-    setExperimentConfig(config);
-    setConfigModeActive(true);
+      // Update experiment config and activate experiment mode
+      setExperimentConfig(config);
+      setConfigModeActive(true);
 
-    // Mark state as unsaved so auto-save will persist the config
-    hasUnsavedChangesRef.current = true;
-    setSaveStatus("unsaved");
+      // Mark state as unsaved so auto-save will persist the config
+      hasUnsavedChangesRef.current = true;
+      setSaveStatus("unsaved");
 
-    // Refetch notebook history since we're now in experiment mode
-    if (notebookId) {
-      refetchNotebookHistory();
-    }
-  }, [notebookId, apiClient, task?.id, refetchNotebookHistory]);
+      // Refetch notebook history since we're now in experiment mode
+      if (notebookId) {
+        refetchNotebookHistory();
+      }
+    },
+    [notebookId, apiClient, task?.id, refetchNotebookHistory]
+  );
 
   const handleCreateNewConfig = useCallback(() => {
     // Open the Create Experiment Modal
     setCreateExperimentModalOpen(true);
   }, []);
 
-  const handleCreateExperimentSubmit = useCallback(async (formData: ExperimentFormData) => {
-    console.log("[handleCreateExperimentSubmit] Called with formData:", formData);
+  const handleCreateExperimentSubmit = useCallback(
+    async (formData: ExperimentFormData) => {
+      console.log("[handleCreateExperimentSubmit] Called with formData:", formData);
 
-    // Transform form data to config format
-    const config = {
-      name: formData.name,
-      description: formData.description,
-      dataset_ref: {
-        id: formData.datasetId,
-        name: formData.datasetName,
-        version: formData.datasetVersion as number,
-      },
-      eval_list: formData.evaluators.map((evalRef) => ({
-        name: evalRef.name,
-        version: evalRef.version,
-        variable_mapping: formData.evalVariableMappings
-          ?.find((mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version)
-          ?.mappings
-          ? Object.entries(
-              formData.evalVariableMappings.find(
-                (mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version
-              )!.mappings
-            ).map(([variableName, mapping]) => ({
+      // Transform form data to config format
+      const config = {
+        name: formData.name,
+        description: formData.description,
+        dataset_ref: {
+          id: formData.datasetId,
+          name: formData.datasetName,
+          version: formData.datasetVersion as number,
+        },
+        eval_list: formData.evaluators.map((evalRef) => ({
+          name: evalRef.name,
+          version: evalRef.version,
+          variable_mapping: formData.evalVariableMappings?.find(
+            (mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version
+          )?.mappings
+            ? Object.entries(
+                formData.evalVariableMappings.find((mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version)!
+                  .mappings
+              ).map(([variableName, mapping]) => ({
+                variable_name: variableName,
+                source:
+                  mapping.sourceType === "dataset_column"
+                    ? {
+                        type: "dataset_column" as const,
+                        dataset_column: { name: mapping.datasetColumn! },
+                      }
+                    : {
+                        type: "experiment_output" as const,
+                        experiment_output: { json_path: mapping.jsonPath! },
+                      },
+              }))
+            : [],
+        })),
+        prompt_variable_mapping: formData.promptVariableMappings
+          ? Object.entries(formData.promptVariableMappings).map(([variableName, datasetColumn]) => ({
               variable_name: variableName,
-              source: mapping.sourceType === "dataset_column"
-                ? {
-                    type: "dataset_column" as const,
-                    dataset_column: { name: mapping.datasetColumn! },
-                  }
-                : {
-                    type: "experiment_output" as const,
-                    experiment_output: { json_path: mapping.jsonPath! },
-                  },
+              source: {
+                type: "dataset_column" as const,
+                dataset_column: { name: datasetColumn },
+              },
             }))
           : [],
-      })),
-      prompt_variable_mapping: formData.promptVariableMappings
-        ? Object.entries(formData.promptVariableMappings).map(([variableName, datasetColumn]) => ({
-            variable_name: variableName,
-            source: {
-              type: "dataset_column" as const,
-              dataset_column: { name: datasetColumn },
-            },
-          }))
-        : [],
-      dataset_row_filter: formData.datasetRowFilter || [],
-      // Include prompt configs for loading into notebook
-      prompt_configs: formData.promptVersions.map((pv) => ({
-        type: "saved" as const,
-        name: pv.promptName,
-        version: pv.version,
-      })),
-    };
+        dataset_row_filter: formData.datasetRowFilter || [],
+        // Include prompt configs for loading into notebook
+        prompt_configs: formData.promptVersions.map((pv) => ({
+          type: "saved" as const,
+          name: pv.promptName,
+          version: pv.version,
+        })),
+      } as PromptExperimentDetail;
 
-    console.log("[handleCreateExperimentSubmit] Config created:", config);
+      console.log("[handleCreateExperimentSubmit] Config created:", config);
 
-    // Check if we have prompts to load and existing prompts in the notebook
-    const hasPromptsToLoad = formData.promptVersions.length > 0;
-    const hasExistingPrompts = state.prompts.length > 0;
+      // Check if we have prompts to load and existing prompts in the notebook
+      const hasPromptsToLoad = formData.promptVersions.length > 0;
+      const hasExistingPrompts = state.prompts.length > 0;
 
-    console.log("[handleCreateExperimentSubmit] hasPromptsToLoad:", hasPromptsToLoad, "hasExistingPrompts:", hasExistingPrompts);
+      console.log("[handleCreateExperimentSubmit] hasPromptsToLoad:", hasPromptsToLoad, "hasExistingPrompts:", hasExistingPrompts);
 
-    // Close the create experiment modal first
-    setCreateExperimentModalOpen(false);
+      // Close the create experiment modal first
+      setCreateExperimentModalOpen(false);
 
-    if (hasPromptsToLoad && hasExistingPrompts) {
-      // Show the overwrite dialog
-      setPendingConfigForPromptOverwrite(config);
-      setShowPromptOverwriteDialog(true);
-    } else if (hasPromptsToLoad) {
-      // No existing prompts, auto-overwrite
-      await handleLoadConfig(config, true);
-    } else {
-      // No prompts to load, just set the config
-      setExperimentConfig(config);
-      setConfigModeActive(true);
-      hasUnsavedChangesRef.current = true;
-      setSaveStatus("unsaved");
+      if (hasPromptsToLoad && hasExistingPrompts) {
+        // Show the overwrite dialog
+        setPendingConfigForPromptOverwrite(config);
+        setShowPromptOverwriteDialog(true);
+      } else if (hasPromptsToLoad) {
+        // No existing prompts, auto-overwrite
+        await handleLoadConfig(config, true);
+      } else {
+        // No prompts to load, just set the config
+        setExperimentConfig(config);
+        setConfigModeActive(true);
+        hasUnsavedChangesRef.current = true;
+        setSaveStatus("unsaved");
 
-      if (notebookId) {
-        refetchNotebookHistory();
+        if (notebookId) {
+          refetchNotebookHistory();
+        }
       }
-    }
 
-    // Return a dummy id since this is not creating an actual experiment
-    return { id: "config-only" };
-  }, [notebookId, refetchNotebookHistory, state.prompts.length, handleLoadConfig]);
+      // Return a dummy id since this is not creating an actual experiment
+      return { id: "config-only" };
+    },
+    [notebookId, refetchNotebookHistory, state.prompts.length, handleLoadConfig]
+  );
 
-  const handlePromptOverwriteConfirm = useCallback(async (overwrite: boolean) => {
-    if (pendingConfigForPromptOverwrite) {
-      await handleLoadConfig(pendingConfigForPromptOverwrite, overwrite);
-      setPendingConfigForPromptOverwrite(null);
-      setShowPromptOverwriteDialog(false);
-    }
-  }, [pendingConfigForPromptOverwrite, handleLoadConfig]);
+  const handlePromptOverwriteConfirm = useCallback(
+    async (overwrite: boolean) => {
+      if (pendingConfigForPromptOverwrite) {
+        await handleLoadConfig(pendingConfigForPromptOverwrite, overwrite);
+        setPendingConfigForPromptOverwrite(null);
+        setShowPromptOverwriteDialog(false);
+      }
+    },
+    [pendingConfigForPromptOverwrite, handleLoadConfig]
+  );
 
   const handlePromptOverwriteCancel = useCallback(() => {
     // Just apply the config without loading prompts
@@ -1004,24 +1032,27 @@ const PromptsPlayground = () => {
     setShowPromptOverwriteDialog(false);
   }, [pendingConfigForPromptOverwrite, notebookId, refetchNotebookHistory]);
 
-  const handleExpandRun = useCallback(async (runId: string) => {
-    if (expandedRunId === runId) {
-      setExpandedRunId(null);
-      return;
-    }
-
-    setExpandedRunId(runId);
-
-    // Fetch details if not already cached
-    if (!runDetails.has(runId) && apiClient) {
-      try {
-        const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(runId);
-        setRunDetails((prev) => new Map(prev).set(runId, response.data));
-      } catch (error) {
-        console.error("Failed to fetch run details:", error);
+  const handleExpandRun = useCallback(
+    async (runId: string) => {
+      if (expandedRunId === runId) {
+        setExpandedRunId(null);
+        return;
       }
-    }
-  }, [expandedRunId, runDetails, apiClient]);
+
+      setExpandedRunId(runId);
+
+      // Fetch details if not already cached
+      if (!runDetails.has(runId) && apiClient) {
+        try {
+          const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(runId);
+          setRunDetails((prev) => new Map(prev).set(runId, response.data));
+        } catch (error) {
+          console.error("Failed to fetch run details:", error);
+        }
+      }
+    },
+    [expandedRunId, runDetails, apiClient]
+  );
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -1083,6 +1114,10 @@ const PromptsPlayground = () => {
     return null;
   }, [allPromptsHaveModelConfig, blankVariablesCount, isRunningExperiment]);
 
+  if (notebookStateLoading) {
+    return <DatasetLoadingState type="full" message="Loading notebook state..." />;
+  }
+
   return (
     <PromptProvider
       state={state}
@@ -1137,16 +1172,15 @@ const PromptsPlayground = () => {
                       <>
                         <Tooltip
                           title={
-                            saveStatus === "saved"
-                              ? "All changes saved"
-                              : saveStatus === "saving"
-                              ? "Saving changes..."
-                              : "Click to save changes"
+                            saveStatus === "saved" ? "All changes saved" : saveStatus === "saving" ? "Saving changes..." : "Click to save changes"
                           }
                           arrow
                         >
                           <span>
-                            <Button
+                            <Button variant="contained" size="small" onClick={handleSaveNotebookState} startIcon={<SaveIcon />}>
+                              Save Notebook
+                            </Button>
+                            {/* <Button
                               size="small"
                               variant={saveStatus === "unsaved" ? "contained" : "outlined"}
                               onClick={() => {
@@ -1171,7 +1205,7 @@ const PromptsPlayground = () => {
                               }}
                             >
                               {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save"}
-                            </Button>
+                            </Button> */}
                           </span>
                         </Tooltip>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
@@ -1201,60 +1235,60 @@ const PromptsPlayground = () => {
             {/* Right side: Action buttons */}
             <Stack direction="row" alignItems="center" spacing={2}>
               <Button
-              variant={configDrawerOpen ? "contained" : "outlined"}
-              size="small"
-              onClick={toggleConfigDrawer}
-              startIcon={<InfoOutlinedIcon />}
-            >
-              {configModeActive && experimentConfig ? "View Config" : "Set Config"}
-            </Button>
-            <Box sx={{ position: "relative" }}>
-              <Badge badgeContent={blankVariablesCount} color="error" overlap="rectangular">
-                <Button
-                  ref={variablesButtonRef}
-                  variant={variablesDrawerOpen ? "contained" : "outlined"}
-                  color={variablesDrawerOpen ? "primary" : "primary"}
-                  size="small"
-                  onClick={toggleVariablesDrawer}
-                  startIcon={<TuneIcon />}
-                >
-                  Variables
-                </Button>
-                <Popover
-                  open={variablesDrawerOpen}
-                  onClose={toggleVariablesDrawer}
-                  anchorEl={variablesButtonRef.current}
-                  anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "left",
-                  }}
-                  slotProps={{
-                    paper: {
-                      sx: { width: "400px", maxHeight: "500px" },
-                    },
-                  }}
-                  sx={{ marginTop: "6px" }}
-                >
-                  <VariableInputs />
-                </Popover>
-              </Badge>
-            </Box>
-            <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
-              Add Prompt
-            </Button>
-            <Tooltip title={runAllDisabledReason || "Run All Prompts"} arrow>
-              <span>
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleRunAllPrompts}
-                  startIcon={<PlayArrowIcon />}
-                  disabled={!!runAllDisabledReason}
-                >
-                  Run All Prompts
-                </Button>
-              </span>
-            </Tooltip>
+                variant={configDrawerOpen ? "contained" : "outlined"}
+                size="small"
+                onClick={toggleConfigDrawer}
+                startIcon={<InfoOutlinedIcon />}
+              >
+                {configModeActive && experimentConfig ? "View Config" : "Set Config"}
+              </Button>
+              <Box sx={{ position: "relative" }}>
+                <Badge badgeContent={blankVariablesCount} color="error" overlap="rectangular">
+                  <Button
+                    ref={variablesButtonRef}
+                    variant={variablesDrawerOpen ? "contained" : "outlined"}
+                    color={variablesDrawerOpen ? "primary" : "primary"}
+                    size="small"
+                    onClick={toggleVariablesDrawer}
+                    startIcon={<TuneIcon />}
+                  >
+                    Variables
+                  </Button>
+                  <Popover
+                    open={variablesDrawerOpen}
+                    onClose={toggleVariablesDrawer}
+                    anchorEl={variablesButtonRef.current}
+                    anchorOrigin={{
+                      vertical: "bottom",
+                      horizontal: "left",
+                    }}
+                    slotProps={{
+                      paper: {
+                        sx: { width: "400px", maxHeight: "500px" },
+                      },
+                    }}
+                    sx={{ marginTop: "6px" }}
+                  >
+                    <VariableInputs />
+                  </Popover>
+                </Badge>
+              </Box>
+              <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
+                Add Prompt
+              </Button>
+              <Tooltip title={runAllDisabledReason || "Run All Prompts"} arrow>
+                <span>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleRunAllPrompts}
+                    startIcon={<PlayArrowIcon />}
+                    disabled={!!runAllDisabledReason}
+                  >
+                    Run All Prompts
+                  </Button>
+                </span>
+              </Tooltip>
             </Stack>
           </Stack>
         </Container>
@@ -1263,7 +1297,7 @@ const PromptsPlayground = () => {
         <Box component="main" className="flex-1 flex flex-col">
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
             <Stack direction="row" spacing={1} sx={{ height: "100%" }}>
-              {state.prompts.map((prompt) => (
+              {prompts.map((prompt) => (
                 <Box
                   key={prompt.id}
                   className="flex-1 h-full"
@@ -1314,351 +1348,370 @@ const PromptsPlayground = () => {
               {/* Drawer Content */}
               <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
                 {experimentConfig ? (
-                <Stack spacing={3}>
-                  {/* Experiment Name Section - Only show if not in notebook mode */}
-                  {!notebookId && experimentConfig.id && (
-                    <>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
-                          EXPERIMENT
-                        </Typography>
-                        <Box sx={{ pl: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {experimentConfig.name}
+                  <Stack spacing={3}>
+                    {/* Experiment Name Section - Only show if not in notebook mode */}
+                    {!notebookId && experimentConfig.id && (
+                      <>
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
+                            EXPERIMENT
                           </Typography>
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/tasks/${task?.id}/prompt-experiments/${experimentConfig.id}`)}
-                            sx={{
-                              padding: 0.5,
-                              color: "#9ca3af",
-                              "&:hover": {
-                                color: "#6b7280",
-                                backgroundColor: "rgba(0, 0, 0, 0.04)",
-                              },
-                            }}
-                          >
-                            <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
-                          </IconButton>
+                          <Box sx={{ pl: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {experimentConfig.name}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => navigate(`/tasks/${task?.id}/prompt-experiments/${experimentConfig.id}`)}
+                              sx={{
+                                padding: 0.5,
+                                color: "#9ca3af",
+                                "&:hover": {
+                                  color: "#6b7280",
+                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                },
+                              }}
+                            >
+                              <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
+                            </IconButton>
+                          </Box>
                         </Box>
-                      </Box>
 
-                      <Divider />
-                    </>
-                  )}
+                        <Divider />
+                      </>
+                    )}
 
-                  {/* Dataset Section */}
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
-                      DATASET
-                    </Typography>
-                    <Box sx={{ pl: 2 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {experimentConfig.dataset_ref?.name?.trim() || experimentConfig.dataset_ref?.id || "Unknown"}
-                        </Typography>
-                        {experimentConfig.dataset_ref?.id && (
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/tasks/${task?.id}/datasets/${experimentConfig.dataset_ref.id}`)}
-                            sx={{
-                              padding: 0.5,
-                              color: "#9ca3af",
-                              "&:hover": {
-                                color: "#6b7280",
-                                backgroundColor: "rgba(0, 0, 0, 0.04)",
-                              },
-                            }}
-                          >
-                            <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
-                          </IconButton>
+                    {/* Dataset Section */}
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}>
+                        DATASET
+                      </Typography>
+                      <Box sx={{ pl: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {experimentConfig.dataset_ref?.name?.trim() || experimentConfig.dataset_ref?.id || "Unknown"}
+                          </Typography>
+                          {experimentConfig.dataset_ref?.id && (
+                            <IconButton
+                              size="small"
+                              onClick={() => navigate(`/tasks/${task?.id}/datasets/${experimentConfig.dataset_ref.id}`)}
+                              sx={{
+                                padding: 0.5,
+                                color: "#9ca3af",
+                                "&:hover": {
+                                  color: "#6b7280",
+                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                },
+                              }}
+                            >
+                              <OpenInNewIcon sx={{ fontSize: "0.875rem" }} />
+                            </IconButton>
+                          )}
+                        </Box>
+                        {experimentConfig.dataset_ref?.version && (
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.813rem" }}>
+                            Version {experimentConfig.dataset_ref.version}
+                          </Typography>
                         )}
                       </Box>
-                      {experimentConfig.dataset_ref?.version && (
-                        <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.813rem" }}>
-                          Version {experimentConfig.dataset_ref.version}
-                        </Typography>
-                      )}
                     </Box>
-                  </Box>
 
-                  <Divider />
+                    <Divider />
 
-                  {/* Prompt Variable Mappings Section */}
-                  {((experimentConfig.prompt_ref?.variable_mapping && experimentConfig.prompt_ref.variable_mapping.length > 0) ||
-                    (experimentConfig.prompt_variable_mapping && experimentConfig.prompt_variable_mapping.length > 0)) && (
-                    <>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
-                          PROMPT VARIABLE MAPPINGS
-                        </Typography>
-                        <Stack spacing={1}>
-                          {(experimentConfig.prompt_variable_mapping || experimentConfig.prompt_ref?.variable_mapping || []).map((mapping: any, idx: number) => (
-                            <Box
-                              key={idx}
-                              sx={{
-                                backgroundColor: "#e3f2fd",
-                                borderLeft: "3px solid #2196f3",
-                                px: 1.5,
-                                py: 1,
-                                borderRadius: 0.5,
-                              }}
-                            >
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontSize: "0.813rem",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                <Box component="span" sx={{ fontWeight: 600 }}>
-                                  {mapping.variable_name}
-                                </Box>
-                                {" → Dataset column: "}
-                                <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
-                                  {mapping.source?.dataset_column?.name}
-                                </Box>
-                              </Typography>
-                            </Box>
-                          ))}
-                        </Stack>
-                      </Box>
-                      <Divider />
-                    </>
-                  )}
-
-                  {/* Eval Variable Mappings Section */}
-                  {experimentConfig.eval_list && experimentConfig.eval_list.length > 0 && (
-                    <>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
-                          EVAL VARIABLE MAPPINGS
-                        </Typography>
-                        <Stack spacing={2}>
-                          {experimentConfig.eval_list.map((evalRef: any, evalIdx: number) => (
-                            <Box key={evalIdx}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
-                                  {evalRef.name} <Box component="span" sx={{ fontWeight: 400, color: "text.secondary" }}>(v{evalRef.version})</Box>
-                                </Typography>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => navigate(`/tasks/${task?.id}/evaluators/${encodeURIComponent(evalRef.name)}`)}
+                    {/* Prompt Variable Mappings Section */}
+                    {((experimentConfig.prompt_ref?.variable_mapping && experimentConfig.prompt_ref.variable_mapping.length > 0) ||
+                      (experimentConfig.prompt_variable_mapping && experimentConfig.prompt_variable_mapping.length > 0)) && (
+                      <>
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
+                            PROMPT VARIABLE MAPPINGS
+                          </Typography>
+                          <Stack spacing={1}>
+                            {(experimentConfig.prompt_variable_mapping || experimentConfig.prompt_ref?.variable_mapping || []).map(
+                              (mapping: any, idx: number) => (
+                                <Box
+                                  key={idx}
                                   sx={{
-                                    padding: 0.25,
-                                    color: "#9ca3af",
-                                    "&:hover": {
-                                      color: "#6b7280",
-                                      backgroundColor: "rgba(0, 0, 0, 0.04)",
-                                    },
+                                    backgroundColor: "#e3f2fd",
+                                    borderLeft: "3px solid #2196f3",
+                                    px: 1.5,
+                                    py: 1,
+                                    borderRadius: 0.5,
                                   }}
                                 >
-                                  <OpenInNewIcon sx={{ fontSize: "0.75rem" }} />
-                                </IconButton>
-                              </Box>
-                              <Stack spacing={1}>
-                                {evalRef.variable_mapping?.map((mapping: any, mapIdx: number) => {
-                                  const isDatasetColumn = mapping.source?.type === "dataset_column";
-                                  return (
-                                    <Box
-                                      key={mapIdx}
-                                      sx={{
-                                        backgroundColor: isDatasetColumn ? "#e3f2fd" : "#fff3e0",
-                                        borderLeft: isDatasetColumn ? "3px solid #2196f3" : "3px solid #ff9800",
-                                        px: 1.5,
-                                        py: 1,
-                                        borderRadius: 0.5,
-                                      }}
-                                    >
-                                      <Typography
-                                        variant="body2"
-                                        sx={{
-                                          fontSize: "0.813rem",
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
-                                        }}
-                                      >
-                                        <Box component="span" sx={{ fontWeight: 600 }}>
-                                          {mapping.variable_name}
-                                        </Box>
-                                        {" → "}
-                                        {isDatasetColumn ? (
-                                          <>
-                                            Dataset column: <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>{mapping.source?.dataset_column?.name}</Box>
-                                          </>
-                                        ) : (
-                                          <>
-                                            Experiment output
-                                            {mapping.source?.experiment_output?.json_path && (
-                                              <>
-                                                {" "}(path: <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#f57c00" }}>{mapping.source.experiment_output.json_path}</Box>)
-                                              </>
-                                            )}
-                                          </>
-                                        )}
-                                      </Typography>
-                                    </Box>
-                                  );
-                                })}
-                              </Stack>
-                            </Box>
-                          ))}
-                        </Stack>
-                      </Box>
-                      <Divider />
-                    </>
-                  )}
-
-                  {/* Experiment Runs Section - Show notebook history if in notebook mode */}
-                  {(notebookId ? notebookHistory : experimentRuns).length > 0 && (
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
-                        EXPERIMENT HISTORY ({notebookId ? notebookHistory.length : experimentRuns.length})
-                      </Typography>
-                      <Stack spacing={1}>
-                        {(notebookId ? notebookHistory : experimentRuns).map((run: any, idx: number) => {
-                          const completionRate = run.total_rows > 0 ? (run.completed_rows / run.total_rows) * 100 : 0;
-                          const isCompleted = run.status === "completed";
-                          const isFailed = run.status === "failed";
-                          const isRunning = run.status === "running";
-                          const isExpanded = expandedRunId === run.id;
-                          const details = runDetails.get(run.id);
-
-                          return (
-                            <Box
-                              key={idx}
-                              sx={{
-                                border: "1px solid",
-                                borderColor: "divider",
-                                borderRadius: 1,
-                                overflow: "hidden",
-                                backgroundColor: isCompleted ? "#f1f8f4" : isFailed ? "#fef3f2" : "background.paper",
-                              }}
-                            >
-                              <Box
-                                onClick={() => handleExpandRun(run.id)}
-                                sx={{
-                                  px: 1.5,
-                                  py: 1,
-                                  cursor: "pointer",
-                                  "&:hover": { backgroundColor: "action.hover" },
-                                }}
-                              >
-                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
-                                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                    <ChevronRightIcon
-                                      sx={{
-                                        fontSize: "1rem",
-                                        transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                                        transition: "transform 0.2s",
-                                      }}
-                                    />
-                                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
-                                      {new Date(run.created_at).toLocaleString()}
-                                    </Typography>
-                                  </Box>
-                                  <Box
-                                    component="span"
+                                  <Typography
+                                    variant="body2"
                                     sx={{
-                                      fontSize: "0.688rem",
-                                      px: 0.75,
-                                      py: 0.25,
-                                      borderRadius: 0.5,
-                                      backgroundColor: isCompleted ? "#10b981" : isFailed ? "#ef4444" : isRunning ? "#f59e0b" : "#6b7280",
-                                      color: "white",
-                                      fontWeight: 600,
-                                      textTransform: "uppercase",
+                                      fontSize: "0.813rem",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
                                     }}
                                   >
-                                    {run.status}
-                                  </Box>
-                                </Box>
-                                <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
-                                  {run.completed_rows}/{run.total_rows} completed • {run.failed_rows} failed • {completionRate.toFixed(1)}% done
-                                </Typography>
-                                {run.total_cost && (
-                                  <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary", mt: 0.25 }}>
-                                    Cost: ${run.total_cost}
+                                    <Box component="span" sx={{ fontWeight: 600 }}>
+                                      {mapping.variable_name}
+                                    </Box>
+                                    {" → Dataset column: "}
+                                    <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
+                                      {mapping.source?.dataset_column?.name}
+                                    </Box>
                                   </Typography>
-                                )}
-                              </Box>
+                                </Box>
+                              )
+                            )}
+                          </Stack>
+                        </Box>
+                        <Divider />
+                      </>
+                    )}
 
-                              {/* Expanded Details */}
-                              {isExpanded && details?.summary_results?.prompt_eval_summaries && (
+                    {/* Eval Variable Mappings Section */}
+                    {experimentConfig.eval_list && experimentConfig.eval_list.length > 0 && (
+                      <>
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
+                            EVAL VARIABLE MAPPINGS
+                          </Typography>
+                          <Stack spacing={2}>
+                            {experimentConfig.eval_list.map((evalRef: any, evalIdx: number) => (
+                              <Box key={evalIdx}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
+                                    {evalRef.name}{" "}
+                                    <Box component="span" sx={{ fontWeight: 400, color: "text.secondary" }}>
+                                      (v{evalRef.version})
+                                    </Box>
+                                  </Typography>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => navigate(`/tasks/${task?.id}/evaluators/${encodeURIComponent(evalRef.name)}`)}
+                                    sx={{
+                                      padding: 0.25,
+                                      color: "#9ca3af",
+                                      "&:hover": {
+                                        color: "#6b7280",
+                                        backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                      },
+                                    }}
+                                  >
+                                    <OpenInNewIcon sx={{ fontSize: "0.75rem" }} />
+                                  </IconButton>
+                                </Box>
+                                <Stack spacing={1}>
+                                  {evalRef.variable_mapping?.map((mapping: any, mapIdx: number) => {
+                                    const isDatasetColumn = mapping.source?.type === "dataset_column";
+                                    return (
+                                      <Box
+                                        key={mapIdx}
+                                        sx={{
+                                          backgroundColor: isDatasetColumn ? "#e3f2fd" : "#fff3e0",
+                                          borderLeft: isDatasetColumn ? "3px solid #2196f3" : "3px solid #ff9800",
+                                          px: 1.5,
+                                          py: 1,
+                                          borderRadius: 0.5,
+                                        }}
+                                      >
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            fontSize: "0.813rem",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                          }}
+                                        >
+                                          <Box component="span" sx={{ fontWeight: 600 }}>
+                                            {mapping.variable_name}
+                                          </Box>
+                                          {" → "}
+                                          {isDatasetColumn ? (
+                                            <>
+                                              Dataset column:{" "}
+                                              <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
+                                                {mapping.source?.dataset_column?.name}
+                                              </Box>
+                                            </>
+                                          ) : (
+                                            <>
+                                              Experiment output
+                                              {mapping.source?.experiment_output?.json_path && (
+                                                <>
+                                                  {" "}
+                                                  (path:{" "}
+                                                  <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#f57c00" }}>
+                                                    {mapping.source.experiment_output.json_path}
+                                                  </Box>
+                                                  )
+                                                </>
+                                              )}
+                                            </>
+                                          )}
+                                        </Typography>
+                                      </Box>
+                                    );
+                                  })}
+                                </Stack>
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                        <Divider />
+                      </>
+                    )}
+
+                    {/* Experiment Runs Section - Show notebook history if in notebook mode */}
+                    {(notebookId ? notebookHistory : experimentRuns).length > 0 && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
+                          EXPERIMENT HISTORY ({notebookId ? notebookHistory.length : experimentRuns.length})
+                        </Typography>
+                        <Stack spacing={1}>
+                          {(notebookId ? notebookHistory : experimentRuns).map((run: any, idx: number) => {
+                            const completionRate = run.total_rows > 0 ? (run.completed_rows / run.total_rows) * 100 : 0;
+                            const isCompleted = run.status === "completed";
+                            const isFailed = run.status === "failed";
+                            const isRunning = run.status === "running";
+                            const isExpanded = expandedRunId === run.id;
+                            const details = runDetails.get(run.id);
+
+                            return (
+                              <Box
+                                key={idx}
+                                sx={{
+                                  border: "1px solid",
+                                  borderColor: "divider",
+                                  borderRadius: 1,
+                                  overflow: "hidden",
+                                  backgroundColor: isCompleted ? "#f1f8f4" : isFailed ? "#fef3f2" : "background.paper",
+                                }}
+                              >
                                 <Box
+                                  onClick={() => handleExpandRun(run.id)}
                                   sx={{
-                                    borderTop: "1px solid",
-                                    borderColor: "divider",
                                     px: 1.5,
-                                    py: 1.5,
-                                    backgroundColor: "rgba(0, 0, 0, 0.02)",
+                                    py: 1,
+                                    cursor: "pointer",
+                                    "&:hover": { backgroundColor: "action.hover" },
                                   }}
                                 >
-                                  <Stack spacing={1.5}>
-                                    {details.summary_results.prompt_eval_summaries.map((promptSummary: any, pIdx: number) => (
-                                      <Box key={pIdx}>
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.75 }}>
-                                          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.75rem" }}>
-                                            {promptSummary.prompt_name} <Box component="span" sx={{ fontWeight: 400, color: "text.secondary" }}>(v{promptSummary.prompt_version})</Box>
-                                          </Typography>
-                                          <IconButton
-                                            size="small"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              navigate(`/tasks/${task?.id}/prompts/${encodeURIComponent(promptSummary.prompt_name)}/versions/${promptSummary.prompt_version}`);
-                                            }}
-                                            sx={{
-                                              padding: 0.25,
-                                              color: "#9ca3af",
-                                              "&:hover": {
-                                                color: "#6b7280",
-                                                backgroundColor: "rgba(0, 0, 0, 0.04)",
-                                              },
-                                            }}
-                                          >
-                                            <OpenInNewIcon sx={{ fontSize: "0.65rem" }} />
-                                          </IconButton>
-                                        </Box>
-                                        <Stack spacing={0.75}>
-                                          {promptSummary.eval_results.map((evalResult: any, eIdx: number) => {
-                                            const percentage = evalResult.total_count > 0 ? (evalResult.pass_count / evalResult.total_count) * 100 : 0;
-                                            return (
-                                              <Box key={eIdx} sx={{ pl: 1 }}>
-                                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.25 }}>
-                                                  <Typography variant="caption" sx={{ fontSize: "0.688rem", color: "text.secondary" }}>
-                                                    {evalResult.eval_name} (v{evalResult.eval_version})
-                                                  </Typography>
-                                                  <Typography variant="caption" sx={{ fontSize: "0.688rem", fontWeight: 600 }}>
-                                                    {evalResult.pass_count}/{evalResult.total_count} ({percentage.toFixed(0)}%)
-                                                  </Typography>
-                                                </Box>
-                                              </Box>
-                                            );
-                                          })}
-                                        </Stack>
-                                      </Box>
-                                    ))}
-                                  </Stack>
+                                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                      <ChevronRightIcon
+                                        sx={{
+                                          fontSize: "1rem",
+                                          transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                                          transition: "transform 0.2s",
+                                        }}
+                                      />
+                                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
+                                        {new Date(run.created_at).toLocaleString()}
+                                      </Typography>
+                                    </Box>
+                                    <Box
+                                      component="span"
+                                      sx={{
+                                        fontSize: "0.688rem",
+                                        px: 0.75,
+                                        py: 0.25,
+                                        borderRadius: 0.5,
+                                        backgroundColor: isCompleted ? "#10b981" : isFailed ? "#ef4444" : isRunning ? "#f59e0b" : "#6b7280",
+                                        color: "white",
+                                        fontWeight: 600,
+                                        textTransform: "uppercase",
+                                      }}
+                                    >
+                                      {run.status}
+                                    </Box>
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
+                                    {run.completed_rows}/{run.total_rows} completed • {run.failed_rows} failed • {completionRate.toFixed(1)}% done
+                                  </Typography>
+                                  {run.total_cost && (
+                                    <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary", mt: 0.25 }}>
+                                      Cost: ${run.total_cost}
+                                    </Typography>
+                                  )}
                                 </Box>
-                              )}
-                            </Box>
-                          );
-                        })}
-                      </Stack>
-                    </Box>
-                  )}
-                </Stack>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No configuration data available
-                </Typography>
-              )}
+
+                                {/* Expanded Details */}
+                                {isExpanded && details?.summary_results?.prompt_eval_summaries && (
+                                  <Box
+                                    sx={{
+                                      borderTop: "1px solid",
+                                      borderColor: "divider",
+                                      px: 1.5,
+                                      py: 1.5,
+                                      backgroundColor: "rgba(0, 0, 0, 0.02)",
+                                    }}
+                                  >
+                                    <Stack spacing={1.5}>
+                                      {details.summary_results.prompt_eval_summaries.map((promptSummary: any, pIdx: number) => (
+                                        <Box key={pIdx}>
+                                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.75 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.75rem" }}>
+                                              {promptSummary.prompt_name}{" "}
+                                              <Box component="span" sx={{ fontWeight: 400, color: "text.secondary" }}>
+                                                (v{promptSummary.prompt_version})
+                                              </Box>
+                                            </Typography>
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(
+                                                  `/tasks/${task?.id}/prompts/${encodeURIComponent(promptSummary.prompt_name)}/versions/${promptSummary.prompt_version}`
+                                                );
+                                              }}
+                                              sx={{
+                                                padding: 0.25,
+                                                color: "#9ca3af",
+                                                "&:hover": {
+                                                  color: "#6b7280",
+                                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                                },
+                                              }}
+                                            >
+                                              <OpenInNewIcon sx={{ fontSize: "0.65rem" }} />
+                                            </IconButton>
+                                          </Box>
+                                          <Stack spacing={0.75}>
+                                            {promptSummary.eval_results.map((evalResult: any, eIdx: number) => {
+                                              const percentage =
+                                                evalResult.total_count > 0 ? (evalResult.pass_count / evalResult.total_count) * 100 : 0;
+                                              return (
+                                                <Box key={eIdx} sx={{ pl: 1 }}>
+                                                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.25 }}>
+                                                    <Typography variant="caption" sx={{ fontSize: "0.688rem", color: "text.secondary" }}>
+                                                      {evalResult.eval_name} (v{evalResult.eval_version})
+                                                    </Typography>
+                                                    <Typography variant="caption" sx={{ fontSize: "0.688rem", fontWeight: 600 }}>
+                                                      {evalResult.pass_count}/{evalResult.total_count} ({percentage.toFixed(0)}%)
+                                                    </Typography>
+                                                  </Box>
+                                                </Box>
+                                              );
+                                            })}
+                                          </Stack>
+                                        </Box>
+                                      ))}
+                                    </Stack>
+                                  </Box>
+                                )}
+                              </Box>
+                            );
+                          })}
+                        </Stack>
+                      </Box>
+                    )}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No configuration data available
+                  </Typography>
+                )}
+              </Box>
             </Box>
-          </Box>
-        </Drawer>
+          </Drawer>
         )}
 
         {/* Create Experiment Modal for setting up config */}
@@ -1670,16 +1723,12 @@ const PromptsPlayground = () => {
         />
 
         {/* Prompt Overwrite Confirmation Dialog */}
-        <Dialog
-          open={showPromptOverwriteDialog}
-          onClose={handlePromptOverwriteCancel}
-          maxWidth="sm"
-          fullWidth
-        >
+        <Dialog open={showPromptOverwriteDialog} onClose={handlePromptOverwriteCancel} maxWidth="sm" fullWidth>
           <DialogTitle>Overwrite Existing Prompts?</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              This notebook already contains prompts. Would you like to overwrite them with the prompts from the selected configuration, or keep your existing prompts and only load the configuration?
+              This notebook already contains prompts. Would you like to overwrite them with the prompts from the selected configuration, or keep your
+              existing prompts and only load the configuration?
             </DialogContentText>
           </DialogContent>
           <DialogActions>

@@ -16,6 +16,7 @@ import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
 
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
@@ -24,6 +25,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
   const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
   const [toolCallsValue, setToolCallsValue] = useState(toolCalls && toolCalls.length > 0 ? JSON.stringify(toolCalls, null, 2) : "");
+  const actions = usePromptPlaygroundStore((state) => state.actions);
 
   const handleRoleChange = useCallback(
     (event: SelectChangeEvent) => {
@@ -48,20 +50,12 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
   }, []);
 
   const handleDuplicate = useCallback(() => {
-    dispatch({
-      type: "duplicateMessage",
-      payload: { parentId, id },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parentId, id]);
+    actions.duplicateMessage(parentId, id);
+  }, [actions, parentId, id]);
 
   const handleDelete = useCallback(() => {
-    dispatch({
-      type: "deleteMessage",
-      payload: { parentId, id },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parentId, id]);
+    actions.deleteMessage(parentId, id);
+  }, [actions, parentId, id]);
 
   // Debounce the setMessage function to prevent excessive re-renders/API calls
   const debouncedSetMessage = useMemo(
