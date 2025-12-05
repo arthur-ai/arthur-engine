@@ -456,6 +456,52 @@ class SpanQueryService:
         offset = pagination_parameters.page * pagination_parameters.page_size
         return query.offset(offset).limit(pagination_parameters.page_size)
 
+    def _apply_span_time_filters(
+        self,
+        query: Select[Any],
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        time_column: InstrumentedAttribute[datetime] = DatabaseSpan.start_time,
+    ) -> Select[Any]:
+        """Apply time range filters to a span-based query.
+
+        Args:
+            query: The query to apply filters to
+            start_time: Optional start time filter (inclusive)
+            end_time: Optional end time filter (inclusive for spans)
+            time_column: The column to filter on (defaults to DatabaseSpan.start_time)
+
+        Returns:
+            Query with time filters applied if provided
+        """
+        if start_time:
+            query = query.where(time_column >= start_time)
+        if end_time:
+            query = query.where(time_column <= end_time)
+        return query
+
+    def _apply_trace_metadata_time_filters(
+        self,
+        query: Select[Tuple[Any]],
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> Select[Tuple[Any]]:
+        """Apply time range filters to a trace metadata-based query.
+
+        Args:
+            query: The query to apply filters to
+            start_time: Optional start time filter (inclusive) - filters on start_time column
+            end_time: Optional end time filter (inclusive) - filters on end_time column
+
+        Returns:
+            Query with time filters applied if provided
+        """
+        if start_time:
+            query = query.where(DatabaseTraceMetadata.start_time >= start_time)
+        if end_time:
+            query = query.where(DatabaseTraceMetadata.end_time <= end_time)
+        return query
+
     def _build_spans_query(
         self,
         trace_ids: Optional[list[str]] = None,
@@ -476,14 +522,13 @@ class SpanQueryService:
             conditions.append(DatabaseSpan.task_id.in_(task_ids))
         if span_types:
             conditions.append(DatabaseSpan.span_kind.in_(span_types))
-        if start_time:
-            conditions.append(DatabaseSpan.start_time >= start_time)
-        if end_time:
-            conditions.append(DatabaseSpan.start_time <= end_time)
 
         # Apply filters if any conditions exist
         if conditions:
             query = query.where(and_(*conditions))
+
+        # Apply time range filters
+        query = self._apply_span_time_filters(query, start_time, end_time)
 
         # Apply sorting
         if sort == PaginationSortMethod.DESCENDING:
@@ -879,10 +924,7 @@ class SpanQueryService:
         )
 
         # Apply time range filters
-        if start_time:
-            query = query.where(DatabaseTraceMetadata.start_time >= start_time)
-        if end_time:
-            query = query.where(DatabaseTraceMetadata.end_time <= end_time)
+        query = self._apply_trace_metadata_time_filters(query, start_time, end_time)
 
         # Apply user filtering
         if user_ids:
@@ -1004,10 +1046,7 @@ class SpanQueryService:
         )
 
         # Apply time range filters
-        if start_time:
-            query = query.where(DatabaseTraceMetadata.start_time >= start_time)
-        if end_time:
-            query = query.where(DatabaseTraceMetadata.end_time <= end_time)
+        query = self._apply_trace_metadata_time_filters(query, start_time, end_time)
 
         # Group by both user_id and task_id to ensure proper boundaries
         query = query.group_by(
@@ -1103,3 +1142,58 @@ class SpanQueryService:
                 "total_token_cost",
             ),
         ]
+
+    def get_unregistered_root_spans_grouped(
+        self,
+        pagination_parameters: PaginationParameters | None = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[list[tuple[str, int]], int]:
+        """
+        Query root spans (parent_span_id IS NULL) for traces without task_id (task_id IS NULL),
+        grouped by span_name.
+
+        Args:
+            pagination_parameters: Optional pagination parameters for limiting results
+            start_time: Optional start time filter (inclusive). Recommended for performance.
+            end_time: Optional end time filter (inclusive). Recommended for performance.
+
+        Returns:
+            tuple[list[tuple[str, int]], int]: (groups, total_count) where groups contains
+                (span_name, count) tuples ordered by count descending,
+                and total_count is the total number of root spans across ALL groups (before pagination)
+        """
+        # Base query for grouping
+        base_query = (
+            select(
+                DatabaseSpan.span_name,
+                func.count().label("count"),
+            )
+            .where(DatabaseSpan.parent_span_id.is_(None))
+            .where(DatabaseSpan.task_id.is_(None))
+        )
+
+        # Apply time range filters if provided
+        base_query = self._apply_span_time_filters(base_query, start_time, end_time)
+
+        base_query = base_query.group_by(DatabaseSpan.span_name)
+
+        # Calculate total_count: sum of all counts across all groups (before pagination)
+        # Use a subquery to sum all the grouped counts efficiently
+        count_subquery = base_query.subquery()
+        total_count_query = select(func.sum(count_subquery.c.count))
+        total_count = self.db_session.execute(total_count_query).scalar() or 0
+
+        # Apply sorting and pagination to the grouped results
+        query = base_query.order_by(func.count().desc())
+
+        if pagination_parameters:
+            query = self._apply_pagination(query, pagination_parameters)
+
+        results = self.db_session.execute(query).all()
+
+        groups = [
+            (row.span_name or "Unknown", typing_cast(int, row.count)) for row in results
+        ]
+
+        return groups, total_count

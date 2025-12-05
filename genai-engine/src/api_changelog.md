@@ -8,6 +8,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/unregistered  endpoint added
 
 # 12/02/2025
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  api path removed without deprecation

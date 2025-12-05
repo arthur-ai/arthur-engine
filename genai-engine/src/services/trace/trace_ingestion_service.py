@@ -107,37 +107,30 @@ class TraceIngestionService:
                 resource_span,
             )
 
-            # Validate task ID at resource level - reject entire resource if invalid
-            if not self._is_valid_task_id(resource_task_id or ""):
-                # Count all spans in this resource as rejected
-                resource_span_count = sum(
-                    len(scope_span.get("spans", []))
-                    for scope_span in resource_span.get("scopeSpans", [])
+            # Accept all traces - if task_id is invalid (empty string), treat as None
+            # If task_id doesn't exist in DB, foreign key constraint will handle it
+            if resource_task_id is not None and not self._is_valid_task_id(
+                resource_task_id,
+            ):
+                logger.debug(
+                    f"Invalid task ID found (eg: empty string or non-existent task), treating as unregistered trace: {resource_task_id}",
                 )
-                total_spans += resource_span_count
-                rejected_spans += resource_span_count
-                rejected_reasons.extend(
-                    ["Missing or invalid task ID in resource attributes"]
-                    * resource_span_count,
-                )
+                resource_task_id = None
 
-                logger.warning(
-                    f"Rejecting entire resource with {resource_span_count} spans - "
-                    f"no valid task ID found in resource attributes (task_id: {resource_task_id})",
-                )
-                continue  # Skip processing all spans in this resource
-
-            logger.debug(f"Found valid resource task ID: {resource_task_id}")
+            if resource_task_id:
+                logger.debug(f"Found valid resource task ID: {resource_task_id}")
+            else:
+                logger.debug("Processing resource without task ID (unregistered trace)")
 
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
 
                     try:
-                        # Pass the resource task ID to the span processing
+                        # Pass the resource task ID to the span processing (can be None)
                         processed_span = self._process_span_data(
                             span_data,
-                            resource_task_id or "",
+                            resource_task_id,
                         )
                         spans_data.append(processed_span)
                         accepted_spans += 1
@@ -181,7 +174,7 @@ class TraceIngestionService:
     def _process_span_data(
         self,
         span_data: dict[str, Any],
-        resource_task_id: str,
+        resource_task_id: str | None,
     ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
         span_data = self._normalize_span_attributes(span_data)

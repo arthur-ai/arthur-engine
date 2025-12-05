@@ -30,10 +30,10 @@ class DatabaseTraceMetadata(Base):
     __tablename__ = "trace_metadata"
 
     trace_id: Mapped[str] = mapped_column(String, primary_key=True)
-    task_id: Mapped[str] = mapped_column(
+    task_id: Mapped[str | None] = mapped_column(
         String,
         ForeignKey("tasks.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     session_id: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -248,6 +248,24 @@ class TraceListResponse(BaseModel):
     traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
 
 
+class UnregisteredRootSpanGroup(BaseModel):
+    """Group of root spans with the same span_name for unregistered traces"""
+
+    span_name: str = Field(description="Name of the root span")
+    count: int = Field(description="Number of root spans (and traces) in this group")
+
+
+class UnregisteredRootSpansResponse(BaseModel):
+    """Response for unregistered root spans endpoint"""
+
+    groups: list[UnregisteredRootSpanGroup] = Field(
+        description="List of grouped root spans, ordered by count descending"
+    )
+    total_count: int = Field(
+        description="Total number of root spans (and traces) across all groups"
+    )
+
+
 class SpanListResponse(BaseModel):
     """Response for span list endpoint"""
 

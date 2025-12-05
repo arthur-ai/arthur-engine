@@ -30,6 +30,8 @@ from schemas.response_schemas import (
     TraceListResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
+    UnregisteredRootSpanGroup,
+    UnregisteredRootSpansResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -178,6 +180,65 @@ def list_spans_metadata(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error listing span metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+# ============================================================================
+# UNREGISTERED TRACES ENDPOINTS
+# ============================================================================
+
+
+@trace_api_routes.get(
+    "/traces/spans/unregistered",
+    summary="Get Unregistered Root Spans",
+    description="Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination. Time bounds (start_time/end_time) are recommended for performance on large datasets.",
+    response_model=UnregisteredRootSpansResponse,
+    response_model_exclude_none=True,
+    tags=["Spans"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def get_unregistered_root_spans(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    start_time: datetime = Query(
+        None,
+        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+    ),
+    end_time: datetime = Query(
+        None,
+        description="Inclusive end date in ISO8601 string format. Use local time (not UTC).",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> UnregisteredRootSpansResponse:
+    """Get grouped root spans for traces without task_id with pagination."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        groups_dict, total_count = span_repo.get_unregistered_root_spans_grouped(
+            pagination_parameters=pagination_parameters,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        # Convert dicts to UnregisteredRootSpanGroup objects
+        groups = [
+            UnregisteredRootSpanGroup(
+                span_name=group["span_name"],
+                count=group["count"],
+            )
+            for group in groups_dict
+        ]
+
+        return UnregisteredRootSpansResponse(
+            groups=groups,
+            total_count=total_count,
+        )
+    except Exception as e:
+        logger.error(f"Error getting unregistered root spans: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
@@ -654,3 +715,5 @@ def delete_annotation_from_trace(
     except Exception as e:
         logger.error(f"Error annotating trace: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
