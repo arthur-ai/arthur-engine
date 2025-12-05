@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  Divider,
   FormControl,
   FormControlLabel,
   FormGroup,
@@ -17,7 +18,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import z from "zod";
 
 import { useEval } from "@/components/evaluators/hooks/useEval";
@@ -26,10 +27,11 @@ import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { VariableChip } from "@/components/evaluators/VariableChip";
 import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
+import TransformFormModal from "@/components/transforms/TransformFormModal";
 import { TraceTransform } from "@/components/transforms/types";
 import { getContentHeight } from "@/constants/layout";
-import { useDatasets } from "@/hooks/useDatasets";
 import { useTask } from "@/hooks/useTask";
 
 type Evaluator = {
@@ -39,7 +41,6 @@ type Evaluator = {
 };
 
 type Transform = {
-  datasetId: string | null;
   transformId: string | null;
 };
 
@@ -51,25 +52,27 @@ export const LiveEvalsNew = () => {
 
   const form = useAppForm({
     defaultValues: {
+      name: "",
+      description: "",
       evaluator: {
         name: null,
         version: null,
       } as Evaluator,
       transform: {
-        datasetId: null,
         transformId: null,
       } as Transform,
       mappings: {} as VariableMappings,
     },
     validators: {
       onChange: z.object({
+        name: z.string().min(1, "Name is required"),
+        description: z.string(),
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
           variables: z.record(z.string(), z.boolean()),
         }),
         transform: z.object({
-          datasetId: z.string().min(1, "Dataset ID is required"),
           transformId: z.string().min(1, "Transform ID is required"),
         }),
         mappings: z.record(z.string(), z.string().nullable()),
@@ -143,6 +146,49 @@ export const LiveEvalsNew = () => {
         </Stack>
       </Box>
       <Stack sx={{ p: 3, width: "100%", flex: 1, overflow: "auto" }} gap={2}>
+        <Typography variant="h6" color="text.primary" fontWeight="bold">
+          General Information
+        </Typography>
+        <form.AppField
+          name="name"
+          children={(field) => (
+            <TextField
+              autoFocus
+              label="Eval Name"
+              type="text"
+              fullWidth
+              variant="outlined"
+              required
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={field.state.meta.errors.length > 0}
+              helperText={field.state.meta.errors[0]?.message}
+            />
+          )}
+        />
+
+        <form.AppField
+          name="description"
+          children={(field) => (
+            <TextField
+              multiline
+              rows={3}
+              label="Description"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={field.state.meta.errors.length > 0}
+              helperText={field.state.meta.errors[0]?.message}
+            />
+          )}
+        />
+
+        <Divider sx={{ my: 2 }} />
+
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" />
 
         {evaluatorData && (
@@ -177,9 +223,16 @@ export const LiveEvalsNew = () => {
           </div>
         )}
 
+        <Divider sx={{ my: 2 }} />
+
         <TransformSelector taskId={task?.id ?? ""} form={form} fields="transform" />
 
-        {showMappingEditor && <VariableMappingEditor variables={allVariables} transform={selectedTransform} form={form} fields="mappings" />}
+        {showMappingEditor && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <VariableMappingEditor variables={allVariables} transform={selectedTransform} form={form} fields="mappings" />
+          </>
+        )}
       </Stack>
 
       <Box sx={{ p: 3, borderTop: 1, borderColor: "divider" }} className="mt-auto w-full">
@@ -221,7 +274,7 @@ const EvaluatorSelector = withFieldGroup({
     return (
       <Stack gap={2}>
         <Typography variant="h6" color="text.primary" fontWeight="bold">
-          Select an evaluator and a version
+          Evaluator and Version
         </Typography>
         <Stack direction="row" gap={2} width="100%">
           <group.AppField
@@ -265,83 +318,89 @@ const EvaluatorSelector = withFieldGroup({
 
 const TransformSelector = withFieldGroup({
   defaultValues: {
-    datasetId: null,
     transformId: null,
   } as Transform,
   props: {} as {
     taskId: string;
   },
   render: function Render({ group, taskId }) {
-    const [datasetId] = useStore(group.store, ({ values }) => [values.datasetId]);
+    const [openCreateTransformModal, setOpenCreateTransformModal] = useState(false);
+    const transforms = useTransforms(taskId ?? undefined);
 
-    const datasets = useDatasets(taskId, { page: 0, pageSize: 10, sortOrder: "desc" });
-    const transforms = useTransforms(datasetId ?? undefined);
+    const createTransform = useCreateTransformMutation(taskId, async (data) => {
+      await transforms.refetch();
+
+      setOpenCreateTransformModal(false);
+
+      group.setFieldValue("transformId", data.id);
+    });
 
     return (
-      <Stack gap={2}>
-        <Stack direction="row" gap={2} width="100%" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6" color="text.primary" fontWeight="bold">
-            Select a transform
-          </Typography>
-          <Button variant="contained" size="small" color="primary" startIcon={<AddIcon />} onClick={() => {}}>
-            Create New Transform
-          </Button>
+      <>
+        <Stack gap={2}>
+          <Stack direction="row" gap={2} width="100%" alignItems="center">
+            <Typography variant="h6" color="text.primary" fontWeight="bold">
+              Transform
+            </Typography>
+            <Button
+              loading={createTransform.isPending}
+              variant="contained"
+              disableElevation
+              size="small"
+              color="primary"
+              startIcon={<AddIcon />}
+              type="button"
+              onClick={() => {
+                setOpenCreateTransformModal(true);
+              }}
+              sx={{ ml: "auto" }}
+            >
+              Create New
+            </Button>
+          </Stack>
+          <Stack direction="row" gap={2} width="100%">
+            <group.AppField
+              name="transformId"
+              children={(field) => {
+                const selected = transforms.data?.find((transform) => transform.id === field.state.value);
+
+                return (
+                  <Autocomplete
+                    sx={{ flex: 1 }}
+                    loading={transforms.isLoading}
+                    options={transforms.data ?? []}
+                    multiple={false}
+                    value={selected ?? null}
+                    onChange={(_, value) => {
+                      field.handleChange(value?.id ?? "");
+                    }}
+                    getOptionLabel={(option) => option.name}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    getOptionKey={(option) => option.id}
+                    renderInput={(params) => <TextField {...params} label="Transform" />}
+                  />
+                );
+              }}
+            />
+          </Stack>
         </Stack>
-        <Stack direction="row" gap={2} width="100%">
-          <group.AppField
-            name="datasetId"
-            listeners={{
-              onChange: () => {
-                group.setFieldValue("transformId", null);
-              },
-            }}
-            children={(field) => {
-              const selected = datasets.datasets.find((dataset) => dataset.id === field.state.value);
-
-              return (
-                <Autocomplete
-                  sx={{ flex: 1 }}
-                  value={selected}
-                  loading={datasets.isLoading}
-                  options={datasets.datasets}
-                  onChange={(_, value) => {
-                    field.handleChange(value?.id ?? "");
-                  }}
-                  getOptionLabel={(option) => option.name}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  getOptionKey={(option) => option.id}
-                  renderInput={(params) => <TextField {...params} label="Dataset" />}
-                />
-              );
-            }}
-          />
-
-          <group.AppField
-            name="transformId"
-            children={(field) => {
-              const selected = transforms.data?.find((transform) => transform.id === field.state.value);
-
-              return (
-                <Autocomplete
-                  sx={{ flex: 1 }}
-                  loading={transforms.isLoading}
-                  options={transforms.data ?? []}
-                  multiple={false}
-                  value={selected}
-                  onChange={(_, value) => {
-                    field.handleChange(value?.id ?? "");
-                  }}
-                  getOptionLabel={(option) => option.name}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  getOptionKey={(option) => option.id}
-                  disabled={!datasetId}
-                  renderInput={(params) => <TextField {...params} label="Transform" />}
-                />
-              );
-            }}
-          />
-        </Stack>
-      </Stack>
+        <TransformFormModal
+          open={openCreateTransformModal}
+          onClose={() => {
+            setOpenCreateTransformModal(false);
+          }}
+          onSubmit={async (name, description, definition) =>
+            void createTransform.mutateAsync({
+              name,
+              description,
+              definition,
+            })
+          }
+          isLoading={createTransform.isPending}
+          taskId={taskId}
+          initialTransform={undefined}
+        />
+      </>
     );
   },
 });
@@ -362,7 +421,7 @@ const VariableMappingEditor = withFieldGroup({
       <Stack gap={2}>
         <Stack direction="row" gap={2} alignItems="center" justifyContent="space-between">
           <Typography variant="h6" color="text.primary" fontWeight="bold">
-            Map variables to columns
+            Map eval variables to transform variables
           </Typography>
           <Chip
             label={`${mappedCount}/${variables.length} mapped`}
