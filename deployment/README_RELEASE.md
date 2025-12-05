@@ -12,7 +12,8 @@
 ## Production Release
 1. After the dev release pipeline has succeeded, create a PR to merge `dev` into `main`
 2. **Important**: The version bump commit must be the most recent commit in this PR, or the release won't be triggered
-3. Merge the PR to trigger the production release
+3. Merge the PR to trigger the production release. **Important** the merge commit must have the same title as the version bump commit,
+   or the release won't be triggered.
 4. Let Madeleine know to publish the release notes on GitHub.
 
 > **Note**: The version bump commit requirement prevents unintended commits from being included in the release.
