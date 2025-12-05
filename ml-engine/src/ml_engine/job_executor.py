@@ -13,6 +13,7 @@ from arthur_client.api_bindings import (
     CreateModelLinkTaskJobSpec,
     CustomAggregationsV1Api,
     CustomAggregationTestsV1Api,
+    DataPlanesV1Api,
     DataRetrievalV1Api,
     DatasetsV1Api,
     JobKind,
@@ -59,6 +60,10 @@ from job_executors.task_management_job_executors import (
     LinkTaskJobExecutor,
     RegenerateTaskValidationKeyJobExecutor,
     UpdateTaskJobExecutor,
+)
+from job_executors.unregistered_agents_job_executor import (
+    FetchUnregisteredAgentsJobExecutor,
+    FetchUnregisteredAgentsJobSpec,
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
@@ -125,6 +130,7 @@ class JobExecutor:
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
+        self.data_planes_client = DataPlanesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
         self.logger.setLevel(logging.INFO)
@@ -341,7 +347,18 @@ class JobExecutor:
                             self.logger,
                         ).execute(job.job_spec.actual_instance)
                     case _:
-                        raise NotImplementedError(f"Job type {job.kind} not supported.")
+                        # Handle FETCH_UNREGISTERED_AGENTS which may not be in the generated JobKind enum yet
+                        if str(job.kind) == "fetch_unregistered_agents" or job.kind.value == "fetch_unregistered_agents":
+                            job_spec = FetchUnregisteredAgentsJobSpec.model_validate(
+                                JobSpecRawParser(job_resp.raw_data)._parse_job_spec_field()
+                            )
+                            FetchUnregisteredAgentsJobExecutor(
+                                self.data_planes_client,
+                                self.tasks_client,
+                                self.logger,
+                            ).execute(job_spec)
+                        else:
+                            raise NotImplementedError(f"Job type {job.kind} not supported.")
                 self.logger.info(f"Job {job.id} - {job.kind} completed")
                 return JobState.COMPLETED
             except Exception as e:
