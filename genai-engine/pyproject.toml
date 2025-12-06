@@ -108,7 +108,7 @@ pre-commit = "4.5.0"
 
 
 [tool.poetry.group.performance.dependencies]
-locust = "2.41.6"
+locust = "2.42.6"
 black = "25.11.0"
 mypy = "^1.13.0"
 isort = "^7.0.0"
