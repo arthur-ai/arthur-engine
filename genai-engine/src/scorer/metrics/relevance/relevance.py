@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from arthur_common.models.enums import MetricType
 from arthur_common.models.metric_schemas import (
@@ -9,7 +9,9 @@ from arthur_common.models.metric_schemas import (
 )
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
+from langchain_core.runnables import RunnableSerializable
 from pydantic import BaseModel, Field
+from torch import Tensor
 
 from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricScoreDetails
@@ -45,9 +47,17 @@ class RelevanceResponseSchema(BaseModel):
     )
 
 
-def get_relevance_chain(metric_type: MetricType, temperature: float = 0.0):
+def get_relevance_chain(
+    metric_type: MetricType,
+    temperature: float = 0.0,
+) -> RunnableSerializable[dict[str, str | None], RelevanceResponseSchema]:
     """Get the appropriate relevance chain based on metric type and structured output support"""
     model = get_llm_executor().get_gpt_model(chat_temperature=temperature)
+    if model is None:
+        raise RuntimeError(
+            f"Failed to initialize LLM model for {metric_type}. "
+            "Check your LLM configuration.",
+        )
 
     # Select template based on metric type
     if metric_type == MetricType.QUERY_RELEVANCE:
@@ -62,7 +72,7 @@ def get_relevance_chain(metric_type: MetricType, temperature: float = 0.0):
     # Use structured outputs if supported, otherwise fall back to legacy
     if get_llm_executor().supports_structured_outputs():
         pt = PromptTemplate(input_variables=input_vars, template=structured_template)
-        return pt | model.with_structured_output(RelevanceResponseSchema)
+        return pt | model.with_structured_output(RelevanceResponseSchema)  # type: ignore[return-value]
     else:
         parser = JsonOutputParser(pydantic_object=RelevanceResponseSchema)
         pt = PromptTemplate(
@@ -100,31 +110,35 @@ class BaseRelevanceScorer(MetricScorer):
 
             # Get reranker score
             if self.relevance_reranker is not None:
-                res = self.relevance_reranker(model_input)
+                res: dict[str, float] = self.relevance_reranker(model_input)  # type: ignore[assignment, arg-type]
                 reranker_score = res["score"]
 
             # Get BERT score
-            if self.bert_scorer is not None:
-                bert_f_score = self._get_bert_score(model_input)
+            bert_f_score = self._get_bert_score(model_input)
 
         return bert_f_score, reranker_score
 
-    def _get_bert_score(self, model_input: dict) -> Optional[float]:
+    def _get_bert_score(self, model_input: dict[str, str | None]) -> float | None:
         """Get BERT score using the same input format as reranker"""
+        if not self.bert_scorer:
+            raise ValueError("BERT scorer is not available.")
         try:
             _, _, f = self.bert_scorer.score(
                 [model_input["text_pair"]],
                 [model_input["text"]],
                 verbose=False,
             )
-            return float(f.mean(dim=0))
+            if isinstance(f, Tensor):
+                return float(f.mean(dim=0))
+            else:
+                return None  # TODO: What should we do when score returns tuple[Tensor, Tensor, Tensor]?
         except Exception:
             return None
 
     def _get_llm_scores(
         self,
         request: MetricRequest,
-    ) -> Tuple[Optional[float], Optional[str], Optional[str], int, int]:
+    ) -> tuple[float | None, str | None, str | None, int, int]:
         """Get scores from LLM judge"""
         relevance_chain = get_relevance_chain(self.metric_type)
         chain_call = lambda: relevance_chain.invoke(self._build_llm_input(request))
@@ -203,15 +217,15 @@ class BaseRelevanceScorer(MetricScorer):
         else:
             raise ValueError(f"Invalid metric type: {self.metric_type}")
 
-    def _build_model_input(self, request: MetricRequest) -> dict:
+    def _build_model_input(self, request: MetricRequest) -> dict[str, str | None]:
         """Build input for both reranker and BERT models"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    def _build_llm_input(self, request: MetricRequest) -> dict:
+    def _build_llm_input(self, request: MetricRequest) -> dict[str, str | None]:
         """Build input for the LLM judge"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    def score(self, request: MetricRequest, config: dict) -> MetricResult:
+    def score(self, request: MetricRequest, config: dict[str, Any]) -> MetricResult:
         """Generic scoring method that works for both query and response relevance"""
         use_llm_judge = config.get("use_llm_judge", True)
 
@@ -268,13 +282,13 @@ class BaseRelevanceScorer(MetricScorer):
 class UserQueryRelevanceScorer(BaseRelevanceScorer):
     """Scorer for evaluating user query relevance against system prompt"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(MetricType.QUERY_RELEVANCE)
 
-    def _build_model_input(self, request: MetricRequest) -> dict:
+    def _build_model_input(self, request: MetricRequest) -> dict[str, str | None]:
         return {"text": request.system_prompt, "text_pair": request.user_query}
 
-    def _build_llm_input(self, request: MetricRequest) -> dict:
+    def _build_llm_input(self, request: MetricRequest) -> dict[str, str | None]:
         return {
             "user_query": request.user_query,
             "system_prompt": request.system_prompt,
@@ -284,16 +298,16 @@ class UserQueryRelevanceScorer(BaseRelevanceScorer):
 class ResponseRelevanceScorer(BaseRelevanceScorer):
     """Scorer for evaluating response relevance against system prompt and user query"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(MetricType.RESPONSE_RELEVANCE)
 
-    def _build_model_input(self, request: MetricRequest) -> dict:
+    def _build_model_input(self, request: MetricRequest) -> dict[str, str | None]:
         return {
             "text": f"System Prompt: {request.system_prompt} \n User Query: {request.user_query}",
             "text_pair": request.response,
         }
 
-    def _build_llm_input(self, request: MetricRequest) -> dict:
+    def _build_llm_input(self, request: MetricRequest) -> dict[str, str | None]:
         return {
             "user_query": request.user_query,
             "system_prompt": request.system_prompt,

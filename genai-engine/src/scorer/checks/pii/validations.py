@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional, Set
 
 # Global cache for generic name exclusions
-_generic_name_exclusions = None
+_generic_name_exclusions: Set[str] | None = None
 
 
 def get_generic_name_exclusions() -> Set[str]:
@@ -301,10 +301,10 @@ def _validate_credit_card_format(text: str) -> bool:
 def _validate_crypto_format(text: str) -> bool:
     """Validate crypto wallet address format."""
     # No spaces, alphanumeric only, minimum length
-    return (
+    return bool(
         " " not in text
         and re.fullmatch(r"[a-zA-Z0-9]+", text)
-        and len(re.sub(r"[^\w\d]", "", text)) >= 25
+        and len(re.sub(r"[^\w\d]", "", text)) >= 25,
     )
 
 
@@ -409,7 +409,7 @@ def _validate_location_keywords(text: str) -> bool:
 # ========================================
 
 
-def get_validation_configs():
+def get_validation_configs() -> dict[str, ValidationConfig]:
     """Define validation configurations for all entity types."""
     return {
         "phone": ValidationConfig(
@@ -590,7 +590,7 @@ def get_validation_configs():
 # These are kept separate as they require specialized pattern detection
 
 
-def get_linguistic_pattern_categories():
+def get_linguistic_pattern_categories() -> dict[str, Set[str]]:
     """Define linguistic pattern categories for name validation."""
     return {
         "possessive_pronouns": {"my", "your", "his", "her", "its", "our", "their"},
@@ -709,7 +709,11 @@ def contains_pronoun_generic_patterns(text: str, generic_exclusions: Set[str]) -
     )
 
 
-def _detect_possessive_generic_pattern(tokens, patterns, generic_exclusions):
+def _detect_possessive_generic_pattern(
+    tokens: list[str],
+    patterns: dict[str, Set[str]],
+    generic_exclusions: Set[str],
+) -> bool:
     """Detect possessive pronoun + [adjective] + generic term patterns."""
     if tokens[0] not in patterns["possessive_pronouns"]:
         return False
@@ -721,7 +725,11 @@ def _detect_possessive_generic_pattern(tokens, patterns, generic_exclusions):
     return False
 
 
-def _detect_determiner_generic_pattern(tokens, patterns, generic_exclusions):
+def _detect_determiner_generic_pattern(
+    tokens: list[str],
+    patterns: dict[str, Set[str]],
+    generic_exclusions: Set[str],
+) -> bool:
     """Detect determiner + [adjective] + generic term patterns."""
     if tokens[0] not in patterns["determiners"]:
         return False
@@ -743,7 +751,11 @@ def _detect_determiner_generic_pattern(tokens, patterns, generic_exclusions):
     return False
 
 
-def _detect_quantifier_generic_pattern(tokens, patterns, generic_exclusions):
+def _detect_quantifier_generic_pattern(
+    tokens: list[str],
+    patterns: dict[str, Set[str]],
+    generic_exclusions: Set[str],
+) -> bool:
     """Detect quantifier + [adjective] + generic term patterns."""
     if tokens[0] not in patterns["quantifiers"]:
         return False
@@ -755,7 +767,11 @@ def _detect_quantifier_generic_pattern(tokens, patterns, generic_exclusions):
     return False
 
 
-def _detect_of_possessive_pattern(tokens, patterns, generic_exclusions):
+def _detect_of_possessive_pattern(
+    tokens: list[str],
+    patterns: dict[str, Set[str]],
+    generic_exclusions: Set[str],
+) -> bool:
     """Detect generic term + 'of' + possessive patterns."""
     if len(tokens) < 3 or tokens[1] != "of":
         return False
@@ -765,12 +781,19 @@ def _detect_of_possessive_pattern(tokens, patterns, generic_exclusions):
     )
 
 
-def _detect_compound_generic_pattern(tokens, generic_exclusions):
+def _detect_compound_generic_pattern(
+    tokens: list[str],
+    generic_exclusions: Set[str],
+) -> bool:
     """Detect compound generic term patterns."""
     return len(tokens) == 2 and all(t in generic_exclusions for t in tokens)
 
 
-def _detect_generic_dominance_pattern(tokens, patterns, generic_exclusions):
+def _detect_generic_dominance_pattern(
+    tokens: list[str],
+    patterns: dict[str, Set[str]],
+    generic_exclusions: Set[str],
+) -> bool:
     """Detect patterns where generic terms dominate the phrase."""
     generic_count = sum(1 for t in tokens if t in generic_exclusions)
     non_generic_count = len(tokens) - generic_count

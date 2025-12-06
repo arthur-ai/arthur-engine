@@ -34,17 +34,28 @@ class KeywordScorer(RuleScorer):
     def score(self, request: ScoreRequest) -> RuleScore:
         """checks if request contains any bad keywords"""
         text = request.scoring_text
-
         failed_keywords = []
         keyword_found = False
-        for keyword in request.keyword_list:
+        reason = constants.KEYWORD_NO_MATCHES_MESSAGE
+
+        if not text:
+            return RuleScore(
+                result=RuleResultEnum.PASS,
+                details=ScorerRuleDetails(
+                    message=reason,
+                    keywords=[],
+                ),
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
+
+        for keyword in request.keyword_list or []:
             keyword_pattern = get_keyword_regex_pattern(keyword)
 
             if re.search(keyword_pattern, text, flags=re.IGNORECASE):
                 failed_keywords.append(keyword)
                 keyword_found = True
 
-        reason = constants.KEYWORD_NO_MATCHES_MESSAGE
         if failed_keywords:
             reason = constants.KEYWORD_MATCHES_MESSAGE
 

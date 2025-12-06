@@ -16,6 +16,7 @@ from langchain_openai import (
     OpenAIEmbeddings,
 )
 from opentelemetry import trace
+from pydantic.types import SecretStr
 
 from config.openai_config import GenaiEngineOpenAIProvider, OpenAISettings
 from schemas.custom_exceptions import (
@@ -34,19 +35,19 @@ llm_executor = None
 
 tracer = trace.get_tracer(__name__)
 
-DEFAULT_TEMPERATURE = 0.0
+DEFAULT_TEMPERATURE: float = 0.0
 
 
 class LLMTokensPerPeriodRateLimiter:
-    def __init__(self, rate_limit=20000, period_seconds=60):
-        self.calls = []
+    def __init__(self, rate_limit: int = 20000, period_seconds: int = 60) -> None:
+        self.calls: list[tuple[datetime.datetime, int]] = []
         self.rate_limit = rate_limit
         self.period_milliseconds = period_seconds * 1000
 
-    def add_request(self, token_consumption: LLMTokenConsumption):
+    def add_request(self, token_consumption: LLMTokenConsumption) -> None:
         self.calls.append((dt.now(), token_consumption.total_tokens()))
 
-    def request_allowed(self):
+    def request_allowed(self) -> bool:
         t = dt.now()
         self.calls = [
             c
@@ -90,7 +91,7 @@ class LLMExecutor:
     @staticmethod
     def _get_random_connection_details(
         contract: str,
-    ) -> tuple[str | None, str | None, str | None]:
+    ) -> tuple[str | None, str | None, SecretStr | None]:
         """Parse and randomly select an LLM connection string in the format:
         "model_name::example.com::api_key, model_name2::example.com2::api_key2"
 
@@ -103,25 +104,27 @@ class LLMExecutor:
         try:
             random_model = random.choice(contract.strip().split(","))
             model_name, endpoint, api_key = random_model.strip().split("::")
-
-            model_name = model_name if model_name else None
-            endpoint = endpoint if endpoint else None
-            api_key = api_key if api_key else None
         except (ValueError, IndexError, AttributeError):
             logger.warning(f"LLM connection string could not be parsed: {contract}")
-            model_name, endpoint, api_key = None, None, None
-        return model_name, endpoint, api_key
+            return None, None, None
+        return (
+            model_name if model_name else None,
+            endpoint if endpoint else None,
+            SecretStr(api_key) if api_key else None,
+        )
 
     def get_gpt_model(
         self,
-        chat_temperature=DEFAULT_TEMPERATURE,
-    ) -> AzureChatOpenAI | ChatOpenAI:
-        model_name, endpoint, key = self._get_random_connection_details(self.gpt_hosts)
+        chat_temperature: float = DEFAULT_TEMPERATURE,
+    ) -> AzureChatOpenAI | ChatOpenAI | None:
+        model_name, endpoint, key = self._get_random_connection_details(
+            self.gpt_hosts or "",
+        )
         if not model_name or not key:
             return None
         elif self.azure_openai_enabled:
             return AzureChatOpenAI(
-                deployment_name=model_name,
+                azure_deployment=model_name,
                 azure_endpoint=endpoint,
                 api_key=key,
                 temperature=chat_temperature,
@@ -150,6 +153,7 @@ class LLMExecutor:
                     api_key=key,
                     temperature=chat_temperature,
                 )
+        return None
 
     def get_gpt_model_token_limit(self) -> int:
         model = self.get_gpt_model()
@@ -159,12 +163,9 @@ class LLMExecutor:
 
         if (
             self.azure_openai_enabled
-            and model.deployment_name
-            in constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS
+            and model.model_name in constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS
         ):
-            return constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[
-                model.deployment_name
-            ]
+            return constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[model.model_name]
         elif (
             self.openai_enabled
             and model.model_name in constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS
@@ -180,9 +181,7 @@ class LLMExecutor:
             return False
 
         if self.azure_openai_enabled:
-            return (
-                model.deployment_name in constants.AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS
-            )
+            return model.model_name in constants.AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS
         elif self.openai_enabled:
             return model.model_name in constants.OPENAI_STRUCTURED_OUTPUT_MODELS
 
@@ -190,14 +189,19 @@ class LLMExecutor:
 
     def get_embeddings_model(self) -> AzureOpenAIEmbeddings | OpenAIEmbeddings | None:
         model_name, endpoint, key = self._get_random_connection_details(
-            self.embeddings_hosts,
+            self.embeddings_hosts or "",
         )
-        model = None
+        if not model_name:
+            raise ValueError(
+                "Model name is required for OpenAI embeddings. \
+                Properly set up the GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS environment variable.",
+            )
+        model: AzureOpenAIEmbeddings | OpenAIEmbeddings | None = None
         if self.azure_openai_enabled:
             model = AzureOpenAIEmbeddings(
-                deployment=model_name,
+                model=model_name,
                 azure_endpoint=endpoint,
-                openai_api_key=key,
+                api_key=key,
             )
         elif self.openai_enabled:
             model = OpenAIEmbeddings(
@@ -275,7 +279,7 @@ class LLMExecutor:
 
 def get_llm_executor() -> LLMExecutor:
     global llm_executor
-    openai_config = OpenAISettings(
+    openai_config = OpenAISettings(  # type: ignore[call-arg]
         _env_file=os.environ.get("OPENAI_CONFIG_FILE", ".env"),
     )
     if llm_executor is None:
@@ -284,10 +288,16 @@ def get_llm_executor() -> LLMExecutor:
 
 
 def validate_llm_connection() -> None:
-    get_llm_executor().get_gpt_model().invoke("Return 1")
+    model = get_llm_executor().get_gpt_model()
+    if model is None:
+        raise RuntimeError(
+            "Failed to initialize LLM model for validate_llm_connection. "
+            "Check your LLM configuration.",
+        )
+    model.invoke("Return 1")
 
 
-def handle_llm_exception(e) -> RuleScore:
+def handle_llm_exception(e: Exception) -> RuleScore:
     error_message = constants.ERROR_DEFAULT_RULE_ENGINE
     if isinstance(e, LLMContentFilterException):
         error_message = str(e)

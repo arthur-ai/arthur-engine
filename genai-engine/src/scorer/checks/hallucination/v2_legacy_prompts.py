@@ -7,12 +7,20 @@ from langchain_core.prompts import (
 )
 
 
-def get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction):
+def get_flagging_prompt(
+    flagging_examples: list[dict[str, str]],
+    flagging_instruction: str,
+    end_instruction: str,
+) -> ChatPromptTemplate:
     flagging_example_template = PromptTemplate.from_template(
         "\n=\nContext: {context}\n{num_texts} Texts\n{text_list_str}\n{num_texts} Labels: ",
     )
 
-    flagging_prompt_template_messages = [
+    flagging_prompt_template_messages: list[
+        SystemMessagePromptTemplate
+        | HumanMessagePromptTemplate
+        | AIMessagePromptTemplate
+    ] = [
         SystemMessagePromptTemplate.from_template(flagging_instruction),
     ]
 
@@ -37,7 +45,7 @@ def get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction
     return flag_text_batch_template
 
 
-def get_claim_flagging_prompt():
+def get_claim_flagging_prompt() -> ChatPromptTemplate:
     flagging_examples = [
         {
             "context": "There are two dogs eating my shoes and it hurts",
@@ -93,8 +101,8 @@ def get_claim_flagging_prompt():
     return get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction)
 
 
-def get_flagged_claim_explanation_prompt():
-    explanation_examples = [
+def get_flagged_claim_explanation_prompt() -> ChatPromptTemplate:
+    explanation_examples: list[dict[str, str]] = [
         {
             "context": "There are two dogs eating my shoes and it hurts",
             "flagged_claim": "it does not hurt",
@@ -127,7 +135,7 @@ def get_flagged_claim_explanation_prompt():
         },
     ]
 
-    explanation_instruction = """
+    explanation_instruction: str = """
     You explained why claims were flagged as unsupported by the contexts they were evaluated against.
     The reader needed to be able to understand in a lot of detail which parts of the claims were OK,
     and which parts of the claims lacked evidence within the context, and why the evidence was lacking.
@@ -141,7 +149,11 @@ def get_flagged_claim_explanation_prompt():
         "\n=\nContext: {context}\nFlagged Claim: {claim}\nExplanation: ",
     )
 
-    explanation_prompt_template_messages = [
+    explanation_prompt_template_messages: list[
+        SystemMessagePromptTemplate
+        | HumanMessagePromptTemplate
+        | AIMessagePromptTemplate
+    ] = [
         SystemMessagePromptTemplate.from_template(explanation_instruction),
     ]
 
