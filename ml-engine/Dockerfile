@@ -74,6 +74,11 @@ RUN mkdir -p /genai_client
 COPY src/genai_client /genai_client
 RUN poetry run pip install /genai_client
 
+# copy and install the arthur client
+RUN mkdir -p /arthur_client_package
+COPY src/arthur_client_package/*.whl /arthur_client_package/
+RUN poetry run pip install /arthur_client_package/*.whl
+
 # Final Stage(s): Create ml-engine image
 FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
 

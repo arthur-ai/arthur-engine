@@ -104,7 +104,7 @@ class JobSpecRawParser:
 class JobExecutor:
     def __init__(self) -> None:
         ssl_verify = Config.get_bool("KEYCLOAK_SSL_VERIFY", True)
-        sess = ArthurClientCredentialsAPISession(
+        self.session = ArthurClientCredentialsAPISession(
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
             metadata=ArthurOIDCMetadata(
@@ -115,7 +115,7 @@ class JobExecutor:
         )
         client = ApiClient(
             configuration=ArthurOAuthSessionAPIConfiguration(
-                session=sess,
+                session=self.session,
                 verify_ssl=ssl_verify,
             ),
         )
@@ -353,8 +353,7 @@ class JobExecutor:
                                 JobSpecRawParser(job_resp.raw_data)._parse_job_spec_field()
                             )
                             FetchUnregisteredAgentsJobExecutor(
-                                self.data_planes_client,
-                                self.tasks_client,
+                                self.session,
                                 self.logger,
                             ).execute(job_spec)
                         else:
