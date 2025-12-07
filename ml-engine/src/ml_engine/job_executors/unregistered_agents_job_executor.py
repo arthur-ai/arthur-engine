@@ -98,7 +98,7 @@ class FetchUnregisteredAgentsJobExecutor:
             return []
 
     def _fetch_all_tasks(self, connector: EngineInternalConnector) -> List[Dict[str, Any]]:
-        """Fetch all tasks from genai-engine."""
+        """Fetch all tasks from genai-engine with their span counts."""
         try:
             # Call the tasks list endpoint via the tasks client
             # Method returns List[TaskResponse] directly
@@ -107,16 +107,34 @@ class FetchUnregisteredAgentsJobExecutor:
             # Convert to list of dicts - task_list is already a list
             tasks = []
             for task in task_list:
+                task_id = str(task.id)
+                # Get span count for this task
+                span_count = self._get_span_count_for_task(connector, task_id)
                 tasks.append({
-                    "task_id": str(task.id),
+                    "task_id": task_id,
                     "task_name": task.name,
+                    "span_count": span_count,
                 })
             
-            self.logger.info(f"Fetched {len(tasks)} tasks")
+            self.logger.info(f"Fetched {len(tasks)} tasks with span counts")
             return tasks
         except Exception as e:
             self.logger.error(f"Failed to fetch tasks: {e}")
             return []
+
+    def _get_span_count_for_task(self, connector: EngineInternalConnector, task_id: str) -> int:
+        """Get the span count for a specific task."""
+        try:
+            # Query spans for this task with page_size=1 to just get the count
+            response = connector._spans_client.list_spans_metadata_api_v1_traces_spans_get(
+                task_ids=[task_id],
+                page=0,
+                page_size=1,  # We only need the count, not the actual spans
+            )
+            return response.count
+        except Exception as e:
+            self.logger.warning(f"Failed to get span count for task {task_id}: {e}")
+            return 0
 
     def _format_unregistered_agents(
         self,
@@ -147,7 +165,7 @@ class FetchUnregisteredAgentsJobExecutor:
                     "top_level_span_name": None,
                 },
                 "first_detected": datetime.now(timezone.utc).isoformat(),
-                "num_spans": 0,  # We don't have span count for tasks
+                "num_spans": task.get("span_count", 0),
             }
             agents.append(agent_data)
         
