@@ -144,7 +144,7 @@ class FetchUnregisteredAgentsJobExecutor:
                     page_size=1,  # We only need the count, not the actual spans
                 )
             )
-            return response.count
+            return int(response.count)
         except Exception as e:
             self.logger.warning(f"Failed to get span count for task {task_id}: {e}")
             return 0
