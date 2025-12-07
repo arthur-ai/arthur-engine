@@ -13,7 +13,6 @@ from arthur_client.api_bindings import (
     CreateModelLinkTaskJobSpec,
     CustomAggregationsV1Api,
     CustomAggregationTestsV1Api,
-    DataPlanesV1Api,
     DataRetrievalV1Api,
     DatasetsV1Api,
     JobKind,
@@ -104,7 +103,7 @@ class JobSpecRawParser:
 class JobExecutor:
     def __init__(self) -> None:
         ssl_verify = Config.get_bool("KEYCLOAK_SSL_VERIFY", True)
-        self.session = ArthurClientCredentialsAPISession(
+        sess = ArthurClientCredentialsAPISession(
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
             metadata=ArthurOIDCMetadata(
@@ -113,9 +112,10 @@ class JobExecutor:
             ),
             verify=ssl_verify,
         )
+        self.session = sess  # Store for use by job executors that need it
         client = ApiClient(
             configuration=ArthurOAuthSessionAPIConfiguration(
-                session=self.session,
+                session=sess,
                 verify_ssl=ssl_verify,
             ),
         )
@@ -130,7 +130,6 @@ class JobExecutor:
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
-        self.data_planes_client = DataPlanesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
         self.logger.setLevel(logging.INFO)
@@ -346,18 +345,16 @@ class JobExecutor:
                             self.connector_constructor,
                             self.logger,
                         ).execute(job.job_spec.actual_instance)
+                    case JobKind.FETCH_UNREGISTERED_AGENTS:
+                        job_spec = FetchUnregisteredAgentsJobSpec.model_validate(
+                            JobSpecRawParser(job_resp.raw_data)._parse_job_spec_field()
+                        )
+                        FetchUnregisteredAgentsJobExecutor(
+                            self.session,
+                            self.logger,
+                        ).execute(job_spec)
                     case _:
-                        # Handle FETCH_UNREGISTERED_AGENTS which may not be in the generated JobKind enum yet
-                        if str(job.kind) == "fetch_unregistered_agents" or job.kind.value == "fetch_unregistered_agents":
-                            job_spec = FetchUnregisteredAgentsJobSpec.model_validate(
-                                JobSpecRawParser(job_resp.raw_data)._parse_job_spec_field()
-                            )
-                            FetchUnregisteredAgentsJobExecutor(
-                                self.session,
-                                self.logger,
-                            ).execute(job_spec)
-                        else:
-                            raise NotImplementedError(f"Job type {job.kind} not supported.")
+                        raise NotImplementedError(f"Job type {job.kind} not supported.")
                 self.logger.info(f"Job {job.id} - {job.kind} completed")
                 return JobState.COMPLETED
             except Exception as e:
