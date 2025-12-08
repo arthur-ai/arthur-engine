@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
 
 # install Microsoft ODBC Drivers 17 and 18
 RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/msprod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
-      > /etc/apt/sources.list.d/msprod.list && \
+    > /etc/apt/sources.list.d/msprod.list && \
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/msprod.gpg && \
     apt-get update && \
     ACCEPT_EULA=Y apt-get install -y msodbcsql18 msodbcsql17 mssql-tools18 && \
@@ -34,16 +34,16 @@ RUN set -eux; \
     DRV18="$(basename /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-*.so* | head -n1)"; \
     DRV17="$(basename /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-*.so* | head -n1)"; \
     printf '%s\n' \
-      "[ODBC Driver 18 for SQL Server]" \
-      "Description=Microsoft ODBC Driver 18 for SQL Server" \
-      "Driver=/opt/microsoft/msodbcsql18/lib64/${DRV18}" \
-      "UsageCount=1" \
-      "" \
-      "[ODBC Driver 17 for SQL Server]" \
-      "Description=Microsoft ODBC Driver 17 for SQL Server" \
-      "Driver=/opt/microsoft/msodbcsql17/lib64/${DRV17}" \
-      "UsageCount=1" \
-      > /etc/odbcinst.ini
+    "[ODBC Driver 18 for SQL Server]" \
+    "Description=Microsoft ODBC Driver 18 for SQL Server" \
+    "Driver=/opt/microsoft/msodbcsql18/lib64/${DRV18}" \
+    "UsageCount=1" \
+    "" \
+    "[ODBC Driver 17 for SQL Server]" \
+    "Description=Microsoft ODBC Driver 17 for SQL Server" \
+    "Driver=/opt/microsoft/msodbcsql17/lib64/${DRV17}" \
+    "UsageCount=1" \
+    > /etc/odbcinst.ini
 
 # install Oracle Instant Client
 RUN mkdir -p /opt/oracle && \
@@ -73,11 +73,6 @@ COPY src/ml_engine /app/src/ml_engine
 RUN mkdir -p /genai_client
 COPY src/genai_client /genai_client
 RUN poetry run pip install /genai_client
-
-# copy and install the arthur client
-RUN mkdir -p /arthur_client_package
-COPY src/arthur_client_package/*.whl /arthur_client_package/
-RUN poetry run pip install /arthur_client_package/*.whl
 
 # Final Stage(s): Create ml-engine image
 FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
