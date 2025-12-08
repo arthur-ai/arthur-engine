@@ -8,7 +8,6 @@ from arthur_client.api_bindings import (
     AlertRulesV1Api,
     AlertsV1Api,
     ApiClient,
-    UnregisteredAgentsV1Api,
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
@@ -28,6 +27,7 @@ from arthur_client.api_bindings import (
     SchemaInspectionJobSpec,
     TasksV1Api,
     TestCustomAggregationJobSpec,
+    UnregisteredAgentsV1Api,
 )
 from arthur_client.auth import (
     ArthurClientCredentialsAPISession,
