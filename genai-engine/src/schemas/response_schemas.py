@@ -3,8 +3,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
+from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationResponse,
+    AgenticAnnotationMetadataResponse,
     ExternalInference,
     TokenCountCostSchema,
     TraceResponse,
@@ -192,9 +193,9 @@ class TraceMetadataResponse(TokenCountCostSchema):
         None,
         description="Root span output value from trace metadata",
     )
-    annotation: Optional[AgenticAnnotationResponse] = Field(
+    annotations: Optional[List[AgenticAnnotationMetadataResponse]] = Field(
         default=None,
-        description="Annotation for the trace.",
+        description="Annotations for the trace.",
     )
 
 
@@ -259,10 +260,10 @@ class UnregisteredRootSpansResponse(BaseModel):
     """Response for unregistered root spans endpoint"""
 
     groups: list[UnregisteredRootSpanGroup] = Field(
-        description="List of grouped root spans, ordered by count descending"
+        description="List of grouped root spans, ordered by count descending",
     )
     total_count: int = Field(
-        description="Total number of root spans (and traces) across all groups"
+        description="Total number of root spans (and traces) across all groups",
     )
 
 
@@ -753,17 +754,8 @@ class UnsavedPromptVariablesListResponse(BaseModel):
     )
 
 
-class TransformExtractionResponseVariable(BaseModel):
-    variable_name: str = Field(
-        description="Name of the extracted variable.",
-    )
-    value: str = Field(
-        description="Value of the extracted variable.",
-    )
-
-
 class TransformExtractionResponseList(BaseModel):
-    variables: list[TransformExtractionResponseVariable] = Field(
+    variables: list[VariableTemplateValue] = Field(
         description="List of extracted variables.",
     )
 
@@ -792,3 +784,8 @@ class ListContinuousEvalsResponse(BaseModel):
         description="List of continuous evals.",
     )
     count: int = Field(description="Total number of evals")
+
+
+class ContinuousEvalRerunResponse(BaseModel):
+    run_id: UUID = Field(description="ID of the continuous eval run that was rerun.")
+    trace_id: str = Field(description="ID of the trace that was rerun.")

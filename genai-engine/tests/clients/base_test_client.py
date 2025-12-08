@@ -37,6 +37,7 @@ from arthur_common.models.response_schemas import (
     ChatResponse,
     ExternalDocument,
     FileUploadResult,
+    ListAgenticAnnotationsMetadataResponse,
     QueryFeedbackResponse,
     QueryInferencesResponse,
     QuerySpansResponse,
@@ -97,6 +98,7 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    ContinuousEvalRerunResponse,
     ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionResponse,
@@ -2535,6 +2537,51 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_annotation_by_id(
+        self,
+        annotation_id: str,
+    ) -> tuple[int, AgenticAnnotation | str]:
+        """Get an annotation by id."""
+        resp = self.base_client.get(
+            f"/api/v1/traces/annotations/{annotation_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                AgenticAnnotation.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def list_agentic_annotations_for_trace(
+        self,
+        trace_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListAgenticAnnotationsMetadataResponse | str]:
+        """Get an annotation by id."""
+        base_url = f"/api/v1/traces/{trace_id}/annotations"
+        if search_url:
+            base_url = base_url + "?" + search_url
+
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsMetadataResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
     def trace_api_annotate_trace(
         self,
         trace_id: str,
@@ -3679,6 +3726,52 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 ListContinuousEvalsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_continuous_eval_run_results(
+        self,
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListAgenticAnnotationsMetadataResponse]:
+        """List continuous evals."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals/results"
+        if search_url:
+            base_url = base_url + "?" + search_url
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsMetadataResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def rerun_continuous_eval(
+        self,
+        run_id: str,
+    ) -> tuple[int, ContinuousEvalRerunResponse]:
+        """Rerun a continuous eval."""
+        resp = self.base_client.post(
+            f"/api/v1/continuous_evals/results/{run_id}/rerun",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalRerunResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

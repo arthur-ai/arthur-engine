@@ -200,8 +200,9 @@ def test_get_trace_requests_return_annotation_info(
     assert status_code == 200
     assert len(data.traces) == 1
     assert data.traces[0].trace_id == "api_trace1"
-    assert data.traces[0].annotation.annotation_score == 1
-    assert data.traces[0].annotation.annotation_description == "Test annotation"
+    assert len(data.traces[0].annotations) == 1
+    assert data.traces[0].annotations[0].annotation_score == 1
+    assert data.traces[0].annotations[0].annotation_type == "human"
 
     # Test filtering on only negative annotation scores
     status_code, data = client.trace_api_list_traces_metadata(
@@ -211,8 +212,9 @@ def test_get_trace_requests_return_annotation_info(
     assert status_code == 200
     assert len(data.traces) == 1
     assert data.traces[0].trace_id == "api_trace2"
-    assert data.traces[0].annotation.annotation_score == 0
-    assert data.traces[0].annotation.annotation_description == "Disliked annotation"
+    assert len(data.traces[0].annotations) == 1
+    assert data.traces[0].annotations[0].annotation_score == 0
+    assert data.traces[0].annotations[0].annotation_type == "human"
 
     # Cleanup
     status_code, _ = client.trace_api_delete_annotation_from_trace("api_trace1")

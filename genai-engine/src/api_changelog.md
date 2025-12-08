@@ -2,6 +2,37 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/08/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'annotation_score' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'annotation_score' response's property type/format changed from 'integer'/'' to ''/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  removed the required property 'variables/items/variable_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed the optional property 'annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed the optional property 'annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for Component/Schema:  removed the schema 'TransformExtractionResponseVariable'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/results/{run_id}/rerun  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'continuous_eval_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'cost' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'run_status' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added 'subschema #1, subschema #2' to the 'annotation_score' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the required property 'annotation_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'variables/items/name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations' to the response with the '200' status
+
 # 12/03/2025
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added

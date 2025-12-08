@@ -13,9 +13,12 @@ from arthur_common.models.common_schemas import (
     PIIConfig,
     RegexConfig,
     ToxicityConfig,
+    VariableTemplateValue,
 )
 from arthur_common.models.enums import (
+    AgenticAnnotationType,
     ComparisonOperatorEnum,
+    ContinuousEvalRunStatus,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
@@ -32,6 +35,7 @@ from arthur_common.models.request_schemas import (
     TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
+    AgenticAnnotationMetadataResponse,
     AgenticAnnotationResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
@@ -63,7 +67,7 @@ from arthur_common.models.response_schemas import (
 from fastapi import HTTPException
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, model_validator
 from pydantic_core import Url
 from weaviate.collections.classes.grpc import (
     METADATA,
@@ -586,18 +590,40 @@ class Task(BaseModel):
 class AgenticAnnotation(BaseModel):
     id: uuid.UUID = Field(..., description="Unique identifier for the annotation")
 
+    annotation_type: AgenticAnnotationType = Field(
+        ...,
+        description="Type of annotation",
+    )
+
     # NOTE: Make this optional in the future when expanding to other annotation types (e.g. span annotations)
     trace_id: str = Field(..., description="Trace ID this annotation belongs to")
 
-    annotation_score: int = Field(
-        ...,
+    continuous_eval_id: Optional[uuid.UUID] = Field(
+        default=None,
+        description="Continuous eval ID this annotation belongs to",
+    )
+
+    annotation_score: Optional[int] = Field(
+        default=None,
         ge=0,
         le=1,
-        description="Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)",
+        description="Binary score for positive or negative annotation.",
     )
     annotation_description: Optional[str] = Field(
         default=None,
         description="Description of the annotation",
+    )
+    input_variables: Optional[List[VariableTemplateValue]] = Field(
+        default=None,
+        description="Input variables for the continuous eval",
+    )
+    cost: Optional[float] = Field(
+        default=None,
+        description="Cost of the continuous eval run",
+    )
+    run_status: Optional[ContinuousEvalRunStatus] = Field(
+        default=None,
+        description="Status of the continuous eval run",
     )
 
     created_at: datetime = Field(
@@ -609,13 +635,31 @@ class AgenticAnnotation(BaseModel):
         description="When the annotation was last updated",
     )
 
+    @model_validator(mode="after")
+    def validate_required_fields(self) -> "AgenticAnnotation":
+        if self.annotation_type == AgenticAnnotationType.HUMAN:
+            if self.annotation_score is None:
+                raise ValueError("Annotation score is required")
+        elif self.annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
+            if self.continuous_eval_id is None:
+                raise ValueError("Continuous eval ID is required")
+            if self.run_status is None:
+                raise ValueError("Run status is required for continuous evals")
+
+        return self
+
     @staticmethod
     def from_db_model(db_annotation: DatabaseAgenticAnnotation) -> "AgenticAnnotation":
         return AgenticAnnotation(
             id=db_annotation.id,
+            annotation_type=AgenticAnnotationType(db_annotation.annotation_type),
             trace_id=db_annotation.trace_id,
+            continuous_eval_id=db_annotation.continuous_eval_id,
             annotation_score=db_annotation.annotation_score,
             annotation_description=db_annotation.annotation_description,
+            input_variables=db_annotation.input_variables,
+            run_status=db_annotation.run_status,
+            cost=db_annotation.cost,
             created_at=db_annotation.created_at,
             updated_at=db_annotation.updated_at,
         )
@@ -623,9 +667,46 @@ class AgenticAnnotation(BaseModel):
     def to_db_model(self) -> DatabaseAgenticAnnotation:
         return DatabaseAgenticAnnotation(
             id=self.id,
+            annotation_type=self.annotation_type,
             trace_id=self.trace_id,
+            continuous_eval_id=self.continuous_eval_id,
             annotation_score=self.annotation_score,
             annotation_description=self.annotation_description,
+            input_variables=self.input_variables,
+            cost=self.cost,
+            run_status=self.run_status,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_response_model(self) -> AgenticAnnotationResponse:
+        return AgenticAnnotationResponse(
+            id=str(self.id),
+            annotation_type=self.annotation_type,
+            trace_id=self.trace_id,
+            continuous_eval_id=(
+                str(self.continuous_eval_id) if self.continuous_eval_id else None
+            ),
+            annotation_score=self.annotation_score,
+            annotation_description=self.annotation_description,
+            input_variables=self.input_variables,
+            run_status=self.run_status,
+            cost=self.cost,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_metadata_response_model(self) -> AgenticAnnotationMetadataResponse:
+        return AgenticAnnotationMetadataResponse(
+            id=str(self.id),
+            annotation_type=self.annotation_type,
+            trace_id=self.trace_id,
+            continuous_eval_id=(
+                str(self.continuous_eval_id) if self.continuous_eval_id else None
+            ),
+            annotation_score=self.annotation_score,
+            run_status=self.run_status,
+            cost=self.cost,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -645,7 +726,7 @@ class TraceMetadata(TokenCountCostSchema):
     output_content: Optional[str] = None
 
     # Annotation information (separate table only used for response model conversion)
-    annotation: Optional[AgenticAnnotation] = None
+    annotations: Optional[List[AgenticAnnotation]] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
@@ -695,11 +776,11 @@ class TraceMetadata(TokenCountCostSchema):
         duration_ms = calculate_duration_ms(self.start_time, self.end_time)
 
         annotation_response = None
-        if self.annotation:
-            annotation_response = AgenticAnnotationResponse(
-                annotation_score=self.annotation.annotation_score,
-                annotation_description=self.annotation.annotation_description,
-            )
+        if self.annotations:
+            annotation_response = [
+                annotation.to_metadata_response_model()
+                for annotation in self.annotations
+            ]
 
         return TraceMetadataResponse(
             trace_id=self.trace_id,
@@ -720,7 +801,7 @@ class TraceMetadata(TokenCountCostSchema):
             total_token_cost=self.total_token_cost,
             input_content=self.input_content,
             output_content=self.output_content,
-            annotation=annotation_response,
+            annotations=annotation_response,
         )
 
 

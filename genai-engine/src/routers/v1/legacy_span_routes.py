@@ -278,7 +278,7 @@ def receive_traces(
     """Receive and process OpenInference trace data."""
     try:
         span_repo = _get_span_repository(db_session)
-        span_results = span_repo.create_traces(body)
+        _, span_results = span_repo.create_traces(body)
         return _create_response(*span_results)
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")
