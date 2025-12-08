@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { useApi } from "@/hooks/useApi";
 
 export function useDeleteTransformMutation(
-  datasetId: string | undefined,
+  taskId: string | undefined,
   onSuccess?: () => void
 ) {
   const api = useApi();
@@ -10,20 +11,19 @@ export function useDeleteTransformMutation(
 
   return useMutation({
     mutationFn: async (transformId: string) => {
-      if (!datasetId || !api) {
-        throw new Error("Dataset ID or API client not available");
+      if (!taskId || !api) {
+        throw new Error("Task ID or API client not available");
       }
 
-      const response = await api.api.deleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete(
-        datasetId,
+      const response = await api.api.deleteTransformApiV1TracesTransformsTransformIdDelete(
         transformId
       );
 
       return response.data;
     },
     onSuccess: () => {
-      if (datasetId) {
-        queryClient.invalidateQueries({ queryKey: ["transforms", datasetId] });
+      if (taskId) {
+        queryClient.invalidateQueries({ queryKey: ["transforms", taskId] });
       }
       onSuccess?.();
     },

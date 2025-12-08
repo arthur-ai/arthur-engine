@@ -2,7 +2,10 @@ import logging
 from typing import Optional
 
 from arthur_common.models.enums import PaginationSortMethod
-from arthur_common.models.response_schemas import TraceResponse
+from arthur_common.models.response_schemas import (
+    NestedSpanWithMetricsResponse,
+    TraceResponse,
+)
 
 from db_models import DatabaseTraceMetadata
 from schemas.internal_schemas import Span
@@ -32,7 +35,7 @@ class TreeBuildingService:
             }
 
         # Group spans by trace_id
-        traces_dict = {}
+        traces_dict: dict[str, list[Span]] = {}
         for span in spans:
             trace_id = span.trace_id
             if trace_id not in traces_dict:
@@ -119,14 +122,17 @@ class TreeBuildingService:
             traces.sort(key=lambda t: t.start_time, reverse=True)
         return traces
 
-    def _build_span_tree(self, spans: list[Span]) -> list:
+    def _build_span_tree(
+        self,
+        spans: list[Span],
+    ) -> list[NestedSpanWithMetricsResponse]:
         """Build a nested tree structure from a list of spans."""
         if not spans:
             return []
 
         # Create a mapping to store children for each span
-        children_by_parent = {}
-        root_spans = []
+        children_by_parent: dict[str, list[Span]] = {}
+        root_spans: list[Span] = []
 
         # First pass: identify parent-child relationships
         for span in spans:
@@ -141,7 +147,7 @@ class TreeBuildingService:
                 children_by_parent[parent_id].append(span)
 
         # Second pass: build nested structure recursively
-        def build_nested_span(span: Span):
+        def build_nested_span(span: Span) -> NestedSpanWithMetricsResponse:
             # Get children for this span (if any)
             children_spans = children_by_parent.get(span.span_id, [])
             children_spans.sort(key=lambda s: s.start_time)

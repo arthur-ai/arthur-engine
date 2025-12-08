@@ -106,10 +106,10 @@ from db_models import (
     DatabaseUser,
 )
 from db_models.dataset_models import (
-    DatabaseDatasetTransform,
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
@@ -117,6 +117,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchSettingConfigurationVersion,
     DatabaseRagSearchVersionTag,
 )
+from db_models.transform_models import DatabaseTraceTransform
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
@@ -131,15 +132,15 @@ from schemas.enums import (
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
-    DatasetTransformDefinition,
     NewDatasetRequest,
-    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
+    NewTraceTransformRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
+    TraceTransformDefinition,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
@@ -147,8 +148,8 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
+    ContinuousEvalResponse,
     DatasetResponse,
-    DatasetTransformResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
     DatasetVersionRowColumnItemResponse,
@@ -161,6 +162,7 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
+    TraceTransformResponse,
     TraceUserMetadataResponse,
     WeaviateHybridSearchSettingsConfigurationResponse,
     WeaviateKeywordSearchSettingsConfigurationResponse,
@@ -2064,6 +2066,22 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Filter by trace annotation score (0 or 1). Optional.",
     )
+    session_ids: Optional[list[str]] = Field(
+        None,
+        description="Session IDs to filter on. Optional.",
+    )
+    span_ids: Optional[list[str]] = Field(
+        None,
+        description="Span IDs to filter on. Optional.",
+    )
+    span_name: Optional[str] = Field(
+        None,
+        description="Return only results with this span name.",
+    )
+    span_name_contains: Optional[str] = Field(
+        None,
+        description="Return only results where span name contains this substring.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2093,11 +2111,17 @@ class TraceQuerySchema(BaseModel):
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+            user_ids=request.user_ids,
+            session_ids=request.session_ids,
+            span_ids=request.span_ids,
+            span_name=request.span_name,
+            span_name_contains=request.span_name_contains,
         )
 
 
 class Dataset(BaseModel):
     id: uuid.UUID
+    task_id: str
     created_at: datetime
     updated_at: datetime
     name: str
@@ -2108,6 +2132,7 @@ class Dataset(BaseModel):
     def to_response_model(self) -> DatasetResponse:
         return DatasetResponse(
             id=self.id,
+            task_id=self.task_id,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             name=self.name,
@@ -2119,6 +2144,7 @@ class Dataset(BaseModel):
     def _to_database_model(self) -> DatabaseDataset:
         return DatabaseDataset(
             id=self.id,
+            task_id=self.task_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             name=self.name,
@@ -2128,10 +2154,11 @@ class Dataset(BaseModel):
         )
 
     @staticmethod
-    def _from_request_model(request: NewDatasetRequest) -> "Dataset":
+    def _from_request_model(task_id: str, request: NewDatasetRequest) -> "Dataset":
         curr_time = datetime.now()
         return Dataset(
             id=uuid.uuid4(),
+            task_id=task_id,
             created_at=curr_time,
             updated_at=curr_time,
             name=request.name,
@@ -2144,6 +2171,7 @@ class Dataset(BaseModel):
     def _from_database_model(db_dataset: DatabaseDataset) -> "Dataset":
         return Dataset(
             id=db_dataset.id,
+            task_id=db_dataset.task_id,
             created_at=db_dataset.created_at,
             updated_at=db_dataset.updated_at,
             name=db_dataset.name,
@@ -2153,30 +2181,30 @@ class Dataset(BaseModel):
         )
 
 
-class DatasetTransform(BaseModel):
+class TraceTransform(BaseModel):
     id: uuid.UUID
-    dataset_id: uuid.UUID
+    task_id: str
     name: str
     description: Optional[str]
-    definition: DatasetTransformDefinition
+    definition: TraceTransformDefinition
     created_at: datetime
     updated_at: datetime
 
-    def to_response_model(self) -> DatasetTransformResponse:
-        return DatasetTransformResponse(
+    def to_response_model(self) -> TraceTransformResponse:
+        return TraceTransformResponse(
             id=self.id,
-            dataset_id=self.dataset_id,
+            task_id=self.task_id,
             name=self.name,
             description=self.description,
             definition=self.definition,
-            created_at=_serialize_datetime(self.created_at),
-            updated_at=_serialize_datetime(self.updated_at),
+            created_at=self.created_at,
+            updated_at=self.updated_at,
         )
 
-    def _to_database_model(self) -> DatabaseDatasetTransform:
-        return DatabaseDatasetTransform(
+    def to_db_model(self) -> DatabaseTraceTransform:
+        return DatabaseTraceTransform(
             id=self.id,
-            dataset_id=self.dataset_id,
+            task_id=self.task_id,
             name=self.name,
             description=self.description,
             definition=self.definition.model_dump(),
@@ -2185,14 +2213,14 @@ class DatasetTransform(BaseModel):
         )
 
     @staticmethod
-    def _from_request_model(
-        dataset_id: uuid.UUID,
-        request: NewDatasetTransformRequest,
-    ) -> "DatasetTransform":
+    def from_request_model(
+        task_id: str,
+        request: NewTraceTransformRequest,
+    ) -> "TraceTransform":
         curr_time = datetime.now()
-        return DatasetTransform(
+        return TraceTransform(
             id=uuid.uuid4(),
-            dataset_id=dataset_id,
+            task_id=task_id,
             name=request.name,
             description=request.description,
             definition=request.definition,
@@ -2201,16 +2229,16 @@ class DatasetTransform(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(
-        db_transform: DatabaseDatasetTransform,
-    ) -> "DatasetTransform":
-        return DatasetTransform(
+    def from_db_model(
+        db_transform: DatabaseTraceTransform,
+    ) -> "TraceTransform":
+        return TraceTransform(
             id=db_transform.id,
-            dataset_id=db_transform.dataset_id,
+            task_id=db_transform.task_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=DatasetTransformDefinition.model_validate(
-                db_transform.definition
+            definition=TraceTransformDefinition.model_validate(
+                db_transform.definition,
             ),
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
@@ -3256,4 +3284,58 @@ class RagSearchSettingConfiguration(BaseModel):
             ),
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
+        )
+
+
+class ContinuousEval(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: Optional[str]
+    task_id: str
+    llm_eval_name: str
+    llm_eval_version: int
+    transform_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    def to_db_model(self) -> DatabaseContinuousEval:
+        return DatabaseContinuousEval(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    @staticmethod
+    def from_db_model(
+        db_eval: DatabaseContinuousEval,
+    ) -> "ContinuousEval":
+        return ContinuousEval(
+            id=db_eval.id,
+            name=db_eval.name,
+            description=db_eval.description,
+            task_id=db_eval.task_id,
+            llm_eval_name=db_eval.llm_eval_name,
+            llm_eval_version=db_eval.llm_eval_version,
+            transform_id=db_eval.transform_id,
+            created_at=db_eval.created_at,
+            updated_at=db_eval.updated_at,
+        )
+
+    def to_response_model(self) -> ContinuousEvalResponse:
+        return ContinuousEvalResponse(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
         )

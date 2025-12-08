@@ -3,11 +3,12 @@ Filter service containing shared components for both trace-based and span-based 
 """
 
 import logging
-from typing import List, Optional
+from typing import Any
 
 from arthur_common.models.enums import ComparisonOperatorEnum, MetricType, ToolClassEnum
-from sqlalchemy import and_, exists, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import ColumnElement, and_, exists, func, select
+from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlalchemy.sql.elements import KeyedColumnElement
 from sqlalchemy.types import Float, Integer
 
 from db_models import DatabaseMetricResult, DatabaseSpan
@@ -36,7 +37,7 @@ class FilterService:
     # Filter Validation and Auto-Detection
     # ============================================================================
 
-    def auto_detect_span_types(self, filters: TraceQuerySchema) -> Optional[List[str]]:
+    def auto_detect_span_types(self, filters: TraceQuerySchema) -> list[str] | None:
         """Auto-detect required span types from filter presence."""
         if filters.span_types:
             return filters.span_types
@@ -53,9 +54,9 @@ class FilterService:
 
         return list(detected_types) if detected_types else None
 
-    def validate_filter_compatibility(self, filters: TraceQuerySchema) -> List[str]:
+    def validate_filter_compatibility(self, filters: TraceQuerySchema) -> list[str]:
         """Validate filter combinations and return any compatibility issues."""
-        issues = []
+        issues: list[str] = []
         span_types = self.auto_detect_span_types(filters)
 
         if not span_types:
@@ -90,6 +91,9 @@ class FilterService:
         return bool(
             filters.tool_name
             or filters.span_types
+            or filters.span_name
+            or filters.span_name_contains
+            or filters.span_ids
             or self.has_llm_metric_filters(filters),
         )
 
@@ -97,9 +101,13 @@ class FilterService:
     # Database-Specific JSON Extraction
     # ============================================================================
 
-    def extract_json_field(self, column, *path_components):
+    def extract_json_field(
+        self,
+        column: KeyedColumnElement[Any],
+        *path_components: str,
+    ) -> Any:
         """Extract JSON field using database-specific functions."""
-        if self.db_session.bind.dialect.name == "postgresql":
+        if self.db_session.bind and self.db_session.bind.dialect.name == "postgresql":
             # PostgreSQL: jsonb_extract_path_text(column, 'path1', 'path2')
             return func.jsonb_extract_path_text(column, *path_components)
         else:  # SQLite
@@ -111,7 +119,11 @@ class FilterService:
     # Comparison Condition Building
     # ============================================================================
 
-    def build_comparison_condition(self, column, filter_item: FloatRangeFilter):
+    def build_comparison_condition(
+        self,
+        column: ColumnElement[Any],
+        filter_item: FloatRangeFilter,
+    ) -> ColumnElement[bool]:
         """Build comparison condition for various operators."""
         if filter_item.operator == ComparisonOperatorEnum.EQUAL:
             return column == filter_item.value
@@ -133,10 +145,10 @@ class FilterService:
     def build_relevance_exists_clause(
         self,
         metric_type: MetricType,
-        relevance_filters: List[FloatRangeFilter],
-        task_ids: List[str],
-        correlation_column,
-    ):
+        relevance_filters: list[FloatRangeFilter],
+        task_ids: list[str],
+        correlation_column: InstrumentedAttribute[str],
+    ) -> ColumnElement[bool]:
         """Build optimized EXISTS clause for relevance filtering."""
         # Create aliases to avoid conflicts
         inner_span = DatabaseSpan.__table__.alias("inner_span")
@@ -186,10 +198,10 @@ class FilterService:
         self,
         metric_type: MetricType,
         tool_class: ToolClassEnum,
-        task_ids: List[str],
+        task_ids: list[str],
         field_name: str,
-        correlation_column,
-    ):
+        correlation_column: InstrumentedAttribute[str],
+    ) -> ColumnElement[bool]:
         """Build optimized EXISTS clause for tool classification filtering."""
         # Create aliases to avoid conflicts
         inner_span = DatabaseSpan.__table__.alias("inner_span")
@@ -228,8 +240,8 @@ class FilterService:
     def build_all_metric_exists_conditions(
         self,
         filters: TraceQuerySchema,
-        correlation_column,
-    ) -> List:
+        correlation_column: InstrumentedAttribute[str],
+    ) -> list[ColumnElement[bool]]:
         """Build all metric EXISTS conditions for the given filters."""
         exists_conditions = []
 
@@ -287,7 +299,7 @@ class FilterService:
         self,
         span_type: str,
         filters: TraceQuerySchema,
-    ) -> List:
+    ) -> list[ColumnElement[bool]]:
         """Build AND conditions for a single span type."""
         conditions = []
 
@@ -298,13 +310,16 @@ class FilterService:
         if span_type == SPAN_KIND_TOOL and filters.tool_name:
             conditions.append(DatabaseSpan.span_name == filters.tool_name)
 
+        # Note: span_name and span_name_contains filters are applied at a higher level
+        # in _apply_span_level_filters_direct to ensure they apply to all span types
+
         return conditions
 
     def build_multiple_span_types_or_conditions(
         self,
-        span_types: List[str],
+        span_types: list[str],
         filters: TraceQuerySchema,
-    ) -> List:
+    ) -> list[ColumnElement[bool]]:
         """Build OR conditions for multiple span types with their specific filters."""
         or_groups = []
 
@@ -325,8 +340,8 @@ class FilterService:
     def build_span_metric_exists_conditions(
         self,
         filters: TraceQuerySchema,
-        span_id_column,
-    ) -> List:
+        span_id_column: InstrumentedAttribute[str],
+    ) -> list[ColumnElement[bool]]:
         """Build metric EXISTS conditions for span-based queries (correlation via span.id)."""
         exists_conditions = []
 
@@ -375,9 +390,9 @@ class FilterService:
     def _build_span_relevance_exists(
         self,
         metric_type: MetricType,
-        relevance_filters: List[FloatRangeFilter],
-        span_id_column,
-    ):
+        relevance_filters: list[FloatRangeFilter],
+        span_id_column: InstrumentedAttribute[str],
+    ) -> ColumnElement[bool]:
         """Build relevance EXISTS clause for span-based queries."""
         inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
 
@@ -419,8 +434,8 @@ class FilterService:
         metric_type: MetricType,
         tool_class: ToolClassEnum,
         field_name: str,
-        span_id_column,
-    ):
+        span_id_column: InstrumentedAttribute[str],
+    ) -> ColumnElement[bool]:
         """Build tool classification EXISTS clause for span-based queries."""
         inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
 

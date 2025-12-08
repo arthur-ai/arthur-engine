@@ -13,8 +13,11 @@ from arthur_common.models.response_schemas import (
     TraceResponse,
 )
 
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
-from schemas.request_schemas import DatasetTransformDefinition
+from schemas.request_schemas import TraceTransformDefinition
+from schemas.response_schemas import (
+    TransformExtractionResponseList,
+    TransformExtractionResponseVariable,
+)
 from utils.trace import get_nested_value
 
 
@@ -58,63 +61,57 @@ def _flatten_spans(
 
 def execute_transform(
     trace: TraceResponse,
-    transform_definition: DatasetTransformDefinition,
-) -> List[NewDatasetVersionRowColumnItemRequest]:
-    """Execute transform on a trace, returns extracted columns.
+    transform_definition: TraceTransformDefinition,
+) -> TransformExtractionResponseList:
+    """Execute transform on a trace, returns raw extracted values.
+
+    Base extraction function that returns raw variable names and values without
+    formatting them into specific structures.
 
     Uses first match if multiple spans found. This matches the behavior of the
     frontend executeTransform function.
 
     Args:
         trace: TraceResponse object containing root_spans
-        transform_definition: DatasetTransformDefinition object containing columns to extract
+        transform_definition: TraceTransformDefinition object containing variables to extract
 
     Returns:
-        List of column items ready to be used in NewDatasetVersionRowRequest
+        TransformExtractionResponseList containing list of variable names and values
     """
     # Flatten the nested span structure into a flat list
     flat_spans: List[NestedSpanWithMetricsResponse] = []
     for span in trace.root_spans:
         flat_spans.extend(_flatten_spans(span))
 
-    columns: List[NewDatasetVersionRowColumnItemRequest] = []
+    variables = []
 
-    # Iterate through column definitions
-    for col_def in transform_definition.columns:
-        span_name = col_def.span_name
-        column_name = col_def.column_name
-        attribute_path = col_def.attribute_path
-        fallback = col_def.fallback
+    # Iterate through variable definitions
+    for var_def in transform_definition.variables:
+        span_name = var_def.span_name
+        variable_name = var_def.variable_name
+        attribute_path = var_def.attribute_path
+        fallback = var_def.fallback
 
         # Find matching spans by span_name
         matching_spans = [span for span in flat_spans if span.span_name == span_name]
 
         if not matching_spans:
             # No matching span found, use fallback
-            columns.append(
-                NewDatasetVersionRowColumnItemRequest(
-                    column_name=column_name,
-                    column_value=stringify_value(
-                        fallback if fallback is not None else ""
-                    ),
-                )
-            )
+            value = fallback if fallback is not None else ""
         else:
             # Use the first matching span
             span = matching_spans[0]
             value = get_nested_value(span.raw_data, attribute_path)
 
             # Use value if found, otherwise use fallback
-            if value is not None:
-                column_value = stringify_value(value)
-            else:
-                column_value = stringify_value(fallback if fallback is not None else "")
+            if value is None:
+                value = fallback if fallback is not None else ""
 
-            columns.append(
-                NewDatasetVersionRowColumnItemRequest(
-                    column_name=column_name,
-                    column_value=column_value,
-                )
-            )
+        variables.append(
+            TransformExtractionResponseVariable(
+                variable_name=variable_name,
+                value=stringify_value(value),
+            ),
+        )
 
-    return columns
+    return TransformExtractionResponseList(variables=variables)

@@ -1,8 +1,8 @@
 import { ScrollArea } from "@base-ui-components/react/scroll-area";
 import { Close, Search } from "@mui/icons-material";
-import { Button, Paper, Stack, TextField } from "@mui/material";
+import { Button, Chip, Paper, Stack, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 import { useFilterStore } from "../../stores/filter.store";
@@ -12,7 +12,7 @@ import { useAppForm, withForm } from "./hooks/form";
 import { IncomingFilter } from "./mapper";
 import { canBeCombinedWith } from "./rules";
 import { sharedFormOptions, validators } from "./shared";
-import { EnumOperators, Operator } from "./types";
+import { EnumOperators, Operator, Operators } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
 import { NumberField } from "@/components/common/form/NumberField";
@@ -34,14 +34,59 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
     const setFilters = useFilterStore((state) => state.setFilters);
+    const storeFilters = useFilterStore((state) => state.filters);
+    const hasInitializedRef = useRef(false);
+
+    const isFilterComplete = (item: { name: string; operator: Operator | ""; value: string | string[] }): boolean => {
+      // Check if name is non-empty
+      if (!item.name || item.name.trim() === "") {
+        return false;
+      }
+
+      // Check if operator is non-empty and valid (not just "")
+      if (!item.operator) {
+        return false;
+      }
+
+      // Check if value is non-empty (string or array)
+      if (Array.isArray(item.value)) {
+        return item.value.length > 0;
+      }
+      return typeof item.value === "string" && item.value.trim() !== "";
+    };
 
     const form = useAppForm({
       ...sharedFormOptions,
       onSubmit: async ({ value }) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        setFilters(value.config.map(({ id: _, ...item }) => item) as IncomingFilter[]);
+        // Filter out incomplete filters before mapping and setting them
+        const completeFilters = value.config.filter(isFilterComplete);
+
+        setFilters(completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[]);
       },
     });
+
+    // Get current form config to check if form is empty
+    const currentFormConfig = useStore(form.store, (state) => state.values.config);
+
+    // Sync form with store filters when they're loaded from URL
+    // This only runs once when filters are first loaded from the store
+    useEffect(() => {
+      // Only initialize if:
+      // 1. We haven't initialized yet
+      // 2. Store has filters
+      // 3. Form is currently empty (to avoid overwriting user edits)
+      if (!hasInitializedRef.current && storeFilters.length > 0 && currentFormConfig.length === 0) {
+        const configFromStore = storeFilters.map((filter) => ({
+          id: uuidv4(),
+          name: filter.name,
+          operator: filter.operator,
+          value: filter.value,
+        }));
+        form.setFieldValue("config", configFromStore);
+        hasInitializedRef.current = true;
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [storeFilters, currentFormConfig.length]); // Watch storeFilters and form state
 
     const handleClose = () => {
       if (!scrollableRef.current) return;
@@ -121,9 +166,13 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
 
       const config = useStore(field.store, (state) => state.value);
 
-      const operatorItems = useMemo(() => getAvailableOperators(allMetrics, config.name)?.map((operator) => operator), [allMetrics, config.name]);
+      const operatorItems = useMemo(
+        () => getAvailableOperators(allMetrics, config?.name ?? "")?.map((operator) => operator),
+        [allMetrics, config?.name]
+      );
 
       const stage = (() => {
+        if (!config) return 0;
         switch (true) {
           case !!config.name && !!config.operator && config.value !== "":
             return 3;
@@ -173,6 +222,14 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
           {stage >= 1 && (
             <form.AppField
               name={`config[${index}].operator` as const}
+              listeners={{
+                onChange: ({ value }) => {
+                  const isMultiple = value === EnumOperators.IN;
+
+                  form.resetField(`config[${index}].value`);
+                  form.setFieldValue(`config[${index}].value`, isMultiple ? [] : "");
+                },
+              }}
               validators={{
                 onMount: validators.operator,
                 onChange: validators.operator,
@@ -187,12 +244,6 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                   onClose={() => {
                     field.handleBlur();
                     onClose();
-                  }}
-                  onChange={(_, value) => {
-                    const isMultiple = value === EnumOperators.IN;
-
-                    form.resetField(`config[${index}].value`);
-                    form.setFieldValue(`config[${index}].value`, isMultiple ? [] : "");
                   }}
                   size="small"
                   sx={{
@@ -246,6 +297,12 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
         fieldValidators = {
           onMount: validators.numeric(fieldConfig.min ?? -Infinity, fieldConfig.max ?? Infinity),
           onChange: validators.numeric(fieldConfig.min ?? -Infinity, fieldConfig.max ?? Infinity),
+        };
+      } else if (fieldConfig.type === "text") {
+        const multiple = config.operator === Operators.IN;
+        fieldValidators = {
+          onMount: multiple ? validators.valueArray : validators.value,
+          onChange: multiple ? validators.valueArray : validators.value,
         };
       }
 
@@ -306,6 +363,100 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                 </field.NumberField>
               );
             }
+
+            if (fieldConfig.type === "text") {
+              return <TextInput form={form} index={index} onClose={onClose} />;
+            }
+          }}
+        </form.AppField>
+      );
+    },
+  });
+
+  const TextInput = withForm({
+    ...sharedFormOptions,
+    props: {} as {
+      index: number;
+      onClose: () => void;
+    },
+    render: function Render({ form, index, onClose }) {
+      const field = useField({ form, name: `config[${index}]` as const });
+      const operator = useStore(field.store, (state) => state.value.operator);
+
+      const multiple = operator === Operators.IN;
+
+      const fieldValidators = {
+        onMount: multiple ? validators.valueArray : validators.value,
+        onChange: multiple ? validators.valueArray : validators.value,
+      };
+
+      return (
+        <form.AppField name={`config[${index}].value` as const} validators={fieldValidators}>
+          {(field) => {
+            if (multiple) {
+              return (
+                <field.MaterialAutocompleteField
+                  freeSolo
+                  multiple
+                  onClose={onClose}
+                  onBlur={() => {
+                    field.handleBlur();
+                    onClose();
+                  }}
+                  onChange={(_, value) => {
+                    field.handleChange(value);
+                  }}
+                  value={field.state.value as string[]}
+                  options={[]}
+                  size="small"
+                  limitTags={1}
+                  renderValue={(value: readonly string[], getItemProps) =>
+                    value.map((option: string, index: number) => {
+                      const { key, ...itemProps } = getItemProps({ index });
+                      return <Chip variant="outlined" size="small" label={option} key={key} sx={{ fontSize: 12 }} {...itemProps} />;
+                    })
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      variant="filled"
+                      label="Value"
+                      sx={{
+                        minWidth: 200,
+                        "& .MuiAutocomplete-inputRoot": {
+                          borderRadius: 0,
+                          "& fieldset": {
+                            borderInlineWidth: 0,
+                          },
+                        },
+                      }}
+                    />
+                  )}
+                />
+              );
+            }
+
+            return (
+              <TextField
+                value={field.state.value as string}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={() => {
+                  field.handleBlur();
+                }}
+                sx={{
+                  width: 200,
+                  "& .MuiAutocomplete-inputRoot": {
+                    borderRadius: 0,
+                    "& fieldset": {
+                      borderInlineWidth: 0,
+                    },
+                  },
+                }}
+                variant="filled"
+                label="Value"
+                size="small"
+              />
+            );
           }}
         </form.AppField>
       );

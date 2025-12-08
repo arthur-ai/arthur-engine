@@ -411,3 +411,433 @@ def test_trace_api_error_handling(
     ):
         status_code, _ = client.trace_api_get_trace_by_id("api_trace1")
         assert status_code == 500
+
+
+# ============================================================================
+# UNREGISTERED TRACES ENDPOINT TESTS
+# ============================================================================
+# Note: Tests for trace ingestion without task_id are in:
+# - test_trace_api_receive_traces_missing_task_id (test_trace_ingestion.py)
+# - test_receive_traces_with_resource_attributes (legacy_span/test_span_ingestion.py)
+# These will be updated after implementing support for traces without task_id
+
+
+@pytest.mark.unit_tests
+def test_get_unregistered_root_spans_grouped(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting grouped root spans for traces without task_id via endpoint."""
+    from tests.clients.base_test_client import override_get_db_session
+    from tests.routes.trace_api.conftest import (
+        _create_base_trace_request,
+        _create_span,
+        _delete_spans_from_db,
+        _delete_trace_metadata_from_db,
+    )
+
+    # Track created resources for cleanup
+    created_trace_ids = []
+    created_span_ids = []
+
+    # Create 5 traces without task_id with 3 distinct span_name groups:
+    # Group 1: "AppA" - 2 traces (trace1, trace2) with 2 root spans total
+    # Group 2: "AppB" - 2 traces (trace3, trace4) with 2 root spans total
+    # Group 3: "AppC" - 1 trace (trace5) with 1 root span total
+
+    # Group 1: AppA - Trace 1
+    trace_request1, resource_span1, scope_span1 = _create_base_trace_request(
+        task_id=None,
+    )
+    span1 = _create_span(
+        trace_id=b"unregistered_endpoint_trace1",
+        span_id=b"unregistered_endpoint_span1",
+        name="AppA",
+        span_type="LLM",
+    )
+    scope_span1.spans.append(span1)
+    resource_span1.scope_spans.append(scope_span1)
+    trace_request1.resource_spans.append(resource_span1)
+
+    # Group 1: AppA - Trace 2
+    trace_request2, resource_span2, scope_span2 = _create_base_trace_request(
+        task_id=None,
+    )
+    span2 = _create_span(
+        trace_id=b"unregistered_endpoint_trace2",
+        span_id=b"unregistered_endpoint_span2",
+        name="AppA",
+        span_type="LLM",
+    )
+    scope_span2.spans.append(span2)
+    resource_span2.scope_spans.append(scope_span2)
+    trace_request2.resource_spans.append(resource_span2)
+
+    # Group 2: AppB - Trace 3
+    trace_request3, resource_span3, scope_span3 = _create_base_trace_request(
+        task_id=None,
+    )
+    span3 = _create_span(
+        trace_id=b"unregistered_endpoint_trace3",
+        span_id=b"unregistered_endpoint_span3",
+        name="AppB",
+        span_type="LLM",
+    )
+    scope_span3.spans.append(span3)
+    resource_span3.scope_spans.append(scope_span3)
+    trace_request3.resource_spans.append(resource_span3)
+
+    # Group 2: AppB - Trace 4
+    trace_request4, resource_span4, scope_span4 = _create_base_trace_request(
+        task_id=None,
+    )
+    span4 = _create_span(
+        trace_id=b"unregistered_endpoint_trace4",
+        span_id=b"unregistered_endpoint_span4",
+        name="AppB",
+        span_type="LLM",
+    )
+    scope_span4.spans.append(span4)
+    resource_span4.scope_spans.append(scope_span4)
+    trace_request4.resource_spans.append(resource_span4)
+
+    # Group 3: AppC - Trace 5
+    trace_request5, resource_span5, scope_span5 = _create_base_trace_request(
+        task_id=None,
+    )
+    span5 = _create_span(
+        trace_id=b"unregistered_endpoint_trace5",
+        span_id=b"unregistered_endpoint_span5",
+        name="AppC",
+        span_type="LLM",
+    )
+    scope_span5.spans.append(span5)
+    resource_span5.scope_spans.append(scope_span5)
+    trace_request5.resource_spans.append(resource_span5)
+
+    # Track trace and span IDs for cleanup (convert bytes to hex strings)
+    trace_id_bytes = [
+        b"unregistered_endpoint_trace1",
+        b"unregistered_endpoint_trace2",
+        b"unregistered_endpoint_trace3",
+        b"unregistered_endpoint_trace4",
+        b"unregistered_endpoint_trace5",
+    ]
+    span_id_bytes = [
+        b"unregistered_endpoint_span1",
+        b"unregistered_endpoint_span2",
+        b"unregistered_endpoint_span3",
+        b"unregistered_endpoint_span4",
+        b"unregistered_endpoint_span5",
+    ]
+    # Convert bytes to hex strings for database lookup
+    created_trace_ids.extend([tid.hex() for tid in trace_id_bytes])
+    created_span_ids.extend([sid.hex() for sid in span_id_bytes])
+
+    # Send all 5 traces
+    status_code1, _ = client.trace_api_receive_traces(
+        trace_request1.SerializeToString(),
+    )
+    status_code2, _ = client.trace_api_receive_traces(
+        trace_request2.SerializeToString(),
+    )
+    status_code3, _ = client.trace_api_receive_traces(
+        trace_request3.SerializeToString(),
+    )
+    status_code4, _ = client.trace_api_receive_traces(
+        trace_request4.SerializeToString(),
+    )
+    status_code5, _ = client.trace_api_receive_traces(
+        trace_request5.SerializeToString(),
+    )
+
+    # All traces should be accepted
+    assert status_code1 == 200, "Trace 1 should be accepted"
+    assert status_code2 == 200, "Trace 2 should be accepted"
+    assert status_code3 == 200, "Trace 3 should be accepted"
+    assert status_code4 == 200, "Trace 4 should be accepted"
+    assert status_code5 == 200, "Trace 5 should be accepted"
+
+    # Call the unregistered traces endpoint
+    status_code, response = client.trace_api_get_unregistered_root_spans()
+
+    # Verify response status code
+    # Note: This will fail initially (404) until we implement the endpoint
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+
+    # Handle both dict (current) and object (future schema) responses
+    if isinstance(response, dict):
+        # Response is a dict (before schema is implemented)
+        assert "groups" in response, "Response should have 'groups' key"
+        assert "total_count" in response, "Response should have 'total_count' key"
+        groups = response["groups"]
+        total_count = response["total_count"]
+    else:
+        # Response is an object (after schema is implemented)
+        groups = response.groups
+        total_count = response.total_count
+
+    # Verify we have 3 groups
+    assert (
+        len(groups) == 3
+    ), f"Expected 3 groups, got {len(groups)}. Groups: {groups}"
+
+    # Verify each group has the correct structure
+    for group in groups:
+        if isinstance(group, dict):
+            assert "span_name" in group, "Group should have 'span_name' key"
+            assert "count" in group, "Group should have 'count' key"
+        else:
+            assert hasattr(group, "span_name"), "Group should have 'span_name' attribute"
+            assert hasattr(group, "count"), "Group should have 'count' attribute"
+
+    # Helper function to get group value
+    def get_group_value(group, key):
+        return group[key] if isinstance(group, dict) else getattr(group, key)
+
+    # Find groups by span_name and verify counts
+    group_a = next(
+        (g for g in groups if get_group_value(g, "span_name") == "AppA"), None
+    )
+    assert group_a is not None, "Group 'AppA' not found"
+    assert (
+        get_group_value(group_a, "count") == 2
+    ), f"Expected AppA count=2, got {get_group_value(group_a, 'count')}"
+
+    group_b = next(
+        (g for g in groups if get_group_value(g, "span_name") == "AppB"), None
+    )
+    assert group_b is not None, "Group 'AppB' not found"
+    assert (
+        get_group_value(group_b, "count") == 2
+    ), f"Expected AppB count=2, got {get_group_value(group_b, 'count')}"
+
+    group_c = next(
+        (g for g in groups if get_group_value(g, "span_name") == "AppC"), None
+    )
+    assert group_c is not None, "Group 'AppC' not found"
+    assert (
+        get_group_value(group_c, "count") == 1
+    ), f"Expected AppC count=1, got {get_group_value(group_c, 'count')}"
+
+    # Verify total_count equals total number of distinct traces (5)
+    # Since each trace has one root span, total_count should equal the number of traces
+    assert (
+        total_count == 5
+    ), f"Expected total_count=5 (total distinct traces), got {total_count}"
+
+    # Verify groups are ordered by count descending (most common first)
+    # AppA and AppB both have count=2, AppC has count=1
+    # So AppA and AppB should come before AppC
+    counts = [get_group_value(g, "count") for g in groups]
+    assert counts == sorted(
+        counts, reverse=True
+    ), f"Groups should be ordered by count descending. Got: {counts}"
+
+    # Cleanup: Delete created traces and spans
+    try:
+        db_session = override_get_db_session()
+        _delete_spans_from_db(db_session, created_span_ids)
+        _delete_trace_metadata_from_db(db_session, created_trace_ids)
+        db_session.close()
+    except Exception as e:
+        # Log but don't fail test on cleanup errors
+        print(f"Warning: Cleanup failed: {e}")
+
+
+@pytest.mark.unit_tests
+def test_get_unregistered_root_spans_grouped_with_pagination(
+    client: GenaiEngineTestClientBase,
+):
+    """Test pagination for unregistered root spans endpoint."""
+    from tests.clients.base_test_client import override_get_db_session
+    from tests.routes.trace_api.conftest import (
+        _create_base_trace_request,
+        _create_span,
+        _delete_spans_from_db,
+        _delete_trace_metadata_from_db,
+    )
+
+    # Track created resources for cleanup
+    created_trace_ids = []
+    created_span_ids = []
+
+    # Create 10 traces without task_id with 5 distinct span_name groups:
+    # Use unique span names to avoid conflicts with other tests
+    # Group 1: "PaginationAppA" - 3 traces (count=3)
+    # Group 2: "PaginationAppB" - 3 traces (count=3)
+    # Group 3: "PaginationAppC" - 2 traces (count=2)
+    # Group 4: "PaginationAppD" - 1 trace (count=1)
+    # Group 5: "PaginationAppE" - 1 trace (count=1)
+
+    # Get baseline count before creating test traces
+    status_code, baseline_response = client.trace_api_get_unregistered_root_spans(
+        page=0, page_size=1
+    )
+    assert status_code == 200
+    baseline_total_count = (
+        baseline_response.total_count 
+        if hasattr(baseline_response, "total_count") 
+        else baseline_response["total_count"]
+    )
+
+    span_names = [
+        "PaginationAppA", "PaginationAppA", "PaginationAppA",
+        "PaginationAppB", "PaginationAppB", "PaginationAppB",
+        "PaginationAppC", "PaginationAppC",
+        "PaginationAppD",
+        "PaginationAppE"
+    ]
+    
+    for i, span_name in enumerate(span_names):
+        trace_id = f"pagination_test_trace_{i}"
+        span_id = f"pagination_test_span_{i}"
+        # Convert to hex strings for database lookup (trace ingestion converts bytes to hex)
+        created_trace_ids.append(trace_id.encode().hex())
+        created_span_ids.append(span_id.encode().hex())
+        
+        trace_request, resource_span, scope_span = _create_base_trace_request(
+            task_id=None,
+        )
+        span = _create_span(
+            trace_id=trace_id.encode(),
+            span_id=span_id.encode(),
+            name=span_name,
+            span_type="LLM",
+        )
+        scope_span.spans.append(span)
+        resource_span.scope_spans.append(scope_span)
+        trace_request.resource_spans.append(resource_span)
+        
+        status_code, _ = client.trace_api_receive_traces(
+            trace_request.SerializeToString(),
+        )
+        assert status_code == 200, f"Trace {i} should be accepted"
+
+    # Helper function to get group value
+    def get_group_value(group, key):
+        return group[key] if isinstance(group, dict) else getattr(group, key)
+
+    # Test 1: First page with page_size=2 (should get top 2 groups)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=0, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # Should get 2 groups (PaginationAppA and PaginationAppB, both with count=3)
+    assert len(groups) == 2, f"Expected 2 groups on first page, got {len(groups)}"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+    
+    # Verify we got the top groups (ordered by count descending)
+    assert get_group_value(groups[0], "count") == 3, "First group should have count=3"
+    assert get_group_value(groups[1], "count") == 3, "Second group should have count=3"
+    # Verify span names are from our test data
+    assert get_group_value(groups[0], "span_name") in ["PaginationAppA", "PaginationAppB"], "First group should be PaginationAppA or PaginationAppB"
+    assert get_group_value(groups[1], "span_name") in ["PaginationAppA", "PaginationAppB"], "Second group should be PaginationAppA or PaginationAppB"
+
+    # Test 2: Second page with page_size=2 (should get next 2 groups)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=1, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # Should get 2 groups (may include groups from other tests)
+    assert len(groups) == 2, f"Expected 2 groups on second page, got {len(groups)}"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+    
+    # Filter to only our Pagination groups to avoid interference from other tests
+    pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
+    
+    # Note: Pagination groups may or may not appear on this specific page depending on ordering
+    # We'll verify all our Pagination groups exist in a later test
+    # Just verify that if Pagination groups are present, they have correct counts
+    for pagination_group in pagination_groups:
+        span_name = get_group_value(pagination_group, "span_name")
+        count = get_group_value(pagination_group, "count")
+        if span_name == "PaginationAppC":
+            assert count == 2, f"PaginationAppC should have count=2, got {count}"
+        elif span_name in ["PaginationAppD", "PaginationAppE"]:
+            assert count == 1, f"{span_name} should have count=1, got {count}"
+
+    # Test 3: Third page with page_size=2 (should get next groups)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=2, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+    
+    # Filter to only our Pagination groups
+    pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
+    
+    # Note: With data from other tests, we may not see count=1 groups on this specific page
+    # Instead, we'll verify all our groups exist in the large page_size test below
+    # Just verify that if Pagination groups are present, they have correct counts
+    for pagination_group in pagination_groups:
+        span_name = get_group_value(pagination_group, "span_name")
+        count = get_group_value(pagination_group, "count")
+        if span_name == "PaginationAppC":
+            assert count == 2, f"PaginationAppC should have count=2, got {count}"
+        elif span_name in ["PaginationAppD", "PaginationAppE"]:
+            assert count == 1, f"{span_name} should have count=1, got {count}"
+
+    # Test 4: Page beyond available data (should return empty list but same total_count)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=10, page_size=2
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    assert len(groups) == 0, f"Expected 0 groups on page beyond data, got {len(groups)}"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10) even on empty page, got {total_count}"
+
+    # Test 5: Large page_size (should get all groups)
+    status_code, response = client.trace_api_get_unregistered_root_spans(
+        page=0, page_size=100
+    )
+    assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
+    
+    groups = response.groups if hasattr(response, "groups") else response["groups"]
+    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
+    
+    # Should get at least our 5 groups (may be more from other tests)
+    pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
+    assert len(pagination_groups) == 5, f"Expected 5 Pagination groups with large page_size, got {len(pagination_groups)}"
+    # Verify our test groups are present
+    pagination_span_names = [get_group_value(g, "span_name") for g in pagination_groups]
+    assert "PaginationAppA" in pagination_span_names, "PaginationAppA should be present"
+    assert "PaginationAppB" in pagination_span_names, "PaginationAppB should be present"
+    assert "PaginationAppC" in pagination_span_names, "PaginationAppC should be present"
+    assert "PaginationAppD" in pagination_span_names, "PaginationAppD should be present"
+    assert "PaginationAppE" in pagination_span_names, "PaginationAppE should be present"
+    # total_count should be baseline + 10 (our test traces)
+    expected_total_count = baseline_total_count + 10
+    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+
+    # Cleanup: Delete created traces and spans
+    try:
+        db_session = override_get_db_session()
+        _delete_spans_from_db(db_session, created_span_ids)
+        _delete_trace_metadata_from_db(db_session, created_trace_ids)
+        db_session.close()
+    except Exception as e:
+        # Log but don't fail test on cleanup errors
+        print(f"Warning: Cleanup failed: {e}")

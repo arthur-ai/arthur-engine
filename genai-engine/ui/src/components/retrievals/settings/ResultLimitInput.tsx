@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 interface ResultLimitInputProps {
   limit: number;
@@ -7,23 +7,16 @@ interface ResultLimitInputProps {
 }
 
 export const ResultLimitInput: React.FC<ResultLimitInputProps> = React.memo(({ limit, onChange, isExecuting }) => {
-  const [limitInput, setLimitInput] = useState(limit.toString());
-
-  const handleLimitInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setLimitInput(e.target.value);
-  };
-
-  const handleLimitBlur = (e: React.FocusEvent<HTMLInputElement>): void => {
+  const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const value = e.target.value;
     const numValue = parseInt(value);
-    if (isNaN(numValue) || value === "") {
-      onChange(1);
-      setLimitInput("1");
-    } else {
-      const clampedValue = Math.max(1, Math.min(100, numValue));
-      onChange(clampedValue);
-      setLimitInput(clampedValue.toString());
+
+    if (value === "" || isNaN(numValue)) {
+      return;
     }
+
+    const clampedValue = Math.max(1, Math.min(100, numValue));
+    onChange(clampedValue);
   };
 
   return (
@@ -36,9 +29,8 @@ export const ResultLimitInput: React.FC<ResultLimitInputProps> = React.memo(({ l
         id="limit"
         min="1"
         max="100"
-        value={limitInput}
-        onChange={handleLimitInputChange}
-        onBlur={handleLimitBlur}
+        value={limit}
+        onChange={handleLimitChange}
         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         disabled={isExecuting}
       />

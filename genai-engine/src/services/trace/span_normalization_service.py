@@ -9,6 +9,7 @@ based on OpenInference semantic conventions.
 import copy
 import json
 import logging
+from typing import Any, cast
 
 from benedict import benedict
 
@@ -29,10 +30,10 @@ class SpanNormalizationService:
     - Validates span versions
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.conventions = SpanSemanticConventions()
 
-    def normalize_span_to_nested_dict(self, span: dict) -> dict:
+    def normalize_span_to_nested_dict(self, span: dict[str, Any]) -> dict[str, Any]:
         """
         Normalize span data to nested dictionary structure with selective JSON deserialization.
 
@@ -80,9 +81,12 @@ class SpanNormalizationService:
         except Exception as e:
             logger.error(f"Error deserializing nested JSON fields: {e}", exc_info=True)
 
-        return nested
+        return cast(dict[str, Any], nested)
 
-    def _convert_otel_to_flat_dict(self, raw_attrs: list) -> dict:
+    def _convert_otel_to_flat_dict(
+        self,
+        raw_attrs: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         """
         Convert OpenTelemetry format attributes to flat dict with type-aware conversion.
 
@@ -120,10 +124,10 @@ class SpanNormalizationService:
 
     def _extract_and_convert_from_otel(
         self,
-        value_dict: dict,
+        value_dict: dict[str, Any],
         expected_type: str,
         key: str,
-    ):
+    ) -> bool | str | int | float | dict[str, Any] | list[Any]:
         """
         Extract value from OTEL format and convert to expected type in single pass.
 
@@ -154,21 +158,26 @@ class SpanNormalizationService:
 
         elif "arrayValue" in value_dict:
             # Arrays are already lists in OTEL format
-            return value_dict["arrayValue"]
+            return cast(list[Any], value_dict["arrayValue"])
 
         elif "kvlistValue" in value_dict:
             # Key-value lists - convert to dict
-            return value_dict["kvlistValue"]
+            return cast(dict[str, Any], value_dict["kvlistValue"])
 
         else:
             # Fallback to generic extraction
             return value_dict_to_value(value_dict)
 
-    def _convert_string_to_type(self, value: str, expected_type: str, key: str):
+    def _convert_string_to_type(
+        self,
+        value: str,
+        expected_type: str,
+        key: str,
+    ) -> bool | str | int | float | dict[str, Any]:
         """Convert string value to expected type based on semantic conventions."""
         if expected_type == "json":
             try:
-                return json.loads(value)
+                return cast(dict[str, Any], json.loads(value))
             except (json.JSONDecodeError, TypeError):
                 logger.debug(f"Failed to parse JSON for '{key}': {value[:100]}")
                 return value
@@ -193,7 +202,12 @@ class SpanNormalizationService:
         # String or unknown - return as-is
         return value
 
-    def _convert_int_to_type(self, value: int, expected_type: str, key: str):
+    def _convert_int_to_type(
+        self,
+        value: int,
+        expected_type: str,
+        key: str,
+    ) -> bool | str | int | float:
         """Convert int value to expected type."""
         if expected_type == "float":
             return float(value)
@@ -204,7 +218,12 @@ class SpanNormalizationService:
         # Int or unknown - return as-is
         return value
 
-    def _convert_float_to_type(self, value: float, expected_type: str, key: str):
+    def _convert_float_to_type(
+        self,
+        value: float,
+        expected_type: str,
+        key: str,
+    ) -> bool | str | int | float:
         """Convert float value to expected type."""
         if expected_type == "int":
             return int(value)
@@ -213,7 +232,12 @@ class SpanNormalizationService:
         # Float or unknown - return as-is
         return value
 
-    def _convert_bool_to_type(self, value: bool, expected_type: str, key: str):
+    def _convert_bool_to_type(
+        self,
+        value: bool,
+        expected_type: str,
+        key: str,
+    ) -> bool | str | int:
         """Convert bool value to expected type."""
         if expected_type == "string":
             return str(value)
@@ -222,7 +246,7 @@ class SpanNormalizationService:
         # Bool or unknown - return as-is
         return value
 
-    def _deserialize_json_attributes(self, attrs: dict) -> dict:
+    def _deserialize_json_attributes(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """
         Deserialize JSON attributes based on semantic conventions.
 
@@ -260,7 +284,7 @@ class SpanNormalizationService:
 
         return result
 
-    def _handle_message_contents(self, attrs: dict) -> dict:
+    def _handle_message_contents(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """
         Handle message.contents with special nesting for message_content.
 
@@ -298,7 +322,10 @@ class SpanNormalizationService:
 
         return result
 
-    def _convert_numeric_keys_to_lists(self, d):
+    def _convert_numeric_keys_to_lists(
+        self,
+        d: dict[str, Any] | list[Any],
+    ) -> list[Any] | dict[str, Any]:
         """
         Recursively convert dictionaries with numeric keys to lists.
 
@@ -323,7 +350,7 @@ class SpanNormalizationService:
         else:
             return d
 
-    def _deserialize_nested_json_fields(self, obj):
+    def _deserialize_nested_json_fields(self, obj: Any) -> Any:
         """
         Recursively deserialize JSON strings in nested structures.
 
@@ -339,7 +366,7 @@ class SpanNormalizationService:
             Structure with JSON strings deserialized
         """
         if isinstance(obj, dict):
-            result = {}
+            result: dict[str, Any] = {}
             for key, value in obj.items():
                 # Check if this key should be deserialized based on conventions
                 if self.conventions.should_deserialize_as_json(key) and isinstance(

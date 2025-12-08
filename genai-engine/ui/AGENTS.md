@@ -11,7 +11,7 @@ This is a React 19 + TypeScript + Vite application for the Arthur Engine GenAI p
 - **Tailwind CSS 4** for styling
 - **Material-UI (MUI)** for component library
 - **React Router v7** for routing
-- **Axios** for HTTP requests
+- **React Query** for data fetching
 - **Framer Motion** for animations
 - **Monaco Editor** for code editing
 - **Yarn 4** for package management
@@ -46,6 +46,7 @@ src/
 
 - Use **functional components** with hooks
 - Prefer **custom hooks** for reusable logic
+- Use React Query in order to fetch and mutate data
 - Use **React Context** for global state management
 - Implement **error boundaries** for error handling
 - Use **React.memo** for performance optimization when needed
@@ -57,7 +58,6 @@ src/
 - Use **PascalCase** for component names and files
 - Group related components in subdirectories
 - Export components as **named exports**
-- Use **barrel exports** (index.ts) for clean imports
 
 ### File Naming
 
@@ -100,7 +100,7 @@ src/
 
 - Use **auto-generated API client** from OpenAPI spec
 - Create **authenticated API clients** via `useApi()` hook
-- Handle **loading states** and **error states** consistently
+- Handle **loading states** and **error states** from React Query
 - Use **TypeScript types** from API client
 - Implement **proper error handling** with user feedback
 

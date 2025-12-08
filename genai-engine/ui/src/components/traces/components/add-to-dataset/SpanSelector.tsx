@@ -2,8 +2,9 @@ import { Popover } from "@base-ui-components/react/popover";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { Breadcrumbs, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Breadcrumbs, Button, IconButton, List, ListItemButton, ListItemText, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
+import { useMemo, useState } from "react";
 
 import { withForm } from "../filtering/hooks/form";
 
@@ -129,13 +130,22 @@ type SpanListProps = {
 };
 
 const SpanList = ({ spans, onSelectSpan }: SpanListProps) => {
+  const [search, setSearch] = useState("");
+
+  const filteredSpans = useMemo(() => {
+    return spans.filter((span) => (span.span_name?.toLowerCase().includes(search.toLowerCase()) || span.span_id.includes(search)) ?? false);
+  }, [spans, search]);
+
   return (
     <Stack className="overflow-auto max-h-[50vh]" sx={{ p: 1 }}>
-      {spans.map((span) => (
-        <Button key={span.id} variant="text" color="primary" onClick={() => onSelectSpan(span.span_id)} sx={listButtonSx}>
-          {span.span_name}
-        </Button>
-      ))}
+      <TextField size="small" label="Search for a span" value={search} onChange={(e) => setSearch(e.target.value)} sx={{ m: 1 }} />
+      <List dense>
+        {filteredSpans.map((span) => (
+          <ListItemButton key={span.id} onClick={() => onSelectSpan(span.span_id)} sx={listButtonSx}>
+            <ListItemText primary={span.span_name} secondary={span.span_id} />
+          </ListItemButton>
+        ))}
+      </List>
     </Stack>
   );
 };

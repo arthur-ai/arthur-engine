@@ -3,7 +3,7 @@ import { Alert, Autocomplete, Button, Snackbar, Stack, TextField, Typography } f
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useState } from "react";
 
-import { flattenSpans } from "../../utils/spans";
+import { flattenSpans, getNestedValue } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
 
 import { AddColumnDialog } from "./AddColumnDialog";
@@ -13,7 +13,6 @@ import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
 import { useTransforms } from "./hooks/useTransforms";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
-import { executeTransform } from "./utils/transformExecutor";
 
 import { Drawer } from "@/components/common/Drawer";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
@@ -24,6 +23,7 @@ import { useDatasets } from "@/hooks/useDatasets";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
+import { TransformExtractionResponseVariable } from "@/lib/api-client/api-client";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 type Props = {
@@ -57,11 +57,11 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
     mutationFn: async ({ datasetId, columns }: { datasetId: string; columns: { name: string; value: string }[] }) => {
       // If there are pending columns for this dataset, merge them with the submitted columns
       const columnsForDataset = pendingColumns[datasetId] || [];
-      const allColumnNames = new Set([...columnsForDataset, ...columns.map(c => c.name)]);
+      const allColumnNames = new Set([...columnsForDataset, ...columns.map((c) => c.name)]);
 
       // Create the row data with all columns (pending + submitted)
-      const rowData = Array.from(allColumnNames).map(columnName => {
-        const submittedColumn = columns.find(c => c.name === columnName);
+      const rowData = Array.from(allColumnNames).map((columnName) => {
+        const submittedColumn = columns.find((c) => c.name === columnName);
         return {
           column_name: columnName,
           column_value: submittedColumn?.value || "",
@@ -81,7 +81,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
     onSuccess: (_data, variables) => {
       snackbar.showSnackbar("Row added", "success");
       // Clear pending columns for this dataset
-      setPendingColumns(prev => {
+      setPendingColumns((prev) => {
         const updated = { ...prev };
         delete updated[variables.datasetId];
         return updated;
@@ -125,12 +125,10 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
 
   // Get columns from the selected transform
   const selectedTransform = transformsQuery.data?.find((t) => t.id === selectedTransformId);
-  const transformColumns = selectedTransform?.definition.columns.map((col) => col.column_name) || [];
+  const transformColumns = selectedTransform?.definition.variables.map((varDef) => varDef.variable_name) || [];
 
   // Merge dataset columns with transform columns to get union of all columns
-  const datasetOnlyColumns = selectedDataset?.id
-    ? (pendingColumns[selectedDataset.id] || latestVersion?.column_names || [])
-    : [];
+  const datasetOnlyColumns = selectedDataset?.id ? pendingColumns[selectedDataset.id] || latestVersion?.column_names || [] : [];
 
   // Create union of dataset columns and transform columns
   const allColumnNames = new Set([...datasetOnlyColumns, ...transformColumns]);
@@ -163,7 +161,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
     }
 
     // Add column to pending columns
-    setPendingColumns(prev => ({
+    setPendingColumns((prev) => ({
       ...prev,
       [selectedDataset.id]: [...currentColumns, columnName],
     }));
@@ -186,25 +184,26 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
   };
 
   const handleSaveTransform = async (name: string, description: string, definition: TransformDefinition) => {
-    if (!selectedDataset) return;
+    if (!task?.id) return;
 
     try {
-      const response = await api.api.createTransformApiV2DatasetsDatasetIdTransformsPost(selectedDataset.id, {
+      const response = await api.api.createTransformForTaskApiV1TasksTaskIdTracesTransformsPost(task.id, {
         name,
         description: description || null,
-        definition: definition as any,
+        definition,
       });
 
       setSavedTransformId(response.data.id);
       transformsQuery.refetch();
-      
+
       setTimeout(() => {
         setShowSaveTransformDialog(false);
         snackbar.showSnackbar("Transform saved", "success");
       }, 100);
     } catch (error: any) {
       let errorMessage = "Failed to save transform";
-      
+
+
       if (error.response?.status === 409) {
         errorMessage = `A transform named "${name}" already exists. Please use a different name.`;
       } else if (error.response?.data?.detail) {
@@ -212,7 +211,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       throw new Error(errorMessage);
     }
   };
@@ -328,35 +327,83 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
                               !selectedDataset
                                 ? "Select a dataset first"
                                 : !hasTransforms
-                                ? "No transforms available for this dataset"
-                                : "Select a saved transform"
+                                  ? "No transforms available for this dataset"
+                                  : "Select a saved transform"
                             }
                           />
                         )}
-                        onChange={(_event, value) => {
+                        onChange={async (_event, value) => {
                           const transformId = value?.id ?? "";
                           field.handleChange(transformId);
 
-                          if (transformId && value) {
-                            const executedColumns = executeTransform(flatSpans, value.definition);
-                            if (executedColumns) {
-                              // Get existing dataset columns
-                              const existingDatasetColumns = latestVersion?.column_names || [];
-                              const executedColumnNames = new Set(executedColumns.map(col => col.name));
+                          if (transformId && value && selectedDataset && traceId) {
+                            try {
+                              const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
+                                traceId,
+                                transformId
+                              );
 
-                              // Create columns for dataset columns that aren't in the transform
-                              const datasetOnlyColumns = existingDatasetColumns
-                                .filter(columnName => !executedColumnNames.has(columnName))
-                                .map(columnName => ({
-                                  name: columnName,
-                                  value: "",
-                                  path: "",
-                                  span_name: "",
-                                  attribute_path: "",
-                                }));
+                              if (response.data.variables && response.data.variables.length > 0) {
+                                // Map extracted variables with path information from transform definition
+                                const executedColumns = response.data.variables.map((variable: TransformExtractionResponseVariable) => {
+                                  const variableDef = value.definition.variables.find(
+                                    v => v.variable_name === variable.variable_name
+                                  );
 
-                              // Merge transform columns with dataset-only columns (union)
-                              form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
+                                  if (!variableDef) {
+                                    return {
+                                      name: variable.variable_name,
+                                      value: variable.value,
+                                      path: "",
+                                      span_name: "",
+                                      attribute_path: "",
+                                    };
+                                  }
+
+                                  // Validate that the path exists in the trace data
+                                  const span = flatSpans.find(s => s.span_name === variableDef.span_name);
+                                  let validatedPath = "";
+                                  let validatedSpanName = "";
+                                  let validatedAttributePath = "";
+
+                                  if (span) {
+                                    // Check if the attribute path exists
+                                    const data = getNestedValue(span.raw_data, variableDef.attribute_path);
+                                    if (data !== undefined) {
+                                      validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
+                                      validatedSpanName = variableDef.span_name;
+                                      validatedAttributePath = variableDef.attribute_path;
+                                    }
+                                  }
+
+                                  return {
+                                    name: variable.variable_name,
+                                    value: variable.value,
+                                    path: validatedPath,
+                                    span_name: validatedSpanName,
+                                    attribute_path: validatedAttributePath,
+                                  };
+                                });
+
+                                const existingDatasetColumns = latestVersion?.column_names || [];
+                                const executedColumnNames = new Set(executedColumns.map(col => col.name));
+
+                                const datasetOnlyColumns = existingDatasetColumns
+                                  .filter(columnName => !executedColumnNames.has(columnName))
+                                  .map(columnName => ({
+                                    name: columnName,
+                                    value: "",
+                                    path: "",
+                                    span_name: "",
+                                    attribute_path: "",
+                                  }));
+
+                                form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
+                              }
+                            } catch (error) {
+                              console.error("Failed to execute transform:", error);
+                              snackbar.showSnackbar("Failed to execute transform", "error");
+                              form.setFieldValue("columns", []);
                             }
                           } else {
                             form.setFieldValue("columns", []);
@@ -372,21 +419,11 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
               {selectedDataset && (
                 <>
                   {datasetColumns.length > 0 && (
-                    <Configurator
-                      form={form}
-                      dataset={selectedDataset}
-                      spans={flatSpans}
-                      onAddColumn={() => setShowAddColumnDialog(true)}
-                    />
+                    <Configurator form={form} dataset={selectedDataset} spans={flatSpans} onAddColumn={() => setShowAddColumnDialog(true)} />
                   )}
 
                   {datasetColumns.length === 0 && (
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={() => setShowAddColumnDialog(true)}
-                      fullWidth
-                    >
+                    <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setShowAddColumnDialog(true)} fullWidth>
                       Add New Column
                     </Button>
                   )}
@@ -394,9 +431,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
               )}
             </Stack>
 
-            {selectedDataset && datasetColumns.length > 0 && (
-              <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} />
-            )}
+            {selectedDataset && datasetColumns.length > 0 && <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} />}
           </form>
         </Drawer.Content>
       </Drawer>

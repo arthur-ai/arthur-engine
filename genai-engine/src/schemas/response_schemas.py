@@ -19,7 +19,6 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
-from schemas.common_schemas import NewDatasetVersionRowRequest
 from schemas.enums import (
     ConnectionCheckOutcome,
     ModelProvider,
@@ -29,7 +28,7 @@ from schemas.enums import (
     RagSearchKind,
 )
 from schemas.llm_schemas import OpenAIMessage
-from schemas.request_schemas import DatasetTransformDefinition
+from schemas.request_schemas import TraceTransformDefinition
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -63,6 +62,7 @@ class HealthResponse(BaseModel):
 
 class DatasetResponse(BaseModel):
     id: UUID = Field(description="ID of the dataset.")
+    task_id: str = Field(description="ID of the task the dataset belongs to.")
     name: str = Field(
         description="Name of the dataset.",
     )
@@ -146,34 +146,28 @@ class ListDatasetVersionsResponse(BaseModel):
     )
 
 
-class DatasetTransformResponse(BaseModel):
+class TraceTransformResponse(BaseModel):
     id: UUID = Field(description="ID of the transform.")
-    dataset_id: UUID = Field(description="ID of the parent dataset.")
+    task_id: str = Field(description="ID of the parent task.")
     name: str = Field(description="Name of the transform.")
     description: Optional[str] = Field(
         default=None,
         description="Description of the transform.",
     )
-    definition: DatasetTransformDefinition = Field(
+    definition: TraceTransformDefinition = Field(
         description="Transform definition specifying extraction rules.",
     )
-    created_at: int = Field(
-        description="Timestamp representing the time of transform creation in unix milliseconds.",
+    created_at: datetime = Field(
+        description="Timestamp representing the time of transform creation",
     )
-    updated_at: int = Field(
-        description="Timestamp representing the time of the last transform update in unix milliseconds.",
-    )
-
-
-class ListDatasetTransformsResponse(BaseModel):
-    transforms: List[DatasetTransformResponse] = Field(
-        description="List of transforms for the dataset.",
+    updated_at: datetime = Field(
+        description="Timestamp representing the time of the last transform update",
     )
 
 
-class ExecuteTransformResponse(BaseModel):
-    rows_extracted: List[NewDatasetVersionRowRequest] = Field(
-        description="List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.",
+class ListTraceTransformsResponse(BaseModel):
+    transforms: List[TraceTransformResponse] = Field(
+        description="List of transforms for the task.",
     )
 
 
@@ -252,6 +246,24 @@ class TraceListResponse(BaseModel):
 
     count: int = Field(description="Total number of traces matching filters")
     traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
+
+
+class UnregisteredRootSpanGroup(BaseModel):
+    """Group of root spans with the same span_name for unregistered traces"""
+
+    span_name: str = Field(description="Name of the root span")
+    count: int = Field(description="Number of root spans (and traces) in this group")
+
+
+class UnregisteredRootSpansResponse(BaseModel):
+    """Response for unregistered root spans endpoint"""
+
+    groups: list[UnregisteredRootSpanGroup] = Field(
+        description="List of grouped root spans, ordered by count descending"
+    )
+    total_count: int = Field(
+        description="Total number of root spans (and traces) across all groups"
+    )
 
 
 class SpanListResponse(BaseModel):
@@ -739,3 +751,44 @@ class UnsavedPromptVariablesListResponse(BaseModel):
     variables: List[str] = Field(
         description="List of variables needed to run an unsaved prompt",
     )
+
+
+class TransformExtractionResponseVariable(BaseModel):
+    variable_name: str = Field(
+        description="Name of the extracted variable.",
+    )
+    value: str = Field(
+        description="Value of the extracted variable.",
+    )
+
+
+class TransformExtractionResponseList(BaseModel):
+    variables: list[TransformExtractionResponseVariable] = Field(
+        description="List of extracted variables.",
+    )
+
+
+class ContinuousEvalResponse(BaseModel):
+    id: UUID = Field(description="ID of the transform.")
+    name: str = Field(description="Name of the continuous eval.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval.",
+    )
+    task_id: str = Field(description="ID of the parent task.")
+    llm_eval_name: str = Field(description="Name of the llm eval.")
+    llm_eval_version: int = Field(description="Version of the llm eval.")
+    transform_id: UUID = Field(description="ID of the transform.")
+    created_at: datetime = Field(
+        description="Timestamp representing the time the transform was added to the llm eval.",
+    )
+    updated_at: datetime = Field(
+        description="Timestamp representing the time the continuous eval was last updated.",
+    )
+
+
+class ListContinuousEvalsResponse(BaseModel):
+    evals: List[ContinuousEvalResponse] = Field(
+        description="List of continuous evals.",
+    )
+    count: int = Field(description="Total number of evals")

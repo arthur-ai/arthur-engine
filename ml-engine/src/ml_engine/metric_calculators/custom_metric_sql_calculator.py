@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Any, List
+from typing import Any, List, Union
 
 import duckdb
 import pandas as pd
@@ -7,7 +7,7 @@ from arthur_client.api_bindings import (
     AggregationMetricType,
     AggregationSpec,
     CustomAggregationSpecSchema,
-    CustomAggregationVersionSpecSchema,
+    CustomAggregationTestSpec,
     CustomAggregationVersionSpecSchemaAggregateArgsInner,
 )
 from arthur_common.aggregations import (
@@ -22,6 +22,11 @@ from arthur_common.models.metrics import (
 
 from metric_calculators.metric_calculator import MetricCalculator
 
+CustomAggregationSpecTypes = Union[
+    CustomAggregationSpecSchema,
+    CustomAggregationTestSpec,
+]
+
 
 class CustomMetricSQLCalculator(MetricCalculator):
     def __init__(
@@ -29,30 +34,40 @@ class CustomMetricSQLCalculator(MetricCalculator):
         conn: duckdb.DuckDBPyConnection,
         logger: Logger,
         agg_spec: AggregationSpec,
-        agg_spec_schema: CustomAggregationSpecSchema,
+        agg_spec_schema: CustomAggregationSpecTypes,
     ) -> None:
         """
         :param conn: DuckDB Connection with datasets loaded to calculate aggregations over.
-        :param agg_function_type: The AggregationFunction to execute.
-        :param agg_function_schema: The schema of the aggregation function to execute.
+        :param agg_spec: The spec/configuration of the aggregation to execute.
+        :param agg_spec_schema: The schema of the aggregation function to execute.
         """
         super().__init__(conn, logger, agg_spec, agg_spec_schema.name)
-        self.agg_schema = agg_spec_schema
-        if len(self.agg_schema.versions) != 1:
-            raise ValueError(
-                "Schema should include the configuration for the version of the aggregation to be executed.",
-            )
 
-        self.agg_schema_config: CustomAggregationVersionSpecSchema = (
-            agg_spec_schema.versions[0]
-        )
+        # configure configuration fields based on schema type
+        if isinstance(agg_spec_schema, CustomAggregationSpecSchema):
+            if len(agg_spec_schema.versions) != 1:
+                raise ValueError(
+                    "Schema should include the configuration for the version of the aggregation to be executed.",
+                )
+            version_schema = agg_spec_schema.versions[0]
+            self.aggregate_args = version_schema.aggregate_args
+            self.sql = version_schema.sql
+            self.reported_aggregations = version_schema.reported_aggregations
+        elif isinstance(agg_spec_schema, CustomAggregationTestSpec):
+            self.aggregate_args = agg_spec_schema.aggregate_args
+            self.sql = agg_spec_schema.sql
+            self.reported_aggregations = agg_spec_schema.reported_aggregations
+        else:
+            raise NotImplementedError(
+                f"SQL calculator not implemented for schema with type {type(agg_spec_schema)}.",
+            )
 
     @property
     def aggregate_args_schemas(
         self,
     ) -> List[CustomAggregationVersionSpecSchemaAggregateArgsInner]:
         result: List[CustomAggregationVersionSpecSchemaAggregateArgsInner] = (
-            self.agg_schema_config.aggregate_args
+            self.aggregate_args
         )
         return result
 
@@ -123,10 +138,9 @@ class CustomMetricSQLCalculator(MetricCalculator):
         Replaces all variables in the SQL string indicated by {{}} with the needed value for SQL execution.
         """
         aggregate_arg_map_key_to_parameter_type = {
-            arg.parameter_key: arg.parameter_type
-            for arg in self.agg_schema_config.aggregate_args
+            arg.parameter_key: arg.parameter_type for arg in self.aggregate_args
         }
-        constructed_sql: str = self.agg_schema_config.sql
+        constructed_sql: str = self.sql
         for arg_key, arg_val in aggregate_args.items():
             # replace all variables with format {{}} with their values in aggregate_args
             new_val = self._evaluate_arg_value(
@@ -147,6 +161,6 @@ class CustomMetricSQLCalculator(MetricCalculator):
         results = self.conn.sql(constructed_sql).df()
 
         time_series: list[SketchMetric | NumericMetric] = []
-        for reported_agg in self.agg_schema_config.reported_aggregations:
+        for reported_agg in self.reported_aggregations:
             time_series.append(self._calculate_time_series(results, reported_agg))
         return time_series

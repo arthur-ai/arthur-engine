@@ -1,3 +1,5 @@
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import {
   Table,
   TableBody,
@@ -10,8 +12,7 @@ import {
   Tooltip,
   TableSortLabel,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
+
 import { TransformsTableProps } from "../types";
 
 export const TransformsTable: React.FC<TransformsTableProps> = ({
@@ -23,7 +24,7 @@ export const TransformsTable: React.FC<TransformsTableProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
   };
 

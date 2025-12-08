@@ -5,11 +5,11 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "react-router-dom";
 
 import { AllTasks } from "./components/AllTasks";
+import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
-import TransformsManagement from "./components/datasets/transforms/TransformsManagement";
 import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
@@ -19,11 +19,13 @@ import { PromptExperimentsView } from "./components/prompt-experiments/PromptExp
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
 import "./App.css";
 import { TracesView } from "./components/TracesView";
+import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
 
@@ -87,6 +89,27 @@ function App() {
                     />
 
                     <Route
+                      path="/tasks/:id/api-keys"
+                      element={
+                        <ProtectedRoute>
+                          <TaskLayout>
+                            <ApiKeysManagement />
+                          </TaskLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/tasks/:id/rag-configurations"
+                      element={
+                        <ProtectedRoute>
+                          <TaskLayout>
+                            <RagConfigurationsPage />
+                          </TaskLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
                       path="/tasks/:id/agent-experiments"
                       element={
                         <ProtectedRoute>
@@ -120,7 +143,7 @@ function App() {
                     />
 
                     <Route
-                      path="/tasks/:id/datasets/:datasetId/transforms"
+                      path="/tasks/:id/transforms"
                       element={
                         <ProtectedRoute>
                           <TaskLayout>
