@@ -3,11 +3,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal
 from uuid import UUID
 
-import requests
-from arthur_client.auth import ArthurClientCredentialsAPISession
+from arthur_client.api_bindings import (
+    PutUnregisteredAgentsCacheRequest,
+    UnregisteredAgentsV1Api,
+)
 from pydantic import BaseModel, Field
 
-from config import Config
 from connectors.shield_connector import EngineInternalConnector
 
 logger = logging.getLogger(__name__)
@@ -28,10 +29,10 @@ class FetchUnregisteredAgentsJobSpec(BaseModel):
 class FetchUnregisteredAgentsJobExecutor:
     def __init__(
         self,
-        session: ArthurClientCredentialsAPISession,
+        unregistered_agents_client: UnregisteredAgentsV1Api,
         logger: logging.Logger,
     ) -> None:
-        self.session = session
+        self.unregistered_agents_client = unregistered_agents_client
         self.logger = logger
 
     def execute(self, job_spec: FetchUnregisteredAgentsJobSpec) -> None:
@@ -192,36 +193,20 @@ class FetchUnregisteredAgentsJobExecutor:
     ) -> None:
         """Cache the results via the app_plane API."""
         try:
-            # Call the cache endpoint
-            cache_url = f"{Config.settings.ARTHUR_API_HOST}/api/v1/workspaces/{workspace_id}/unregistered_agents/cache/{data_plane_id}"
-
             self.logger.info(
-                f"Caching {len(unregistered_agents_data)} unregistered agents to {cache_url}"
+                f"Caching {len(unregistered_agents_data)} unregistered agents for workspace {workspace_id}, data plane {data_plane_id}"
             )
 
-            # Get the access token from the session
-            token = self.session.token()
-            ssl_verify = Config.get_bool("KEYCLOAK_SSL_VERIFY", True)
-
-            # Use requests with the auth token
-            # OAuth2Token is a dict subclass, access via ["access_token"]
-            response = requests.put(
-                cache_url,
-                json={"unregistered_agents_data": unregistered_agents_data},
-                headers={
-                    "Authorization": f"Bearer {token['access_token']}",
-                    "Content-Type": "application/json",
-                },
-                verify=ssl_verify,
+            # Use the generated client to call the cache endpoint
+            self.unregistered_agents_client.put_unregistered_agents_cache(
+                workspace_id=str(workspace_id),
+                data_plane_id=str(data_plane_id),
+                put_unregistered_agents_cache_request=PutUnregisteredAgentsCacheRequest(
+                    unregistered_agents_data=unregistered_agents_data,
+                ),
             )
 
-            if response.status_code != 204:
-                self.logger.error(
-                    f"Cache request failed with status {response.status_code}: {response.text}"
-                )
-            response.raise_for_status()
-
-            self.logger.info(f"Successfully cached unregistered agents data")
+            self.logger.info("Successfully cached unregistered agents data")
 
         except Exception as e:
             self.logger.error(f"Failed to cache unregistered agents: {e}")

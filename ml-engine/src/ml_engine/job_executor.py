@@ -8,6 +8,7 @@ from arthur_client.api_bindings import (
     AlertRulesV1Api,
     AlertsV1Api,
     ApiClient,
+    UnregisteredAgentsV1Api,
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
@@ -112,7 +113,6 @@ class JobExecutor:
             ),
             verify=ssl_verify,
         )
-        self.session = sess  # Store for use by job executors that need it
         client = ApiClient(
             configuration=ArthurOAuthSessionAPIConfiguration(
                 session=sess,
@@ -130,6 +130,7 @@ class JobExecutor:
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
+        self.unregistered_agents_client = UnregisteredAgentsV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
         self.logger.setLevel(logging.INFO)
@@ -350,7 +351,7 @@ class JobExecutor:
                             JobSpecRawParser(job_resp.raw_data)._parse_job_spec_field()
                         )
                         FetchUnregisteredAgentsJobExecutor(
-                            self.session,
+                            self.unregistered_agents_client,
                             self.logger,
                         ).execute(job_spec)
                     case _:

@@ -13,11 +13,12 @@ from job_executors.unregistered_agents_job_executor import (
 
 
 @pytest.fixture
-def mock_session():
-    """Create a mock ArthurClientCredentialsAPISession."""
-    session = Mock()
-    session.token.return_value = {"access_token": "test_token"}
-    return session
+def mock_unregistered_agents_client():
+    """Create a mock UnregisteredAgentsV1Api client."""
+    client = Mock()
+    # The put_unregistered_agents_cache method returns None on success (204)
+    client.put_unregistered_agents_cache.return_value = None
+    return client
 
 
 @pytest.fixture
@@ -60,19 +61,17 @@ class TestFetchUnregisteredAgentsJobSpec:
 class TestFetchUnregisteredAgentsJobExecutor:
     """Tests for the FetchUnregisteredAgentsJobExecutor."""
 
-    def test_executor_init(self, mock_session, mock_logger):
+    def test_executor_init(self, mock_unregistered_agents_client, mock_logger):
         """Test that the executor initializes correctly."""
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
-        assert executor.session == mock_session
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
+        assert executor.unregistered_agents_client == mock_unregistered_agents_client
         assert executor.logger == mock_logger
 
     @patch("job_executors.unregistered_agents_job_executor.EngineInternalConnector")
-    @patch("job_executors.unregistered_agents_job_executor.requests")
     def test_execute_success(
         self,
-        mock_requests,
         mock_connector_class,
-        mock_session,
+        mock_unregistered_agents_client,
         mock_logger,
         job_spec,
     ):
@@ -104,13 +103,8 @@ class TestFetchUnregisteredAgentsJobExecutor:
             mock_span_count_response
         )
 
-        # Setup mock cache response
-        mock_response = Mock()
-        mock_response.status_code = 204
-        mock_requests.put.return_value = mock_response
-
         # Execute
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
         executor.execute(job_spec)
 
         # Verify connector was created
@@ -124,23 +118,24 @@ class TestFetchUnregisteredAgentsJobExecutor:
         # Verify tasks were fetched
         mock_connector._tasks_client.get_all_tasks_api_v2_tasks_get.assert_called_once()
 
-        # Verify cache endpoint was called
-        mock_requests.put.assert_called_once()
-        call_args = mock_requests.put.call_args
-        assert f"/workspaces/{job_spec.workspace_id}/unregistered_agents/cache/{job_spec.data_plane_id}" in call_args[0][0]
+        # Verify cache endpoint was called via generated client
+        mock_unregistered_agents_client.put_unregistered_agents_cache.assert_called_once()
+        call_kwargs = mock_unregistered_agents_client.put_unregistered_agents_cache.call_args[1]
+        assert call_kwargs["workspace_id"] == str(job_spec.workspace_id)
+        assert call_kwargs["data_plane_id"] == str(job_spec.data_plane_id)
 
     @patch("job_executors.unregistered_agents_job_executor.EngineInternalConnector")
     def test_execute_connector_creation_failure(
         self,
         mock_connector_class,
-        mock_session,
+        mock_unregistered_agents_client,
         mock_logger,
         job_spec,
     ):
         """Test that connector creation failure is handled and re-raised."""
         mock_connector_class.side_effect = Exception("Connector creation failed")
 
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
         
         with pytest.raises(Exception) as exc_info:
             executor.execute(job_spec)
@@ -149,12 +144,10 @@ class TestFetchUnregisteredAgentsJobExecutor:
         mock_logger.error.assert_called()
 
     @patch("job_executors.unregistered_agents_job_executor.EngineInternalConnector")
-    @patch("job_executors.unregistered_agents_job_executor.requests")
     def test_execute_handles_empty_spans(
         self,
-        mock_requests,
         mock_connector_class,
-        mock_session,
+        mock_unregistered_agents_client,
         mock_logger,
         job_spec,
     ):
@@ -172,26 +165,19 @@ class TestFetchUnregisteredAgentsJobExecutor:
         # Setup empty tasks response
         mock_connector._tasks_client.get_all_tasks_api_v2_tasks_get.return_value = []
 
-        # Setup mock cache response
-        mock_response = Mock()
-        mock_response.status_code = 204
-        mock_requests.put.return_value = mock_response
-
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
         executor.execute(job_spec)
 
         # Verify cache was still called with empty data
-        mock_requests.put.assert_called_once()
-        call_args = mock_requests.put.call_args
-        assert call_args[1]["json"]["unregistered_agents_data"] == []
+        mock_unregistered_agents_client.put_unregistered_agents_cache.assert_called_once()
+        call_kwargs = mock_unregistered_agents_client.put_unregistered_agents_cache.call_args[1]
+        assert call_kwargs["put_unregistered_agents_cache_request"].unregistered_agents_data == []
 
     @patch("job_executors.unregistered_agents_job_executor.EngineInternalConnector")
-    @patch("job_executors.unregistered_agents_job_executor.requests")
     def test_execute_handles_spans_fetch_failure(
         self,
-        mock_requests,
         mock_connector_class,
-        mock_session,
+        mock_unregistered_agents_client,
         mock_logger,
         job_spec,
     ):
@@ -207,24 +193,17 @@ class TestFetchUnregisteredAgentsJobExecutor:
         # Setup tasks response
         mock_connector._tasks_client.get_all_tasks_api_v2_tasks_get.return_value = []
 
-        # Setup mock cache response
-        mock_response = Mock()
-        mock_response.status_code = 204
-        mock_requests.put.return_value = mock_response
-
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
         executor.execute(job_spec)
 
         # Verify error was logged but execution continued
         mock_logger.error.assert_called()
 
     @patch("job_executors.unregistered_agents_job_executor.EngineInternalConnector")
-    @patch("job_executors.unregistered_agents_job_executor.requests")
     def test_execute_handles_cache_failure(
         self,
-        mock_requests,
         mock_connector_class,
-        mock_session,
+        mock_unregistered_agents_client,
         mock_logger,
         job_spec,
     ):
@@ -241,13 +220,11 @@ class TestFetchUnregisteredAgentsJobExecutor:
         mock_connector._tasks_client.get_all_tasks_api_v2_tasks_get.return_value = []
 
         # Setup cache request to fail
-        mock_response = Mock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal Server Error"
-        mock_response.raise_for_status.side_effect = Exception("Cache request failed")
-        mock_requests.put.return_value = mock_response
+        mock_unregistered_agents_client.put_unregistered_agents_cache.side_effect = Exception(
+            "Cache request failed"
+        )
 
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
         
         with pytest.raises(Exception) as exc_info:
             executor.execute(job_spec)
@@ -258,9 +235,9 @@ class TestFetchUnregisteredAgentsJobExecutor:
 class TestFormatUnregisteredAgents:
     """Tests for the _format_unregistered_agents method."""
 
-    def test_format_unregistered_spans(self, mock_session, mock_logger):
+    def test_format_unregistered_spans(self, mock_unregistered_agents_client, mock_logger):
         """Test formatting of unregistered spans."""
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
 
         unregistered_spans = [
             {"span_name": "test_span", "count": 10},
@@ -274,9 +251,9 @@ class TestFormatUnregisteredAgents:
         assert result[0]["creation_source"]["top_level_span_name"] == "test_span"
         assert result[0]["num_spans"] == 10
 
-    def test_format_tasks(self, mock_session, mock_logger):
+    def test_format_tasks(self, mock_unregistered_agents_client, mock_logger):
         """Test formatting of tasks."""
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
 
         unregistered_spans: List[Dict[str, Any]] = []
         all_tasks = [
@@ -290,9 +267,9 @@ class TestFormatUnregisteredAgents:
         assert result[0]["creation_source"]["top_level_span_name"] is None
         assert result[0]["num_spans"] == 5
 
-    def test_format_combined(self, mock_session, mock_logger):
+    def test_format_combined(self, mock_unregistered_agents_client, mock_logger):
         """Test formatting of combined spans and tasks."""
-        executor = FetchUnregisteredAgentsJobExecutor(mock_session, mock_logger)
+        executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
 
         unregistered_spans = [
             {"span_name": "unregistered_span", "count": 10},
