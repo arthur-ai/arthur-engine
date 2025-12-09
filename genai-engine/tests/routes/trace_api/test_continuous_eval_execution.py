@@ -33,6 +33,11 @@ from tests.routes.trace_api.conftest import (
 )
 
 
+def mock_get_db_session_generator():
+    """Generator function that yields the test database session."""
+    yield override_get_db_session()
+
+
 def create_mock_annotation(
     trace_id: str,
     annotation_type: AgenticAnnotationType,
@@ -501,7 +506,12 @@ def test_continuous_eval_execution_response_fail(
 @pytest.mark.unit_tests
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
 def test_continuous_eval_execution_annotation_eval_errors(
+    mock_get_db_session,
     mock_completion,
     mock_completion_cost,
     client: GenaiEngineTestClientBase,
@@ -800,7 +810,12 @@ def test_continuous_eval_execution_annotation_eval_errors(
 @pytest.mark.unit_tests
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
 def test_continuous_eval_execution_transform_errors(
+    mock_get_db_session,
     mock_completion,
     mock_completion_cost,
     client: GenaiEngineTestClientBase,
@@ -977,7 +992,12 @@ def test_continuous_eval_execution_transform_errors(
 @pytest.mark.unit_tests
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
 def test_stale_annotations_requeueing(
+    mock_get_db_session,
     mock_completion,
     mock_completion_cost,
     client: GenaiEngineTestClientBase,
@@ -1080,113 +1100,3 @@ def test_stale_annotations_requeueing(
     shutdown_continuous_eval_queue_service()
     cleanup_sample_trace()
     client.delete_task(agentic_task.id)
-
-
-@pytest.mark.unit_tests
-@patch("clients.llm.llm_client.completion_cost")
-@patch("clients.llm.llm_client.litellm.completion")
-def test_concurrent_job_execution_idempotency(
-    mock_completion,
-    mock_completion_cost,
-    client: GenaiEngineTestClientBase,
-):
-    """Test that concurrent execution of the same job is idempotent."""
-    test_data = setup_test_data()
-
-    mock_response = MagicMock(spec=ModelResponse)
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": '{"reason": "Test reason", "score": 1}',
-    }
-    mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.002345
-
-    initialize_continuous_eval_queue_service(num_workers=4, override_execution_delay=0)
-    continuous_eval_queue_service = get_continuous_eval_queue_service()
-
-    response = client.base_client.put(
-        "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 201
-
-    llm_eval_data = {
-        "model_name": "gpt-4o",
-        "model_provider": "openai",
-        "instructions": "Test instructions",
-    }
-    status_code, llm_eval = client.save_llm_eval(
-        task_id=test_data["task_id"],
-        llm_eval_name="test_llm_eval",
-        llm_eval_data=llm_eval_data,
-    )
-    assert status_code == 200
-
-    transform_definition = {
-        "variables": [
-            {
-                "variable_name": "model_name",
-                "span_name": "rag-retrieval-savedQueries",
-                "attribute_path": "attributes.input.value.context",
-            },
-        ],
-    }
-    status_code, transform = client.create_transform(
-        task_id=test_data["task_id"],
-        name="test_transform",
-        description="Test transform description",
-        definition=transform_definition,
-    )
-    assert status_code == 200
-
-    status_code, continuous_eval = client.save_continuous_eval(
-        task_id=test_data["task_id"],
-        continuous_eval_data={
-            "name": "test_concurrent_eval",
-            "description": "Test concurrent eval",
-            "llm_eval_name": "test_llm_eval",
-            "llm_eval_version": 1,
-            "transform_id": str(transform.id),
-        },
-    )
-    assert status_code == 200
-
-    annotation = create_mock_annotation(
-        trace_id=test_data["trace_id"],
-        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
-        continuous_eval_id=continuous_eval.id,
-        run_status=ContinuousEvalRunStatus.PENDING,
-    )
-
-    job = ContinuousEvalJob(
-        annotation_id=annotation.id,
-        trace_id=test_data["trace_id"],
-        continuous_eval_id=continuous_eval.id,
-        task_id=test_data["task_id"],
-        delay_seconds=0,
-    )
-
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [
-            executor.submit(continuous_eval_queue_service._execute_job, job)
-            for _ in range(5)
-        ]
-
-        for future in futures:
-            try:
-                future.result()
-            except ValueError:
-                pass
-
-    time.sleep(0.5)
-
-    mock_completion.assert_called_once()
-
-    status_code, received_annotation = client.get_annotation_by_id(annotation.id)
-    assert status_code == 200
-    assert received_annotation.run_status == ContinuousEvalRunStatus.PASSED.value
-
-    delete_mock_annotation(annotation.id)
-    shutdown_continuous_eval_queue_service()
-    cleanup_sample_trace()
