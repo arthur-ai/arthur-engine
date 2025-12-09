@@ -92,9 +92,7 @@ class FetchUnregisteredAgentsJobExecutor:
             self.logger.error(f"Failed to fetch unregistered spans: {e}")
             return []
 
-    def _fetch_all_tasks(
-        self, connector: EngineInternalConnector
-    ) -> List[dict]:
+    def _fetch_all_tasks(self, connector: EngineInternalConnector) -> List[dict]:
         """Fetch all tasks from genai-engine with their span counts."""
         try:
             # Call the tasks list endpoint via the tasks client
