@@ -403,6 +403,16 @@ class ContinuousEvalsRepository:
         if annotation.annotation_type != AgenticAnnotationType.CONTINUOUS_EVAL.value:
             raise HTTPException(status_code=400, detail="Run is not a continuous eval.")
 
+        if annotation.run_status not in [
+            ContinuousEvalRunStatus.FAILED.value,
+            ContinuousEvalRunStatus.ERROR.value,
+            ContinuousEvalRunStatus.SKIPPED.value,
+        ]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot rerun a non-failed continuous eval.",
+            )
+
         continuous_eval = self.get_continuous_eval_by_id(annotation.continuous_eval_id)
 
         queue_service = get_continuous_eval_queue_service()

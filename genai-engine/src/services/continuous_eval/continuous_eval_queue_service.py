@@ -215,6 +215,10 @@ class ContinuousEvalQueueService:
                 raise ValueError(
                     f"Annotation's continuous eval ID does not match the job's continuous eval ID",
                 )
+            if annotation.run_status != ContinuousEvalRunStatus.PENDING.value:
+                raise ValueError(
+                    f"Annotation {job.annotation_id} is running or has already finished executing",
+                )
 
             # Load the continuous eval configuration
             continuous_eval = (
@@ -264,11 +268,32 @@ class ContinuousEvalQueueService:
             )
 
             # Update annotation status to running
-            self._update_annotation_status(
-                db_session,
-                job.annotation_id,
-                ContinuousEvalRunStatus.RUNNING.value,
+            # NOTE: We are not using _update_annotation_status here so we can atomically update the status from pending to running
+            # and ensure only one worker across all nodes can execute this job
+            updated_rows = (
+                db_session.query(DatabaseAgenticAnnotation)
+                .filter(
+                    DatabaseAgenticAnnotation.id == job.annotation_id,
+                    DatabaseAgenticAnnotation.run_status
+                    == ContinuousEvalRunStatus.PENDING.value,
+                )
+                .update(
+                    {
+                        "run_status": ContinuousEvalRunStatus.RUNNING.value,
+                        "updated_at": datetime.now(),
+                    },
+                    synchronize_session=False,
+                )
             )
+            db_session.commit()
+
+            if updated_rows == 0:
+                logger.info(
+                    f"Annotation {job.annotation_id} was already picked up by another worker, skipping",
+                )
+                return
+
+            db_session.expire_all()
 
             llm_eval_run_result = llm_eval_repository.run_llm_eval(
                 job.task_id,
