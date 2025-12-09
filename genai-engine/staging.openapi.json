@@ -12645,17 +12645,18 @@
                             }
                         ],
                         "title": "Annotation Score",
-                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)."
+                        "description": "Binary score for a positive or negative annotation."
                     },
                     "run_status": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
+                        "title": "Run Status",
                         "description": "Status of the continuous eval run"
                     },
                     "cost": {
@@ -12759,7 +12760,7 @@
                             }
                         ],
                         "title": "Annotation Score",
-                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)."
+                        "description": "Binary score for a positive or negative annotation."
                     },
                     "annotation_description": {
                         "anyOf": [

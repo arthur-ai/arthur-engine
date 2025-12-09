@@ -2,6 +2,26 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/09/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+
 # 12/08/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'annotation_score' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'annotation_score' response's property type/format changed from 'integer'/'' to ''/'' for status '200'
