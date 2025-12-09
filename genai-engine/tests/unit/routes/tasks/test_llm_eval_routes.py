@@ -7,6 +7,7 @@ from litellm.types.utils import ModelResponse
 
 from schemas.internal_schemas import Task
 from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.unit.routes.tasks.conftest import TaskWithLLMEval
 
 
 @pytest.fixture
@@ -524,36 +525,23 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
 @pytest.mark.parametrize("eval_version", ["latest", "1", "datetime", "tag"])
 def test_get_llm_eval_by_version_route(
     client: GenaiEngineTestClientBase,
-    eval_version,
+    task_with_llm_eval_in_db: TaskWithLLMEval,
+    eval_version: str,
 ):
     """Test getting an llm eval with different version formats (latest, version number, datetime, tag)"""
-    # Create an agentic task
-    task_name = f"agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=True)
-    assert status_code == 200
+    task_id = task_with_llm_eval_in_db.task_id
+    eval_name = task_with_llm_eval_in_db.eval_name
+    eval_data = task_with_llm_eval_in_db.eval_data
 
-    # Save an llm eval
-    eval_name = "test_llm_eval"
-    eval_data = {
-        "model_name": "gpt-4o",
-        "model_provider": "openai",
-        "instructions": "Test instructions",
-    }
+    # For datetime version, use the created_at timestamp from the fixture
     if eval_version == "datetime":
-        eval_version = datetime.now().isoformat()
-
-    save_response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
-        json=eval_data,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert save_response.status_code == 200
+        eval_version = task_with_llm_eval_in_db.created_at.isoformat()
 
     # Add a tag if testing tag-based version
     if eval_version == "tag":
         test_tag = "test_tag"
         tag_response = client.base_client.put(
-            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1/tags",
+            f"/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/1/tags",
             json={"tag": test_tag},
             headers=client.authorized_user_api_key_headers,
         )
@@ -562,7 +550,7 @@ def test_get_llm_eval_by_version_route(
 
     # Get the llm eval using different version formats
     response = client.base_client.get(
-        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/{eval_version}",
+        f"/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
