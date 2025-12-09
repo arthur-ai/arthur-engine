@@ -135,45 +135,33 @@ class TreeBuildingService:
         if not spans:
             return []
 
+        # Create a set of all valid span IDs for O(1) lookup
+        valid_span_ids: set[str] = {span.span_id for span in spans}
+
         # Create a mapping to store children for each span
         children_by_parent: dict[str, list[Span]] = {}
         root_spans: list[Span] = []
 
-        # Create a set of all valid span IDs for O(1) lookup
-        valid_span_ids: set[str] = {span.span_id for span in spans}
-
-        # First pass: identify parent-child relationships
+        # Single pass: identify parent-child relationships and detect orphans
         for span in spans:
             parent_id = span.parent_span_id
             if parent_id is None:
                 # This is a root span
                 root_spans.append(span)
-            else:
-                # This span has a parent (or claims to)
+            elif parent_id in valid_span_ids:
+                # This span has a valid parent
                 if parent_id not in children_by_parent:
                     children_by_parent[parent_id] = []
                 children_by_parent[parent_id].append(span)
-
-        # Second pass: detect and promote orphaned spans to root status
-        # Orphaned spans are spans whose parent_span_id references a parent
-        # that doesn't exist in the current trace
-        orphaned_parent_ids = []
-        for parent_id in children_by_parent.keys():
-            if parent_id not in valid_span_ids:
-                # This parent_id doesn't exist - these children are orphaned
-                orphaned_parent_ids.append(parent_id)
-
-        # Promote orphaned spans to root status
-        if orphaned_parent_ids:
-            for orphaned_parent_id in orphaned_parent_ids:
-                orphaned_children = children_by_parent.pop(orphaned_parent_id)
-                root_spans.extend(orphaned_children)
-                logger.warning(
-                    f"Promoted {len(orphaned_children)} orphaned span(s) to root status. "
-                    f"Trace may be incomplete.",
+            else:
+                # This span's parent doesn't exist - it's orphaned, promote to root
+                root_spans.append(span)
+                logger.info(
+                    f"Promoted orphaned span {span.span_id} to root status. "
+                    f"Parent {parent_id} not found in trace.",
                 )
 
-        # Third pass: build nested structure recursively
+        # Build nested structure recursively
         def build_nested_span(span: Span) -> NestedSpanWithMetricsResponse:
             # Get children for this span (if any)
             children_spans = children_by_parent.get(span.span_id, [])
