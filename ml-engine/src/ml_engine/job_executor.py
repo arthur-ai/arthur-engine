@@ -347,13 +347,17 @@ class JobExecutor:
                             self.logger,
                         ).execute(job.job_spec.actual_instance)
                     case JobKind.FETCH_UNREGISTERED_AGENTS:
-                        job_spec = FetchUnregisteredAgentsJobSpec.model_validate(
-                            JobSpecRawParser(job_resp.raw_data)._parse_job_spec_field()
-                        )
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            FetchUnregisteredAgentsJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected FetchUnregisteredAgentsJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
                         FetchUnregisteredAgentsJobExecutor(
                             self.unregistered_agents_client,
                             self.logger,
-                        ).execute(job_spec)
+                        ).execute(job.job_spec.actual_instance)
                     case _:
                         raise NotImplementedError(f"Job type {job.kind} not supported.")
                 self.logger.info(f"Job {job.id} - {job.kind} completed")
