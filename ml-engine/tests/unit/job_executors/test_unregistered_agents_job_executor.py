@@ -1,14 +1,14 @@
 """Tests for the FetchUnregisteredAgentsJobExecutor."""
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import List
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+from arthur_client.api_bindings import FetchUnregisteredAgentsJobSpec
 
 from job_executors.unregistered_agents_job_executor import (
     FetchUnregisteredAgentsJobExecutor,
-    FetchUnregisteredAgentsJobSpec,
 )
 
 
@@ -31,8 +31,8 @@ def mock_logger():
 def job_spec():
     """Create a test job spec."""
     return FetchUnregisteredAgentsJobSpec(
-        data_plane_id=uuid4(),
-        workspace_id=uuid4(),
+        data_plane_id=str(uuid4()),
+        workspace_id=str(uuid4()),
     )
 
 
@@ -42,20 +42,20 @@ class TestFetchUnregisteredAgentsJobSpec:
     def test_job_spec_has_correct_job_type(self):
         """Test that the job spec has the correct job_type."""
         spec = FetchUnregisteredAgentsJobSpec(
-            data_plane_id=uuid4(),
-            workspace_id=uuid4(),
+            data_plane_id=str(uuid4()),
+            workspace_id=str(uuid4()),
         )
         assert spec.job_type == "fetch_unregistered_agents"
 
     def test_job_spec_requires_data_plane_id(self):
         """Test that the job spec requires a data_plane_id."""
         with pytest.raises(Exception):
-            FetchUnregisteredAgentsJobSpec(workspace_id=uuid4())
+            FetchUnregisteredAgentsJobSpec(workspace_id=str(uuid4()))
 
     def test_job_spec_requires_workspace_id(self):
         """Test that the job spec requires a workspace_id."""
         with pytest.raises(Exception):
-            FetchUnregisteredAgentsJobSpec(data_plane_id=uuid4())
+            FetchUnregisteredAgentsJobSpec(data_plane_id=str(uuid4()))
 
 
 class TestFetchUnregisteredAgentsJobExecutor:
@@ -242,20 +242,21 @@ class TestFormatUnregisteredAgents:
         unregistered_spans = [
             {"span_name": "test_span", "count": 10},
         ]
-        all_tasks: List[Dict[str, Any]] = []
+        all_tasks: List[dict] = []
 
         result = executor._format_unregistered_agents(unregistered_spans, all_tasks)
 
         assert len(result) == 1
-        assert result[0]["creation_source"]["task_id"] is None
-        assert result[0]["creation_source"]["top_level_span_name"] == "test_span"
-        assert result[0]["num_spans"] == 10
+        # Results are now typed CachedUnregisteredAgent objects
+        assert result[0].creation_source.task_id is None
+        assert result[0].creation_source.top_level_span_name == "test_span"
+        assert result[0].num_spans == 10
 
     def test_format_tasks(self, mock_unregistered_agents_client, mock_logger):
         """Test formatting of tasks."""
         executor = FetchUnregisteredAgentsJobExecutor(mock_unregistered_agents_client, mock_logger)
 
-        unregistered_spans: List[Dict[str, Any]] = []
+        unregistered_spans: List[dict] = []
         all_tasks = [
             {"task_id": "task-123", "task_name": "test_task", "span_count": 5},
         ]
@@ -263,9 +264,10 @@ class TestFormatUnregisteredAgents:
         result = executor._format_unregistered_agents(unregistered_spans, all_tasks)
 
         assert len(result) == 1
-        assert result[0]["creation_source"]["task_id"] == "task-123"
-        assert result[0]["creation_source"]["top_level_span_name"] is None
-        assert result[0]["num_spans"] == 5
+        # Results are now typed CachedUnregisteredAgent objects
+        assert result[0].creation_source.task_id == "task-123"
+        assert result[0].creation_source.top_level_span_name is None
+        assert result[0].num_spans == 5
 
     def test_format_combined(self, mock_unregistered_agents_client, mock_logger):
         """Test formatting of combined spans and tasks."""
@@ -281,9 +283,9 @@ class TestFormatUnregisteredAgents:
         result = executor._format_unregistered_agents(unregistered_spans, all_tasks)
 
         assert len(result) == 2
-        # First item should be the unregistered span
-        assert result[0]["creation_source"]["task_id"] is None
-        assert result[0]["creation_source"]["top_level_span_name"] == "unregistered_span"
-        # Second item should be the task
-        assert result[1]["creation_source"]["task_id"] == "task-123"
+        # First item should be the unregistered span (typed object)
+        assert result[0].creation_source.task_id is None
+        assert result[0].creation_source.top_level_span_name == "unregistered_span"
+        # Second item should be the task (typed object)
+        assert result[1].creation_source.task_id == "task-123"
 
