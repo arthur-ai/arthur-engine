@@ -51,20 +51,23 @@ function transformRowsForNewColumns(
     id: row.id,
     created_at: row.created_at,
     data: newColumns.map((newColName, idx) => {
-      const oldColName = oldColumns[idx];
-      let columnValue = "";
-
-      if (oldColName) {
-        const existing = row.data.find((d) => d.column_name === oldColName);
-        columnValue = existing?.column_value || "";
-      } else {
-        const existing = row.data.find((d) => d.column_name === newColName);
-        columnValue = existing?.column_value || "";
+      // First, try to find by the new column name (works for unchanged columns)
+      let existing = row.data.find((d) => d.column_name === newColName);
+      
+      // If not found, check if this might be a renamed column
+      // by comparing the old column at the same position
+      if (!existing && idx < oldColumns.length) {
+        const oldColName = oldColumns[idx];
+        // If the old column name is different, it was renamed - look up by old name
+        if (oldColName !== newColName) {
+          existing = row.data.find((d) => d.column_name === oldColName);
+        }
       }
-
+      
+      // Return found value or empty string for new columns
       return {
         column_name: newColName,
-        column_value: columnValue,
+        column_value: existing?.column_value || "",
       };
     }),
   }));
