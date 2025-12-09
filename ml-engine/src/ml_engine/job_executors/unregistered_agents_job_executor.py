@@ -1,29 +1,18 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal
-from uuid import UUID
+from typing import List
 
 from arthur_client.api_bindings import (
+    CachedCreationSource,
+    CachedUnregisteredAgent,
+    FetchUnregisteredAgentsJobSpec,
     PutUnregisteredAgentsCacheRequest,
     UnregisteredAgentsV1Api,
 )
-from pydantic import BaseModel, Field
 
 from connectors.shield_connector import EngineInternalConnector
 
 logger = logging.getLogger(__name__)
-
-
-class FetchUnregisteredAgentsJobSpec(BaseModel):
-    """Job spec for fetching unregistered agents from genai-engine."""
-
-    job_type: Literal["fetch_unregistered_agents"] = "fetch_unregistered_agents"
-    data_plane_id: UUID = Field(
-        description="The id of the data plane to fetch unregistered agents from."
-    )
-    workspace_id: UUID = Field(
-        description="The id of the workspace the data plane belongs to."
-    )
 
 
 class FetchUnregisteredAgentsJobExecutor:
@@ -75,7 +64,7 @@ class FetchUnregisteredAgentsJobExecutor:
 
     def _fetch_unregistered_spans(
         self, connector: EngineInternalConnector
-    ) -> List[Dict[str, Any]]:
+    ) -> List[dict]:
         """Fetch unregistered root spans from genai-engine."""
         try:
             # Call the unregistered spans endpoint via the spans client
@@ -105,7 +94,7 @@ class FetchUnregisteredAgentsJobExecutor:
 
     def _fetch_all_tasks(
         self, connector: EngineInternalConnector
-    ) -> List[Dict[str, Any]]:
+    ) -> List[dict]:
         """Fetch all tasks from genai-engine with their span counts."""
         try:
             # Call the tasks list endpoint via the tasks client
@@ -152,44 +141,46 @@ class FetchUnregisteredAgentsJobExecutor:
 
     def _format_unregistered_agents(
         self,
-        unregistered_spans: List[Dict[str, Any]],
-        all_tasks: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Format unregistered agents data for caching."""
+        unregistered_spans: List[dict],
+        all_tasks: List[dict],
+    ) -> List[CachedUnregisteredAgent]:
+        """Format unregistered agents data for caching using typed models."""
+        agents: List[CachedUnregisteredAgent] = []
+        now = datetime.now(timezone.utc)
+
         # Format unregistered spans as agents
-        agents = []
         for span in unregistered_spans:
             # For unregistered spans, we don't have a task_id
-            agent_data = {
-                "creation_source": {
-                    "task_id": None,
-                    "top_level_span_name": span["span_name"],
-                },
-                "first_detected": datetime.now(timezone.utc).isoformat(),
-                "num_spans": span["count"],
-            }
-            agents.append(agent_data)
+            agent = CachedUnregisteredAgent(
+                creation_source=CachedCreationSource(
+                    task_id=None,
+                    top_level_span_name=span["span_name"],
+                ),
+                first_detected=now,
+                num_spans=span["count"],
+            )
+            agents.append(agent)
 
         # Format tasks as agents (tasks that might not be linked to applications)
         # Note: We'll filter out registered ones in the operator
         for task in all_tasks:
-            agent_data = {
-                "creation_source": {
-                    "task_id": task["task_id"],
-                    "top_level_span_name": None,
-                },
-                "first_detected": datetime.now(timezone.utc).isoformat(),
-                "num_spans": task.get("span_count", 0),
-            }
-            agents.append(agent_data)
+            agent = CachedUnregisteredAgent(
+                creation_source=CachedCreationSource(
+                    task_id=task["task_id"],
+                    top_level_span_name=None,
+                ),
+                first_detected=now,
+                num_spans=task.get("span_count", 0),
+            )
+            agents.append(agent)
 
         return agents
 
     def _cache_results(
         self,
-        workspace_id: UUID,
-        data_plane_id: UUID,
-        unregistered_agents_data: List[Dict[str, Any]],
+        workspace_id: str,
+        data_plane_id: str,
+        unregistered_agents_data: List[CachedUnregisteredAgent],
     ) -> None:
         """Cache the results via the app_plane API."""
         try:
@@ -199,8 +190,8 @@ class FetchUnregisteredAgentsJobExecutor:
 
             # Use the generated client to call the cache endpoint
             self.unregistered_agents_client.put_unregistered_agents_cache(
-                workspace_id=str(workspace_id),
-                data_plane_id=str(data_plane_id),
+                workspace_id=workspace_id,
+                data_plane_id=data_plane_id,
                 put_unregistered_agents_cache_request=PutUnregisteredAgentsCacheRequest(
                     unregistered_agents_data=unregistered_agents_data,
                 ),

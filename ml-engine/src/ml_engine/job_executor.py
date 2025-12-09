@@ -15,6 +15,7 @@ from arthur_client.api_bindings import (
     CustomAggregationTestsV1Api,
     DataRetrievalV1Api,
     DatasetsV1Api,
+    FetchUnregisteredAgentsJobSpec,
     JobKind,
     JobRun,
     JobState,
@@ -63,7 +64,6 @@ from job_executors.task_management_job_executors import (
 )
 from job_executors.unregistered_agents_job_executor import (
     FetchUnregisteredAgentsJobExecutor,
-    FetchUnregisteredAgentsJobSpec,
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
