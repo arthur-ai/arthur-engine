@@ -1,6 +1,5 @@
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Optional
 from unittest.mock import MagicMock, patch
@@ -30,6 +29,7 @@ from tests.routes.trace_api.conftest import (
     _create_base_trace_request,
     _create_span,
     _delete_spans_from_db,
+    _delete_trace_metadata_from_db,
 )
 
 
@@ -110,8 +110,18 @@ def create_sample_receive_trace(task_id: str) -> bytes:
 
 def cleanup_sample_trace() -> None:
     span_ids = [b"api_span_456".hex()]
+    trace_ids = [b"api_trace_123".hex()]
     db_session = override_get_db_session()
     _delete_spans_from_db(db_session, span_ids)
+    _delete_trace_metadata_from_db(db_session, trace_ids)
+
+
+def cleanup_model_provider(client: GenaiEngineTestClientBase) -> None:
+    """Clean up the OpenAI model provider configured during tests."""
+    client.base_client.delete(
+        "/api/v1/model_providers/openai",
+        headers=client.authorized_user_api_key_headers,
+    )
 
 
 def setup_test_data():
@@ -288,6 +298,20 @@ def setup_test_data():
     }
 
 
+def cleanup_test_data(test_data):
+    db_session = override_get_db_session()
+    trace_id = test_data["trace_id"]
+    task_id = test_data["task_id"]
+
+    # Cleanup
+    db_session.query(DatabaseSpan).filter(DatabaseSpan.trace_id == trace_id).delete()
+    db_session.query(DatabaseTraceMetadata).filter(
+        DatabaseTraceMetadata.trace_id == trace_id,
+    ).delete()
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
+    db_session.commit()
+
+
 @pytest.mark.unit_tests
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
@@ -374,7 +398,7 @@ def test_continuous_eval_execution(
     start_time = time.time()
     while True:
         if time.time() - start_time > 15:
-            break
+            assert False
         status_code, data = client.list_continuous_eval_run_results(
             task_id=agentic_task.id,
         )
@@ -393,6 +417,7 @@ def test_continuous_eval_execution(
 
     shutdown_continuous_eval_queue_service()
     cleanup_sample_trace()
+    cleanup_model_provider(client)
     client.delete_task(agentic_task.id)
 
 
@@ -481,7 +506,7 @@ def test_continuous_eval_execution_response_fail(
     start_time = time.time()
     while True:
         if time.time() - start_time > 15:
-            break
+            assert False
         status_code, data = client.list_continuous_eval_run_results(
             task_id=agentic_task.id,
         )
@@ -500,6 +525,7 @@ def test_continuous_eval_execution_response_fail(
 
     shutdown_continuous_eval_queue_service()
     cleanup_sample_trace()
+    cleanup_model_provider(client)
     client.delete_task(agentic_task.id)
 
 
@@ -804,6 +830,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
 
     shutdown_continuous_eval_queue_service()
     cleanup_sample_trace()
+    cleanup_model_provider(client)
     client.delete_task(agentic_task.id)
 
 
@@ -986,6 +1013,8 @@ def test_continuous_eval_execution_transform_errors(
 
     shutdown_continuous_eval_queue_service()
     cleanup_sample_trace()
+    cleanup_model_provider(client)
+    cleanup_test_data(test_data)
     client.delete_task(agentic_task.id)
 
 
@@ -1087,7 +1116,7 @@ def test_stale_annotations_requeueing(
     start_time = time.time()
     while True:
         if time.time() - start_time > 15:
-            break
+            assert False
 
         status_code, received_annotation = client.get_annotation_by_id(annotation.id)
         assert status_code == 200
@@ -1099,4 +1128,6 @@ def test_stale_annotations_requeueing(
     delete_mock_annotation(annotation.id)
     shutdown_continuous_eval_queue_service()
     cleanup_sample_trace()
+    cleanup_model_provider(client)
+    cleanup_test_data(test_data)
     client.delete_task(agentic_task.id)
