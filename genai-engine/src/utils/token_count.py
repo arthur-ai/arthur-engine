@@ -2,12 +2,8 @@ import logging
 from typing import Any, overload
 
 import tiktoken
+from litellm import cost_per_token, token_counter
 from pydantic import BaseModel
-from tokencost import (
-    calculate_cost_by_tokens,
-    count_message_tokens,
-    count_string_tokens,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -78,27 +74,18 @@ def compute_cost_from_tokens(
         Cost or None if computation fails
     """
     try:
-        total_cost = 0.0
+        if input_tokens == 0 and output_tokens == 0:
+            return None
 
-        # Calculate prompt token cost if input_tokens provided
-        if input_tokens > 0:
-            prompt_cost = calculate_cost_by_tokens(
-                num_tokens=input_tokens,
-                model=model_name,
-                token_type="input",
-            )
-            total_cost += float(prompt_cost)
+        # Calculate costs using litellm's cost_per_token
+        prompt_cost, completion_cost = cost_per_token(
+            model=model_name,
+            prompt_tokens=input_tokens,
+            completion_tokens=output_tokens,
+        )
 
-        # Calculate completion token cost if output_tokens provided
-        if output_tokens > 0:
-            completion_cost = calculate_cost_by_tokens(
-                num_tokens=output_tokens,
-                model=model_name,
-                token_type="output",
-            )
-            total_cost += float(completion_cost)
-
-        return total_cost if (input_tokens > 0 or output_tokens > 0) else None
+        total_cost = float(prompt_cost) + float(completion_cost)
+        return total_cost
 
     except Exception as e:
         logger.warning(
@@ -111,12 +98,12 @@ def count_tokens_from_string(
     text: str,
     model_name: str | None = None,
 ) -> int | None:
-    """Calculate token count from string using tokencost or fallback to tiktoken."""
+    """Calculate token count from string using litellm or fallback to tiktoken."""
     if not text:
         return None
     try:
         if model_name:
-            return int(count_string_tokens(prompt=text, model=model_name))
+            return int(token_counter(model=model_name, text=text))
         else:
             # Fallback: use default tiktoken encoder
             counter = TokenCounter(TIKTOKEN_ENCODER)
@@ -130,7 +117,7 @@ def count_tokens_from_messages(
     messages: list[dict[str, Any]],
     model_name: str | None = None,
 ) -> int | None:
-    """Calculate token count from messages using tokencost or fallback to tiktoken.
+    """Calculate token count from messages using litellm or fallback to tiktoken.
 
     Expects OpenInference normalized format where each message has nested structure:
     {"message": {"role": "user", "content": "..."}}
@@ -158,8 +145,8 @@ def count_tokens_from_messages(
             return None
 
         if model_name:
-            # Use tokencost for model-specific counting
-            return int(count_message_tokens(messages=formatted, model=model_name))
+            # Use litellm for model-specific counting
+            return int(token_counter(model=model_name, messages=formatted))
         else:
             # Fallback: concatenate message content and use string counter
             combined_text = "\n".join(
