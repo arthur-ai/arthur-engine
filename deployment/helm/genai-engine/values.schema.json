@@ -444,6 +444,10 @@
                 "disabled"
             ],
             "description": "Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)"
+        },
+        "modelRepositoryURL": {
+            "type": "string",
+            "description": "(Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used."
         }
     },
     "required": [
