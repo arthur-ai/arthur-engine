@@ -219,7 +219,13 @@ const PromptSelectors = ({
           )}
         />
       </div>
-      <VersionSelector promptName={currentPromptName} promptId={prompt.id} currentVersion={prompt.version} isDirty={prompt.isDirty} onVersionSelect={handleVersionSelect} />
+      <VersionSelector
+        promptName={currentPromptName}
+        promptId={prompt.id}
+        currentVersion={prompt.version}
+        isDirty={prompt.isDirty}
+        onVersionSelect={handleVersionSelect}
+      />
       <div className="flex-1 min-w-0">
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
           <Autocomplete<ModelProvider>
