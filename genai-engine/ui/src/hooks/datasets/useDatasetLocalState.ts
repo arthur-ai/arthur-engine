@@ -47,30 +47,31 @@ function transformRowsForNewColumns(
   oldColumns: string[],
   newColumns: string[]
 ): DatasetVersionRowResponse[] {
-  return rows.map((row) => ({
-    id: row.id,
-    created_at: row.created_at,
-    data: newColumns.map((newColName, idx) => {
-      // First, try to find by the new column name (works for unchanged columns)
-      let existing = row.data.find((d) => d.column_name === newColName);
-      
-      // If not found, check if this might be a renamed column
-      // by comparing the old column at the same position
-      if (!existing && idx < oldColumns.length) {
-        const oldColName = oldColumns[idx];
-        // If the old column name is different, it was renamed - look up by old name
-        if (oldColName !== newColName) {
-          existing = row.data.find((d) => d.column_name === oldColName);
-        }
-      }
-      
-      // Return found value or empty string for new columns
+  return rows.map((row) => {
+    const existingMap = Object.fromEntries(
+      row.data.map((d) => [d.column_name, d.column_value])
+    );
+
+    const result = newColumns.map((newColName, idx) => {
+      const oldColName = oldColumns[idx];
+
+      const value =
+        existingMap[newColName] ?? // unchanged column
+        existingMap[oldColName] ?? // renamed column
+        ""                         // brand-new column
+
       return {
         column_name: newColName,
-        column_value: existing?.column_value || "",
+        column_value: value,
       };
-    }),
-  }));
+    });
+
+    return {
+      id: row.id,
+      created_at: row.created_at,
+      data: result,
+    };
+  });
 }
 
 function datasetReducer(
