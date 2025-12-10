@@ -1,4 +1,3 @@
-import React from "react";
 import {
   TrendingUpOutlined,
   MenuBookOutlined,
@@ -16,6 +15,7 @@ import {
   LogoutOutlined,
   LiveTvOutlined,
 } from "@mui/icons-material";
+import React from "react";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -67,7 +67,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       label: "Evals",
       items: [
         { id: "evaluators", label: "Evals Management", icon: <BalanceOutlined /> },
-        { id: "live-evals", label: "Live Evals", icon: <LiveTvOutlined /> },
+        { id: "continuous-evals", label: "Continuous Evals", icon: <LiveTvOutlined /> },
         { id: "datasets", label: "Datasets", icon: <TableChartOutlined /> },
         { id: "transforms", label: "Transforms", icon: <StorageOutlined /> },
       ],

@@ -45,4 +45,8 @@ export const queryKeys = {
     all: () => ["listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet"] as const,
     list: (providerId: string) => ["listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet", { providerId }] as const,
   },
+  continuousEvals: {
+    all: (taskId: string) => ["listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet", { taskId }] as const,
+    byId: (evalId: string) => ["getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet", { evalId }] as const,
+  },
 } as const;

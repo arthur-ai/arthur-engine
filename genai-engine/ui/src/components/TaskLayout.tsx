@@ -63,7 +63,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
       "playgrounds/prompts": "Prompts Playground",
       "playgrounds/retrievals": "Retrievals Playground",
       "prompts-management": "Prompts Management",
-      "live-evals": "Live Evals",
+      "continuous-evals": "Continuous Evals",
     };
     return titleMap[section] || "Task Details";
   };

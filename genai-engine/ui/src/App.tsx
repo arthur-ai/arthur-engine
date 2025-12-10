@@ -178,7 +178,7 @@ function App() {
                       }
                     />
 
-                    <Route path="/tasks/:id/live-evals">
+                    <Route path="/tasks/:id/continuous-evals">
                       <Route
                         index
                         element={

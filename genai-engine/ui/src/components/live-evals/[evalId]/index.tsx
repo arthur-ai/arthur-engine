@@ -1,56 +1,27 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutline";
-import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
-import SpeedIcon from "@mui/icons-material/Speed";
-import TimelineIcon from "@mui/icons-material/Timeline";
-import {
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TablePagination,
-  TableRow,
-  Tooltip,
-  Typography,
-} from "@mui/material";
-import { useState } from "react";
+import { Box, Chip, CircularProgress, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
 
-import { useMockTraces } from "./mockData";
-import { StatCard } from "./StatCard";
-import { LiveEvalStatusChip, ResultChip } from "./StatusChips";
-import { formatRelativeTime } from "./utils";
+import { useContinuousEval } from "../hooks/useContinuousEval";
 
 import { CopyableChip } from "@/components/common";
-import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { getContentHeight } from "@/constants/layout";
-import { useTask } from "@/hooks/useTask";
 import { formatDate } from "@/utils/formatters";
 
 export const LiveEvalDetail = () => {
-  const { task } = useTask();
   const { evalId } = useParams<{ evalId: string }>();
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-
   // In real implementation, fetch data using evalId
-  const liveEval = useMockTraces(task?.id ?? "");
+  const { data: liveEval } = useContinuousEval(evalId ?? "");
 
-  const handleToggleStatus = () => {
-    // Toggle between active/inactive
-  };
+  if (!liveEval) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <CircularProgress />
+      </div>
+    );
+  }
 
   return (
     <Stack sx={{ height: getContentHeight() }}>
@@ -66,13 +37,13 @@ export const LiveEvalDetail = () => {
         }}
       >
         <Stack direction="row" alignItems="center" spacing={2} mb={1}>
-          <IconButton component={Link} to={`/tasks/${task?.id}/live-evals`} size="small" sx={{ mr: -1 }}>
-            <ArrowBackIcon />
+          <IconButton component={Link} to=".." size="small" sx={{ mr: -1 }}>
+            <ArrowBackIcon fontSize="small" />
           </IconButton>
           <Typography variant="h5" fontWeight="bold" color="text.primary">
             {liveEval.name}
           </Typography>
-          <LiveEvalStatusChip status={liveEval.status} />
+          {/* <LiveEvalStatusChip status={liveEval.status} /> */}
         </Stack>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={3} alignItems="center">
@@ -83,17 +54,9 @@ export const LiveEvalDetail = () => {
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
             </Stack>
             <Typography variant="body2" color="text.secondary">
-              Created {formatDate(liveEval.createdAt)}
+              Created {formatDate(liveEval.created_at)}
             </Typography>
           </Stack>
-          <Button
-            variant={liveEval.status === "active" ? "outlined" : "contained"}
-            size="small"
-            startIcon={liveEval.status === "active" ? <PauseCircleOutlineIcon /> : <PlayCircleOutlineIcon />}
-            onClick={handleToggleStatus}
-          >
-            {liveEval.status === "active" ? "Pause Evaluation" : "Resume Evaluation"}
-          </Button>
         </Stack>
       </Box>
 
@@ -101,7 +64,7 @@ export const LiveEvalDetail = () => {
       <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
         <Stack spacing={3}>
           {/* Stats Overview */}
-          <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }} useFlexGap>
+          {/* <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }} useFlexGap>
             <StatCard
               icon={<TimelineIcon />}
               label="Total Evaluated"
@@ -128,7 +91,7 @@ export const LiveEvalDetail = () => {
               value={liveEval.stats.avgScore?.toFixed(2) ?? "-"}
               subValue={`~${liveEval.stats.avgLatencyMs}ms latency`}
             />
-          </Stack>
+          </Stack> */}
 
           {/* Configuration Section */}
           <Paper variant="outlined" sx={{ p: 3 }}>
@@ -141,9 +104,9 @@ export const LiveEvalDetail = () => {
                   Evaluator
                 </Typography>
                 <Typography variant="body1" fontWeight={500}>
-                  {liveEval.config.evaluator.name}
+                  {liveEval.llm_eval_name}
                 </Typography>
-                <Chip label={`v${liveEval.config.evaluator.version}`} size="small" sx={{ width: "fit-content" }} />
+                <Chip label={`v${liveEval.llm_eval_version}`} size="small" sx={{ width: "fit-content" }} />
               </Stack>
 
               <Stack spacing={0.5}>
@@ -151,10 +114,10 @@ export const LiveEvalDetail = () => {
                   Transform
                 </Typography>
                 <Typography variant="body1" fontWeight={500}>
-                  {liveEval.config.transform.name}
+                  {liveEval.transform_id}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Dataset: {liveEval.config.transform.datasetId}
+                  Dataset: {liveEval.transform_id}
                 </Typography>
               </Stack>
 
@@ -162,7 +125,7 @@ export const LiveEvalDetail = () => {
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Variable Mappings
                 </Typography>
-                <Stack spacing={0.5}>
+                {/* <Stack spacing={0.5}>
                   {Object.entries(liveEval.config.variables).map(([variable, mapping]) => (
                     <Stack key={variable} direction="row" spacing={0.5} alignItems="center">
                       <Chip label={variable} size="small" variant="outlined" sx={{ fontFamily: "monospace", fontSize: "0.7rem", height: 22 }} />
@@ -174,7 +137,7 @@ export const LiveEvalDetail = () => {
                       </Typography>
                     </Stack>
                   ))}
-                </Stack>
+                </Stack> */}
               </Stack>
 
               <Stack spacing={0.5}>
@@ -182,7 +145,7 @@ export const LiveEvalDetail = () => {
                   <FilterListIcon sx={{ fontSize: 14, verticalAlign: "middle", mr: 0.5 }} />
                   Filter Criteria
                 </Typography>
-                {liveEval.config.filter.spanTypes && (
+                {/* {liveEval.config.filter.spanTypes && (
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                     <Typography variant="caption" color="text.secondary">
                       Span types:
@@ -191,8 +154,8 @@ export const LiveEvalDetail = () => {
                       <Chip key={type} label={type} size="small" sx={{ height: 20, fontSize: "0.7rem" }} />
                     ))}
                   </Stack>
-                )}
-                {liveEval.config.filter.metadata && (
+                )} */}
+                {/* {liveEval.config.filter.metadata && (
                   <Stack spacing={0.25}>
                     {Object.entries(liveEval.config.filter.metadata).map(([key, value]) => (
                       <Typography key={key} variant="caption" sx={{ fontFamily: "monospace" }}>
@@ -200,7 +163,7 @@ export const LiveEvalDetail = () => {
                       </Typography>
                     ))}
                   </Stack>
-                )}
+                )} */}
               </Stack>
             </div>
           </Paper>
@@ -217,10 +180,10 @@ export const LiveEvalDetail = () => {
                     Real-time evaluation results as traces are processed
                   </Typography>
                 </Stack>
-                <Chip label={`${liveEval.evaluatedTraces.length} recent`} size="small" variant="outlined" />
+                {/* <Chip label={`${liveEval.evaluatedTraces.length} recent`} size="small" variant="outlined" /> */}
               </Stack>
             </Box>
-            <TableContainer>
+            {/* <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "grey.50" }}>
@@ -296,8 +259,8 @@ export const LiveEvalDetail = () => {
                   ))}
                 </TableBody>
               </Table>
-            </TableContainer>
-            <TablePagination
+            </TableContainer> */}
+            {/* <TablePagination
               component="div"
               count={liveEval.evaluatedTraces.length}
               page={page}
@@ -308,7 +271,7 @@ export const LiveEvalDetail = () => {
                 setPage(0);
               }}
               rowsPerPageOptions={[10, 25, 50]}
-            />
+            /> */}
           </Paper>
         </Stack>
       </Box>

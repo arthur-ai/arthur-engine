@@ -19,7 +19,10 @@ import {
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import z from "zod";
+
+import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
@@ -50,6 +53,8 @@ export const LiveEvalsNew = () => {
   const { task } = useTask();
   const { spacing } = useTheme();
 
+  const navigate = useNavigate();
+
   const form = useAppForm({
     defaultValues: {
       name: "",
@@ -78,7 +83,20 @@ export const LiveEvalsNew = () => {
         mappings: z.record(z.string(), z.string().nullable()),
       }),
     },
+    onSubmit: async ({ value }) => {
+      const { id } = await createContinuousEval.mutateAsync({
+        name: value.name,
+        description: value.description,
+        llm_eval_name: value.evaluator.name!,
+        llm_eval_version: value.evaluator.version!,
+        transform_id: value.transform.transformId!,
+      });
+
+      navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
+    },
   });
+
+  const createContinuousEval = useCreateContinuousEval();
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
@@ -125,7 +143,16 @@ export const LiveEvalsNew = () => {
   const showMappingEditor = allVariables.length > 0 && selectedTransform;
 
   return (
-    <Stack sx={{ height: getContentHeight() }}>
+    <Stack
+      component="form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        form.handleSubmit();
+      }}
+      sx={{ height: getContentHeight() }}
+    >
       <Box
         sx={{
           px: 3,
@@ -138,10 +165,10 @@ export const LiveEvalsNew = () => {
       >
         <Stack>
           <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
-            New Live Eval
+            New Continuous Eval
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Create a new live eval to monitor and analyze your model's performance in real-time.
+            Create a new continuous eval to monitor and analyze your model's performance in real-time.
           </Typography>
         </Stack>
       </Box>
@@ -149,42 +176,13 @@ export const LiveEvalsNew = () => {
         <Typography variant="h6" color="text.primary" fontWeight="bold">
           General Information
         </Typography>
-        <form.AppField
-          name="name"
-          children={(field) => (
-            <TextField
-              autoFocus
-              label="Eval Name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              required
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
-              helperText={field.state.meta.errors[0]?.message}
-            />
-          )}
-        />
 
-        <form.AppField
-          name="description"
-          children={(field) => (
-            <TextField
-              multiline
-              rows={3}
-              label="Description"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
-              helperText={field.state.meta.errors[0]?.message}
-            />
-          )}
+        <DetailsFieldGroup
+          form={form}
+          fields={{
+            name: "name",
+            description: "description",
+          }}
         />
 
         <Divider sx={{ my: 2 }} />
@@ -236,10 +234,10 @@ export const LiveEvalsNew = () => {
       </Stack>
 
       <Box sx={{ p: 3, borderTop: 1, borderColor: "divider" }} className="mt-auto w-full">
-        <form.Subscribe selector={(state) => [state.canSubmit, state.isDirty]}>
-          {([canSubmit, isDirty]) => (
-            <Button variant="contained" size="large" color="primary" disabled={!canSubmit || !isDirty} fullWidth>
-              Create Live Eval
+        <form.Subscribe selector={(state) => [state.canSubmit, state.isDirty, state.isSubmitting]}>
+          {([canSubmit, isDirty, isSubmitting]) => (
+            <Button variant="contained" size="large" color="primary" disabled={!canSubmit || !isDirty} loading={isSubmitting} fullWidth type="submit">
+              Create Continuous Eval
             </Button>
           )}
         </form.Subscribe>
@@ -248,7 +246,55 @@ export const LiveEvalsNew = () => {
   );
 };
 
-const EvaluatorSelector = withFieldGroup({
+export const DetailsFieldGroup = withFieldGroup({
+  defaultValues: {
+    name: "",
+    description: "",
+  },
+  render: function Render({ group }) {
+    return (
+      <Stack gap={2}>
+        <group.AppField
+          name="name"
+          children={(field) => (
+            <TextField
+              autoFocus
+              label="Eval Name"
+              type="text"
+              fullWidth
+              variant="outlined"
+              required
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={field.state.meta.errors.length > 0}
+            />
+          )}
+        />
+
+        <group.AppField
+          name="description"
+          children={(field) => (
+            <TextField
+              multiline
+              rows={3}
+              label="Description"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              error={field.state.meta.errors.length > 0}
+            />
+          )}
+        />
+      </Stack>
+    );
+  },
+});
+
+export const EvaluatorSelector = withFieldGroup({
   defaultValues: {
     name: null,
     version: null,
@@ -316,7 +362,7 @@ const EvaluatorSelector = withFieldGroup({
   },
 });
 
-const TransformSelector = withFieldGroup({
+export const TransformSelector = withFieldGroup({
   defaultValues: {
     transformId: null,
   } as Transform,
@@ -501,7 +547,7 @@ const VariableMappingEditor = withFieldGroup({
 
         {mappedCount < variables.length && (
           <Typography variant="caption" color="warning.main">
-            All variables must be mapped before creating the live eval
+            All variables must be mapped before creating the continuous eval
           </Typography>
         )}
       </Stack>
