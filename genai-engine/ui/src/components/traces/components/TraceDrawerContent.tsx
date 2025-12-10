@@ -53,7 +53,12 @@ export const TraceDrawerContent = ({ id }: Props) => {
     },
   });
 
-  const name = trace?.root_spans?.[0]?.span_name;
+  const name =
+    trace?.root_spans?.length === 1
+      ? trace.root_spans[0].span_name
+      : trace?.root_spans && trace.root_spans.length > 1
+        ? `${trace.root_spans[0].span_name} (+${trace.root_spans.length - 1} more root${trace.root_spans.length > 2 ? "s" : ""})`
+        : undefined;
 
   // Flatten nested spans recursively
   const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
@@ -61,7 +66,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const rootSpan = trace?.root_spans?.[0];
 
   const onOpenDrawer = useEffectEvent(() => {
-    if (!rootSpan) return;
+    if (!trace?.root_spans?.length || !rootSpan) return;
 
     if (!selectedSpanId) {
       select(rootSpan.span_id, { history: "replace" });
@@ -150,7 +155,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
               maxHeight: "100%",
             }}
           >
-            {rootSpan && <SpanTree spans={[rootSpan]} />}
+            {trace?.root_spans && <SpanTree spans={trace.root_spans} />}
           </Box>
           <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
             {selectedSpan && (
