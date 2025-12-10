@@ -539,8 +539,6 @@ def test_get_llm_eval_by_version_route(
         "model_provider": "openai",
         "instructions": "Test instructions",
     }
-    if eval_version == "datetime":
-        eval_version = datetime.now().isoformat()
 
     save_response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
@@ -548,9 +546,11 @@ def test_get_llm_eval_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
-
-    # Add a tag if testing tag-based version
-    if eval_version == "tag":
+    
+    if eval_version == "datetime":
+        eval_version = save_response.json()["created_at"]
+    elif eval_version == "tag":
+        # Add a tag if testing tag-based version
         test_tag = "test_tag"
         tag_response = client.base_client.put(
             f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1/tags",
