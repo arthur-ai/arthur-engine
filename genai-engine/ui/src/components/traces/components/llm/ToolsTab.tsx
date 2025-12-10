@@ -10,14 +10,14 @@ import { Highlight } from "@/components/common/Highlight";
 import { useCopy } from "@/hooks/useCopy";
 import useSnackbar from "@/hooks/useSnackbar";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { getTools, tryFormatJson } from "@/utils/llm";
+import { getToolDefinition, getTools, tryFormatJson } from "@/utils/llm";
 
 type Props = {
   span: NestedSpanWithMetricsResponse;
 };
 
 export const ToolsTab = ({ span }: Props) => {
-  const tools = getTools(span);
+  const tools = getTools(span).map(getToolDefinition);
   const snackbar = useSnackbar({ duration: "short" });
   const { handleCopy } = useCopy({
     onCopy: () => {
