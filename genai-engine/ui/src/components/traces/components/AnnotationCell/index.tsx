@@ -8,13 +8,15 @@ import useMeasure from "react-use-measure";
 
 import { CopyableChip } from "@/components/common";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
+import { cn } from "@/utils/cn";
 
 type Props = {
   annotation: AgenticAnnotationResponse;
   traceId: string;
+  className?: string;
 };
 
-export const AnnotationCell = ({ annotation, traceId }: Props) => {
+export const AnnotationCell = ({ annotation, traceId, className }: Props) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [ref, { width }] = useMeasure();
 
@@ -38,7 +40,10 @@ export const AnnotationCell = ({ annotation, traceId }: Props) => {
   return (
     <>
       <motion.button
-        className="bg-[color-mix(in_oklab,var(--color)_20%,white)] border border-(--color)/50 text-(--color) rounded-md text-nowrap overflow-hidden cursor-pointer group"
+        className={cn(
+          "bg-[color-mix(in_oklab,var(--color)_20%,white)] border border-(--color)/50 text-(--color) rounded-md text-nowrap overflow-hidden cursor-pointer group",
+          className
+        )}
         style={{ "--color": color } as React.CSSProperties}
         animate={{ width: width || "auto" }}
         whileHover={{ scale: 1.05 }}

@@ -9,7 +9,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
@@ -23,6 +23,7 @@ import { TraceTransform } from "./types";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { getContentHeight } from "@/constants/layout";
+import { parseAsString, useQueryState } from "nuqs";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -35,7 +36,7 @@ const TransformsManagement: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTransform, setEditingTransform] = useState<TraceTransform | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [viewingTransform, setViewingTransform] = useState<TraceTransform | null>(null);
+  const [transformId, setTransformId] = useQueryState("id", parseAsString.withDefault(""));
 
   const { data: transforms, error, isLoading, refetch } = useTransforms(taskId);
 
@@ -104,9 +105,12 @@ const TransformsManagement: React.FC = () => {
     [editingTransform, updateMutation]
   );
 
-  const handleView = useCallback((transform: TraceTransform) => {
-    setViewingTransform(transform);
-  }, []);
+  const handleView = useCallback(
+    (transform: TraceTransform) => {
+      setTransformId(transform.id);
+    },
+    [setTransformId]
+  );
 
   const handleEdit = useCallback((transform: TraceTransform) => {
     setEditingTransform(transform);
@@ -142,6 +146,11 @@ const TransformsManagement: React.FC = () => {
     setPageSize(parseInt(event.target.value, 10));
     setPage(0);
   }, []);
+
+  const viewingTransform = useMemo(() => {
+    if (!transformId) return null;
+    return transforms?.find((transform) => transform.id === transformId);
+  }, [transforms, transformId]);
 
   if (isLoading && !transforms) {
     return (
@@ -214,9 +223,7 @@ const TransformsManagement: React.FC = () => {
               >
                 No transforms found
               </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>
-                Create your first transform to extract data from traces.
-              </Box>
+              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first transform to extract data from traces.</Box>
               <Button variant="contained" onClick={() => setIsCreateModalOpen(true)} sx={{ mt: 1 }}>
                 Create Transform
               </Button>
@@ -274,18 +281,12 @@ const TransformsManagement: React.FC = () => {
         initialTransform={editingTransform || undefined}
       />
 
-      <TransformDetailsModal
-        open={!!viewingTransform}
-        onClose={() => setViewingTransform(null)}
-        transform={viewingTransform}
-      />
+      <TransformDetailsModal open={!!viewingTransform} onClose={() => setTransformId(null)} transform={viewingTransform ?? null} />
 
       <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
         <DialogTitle>Delete Transform</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this transform? This action cannot be undone.
-          </DialogContentText>
+          <DialogContentText>Are you sure you want to delete this transform? This action cannot be undone.</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>

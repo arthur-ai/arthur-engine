@@ -9,6 +9,8 @@ import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
+import { Stack } from "@mui/material";
+import { EvalsCell } from "../components/EvalsCell";
 
 const columnHelper = createColumnHelper<TraceMetadataResponse>();
 
@@ -36,6 +38,18 @@ export const columns = [
 
       return <AnnotationCell annotation={annotation} traceId={row.original.trace_id} />;
     },
+    size: 100,
+  }),
+  columnHelper.accessor(() => Math.random() > 0.5, {
+    header: "Successful Evals",
+    cell: ({ getValue }) => {
+      const value = getValue();
+
+      if (!value) return <span className="text-gray-500 text-sm">No evals ran</span>;
+
+      return <EvalsCell />;
+    },
+    size: 125,
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
