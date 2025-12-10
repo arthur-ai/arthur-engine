@@ -82,7 +82,17 @@ export const LLMToolsField = z.array(
     tool: z.object({
       json_schema: z
         .string()
-        .transform((val) => JSON.parse(val))
+        .transform((val, ctx) => {
+          try {
+            return JSON.parse(val);
+          } catch {
+            ctx.addIssue({
+              code: "custom",
+              message: "Invalid JSON schema",
+            });
+            return z.NEVER;
+          }
+        })
         .pipe(z.union([Tool, LiteLLMTool])),
     }),
   })
