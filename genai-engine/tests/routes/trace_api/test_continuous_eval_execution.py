@@ -77,45 +77,6 @@ def delete_mock_annotation(annotation_id: uuid.UUID) -> None:
     db_session.commit()
 
 
-def create_sample_receive_trace(task_id: str) -> bytes:
-    """Create a sample OpenInference trace in protobuf format for API testing."""
-    # Create trace with task ID in resource attributes
-    trace_request, resource_span, scope_span = _create_base_trace_request(
-        task_id=task_id,
-    )
-
-    # Create a simple LLM span
-    span = _create_span(
-        trace_id=b"api_trace_123",
-        span_id=b"api_span_456",
-        name="api_test_span",
-        span_type="LLM",
-        model_name="gpt-4-turbo",
-    )
-
-    # Add token count attributes to the LLM span
-    span.attributes.extend(
-        [
-            KeyValue(key="llm.token_count.prompt", value=AnyValue(int_value=100)),
-            KeyValue(key="llm.token_count.completion", value=AnyValue(int_value=50)),
-        ],
-    )
-
-    scope_span.spans.append(span)
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    return trace_request.SerializeToString()
-
-
-def cleanup_sample_trace() -> None:
-    span_ids = [b"api_span_456".hex()]
-    trace_ids = [b"api_trace_123".hex()]
-    db_session = override_get_db_session()
-    _delete_spans_from_db(db_session, span_ids)
-    _delete_trace_metadata_from_db(db_session, trace_ids)
-
-
 def cleanup_model_provider(client: GenaiEngineTestClientBase) -> None:
     """Clean up the OpenAI model provider configured during tests."""
     client.base_client.delete(
@@ -315,12 +276,19 @@ def cleanup_test_data(test_data):
 @pytest.mark.unit_tests
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
 def test_continuous_eval_execution(
+    mock_get_db_session,
     mock_completion,
     mock_completion_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test continuous eval execution."""
+    test_data = setup_test_data()
+    
     # Mock LLM response to return score of 1
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
@@ -332,228 +300,6 @@ def test_continuous_eval_execution(
 
     # Initialize with 1 second delay for faster test execution
     initialize_continuous_eval_queue_service(num_workers=2, override_execution_delay=0)
-
-    status_code, agentic_task = client.create_task(
-        name="test_continuous_eval_execution",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
-    # Configure model provider
-    response = client.base_client.put(
-        "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 201
-
-    llm_eval_data = {
-        "model_name": "gpt-4o",
-        "model_provider": "openai",
-        "instructions": "Test instructions",
-    }
-    status_code, llm_eval = client.save_llm_eval(
-        task_id=agentic_task.id,
-        llm_eval_name="test_llm_eval",
-        llm_eval_data=llm_eval_data,
-    )
-    assert status_code == 200
-
-    transform_definition = {
-        "variables": [
-            {
-                "variable_name": "model_name",
-                "span_name": "api_test_span",
-                "attribute_path": "attributes.llm.model_name",
-            },
-        ],
-    }
-    status_code, transform = client.create_transform(
-        task_id=agentic_task.id,
-        name="test_transform",
-        description="Test transform description",
-        definition=transform_definition,
-    )
-    assert status_code == 200
-
-    status_code, continuous_eval = client.save_continuous_eval(
-        task_id=agentic_task.id,
-        continuous_eval_data={
-            "name": "test_continuous_eval",
-            "description": "Test continuous eval description",
-            "llm_eval_name": "test_llm_eval",
-            "llm_eval_version": 1,
-            "transform_id": str(transform.id),
-        },
-    )
-    assert status_code == 200
-
-    # Test spans with task IDs in resource attributes (should be accepted)
-    status_code, response_text = client.trace_api_receive_traces(
-        create_sample_receive_trace(task_id=agentic_task.id),
-    )
-    assert status_code == 200
-
-    # wait for delay of eval execution to finish
-    start_time = time.time()
-    while True:
-        if time.time() - start_time > 15:
-            assert False
-        status_code, data = client.list_continuous_eval_run_results(
-            task_id=agentic_task.id,
-        )
-        assert len(data.annotations) == 1
-
-        if data.annotations[0].run_status == ContinuousEvalRunStatus.PASSED.value:
-            break
-        elif data.annotations[0].run_status not in [
-            ContinuousEvalRunStatus.PENDING.value,
-            ContinuousEvalRunStatus.RUNNING.value,
-        ]:
-            assert False
-
-    status_code = client.delete_task(agentic_task.id)
-    assert status_code == 204
-
-    shutdown_continuous_eval_queue_service()
-    cleanup_sample_trace()
-    cleanup_model_provider(client)
-    client.delete_task(agentic_task.id)
-
-
-@pytest.mark.unit_tests
-@patch("clients.llm.llm_client.completion_cost")
-@patch("clients.llm.llm_client.litellm.completion")
-def test_continuous_eval_execution_response_fail(
-    mock_completion,
-    mock_completion_cost,
-    client: GenaiEngineTestClientBase,
-):
-    """Test continuous eval execution."""
-    # Mock LLM response to return score of 1
-    mock_response = MagicMock(spec=ModelResponse)
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": '{"reason": "The model name is correct.", "score": 0}',
-    }
-    mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.002345
-
-    # Initialize with 1 second delay for faster test execution
-    initialize_continuous_eval_queue_service(num_workers=2, override_execution_delay=0)
-
-    status_code, agentic_task = client.create_task(
-        name="test_continuous_eval_execution",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
-    # Configure model provider
-    response = client.base_client.put(
-        "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 201
-
-    llm_eval_data = {
-        "model_name": "gpt-4o",
-        "model_provider": "openai",
-        "instructions": "Test instructions",
-    }
-    status_code, llm_eval = client.save_llm_eval(
-        task_id=agentic_task.id,
-        llm_eval_name="test_llm_eval",
-        llm_eval_data=llm_eval_data,
-    )
-    assert status_code == 200
-
-    transform_definition = {
-        "variables": [
-            {
-                "variable_name": "model_name",
-                "span_name": "api_test_span",
-                "attribute_path": "attributes.llm.model_name",
-            },
-        ],
-    }
-    status_code, transform = client.create_transform(
-        task_id=agentic_task.id,
-        name="test_transform",
-        description="Test transform description",
-        definition=transform_definition,
-    )
-    assert status_code == 200
-
-    status_code, continuous_eval = client.save_continuous_eval(
-        task_id=agentic_task.id,
-        continuous_eval_data={
-            "name": "test_continuous_eval",
-            "description": "Test continuous eval description",
-            "llm_eval_name": "test_llm_eval",
-            "llm_eval_version": 1,
-            "transform_id": str(transform.id),
-        },
-    )
-    assert status_code == 200
-
-    # Test spans with task IDs in resource attributes (should be accepted)
-    status_code, response_text = client.trace_api_receive_traces(
-        create_sample_receive_trace(task_id=agentic_task.id),
-    )
-    assert status_code == 200
-
-    start_time = time.time()
-    while True:
-        if time.time() - start_time > 15:
-            assert False
-        status_code, data = client.list_continuous_eval_run_results(
-            task_id=agentic_task.id,
-        )
-        assert len(data.annotations) == 1
-
-        if data.annotations[0].run_status == ContinuousEvalRunStatus.FAILED.value:
-            break
-        elif data.annotations[0].run_status not in [
-            ContinuousEvalRunStatus.PENDING.value,
-            ContinuousEvalRunStatus.RUNNING.value,
-        ]:
-            assert False
-
-    status_code = client.delete_task(agentic_task.id)
-    assert status_code == 204
-
-    shutdown_continuous_eval_queue_service()
-    cleanup_sample_trace()
-    cleanup_model_provider(client)
-    client.delete_task(agentic_task.id)
-
-
-@pytest.mark.unit_tests
-@patch("clients.llm.llm_client.completion_cost")
-@patch("clients.llm.llm_client.litellm.completion")
-@patch(
-    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
-    side_effect=mock_get_db_session_generator,
-)
-def test_continuous_eval_execution_annotation_eval_errors(
-    mock_get_db_session,
-    mock_completion,
-    mock_completion_cost,
-    client: GenaiEngineTestClientBase,
-):
-    """Test continuous eval execution."""
-    # Mock LLM response to return score of 1
-    mock_response = MagicMock(spec=ModelResponse)
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": '{"reason": "The model name is correct.", "score": 0}',
-    }
-    mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.002345
-
-    # Initialize the queue service
-    initialize_continuous_eval_queue_service(num_workers=2)
     continuous_eval_queue_service = get_continuous_eval_queue_service()
 
     status_code, agentic_task = client.create_task(
@@ -586,8 +332,235 @@ def test_continuous_eval_execution_annotation_eval_errors(
         "variables": [
             {
                 "variable_name": "model_name",
-                "span_name": "api_test_span",
-                "attribute_path": "attributes.llm.model_name",
+                "span_name": "rag-retrieval-savedQueries",
+                "attribute_path": "attributes.input.value.context",
+            },
+        ],
+    }
+    status_code, transform = client.create_transform(
+        task_id=agentic_task.id,
+        name="test_transform",
+        description="Test transform description",
+        definition=transform_definition,
+    )
+    assert status_code == 200
+
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=agentic_task.id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": "test_llm_eval",
+            "llm_eval_version": 1,
+            "transform_id": str(transform.id),
+        },
+    )
+    assert status_code == 200
+
+    annotation = create_mock_annotation(
+        trace_id=test_data["trace_id"],
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PENDING,
+    )
+
+    job = ContinuousEvalJob(
+        annotation_id=annotation.id,
+        trace_id=test_data["trace_id"],
+        continuous_eval_id=continuous_eval.id,
+        task_id=agentic_task.id,
+        delay_seconds=0,
+    )
+    continuous_eval_queue_service._execute_job(job)
+
+    status_code, received_annotation = client.get_annotation_by_id(annotation.id)
+    assert status_code == 200
+    assert received_annotation.run_status == ContinuousEvalRunStatus.PASSED.value
+
+    delete_mock_annotation(annotation.id)
+
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+    shutdown_continuous_eval_queue_service()
+    cleanup_model_provider(client)
+    cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
+def test_continuous_eval_execution_response_fail(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Test continuous eval execution."""
+    test_data = setup_test_data()
+
+    # Mock LLM response to return score of 1
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "The model name is correct.", "score": 0}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.002345
+
+    # Initialize with 1 second delay for faster test execution
+    initialize_continuous_eval_queue_service(num_workers=2, override_execution_delay=0)
+    continuous_eval_queue_service = get_continuous_eval_queue_service()
+
+    status_code, agentic_task = client.create_task(
+        name="test_continuous_eval_execution_response_fail",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    # Configure model provider
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    llm_eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Test instructions",
+    }
+    status_code, llm_eval = client.save_llm_eval(
+        task_id=agentic_task.id,
+        llm_eval_name="test_llm_eval",
+        llm_eval_data=llm_eval_data,
+    )
+    assert status_code == 200
+
+    transform_definition = {
+        "variables": [
+            {
+                "variable_name": "model_name",
+                "span_name": "rag-retrieval-savedQueries",
+                "attribute_path": "attributes.input.value.context",
+            },
+        ],
+    }
+    status_code, transform = client.create_transform(
+        task_id=agentic_task.id,
+        name="test_transform",
+        description="Test transform description",
+        definition=transform_definition,
+    )
+    assert status_code == 200
+
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=agentic_task.id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": "test_llm_eval",
+            "llm_eval_version": 1,
+            "transform_id": str(transform.id),
+        },
+    )
+    assert status_code == 200
+
+    annotation = create_mock_annotation(
+        trace_id=test_data["trace_id"],
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PENDING,
+    )
+
+    job = ContinuousEvalJob(
+        annotation_id=annotation.id,
+        trace_id=test_data["trace_id"],
+        continuous_eval_id=continuous_eval.id,
+        task_id=agentic_task.id,
+        delay_seconds=0,
+    )
+    continuous_eval_queue_service._execute_job(job)
+
+    status_code, received_annotation = client.get_annotation_by_id(annotation.id)
+    assert status_code == 200
+    assert received_annotation.run_status == ContinuousEvalRunStatus.FAILED.value
+
+    delete_mock_annotation(annotation.id)
+
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+    shutdown_continuous_eval_queue_service()
+    cleanup_model_provider(client)
+    cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+@patch(
+    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
+def test_continuous_eval_execution_annotation_eval_errors(
+    mock_get_db_session,
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Test continuous eval execution."""
+    test_data = setup_test_data()
+    # Mock LLM response to return score of 1
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "The model name is correct.", "score": 0}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.002345
+
+    # Initialize the queue service
+    initialize_continuous_eval_queue_service(num_workers=2)
+    continuous_eval_queue_service = get_continuous_eval_queue_service()
+
+    status_code, agentic_task = client.create_task(
+        name="test_continuous_eval_execution_annotation_eval_errors",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    # Configure model provider
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    llm_eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Test instructions",
+    }
+    status_code, llm_eval = client.save_llm_eval(
+        task_id=agentic_task.id,
+        llm_eval_name="test_llm_eval",
+        llm_eval_data=llm_eval_data,
+    )
+    assert status_code == 200
+
+    transform_definition = {
+        "variables": [
+            {
+                "variable_name": "model_name",
+                "span_name": "rag-retrieval-savedQueries",
+                "attribute_path": "attributes.input.value.context",
             },
         ],
     }
@@ -603,7 +576,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
         "variables": [
             {
                 "variable_name": "model_name",
-                "span_name": "api_test_span",
+                "span_name": "rag-retrieval-savedQueries",
                 "attribute_path": "fake_path",
             },
         ],
@@ -628,17 +601,11 @@ def test_continuous_eval_execution_annotation_eval_errors(
     )
     assert status_code == 200
 
-    # Test spans with task IDs in resource attributes (should be accepted)
-    status_code, response_text = client.trace_api_receive_traces(
-        create_sample_receive_trace(task_id=agentic_task.id),
-    )
-    assert status_code == 200
-
     # test executing a job for a non-existent annotation
     fake_annotation_id = uuid.uuid4()
     job = ContinuousEvalJob(
         annotation_id=fake_annotation_id,
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         continuous_eval_id=continuous_eval.id,
         task_id=agentic_task.id,
         delay_seconds=0,
@@ -649,7 +616,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
 
     # create a mock annotation that's not a continuous eval
     annotation = create_mock_annotation(
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         annotation_type=AgenticAnnotationType.HUMAN,
         annotation_score=1,
     )
@@ -657,7 +624,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
     # test executing a job for a non-continuous eval annotation
     job = ContinuousEvalJob(
         annotation_id=annotation.id,
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         continuous_eval_id=continuous_eval.id,
         task_id=agentic_task.id,
         delay_seconds=0,
@@ -686,7 +653,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
 
     job = ContinuousEvalJob(
         annotation_id=annotation.id,
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         continuous_eval_id=continuous_eval.id,
         task_id=agentic_task.id,
         delay_seconds=0,
@@ -706,7 +673,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
 
     # test non-matching continuous eval ID
     annotation = create_mock_annotation(
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
         continuous_eval_id=uuid.uuid4(),
         annotation_score=1,
@@ -715,7 +682,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
 
     job = ContinuousEvalJob(
         annotation_id=annotation.id,
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         continuous_eval_id=uuid.uuid4(),
         task_id=agentic_task.id,
         delay_seconds=0,
@@ -735,7 +702,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
 
     # test executing a job for a non-pending annotation
     annotation = create_mock_annotation(
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
         continuous_eval_id=continuous_eval.id,
         annotation_score=1,
@@ -744,7 +711,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
 
     job = ContinuousEvalJob(
         annotation_id=annotation.id,
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         continuous_eval_id=continuous_eval.id,
         task_id=agentic_task.id,
         delay_seconds=0,
@@ -765,7 +732,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
     # create a real mock annotation
     fake_continuous_eval_id = uuid.uuid4()
     annotation = create_mock_annotation(
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
         continuous_eval_id=fake_continuous_eval_id,
         run_status=ContinuousEvalRunStatus.PENDING,
@@ -774,7 +741,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
     # test executing for a non-existent continuous eval
     job = ContinuousEvalJob(
         annotation_id=annotation.id,
-        trace_id="api_trace_123",
+        trace_id=test_data["trace_id"],
         continuous_eval_id=fake_continuous_eval_id,
         task_id=agentic_task.id,
         delay_seconds=0,
@@ -828,10 +795,12 @@ def test_continuous_eval_execution_annotation_eval_errors(
     )
     assert status_code == 200
 
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
     shutdown_continuous_eval_queue_service()
-    cleanup_sample_trace()
     cleanup_model_provider(client)
-    client.delete_task(agentic_task.id)
+    cleanup_test_data(test_data)
 
 
 @pytest.mark.unit_tests
@@ -863,7 +832,7 @@ def test_continuous_eval_execution_transform_errors(
     continuous_eval_queue_service = get_continuous_eval_queue_service()
 
     status_code, agentic_task = client.create_task(
-        name="test_continuous_eval_execution",
+        name="test_continuous_eval_execution_transform_errors",
         is_agentic=True,
     )
     assert status_code == 200
@@ -1011,123 +980,10 @@ def test_continuous_eval_execution_transform_errors(
 
     delete_mock_annotation(annotation.id)
 
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
     shutdown_continuous_eval_queue_service()
-    cleanup_sample_trace()
     cleanup_model_provider(client)
     cleanup_test_data(test_data)
-    client.delete_task(agentic_task.id)
 
-
-@pytest.mark.unit_tests
-@patch("clients.llm.llm_client.completion_cost")
-@patch("clients.llm.llm_client.litellm.completion")
-@patch(
-    "services.continuous_eval.continuous_eval_queue_service.get_db_session",
-    side_effect=mock_get_db_session_generator,
-)
-def test_stale_annotations_requeueing(
-    mock_get_db_session,
-    mock_completion,
-    mock_completion_cost,
-    client: GenaiEngineTestClientBase,
-):
-    """Test stale annotations requeuing."""
-    test_data = setup_test_data()
-
-    # Mock LLM response to return score of 1
-    mock_response = MagicMock(spec=ModelResponse)
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": '{"reason": "The model name is correct.", "score": 0}',
-    }
-    mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.002345
-
-    # Initialize with 1 second delay for faster test execution
-    initialize_continuous_eval_queue_service(num_workers=2, override_execution_delay=0)
-
-    status_code, agentic_task = client.create_task(
-        name="test_continuous_eval_execution",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
-    # Configure model provider
-    response = client.base_client.put(
-        "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 201
-
-    llm_eval_data = {
-        "model_name": "gpt-4o",
-        "model_provider": "openai",
-        "instructions": "Test instructions",
-    }
-    status_code, llm_eval = client.save_llm_eval(
-        task_id=agentic_task.id,
-        llm_eval_name="test_llm_eval",
-        llm_eval_data=llm_eval_data,
-    )
-    assert status_code == 200
-
-    transform_definition = {
-        "variables": [
-            {
-                "variable_name": "model_name",
-                "span_name": "rag-retrieval-savedQueries",
-                "attribute_path": "attributes.input.value.context",
-            },
-        ],
-    }
-    status_code, transform = client.create_transform(
-        task_id=agentic_task.id,
-        name="test_transform",
-        description="Test transform description",
-        definition=transform_definition,
-    )
-    assert status_code == 200
-
-    status_code, continuous_eval = client.save_continuous_eval(
-        task_id=agentic_task.id,
-        continuous_eval_data={
-            "name": "test_continuous_eval",
-            "description": "Test continuous eval description",
-            "llm_eval_name": "test_llm_eval",
-            "llm_eval_version": 1,
-            "transform_id": str(transform.id),
-        },
-    )
-    assert status_code == 200
-
-    # create a mock stale annotation
-    annotation = create_mock_annotation(
-        trace_id=test_data["trace_id"],
-        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
-        continuous_eval_id=continuous_eval.id,
-        run_status=ContinuousEvalRunStatus.PENDING,
-        created_at=datetime.now() - timedelta(minutes=50),
-    )
-
-    continuous_eval_queue_service = get_continuous_eval_queue_service()
-    continuous_eval_queue_service._check_stale_annotations()
-
-    start_time = time.time()
-    while True:
-        if time.time() - start_time > 15:
-            assert False
-
-        status_code, received_annotation = client.get_annotation_by_id(annotation.id)
-        assert status_code == 200
-        if received_annotation.run_status != ContinuousEvalRunStatus.PENDING.value:
-            break
-
-    assert received_annotation.run_status == ContinuousEvalRunStatus.FAILED.value
-
-    delete_mock_annotation(annotation.id)
-    shutdown_continuous_eval_queue_service()
-    cleanup_sample_trace()
-    cleanup_model_provider(client)
-    cleanup_test_data(test_data)
-    client.delete_task(agentic_task.id)
