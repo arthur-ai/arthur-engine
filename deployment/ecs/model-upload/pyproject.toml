@@ -6,7 +6,7 @@ authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.13,<3.14.dev0"
+python = ">=3.12,<3.13.dev0"
 boto3 = "^1.28.0"
 huggingface-hub = "^0.20.0"
 
@@ -28,12 +28,12 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 
 [tool.black]
-target-version = ['py313']
+target-version = ['py312']
 line-length = 88
 
 [tool.isort]

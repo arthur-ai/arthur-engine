@@ -1,11 +1,12 @@
-# Model Upload Task - Multi-stage build
+# Model Upload Task - Multi-stage distroless build
 # Stage 1: Download models from Hugging Face
-# Stage 2: Upload models to S3 (ECS Task)
+# Stage 2: Build dependencies
+# Stage 3: Distroless runtime (minimal attack surface)
 
 # =============================================================================
 # Stage 1: Download models
 # =============================================================================
-FROM python:3.13-slim AS downloader
+FROM python:3.12-slim AS downloader
 
 WORKDIR /app
 
@@ -16,18 +17,19 @@ RUN pip install --no-cache-dir poetry
 COPY pyproject.toml poetry.lock* ./
 
 # Install dependencies (only main dependencies needed for download)
-RUN poetry install --no-interaction --no-ansi --only main --no-root
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --only main --no-root
 
 # Copy download script
 COPY download_models.py .
 
 # Download all models during build (includes relevance models and PII v2)
-RUN poetry run python download_models.py --output-dir /models --workers 4
+RUN python download_models.py --output-dir /models --workers 4
 
 # =============================================================================
-# Stage 2: Upload task
+# Stage 2: Build dependencies for runtime
 # =============================================================================
-FROM python:3.13-slim AS task
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -37,18 +39,36 @@ RUN pip install --no-cache-dir poetry
 # Copy poetry files
 COPY pyproject.toml poetry.lock* ./
 
-# Install only runtime dependencies needed for S3 upload
-RUN poetry install --no-interaction --no-ansi --only main --no-root
+# Install dependencies to virtual environment
+RUN poetry config virtualenvs.in-project true && \
+    poetry install --no-interaction --no-ansi --only main --no-root
 
 # Copy upload script
 COPY upload_models.py .
 
+# =============================================================================
+# Stage 3: Distroless runtime
+# =============================================================================
+FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv/lib/python3.12/site-packages /app/site-packages
+
+# Copy application code
+COPY --from=builder /app/upload_models.py .
+
 # Copy downloaded models from stage 1
 COPY --from=downloader /models /models
 
-# Environment variables (S3_BUCKET must be provided at runtime)
+# Set Python path to include our dependencies
+ENV PYTHONPATH=/app/site-packages
 ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
 
-# Run upload task
-CMD ["poetry", "run", "python", "upload_models.py"]
+# Run as non-root user (distroless nonroot image runs as uid 65532)
+USER nonroot
+
+# Run upload task directly with Python (no shell in distroless)
+ENTRYPOINT ["python", "upload_models.py"]
