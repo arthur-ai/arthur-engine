@@ -161,6 +161,9 @@ jobs:
           new-spec: "genai-engine/new.openapi.json"
           json: "out.json"
           markdown: "out.md"
+          header: ""
+          text: ""
+          html: ""
       - name: "Print difference state"
         run: |
           echo "Current state: ${{ steps.diff_state.outputs.state }}."
