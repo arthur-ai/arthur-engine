@@ -25,6 +25,8 @@ DEFAULT_THREAD_POOL_MAX_WORKERS = (
 )
 DEFAULT_PAGE_SIZE = 5  # Reduced for trace-level pagination
 MAX_PAGE_SIZE = 5000
+MODEL_REPOSITORY_URL_ENV_VAR = "MODEL_REPOSITORY_URL"
+MODEL_STORAGE_PATH_ENV_VAR = "MODEL_STORAGE_PATH"
 
 ##################################################################
 # Postgres
