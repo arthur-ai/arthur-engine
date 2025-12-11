@@ -147,21 +147,36 @@ jobs:
         run: |
           curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_amd64.deb
           dpkg -i oasdiff.deb
-      - name: Generate changelog
+      - name: Generate new OpenAPI schema
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           export PYTHONPATH=src
           poetry -C genai-engine run generate_changelog
-      - name: Upload artifacts on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
+      - name: "Find difference between OpenAPI specifications"
+        id: diff_state
+        uses: swimmwatch/openapi-diff-action@v2.0.0
         with:
-          name: changelog-artifacts
-          path: |
-            genai-engine/new.openapi.json
-            genai-engine/staging.openapi.json
-            genai-engine/src/api_changelog.md
+          old-spec: "genai-engine/staging.openapi.json"
+          new-spec: "genai-engine/new.openapi.json"
+          json: "out.json"
+          markdown: "out.md"
+      - name: "Print difference state"
+        run: |
+          echo "Current state: ${{ steps.diff_state.outputs.state }}."
+          if [ "${{ steps.diff_state.outputs.state }}" != "equal" ]; then
+            echo "OpenAPI schema has changed. Please update the API changelog."
+            exit 1
+          fi
+      # - name: Upload artifacts on failure
+      #   if: failure()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: changelog-artifacts
+      #     path: |
+      #       genai-engine/new.openapi.json
+      #       genai-engine/staging.openapi.json
+      #       genai-engine/src/api_changelog.md
 
   run-genai-engine-unit-tests:
     if: |

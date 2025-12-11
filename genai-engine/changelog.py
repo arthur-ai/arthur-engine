@@ -3,8 +3,6 @@ import logging
 import os
 import re
 import subprocess
-import sys
-from datetime import datetime
 from typing import Generator
 
 from fastapi.openapi.utils import get_openapi
@@ -91,32 +89,9 @@ def main():
     path_directory = os.path.dirname(os.path.abspath(__name__))
     if path_directory.endswith("genai-engine"):
         path_directory = os.path.dirname(path_directory)
-    old_openapi_path = os.path.join(path_directory, "genai-engine/staging.openapi.json")
     new_openapi_path = os.path.join(path_directory, "genai-engine/new.openapi.json")
-    changelog_md_path = os.path.join(
-        path_directory,
-        "genai-engine/src/api_changelog.md",
-    )
     generate_new_openapi(new_openapi_path)
-    changelog_md: list[str] = ["\n", f"# {datetime.today().strftime('%m/%d/%Y')}\n"]
-    starting_length_of_changelog: int = len(changelog_md)
-    index_of_new_changelog: int = 3
-    for changelog in get_output_of_openapi_diff(old_openapi_path, new_openapi_path):
-        changelog_md.append(analyze_openapi_diff(changelog))
-
-    if len(changelog_md) != starting_length_of_changelog:
-        with open(changelog_md_path, "r+") as f:
-            changelog_md_content = f.readlines()
-            new_content = (
-                changelog_md_content[:index_of_new_changelog]
-                + changelog_md
-                + changelog_md_content[index_of_new_changelog:]
-            )
-            f.seek(0)
-            f.writelines(new_content)
-            f.truncate()
-        subprocess.run(["cp", new_openapi_path, old_openapi_path])
-        sys.exit(1)
+    logger.info(f"OpenAPI schema generated and saved to {new_openapi_path}")
 
 
 if __name__ == "__main__":
