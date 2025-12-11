@@ -3,13 +3,6 @@ from typing import Tuple
 
 import arthur_client
 import genai_client.exceptions
-from genai_client.models import (
-    ContinuousEvalResponse,
-    ListContinuousEvalsResponse,
-    ListTraceTransformsResponse,
-    LLMEval,
-    TraceTransformResponse,
-)
 from arthur_client.api_bindings import (
     ConnectorType,
     CreateModelLinkTaskJobSpec,
@@ -42,6 +35,13 @@ from arthur_common.models.task_job_specs import (
     FetchModelTaskJobSpec,
     TaskType,
     UpdateModelTaskRulesJobSpec,
+)
+from genai_client.models import (
+    ContinuousEvalResponse,
+    ListContinuousEvalsResponse,
+    ListTraceTransformsResponse,
+    LLMEval,
+    TraceTransformResponse,
 )
 
 from connectors.connector import Connector
