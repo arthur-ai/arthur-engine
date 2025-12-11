@@ -58,6 +58,10 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
+    ListContinuousEvalsResponse,
+    ListTraceTransformsResponse,
+    LLMEval,
+    LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
     NewTaskRequest,
     QueryTracesWithMetricsResponse,
@@ -431,7 +435,7 @@ class ShieldBaseConnector(Connector, ABC):
         page_size: int | None = None,
         created_after: str | None = None,
         created_before: str | None = None,
-    ) -> Any:
+    ) -> LLMGetAllMetadataListResponse:
         """
         Reads LLM evaluation definitions from the Shield API.
 
@@ -453,6 +457,27 @@ class ShieldBaseConnector(Connector, ABC):
             created_before=created_before,
         )
 
+    def read_llm_eval_latest_version(
+        self,
+        task_id: str,
+        eval_name: str,
+    ) -> LLMEval:
+        """
+        Reads the latest version of a specific LLM evaluation from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            eval_name: Name of the eval to retrieve
+
+        Returns:
+            LLMEval response for the latest version
+        """
+        return self._evals_client.get_llm_eval_api_v1_tasks_task_id_llm_evals_eval_name_versions_eval_version_get(
+            task_id=task_id,
+            eval_name=eval_name,
+            eval_version="latest",
+        )
+
     def read_continuous_evals(
         self,
         task_id: str,
@@ -462,7 +487,7 @@ class ShieldBaseConnector(Connector, ABC):
         llm_eval_name: str | None = None,
         created_after: str | None = None,
         created_before: str | None = None,
-    ) -> Any:
+    ) -> ListContinuousEvalsResponse:
         """
         Reads continuous evaluation definitions from the Shield API.
 
@@ -496,7 +521,7 @@ class ShieldBaseConnector(Connector, ABC):
         name: str | None = None,
         created_after: str | None = None,
         created_before: str | None = None,
-    ) -> Any:
+    ) -> ListTraceTransformsResponse:
         """
         Reads transform definitions from the Shield API.
 
