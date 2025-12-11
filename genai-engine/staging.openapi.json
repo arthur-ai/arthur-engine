@@ -2437,6 +2437,17 @@
                         "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
                     },
                     {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -2895,6 +2906,17 @@
                             "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
                         },
                         "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
                     },
                     {
                         "name": "span_ids",
@@ -3584,6 +3606,17 @@
                         "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
                     },
                     {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -4041,6 +4074,17 @@
                             "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
                         },
                         "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
                     },
                     {
                         "name": "span_ids",

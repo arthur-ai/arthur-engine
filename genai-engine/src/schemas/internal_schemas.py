@@ -2155,6 +2155,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
     )
+    continuous_eval_name: Optional[str] = Field(
+        None,
+        description="Filter by continuous eval name",
+    )
     session_ids: Optional[list[str]] = Field(
         None,
         description="Session IDs to filter on. Optional.",
@@ -2197,6 +2201,7 @@ class TraceQuerySchema(BaseModel):
             annotation_score=request.annotation_score,
             annotation_type=request.annotation_type,
             continuous_eval_run_status=request.continuous_eval_run_status,
+            continuous_eval_name=request.continuous_eval_name,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,
             query_relevance_filters=query_relevance,

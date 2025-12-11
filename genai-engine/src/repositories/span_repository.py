@@ -112,6 +112,7 @@ class SpanRepository:
                 annotation_score=internal_filters.annotation_score,
                 annotation_type=internal_filters.annotation_type,
                 continuous_eval_run_status=internal_filters.continuous_eval_run_status,
+                continuous_eval_name=internal_filters.continuous_eval_name,
             )
         )
 

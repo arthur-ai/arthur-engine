@@ -11,6 +11,7 @@ from sqlalchemy import asc, desc
 from sqlalchemy.orm import Query, Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.telemetry_models import DatabaseTraceMetadata
 from schemas.internal_schemas import AgenticAnnotation, TraceMetadata
 from schemas.request_schemas import (
@@ -212,36 +213,41 @@ class TraceAnnotationService:
         annotation_score: Optional[int] = None,
         annotation_type: Optional[str] = None,
         continuous_eval_run_status: Optional[str] = None,
+        continuous_eval_name: Optional[str] = None,
     ) -> List[TraceMetadata]:
         for trace_metadata in trace_metadata_list:
-            annotations = self.get_annotations_by_trace_id(trace_metadata.trace_id)
+            query = self.db_session.query(DatabaseAgenticAnnotation).filter(
+                DatabaseAgenticAnnotation.trace_id == trace_metadata.trace_id,
+            )
+
+            # apply filters
+            if annotation_score is not None:
+                query = query.filter(
+                    DatabaseAgenticAnnotation.annotation_score == annotation_score,
+                )
+            if annotation_type is not None:
+                query = query.filter(
+                    DatabaseAgenticAnnotation.annotation_type == annotation_type,
+                )
+            if continuous_eval_run_status is not None:
+                query = query.filter(
+                    DatabaseAgenticAnnotation.run_status == continuous_eval_run_status,
+                )
+            if continuous_eval_name is not None:
+                query = query.join(
+                    DatabaseContinuousEval,
+                    DatabaseAgenticAnnotation.continuous_eval_id
+                    == DatabaseContinuousEval.id,
+                ).filter(DatabaseContinuousEval.name.ilike(f"%{continuous_eval_name}%"))
+
+            db_annotations = query.all()
+            annotations = [
+                AgenticAnnotation.from_db_model(db_annotation)
+                for db_annotation in db_annotations
+            ]
+
             if annotations:
-                if (
-                    annotation_score is not None
-                    or annotation_type is not None
-                    or continuous_eval_run_status is not None
-                ):
-                    filtered_annotations = []
-                    for annotation in annotations:
-                        if (
-                            annotation_score is not None
-                            and annotation.annotation_score != annotation_score
-                        ):
-                            continue
-                        if (
-                            annotation_type is not None
-                            and annotation.annotation_type.value != annotation_type
-                        ):
-                            continue
-                        if (
-                            continuous_eval_run_status is not None
-                            and annotation.run_status != continuous_eval_run_status
-                        ):
-                            continue
-                        filtered_annotations.append(annotation)
-                    trace_metadata.annotations = filtered_annotations
-                else:
-                    trace_metadata.annotations = annotations
+                trace_metadata.annotations = annotations
 
         return trace_metadata_list
 

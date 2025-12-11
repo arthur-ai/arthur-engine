@@ -120,6 +120,10 @@ def trace_query_parameters(
         None,
         description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
     ),
+    continuous_eval_name: str = Query(
+        None,
+        description="Filter by continuous eval name.",
+    ),
     span_ids: list[str] = Query(
         None,
         description="Span IDs to filter on. Optional.",
@@ -249,6 +253,7 @@ def trace_query_parameters(
         annotation_score=annotation_score,
         annotation_type=annotation_type,
         continuous_eval_run_status=continuous_eval_run_status,
+        continuous_eval_name=continuous_eval_name,
         span_ids=span_ids,
         session_ids=session_ids,
         user_ids=user_ids,

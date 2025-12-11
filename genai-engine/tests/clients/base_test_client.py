@@ -1924,6 +1924,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         annotation_score: int | None = None,
         annotation_type: str | None = None,
         continuous_eval_run_status: str | None = None,
+        continuous_eval_name: str | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1974,6 +1975,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["annotation_type"] = annotation_type
         if continuous_eval_run_status is not None:
             params["continuous_eval_run_status"] = continuous_eval_run_status
+        if continuous_eval_name is not None:
+            params["continuous_eval_name"] = continuous_eval_name
         if user_ids is not None:
             params["user_ids"] = user_ids
         # Query relevance filters
