@@ -143,10 +143,10 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: genai-engine
-      - name: Install oasdiff
-        run: |
-          curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_amd64.deb
-          dpkg -i oasdiff.deb
+      # - name: Install oasdiff
+      #   run: |
+      #     curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_amd64.deb
+      #     dpkg -i oasdiff.deb
       - name: Generate new OpenAPI schema
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
