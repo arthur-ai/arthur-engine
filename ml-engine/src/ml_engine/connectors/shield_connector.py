@@ -43,9 +43,12 @@ from genai_client import (
     ApiClient,
     APIKeysApi,
     Configuration,
+    ContinuousEvalsApi,
     InferencesApi,
+    LLMEvalsApi,
     SpansApi,
     TasksApi,
+    TransformsApi,
 )
 from genai_client.exceptions import (
     ForbiddenException,
@@ -96,6 +99,9 @@ class ShieldBaseConnector(Connector, ABC):
         self._tasks_client = TasksApi(api_client=self._genai_client)
         self._api_keys_client = APIKeysApi(api_client=self._genai_client)
         self._spans_client = SpansApi(api_client=self._genai_client)
+        self._evals_client = LLMEvalsApi(api_client=self._genai_client)
+        self._cont_evals_client = ContinuousEvalsApi(api_client=self._genai_client)
+        self._transforms_client = TransformsApi(api_client=self._genai_client)
 
     @staticmethod
     def _strip_and_validate_endpoint(endpoint: str) -> str:
@@ -416,6 +422,102 @@ class ShieldBaseConnector(Connector, ABC):
             task_ids=task_ids,
             start_time=start_time,
             end_time=end_time,
+        )
+
+    def read_llm_evals(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> Any:
+        """
+        Reads LLM evaluation definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            LLMGetAllMetadataListResponse from the LLM evals API
+        """
+        return self._evals_client.get_all_llm_evals_api_v1_tasks_task_id_llm_evals_get(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            created_after=created_after,
+            created_before=created_before,
+        )
+
+    def read_continuous_evals(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        name: str | None = None,
+        llm_eval_name: str | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> Any:
+        """
+        Reads continuous evaluation definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            name: Name filter for continuous eval (optional)
+            llm_eval_name: LLM eval name filter (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            ListContinuousEvalsResponse from the continuous evals API
+        """
+        return self._cont_evals_client.list_continuous_evals_api_v1_tasks_task_id_continuous_evals_get(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            name=name,
+            llm_eval_name=llm_eval_name,
+            created_after=created_after,
+            created_before=created_before,
+        )
+
+    def read_transforms(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        name: str | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> Any:
+        """
+        Reads transform definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            name: Name filter for transforms using partial matching (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            ListTraceTransformsResponse from the transforms API
+        """
+        return self._transforms_client.list_transforms_for_task_api_v1_tasks_task_id_traces_transforms_get(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            name=name,
+            created_after=created_after,
+            created_before=created_before,
         )
 
     @property

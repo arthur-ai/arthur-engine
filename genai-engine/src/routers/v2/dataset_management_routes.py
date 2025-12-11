@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from dependencies import get_db_session, get_validated_agentic_task
+from dependencies import get_db_session, get_validated_task
 from repositories.datasets_repository import DatasetRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -51,7 +51,7 @@ def create_dataset(
     request: NewDatasetRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> DatasetResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
@@ -126,7 +126,7 @@ def get_datasets(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> SearchDatasetsResponse:
     try:
         dataset_repo = DatasetRepository(db_session)

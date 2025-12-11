@@ -9,7 +9,7 @@ from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import (
     get_db_session,
-    get_validated_agentic_task,
+    get_validated_task,
     transform_list_filter_parameters,
 )
 from repositories.metrics_repository import MetricRepository
@@ -58,7 +58,7 @@ def list_transforms_for_task(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> ListTraceTransformsResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
@@ -107,7 +107,7 @@ def create_transform_for_task(
     request: NewTraceTransformRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)

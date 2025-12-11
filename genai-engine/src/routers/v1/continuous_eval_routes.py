@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from dependencies import (
     get_db_session,
-    get_validated_agentic_task,
+    get_validated_task,
 )
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
@@ -80,7 +80,7 @@ def list_continuous_evals(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> ListContinuousEvalsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
@@ -113,7 +113,7 @@ def create_continuous_eval(
     create_request: ContinuousEvalCreateRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> ContinuousEvalResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted

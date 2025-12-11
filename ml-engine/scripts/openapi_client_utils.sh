@@ -9,7 +9,7 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-export OPENAPI_GENERATOR_VERSION=7.11.0
+export OPENAPI_GENERATOR_VERSION=7.12.0
 
 install_or_update_openapi_gen() {
   echo "Installing or updating openapi-generator-cli to version $OPENAPI_GENERATOR_VERSION..."
