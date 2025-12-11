@@ -15,7 +15,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { OutputFieldProps } from "../types";
 
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
@@ -65,9 +65,10 @@ const skeletons = () => (
 );
 
 const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpen, onCloseDialog }: OutputFieldProps) => {
-  const { dispatch } = usePromptContext();
   const [isPopoutOpen, setIsPopoutOpen] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<string | undefined>(getFormatValue(responseFormat));
+
+  const actions = usePromptPlaygroundStore((state) => state.actions);
 
   const handleOpen = useCallback(() => {
     // Store the current value before opening
@@ -101,10 +102,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
 
   const handleSave = () => {
     handleClose();
-    dispatch({
-      type: "updateResponseFormat",
-      payload: { promptId, responseFormat: copiedFormat },
-    });
+    actions.updateResponseFormat(promptId, copiedFormat);
   };
 
   useEffect(() => {

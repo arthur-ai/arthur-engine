@@ -25,19 +25,22 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { DatasetLoadingState } from "../datasets/DatasetLoadingState";
-
-import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
+import { useAutosave } from "./hooks/useAutosave";
+import { useExperimentStatus } from "./hooks/useExperimentStatus";
 import { useSyncNotebookState } from "./hooks/useSyncNotebookState";
+import { useSyncSpanData } from "./hooks/useSyncSpanData";
 import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { initialState, promptsReducer } from "./reducer";
 import SetConfigDrawer from "./SetConfigDrawer";
-import { usePromptPlaygroundStore } from "./stores/playground.store";
-import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
+import { useExperimentStore } from "./stores/experiment.store";
+import { useAllPromptsHaveModelConfig, useBlankVariableCount, useIsPlaygroundDirty, usePromptPlaygroundStore } from "./stores/playground.store";
+import { createPrompt } from "./stores/utils/factories";
+import { PromptExperimentStateConfig } from "./types";
 import { serializePlaygroundState } from "./utils/notebookStateUtils";
 import { toExperimentPromptConfig } from "./utils/toExperimentPromptConfig";
 import toFrontendPrompt from "./utils/toFrontendPrompt";
@@ -47,8 +50,12 @@ import { CreateExperimentModal, type ExperimentFormData } from "@/components/pro
 import { useApi } from "@/hooks/useApi";
 import { useNotebook, useNotebookHistory, useSetNotebookStateMutation, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import { useTask } from "@/hooks/useTask";
-import { ModelProvider, ModelProviderResponse, PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
+import { useSnackbar } from "notistack";
+import { useCreateExperiment } from "@/hooks/usePromptExperiments";
+import { useSyncPromptData } from "./hooks/useSyncPromptData";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -58,14 +65,10 @@ const PromptsPlayground = () => {
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [createExperimentModalOpen, setCreateExperimentModalOpen] = useState(false);
   const [showPromptOverwriteDialog, setShowPromptOverwriteDialog] = useState(false);
-  const [pendingConfigForPromptOverwrite, setPendingConfigForPromptOverwrite] = useState<any>(null);
+  const [pendingConfigForPromptOverwrite, setPendingConfigForPromptOverwrite] = useState<PromptExperimentStateConfig | null>(null);
   const variablesButtonRef = useRef<HTMLButtonElement>(null);
-  const hasFetchedProviders = useRef(false);
-  const hasFetchedAvailableModels = useRef(false);
-  const hasFetchedSpan = useRef(false);
   const hasFetchedConfig = useRef(false);
   const hasFetchedPrompt = useRef(false);
-  const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
   const { task } = useTask();
@@ -78,12 +81,14 @@ const PromptsPlayground = () => {
   const notebookId = searchParams.get("notebookId");
 
   // Track if playground is opened with config from "Open in Notebook"
-  const isConfigMode = !!(experimentId && promptName && promptVersion);
-  const [configModeActive, setConfigModeActive] = useState(isConfigMode);
-  const [experimentConfig, setExperimentConfig] = useState<any>(null);
+  const isConfigMode = !!experimentId;
+
+  const [, setConfigModeActive] = useState(isConfigMode);
   const [experimentRuns, setExperimentRuns] = useState<PromptExperimentDetail[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [runDetails, setRunDetails] = useState<Map<string, any>>(new Map());
+
+  const experimentConfig = useExperimentStore((state) => state.experimentConfig);
 
   // Track the currently running experiment for this session
   const [runningExperimentId, setRunningExperimentId] = useState<string | null>(null);
@@ -92,14 +97,10 @@ const PromptsPlayground = () => {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Notebook state management
-  const [latestSavedState, setLatestSavedState] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [notebookName, setNotebookName] = useState<string>("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState<string>("");
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const periodicSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedStateRef = useRef<string>("");
   const hasUnsavedChangesRef = useRef<boolean>(false);
 
   // Pass false to let each prompt determine its own icon-only mode based on container width
@@ -114,9 +115,37 @@ const PromptsPlayground = () => {
   // Fetch notebook history for experiment mode
   const { experiments: notebookHistory, refetch: refetchNotebookHistory } = useNotebookHistory(notebookId || undefined, 0, 100);
 
-  const hash = usePromptPlaygroundStore((state) => state.actions.hash());
+  const isDirty = useIsPlaygroundDirty();
+  const playgroundMutation = usePromptPlaygroundStore((state) => state.mutation);
   const prompts = usePromptPlaygroundStore((state) => state.prompts);
   const actions = usePromptPlaygroundStore((state) => state.actions);
+
+  const experimentActions = useExperimentStore((state) => state.actions);
+
+  const [autosave, isAutosaving] = useAutosave({ notebookId: notebookId!, enabled: !!notebookId && isDirty });
+
+  const { enqueueSnackbar } = useSnackbar();
+
+  // Poll the current experiment status until it is completed
+  useExperimentStatus({
+    onCompleted: () => {
+      enqueueSnackbar("Experiment completed", { variant: "success" });
+      experimentActions.finishRun();
+    },
+  });
+
+  useSyncSpanData({ enabled: !!spanId, spanId: spanId! });
+
+  useEffect(() => {
+    autosave();
+  }, [playgroundMutation.changedAt, autosave]);
+
+  useEffect(() => {
+    return () => {
+      actions.reset();
+      experimentActions.reset();
+    };
+  }, []);
 
   // Update notebook name when notebook data loads
   useEffect(() => {
@@ -125,189 +154,60 @@ const PromptsPlayground = () => {
     }
   }, [notebook]);
 
+  const configModeActive = experimentConfig !== null;
+
+  useEffect(() => {
+    actions.setMode(configModeActive ? "config" : "normal");
+  }, [configModeActive, actions]);
+
+  const createExperimentMutation = useCreateExperiment(task?.id);
+
   const { loading: notebookStateLoading } = useSyncNotebookState({
     enabled: !!notebookId,
     notebookId: notebookId!,
     onSuccess: (data) => {
       const isEmpty = data.prompts.length === 0;
+
+      // If there are URL parameters for loading a prompt and the notebook is empty,
+      // skip hydration to allow the prompt loading logic to populate the first prompt
       const hasPromptUrlParams = promptNameParam && promptVersionParam;
 
       if (hasPromptUrlParams && isEmpty) {
         console.log("Skipping notebook state hydration - will load prompt from URL params");
       } else {
-        // dispatch({
-        //   type: "hydrateNotebookState",
-        //   payload: { prompts: data.prompts, keywords: data.keywords },
-        // });
+        const prompts = data.prompts.length > 0 ? data.prompts : [createPrompt()];
+
+        actions.hydrateNotebookState(prompts, data.keywords);
       }
 
       if (data.fullState.dataset_ref) {
-        setExperimentConfig({
+        experimentActions.setExperimentConfig({
           name: notebook?.name || "Notebook Experiment",
           description: notebook?.description || "",
           dataset_ref: data.fullState.dataset_ref,
           eval_list: data.fullState.eval_list || [],
           prompt_variable_mapping: data.fullState.prompt_variable_mapping || [],
           dataset_row_filter: data.fullState.dataset_row_filter || [],
+          experimentId: notebook?.id || "",
+          prompt_configs: [],
         });
-        setConfigModeActive(true);
       }
-
-      const serializedState = serializePlaygroundState(state, experimentConfig);
-      setLatestSavedState(JSON.stringify(serializedState));
     },
   });
 
-  const handleSaveNotebookState = () => {
-    const serializedState = serializePlaygroundState(state, experimentConfig);
-    console.log("Serialized state:", serializedState);
+  const handleSaveNotebookState = async () => {
+    if (!notebookId) return;
+
+    const { prompts } = usePromptPlaygroundStore.getState();
+    const experimentConfig = useExperimentStore.getState().experimentConfig;
+
+    const serializedState = serializePlaygroundState({ experimentConfig, prompts });
+
+    await setNotebookStateMutation.mutateAsync({
+      notebookId,
+      request: { state: serializedState },
+    });
   };
-
-  // /**
-  //  * Load notebook state on mount
-  //  */
-  // const fetchNotebookState = useCallback(async () => {
-  //   if (hasFetchedNotebookState.current || !notebookId || !apiClient || !task?.id) {
-  //     return;
-  //   }
-
-  //   hasFetchedNotebookState.current = true;
-
-  //   try {
-  //     const response = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(notebookId);
-  //     const notebookState = response.data;
-
-  //     // Deserialize the notebook state
-  //     const { prompts: loadedPrompts, keywords: loadedKeywords, fullState } = await deserializeNotebookState(notebookState, apiClient, task.id);
-
-  //     // If there are URL parameters for loading a prompt and the notebook is empty,
-  //     // skip hydration to allow the prompt loading logic to populate the first prompt
-  //     const hasPromptUrlParams = promptNameParam && promptVersionParam;
-  //     const notebookIsEmpty = !loadedPrompts || loadedPrompts.length === 0;
-
-  //     if (hasPromptUrlParams && notebookIsEmpty) {
-  //       // Don't hydrate - let fetchPromptData handle it
-  //       console.log("Skipping notebook state hydration - will load prompt from URL params");
-  //     } else {
-  //       // Replace the entire state with loaded notebook state
-  //       dispatch({
-  //         type: "hydrateNotebookState",
-  //         payload: { prompts: loadedPrompts, keywords: loadedKeywords },
-  //       });
-  //     }
-
-  //     // Check if we're in Experiment Mode (has dataset_ref)
-  //     if (fullState.dataset_ref) {
-  //       // Convert notebook state to experimentConfig format
-  //       setExperimentConfig({
-  //         name: notebook?.name || "Notebook Experiment",
-  //         description: notebook?.description || "",
-  //         dataset_ref: fullState.dataset_ref,
-  //         eval_list: fullState.eval_list || [],
-  //         prompt_variable_mapping: fullState.prompt_variable_mapping || [],
-  //         dataset_row_filter: fullState.dataset_row_filter || [],
-  //       });
-  //       setConfigModeActive(true);
-  //     }
-
-  //     // Initialize the lastSavedStateRef after loading
-  //     // We'll set it in a setTimeout to ensure state updates have completed
-  //     setTimeout(() => {
-  //       lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state, experimentConfig));
-  //       setSaveStatus("saved");
-  //     }, 100);
-  //   } catch (error) {
-  //     console.error("Failed to load notebook state:", error);
-  //   }
-  // }, [notebookId, apiClient, task?.id, notebook, promptNameParam, promptVersionParam]);
-
-  /**
-   * Auto-save notebook state with debounce
-   * Only saves if there are actual changes
-   */
-  const autoSaveNotebookState = useCallback(async () => {
-    if (!notebookId || !apiClient) {
-      return;
-    }
-
-    const serializedState = serializePlaygroundState(state, experimentConfig);
-    const currentStateStr = JSON.stringify(serializedState);
-
-    // Only save if state has actually changed
-    if (currentStateStr === lastSavedStateRef.current) {
-      return;
-    }
-
-    try {
-      setSaveStatus("saving");
-
-      await setNotebookStateMutation.mutateAsync({
-        notebookId,
-        request: { state: serializedState },
-      });
-
-      lastSavedStateRef.current = currentStateStr;
-      hasUnsavedChangesRef.current = false;
-      setSaveStatus("saved");
-    } catch (error) {
-      console.error("Failed to save notebook state:", error);
-      setSaveStatus("unsaved");
-    }
-  }, [notebookId, apiClient, state, experimentConfig, setNotebookStateMutation]);
-
-  // Detect state changes and trigger auto-save with debounce
-  useEffect(() => {
-    if (!notebookId || !lastSavedStateRef.current) {
-      return;
-    }
-
-    const currentStateStr = JSON.stringify(serializePlaygroundState(state, experimentConfig));
-
-    // Check if state has actually changed
-    if (currentStateStr !== lastSavedStateRef.current) {
-      hasUnsavedChangesRef.current = true;
-      setSaveStatus("unsaved");
-
-      // Clear existing timeout
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-
-      // Set new timeout for auto-save (5 seconds after last change)
-      autoSaveTimeoutRef.current = setTimeout(() => {
-        autoSaveNotebookState();
-      }, 5000);
-    }
-
-    // Cleanup timeout on unmount
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
-  }, [state, experimentConfig, notebookId, autoSaveNotebookState]);
-
-  // Periodic save check (every 10 seconds)
-  // Only saves if there are unsaved changes
-  useEffect(() => {
-    if (!notebookId) {
-      return;
-    }
-
-    // Set up periodic save interval (10 seconds)
-    periodicSaveIntervalRef.current = setInterval(() => {
-      if (hasUnsavedChangesRef.current) {
-        autoSaveNotebookState();
-      }
-    }, 10000);
-
-    // Cleanup interval on unmount
-    return () => {
-      if (periodicSaveIntervalRef.current) {
-        clearInterval(periodicSaveIntervalRef.current);
-      }
-    };
-  }, [notebookId, autoSaveNotebookState]);
 
   // Handle notebook rename
   const handleStartRename = useCallback(() => {
@@ -337,101 +237,6 @@ const PromptsPlayground = () => {
       console.error("Failed to rename notebook:", error);
     }
   }, [notebookId, newNotebookName, updateNotebookMutation, notebook?.description]);
-
-  const fetchProviders = useCallback(async () => {
-    if (hasFetchedProviders.current) {
-      return;
-    }
-
-    if (!apiClient) {
-      console.error("No api client");
-      return;
-    }
-
-    hasFetchedProviders.current = true;
-    const response = await apiClient.api.getModelProvidersApiV1ModelProvidersGet();
-
-    const { data } = response;
-    const providers = data.providers
-      .filter((provider: ModelProviderResponse) => provider.enabled)
-      .map((provider: ModelProviderResponse) => provider.provider);
-
-    dispatch({
-      type: "updateProviders",
-      payload: { providers },
-    });
-  }, [apiClient]);
-
-  const fetchAvailableModels = useCallback(async () => {
-    if (hasFetchedAvailableModels.current || !apiClient || state.enabledProviders.length === 0) {
-      return;
-    }
-
-    hasFetchedAvailableModels.current = true;
-
-    // Fetch models for all enabled providers in parallel
-    const modelPromises = state.enabledProviders.map(async (provider) => {
-      try {
-        const response = await apiClient.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(provider as ModelProvider);
-        return { provider, models: response.data.available_models };
-      } catch (error) {
-        console.error(`Failed to fetch models for provider ${provider}:`, error);
-        return { provider, models: [] };
-      }
-    });
-
-    const results = await Promise.all(modelPromises);
-
-    const newAvailableModels = new Map<ModelProvider, string[]>();
-    results.forEach(({ provider, models }) => {
-      newAvailableModels.set(provider, models);
-    });
-
-    // Single dispatch with the complete Map
-    dispatch({
-      type: "updateAvailableModels",
-      payload: { availableModels: newAvailableModels },
-    });
-  }, [apiClient, state.enabledProviders]);
-
-  /**
-   * Fetch span data and update the first empty prompt
-   * Triggered if URL has a spanId parameter
-   */
-  const fetchSpanData = useCallback(async () => {
-    if (hasFetchedSpan.current || !spanId || !apiClient) {
-      return;
-    }
-
-    hasFetchedSpan.current = true;
-
-    try {
-      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(spanId);
-      const spanData = response.data;
-      const spanPrompt = apiToFrontendPrompt(spanData);
-
-      // Update the first empty prompt instead of adding a new one
-      if (state.prompts.length > 0) {
-        dispatch({
-          type: "updatePrompt",
-          payload: { promptId: state.prompts[0].id, prompt: spanPrompt },
-        });
-      } else {
-        dispatch({
-          type: "hydratePrompt",
-          payload: { promptData: spanPrompt },
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch span data:", error);
-    }
-  }, [spanId, apiClient, state.prompts]);
-
-  useEffect(() => {
-    if (spanId) {
-      fetchSpanData();
-    }
-  }, [fetchSpanData, spanId]);
 
   /**
    * Fetch experiment config and populate the first prompt with the selected prompt version
@@ -513,6 +318,12 @@ const PromptsPlayground = () => {
    * Fetch prompt data by name and version
    * Triggered if URL has promptName and version parameters (without experimentId)
    */
+  useSyncPromptData({
+    enabled: !!promptNameParam && !!promptVersionParam && !experimentId,
+    promptName: promptNameParam!,
+    promptVersion: promptVersionParam!,
+  });
+
   const fetchPromptData = useCallback(async () => {
     if (hasFetchedPrompt.current || !promptNameParam || !promptVersionParam || !apiClient || !task?.id) {
       return;
@@ -551,23 +362,6 @@ const PromptsPlayground = () => {
     }
   }, [fetchPromptData, promptNameParam, promptVersionParam, isConfigMode]);
 
-  // Fetch backend prompts on mount
-  useEffect(() => {
-    fetchPrompts(dispatch);
-  }, [fetchPrompts]);
-
-  // Fetch providers on mount
-  useEffect(() => {
-    fetchProviders();
-  }, [fetchProviders]);
-
-  // If providers exist, fetch available models
-  useEffect(() => {
-    if (state.enabledProviders.length > 0) {
-      fetchAvailableModels();
-    }
-  }, [state.enabledProviders, fetchAvailableModels]);
-
   const handleAddPrompt = () => {
     actions.addPrompt();
   };
@@ -591,7 +385,7 @@ const PromptsPlayground = () => {
         page_size: 100,
       });
 
-      const matchingExperiments = experimentsListResponse.data.data.filter((exp: any) => exp.name === experimentConfig.name);
+      const matchingExperiments = experimentsListResponse.data.data.filter((exp) => exp.name === experimentConfig.name);
       setExperimentRuns(matchingExperiments);
     } catch (error) {
       console.error("Failed to refresh experiment runs:", error);
@@ -647,27 +441,6 @@ const PromptsPlayground = () => {
   );
 
   /**
-   * Start polling for experiment completion
-   */
-  const startPolling = useCallback(
-    (expId: string) => {
-      // Clear any existing polling
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-
-      // Poll every 2 seconds
-      pollingIntervalRef.current = setInterval(() => {
-        pollExperimentStatus(expId);
-      }, 2000);
-
-      // Also do an immediate poll
-      pollExperimentStatus(expId);
-    },
-    [pollExperimentStatus]
-  );
-
-  /**
    * Run experiment with all prompts in config mode
    */
   const handleRunAllWithConfig = useCallback(async () => {
@@ -685,7 +458,7 @@ const PromptsPlayground = () => {
       setIsRunningExperiment(true);
 
       // Convert all playground prompts to experiment prompt configs
-      const promptConfigs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
+      const promptConfigs = prompts.map((prompt) => toExperimentPromptConfig(prompt));
 
       // Create experiment request using the same config as the original
       // Use the original prompt_variable_mapping from experimentConfig
@@ -702,13 +475,13 @@ const PromptsPlayground = () => {
       };
 
       // Create and run the experiment
-      const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(task.id, experimentRequest);
+      const { id } = await createExperimentMutation.mutateAsync(experimentRequest);
 
-      const newExperimentId = response.data.id;
-      setRunningExperimentId(newExperimentId);
+      setRunningExperimentId(id);
 
-      // Start polling for results
-      startPolling(newExperimentId);
+      // Finish the run and set the running experiment ID
+      experimentActions.finishRun();
+      experimentActions.setRunningExperimentId(id);
 
       // Track the event
       track(EVENT_NAMES.RUN_ALL_PROMPTS, {
@@ -720,7 +493,7 @@ const PromptsPlayground = () => {
       setIsRunningExperiment(false);
       setRunningExperimentId(null);
     }
-  }, [experimentConfig, task?.id, apiClient, state.prompts, isRunningExperiment, startPolling]);
+  }, [apiClient, createExperimentMutation, experimentActions, experimentConfig, isRunningExperiment, notebookId, prompts, task?.id]);
 
   /**
    * Run experiment with a single prompt in config mode
@@ -737,7 +510,7 @@ const PromptsPlayground = () => {
         return;
       }
 
-      const prompt = state.prompts.find((p) => p.id === promptId);
+      const prompt = prompts.find((p) => p.id === promptId);
       if (!prompt) {
         console.error("Prompt not found");
         return;
@@ -768,15 +541,15 @@ const PromptsPlayground = () => {
         const newExperimentId = response.data.id;
         setRunningExperimentId(newExperimentId);
 
-        // Start polling for results
-        startPolling(newExperimentId);
+        experimentActions.finishRun();
+        experimentActions.setRunningExperimentId(newExperimentId);
       } catch (error) {
         console.error("Failed to create experiment:", error);
         setIsRunningExperiment(false);
         setRunningExperimentId(null);
       }
     },
-    [experimentConfig, task?.id, apiClient, state.prompts, isRunningExperiment, startPolling]
+    [experimentConfig, task?.id, apiClient, prompts, isRunningExperiment]
   );
 
   const handleRunAllPrompts = () => {
@@ -800,7 +573,8 @@ const PromptsPlayground = () => {
     state.prompts.forEach((prompt) => {
       if (!prompt.running) {
         // Only run prompts that are not already running
-        dispatch({ type: "runPrompt", payload: { promptId: prompt.id } });
+        actions.runPrompt(prompt.id);
+        // dispatch({ type: "runPrompt", payload: { promptId: prompt.id } });
       }
     });
   };
@@ -838,74 +612,108 @@ const PromptsPlayground = () => {
     setConfigDrawerOpen((prev) => !prev);
   };
 
+  const queryClient = useQueryClient();
+
   const handleLoadConfig = useCallback(
-    async (config: PromptExperimentDetail, overwritePrompts: boolean) => {
-      console.log("[handleLoadConfig] Called with overwritePrompts:", overwritePrompts);
-      console.log("[handleLoadConfig] Config:", config);
-      console.log("[handleLoadConfig] prompt_configs:", config.prompt_configs);
+    async (config: PromptExperimentStateConfig, overwritePrompts: boolean) => {
+      experimentActions.setExperimentConfig(config);
 
-      // If overwritePrompts is true, load the prompts from the experiment's prompt configs
-      if (overwritePrompts && config.prompt_configs && config.prompt_configs.length > 0 && apiClient && task?.id) {
-        console.log("[handleLoadConfig] Entering overwrite block");
-        try {
-          const prompts = [];
-          for (const promptConfig of config.prompt_configs) {
-            console.log("[handleLoadConfig] Processing prompt config:", promptConfig);
-            if (promptConfig.type === "saved") {
-              const savedConfig = promptConfig as any;
-              console.log(`[handleLoadConfig] Fetching saved prompt ${savedConfig.name} v${savedConfig.version}`);
-              try {
-                const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-                  savedConfig.name,
-                  savedConfig.version.toString(),
-                  task.id
-                );
-                const frontendPrompt = toFrontendPrompt(promptResponse.data);
-                console.log("[handleLoadConfig] Loaded prompt:", frontendPrompt);
-                prompts.push(frontendPrompt);
-              } catch (error) {
-                console.error(`Failed to fetch saved prompt ${savedConfig.name} v${savedConfig.version}:`, error);
-              }
-            }
-          }
+      if (!overwritePrompts) return;
 
-          // Overwrite prompts if we loaded any using hydrateNotebookState
-          console.log(`[handleLoadConfig] Loaded ${prompts.length} prompts, dispatching hydrateNotebookState`);
-          if (prompts.length > 0) {
-            dispatch({
-              type: "hydrateNotebookState",
-              payload: {
-                prompts,
-                keywords: new Map<string, string>(),
-              },
-            });
-            console.log("[handleLoadConfig] Dispatched hydrateNotebookState");
-          }
-        } catch (error) {
-          console.error("Failed to load prompts from experiment:", error);
+      const promises = config.prompt_configs.map((promptConfig) => {
+        if (promptConfig.type === "saved") {
+          const { name, version } = promptConfig;
+          return queryClient.ensureQueryData({
+            // eslint-disable-next-line @tanstack/query/exhaustive-deps
+            queryKey: queryKeys.prompts.version(task!.id!, promptConfig.name, promptConfig.version.toString()),
+            queryFn: async () => {
+              const response = await apiClient!.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+                name,
+                version.toString(),
+                task!.id
+              );
+              return response.data;
+            },
+          });
         }
-      } else {
-        console.log("[handleLoadConfig] Skipping overwrite block. Conditions:", {
-          overwritePrompts,
-          hasPromptConfigs: config.prompt_configs && config.prompt_configs.length > 0,
-          hasApiClient: !!apiClient,
-          hasTaskId: !!task?.id,
-        });
-      }
+      });
 
-      // Update experiment config and activate experiment mode
-      setExperimentConfig(config);
-      setConfigModeActive(true);
+      const prompts = (await Promise.all(promises)).filter(Boolean).map(toFrontendPrompt);
 
-      // Mark state as unsaved so auto-save will persist the config
-      hasUnsavedChangesRef.current = true;
-      setSaveStatus("unsaved");
+      actions.overwritePrompts(prompts);
 
-      // Refetch notebook history since we're now in experiment mode
+      console.log("[handleLoadConfig] Loaded prompts:", prompts);
+
       if (notebookId) {
         refetchNotebookHistory();
       }
     },
+    //   console.log("[handleLoadConfig] Called with overwritePrompts:", overwritePrompts);
+    //   console.log("[handleLoadConfig] Config:", config);
+    //   console.log("[handleLoadConfig] prompt_configs:", config.prompt_configs);
+
+    //   // If overwritePrompts is true, load the prompts from the experiment's prompt configs
+    //   if (overwritePrompts && config.prompt_configs && config.prompt_configs.length > 0 && apiClient && task?.id) {
+    //     console.log("[handleLoadConfig] Entering overwrite block");
+    //     try {
+    //       const prompts = [];
+    //       for (const promptConfig of config.prompt_configs) {
+    //         console.log("[handleLoadConfig] Processing prompt config:", promptConfig);
+    //         if (promptConfig.type === "saved") {
+    //           const savedConfig = promptConfig;
+    //           console.log(`[handleLoadConfig] Fetching saved prompt ${savedConfig.name} v${savedConfig.version}`);
+    //           try {
+    //             const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+    //               savedConfig.name,
+    //               savedConfig.version.toString(),
+    //               task.id
+    //             );
+    //             const frontendPrompt = toFrontendPrompt(promptResponse.data);
+    //             console.log("[handleLoadConfig] Loaded prompt:", frontendPrompt);
+    //             prompts.push(frontendPrompt);
+    //           } catch (error) {
+    //             console.error(`Failed to fetch saved prompt ${savedConfig.name} v${savedConfig.version}:`, error);
+    //           }
+    //         }
+    //       }
+
+    //       // Overwrite prompts if we loaded any using hydrateNotebookState
+    //       console.log(`[handleLoadConfig] Loaded ${prompts.length} prompts, dispatching hydrateNotebookState`);
+    //       if (prompts.length > 0) {
+    //         dispatch({
+    //           type: "hydrateNotebookState",
+    //           payload: {
+    //             prompts,
+    //             keywords: new Map<string, string>(),
+    //           },
+    //         });
+    //         console.log("[handleLoadConfig] Dispatched hydrateNotebookState");
+    //       }
+    //     } catch (error) {
+    //       console.error("Failed to load prompts from experiment:", error);
+    //     }
+    //   } else {
+    //     console.log("[handleLoadConfig] Skipping overwrite block. Conditions:", {
+    //       overwritePrompts,
+    //       hasPromptConfigs: config.prompt_configs && config.prompt_configs.length > 0,
+    //       hasApiClient: !!apiClient,
+    //       hasTaskId: !!task?.id,
+    //     });
+    //   }
+
+    //   // Update experiment config and activate experiment mode
+    //   setExperimentConfig(config);
+    //   setConfigModeActive(true);
+
+    //   // Mark state as unsaved so auto-save will persist the config
+    //   hasUnsavedChangesRef.current = true;
+    //   setSaveStatus("unsaved");
+
+    //   // Refetch notebook history since we're now in experiment mode
+    //   if (notebookId) {
+    //     refetchNotebookHistory();
+    //   }
+    // },
     [notebookId, apiClient, task?.id, refetchNotebookHistory]
   );
 
@@ -989,8 +797,7 @@ const PromptsPlayground = () => {
         await handleLoadConfig(config, true);
       } else {
         // No prompts to load, just set the config
-        setExperimentConfig(config);
-        setConfigModeActive(true);
+        experimentActions.setExperimentConfig(config);
         hasUnsavedChangesRef.current = true;
         setSaveStatus("unsaved");
 
@@ -1063,42 +870,10 @@ const PromptsPlayground = () => {
     };
   }, []);
 
-  // Count blank variables
-  // In config mode, only count variables that are NOT mapped to dataset columns
-  const blankVariablesCount = useMemo(() => {
-    if (experimentConfig?.prompt_variable_mapping) {
-      // Build a set of mapped variable names
-      const mappedVariables = new Set<string>();
-      experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
-        mappedVariables.add(mapping.variable_name);
-      });
-
-      // Only count unmapped variables that are blank
-      let count = 0;
-      state.keywords.forEach((value, key) => {
-        const isMapped = mappedVariables.has(key);
-        const isEmpty = !value || value.trim() === "";
-        if (!isMapped && isEmpty) {
-          count++;
-        }
-      });
-      return count;
-    }
-
-    // Normal mode: count all blank variables
-    let count = 0;
-    state.keywords.forEach((value) => {
-      if (!value || value.trim() === "") {
-        count++;
-      }
-    });
-    return count;
-  }, [state.keywords, experimentConfig]);
+  const blankVariablesCount = useBlankVariableCount();
 
   // Check if all prompts have model configuration
-  const allPromptsHaveModelConfig = useMemo(() => {
-    return state.prompts.every((prompt) => prompt.modelProvider !== "" && prompt.modelName !== "");
-  }, [state.prompts]);
+  const allPromptsHaveModelConfig = useAllPromptsHaveModelConfig();
 
   // Check what's missing for run all button tooltip
   const runAllDisabledReason = useMemo(() => {
@@ -1114,9 +889,9 @@ const PromptsPlayground = () => {
     return null;
   }, [allPromptsHaveModelConfig, blankVariablesCount, isRunningExperiment]);
 
-  if (notebookStateLoading) {
-    return <DatasetLoadingState type="full" message="Loading notebook state..." />;
-  }
+  // if (notebookStateLoading) {
+  //   return <DatasetLoadingState type="full" message="Loading notebook state..." />;
+  // }
 
   return (
     <PromptProvider
@@ -1177,7 +952,14 @@ const PromptsPlayground = () => {
                           arrow
                         >
                           <span>
-                            <Button variant="contained" size="small" onClick={handleSaveNotebookState} startIcon={<SaveIcon />}>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={handleSaveNotebookState}
+                              loading={isAutosaving || setNotebookStateMutation.isPending}
+                              disabled={!isDirty}
+                              startIcon={<SaveIcon />}
+                            >
                               Save Notebook
                             </Button>
                             {/* <Button

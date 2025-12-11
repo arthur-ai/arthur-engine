@@ -12,7 +12,7 @@ import Tooltip from "@mui/material/Tooltip";
 import { useCallback, useEffect, useState, useRef, memo } from "react";
 
 import MessagesSection from "../messages/MessagesSection";
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useExperimentStore } from "../stores/experiment.store";
 import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { PromptComponentProps } from "../types";
 
@@ -45,8 +45,9 @@ const Prompt = memo(({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptCom
   const hasTriggeredRunRef = useRef<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { dispatch, experimentConfig } = usePromptContext();
   const actions = usePromptPlaygroundStore((state) => state.actions);
+
+  const experimentConfig = useExperimentStore((state) => state.experimentConfig);
   const isConfigMode = !!experimentConfig;
 
   // Use container width to determine icon-only mode (container queries approach)
@@ -90,15 +91,15 @@ const Prompt = memo(({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptCom
   useEffect(() => {
     // React Query handles debouncing and caching automatically
     if (variablesQuery.data !== undefined) {
-      dispatch({
-        type: "extractPromptVariables",
-        payload: {
-          promptId: prompt.id,
-          variables: variablesQuery.data,
-        },
-      });
+      // dispatch({
+      //   type: "extractPromptVariables",
+      //   payload: {
+      //     promptId: prompt.id,
+      //     variables: variablesQuery.data,
+      //   },
+      // });
     }
-  }, [prompt.id, variablesQuery.data, dispatch]);
+  }, [prompt.id, variablesQuery.data]);
 
   const handleResize = useCallback((newRatio: number) => {
     setMessagesHeightRatio(newRatio);

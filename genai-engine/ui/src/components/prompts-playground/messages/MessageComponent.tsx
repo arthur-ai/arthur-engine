@@ -8,15 +8,16 @@ import MenuItem from "@mui/material/MenuItem";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Tooltip from "@mui/material/Tooltip";
 import { debounce } from "@mui/material/utils";
+import { useDebouncedCallback } from "@tanstack/react-pacer";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
 
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
 
-import { OpenAIMessageItem } from "@/lib/api-client/api-client";
-import { usePromptPlaygroundStore } from "../stores/playground.store";
+import { MessageRole, OpenAIMessageItem } from "@/lib/api-client/api-client";
 
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
@@ -32,18 +33,29 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
       const selectedRole = event.target.value;
       if (selectedRole === role) return;
 
-      dispatch({
-        type: "changeMessageRole",
-        payload: { id, role: selectedRole, parentId },
-      });
+      actions.changeMessageRole(parentId, id, selectedRole as MessageRole);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [id, role, parentId]
   );
 
-  const handleContentChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value);
-  }, []);
+  const debouncedSetMessageContent = useDebouncedCallback(
+    (value: string | OpenAIMessageItem[]) => {
+      if (value === content) return;
+      actions.setMessageContent(parentId, id, typeof value === "string" ? value : value.map((item) => item.text || "").join(" "));
+    },
+    { wait: DEBOUNCE_TIME }
+  );
+
+  const handleContentChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      if (value === inputValue) return;
+      setInputValue(value);
+      debouncedSetMessageContent(value);
+    },
+    [inputValue, debouncedSetMessageContent]
+  );
 
   const handleToolCallsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setToolCallsValue(event.target.value);
@@ -56,25 +68,6 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
   const handleDelete = useCallback(() => {
     actions.deleteMessage(parentId, id);
   }, [actions, parentId, id]);
-
-  // Debounce the setMessage function to prevent excessive re-renders/API calls
-  const debouncedSetMessage = useMemo(
-    () =>
-      debounce((value: string | OpenAIMessageItem[]) => {
-        // Empty strings are valid messages, but avoid propagating no-change events
-        if (value === content) return;
-        dispatch({
-          type: "editMessage",
-          payload: {
-            parentId,
-            id,
-            content: typeof value === "string" ? value : value.map((item) => item.text || "").join(" "),
-          },
-        });
-      }, DEBOUNCE_TIME),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [content, parentId, id]
-  );
 
   // Debounce tool calls updates
   const debouncedSetToolCalls = useMemo(
@@ -98,11 +91,6 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [parentId, id]
   );
-
-  useEffect(() => {
-    debouncedSetMessage(inputValue);
-  }, [inputValue, debouncedSetMessage]);
-
   useEffect(() => {
     debouncedSetToolCalls(toolCallsValue);
   }, [toolCallsValue, debouncedSetToolCalls]);

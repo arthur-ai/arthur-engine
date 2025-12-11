@@ -7,9 +7,9 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { useFetchBackendPrompts } from "../hooks/useFetchBackendPrompts";
+import { useBackendPrompts } from "../hooks/useBackendPrompts";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { SavePromptDialogProps } from "../types";
 import { toBackendPromptBaseConfig } from "../utils/toBackendPrompt";
@@ -23,7 +23,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
   const [nameInputValue, setNameInputValue] = useState("");
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
   const { dispatch } = usePromptContext();
-  const fetchPrompts = useFetchBackendPrompts();
+  const promptsQuery = useBackendPrompts();
 
   const apiClient = useApi();
   const { task } = useTask();
@@ -62,7 +62,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
       const { data } = response;
       showSnackbar(`Saved prompt: ${data.name}`, "success");
       handleClose();
-      fetchPrompts(dispatch);
+      promptsQuery.refetch();
       // Update name, version, and clear dirty flag after saving
       dispatch({
         type: "updatePrompt",
@@ -83,7 +83,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
         showSnackbar("Failed to save prompt", "error");
       }
     }
-  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, handleClose, fetchPrompts, dispatch]);
+  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, handleClose, promptsQuery, dispatch]);
 
   return (
     <>

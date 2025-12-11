@@ -6,14 +6,15 @@ import TuneIcon from "@mui/icons-material/Tune";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
-import React, { memo, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useExperimentStore } from "../stores/experiment.store";
+import { useBlankVariableCount, usePromptPlaygroundStore } from "../stores/playground.store";
 import { PromptType } from "../types";
 
 import ModelParamsDialog from "./ModelParamsDialog";
 import PreviewPromptModal from "./PreviewPromptModal";
-import { usePromptPlaygroundStore } from "../stores/playground.store";
 
 interface ManagementButtonsProps {
   prompt: PromptType;
@@ -23,23 +24,23 @@ interface ManagementButtonsProps {
 const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps) => {
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
-  const { dispatch, state, experimentConfig, handleRunSingleWithConfig, isRunningExperiment } = usePromptContext();
+  const { handleRunSingleWithConfig, isRunningExperiment } = usePromptContext();
+
+  const mode = usePromptPlaygroundStore((state) => state.mode);
+  const experimentConfig = useExperimentStore((state) => state.experimentConfig);
 
   const actions = usePromptPlaygroundStore((state) => state.actions);
 
   const handleRunPrompt = useCallback(() => {
     // If in config mode, run with experiment
-    if (experimentConfig && handleRunSingleWithConfig) {
+    if (mode === "config" && handleRunSingleWithConfig) {
       handleRunSingleWithConfig(prompt.id);
       return;
     }
 
     // Otherwise, run in normal playground mode
-    dispatch({
-      type: "runPrompt",
-      payload: { promptId: prompt.id },
-    });
-  }, [dispatch, prompt.id, experimentConfig, handleRunSingleWithConfig]);
+    actions.runPrompt(prompt.id);
+  }, [actions, mode, handleRunSingleWithConfig, prompt.id]);
 
   const handleDuplicatePrompt = useCallback(() => {
     actions.duplicatePrompt(prompt.id);
@@ -63,25 +64,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
 
   // Check if there are any unset variables
   // In config mode, variables can be empty if they're mapped to dataset columns
-  const hasUnsetVariables = React.useMemo(() => {
-    if (experimentConfig?.prompt_variable_mapping) {
-      // Build a set of mapped variable names
-      const mappedVariables = new Set<string>();
-      experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
-        mappedVariables.add(mapping.variable_name);
-      });
-
-      // Check if any unmapped variables are empty
-      return Array.from(state.keywords.entries()).some(([key, value]) => {
-        const isMapped = mappedVariables.has(key);
-        const isEmpty = !value || value.trim() === "";
-        return !isMapped && isEmpty; // Only fail if unmapped AND empty
-      });
-    }
-
-    // Normal mode: all variables must have values
-    return Array.from(state.keywords.values()).some((value) => !value || value.trim() === "");
-  }, [state.keywords, experimentConfig]);
+  const hasUnsetVariables = useBlankVariableCount() > 0;
 
   // Check if model configuration is complete
   const hasModelConfig = prompt.modelProvider !== "" && prompt.modelName !== "";

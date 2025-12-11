@@ -11,7 +11,7 @@ import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
 import React, { useEffect, useState } from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { ModelParametersType } from "../types";
 
 const EFFORT_OPTIONS = ["none", "minimal", "low", "medium", "high", "default"];
@@ -29,8 +29,9 @@ const ModelParamsDialog = ({
   name: string;
   modelParameters: ModelParametersType;
 }) => {
-  const { dispatch } = usePromptContext();
   const [copiedParams, setCopiedParams] = useState<ModelParametersType>(modelParameters);
+
+  const actions = usePromptPlaygroundStore((state) => state.actions);
 
   // Sync copiedParams with modelParameters when dialog opens
   useEffect(() => {
@@ -88,10 +89,7 @@ const ModelParamsDialog = ({
     setCopiedParams(updatedParams);
     handleClose();
 
-    dispatch({
-      type: "updateModelParameters",
-      payload: { promptId, modelParameters: updatedParams },
-    });
+    actions.updateModelParameters(promptId, updatedParams);
   };
 
   return (

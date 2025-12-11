@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 
 import { MESSAGE_ROLE_OPTIONS, MessageType, ModelParametersType, promptClassificationEnum, PromptType } from "../../types";
-import { MessageRole } from "@/lib/api-client/api-client";
 import { generateId } from "../../utils";
+
+import { MessageRole } from "@/lib/api-client/api-client";
 
 export const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   id: uuidv4().slice(0, 8), // New prompts get a short 8-character id

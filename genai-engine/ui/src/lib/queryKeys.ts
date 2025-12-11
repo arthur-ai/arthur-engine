@@ -75,5 +75,9 @@ export const queryKeys = {
       ["getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet", taskId, promptName] as const,
     version: (taskId: string, promptName: string, version: string) =>
       ["getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet", taskId, promptName, version] as const,
+    renderUnsaved: ["renderUnsavedAgenticPromptApiV1PromptRendersPost"] as const,
+  },
+  promptExperiments: {
+    get: (experimentId: string) => ["getPromptExperimentApiV1PromptExperimentsExperimentIdGet", experimentId] as const,
   },
 } as const;

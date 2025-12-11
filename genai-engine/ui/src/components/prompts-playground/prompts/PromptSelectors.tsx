@@ -5,22 +5,19 @@ import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { SyntheticEvent, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { SyntheticEvent, useEffect, useEffectEvent, useRef, useState } from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useBackendPrompts } from "../hooks/useBackendPrompts";
+import { useBackendPromptVersion } from "../hooks/useBackendPromptVersion";
+import { useAvailableModels, useProviders } from "../hooks/useProviders";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { PromptType } from "../types";
 import toFrontendPrompt from "../utils/toFrontendPrompt";
 
 import VersionSelector from "./VersionSelector";
 
-import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
-import { useTask } from "@/hooks/useTask";
 import { ModelProvider, LLMGetAllMetadataResponse, AgenticPrompt } from "@/lib/api-client/api-client";
-import { useAvailableModels, useProviders } from "../hooks/useProviders";
-import { usePromptPlaygroundStore } from "../stores/playground.store";
-import { useBackendPrompts } from "../hooks/useBackendPrompts";
-import { useBackendPromptVersion } from "../hooks/useBackendPromptVersion";
 
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
@@ -79,7 +76,6 @@ const PromptSelectors = ({
   currentPromptName: string;
   onPromptNameChange: (name: string) => void;
 }) => {
-  const { state } = usePromptContext();
   const { snackbarProps, alertProps } = useSnackbar();
 
   const [selectedPromptVersion, setSelectedPromptVersion] = useState<number | null>(null);
@@ -105,7 +101,7 @@ const PromptSelectors = ({
     onPromptVersionChange(promptVersion.data);
   }, [promptVersion.data]);
 
-  const handleSelectPrompt = async (_event: SyntheticEvent<Element, Event>, newValue: LLMGetAllMetadataResponse | null) => {
+  const handleSelectPrompt = (_event: SyntheticEvent<Element, Event>, newValue: LLMGetAllMetadataResponse | null) => {
     const selection = newValue?.name || "";
 
     if (selection === "") {
@@ -149,7 +145,7 @@ const PromptSelectors = ({
           id={`prompt-select-${prompt.id}`}
           options={backendPrompts.data?.llm_metadata ?? []}
           value={backendPrompts.data?.llm_metadata.find((bp) => bp.name === currentPromptName) || null}
-          onChange={(_event, newValue) => handleSelectPrompt(_event, newValue)}
+          onChange={handleSelectPrompt}
           getOptionLabel={(option) => option.name}
           isOptionEqualToValue={(option, value) => option.name === value?.name}
           disabled={backendPromptOptions.length === 0}

@@ -14,6 +14,12 @@ import {
   Api,
   AgenticPromptRunResponse,
   OpenAIMessageItem,
+  DatasetRef,
+  EvalRefOutput,
+  PromptVariableMappingOutput,
+  NewDatasetVersionRowColumnItemRequest,
+  SavedPromptConfig,
+  UnsavedPromptConfig,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -216,6 +222,25 @@ interface VersionSubmenuProps {
 
 const MESSAGE_ROLE_OPTIONS: MessageRole[] = ["system", "user", "assistant", "tool"];
 
+interface PromptExperimentStateConfig {
+  id?: string;
+  experimentId: string;
+  name: string;
+  description: string;
+  dataset_ref: DatasetRef;
+  eval_list: EvalRefOutput[];
+  prompt_variable_mapping: PromptVariableMappingOutput[];
+  dataset_row_filter: NewDatasetVersionRowColumnItemRequest[];
+  prompt_configs: (
+    | ({
+        type: "saved";
+      } & SavedPromptConfig)
+    | ({
+        type: "unsaved";
+      } & UnsavedPromptConfig)
+  )[];
+}
+
 export {
   MESSAGE_ROLE_OPTIONS,
   MessageComponentProps,
@@ -230,4 +255,5 @@ export {
   SavePromptDialogProps,
   FrontendTool,
   VersionSubmenuProps,
+  PromptExperimentStateConfig,
 };
