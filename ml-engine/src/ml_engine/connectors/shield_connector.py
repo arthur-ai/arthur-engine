@@ -456,7 +456,6 @@ class ShieldBaseConnector(Connector, ABC):
             created_before=created_before,
         )
         data = json.loads(resp.raw_data)
-        self.logger.info(f"Got LLM evals for task {task_id}: {data}")
         return [LLMEval.model_validate(eval_data) for eval_data in data.get("llm_metadata", [])]
 
     def read_llm_eval_latest_version(

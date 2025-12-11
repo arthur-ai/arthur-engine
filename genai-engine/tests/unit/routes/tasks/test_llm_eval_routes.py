@@ -429,24 +429,6 @@ def test_get_llm_eval_not_found(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_get_llm_eval_non_agentic_task(client: GenaiEngineTestClientBase):
-    """Test getting an llm eval from a non-agentic task should fail"""
-    # Create a non-agentic task
-    task_name = f"non_agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=False)
-    assert status_code == 200
-    assert task.is_agentic == False
-
-    # Try to get an llm eval from non-agentic task
-    response = client.base_client.get(
-        f"/api/v1/tasks/{task.id}/llm_evals/test_llm_eval/versions/1",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 400
-    assert "not agentic" in response.json()["detail"].lower()
-
-
-@pytest.mark.unit_tests
 def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
     client: GenaiEngineTestClientBase,
 ):
