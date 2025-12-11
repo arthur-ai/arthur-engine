@@ -235,16 +235,37 @@ class SpanQueryService:
                 )
             conditions.extend(duration_conditions)
 
-        # Annotation score filter
-        if filters.annotation_score is not None:
-            query = query.join(
-                DatabaseAgenticAnnotation,
-                and_(
-                    DatabaseAgenticAnnotation.trace_id
-                    == DatabaseTraceMetadata.trace_id,
+        # Annotation filters - join with agentic_annotations table if any annotation filter is present
+        if (
+            filters.annotation_score is not None
+            or filters.annotation_type is not None
+            or filters.continuous_eval_run_status is not None
+        ):
+            join_conditions = [
+                DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+            ]
+
+            if filters.annotation_score is not None:
+                join_conditions.append(
                     DatabaseAgenticAnnotation.annotation_score
                     == filters.annotation_score,
-                ),
+                )
+
+            if filters.annotation_type is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.annotation_type
+                    == filters.annotation_type.value,
+                )
+
+            if filters.continuous_eval_run_status is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.run_status
+                    == filters.continuous_eval_run_status.value,
+                )
+
+            query = query.join(
+                DatabaseAgenticAnnotation,
+                and_(*join_conditions),
             )
 
         if conditions:
@@ -277,7 +298,7 @@ class SpanQueryService:
         if filters.span_name_contains:
             # Use ilike for case-insensitive substring matching
             span_name_conditions.append(
-                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%")
+                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%"),
             )
 
         if span_name_conditions:
@@ -626,8 +647,10 @@ class SpanQueryService:
             or filters.end_time
             or filters.trace_duration_filters
             or filters.annotation_score is not None
+            or filters.annotation_type is not None
+            or filters.continuous_eval_run_status is not None
             or filters.user_ids
-            or filters.session_ids
+            or filters.session_ids,
         )
 
     def _apply_trace_filters_with_join(
@@ -678,16 +701,37 @@ class SpanQueryService:
                 )
             conditions.extend(duration_conditions)
 
-        # Annotation score filter
-        if filters.annotation_score is not None:
-            query = query.join(
-                DatabaseAgenticAnnotation,
-                and_(
-                    DatabaseAgenticAnnotation.trace_id
-                    == DatabaseTraceMetadata.trace_id,
+        # Annotation filters - join with agentic_annotations table if any annotation filter is present
+        if (
+            filters.annotation_score is not None
+            or filters.annotation_type is not None
+            or filters.continuous_eval_run_status is not None
+        ):
+            join_conditions = [
+                DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+            ]
+
+            if filters.annotation_score is not None:
+                join_conditions.append(
                     DatabaseAgenticAnnotation.annotation_score
                     == filters.annotation_score,
-                ),
+                )
+
+            if filters.annotation_type is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.annotation_type
+                    == filters.annotation_type.value,
+                )
+
+            if filters.continuous_eval_run_status is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.run_status
+                    == filters.continuous_eval_run_status.value,
+                )
+
+            query = query.join(
+                DatabaseAgenticAnnotation,
+                and_(*join_conditions),
             )
 
         if conditions:
@@ -718,7 +762,7 @@ class SpanQueryService:
         if filters.span_name_contains:
             # Use ilike for case-insensitive substring matching
             span_name_conditions.append(
-                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%")
+                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%"),
             )
 
         if span_name_conditions:

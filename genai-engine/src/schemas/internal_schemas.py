@@ -2147,6 +2147,14 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Filter by trace annotation score (0 or 1). Optional.",
     )
+    annotation_type: Optional[AgenticAnnotationType] = Field(
+        None,
+        description="Filter by trace annotation type (i.e. 'human' or 'continuous_eval').",
+    )
+    continuous_eval_run_status: Optional[ContinuousEvalRunStatus] = Field(
+        None,
+        description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
+    )
     session_ids: Optional[list[str]] = Field(
         None,
         description="Session IDs to filter on. Optional.",
@@ -2187,6 +2195,8 @@ class TraceQuerySchema(BaseModel):
             tool_name=request.tool_name,
             span_types=request.span_types,
             annotation_score=request.annotation_score,
+            annotation_type=request.annotation_type,
+            continuous_eval_run_status=request.continuous_eval_run_status,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,
             query_relevance_filters=query_relevance,

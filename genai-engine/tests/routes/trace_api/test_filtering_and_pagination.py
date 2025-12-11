@@ -1,10 +1,17 @@
+import uuid
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
 import pytest
+from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 
+from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import AgenticAnnotationRequest
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -31,6 +38,66 @@ def get_all_spans_from_nested_span(nested_span):
 def find_spans_by_kind(spans, span_kind):
     """Helper function to find all spans matching the given kind."""
     return [span for span in spans if getattr(span, "span_kind", None) == span_kind]
+
+
+def create_mock_continuous_eval_run_result(
+    trace_id: str,
+    run_status: ContinuousEvalRunStatus,
+    annotation_type: AgenticAnnotationType,
+    annotation_score: Optional[int] = None,
+    annotation_description: Optional[str] = "Test annotation description",
+    input_variables: List[Dict[str, str]] = [
+        {
+            "name": "input_variable1",
+            "value": "input_value1",
+        },
+        {
+            "name": "input_variable2",
+            "value": "input_value2",
+        },
+    ],
+    cost: str = "0.000135",
+):
+    """Helper function to create a mock continuous eval run result."""
+    continuous_eval_id = uuid.uuid4()
+    db_session = override_get_db_session()
+
+    db_continuous_eval_run_result = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        trace_id=trace_id,
+        continuous_eval_id=continuous_eval_id,
+        run_status=run_status.value,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        annotation_type=annotation_type,
+        annotation_score=annotation_score,
+        annotation_description=annotation_description,
+        input_variables=input_variables,
+        cost=cost,
+    )
+    db_session.add(db_continuous_eval_run_result)
+    db_session.commit()
+    db_session.refresh(db_continuous_eval_run_result)
+
+    return {
+        "id": db_continuous_eval_run_result.id,
+        "trace_id": trace_id,
+        "continuous_eval_id": continuous_eval_id,
+        "run_status": ContinuousEvalRunStatus.PASSED,
+    }
+
+
+def delete_mock_continuous_eval_run_result(id: uuid.UUID):
+    db_session = override_get_db_session()
+    db_continuous_eval_run_result = (
+        db_session.query(DatabaseAgenticAnnotation)
+        .filter(DatabaseAgenticAnnotation.id == id)
+        .first()
+    )
+    if not db_continuous_eval_run_result:
+        return
+    db_session.delete(db_continuous_eval_run_result)
+    db_session.commit()
 
 
 # ============================================================================
@@ -221,6 +288,128 @@ def test_get_trace_requests_return_annotation_info(
     assert status_code == 204
     status_code, _ = client.trace_api_delete_annotation_from_trace("api_trace2")
     assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_get_trace_requests_continuous_eval_filtering(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test filtering by annotation score."""
+    # Add a positive annotation to the trace
+    annotation_request = AgenticAnnotationRequest(
+        annotation_score=1,
+        annotation_description="Test annotation",
+    )
+    status_code, response = client.trace_api_annotate_trace(
+        "api_trace1",
+        annotation_request,
+    )
+    assert status_code == 200
+    assert isinstance(response, AgenticAnnotation)
+    assert response.trace_id == "api_trace1"
+    assert response.annotation_score == 1
+    assert response.annotation_description == "Test annotation"
+
+    # Add continuous eval run results to the trace
+    positive_run_result = create_mock_continuous_eval_run_result(
+        trace_id="api_trace1",
+        run_status=ContinuousEvalRunStatus.PASSED,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=1,
+    )
+    negative_run_result = create_mock_continuous_eval_run_result(
+        trace_id="api_trace1",
+        run_status=ContinuousEvalRunStatus.FAILED,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=0,
+    )
+
+    #########################################################################################
+    # Assert filtering by continuous eval params works
+    #########################################################################################
+
+    try:
+        # Test filtering without annotation score
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+        )
+        assert status_code == 200
+        assert len(data.traces) == 3
+
+        # Test filtering on only positive annotation scores
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            annotation_score=1,
+        )
+        assert status_code == 200
+        assert len(data.traces) == 1
+        assert data.traces[0].trace_id == "api_trace1"
+        print("-" * 100)
+        print(data.traces[0].annotations)
+        print("-" * 100)
+        assert len(data.traces[0].annotations) == 2
+        for annotation in data.traces[0].annotations:
+            assert annotation.annotation_score == 1
+
+        # Test filtering on only negative annotation scores
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            annotation_score=0,
+        )
+        assert status_code == 200
+        assert len(data.traces) == 1
+        assert data.traces[0].trace_id == "api_trace1"
+        assert len(data.traces[0].annotations) == 1
+        assert data.traces[0].annotations[0].annotation_score == 0
+        assert data.traces[0].annotations[0].annotation_type == "continuous_eval"
+
+        # Test filtering on annotation type
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        )
+        assert status_code == 200
+        assert len(data.traces) == 1
+        assert data.traces[0].trace_id == "api_trace1"
+        assert len(data.traces[0].annotations) == 2
+        for annotation in data.traces[0].annotations:
+            assert annotation.annotation_type == "continuous_eval"
+
+        # Test filtering on continuous eval run status
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            continuous_eval_run_status=ContinuousEvalRunStatus.PASSED.value,
+        )
+        assert status_code == 200
+        assert len(data.traces) == 1
+        assert data.traces[0].trace_id == "api_trace1"
+        assert len(data.traces[0].annotations) == 1
+        assert data.traces[0].annotations[0].annotation_score == 1
+        assert (
+            data.traces[0].annotations[0].run_status
+            == ContinuousEvalRunStatus.PASSED.value
+        )
+
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            continuous_eval_run_status=ContinuousEvalRunStatus.FAILED.value,
+        )
+        assert status_code == 200
+        assert len(data.traces) == 1
+        assert data.traces[0].trace_id == "api_trace1"
+        assert len(data.traces[0].annotations) == 1
+        assert data.traces[0].annotations[0].annotation_score == 0
+        assert (
+            data.traces[0].annotations[0].run_status
+            == ContinuousEvalRunStatus.FAILED.value
+        )
+    finally:
+        # Cleanup
+        status_code, _ = client.trace_api_delete_annotation_from_trace("api_trace1")
+        assert status_code == 204
+        delete_mock_continuous_eval_run_result(positive_run_result["id"])
+        delete_mock_continuous_eval_run_result(negative_run_result["id"])
 
 
 # ============================================================================

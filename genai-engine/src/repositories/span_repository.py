@@ -109,6 +109,9 @@ class SpanRepository:
         trace_metadata_list = (
             self.trace_annotation_service.append_annotation_info_to_trace_metadata(
                 trace_metadata_list,
+                annotation_score=internal_filters.annotation_score,
+                annotation_type=internal_filters.annotation_type,
+                continuous_eval_run_status=internal_filters.continuous_eval_run_status,
             )
         )
 

@@ -2417,6 +2417,26 @@
                         "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -2855,6 +2875,26 @@
                             "title": "Annotation Score"
                         },
                         "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
                     },
                     {
                         "name": "span_ids",
@@ -3524,6 +3564,26 @@
                         "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -3961,6 +4021,26 @@
                             "title": "Annotation Score"
                         },
                         "description": "Filter by trace annotation score (0 or 1)."
+                    },
+                    {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
                     },
                     {
                         "name": "span_ids",

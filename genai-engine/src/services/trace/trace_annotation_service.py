@@ -209,11 +209,39 @@ class TraceAnnotationService:
     def append_annotation_info_to_trace_metadata(
         self,
         trace_metadata_list: List[TraceMetadata],
+        annotation_score: Optional[int] = None,
+        annotation_type: Optional[str] = None,
+        continuous_eval_run_status: Optional[str] = None,
     ) -> List[TraceMetadata]:
         for trace_metadata in trace_metadata_list:
             annotations = self.get_annotations_by_trace_id(trace_metadata.trace_id)
             if annotations:
-                trace_metadata.annotations = annotations
+                if (
+                    annotation_score is not None
+                    or annotation_type is not None
+                    or continuous_eval_run_status is not None
+                ):
+                    filtered_annotations = []
+                    for annotation in annotations:
+                        if (
+                            annotation_score is not None
+                            and annotation.annotation_score != annotation_score
+                        ):
+                            continue
+                        if (
+                            annotation_type is not None
+                            and annotation.annotation_type.value != annotation_type
+                        ):
+                            continue
+                        if (
+                            continuous_eval_run_status is not None
+                            and annotation.run_status != continuous_eval_run_status
+                        ):
+                            continue
+                        filtered_annotations.append(annotation)
+                    trace_metadata.annotations = filtered_annotations
+                else:
+                    trace_metadata.annotations = annotations
 
         return trace_metadata_list
 

@@ -1922,6 +1922,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         span_types: list | None = None,
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
+        annotation_type: str | None = None,
+        continuous_eval_run_status: str | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1968,6 +1970,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["span_types"] = span_types
         if annotation_score is not None:
             params["annotation_score"] = annotation_score
+        if annotation_type is not None:
+            params["annotation_type"] = annotation_type
+        if continuous_eval_run_status is not None:
+            params["continuous_eval_run_status"] = continuous_eval_run_status
         if user_ids is not None:
             params["user_ids"] = user_ids
         # Query relevance filters

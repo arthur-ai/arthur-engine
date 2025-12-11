@@ -2,6 +2,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/11/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'continuous_eval_run_status'
+
 # 12/09/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
