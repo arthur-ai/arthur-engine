@@ -4,7 +4,10 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.common_schemas import (
+    PaginationParameters,
+    VariableTemplateValue,
+)
 from arthur_common.models.enums import PaginationSortMethod
 from litellm.types.utils import ChatCompletionMessageToolCall, Function, ModelResponse
 from pydantic import Field, create_model
@@ -33,7 +36,6 @@ from schemas.request_schemas import (
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
     PromptCompletionRequest,
-    VariableTemplateValue,
 )
 from schemas.response_schemas import (
     AgenticPromptRunResponse,
