@@ -607,6 +607,92 @@ export interface ConnectionCheckResult {
   failure_reason?: string | null;
 }
 
+/**
+ * ContinuousEvalCreateRequest
+ * Request schema for creating a continuous eval
+ */
+export interface ContinuousEvalCreateRequest {
+  /**
+   * Description
+   * Description of the continuous eval
+   */
+  description?: string | null;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval to create the continuous eval for
+   */
+  llm_eval_name: string;
+  /**
+   * Llm Eval Version
+   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
+   */
+  llm_eval_version: string | number;
+  /**
+   * Name
+   * Name of the continuous eval
+   */
+  name: string;
+  /**
+   * Transform Id
+   * ID of the transform to create the continuous eval for
+   * @format uuid
+   */
+  transform_id: string;
+}
+
+/** ContinuousEvalResponse */
+export interface ContinuousEvalResponse {
+  /**
+   * Created At
+   * Timestamp representing the time the transform was added to the llm eval.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description of the continuous eval.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the transform.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval.
+   */
+  llm_eval_name: string;
+  /**
+   * Llm Eval Version
+   * Version of the llm eval.
+   */
+  llm_eval_version: number;
+  /**
+   * Name
+   * Name of the continuous eval.
+   */
+  name: string;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Transform Id
+   * ID of the transform.
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Updated At
+   * Timestamp representing the time the continuous eval was last updated.
+   * @format date-time
+   */
+  updated_at: string;
+}
+
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
   /** Id */
@@ -644,6 +730,10 @@ export interface CreateAgenticPromptRequest {
 export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
 
 export type CreateApiKeyAuthApiKeysPostError = HTTPValidationError;
+
+export type CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostData = ContinuousEvalResponse;
+
+export type CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostError = HTTPValidationError;
 
 export type CreateDatasetApiV2TasksTaskIdDatasetsPostData = DatasetResponse;
 
@@ -1062,6 +1152,10 @@ export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsP
 export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteData = any;
 
 export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError = HTTPValidationError;
+
+export type DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteData = any;
+
+export type DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteError = HTTPValidationError;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
@@ -1776,6 +1870,10 @@ export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
 
+export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
+
+export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError = HTTPValidationError;
+
 export type GetConversationsApiChatConversationsGetData = PageConversationBaseResponse;
 
 export type GetConversationsApiChatConversationsGetError = HTTPValidationError;
@@ -2254,6 +2352,42 @@ export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
+
+export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
+
+export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetError = HTTPValidationError;
+
+export interface GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetParams {
+  /**
+   * End Time
+   * Inclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+}
 
 export type GetUnsavedPromptVariablesListApiV1PromptVariablesPostData = UnsavedPromptVariablesListResponse;
 
@@ -3030,6 +3164,69 @@ export interface LLMVersionResponse {
    * Version number of the llm eval
    */
   version: number;
+}
+
+export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
+
+export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
+
+export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval to filter on
+   */
+  llm_eval_name?: string | null;
+  /**
+   * Name
+   * Name of the continuous eval to filter on.
+   */
+  name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+/** ListContinuousEvalsResponse */
+export interface ListContinuousEvalsResponse {
+  /**
+   * Count
+   * Total number of evals
+   */
+  count: number;
+  /**
+   * Evals
+   * List of continuous evals.
+   */
+  evals: ContinuousEvalResponse[];
 }
 
 /** ListDatasetVersionsResponse */
@@ -7512,6 +7709,40 @@ export interface TransformExtractionResponseVariable {
 }
 
 /**
+ * UnregisteredRootSpanGroup
+ * Group of root spans with the same span_name for unregistered traces
+ */
+export interface UnregisteredRootSpanGroup {
+  /**
+   * Count
+   * Number of root spans (and traces) in this group
+   */
+  count: number;
+  /**
+   * Span Name
+   * Name of the root span
+   */
+  span_name: string;
+}
+
+/**
+ * UnregisteredRootSpansResponse
+ * Response for unregistered root spans endpoint
+ */
+export interface UnregisteredRootSpansResponse {
+  /**
+   * Groups
+   * List of grouped root spans, ordered by count descending
+   */
+  groups: UnregisteredRootSpanGroup[];
+  /**
+   * Total Count
+   * Total number of root spans (and traces) across all groups
+   */
+  total_count: number;
+}
+
+/**
  * UnsavedPromptConfig
  * Configuration for an unsaved prompt
  */
@@ -7588,6 +7819,42 @@ export interface UnsavedPromptVariablesRequest {
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
   messages: OpenAIMessageInput[];
+}
+
+export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
+
+export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValidationError;
+
+/**
+ * UpdateContinuousEvalRequest
+ * Request schema for creating a continuous eval
+ */
+export interface UpdateContinuousEvalRequest {
+  /**
+   * Description
+   * Description of the continuous eval
+   */
+  description?: string | null;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval to create the continuous eval for
+   */
+  llm_eval_name?: string | null;
+  /**
+   * Llm Eval Version
+   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
+   */
+  llm_eval_version?: string | number | null;
+  /**
+   * Name
+   * Name of the continuous eval
+   */
+  name?: string | null;
+  /**
+   * Transform Id
+   * ID of the transform to create the continuous eval for
+   */
+  transform_id?: string | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -8690,7 +8957,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.227
+ * @version 2.1.239
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -8943,6 +9210,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/${traceId}/metrics`,
         method: "GET",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPost
+     * @summary Create a continuous eval
+     * @request POST:/api/v1/tasks/{task_id}/continuous_evals
+     * @secure
+     */
+    createContinuousEvalApiV1TasksTaskIdContinuousEvalsPost: (taskId: string, data: ContinuousEvalCreateRequest, params: RequestParams = {}) =>
+      this.request<CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostData, CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostError>({
+        path: `/api/v1/tasks/${taskId}/continuous_evals`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -9294,6 +9581,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError
       >({
         path: `/api/v1/traces/${traceId}/annotations`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDelete
+     * @summary Delete a continuous eval
+     * @request DELETE:/api/v1/continuous_evals/{eval_id}
+     * @secure
+     */
+    deleteContinuousEvalApiV1ContinuousEvalsEvalIdDelete: (evalId: string, params: RequestParams = {}) =>
+      this.request<DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteData, DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteError>({
+        path: `/api/v1/continuous_evals/${evalId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -9785,6 +10089,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getAllTasksApiV2TasksGet: (params: RequestParams = {}) =>
       this.request<GetAllTasksApiV2TasksGetData, any>({
         path: `/api/v2/tasks`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a continuous eval by id
+     *
+     * @tags Continuous Evals
+     * @name GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet
+     * @summary Get a continuous eval by id
+     * @request GET:/api/v1/continuous_evals/{eval_id}
+     * @secure
+     */
+    getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet: (evalId: string, params: RequestParams = {}) =>
+      this.request<GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData, GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError>({
+        path: `/api/v1/continuous_evals/${evalId}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -10457,6 +10779,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination. Time bounds (start_time/end_time) are recommended for performance on large datasets.
+     *
+     * @tags Spans
+     * @name GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGet
+     * @summary Get Unregistered Root Spans
+     * @request GET:/api/v1/traces/spans/unregistered
+     * @secure
+     */
+    getUnregisteredRootSpansApiV1TracesSpansUnregisteredGet: (
+      query: GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData, GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetError>({
+        path: `/api/v1/traces/spans/unregistered`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Gets the list of variables needed from an unsaved prompt's messages
      *
      * @tags Prompts
@@ -10488,6 +10832,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getUserDetailsApiV1TracesUsersUserIdGet: ({ userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams, params: RequestParams = {}) =>
       this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
         path: `/api/v1/traces/users/${userId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all continuous evals for a specific task
+     *
+     * @tags Continuous Evals
+     * @name ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet
+     * @summary Get all continuous evals for a specific task
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals
+     * @secure
+     */
+    listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet: (
+      { taskId, ...query }: ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData, ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError>({
+        path: `/api/v1/tasks/${taskId}/continuous_evals`,
         method: "GET",
         query: query,
         secure: true,
@@ -11083,6 +11449,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/tasks/${taskId}/rag_providers/test_connection`,
         method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatch
+     * @summary Update a continuous eval
+     * @request PATCH:/api/v1/continuous_evals/{eval_id}
+     * @secure
+     */
+    updateContinuousEvalApiV1ContinuousEvalsEvalIdPatch: (evalId: string, data: UpdateContinuousEvalRequest, params: RequestParams = {}) =>
+      this.request<UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData, UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError>({
+        path: `/api/v1/continuous_evals/${evalId}`,
+        method: "PATCH",
         body: data,
         secure: true,
         type: ContentType.Json,
