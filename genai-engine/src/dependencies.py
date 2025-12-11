@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Generator, Optional
 from uuid import UUID
@@ -420,3 +421,23 @@ def transform_list_filter_parameters(
             datetime.fromisoformat(created_before) if created_before else None
         ),
     )
+
+
+@contextmanager
+def db_session_context() -> Generator[Session, None, None]:
+    """
+    Context manager for database sessions using the FastAPI dependency.
+
+    Usage:
+        with db_session_context() as session:
+            # use session
+    """
+    session_gen = get_db_session()
+    session = next(session_gen)
+    try:
+        yield session
+    finally:
+        try:
+            next(session_gen)
+        except StopIteration:
+            pass

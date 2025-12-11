@@ -98,3 +98,12 @@ class NewDatasetVersionUpdateRowRequest(BaseModel):
     data: List[NewDatasetVersionRowColumnItemRequest] = Field(
         description="List of column-value pairs in the updated row.",
     )
+
+
+class BasePaginationResponse(BaseModel):
+    """Mixin for paginated list responses."""
+
+    page: int = Field(description="Current page number (0-indexed)")
+    page_size: int = Field(description="Number of items per page")
+    total_pages: int = Field(description="Total number of pages")
+    total_count: int = Field(description="Total number of records")

@@ -136,14 +136,20 @@ from schemas.request_schemas import (
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
     NewTraceTransformRequest,
+    RagHybridSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
     TraceTransformDefinition,
     WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
@@ -2851,6 +2857,26 @@ class WeaviateVectorSimilarityTextSearchSettingsConfiguration(
             return_properties=self.return_properties,
         )
 
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> RagVectorSimilarityTextSearchSettingRequest:
+        return RagVectorSimilarityTextSearchSettingRequest(
+            settings=WeaviateVectorSimilarityTextSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                certainty=self.certainty,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
+        )
+
 
 class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
@@ -2896,6 +2922,25 @@ class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
             auto_limit=self.auto_limit,
             return_metadata=self.return_metadata,
             return_properties=self.return_properties,
+        )
+
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> RagKeywordSearchSettingRequest:
+        return RagKeywordSearchSettingRequest(
+            settings=WeaviateKeywordSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
         )
 
 
@@ -2973,6 +3018,26 @@ class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
             auto_limit=self.auto_limit,
             return_metadata=self.return_metadata,
             return_properties=self.return_properties,
+        )
+
+    def to_client_request_model(self, query_text: str) -> RagHybridSearchSettingRequest:
+        return RagHybridSearchSettingRequest(
+            settings=WeaviateHybridSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                alpha=self.alpha,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                certainty=self.certainty,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
         )
 
 
