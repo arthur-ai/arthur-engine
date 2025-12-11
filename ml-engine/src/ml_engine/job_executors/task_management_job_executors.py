@@ -38,8 +38,6 @@ from arthur_common.models.task_job_specs import (
 )
 from genai_client.models import (
     ContinuousEvalResponse,
-    ListContinuousEvalsResponse,
-    ListTraceTransformsResponse,
     LLMEval,
     TraceTransformResponse,
 )
@@ -172,11 +170,9 @@ class _TaskManagementJobExecutor:
         """
         try:
             self.logger.info(f"Fetching transforms for task {task_id}")
-            transforms_response: ListTraceTransformsResponse = (
-                connector.read_transforms(
-                    task_id=task_id,
-                    page_size=100,
-                )
+            transforms_response = connector.read_transforms(
+                task_id=task_id,
+                page_size=100,
             )
             self.logger.info(
                 f"Retrieved {len(transforms_response.transforms)} transforms"
@@ -203,11 +199,9 @@ class _TaskManagementJobExecutor:
         """
         try:
             self.logger.info(f"Fetching continuous evals for task {task_id}")
-            continuous_evals_response: ListContinuousEvalsResponse = (
-                connector.read_continuous_evals(
-                    task_id=task_id,
-                    page_size=100,
-                )
+            continuous_evals_response = connector.read_continuous_evals(
+                task_id=task_id,
+                page_size=100,
             )
             self.logger.info(
                 f"Retrieved {len(continuous_evals_response.evals)} continuous evals"
