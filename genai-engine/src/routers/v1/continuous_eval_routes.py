@@ -126,7 +126,7 @@ def list_continuous_eval_run_results(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> ListAgenticAnnotationsMetadataResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
