@@ -56,23 +56,21 @@ class TraceTransformRepository:
     def _get_db_transform_by_id(
         self,
         transform_id: UUID,
-    ) -> DatabaseTraceTransform:
+    ) -> DatabaseTraceTransform | None:
         db_transform = (
             self.db_session.query(DatabaseTraceTransform)
             .filter(DatabaseTraceTransform.id == transform_id)
             .one_or_none()
         )
 
-        if not db_transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform {transform_id} not found",
-            )
-
         return db_transform
 
-    def get_transform_by_id(self, transform_id: UUID) -> TraceTransform:
+    def get_transform_by_id(self, transform_id: UUID) -> TraceTransform | None:
         db_transform = self._get_db_transform_by_id(transform_id)
+
+        if not db_transform:
+            return None
+
         return TraceTransform.from_db_model(db_transform)
 
     def list_transforms(
@@ -142,6 +140,12 @@ class TraceTransformRepository:
     ) -> TraceTransform:
         db_transform = self._get_db_transform_by_id(transform_id)
 
+        if not db_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+
         updated_transform = False
         if transform.name is not None:
             db_transform.name = transform.name
@@ -162,5 +166,12 @@ class TraceTransformRepository:
 
     def delete_transform(self, transform_id: UUID) -> None:
         db_transform = self._get_db_transform_by_id(transform_id)
+
+        if not db_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+
         self.db_session.delete(db_transform)
         self.db_session.commit()
