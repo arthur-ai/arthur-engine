@@ -8,6 +8,7 @@ genai-engine/ui/src/components/traces/components/add-to-dataset/utils/transformE
 import json
 from typing import Any, List
 
+from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.response_schemas import (
     NestedSpanWithMetricsResponse,
     TraceResponse,
@@ -16,7 +17,6 @@ from arthur_common.models.response_schemas import (
 from schemas.request_schemas import TraceTransformDefinition
 from schemas.response_schemas import (
     TransformExtractionResponseList,
-    TransformExtractionResponseVariable,
 )
 from utils.trace import get_nested_value
 
@@ -108,8 +108,8 @@ def execute_transform(
                 value = fallback if fallback is not None else ""
 
         variables.append(
-            TransformExtractionResponseVariable(
-                variable_name=variable_name,
+            VariableTemplateValue(
+                name=variable_name,
                 value=stringify_value(value),
             ),
         )

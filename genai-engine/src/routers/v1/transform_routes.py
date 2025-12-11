@@ -89,6 +89,13 @@ def get_transform(
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.get_transform_by_id(transform_id)
+
+        if not trace_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+
         return trace_transform.to_response_model()
     except HTTPException:
         raise
@@ -188,6 +195,12 @@ def execute_trace_transform_extraction(
         trace_transform = trace_transform_repo.get_transform_by_id(
             transform_id,
         )
+
+        if not trace_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
 
         # Fetch the trace
         tasks_metrics_repo = TasksMetricsRepository(db_session)

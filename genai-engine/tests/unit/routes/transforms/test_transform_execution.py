@@ -255,7 +255,7 @@ def test_execute_transform_success(
         assert len(result.variables) == 3
 
         # Verify extracted data
-        variables = {var.variable_name: var.value for var in result.variables}
+        variables = {var.name: var.value for var in result.variables}
         assert "sqlQuery" in variables
         assert variables["sqlQuery"] == "SELECT * FROM users WHERE id = 1"
         assert "trace_id" in variables
@@ -327,7 +327,7 @@ def test_execute_transform_with_fallback_values(
         assert len(result.variables) == 3
 
         # Verify fallback values were used
-        variables = {var.variable_name: var.value for var in result.variables}
+        variables = {var.name: var.value for var in result.variables}
         assert variables["nonexistent_span"] == "default_value"
         assert variables["nonexistent_attribute"] == "fallback_attribute"
         assert variables["null_fallback"] == ""  # None fallback becomes empty string
@@ -469,7 +469,7 @@ def test_execute_transform_complex_nested_data(
         assert result is not None
         assert len(result.variables) == 2
 
-        variables = {var.variable_name: var.value for var in result.variables}
+        variables = {var.name: var.value for var in result.variables}
 
         # Verify complex data is JSON stringified
         assert "query_results" in variables
@@ -611,7 +611,7 @@ def test_execute_transform_with_multiple_matching_spans(
         assert result is not None
         assert len(result.variables) == 1
 
-        variables = {var.variable_name: var.value for var in result.variables}
+        variables = {var.name: var.value for var in result.variables}
 
         # Should use value from the first matching span
         assert "extracted_value" in variables
@@ -693,7 +693,7 @@ def test_execute_transform_array_index_extraction(
         assert len(result.variables) == 4
 
         # Verify extracted data
-        variables = {var.variable_name: var.value for var in result.variables}
+        variables = {var.name: var.value for var in result.variables}
         assert variables["output_id_0"] == "1"
         assert variables["output_name_0"] == "John"
         assert variables["output_id_1"] == "2"
