@@ -12,12 +12,15 @@ from arthur_client.api_bindings import (
     ConnectorCheckOutcome,
     ConnectorCheckResult,
     ConnectorSpec,
+    ContinuousEvalResponse,
     DataResultFilter,
     Dataset,
     DatasetLocator,
     DatasetLocatorField,
+    LLMEval,
     PutAvailableDataset,
     PutAvailableDatasets,
+    TraceTransformResponse,
 )
 from arthur_common.models.connectors import (
     SHIELD_CONNECTOR_API_KEY_FIELD,
@@ -58,10 +61,6 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
-    ListContinuousEvalsResponse,
-    ListTraceTransformsResponse,
-    LLMEval,
-    LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
     NewTaskRequest,
     QueryTracesWithMetricsResponse,
@@ -435,7 +434,7 @@ class ShieldBaseConnector(Connector, ABC):
         page_size: int | None = None,
         created_after: str | None = None,
         created_before: str | None = None,
-    ) -> LLMGetAllMetadataListResponse:
+    ) -> list[LLMEval]:
         """
         Reads LLM evaluation definitions from the Shield API.
 
@@ -447,15 +446,18 @@ class ShieldBaseConnector(Connector, ABC):
             created_before: Exclusive end date in ISO8601 format (optional)
 
         Returns:
-            LLMGetAllMetadataListResponse from the LLM evals API
+            List of LLMEval objects
         """
-        return self._evals_client.get_all_llm_evals_api_v1_tasks_task_id_llm_evals_get(
+        resp = self._evals_client.get_all_llm_evals_api_v1_tasks_task_id_llm_evals_get_with_http_info(
             task_id=task_id,
             page=page,
             page_size=page_size,
             created_after=created_after,
             created_before=created_before,
         )
+        data = json.loads(resp.raw_data)
+        self.logger.info(f"Got LLM evals for task {task_id}: {data}")
+        return [LLMEval.model_validate(eval_data) for eval_data in data.get("llm_metadata", [])]
 
     def read_llm_eval_latest_version(
         self,
@@ -470,13 +472,15 @@ class ShieldBaseConnector(Connector, ABC):
             eval_name: Name of the eval to retrieve
 
         Returns:
-            LLMEval response for the latest version
+            LLMEval object for the latest version
         """
-        return self._evals_client.get_llm_eval_api_v1_tasks_task_id_llm_evals_eval_name_versions_eval_version_get(
+        resp = self._evals_client.get_llm_eval_api_v1_tasks_task_id_llm_evals_eval_name_versions_eval_version_get_with_http_info(
             task_id=task_id,
             eval_name=eval_name,
             eval_version="latest",
         )
+        data = json.loads(resp.raw_data)
+        return LLMEval.model_validate(data)
 
     def read_continuous_evals(
         self,
@@ -487,7 +491,7 @@ class ShieldBaseConnector(Connector, ABC):
         llm_eval_name: str | None = None,
         created_after: str | None = None,
         created_before: str | None = None,
-    ) -> ListContinuousEvalsResponse:
+    ) -> list[ContinuousEvalResponse]:
         """
         Reads continuous evaluation definitions from the Shield API.
 
@@ -501,9 +505,9 @@ class ShieldBaseConnector(Connector, ABC):
             created_before: Exclusive end date in ISO8601 format (optional)
 
         Returns:
-            ListContinuousEvalsResponse from the continuous evals API
+            List of ContinuousEvalResponse objects
         """
-        return self._cont_evals_client.list_continuous_evals_api_v1_tasks_task_id_continuous_evals_get(
+        resp = self._cont_evals_client.list_continuous_evals_api_v1_tasks_task_id_continuous_evals_get_with_http_info(
             task_id=task_id,
             page=page,
             page_size=page_size,
@@ -512,6 +516,8 @@ class ShieldBaseConnector(Connector, ABC):
             created_after=created_after,
             created_before=created_before,
         )
+        data = json.loads(resp.raw_data)
+        return [ContinuousEvalResponse.model_validate(eval_data) for eval_data in data.get("evals", [])]
 
     def read_transforms(
         self,
@@ -521,7 +527,7 @@ class ShieldBaseConnector(Connector, ABC):
         name: str | None = None,
         created_after: str | None = None,
         created_before: str | None = None,
-    ) -> ListTraceTransformsResponse:
+    ) -> list[TraceTransformResponse]:
         """
         Reads transform definitions from the Shield API.
 
@@ -534,9 +540,9 @@ class ShieldBaseConnector(Connector, ABC):
             created_before: Exclusive end date in ISO8601 format (optional)
 
         Returns:
-            ListTraceTransformsResponse from the transforms API
+            List of TraceTransformResponse objects
         """
-        return self._transforms_client.list_transforms_for_task_api_v1_tasks_task_id_traces_transforms_get(
+        resp = self._transforms_client.list_transforms_for_task_api_v1_tasks_task_id_traces_transforms_get_with_http_info(
             task_id=task_id,
             page=page,
             page_size=page_size,
@@ -544,6 +550,8 @@ class ShieldBaseConnector(Connector, ABC):
             created_after=created_after,
             created_before=created_before,
         )
+        data = json.loads(resp.raw_data)
+        return [TraceTransformResponse.model_validate(transform_data) for transform_data in data.get("transforms", [])]
 
     @property
     @abstractmethod

@@ -5,11 +5,13 @@ import arthur_client
 import genai_client.exceptions
 from arthur_client.api_bindings import (
     ConnectorType,
+    ContinuousEvalResponse,
     CreateModelLinkTaskJobSpec,
     Dataset,
     DatasetLocator,
     DatasetLocatorField,
     DatasetsV1Api,
+    LLMEval,
     Model,
     ModelProblemType,
     ModelsV1Api,
@@ -20,6 +22,7 @@ from arthur_client.api_bindings import (
     PutTaskStateCacheRequest,
     RegenerateTaskValidationKeyJobSpec,
     TasksV1Api,
+    TraceTransformResponse,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
 from arthur_common.models.request_schemas import NewMetricRequest, NewRuleRequest
@@ -35,11 +38,6 @@ from arthur_common.models.task_job_specs import (
     FetchModelTaskJobSpec,
     TaskType,
     UpdateModelTaskRulesJobSpec,
-)
-from genai_client.models import (
-    ContinuousEvalResponse,
-    LLMEval,
-    TraceTransformResponse,
 )
 
 from connectors.connector import Connector
@@ -170,14 +168,12 @@ class _TaskManagementJobExecutor:
         """
         try:
             self.logger.info(f"Fetching transforms for task {task_id}")
-            transforms_response = connector.read_transforms(
+            transforms = connector.read_transforms(
                 task_id=task_id,
                 page_size=100,
             )
-            self.logger.info(
-                f"Retrieved {len(transforms_response.transforms)} transforms"
-            )
-            return transforms_response.transforms
+            self.logger.info(f"Retrieved {len(transforms)} transforms")
+            return transforms
         except Exception as e:
             self.logger.warning(f"Failed to fetch transforms: {e}")
             return []
@@ -199,14 +195,12 @@ class _TaskManagementJobExecutor:
         """
         try:
             self.logger.info(f"Fetching continuous evals for task {task_id}")
-            continuous_evals_response = connector.read_continuous_evals(
+            continuous_evals = connector.read_continuous_evals(
                 task_id=task_id,
                 page_size=100,
             )
-            self.logger.info(
-                f"Retrieved {len(continuous_evals_response.evals)} continuous evals"
-            )
-            return continuous_evals_response.evals
+            self.logger.info(f"Retrieved {len(continuous_evals)} continuous evals")
+            return continuous_evals
         except Exception as e:
             self.logger.warning(f"Failed to fetch continuous evals: {e}")
             return []
@@ -228,18 +222,16 @@ class _TaskManagementJobExecutor:
         """
         try:
             self.logger.info(f"Fetching LLM evals for task {task_id}")
-            llm_evals_response = connector.read_llm_evals(
+            llm_evals_metadata = connector.read_llm_evals(
                 task_id=task_id,
                 page_size=100,
             )
 
             # For each eval, get the latest version
             llm_evals_with_versions: list[LLMEval] = []
-            self.logger.info(
-                f"Retrieved {len(llm_evals_response.llm_metadata)} LLM eval definitions"
-            )
+            self.logger.info(f"Retrieved {len(llm_evals_metadata)} LLM eval definitions")
 
-            for eval_metadata in llm_evals_response.llm_metadata:
+            for eval_metadata in llm_evals_metadata:
                 try:
                     self.logger.info(
                         f"Fetching latest version for eval: {eval_metadata.name}",
