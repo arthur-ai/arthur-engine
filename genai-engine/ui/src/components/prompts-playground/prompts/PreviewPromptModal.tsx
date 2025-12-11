@@ -106,11 +106,7 @@ const PreviewPromptModal = ({ open, setOpen, prompt }: PreviewPromptModalProps) 
             {renderedMessages.map((message, index) => (
               <Card key={index} variant="outlined">
                 <CardContent>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    sx={{ mb: 1, textTransform: "capitalize" }}
-                  >
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: "capitalize" }}>
                     {message.role}
                   </Typography>
                   <Typography

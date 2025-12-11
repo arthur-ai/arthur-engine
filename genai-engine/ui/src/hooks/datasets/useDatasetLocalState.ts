@@ -47,27 +47,31 @@ function transformRowsForNewColumns(
   oldColumns: string[],
   newColumns: string[]
 ): DatasetVersionRowResponse[] {
-  return rows.map((row) => ({
-    id: row.id,
-    created_at: row.created_at,
-    data: newColumns.map((newColName, idx) => {
-      const oldColName = oldColumns[idx];
-      let columnValue = "";
+  return rows.map((row) => {
+    const existingMap = Object.fromEntries(
+      row.data.map((d) => [d.column_name, d.column_value])
+    );
 
-      if (oldColName) {
-        const existing = row.data.find((d) => d.column_name === oldColName);
-        columnValue = existing?.column_value || "";
-      } else {
-        const existing = row.data.find((d) => d.column_name === newColName);
-        columnValue = existing?.column_value || "";
-      }
+    const result = newColumns.map((newColName, idx) => {
+      const oldColName = oldColumns[idx];
+
+      const value =
+        existingMap[newColName] ?? // unchanged column
+        existingMap[oldColName] ?? // renamed column
+        ""                         // brand-new column
 
       return {
         column_name: newColName,
-        column_value: columnValue,
+        column_value: value,
       };
-    }),
-  }));
+    });
+
+    return {
+      id: row.id,
+      created_at: row.created_at,
+      data: result,
+    };
+  });
 }
 
 function datasetReducer(
