@@ -8,8 +8,9 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import TablePagination from "@mui/material/TablePagination";
+import { parseAsString, useQueryState } from "nuqs";
 import React, { useCallback, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
@@ -23,7 +24,6 @@ import { TraceTransform } from "./types";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { getContentHeight } from "@/constants/layout";
-import { parseAsString, useQueryState } from "nuqs";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
