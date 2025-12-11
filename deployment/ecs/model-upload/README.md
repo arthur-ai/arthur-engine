@@ -193,6 +193,157 @@ MODEL_REPOSITORY_URL=https://my-bucket.s3.amazonaws.com/models
 # Or use presigned URLs / S3 API directly depending on your setup
 ```
 
+## Model Update Detection
+
+The `check_model_updates.py` script detects when Hugging Face models have been updated by comparing commit hashes against a stored manifest.
+
+### How It Works
+
+1. **Fetches current commits**: Queries the HuggingFace Hub API for the latest commit SHA of each model
+2. **Computes combined hash**: Creates a deterministic SHA-256 hash from all model commits
+3. **Compares with manifest**: Checks if the current hash differs from `models-manifest.json`
+4. **Reports changes**: Outputs which models changed and whether a rebuild is needed
+
+### Usage
+
+```bash
+# Check for updates (read-only)
+poetry run python check_model_updates.py
+
+# Check and update the manifest file
+poetry run python check_model_updates.py --update
+
+# Output in different formats
+poetry run python check_model_updates.py --output json    # JSON output
+poetry run python check_model_updates.py --output github  # GitHub Actions format
+poetry run python check_model_updates.py --output text    # Human-readable (default)
+
+# Use a custom manifest path
+poetry run python check_model_updates.py --manifest /path/to/manifest.json
+```
+
+### Command-Line Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--manifest` | `-m` | Path to manifest file (default: `models-manifest.json` in script dir) |
+| `--update` | `-u` | Update the manifest file with current model commits |
+| `--output` | `-o` | Output format: `text`, `json`, or `github` |
+
+### Output Formats
+
+**Text (default)**:
+```
+Result: BUILD REQUIRED
+```
+or
+```
+Result: NO BUILD NEEDED
+```
+
+**JSON**:
+```json
+{
+  "has_updates": true,
+  "current_hash": "8ecf33fa686a2a29",
+  "existing_hash": "abc123...",
+  "model_commits": { ... }
+}
+```
+
+**GitHub Actions**:
+```
+has_updates=true
+current_hash=8ecf33fa686a2a29
+existing_hash=abc123...
+```
+
+### Manifest File
+
+The `models-manifest.json` stores the last known state:
+
+```json
+{
+  "combined_hash": "8ecf33fa686a2a29",
+  "model_commits": {
+    "sentence-transformers/all-MiniLM-L12-v2": "c004d8e3e901...",
+    "ProtectAI/deberta-v3-base-prompt-injection-v2": "e6535ca4ce3b...",
+    ...
+  }
+}
+```
+
+## CI/CD Integration
+
+The `check_model_updates.py` script is integrated into the GitHub Actions workflow (`arthur-engine-workflow.yml`) to automatically rebuild the models Docker image when upstream models change.
+
+### Workflow Steps
+
+1. **Check for updates** (`check-models-updates` job):
+   ```yaml
+   - name: Check for model updates on HuggingFace
+     id: check-updates
+     run: |
+       cd deployment/ecs/model-upload
+       python check_model_updates.py --output github >> $GITHUB_OUTPUT
+   ```
+   This outputs `has_updates`, `current_hash`, and `existing_hash` for use by subsequent jobs.
+
+2. **Conditional build** (`build-genai-engine-models-docker-image` job):
+   - Only runs when `has_updates == 'true'`
+   - Builds and pushes the models Docker image to Docker Hub
+   - Tags with version number and `latest-dev`/`latest`
+
+3. **Update manifest**:
+   ```yaml
+   - name: Update models manifest
+     run: |
+       cd deployment/ecs/model-upload
+       python check_model_updates.py --update
+   ```
+
+4. **Commit manifest**:
+   ```yaml
+   - name: Commit updated manifest
+     run: |
+       git add deployment/ecs/model-upload/models-manifest.json
+       git diff --staged --quiet || git commit -m "Update models manifest [skip ci]"
+       git push origin ${{ github.ref_name }}
+   ```
+
+### Workflow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          GitHub Actions Workflow                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────────┐                                                   │
+│  │ check-models-updates │                                                   │
+│  │  ┌────────────────┐  │                                                   │
+│  │  │ HuggingFace    │  │    has_updates=true?                              │
+│  │  │ Hub API        │──┼──────────────────────────┐                        │
+│  │  └────────────────┘  │                          │                        │
+│  │          │           │                          ▼                        │
+│  │          ▼           │              ┌───────────────────────────────┐    │
+│  │  ┌────────────────┐  │              │ build-genai-engine-models-    │    │
+│  │  │ Compare with   │  │              │ docker-image                  │    │
+│  │  │ manifest.json  │  │              │  ┌─────────────────────────┐  │    │
+│  │  └────────────────┘  │              │  │ 1. Build Docker image   │  │    │
+│  └──────────────────────┘              │  │ 2. Push to Docker Hub   │  │    │
+│                                        │  │ 3. Update manifest      │  │    │
+│                                        │  │ 4. Commit & push        │  │    │
+│                                        │  └─────────────────────────┘  │    │
+│                                        └───────────────────────────────┘    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+This ensures:
+- Models Docker image is only rebuilt when HuggingFace models actually change
+- The manifest is always up-to-date after a successful build
+- Unnecessary rebuilds are avoided, saving CI time and resources
+
 ## Local Development
 
 ```bash

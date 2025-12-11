@@ -384,11 +384,39 @@ jobs:
             docker push docker.arthur.ai/arthur/scope/ml-engine:latest-dev
           fi
 
-  build-genai-engine-models-docker-image:
+  check-models-updates:
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+      github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    outputs:
+      has_updates: ${{ steps.check-updates.outputs.has_updates }}
+      current_hash: ${{ steps.check-updates.outputs.current_hash }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
+      - name: Check for model updates on HuggingFace
+        id: check-updates
+        run: |
+          cd deployment/ecs/model-upload
+          python check_model_updates.py --output github >> $GITHUB_OUTPUT
+
+  build-genai-engine-models-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'true' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     steps:
       - uses: mathio/gha-cleanup@v1
@@ -396,12 +424,20 @@ jobs:
           remove-browsers: true
           verbose: true
       - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
       - uses: ./.github/workflows/composite-actions/set-version
         with:
           version-prefix: "genai-engine-"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
       - name: Log in to Docker Hub
@@ -409,18 +445,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Set cache image tag
-        id: cache-tag
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "tag=latest" >> $GITHUB_OUTPUT
-          else
-            echo "tag=latest-dev" >> $GITHUB_OUTPUT
-          fi
-      - name: Pull previous image for cache
-        continue-on-error: true
-        run: |
-          docker pull arthurplatform/genai-engine-models:${{ steps.cache-tag.outputs.tag }}
       - name: Build and push docker image
         uses: docker/build-push-action@v6.18.0
         with:
@@ -432,16 +456,20 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/genai-engine-models:latest-dev' || '' }}
           push: true
           platforms: linux/amd64
-          cache-from: type=registry,ref=arthurplatform/genai-engine-models:${{ steps.cache-tag.outputs.tag }}
-          cache-to: type=inline
+      - name: Update models manifest
+        run: |
+          cd deployment/ecs/model-upload
+          python check_model_updates.py --update
+      - name: Commit updated manifest
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add deployment/ecs/model-upload/models-manifest.json
+          git diff --staged --quiet || git commit -m "Update models manifest [skip ci]"
+          git push origin ${{ github.ref_name }}
 
   push-all-cfts:
-    needs:
-      [
-        build-genai-engine-docker-images,
-        build-ml-engine-docker-images,
-        build-genai-engine-models-docker-image,
-      ]
+    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
@@ -475,12 +503,7 @@ jobs:
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
 
   push-all-helm-charts-to-github:
-    needs:
-      [
-        build-genai-engine-docker-images,
-        build-ml-engine-docker-images,
-        build-genai-engine-models-docker-image,
-      ]
+    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&

@@ -29,6 +29,7 @@ jobs:
        !startsWith(github.event.head_commit.message, 'fix(deps)') &&
        !startsWith(github.event.head_commit.message, 'Increment arthur-engine') &&
        !startsWith(github.event.head_commit.message, 'Update dependency') &&
+       !startsWith(github.event.head_commit.message, 'Update models manifest') &&
        !startsWith(github.event.head_commit.message, 'chore(deps)')) ||
       (github.event_name == 'workflow_dispatch' &&
        github.event.inputs.intent == 'bump_version' &&
