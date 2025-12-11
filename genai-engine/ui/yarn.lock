@@ -3909,8 +3909,8 @@ __metadata:
   linkType: hard
 
 "framer-motion@npm:^12.23.21":
-  version: 12.23.25
-  resolution: "framer-motion@npm:12.23.25"
+  version: 12.23.26
+  resolution: "framer-motion@npm:12.23.26"
   dependencies:
     motion-dom: "npm:^12.23.23"
     motion-utils: "npm:^12.23.6"
@@ -3926,7 +3926,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/cfcc2da1f3ffe50abe6f657e08b61912acbafffc0a0652d2518c1928e1e23a01a580a2e7feeb9234d7c8028e573a9896519b38fa0f570390b2e4624bafdf4063
+  checksum: 10c0/7dbbc4a392b969804e04a056e3d89a55bf31572dc7f6cd79050b90616fbb84a1762e4ac4e2537c735d347bbf4ceebea126f5c090234149b12cffa3ea6c518a34
   languageName: node
   linkType: hard
 
