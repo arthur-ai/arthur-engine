@@ -61,6 +61,7 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
+    LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
     NewTaskRequest,
     QueryTracesWithMetricsResponse,
@@ -434,7 +435,7 @@ class ShieldBaseConnector(Connector, ABC):
         page_size: int | None = None,
         created_after: str | None = None,
         created_before: str | None = None,
-    ) -> list[LLMEval]:
+    ) -> LLMGetAllMetadataListResponse:
         """
         Reads LLM evaluation definitions from the Shield API.
 
@@ -446,17 +447,15 @@ class ShieldBaseConnector(Connector, ABC):
             created_before: Exclusive end date in ISO8601 format (optional)
 
         Returns:
-            List of LLMEval objects
+            LLMGetAllMetadataListResponse containing LLM eval metadata
         """
-        resp = self._evals_client.get_all_llm_evals_api_v1_tasks_task_id_llm_evals_get_with_http_info(
+        return self._evals_client.get_all_llm_evals_api_v1_tasks_task_id_llm_evals_get(
             task_id=task_id,
             page=page,
             page_size=page_size,
             created_after=created_after,
             created_before=created_before,
         )
-        data = json.loads(resp.raw_data)
-        return [LLMEval.model_validate(eval_data) for eval_data in data.get("llm_metadata", [])]
 
     def read_llm_eval_latest_version(
         self,

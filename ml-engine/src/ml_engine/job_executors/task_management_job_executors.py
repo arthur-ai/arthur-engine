@@ -222,16 +222,16 @@ class _TaskManagementJobExecutor:
         """
         try:
             self.logger.info(f"Fetching LLM evals for task {task_id}")
-            llm_evals_metadata = connector.read_llm_evals(
+            llm_evals_response = connector.read_llm_evals(
                 task_id=task_id,
                 page_size=100,
             )
 
             # For each eval, get the latest version
             llm_evals_with_versions: list[LLMEval] = []
-            self.logger.info(f"Retrieved {len(llm_evals_metadata)} LLM eval definitions")
+            self.logger.info(f"Retrieved {len(llm_evals_response.llm_metadata)} LLM eval definitions")
 
-            for eval_metadata in llm_evals_metadata:
+            for eval_metadata in llm_evals_response.llm_metadata:
                 try:
                     self.logger.info(
                         f"Fetching latest version for eval: {eval_metadata.name}",

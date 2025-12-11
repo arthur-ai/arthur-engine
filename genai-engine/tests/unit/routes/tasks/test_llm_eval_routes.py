@@ -528,7 +528,7 @@ def test_get_llm_eval_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
-    
+
     if eval_version == "datetime":
         eval_version = save_response.json()["created_at"]
     elif eval_version == "tag":
