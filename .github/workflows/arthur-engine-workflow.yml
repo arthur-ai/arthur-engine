@@ -132,13 +132,11 @@ jobs:
         (github.event_name == 'push' && github.ref_type == 'branch')
       )
     runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
@@ -151,30 +149,32 @@ jobs:
         run: |
           export PYTHONPATH=src
           poetry -C genai-engine run generate_changelog
-      - name: "Find difference between OpenAPI specifications"
-        id: diff_state
-        uses: swimmwatch/openapi-diff-action@v2.0.0
-        with:
-          old-spec: "genai-engine/staging.openapi.json"
-          new-spec: "genai-engine/new.openapi.json"
-          json: "out.json"
-          markdown: "out.md"
-      - name: "Print difference state"
+      - name: "Check OpenAPI specification changes"
         run: |
-          echo "Current state: ${{ steps.diff_state.outputs.state }}."
-          if [ "${{ steps.diff_state.outputs.state }}" != "no_changes" ]; then
-            echo "OpenAPI schema has changed. Please update the API changelog."
-            exit 1
-          fi
-      # - name: Upload artifacts on failure
-      #   if: failure()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: changelog-artifacts
-      #     path: |
-      #       genai-engine/new.openapi.json
-      #       genai-engine/staging.openapi.json
-      #       genai-engine/src/api_changelog.md
+          python3 << 'EOF'
+          import json
+          import sys
+
+          with open('genai-engine/staging.openapi.json') as f:
+              old = json.load(f)
+          with open('genai-engine/new.openapi.json') as f:
+              new = json.load(f)
+
+          if old == new:
+              print("OpenAPI schemas are identical.")
+              sys.exit(0)
+          else:
+              print("OpenAPI schema has changed. Please update the API changelog.")
+              sys.exit(1)
+          EOF
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-artifacts
+          path: |
+            genai-engine/new.openapi.json
+            genai-engine/staging.openapi.json
 
   run-genai-engine-unit-tests:
     if: |
