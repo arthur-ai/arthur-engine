@@ -161,7 +161,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
         >
           <DrawerPagination />
           <Box sx={{ flex: 1 }} />
-          <FeedbackPanel containerRef={containerRef} annotation={trace.annotation} traceId={id} />
+          <FeedbackPanel containerRef={containerRef} annotations={trace.annotations} traceId={id} />
         </Stack>
 
         <Box

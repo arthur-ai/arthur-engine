@@ -5,19 +5,20 @@ import { Operators } from "@/components/traces/components/filtering/types";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { Api } from "@/lib/api";
+import { ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { PaginationParams } from "@/types/common";
 
-export const useContinuousEvals = ({ pagination, filters = [] }: { pagination: PaginationParams; filters?: IncomingFilter[] }) => {
+export const useContinuousEvalsResults = ({ pagination, filters = [] }: { pagination: PaginationParams; filters?: IncomingFilter[] }) => {
   const { task } = useTask();
   const api = useApi()!;
 
-  return useQuery(continuousEvalsQueryOptions({ api, taskId: task!.id, pagination, filters }));
+  return useQuery(continuousEvalsResultsQueryOptions({ api, taskId: task!.id, pagination, filters }));
 };
 
-export const continuousEvalsQueryOptions = ({
-  api,
+export const continuousEvalsResultsQueryOptions = ({
   taskId,
+  api,
   pagination,
   filters = [],
 }: {
@@ -27,23 +28,32 @@ export const continuousEvalsQueryOptions = ({
   filters?: IncomingFilter[];
 }) =>
   queryOptions({
-    queryKey: [queryKeys.continuousEvals.all(taskId), pagination, filters],
-    queryFn: () => api.api.listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet({ taskId, ...pagination, ...mapFiltersToRequest(filters) }),
+    queryKey: [queryKeys.continuousEvals.results(taskId), pagination, filters],
+    queryFn: () =>
+      api.api.listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet({ taskId, ...pagination, ...mapFiltersToRequest(filters) }),
     select: (data) => data.data,
   });
 
-const mapFiltersToRequest = (filters: IncomingFilter[]) => {
-  const request: Record<string, string | number | string[]> = {};
+export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
+  const request: Record<string, string> = {};
 
   filters.forEach((filter) => {
     const key = filter.name;
 
-    if (key === "name") {
+    if (key === "id") {
       return (request[key] = filter.value as string);
     }
 
-    if (key === "llm_eval_name") {
+    if (key === "trace_id") {
       return (request[key] = filter.value as string);
+    }
+
+    if (key === "annotation_score") {
+      return (request[key] = filter.value as string);
+    }
+
+    if (key === "run_status") {
+      return (request[key] = filter.value as ContinuousEvalRunStatus);
     }
 
     if (key === "created_at") {

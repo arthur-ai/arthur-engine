@@ -4,7 +4,6 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { CopyableChip } from "../../common";
 import { AnnotationCell } from "../components/AnnotationCell";
 import { DurationCell } from "../components/DurationCell";
-import { EvalsCell } from "../components/EvalsCell";
 
 import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
@@ -28,27 +27,16 @@ export const columns = [
       );
     },
   }),
-  columnHelper.accessor("annotation", {
-    header: "Annotation",
+  columnHelper.accessor("annotations", {
+    header: "Annotations",
     cell: ({ getValue, row }) => {
-      const annotation = getValue();
+      const annotations = getValue();
 
-      if (!annotation) return;
+      if (!annotations) return;
 
-      return <AnnotationCell annotation={annotation} traceId={row.original.trace_id} />;
+      return <AnnotationCell annotations={annotations} traceId={row.original.trace_id} />;
     },
     size: 100,
-  }),
-  columnHelper.accessor(() => Math.random() > 0.5, {
-    header: "Successful Evals",
-    cell: ({ getValue, row }) => {
-      const value = getValue();
-
-      if (!value) return <span className="text-gray-500 text-sm">No evals ran</span>;
-
-      return <EvalsCell traceId={row.original.trace_id} />;
-    },
-    size: 125,
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",

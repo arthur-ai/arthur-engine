@@ -1,7 +1,8 @@
 import { ScrollArea } from "@base-ui-components/react/scroll-area";
 import { Close, Search } from "@mui/icons-material";
-import { Button, Chip, Paper, Stack, TextField } from "@mui/material";
+import { Button, Chip, Paper, Stack, SxProps, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
+import dayjs from "dayjs";
 import { useEffect, useMemo, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -31,7 +32,15 @@ type DynamicEnumArgMap<
 };
 
 export function createFilterRow<TFields extends Field[]>(fields: TFields, dynamicEnumArgMap: DynamicEnumArgMap<TFields>) {
-  const FiltersRow = () => {
+  const FiltersRow = ({
+    loading = false,
+    sx = [],
+    getNameLabel = getFieldLabel,
+  }: {
+    loading?: boolean;
+    sx?: SxProps;
+    getNameLabel?: (name: string) => string;
+  }) => {
     const scrollableRef = useRef<HTMLDivElement>(null);
     const setFilters = useFilterStore((state) => state.setFilters);
     const storeFilters = useFilterStore((state) => state.filters);
@@ -96,7 +105,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
     };
 
     return (
-      <Paper variant="outlined" sx={{ p: 2 }}>
+      <Paper variant="outlined" sx={[{ p: 2 }, ...(Array.isArray(sx) ? sx : [sx])]}>
         <ScrollArea.Root
           render={
             <form
@@ -117,7 +126,14 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
               <form.Field mode="array" name="config">
                 {(field) =>
                   field.state.value.map((item, index) => (
-                    <FilterItem key={item.id} index={index} onRemove={() => field.removeValue(index)} onClose={handleClose} form={form} />
+                    <FilterItem
+                      key={item.id}
+                      index={index}
+                      onRemove={() => field.removeValue(index)}
+                      onClose={handleClose}
+                      form={form}
+                      getNameLabel={getNameLabel}
+                    />
                   ))
                 }
               </form.Field>
@@ -139,6 +155,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                 type="submit"
                 disabled={!canSubmit}
                 variant="outlined"
+                loading={loading}
                 sx={{
                   alignSelf: "center",
                 }}
@@ -159,8 +176,9 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
       index: number;
       onRemove: () => void;
       onClose: () => void;
+      getNameLabel: (name: string) => string;
     },
-    render: function Render({ form, index, onRemove, onClose }) {
+    render: function Render({ form, index, onRemove, onClose, getNameLabel }) {
       const allMetrics = useStore(form.store, (state) => state.values.config.slice(0, index));
       const field = useField({ form, name: `config[${index}]` as const });
 
@@ -198,7 +216,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
               <field.MaterialAutocompleteField
                 disablePortal
                 options={fields.map(({ name }) => name)}
-                getOptionLabel={getFieldLabel}
+                getOptionLabel={getNameLabel}
                 size="small"
                 onClose={() => {
                   field.handleBlur();
@@ -304,6 +322,11 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
           onMount: multiple ? validators.valueArray : validators.value,
           onChange: multiple ? validators.valueArray : validators.value,
         };
+      } else if (fieldConfig.type === "date") {
+        fieldValidators = {
+          onMount: validators.date,
+          onChange: validators.date,
+        };
       }
 
       return (
@@ -366,6 +389,10 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
 
             if (fieldConfig.type === "text") {
               return <TextInput form={form} index={index} onClose={onClose} />;
+            }
+
+            if (fieldConfig.type === "date") {
+              return <DatePickerInput form={form} index={index} onClose={onClose} />;
             }
           }}
         </form.AppField>
@@ -512,6 +539,48 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
     },
   });
 
+  const DatePickerInput = withForm({
+    ...sharedFormOptions,
+    props: {} as {
+      index: number;
+      onClose: () => void;
+    },
+    render: function Render({ form, index, onClose }) {
+      return (
+        <form.AppField
+          name={`config[${index}].value` as const}
+          validators={{
+            onMount: validators.date,
+            onChange: validators.date,
+          }}
+        >
+          {(field) => (
+            <field.DatePickerField
+              value={field.state.value ? dayjs(field.state.value as string) : null}
+              onClose={onClose}
+              sx={{
+                width: 200,
+                "& .MuiInputBase-root": {
+                  borderRadius: 0,
+                },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderInlineWidth: 0,
+                },
+              }}
+              slotProps={{
+                textField: {
+                  variant: "filled",
+                  label: "Value",
+                  size: "small",
+                },
+              }}
+            />
+          )}
+        </form.AppField>
+      );
+    },
+  });
+
   const getAvailableOperators = (metrics: { name: string; operator: string }[], key: string): Operator[] => {
     if (!key || key === "") return [];
 
@@ -526,5 +595,5 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
       .filter((operator) => used.every((m) => m.operator && canBeCombinedWith(operator, m.operator as Operator)));
   };
 
-  return { FiltersRow, FilterItem, ValueInput, DynamicEnumInput };
+  return { FiltersRow, FilterItem, ValueInput, DynamicEnumInput, DatePickerInput };
 }

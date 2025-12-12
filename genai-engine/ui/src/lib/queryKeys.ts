@@ -48,6 +48,7 @@ export const queryKeys = {
   continuousEvals: {
     all: (taskId: string) => ["listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet", { taskId }] as const,
     byId: (evalId: string) => ["getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet", { evalId }] as const,
+    results: (taskId: string) => ["listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet", { taskId }] as const,
   },
   transforms: {
     byId: (transformId: string) => ["getTransformApiV1TracesTransformsTransformIdGet", { transformId }] as const,
