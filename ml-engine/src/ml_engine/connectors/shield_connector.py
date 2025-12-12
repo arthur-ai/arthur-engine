@@ -515,7 +515,10 @@ class ShieldBaseConnector(Connector, ABC):
             created_before=created_before,
         )
         data = json.loads(resp.raw_data)
-        return [ContinuousEvalResponse.model_validate(eval_data) for eval_data in data.get("evals", [])]
+        return [
+            ContinuousEvalResponse.model_validate(eval_data)
+            for eval_data in data.get("evals", [])
+        ]
 
     def read_transforms(
         self,
@@ -549,7 +552,10 @@ class ShieldBaseConnector(Connector, ABC):
             created_before=created_before,
         )
         data = json.loads(resp.raw_data)
-        return [TraceTransformResponse.model_validate(transform_data) for transform_data in data.get("transforms", [])]
+        return [
+            TraceTransformResponse.model_validate(transform_data)
+            for transform_data in data.get("transforms", [])
+        ]
 
     @property
     @abstractmethod

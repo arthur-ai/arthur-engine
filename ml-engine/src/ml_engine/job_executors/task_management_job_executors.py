@@ -229,7 +229,9 @@ class _TaskManagementJobExecutor:
 
             # For each eval, get the latest version
             llm_evals_with_versions: list[LLMEval] = []
-            self.logger.info(f"Retrieved {len(llm_evals_response.llm_metadata)} LLM eval definitions")
+            self.logger.info(
+                f"Retrieved {len(llm_evals_response.llm_metadata)} LLM eval definitions"
+            )
 
             for eval_metadata in llm_evals_response.llm_metadata:
                 try:
