@@ -28,7 +28,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
 
       return parsed.data;
     })
-    .filter(Boolean);
+    .filter((annotation): annotation is Annotation => Boolean(annotation));
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.preventDefault();

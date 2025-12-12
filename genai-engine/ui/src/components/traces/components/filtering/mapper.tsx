@@ -2,6 +2,8 @@ import { TIME_RANGES, type TimeRange } from "../../constants";
 
 import { type Operator, Operators } from "./types";
 
+import type { ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
+
 export type IncomingFilter = {
   name: string;
   operator: Operator;
@@ -41,6 +43,18 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
     // Special handling for span_name with EQUALS operator (backend expects "span_name", not "span_name_eq")
     if (key === "span_name" && filter.operator === Operators.EQUALS) {
       return (request["span_name"] = filter.value as string);
+    }
+
+    if (key === "annotation_type" && filter.operator === Operators.EQUALS) {
+      return (request["annotation_type"] = filter.value as "human" | "continuous_eval");
+    }
+
+    if (key === "continuous_eval_run_status" && filter.operator === Operators.EQUALS) {
+      return (request["continuous_eval_run_status"] = filter.value as ContinuousEvalRunStatus);
+    }
+
+    if (key === "continuous_eval_name" && filter.operator === Operators.CONTAINS) {
+      return (request["continuous_eval_name_contains"] = filter.value as string);
     }
 
     const keyPart = OPERATOR_TO_KEY_PART.get(filter.operator);
