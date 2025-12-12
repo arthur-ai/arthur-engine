@@ -163,7 +163,7 @@ jobs:
             genai-engine/staging.openapi.json
             genai-engine/src/api_changelog.md
 
-  run-genai-engine-unit-tests:
+  check-genai-engine-changes:
     if: |
       (
         github.event_name == 'pull_request' ||
@@ -171,6 +171,31 @@ jobs:
       ) &&
       github.ref != 'refs/heads/main' &&
       github.ref != 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            ui:
+              - 'genai-engine/ui/**'
+            backend:
+              - 'genai-engine/**'
+              - '!genai-engine/ui/**'
+
+  run-genai-engine-unit-tests:
+    needs: check-genai-engine-changes
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev' &&
+      needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     steps:
