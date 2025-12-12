@@ -7,7 +7,7 @@ import { formatCurrency } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<AgenticAnnotationMetadataResponse>();
 
-export const resultsColumns = [
+export const createColumns = ({ onView }: { onView: (annotationId: string) => void }) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
     cell: ({ getValue }) => getValue(),
@@ -26,9 +26,10 @@ export const resultsColumns = [
   }),
   columnHelper.display({
     id: "actions",
-    cell: () => {
+    cell: ({ row }) => {
+      const annotationId = row.original.id;
       return (
-        <IconButton size="small">
+        <IconButton size="small" onClick={() => onView(annotationId)}>
           <VisibilityIcon fontSize="small" />
         </IconButton>
       );

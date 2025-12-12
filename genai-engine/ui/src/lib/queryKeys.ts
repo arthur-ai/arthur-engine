@@ -53,4 +53,7 @@ export const queryKeys = {
   transforms: {
     byId: (transformId: string) => ["getTransformApiV1TracesTransformsTransformIdGet", { transformId }] as const,
   },
+  annotations: {
+    byId: (annotationId: string) => ["getAnnotationByIdApiV1AnnotationsAnnotationIdGet", { annotationId }] as const,
+  },
 } as const;

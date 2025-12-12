@@ -1,6 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, Skeleton, Stack, Tab, Tabs, Typography } from "@mui/material";
-import { Suspense, useState } from "react";
+import { parseAsStringEnum, useQueryState } from "nuqs";
+import { Suspense } from "react";
 import { Link } from "react-router-dom";
 
 import { FilterStoreProvider } from "../traces/stores/filter.store";
@@ -14,7 +15,7 @@ import { useTask } from "@/hooks/useTask";
 export const LiveEvals = () => {
   const { task } = useTask();
 
-  const [activeTab, setActiveTab] = useState<"management" | "results">("management");
+  const [activeTab, setActiveTab] = useQueryState("tab", parseAsStringEnum(["management", "results"]).withDefault("management"));
 
   return (
     <>

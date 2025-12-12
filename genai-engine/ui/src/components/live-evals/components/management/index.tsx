@@ -28,8 +28,6 @@ export const Management = () => {
 
   const pagination = useDatasetPagination();
 
-  console.log({ filters });
-
   const { data } = useSuspenseQuery(
     continuousEvalsQueryOptions({
       api,

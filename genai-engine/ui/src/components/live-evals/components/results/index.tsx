@@ -1,11 +1,14 @@
 import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { parseAsString, useQueryState } from "nuqs";
 import { useMemo } from "react";
 
 import { CONTINUOUS_EVAL_RESULT_FIELDS } from "../../data/filter-fields";
-import { resultsColumns as columns } from "../../data/results-columns";
+import { createColumns } from "../../data/results-columns";
 import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEvalsResults";
+
+import { Details } from "./components/details";
 
 import { createFilterRow } from "@/components/traces/components/filtering/filters-row";
 import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
@@ -17,6 +20,8 @@ import { useTask } from "@/hooks/useTask";
 export const Results = () => {
   const api = useApi()!;
   const { task } = useTask();
+
+  const [annotationId, setAnnotationId] = useQueryState("id", parseAsString.withDefault(""));
 
   const filters = useFilterStore((state) => state.filters);
   const pagination = useDatasetPagination();
@@ -32,7 +37,7 @@ export const Results = () => {
 
   const table = useReactTable({
     data: data.annotations,
-    columns,
+    columns: useMemo(() => createColumns({ onView: (annotationId) => setAnnotationId(annotationId) }), []),
     getCoreRowModel: getCoreRowModel(),
   });
 
@@ -89,6 +94,8 @@ export const Results = () => {
           />
         </>
       )}
+
+      <Details annotationId={annotationId || undefined} onClose={() => setAnnotationId("")} />
     </>
   );
 };

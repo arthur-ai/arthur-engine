@@ -2,9 +2,11 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, IconButton, Typography, capitalize } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
 
+import { useTask } from "@/hooks/useTask";
 import { formatCurrency } from "@/utils/formatters";
 
 type Props = {
@@ -12,14 +14,17 @@ type Props = {
 };
 
 export const AnnotationsTable = ({ annotations }: Props) => {
+  const navigate = useNavigate();
+  const { task } = useTask();
+
   const columns = useMemo(
     () =>
       createColumns({
-        onView: () => {
-          //
+        onView: (annotation) => {
+          navigate(`/tasks/${task!.id}/continuous-evals?id=${annotation.id}&tab=results`);
         },
       }),
-    []
+    [task, navigate]
   );
 
   const table = useReactTable({

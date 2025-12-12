@@ -13,6 +13,7 @@ export const HumanAnnotation = z.object({
 });
 
 export const ContinuousEvalAnnotation = z.object({
+  id: z.string(),
   annotation_type: z.literal("continuous_eval"),
   annotation_score: z.number().optional(),
   annotation_description: z.string().optional(),
