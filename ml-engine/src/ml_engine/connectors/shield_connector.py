@@ -12,12 +12,15 @@ from arthur_client.api_bindings import (
     ConnectorCheckOutcome,
     ConnectorCheckResult,
     ConnectorSpec,
+    ContinuousEvalResponse,
     DataResultFilter,
     Dataset,
     DatasetLocator,
     DatasetLocatorField,
+    LLMEval,
     PutAvailableDataset,
     PutAvailableDatasets,
+    TraceTransformResponse,
 )
 from arthur_common.models.connectors import (
     SHIELD_CONNECTOR_API_KEY_FIELD,
@@ -43,9 +46,12 @@ from genai_client import (
     ApiClient,
     APIKeysApi,
     Configuration,
+    ContinuousEvalsApi,
     InferencesApi,
+    LLMEvalsApi,
     SpansApi,
     TasksApi,
+    TransformsApi,
 )
 from genai_client.exceptions import (
     ForbiddenException,
@@ -55,6 +61,7 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
+    LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
     NewTaskRequest,
     QueryTracesWithMetricsResponse,
@@ -96,6 +103,9 @@ class ShieldBaseConnector(Connector, ABC):
         self._tasks_client = TasksApi(api_client=self._genai_client)
         self._api_keys_client = APIKeysApi(api_client=self._genai_client)
         self._spans_client = SpansApi(api_client=self._genai_client)
+        self._evals_client = LLMEvalsApi(api_client=self._genai_client)
+        self._cont_evals_client = ContinuousEvalsApi(api_client=self._genai_client)
+        self._transforms_client = TransformsApi(api_client=self._genai_client)
 
     @staticmethod
     def _strip_and_validate_endpoint(endpoint: str) -> str:
@@ -417,6 +427,135 @@ class ShieldBaseConnector(Connector, ABC):
             start_time=start_time,
             end_time=end_time,
         )
+
+    def read_llm_evals(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> LLMGetAllMetadataListResponse:
+        """
+        Reads LLM evaluation definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            LLMGetAllMetadataListResponse containing LLM eval metadata
+        """
+        return self._evals_client.get_all_llm_evals_api_v1_tasks_task_id_llm_evals_get(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            created_after=created_after,
+            created_before=created_before,
+        )
+
+    def read_llm_eval_latest_version(
+        self,
+        task_id: str,
+        eval_name: str,
+    ) -> LLMEval:
+        """
+        Reads the latest version of a specific LLM evaluation from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            eval_name: Name of the eval to retrieve
+
+        Returns:
+            LLMEval object for the latest version
+        """
+        resp = self._evals_client.get_llm_eval_api_v1_tasks_task_id_llm_evals_eval_name_versions_eval_version_get_with_http_info(
+            task_id=task_id,
+            eval_name=eval_name,
+            eval_version="latest",
+        )
+        data = json.loads(resp.raw_data)
+        return LLMEval.model_validate(data)
+
+    def read_continuous_evals(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        name: str | None = None,
+        llm_eval_name: str | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> list[ContinuousEvalResponse]:
+        """
+        Reads continuous evaluation definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            name: Name filter for continuous eval (optional)
+            llm_eval_name: LLM eval name filter (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            List of ContinuousEvalResponse objects
+        """
+        resp = self._cont_evals_client.list_continuous_evals_api_v1_tasks_task_id_continuous_evals_get_with_http_info(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            name=name,
+            llm_eval_name=llm_eval_name,
+            created_after=created_after,
+            created_before=created_before,
+        )
+        data = json.loads(resp.raw_data)
+        return [
+            ContinuousEvalResponse.model_validate(eval_data)
+            for eval_data in data.get("evals", [])
+        ]
+
+    def read_transforms(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        name: str | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> list[TraceTransformResponse]:
+        """
+        Reads transform definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            name: Name filter for transforms using partial matching (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            List of TraceTransformResponse objects
+        """
+        resp = self._transforms_client.list_transforms_for_task_api_v1_tasks_task_id_traces_transforms_get_with_http_info(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            name=name,
+            created_after=created_after,
+            created_before=created_before,
+        )
+        data = json.loads(resp.raw_data)
+        return [
+            TraceTransformResponse.model_validate(transform_data)
+            for transform_data in data.get("transforms", [])
+        ]
 
     @property
     @abstractmethod
