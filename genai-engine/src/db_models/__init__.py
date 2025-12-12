@@ -41,8 +41,8 @@ from db_models.rule_result_models import (
     DatabaseToxicityScore,
 )
 from db_models.task_models import DatabaseTask, DatabaseTaskToRules
+from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.telemetry_models import (
-    DatabaseAgenticAnnotation,
     DatabaseMetric,
     DatabaseMetricResult,
     DatabaseSpan,

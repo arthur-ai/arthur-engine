@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+from arthur_common.models.common_schemas import VariableTemplateValue
 from sqlalchemy.orm import Session
 
 from db_models import (
@@ -33,7 +34,6 @@ from schemas.base_experiment_schemas import (
 )
 from schemas.request_schemas import (
     BaseCompletionRequest,
-    VariableTemplateValue,
 )
 from utils.trace import get_nested_value
 

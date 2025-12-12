@@ -42,6 +42,10 @@ spec:
         - name: arthur-ml-engine
           image: "{{ .Values.containerRepository.imageLocation }}/{{ .Values.mlEngine.deployment.containerImageName }}:{{ .Values.mlEngine.deployment.containerImageVersion }}"
           imagePullPolicy: Always
+          securityContext:
+            runAsUser: 65532
+            runAsGroup: 65532
+            runAsNonRoot: true
           ports:
             - containerPort: 7492
           livenessProbe:

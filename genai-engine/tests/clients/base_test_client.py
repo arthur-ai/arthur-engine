@@ -37,6 +37,7 @@ from arthur_common.models.response_schemas import (
     ChatResponse,
     ExternalDocument,
     FileUploadResult,
+    ListAgenticAnnotationsMetadataResponse,
     QueryFeedbackResponse,
     QueryInferencesResponse,
     QuerySpansResponse,
@@ -97,6 +98,7 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    ContinuousEvalRerunResponse,
     ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionResponse,
@@ -1920,6 +1922,9 @@ class GenaiEngineTestClientBase(httpx.Client):
         span_types: list | None = None,
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
+        annotation_type: str | None = None,
+        continuous_eval_run_status: str | None = None,
+        continuous_eval_name: str | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1966,6 +1971,12 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["span_types"] = span_types
         if annotation_score is not None:
             params["annotation_score"] = annotation_score
+        if annotation_type is not None:
+            params["annotation_type"] = annotation_type
+        if continuous_eval_run_status is not None:
+            params["continuous_eval_run_status"] = continuous_eval_run_status
+        if continuous_eval_name is not None:
+            params["continuous_eval_name"] = continuous_eval_name
         if user_ids is not None:
             params["user_ids"] = user_ids
         # Query relevance filters
@@ -2530,6 +2541,51 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 TraceUserListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def get_annotation_by_id(
+        self,
+        annotation_id: str,
+    ) -> tuple[int, AgenticAnnotation | str]:
+        """Get an annotation by id."""
+        resp = self.base_client.get(
+            f"/api/v1/traces/annotations/{annotation_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                AgenticAnnotation.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def list_agentic_annotations_for_trace(
+        self,
+        trace_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListAgenticAnnotationsMetadataResponse | str]:
+        """Get an annotation by id."""
+        base_url = f"/api/v1/traces/{trace_id}/annotations"
+        if search_url:
+            base_url = base_url + "?" + search_url
+
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsMetadataResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -3679,6 +3735,52 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 ListContinuousEvalsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_continuous_eval_run_results(
+        self,
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListAgenticAnnotationsMetadataResponse]:
+        """List continuous evals."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals/results"
+        if search_url:
+            base_url = base_url + "?" + search_url
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsMetadataResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def rerun_continuous_eval(
+        self,
+        run_id: str,
+    ) -> tuple[int, ContinuousEvalRerunResponse]:
+        """Rerun a continuous eval."""
+        resp = self.base_client.post(
+            f"/api/v1/continuous_evals/results/{run_id}/rerun",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalRerunResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

@@ -1,10 +1,25 @@
 import uuid
+from datetime import datetime
+from typing import Optional
+from unittest.mock import MagicMock, patch
 
 import pytest
+from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 
+from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.task_models import DatabaseTask
+from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
+from schemas.internal_schemas import Span as InternalSpan
 from schemas.internal_schemas import TraceTransform
 from schemas.llm_eval_schemas import LLMEval
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from services.continuous_eval.continuous_eval_queue_service import (
+    ContinuousEvalQueueService,
+)
+from services.trace.span_normalization_service import SpanNormalizationService
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 
 
 def create_test_transform(
@@ -43,6 +58,231 @@ def create_test_llm_eval(
         llm_eval_name=llm_eval_name,
         llm_eval_data=llm_eval_data,
     )
+
+
+def create_mock_annotation(
+    trace_id: str,
+    annotation_type: AgenticAnnotationType,
+    annotation_score: Optional[int] = None,
+    continuous_eval_id: Optional[str] = None,
+    run_status: Optional[ContinuousEvalRunStatus] = None,
+) -> tuple[int, DatabaseAgenticAnnotation]:
+    db_session = override_get_db_session()
+    db_annotation = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=annotation_type.value,
+        trace_id=trace_id,
+        annotation_score=annotation_score,
+        continuous_eval_id=continuous_eval_id,
+        run_status=run_status.value if run_status else None,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    db_session.add(db_annotation)
+    db_session.commit()
+    db_session.refresh(db_annotation)
+    return db_annotation
+
+
+def delete_mock_annotation(annotation_id: uuid.UUID) -> None:
+    db_session = override_get_db_session()
+    db_annotation = (
+        db_session.query(DatabaseAgenticAnnotation)
+        .filter(DatabaseAgenticAnnotation.id == annotation_id)
+        .first()
+    )
+    if not db_annotation:
+        return
+    db_session.delete(db_annotation)
+    db_session.commit()
+
+
+def setup_test_data():
+    """Setup test data including task, trace, and spans."""
+    db_session = override_get_db_session()
+    span_normalizer = SpanNormalizationService()
+
+    task_id = str(uuid.uuid4())
+    trace_id = str(uuid.uuid4())
+
+    # Create task
+    task = DatabaseTask(
+        id=task_id,
+        name="Test Task for Transform Execution",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        is_agentic=True,
+    )
+    db_session.add(task)
+    db_session.commit()
+
+    # Create spans with nested attributes
+    base_time = datetime.now()
+
+    # Span 1: RAG retrieval span with sqlQuery
+    span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "rag-retrieval-savedQueries",
+            "spanId": f"span1_{uuid.uuid4()}",
+            "traceId": trace_id,
+            "attributes": {
+                "openinference.span.kind": "RETRIEVER",
+                "input.value.sqlQuery": "SELECT * FROM users WHERE id = 1",
+                "input.value.context": "User query context",
+                "output.value.results": [
+                    {"id": 1, "name": "John"},
+                    {"id": 2, "name": "Jane"},
+                ],
+            },
+        },
+    )
+    span1_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span1 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id=trace_id,
+        span_id=span1_raw_data["spanId"],
+        task_id=task_id,
+        parent_span_id=None,
+        span_kind="RETRIEVER",
+        start_time=base_time,
+        end_time=base_time,
+        session_id=None,
+        user_id=None,
+        raw_data=span1_raw_data,
+        created_at=base_time,
+        updated_at=base_time,
+    )
+
+    # Span 2: LLM span with token costs
+    span2_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "llm_call",
+            "spanId": f"span2_{uuid.uuid4()}",
+            "traceId": trace_id,
+            "attributes": {
+                "openinference.span.kind": "LLM",
+                "llm.model_name": "gpt-4",
+                "llm.token_cost": 0.05,
+                "llm.token_count.prompt": 100,
+                "llm.token_count.completion": 50,
+            },
+        },
+    )
+    span2_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span2 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id=trace_id,
+        span_id=span2_raw_data["spanId"],
+        task_id=task_id,
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=base_time,
+        end_time=base_time,
+        session_id=None,
+        user_id=None,
+        raw_data=span2_raw_data,
+        created_at=base_time,
+        updated_at=base_time,
+    )
+
+    # Span 3: Span with nested child
+    span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "agent_span",
+            "spanId": f"span3_{uuid.uuid4()}",
+            "traceId": trace_id,
+            "attributes": {
+                "openinference.span.kind": "AGENT",
+                "agent.name": "test_agent",
+            },
+        },
+    )
+    span3_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span3 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id=trace_id,
+        span_id=span3_raw_data["spanId"],
+        task_id=task_id,
+        parent_span_id=span1_raw_data["spanId"],  # Child of span1
+        span_kind="AGENT",
+        start_time=base_time,
+        end_time=base_time,
+        session_id=None,
+        user_id=None,
+        raw_data=span3_raw_data,
+        created_at=base_time,
+        updated_at=base_time,
+    )
+
+    # Create database spans
+    spans = [span1, span2, span3]
+    database_spans = []
+    for span in spans:
+        db_span = DatabaseSpan(
+            id=span.id,
+            trace_id=span.trace_id,
+            span_id=span.span_id,
+            parent_span_id=span.parent_span_id,
+            span_name=span.raw_data.get("name"),
+            span_kind=span.span_kind,
+            start_time=span.start_time,
+            end_time=span.end_time,
+            task_id=span.task_id,
+            session_id=span.session_id,
+            user_id=span.user_id,
+            status_code="Ok",
+            raw_data=span.raw_data,
+            created_at=span.created_at,
+            updated_at=span.updated_at,
+        )
+        database_spans.append(db_span)
+
+    db_session.add_all(database_spans)
+    db_session.commit()
+
+    # Create trace metadata
+    trace_metadata = DatabaseTraceMetadata(
+        task_id=task_id,
+        trace_id=trace_id,
+        session_id=None,
+        user_id=None,
+        span_count=len(spans),
+        start_time=base_time,
+        end_time=base_time,
+        created_at=base_time,
+        updated_at=base_time,
+        input_content="test input",
+        output_content="test output",
+    )
+    db_session.add(trace_metadata)
+    db_session.commit()
+
+    return {
+        "task_id": task_id,
+        "trace_id": trace_id,
+        "spans": spans,
+        "db_session": db_session,
+    }
+
+
+def cleanup_test_data(test_data):
+    db_session = override_get_db_session()
+    trace_id = test_data["trace_id"]
+    task_id = test_data["task_id"]
+
+    # Cleanup
+    db_session.query(DatabaseSpan).filter(DatabaseSpan.trace_id == trace_id).delete()
+    db_session.query(DatabaseTraceMetadata).filter(
+        DatabaseTraceMetadata.trace_id == trace_id,
+    ).delete()
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
+    db_session.commit()
 
 
 @pytest.mark.unit_tests
@@ -766,3 +1006,405 @@ def test_delete_continuous_eval_failures(client: GenaiEngineTestClientBase):
         )
     finally:
         client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_list_continuous_eval_run_results_pagination(client: GenaiEngineTestClientBase):
+    """Test listing continuous eval run results with pagination"""
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create transforms
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+
+    # Save a continuous eval
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=task_id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": llm_eval.name,
+            "llm_eval_version": llm_eval.version,
+            "transform_id": str(transform.id),
+        },
+    )
+
+    # create mock annotations
+    annotation_1 = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PASSED,
+    )
+    annotation_2 = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+    )
+    annotation_3 = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.HUMAN,
+        annotation_score=1,
+    )
+    annotations = [annotation_1, annotation_2, annotation_3]
+
+    try:
+        continuous_eval_annotations = [annotation_1, annotation_2]
+
+        # Test sort ascending
+        continuous_eval_annotations = sorted(
+            continuous_eval_annotations,
+            key=lambda x: x.created_at,
+        )
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="sort=asc",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == len(continuous_eval_annotations)
+        assert received_run_results.count == len(continuous_eval_annotations)
+
+        for i in range(len(received_run_results.annotations)):
+            assert received_run_results.annotations[i].id == str(
+                continuous_eval_annotations[i].id,
+            )
+            assert received_run_results.annotations[i].trace_id == str(
+                continuous_eval_annotations[i].trace_id,
+            )
+            assert received_run_results.annotations[i].continuous_eval_id == str(
+                continuous_eval_annotations[i].continuous_eval_id,
+            )
+            assert (
+                received_run_results.annotations[i].run_status
+                == continuous_eval_annotations[i].run_status
+            )
+            assert (
+                received_run_results.annotations[i].annotation_type
+                == continuous_eval_annotations[i].annotation_type
+            )
+
+        # Test page size = 1
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="sort=asc&page=0&page_size=1",
+        )
+        assert status_code == 200
+        assert (
+            len(received_run_results.annotations)
+            == len(continuous_eval_annotations) // 2
+        )
+        assert received_run_results.count == len(continuous_eval_annotations) // 2
+        for i in range(len(received_run_results.annotations) // 2):
+            assert received_run_results.annotations[i].id == str(
+                continuous_eval_annotations[i].id,
+            )
+            assert received_run_results.annotations[i].trace_id == str(
+                continuous_eval_annotations[i].trace_id,
+            )
+            assert received_run_results.annotations[i].continuous_eval_id == str(
+                continuous_eval_annotations[i].continuous_eval_id,
+            )
+            assert (
+                received_run_results.annotations[i].run_status
+                == continuous_eval_annotations[i].run_status
+            )
+            assert (
+                received_run_results.annotations[i].annotation_type
+                == continuous_eval_annotations[i].annotation_type
+            )
+
+        # Test page size = 1 and page = 2 (over the number of items)
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="sort=asc&page=2&page_size=1",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 0
+        assert received_run_results.count == 0
+    finally:
+        client.delete_transform(transform.id)
+        client.delete_llm_eval(task_id, llm_eval.name)
+        client.delete_continuous_eval(continuous_eval.id)
+        for annotation in annotations:
+            delete_mock_annotation(annotation.id)
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClientBase):
+    """Test listing continuous evals with filtering"""
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create transforms
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+
+    # Save a continuous eval
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=task_id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": llm_eval.name,
+            "llm_eval_version": llm_eval.version,
+            "transform_id": str(transform.id),
+        },
+    )
+
+    # create mock annotations
+    annotation_1 = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=1,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PASSED,
+    )
+    annotation_2 = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=0,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+    )
+    annotation_3 = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.HUMAN,
+        annotation_score=1,
+    )
+    annotations = [annotation_1, annotation_2, annotation_3]
+
+    try:
+        # Test filtering by annotation id
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"id={str(annotation_1.id)}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
+
+        # Test filtering by trace id
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"trace_id={trace_id}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 2
+        assert received_run_results.count == 2
+
+        # Test filtering by continuous eval id
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"continuous_eval_id={continuous_eval.id}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 2
+        assert received_run_results.count == 2
+
+        # Test filtering by annotation score
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"annotation_score=1",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
+
+        # Test filtering by run status
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"run_status=passed",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
+
+        # Test filtering by run status
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"run_status=failed",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
+
+        continuous_eval_annotations = [annotation_1, annotation_2]
+        continuous_eval_annotations = sorted(
+            continuous_eval_annotations,
+            key=lambda x: x.created_at,
+        )
+        # Test filtering by created after
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"created_after={continuous_eval_annotations[-1].created_at.isoformat()}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
+
+        # Test filtering by created before
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"created_before={continuous_eval_annotations[-1].created_at.isoformat()}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
+    finally:
+        client.delete_transform(transform.id)
+        client.delete_llm_eval(task_id, llm_eval.name)
+        client.delete_continuous_eval(continuous_eval.id)
+        for annotation in annotations:
+            delete_mock_annotation(annotation.id)
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+@patch("repositories.continuous_evals_repository.get_continuous_eval_queue_service")
+def test_rerun_continuous_eval_success(
+    mock_get_continuous_eval_queue_service,
+    client: GenaiEngineTestClientBase,
+):
+    """Test rerunning a continuous eval successfully"""
+    mock_get_continuous_eval_queue_service.return_value = MagicMock(
+        spec=ContinuousEvalQueueService,
+    )
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create transforms
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+
+    # Save a continuous eval
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=task_id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": llm_eval.name,
+            "llm_eval_version": llm_eval.version,
+            "transform_id": str(transform.id),
+        },
+    )
+
+    # create mock annotations
+    annotation = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=0,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+    )
+
+    try:
+        status_code, rerun_response = client.rerun_continuous_eval(annotation.id)
+        assert status_code == 200
+        assert rerun_response.run_id == annotation.id
+        assert rerun_response.trace_id == trace_id
+    finally:
+        client.delete_transform(transform.id)
+        client.delete_llm_eval(task_id, llm_eval.name)
+        client.delete_continuous_eval(continuous_eval.id)
+        delete_mock_annotation(annotation.id)
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+@patch("repositories.continuous_evals_repository.get_continuous_eval_queue_service")
+def test_rerun_continuous_eval_failures(
+    mock_get_continuous_eval_queue_service,
+    client: GenaiEngineTestClientBase,
+):
+    """Test rerunning a continuous eval failures"""
+    mock_get_continuous_eval_queue_service.return_value = MagicMock(
+        spec=ContinuousEvalQueueService,
+    )
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create transforms
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+
+    # Save a continuous eval
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=task_id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": llm_eval.name,
+            "llm_eval_version": llm_eval.version,
+            "transform_id": str(transform.id),
+        },
+    )
+
+    # create mock annotations
+    annotation = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=0,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+    )
+
+    human_annotation = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.HUMAN,
+        annotation_score=1,
+    )
+
+    try:
+        # try to rerun the continuous eval for a fake annotation id
+        fake_run_id = uuid.uuid4()
+        status_code, error = client.rerun_continuous_eval(str(fake_run_id))
+        assert status_code == 404
+        assert f"run {fake_run_id} not found." in error.get("detail", "").lower()
+
+        # try to rerun for a non-continuous eval annotation
+        status_code, error = client.rerun_continuous_eval(human_annotation.id)
+        assert status_code == 400
+        assert "run is not a continuous eval." in error.get("detail", "").lower()
+
+        # try to rerun with queue service not available
+        mock_get_continuous_eval_queue_service.return_value = None
+        status_code, error = client.rerun_continuous_eval(annotation.id)
+        assert status_code == 503
+        assert (
+            "continuous eval queue service is not available."
+            in error.get("detail", "").lower()
+        )
+    finally:
+        client.delete_transform(transform.id)
+        client.delete_llm_eval(task_id, llm_eval.name)
+        client.delete_continuous_eval(continuous_eval.id)
+        delete_mock_annotation(annotation.id)
+        delete_mock_annotation(human_annotation.id)
+        cleanup_test_data(test_data)

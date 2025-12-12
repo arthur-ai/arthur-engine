@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getNestedValue } from "@/components/traces/utils/spans";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { LLMToolsField, Message, Tool } from "@/schemas/llm";
+import { LiteLLMTool, Message, Tool, LLMToolsField } from "@/schemas/llm";
 
 const Messages = z.array(z.object({ message: Message }));
 
@@ -77,12 +77,29 @@ export function tryFormatJson(content: any) {
 export function getTools(span: NestedSpanWithMetricsResponse) {
   const raw = getNestedValue(span.raw_data.attributes, SemanticConventions.LLM_TOOLS) ?? [];
   try {
-    const rawTools = LLMToolsField.parse(raw).map(({ tool }) => JSON.parse(tool.json_schema));
-
-    return rawTools.map((tool) => Tool.parse(tool));
+    return LLMToolsField.parse(raw).map(({ tool }) => tool.json_schema);
   } catch (error) {
-    console.log(JSON.stringify(raw, null, 2));
     console.error(error);
     return [];
   }
+}
+
+export function getToolDefinition(tool: Tool | LiteLLMTool) {
+  if (isLiteLLMTool(tool)) {
+    return {
+      name: tool.function.name,
+      description: tool.function.description,
+      body: tool.function.parameters,
+    };
+  }
+
+  return {
+    name: tool.name,
+    description: tool.description,
+    body: tool.input_schema,
+  };
+}
+
+export function isLiteLLMTool(tool: Tool | LiteLLMTool): tool is LiteLLMTool {
+  return "type" in tool && tool.type === "function";
 }

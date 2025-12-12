@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.response_schemas import ListAgenticAnnotationsMetadataResponse
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 
@@ -18,9 +19,14 @@ from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
+    ContinuousEvalRunResultsListFilterRequest,
     UpdateContinuousEvalRequest,
 )
-from schemas.response_schemas import ContinuousEvalResponse, ListContinuousEvalsResponse
+from schemas.response_schemas import (
+    ContinuousEvalRerunResponse,
+    ContinuousEvalResponse,
+    ListContinuousEvalsResponse,
+)
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -95,6 +101,46 @@ def list_continuous_evals(
                 for continuous_eval in continuous_evals
             ],
             count=len(continuous_evals),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.get(
+    "/tasks/{task_id}/continuous_evals/results",
+    summary="Get all continuous eval run results for a specific task",
+    description="Get all continuous eval run results for a specific task",
+    response_model=ListAgenticAnnotationsMetadataResponse,
+    response_model_exclude_none=True,
+    tags=["Continuous Evals"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def list_continuous_eval_run_results(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    filter_request: Annotated[
+        ContinuousEvalRunResultsListFilterRequest,
+        Depends(ContinuousEvalRunResultsListFilterRequest.from_query_parameters),
+    ],
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+) -> ListAgenticAnnotationsMetadataResponse:
+    try:
+        continuous_eval_repo = ContinuousEvalsRepository(db_session)
+        agentic_annotations = continuous_eval_repo.list_continuous_eval_run_results(
+            task.id,
+            pagination_parameters,
+            filter_request,
+        )
+        return ListAgenticAnnotationsMetadataResponse(
+            annotations=[
+                annotation.to_metadata_response_model()
+                for annotation in agentic_annotations
+            ],
+            count=len(agentic_annotations),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -215,6 +261,33 @@ def update_continuous_eval(
             raise HTTPException(status_code=404, detail=str(e))
         else:
             raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.post(
+    "/continuous_evals/results/{run_id}/rerun",
+    summary="Rerun a failed continuous eval",
+    description="Rerun a failed continuous eval",
+    response_model=ContinuousEvalRerunResponse,
+    response_model_exclude_none=True,
+    tags=["Continuous Evals"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def rerun_continuous_eval(
+    run_id: UUID = Path(
+        ...,
+        description="The id of the continuous eval run to rerun.",
+        title="Run ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ContinuousEvalRerunResponse:
+    try:
+        continuous_eval_repo = ContinuousEvalsRepository(db_session)
+        return continuous_eval_repo.rerun_continuous_eval_by_annotation_id(run_id)
     except HTTPException:
         raise
     except Exception as e:
