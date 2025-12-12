@@ -1,10 +1,13 @@
 import logging
 from datetime import datetime
 from typing import Annotated
+from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import (
+    AgenticAnnotationResponse,
+    ListAgenticAnnotationsMetadataResponse,
     SpanWithMetricsResponse,
     TraceResponse,
 )
@@ -14,6 +17,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session
+from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -22,7 +26,10 @@ from routers.v1.legacy_span_routes import _create_response, trace_query_paramete
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import AgenticAnnotation, User
-from schemas.request_schemas import AgenticAnnotationRequest
+from schemas.request_schemas import (
+    AgenticAnnotationListFilterRequest,
+    AgenticAnnotationRequest,
+)
 from schemas.response_schemas import (
     SessionListResponse,
     SessionTracesResponse,
@@ -71,7 +78,12 @@ def receive_traces(
     """Receive and process OpenInference trace data."""
     try:
         span_repo = _get_span_repository(db_session)
-        span_results = span_repo.create_traces(body)
+        db_spans, span_results = span_repo.create_traces(body)
+
+        # Enqueue continuous evals for root spans
+        continuous_evals_repo = ContinuousEvalsRepository(db_session)
+        continuous_evals_repo.enqueue_continuous_evals_for_root_spans(db_spans)
+
         return _create_response(*span_results)
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")
@@ -648,6 +660,89 @@ def compute_trace_metrics(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
+
+
+@trace_api_routes.get(
+    "/traces/annotations/{annotation_id}",
+    summary="Get an annotation by id",
+    description="Get an annotation by id",
+    response_model=AgenticAnnotationResponse,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def get_annotation_by_id(
+    annotation_id: UUID,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> AgenticAnnotationResponse:
+    """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        annotation = span_repo.get_annotation_by_id(
+            annotation_id=annotation_id,
+        )
+
+        if not annotation:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Annotation {annotation_id} not found",
+            )
+
+        return annotation.to_response_model()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@trace_api_routes.get(
+    "/traces/{trace_id}/annotations",
+    summary="List Annotations for a Trace",
+    description="List annotations for a trace",
+    response_model=ListAgenticAnnotationsMetadataResponse,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def list_annotations_for_trace(
+    trace_id: str,
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    filter_request: Annotated[
+        AgenticAnnotationListFilterRequest,
+        Depends(AgenticAnnotationListFilterRequest.from_query_parameters),
+    ],
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListAgenticAnnotationsMetadataResponse:
+    """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        annotations = span_repo.list_annotations_for_trace(
+            trace_id=trace_id,
+            pagination_parameters=pagination_parameters,
+            filter_request=filter_request,
+        )
+        return ListAgenticAnnotationsMetadataResponse(
+            annotations=[
+                annotation.to_metadata_response_model() for annotation in annotations
+            ],
+            count=len(annotations),
+        )
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error annotating trace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @trace_api_routes.post(

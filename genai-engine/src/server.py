@@ -62,6 +62,10 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
+from services.continuous_eval import (
+    initialize_continuous_eval_queue_service,
+    shutdown_continuous_eval_queue_service,
+)
 from utils import constants as constants
 from utils.classifiers import get_device
 from utils.model_load import (
@@ -206,6 +210,12 @@ async def lifespan(app: FastAPI):
     get_toxicity_model()
     get_toxicity_tokenizer()
 
+    # Initialize continuous eval queue service
+    try:
+        initialize_continuous_eval_queue_service(num_workers=4)
+    except Exception as e:
+        logger.error(f"Error initializing continuous eval queue service: {e}")
+
     # Conditionally load relevance models
     if relevance_models_enabled():
         get_bert_scorer()
@@ -220,6 +230,9 @@ async def lifespan(app: FastAPI):
     send_telemetry_event(TelemetryEventTypes.SERVER_START_COMPLETED)
 
     yield
+
+    # Shutdown continuous eval queue service
+    shutdown_continuous_eval_queue_service()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

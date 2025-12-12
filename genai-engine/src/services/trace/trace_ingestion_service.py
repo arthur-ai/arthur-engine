@@ -69,7 +69,10 @@ class TraceIngestionService:
 
         self.span_normalizer = SpanNormalizationService()
 
-    def process_trace_data(self, trace_data: bytes) -> tuple[int, int, int, list[str]]:
+    def process_trace_data(
+        self,
+        trace_data: bytes,
+    ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data from protobuf format and return statistics."""
         json_traces = self._grpc_trace_to_dict(trace_data)
 
@@ -79,7 +82,7 @@ class TraceIngestionService:
             self._store_spans(spans_data, commit=True)
             logger.debug(f"Stored {len(spans_data)} spans successfully")
 
-        return stats
+        return spans_data, stats
 
     def _grpc_trace_to_dict(self, trace_data: bytes) -> dict[str, Any]:
         """Convert gRPC trace data to dictionary format."""

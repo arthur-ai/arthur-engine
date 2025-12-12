@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Generator
 
+from arthur_common.models.common_schemas import VariableTemplateValue
 from sqlalchemy.orm import Session
 
 from db_models.prompt_experiment_models import (
@@ -35,7 +36,7 @@ from schemas.prompt_experiment_schemas import (
     SummaryResults,
     TestCaseStatus,
 )
-from schemas.request_schemas import PromptCompletionRequest, VariableTemplateValue
+from schemas.request_schemas import PromptCompletionRequest
 from services.prompt.chat_completion_service import ChatCompletionService
 
 logger = logging.getLogger(__name__)

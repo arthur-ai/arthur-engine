@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
+from arthur_common.models.common_schemas import VariableTemplateValue
+from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
@@ -722,11 +724,6 @@ class CreateAgenticPromptRequest(BaseModel):
         use_enum_values = True
 
 
-class VariableTemplateValue(BaseModel):
-    name: str = Field(..., description="Name of the variable")
-    value: str = Field(..., description="Value of the variable")
-
-
 class BaseCompletionRequest(BaseModel):
     variables: Optional[List[VariableTemplateValue]] = Field(
         description="List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
@@ -916,6 +913,148 @@ class ContinuousEvalListFilterRequest(BaseModel):
         return ContinuousEvalListFilterRequest(
             name=name,
             llm_eval_name=llm_eval_name,
+            created_after=(
+                datetime.fromisoformat(created_after) if created_after else None
+            ),
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )
+
+
+class ContinuousEvalRunResultsListFilterRequest(BaseModel):
+    """Request schema for filtering continuous eval run results"""
+
+    # Optional filters
+    id: Optional[UUID] = Field(
+        None,
+        description="ID of the continuous eval to filter on",
+    )
+    trace_id: Optional[str] = Field(
+        None,
+        description="Trace ID to filter on",
+    )
+    annotation_score: Optional[int] = Field(
+        None,
+        description="Annotation score to filter on",
+    )
+    run_status: Optional[ContinuousEvalRunStatus] = Field(
+        None,
+        description="Run status to filter on",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+    @staticmethod
+    def from_query_parameters(
+        id: Optional[str] = Query(
+            None,
+            description="ID of the continuous eval to filter on.",
+        ),
+        trace_id: Optional[str] = Query(
+            None,
+            description="Trace ID to filter on.",
+        ),
+        annotation_score: Optional[int] = Query(
+            None,
+            description="Annotation score to filter on.",
+        ),
+        run_status: Optional[ContinuousEvalRunStatus] = Query(
+            None,
+            description="Run status to filter on.",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "ContinuousEvalRunResultsListFilterRequest":
+        """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
+        return ContinuousEvalRunResultsListFilterRequest(
+            id=UUID(id) if id else None,
+            trace_id=trace_id,
+            annotation_score=annotation_score,
+            run_status=run_status,
+            created_after=(
+                datetime.fromisoformat(created_after) if created_after else None
+            ),
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )
+
+
+class AgenticAnnotationListFilterRequest(BaseModel):
+    """Request schema for filtering annotations"""
+
+    # Optional filters
+    continuous_eval_id: Optional[UUID] = Field(
+        None,
+        description="ID of the continuous eval to filter on",
+    )
+    annotation_type: Optional[AgenticAnnotationType] = Field(
+        None,
+        description="Annotation type to filter on",
+    )
+    annotation_score: Optional[int] = Field(
+        None,
+        description="Annotation score to filter on",
+    )
+    run_status: Optional[ContinuousEvalRunStatus] = Field(
+        None,
+        description="Run status to filter on",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+    @staticmethod
+    def from_query_parameters(
+        continuous_eval_id: Optional[str] = Query(
+            None,
+            description="ID of the continuous eval to filter on.",
+        ),
+        annotation_type: Optional[str] = Query(
+            None,
+            description="Annotation type to filter on.",
+        ),
+        annotation_score: Optional[int] = Query(
+            None,
+            description="Annotation score to filter on.",
+        ),
+        run_status: Optional[ContinuousEvalRunStatus] = Query(
+            None,
+            description="Run status to filter on.",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "AgenticAnnotationListFilterRequest":
+        """Create a AgenticAnnotationListFilterRequest from query parameters."""
+        return AgenticAnnotationListFilterRequest(
+            continuous_eval_id=UUID(continuous_eval_id) if continuous_eval_id else None,
+            annotation_type=annotation_type,
+            annotation_score=annotation_score,
+            run_status=run_status,
             created_after=(
                 datetime.fromisoformat(created_after) if created_after else None
             ),
