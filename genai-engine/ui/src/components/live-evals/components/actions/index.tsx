@@ -34,7 +34,9 @@ export const LiveEvalActions = ({ config, onEdit }: Props) => {
     <Menu.Root>
       <Menu.Trigger
         onClick={(e) => e.stopPropagation()}
-        render={<Button variant="outlined" size="small" endIcon={<ArrowDropDownIcon />} loading={deleteContinuousEval.isPending} />}
+        render={
+          <Button variant="outlined" size="small" endIcon={<ArrowDropDownIcon />} loading={deleteContinuousEval.isPending} className="text-nowrap" />
+        }
       >
         Continuous Eval
       </Menu.Trigger>

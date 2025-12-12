@@ -17,7 +17,7 @@ export const createColumns = ({ onEdit }: { onEdit: (id: string) => void }) => {
       cell: ({ getValue, row }) => {
         const { task_id, id } = row.original;
         return (
-          <MuiLink component={Link} to={`/tasks/${task_id}/continuous-evals/${id}`}>
+          <MuiLink component={Link} to={`/tasks/${task_id}/continuous-evals/${id}`} className="text-nowrap">
             {getValue()}
           </MuiLink>
         );

@@ -1,12 +1,13 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import { Box, Chip, CircularProgress, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Box, Chip, CircularProgress, IconButton, Paper, Skeleton, Stack, Typography } from "@mui/material";
+import { Link as MuiLink } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
 
 import { useContinuousEval } from "../hooks/useContinuousEval";
 
 import { CopyableChip } from "@/components/common";
 import { getContentHeight } from "@/constants/layout";
+import { useTransform } from "@/hooks/transforms/useTransform";
 import { formatDate } from "@/utils/formatters";
 
 export const LiveEvalDetail = () => {
@@ -14,6 +15,8 @@ export const LiveEvalDetail = () => {
 
   // In real implementation, fetch data using evalId
   const { data: liveEval } = useContinuousEval(evalId ?? "");
+
+  const transform = useTransform(liveEval?.transform_id);
 
   if (!liveEval) {
     return (
@@ -36,26 +39,29 @@ export const LiveEvalDetail = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={2} mb={1}>
-          <IconButton component={Link} to=".." size="small" sx={{ mr: -1 }}>
+        <Stack direction="row" alignItems="flex-start" gap={2}>
+          <IconButton component={Link} to=".." size="small">
             <ArrowBackIcon fontSize="small" />
           </IconButton>
-          <Typography variant="h5" fontWeight="bold" color="text.primary">
-            {liveEval.name}
-          </Typography>
-          {/* <LiveEvalStatusChip status={liveEval.status} /> */}
-        </Stack>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={3} alignItems="center">
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" color="text.secondary">
-                ID:
+          <Stack>
+            <Stack direction="row" alignItems="center" gap={2}>
+              <Typography variant="h5" fontWeight="bold" color="text.primary">
+                {liveEval.name}
               </Typography>
-              <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
+              {/* <LiveEvalStatusChip status={liveEval.status} /> */}
             </Stack>
             <Typography variant="body2" color="text.secondary">
-              Created {formatDate(liveEval.created_at)}
+              {liveEval.description}
             </Typography>
+          </Stack>
+
+          <Stack direction="row" alignItems="center" justifyContent="space-between" ml="auto">
+            <Stack direction="row" gap={2} alignItems="center">
+              <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
+              <Typography variant="body2" color="text.secondary">
+                Created {formatDate(liveEval.created_at)}
+              </Typography>
+            </Stack>
           </Stack>
         </Stack>
       </Box>
@@ -98,72 +104,35 @@ export const LiveEvalDetail = () => {
             <Typography variant="h6" fontWeight={600} mb={2}>
               Configuration
             </Typography>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Stack spacing={0.5}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Stack gap={0.5}>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Evaluator
                 </Typography>
-                <Typography variant="body1" fontWeight={500}>
-                  {liveEval.llm_eval_name}
-                </Typography>
-                <Chip label={`v${liveEval.llm_eval_version}`} size="small" sx={{ width: "fit-content" }} />
+                <Stack direction="row" alignItems="center" gap={1}>
+                  <MuiLink
+                    variant="body1"
+                    fontWeight={500}
+                    component={Link}
+                    to={`/tasks/${liveEval.task_id}/evaluators/${liveEval.llm_eval_name}/versions/${liveEval.llm_eval_version}`}
+                  >
+                    {liveEval.llm_eval_name}
+                  </MuiLink>
+                  <Chip label={`v${liveEval.llm_eval_version}`} size="small" sx={{ width: "fit-content" }} />
+                </Stack>
               </Stack>
 
               <Stack spacing={0.5}>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Transform
                 </Typography>
-                <Typography variant="body1" fontWeight={500}>
-                  {liveEval.transform_id}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Dataset: {liveEval.transform_id}
-                </Typography>
-              </Stack>
-
-              <Stack spacing={0.5}>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Variable Mappings
-                </Typography>
-                {/* <Stack spacing={0.5}>
-                  {Object.entries(liveEval.config.variables).map(([variable, mapping]) => (
-                    <Stack key={variable} direction="row" spacing={0.5} alignItems="center">
-                      <Chip label={variable} size="small" variant="outlined" sx={{ fontFamily: "monospace", fontSize: "0.7rem", height: 22 }} />
-                      <Typography variant="caption" color="text.secondary">
-                        →
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
-                        {mapping}
-                      </Typography>
-                    </Stack>
-                  ))}
-                </Stack> */}
-              </Stack>
-
-              <Stack spacing={0.5}>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  <FilterListIcon sx={{ fontSize: 14, verticalAlign: "middle", mr: 0.5 }} />
-                  Filter Criteria
-                </Typography>
-                {/* {liveEval.config.filter.spanTypes && (
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    <Typography variant="caption" color="text.secondary">
-                      Span types:
-                    </Typography>
-                    {liveEval.config.filter.spanTypes.map((type) => (
-                      <Chip key={type} label={type} size="small" sx={{ height: 20, fontSize: "0.7rem" }} />
-                    ))}
-                  </Stack>
-                )} */}
-                {/* {liveEval.config.filter.metadata && (
-                  <Stack spacing={0.25}>
-                    {Object.entries(liveEval.config.filter.metadata).map(([key, value]) => (
-                      <Typography key={key} variant="caption" sx={{ fontFamily: "monospace" }}>
-                        {key}: {value}
-                      </Typography>
-                    ))}
-                  </Stack>
-                )} */}
+                {transform.isLoading ? (
+                  <Skeleton variant="text" width={100} height={20} />
+                ) : (
+                  <MuiLink variant="body1" fontWeight={500} component={Link} to={`/tasks/${liveEval.task_id}/transforms?id=${transform.data?.id}`}>
+                    {transform.data?.name}
+                  </MuiLink>
+                )}
               </Stack>
             </div>
           </Paper>
