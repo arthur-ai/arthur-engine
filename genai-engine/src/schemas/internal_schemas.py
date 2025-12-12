@@ -2082,6 +2082,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Return only results where span name contains this substring.",
     )
+    status_code: Optional[list[str]] = Field(
+        None,
+        description="Status codes to filter on. Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2116,6 +2120,7 @@ class TraceQuerySchema(BaseModel):
             span_ids=request.span_ids,
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,
+            status_code=[code.value for code in request.status_code] if request.status_code else None,
         )
 
 

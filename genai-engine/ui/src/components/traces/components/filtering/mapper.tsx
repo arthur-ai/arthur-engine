@@ -25,7 +25,7 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
     let key = filter.name;
 
     // Handle array fields that should always be arrays
-    if (key === "span_types" || key === "trace_ids" || key === "span_ids" || key === "session_ids" || key === "user_ids") {
+    if (key === "span_types" || key === "trace_ids" || key === "span_ids" || key === "session_ids" || key === "user_ids" || key === "status_code") {
       return (request[key] = [filter.value].flat());
     }
 

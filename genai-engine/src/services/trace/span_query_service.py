@@ -312,6 +312,22 @@ class SpanQueryService:
             )
             query = query.where(span_ids_exists)
 
+        # Apply status_code filter even when no span_types are detected
+        # Use EXISTS clause to filter traces that contain spans with matching status codes
+        if filters.status_code:
+            status_code_exists = exists(
+                select(1)
+                .select_from(DatabaseSpan)
+                .where(
+                    and_(
+                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
+                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        DatabaseSpan.status_code.in_(filters.status_code),
+                    ),
+                ),
+            )
+            query = query.where(status_code_exists)
+
         if not span_types:
             return query
 
@@ -723,6 +739,10 @@ class SpanQueryService:
 
         if span_name_conditions:
             query = query.where(and_(*span_name_conditions))
+
+        # Apply status_code filter even when no span_types are detected
+        if filters.status_code:
+            query = query.where(DatabaseSpan.status_code.in_(filters.status_code))
 
         if not span_types:
             return query

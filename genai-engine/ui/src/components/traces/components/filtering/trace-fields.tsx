@@ -80,4 +80,11 @@ export const TRACE_FIELDS = [
     type: "text",
     operators: [TextOperators.EQUALS, TextOperators.CONTAINS] as Extract<Operator, "eq" | "contains">[],
   }),
+  createPrimitiveField({
+    name: "status_code",
+    type: "enum",
+    operators: [EnumOperators.IN, EnumOperators.EQUALS],
+    options: ["Ok", "Error"],
+    itemToStringLabel: (option) => (option === "Ok" ? "Pass" : "Fail"),
+  }),
 ] as const satisfies Field[];
