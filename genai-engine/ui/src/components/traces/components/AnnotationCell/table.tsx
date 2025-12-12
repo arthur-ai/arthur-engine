@@ -1,6 +1,7 @@
 import LaunchIcon from "@mui/icons-material/Launch";
 import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, IconButton, Typography } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { useMemo } from "react";
 
 import { Annotation } from "./schema";
 
@@ -9,6 +10,16 @@ type Props = {
 };
 
 export const AnnotationsTable = ({ annotations }: Props) => {
+  const columns = useMemo(
+    () =>
+      createColumns({
+        onView: () => {
+          //
+        },
+      }),
+    []
+  );
+
   const table = useReactTable({
     columns,
     data: annotations,
@@ -43,7 +54,7 @@ export const AnnotationsTable = ({ annotations }: Props) => {
 
 const columnHelper = createColumnHelper<Annotation>();
 
-const columns = [
+const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { annotation_type: "continuous_eval" }>) => void }) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
     cell: ({ getValue }) => {
@@ -67,10 +78,16 @@ const columns = [
   }),
   columnHelper.display({
     id: "details",
-    cell: ({ row }) => (
-      <IconButton onClick={() => console.log(row.original)} size="small">
-        <LaunchIcon fontSize="small" />
-      </IconButton>
-    ),
+    cell: ({ row }) => {
+      const annotation = row.original;
+
+      if (annotation.annotation_type === "human") return;
+
+      return (
+        <IconButton onClick={() => onView(annotation)} size="small">
+          <LaunchIcon fontSize="small" />
+        </IconButton>
+      );
+    },
   }),
 ];

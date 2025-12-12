@@ -41,7 +41,7 @@ export const Results = () => {
   return (
     <>
       <FiltersRow sx={{ border: "none" }} getNameLabel={getFieldLabel} />
-      {data.annotations.length < 0 ? (
+      {data.annotations.length === 0 ? (
         <Box sx={{ p: 2 }}>
           <TracesEmptyState title="No annotations found" />
         </Box>
