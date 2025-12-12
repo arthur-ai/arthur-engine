@@ -201,8 +201,6 @@ class RagTestCaseListResponse(BasePaginationResponse):
 class RagConfigResult(BaseConfigResult):
     """Result for a specific RAG configuration within a test case"""
 
-    # TODO: inheritance for DB models
-
     query_text: str = Field(description="Query text used for the search")
     output: Optional[RagSearchOutput] = Field(
         default=None,

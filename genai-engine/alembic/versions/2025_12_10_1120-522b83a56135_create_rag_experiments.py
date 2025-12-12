@@ -1,7 +1,7 @@
 """create rag experiments
 
 Revision ID: 522b83a56135
-Revises: a1b2c3d4e5f67890
+Revises: 44cd9fd55df9
 Create Date: 2025-12-10 11:20:04.056258
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "522b83a56135"
-down_revision = "a1b2c3d4e5f67890"
+down_revision = "44cd9fd55df9"
 branch_labels = None
 depends_on = None
 
