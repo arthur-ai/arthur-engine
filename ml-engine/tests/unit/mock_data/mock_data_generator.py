@@ -89,6 +89,20 @@ def random_model() -> Model:
             ),
         ],
         data_plane_id=str(uuid4()),
+        data_plane=DataPlane(
+            id=str(uuid4()),
+            name="yeet-data-plane",
+            workspace_id=str(uuid4()),
+            description="yeet-data-plane",
+            user_id=str(uuid4()),
+            infrastructure=Infrastructure.AWS,
+            last_check_in_time=None,
+            capabilities=DataPlaneCapabilities(
+                gen_ai_enabled=True,
+            ),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
     )
 
 
