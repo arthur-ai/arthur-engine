@@ -1,9 +1,11 @@
 import LaunchIcon from "@mui/icons-material/Launch";
-import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, IconButton, Typography } from "@mui/material";
+import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, IconButton, Typography, capitalize } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-import { Annotation } from "./schema";
+import { Annotation, isContinuousEvalAnnotation } from "./schema";
+
+import { formatCurrency } from "@/utils/formatters";
 
 type Props = {
   annotations: Annotation[];
@@ -33,7 +35,9 @@ export const AnnotationsTable = ({ annotations }: Props) => {
           {table.getHeaderGroups().map((header) => (
             <TableRow key={header.id}>
               {header.headers.map((header) => (
-                <TableCell key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableCell>
+                <TableCell colSpan={header.colSpan} key={header.id}>
+                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableCell>
               ))}
             </TableRow>
           ))}
@@ -76,18 +80,39 @@ const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { 
   columnHelper.accessor("annotation_description", {
     header: "Annotation Description",
   }),
-  columnHelper.display({
-    id: "details",
-    cell: ({ row }) => {
-      const annotation = row.original;
+  columnHelper.group({
+    header: "Continuous Eval",
+    columns: [
+      columnHelper.accessor("run_status", {
+        header: "Run Status",
+        cell: ({ row }) => {
+          if (!isContinuousEvalAnnotation(row.original)) return;
 
-      if (annotation.annotation_type === "human") return;
+          return capitalize(row.original.run_status);
+        },
+      }),
+      columnHelper.accessor("cost", {
+        header: "Cost",
+        cell: ({ row }) => {
+          if (!isContinuousEvalAnnotation(row.original)) return;
 
-      return (
-        <IconButton onClick={() => onView(annotation)} size="small">
-          <LaunchIcon fontSize="small" />
-        </IconButton>
-      );
-    },
+          return formatCurrency(row.original.cost ?? 0);
+        },
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: ({ row }) => {
+          const annotation = row.original;
+
+          if (annotation.annotation_type === "human") return;
+
+          return (
+            <IconButton onClick={() => onView(annotation)} size="small">
+              <LaunchIcon fontSize="small" />
+            </IconButton>
+          );
+        },
+      }),
+    ],
   }),
 ];

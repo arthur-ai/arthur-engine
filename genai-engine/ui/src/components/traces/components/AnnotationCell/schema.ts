@@ -15,9 +15,9 @@ export const HumanAnnotation = z.object({
 export const ContinuousEvalAnnotation = z.object({
   annotation_type: z.literal("continuous_eval"),
   annotation_score: z.number(),
-  annotation_description: z.string(),
-  trace_id: z.string(),
-  continuous_eval_id: z.string(),
+  annotation_description: z.string().optional(),
+  trace_id: z.string().optional(),
+  continuous_eval_id: z.string().optional(),
   input_variables: z
     .array(
       z.object({
@@ -25,8 +25,8 @@ export const ContinuousEvalAnnotation = z.object({
         value: z.string(),
       })
     )
-    .nullable(),
-  cost: z.number(),
+    .optional(),
+  cost: z.number().optional(),
   run_status: z.string<ContinuousEvalRunStatus>(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -35,3 +35,9 @@ export const ContinuousEvalAnnotation = z.object({
 export const Annotation = z.discriminatedUnion("annotation_type", [HumanAnnotation, ContinuousEvalAnnotation]);
 
 export type Annotation = z.infer<typeof Annotation>;
+
+export type ContinuousEvalAnnotation = z.infer<typeof ContinuousEvalAnnotation>;
+export type HumanAnnotation = z.infer<typeof HumanAnnotation>;
+
+export const isContinuousEvalAnnotation = (annotation: Annotation): annotation is ContinuousEvalAnnotation =>
+  annotation.annotation_type === "continuous_eval";

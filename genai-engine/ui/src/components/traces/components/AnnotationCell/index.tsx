@@ -3,7 +3,6 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typogra
 import { motion } from "framer-motion";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
-import z from "zod";
 
 import { Annotation } from "./schema";
 import { AnnotationsTable } from "./table";
@@ -18,17 +17,18 @@ type Props = {
   className?: string;
 };
 
-const Annotations = z.array(Annotation);
-
 export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [ref, { width }] = useMeasure();
 
-  const parsed = Annotations.safeParse(annotations);
+  const parsed = annotations
+    .map((annotation) => {
+      const parsed = Annotation.safeParse(annotation);
+      if (!parsed.success) return;
 
-  if (!parsed.success) {
-    return null;
-  }
+      return parsed.data;
+    })
+    .filter(Boolean);
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -36,6 +36,8 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
 
     setModalOpen(true);
   };
+
+  if (parsed.length === 0) return null;
 
   return (
     <>
@@ -54,7 +56,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
         <div ref={ref} className="overflow-visible w-min flex items-center">
           {/* <Icon sx={{ fontSize: 12, ml: 1 }} /> */}
           <Typography variant="caption" color="inherit" fontWeight={500} className="select-none leading-none" sx={{ mx: 1 }}>
-            {parsed.data.length} annotation(s)
+            {parsed.length} annotation(s)
           </Typography>
           <Box className="border-l border-(--color)/50 bg-(--color)/10 group-hover:block group-focus-visible:block hidden" sx={{ pl: 0.5, pr: 0.75 }}>
             <OpenInFullIcon sx={{ fontSize: 12 }} />
@@ -68,7 +70,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
           <CopyableChip label={traceId} sx={{ fontFamily: "monospace" }} />
         </DialogTitle>
         <DialogContent dividers>
-          <AnnotationsTable annotations={parsed.data} />
+          <AnnotationsTable annotations={parsed} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setModalOpen(false)} variant="contained">
