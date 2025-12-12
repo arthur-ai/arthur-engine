@@ -7,7 +7,7 @@ export const DatePickerField = ({
   value,
   onChange,
   ...props
-}: Omit<DatePickerProps<Dayjs>, "value" | "onChange"> & {
+}: Omit<DatePickerProps, "value" | "onChange"> & {
   value?: Dayjs | null;
   onChange?: (value: Dayjs | null) => void;
 }) => {
@@ -26,7 +26,6 @@ export const DatePickerField = ({
         ...props.slotProps,
         textField: {
           size: "small",
-          variant: "filled",
           onBlur: () => field.handleBlur(),
           ...props.slotProps?.textField,
         },

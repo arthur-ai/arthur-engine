@@ -24,7 +24,6 @@ import { useDatasets } from "@/hooks/useDatasets";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
-import { TransformExtractionResponseVariable } from "@/lib/api-client/api-client";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 type Props = {
@@ -46,7 +45,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     state: "open",
   });
   const [showSaveTransformDialog, setShowSaveTransformDialog] = useState(false);
-  const [savedTransformId, setSavedTransformId] = useState<string | undefined>();
+  const [, setSavedTransformId] = useState<string | undefined>();
   const [showCreateDatasetDialog, setShowCreateDatasetDialog] = useState(false);
   const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
   const [pendingColumns, setPendingColumns] = useState<Record<string, string[]>>({});
@@ -345,12 +344,12 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
                             if (response.data.variables && response.data.variables.length > 0) {
                               // Map extracted variables with path information from transform definition
-                              const executedColumns = response.data.variables.map((variable: TransformExtractionResponseVariable) => {
-                                const variableDef = value.definition.variables.find((v) => v.variable_name === variable.variable_name);
+                              const executedColumns = response.data.variables.map((variable) => {
+                                const variableDef = value.definition.variables.find((v) => v.variable_name === variable.name);
 
                                 if (!variableDef) {
                                   return {
-                                    name: variable.variable_name,
+                                    name: variable.name,
                                     value: variable.value,
                                     path: "",
                                     span_name: "",
@@ -375,7 +374,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                                 }
 
                                 return {
-                                  name: variable.variable_name,
+                                  name: variable.name,
                                   value: variable.value,
                                   path: validatedPath,
                                   span_name: validatedSpanName,
