@@ -729,9 +729,7 @@ def list_annotations_for_trace(
             filter_request=filter_request,
         )
         return ListAgenticAnnotationsResponse(
-            annotations=[
-                annotation.to_response_model() for annotation in annotations
-            ],
+            annotations=[annotation.to_response_model() for annotation in annotations],
             count=len(annotations),
         )
     except ValueError as e:

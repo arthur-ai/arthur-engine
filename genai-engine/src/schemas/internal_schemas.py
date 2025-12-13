@@ -789,8 +789,7 @@ class TraceMetadata(TokenCountCostSchema):
         annotation_response = None
         if self.annotations:
             annotation_response = [
-                annotation.to_response_model()
-                for annotation in self.annotations
+                annotation.to_response_model() for annotation in self.annotations
             ]
 
         return TraceMetadataResponse(

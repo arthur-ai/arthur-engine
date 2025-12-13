@@ -137,8 +137,7 @@ def list_continuous_eval_run_results(
         )
         return ListAgenticAnnotationsResponse(
             annotations=[
-                annotation.to_response_model()
-                for annotation in agentic_annotations
+                annotation.to_response_model() for annotation in agentic_annotations
             ],
             count=len(agentic_annotations),
         )
