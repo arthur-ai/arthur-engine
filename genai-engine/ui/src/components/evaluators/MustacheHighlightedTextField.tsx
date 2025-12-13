@@ -3,6 +3,8 @@ import Chip from "@mui/material/Chip";
 import { styled } from "@mui/material/styles";
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
 
+import { VariableChip } from "./VariableChip";
+
 // Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
 const JINJA_2_KEYWORDS = new Set([
   "if",
@@ -536,29 +538,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
                 Variables:
               </Box>
               {nunjucksTokens.variables.map((variable: string, index: number) => (
-                <Chip
-                  key={`var-${index}`}
-                  label={variable}
-                  size="small"
-                  onClick={() => highlightToken(variable)}
-                  sx={{
-                    height: 20,
-                    fontSize: "0.7rem",
-                    fontFamily: "monospace",
-                    backgroundColor: "rgba(180, 190, 165, 0.2)",
-                    color: "#1976d2",
-                    fontWeight: 400,
-                    cursor: "pointer",
-                    "&:hover": {
-                      backgroundColor: "rgba(180, 190, 165, 0.35)",
-                    },
-                    "& .MuiChip-label": {
-                      px: 1,
-                      py: 0,
-                      lineHeight: "20px",
-                    },
-                  }}
-                />
+                <VariableChip key={`variable-${index}`} variable={variable} onClick={() => highlightToken(variable)} />
               ))}
             </>
           )}
