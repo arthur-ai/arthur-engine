@@ -35,7 +35,6 @@ from arthur_common.models.request_schemas import (
     TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationMetadataResponse,
     AgenticAnnotationResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
@@ -696,21 +695,6 @@ class AgenticAnnotation(BaseModel):
             updated_at=self.updated_at,
         )
 
-    def to_metadata_response_model(self) -> AgenticAnnotationMetadataResponse:
-        return AgenticAnnotationMetadataResponse(
-            id=str(self.id),
-            annotation_type=self.annotation_type,
-            trace_id=self.trace_id,
-            continuous_eval_id=(
-                str(self.continuous_eval_id) if self.continuous_eval_id else None
-            ),
-            annotation_score=self.annotation_score,
-            run_status=self.run_status,
-            cost=self.cost,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-        )
-
 
 class TraceMetadata(TokenCountCostSchema):
     trace_id: str
@@ -778,7 +762,7 @@ class TraceMetadata(TokenCountCostSchema):
         annotation_response = None
         if self.annotations:
             annotation_response = [
-                annotation.to_metadata_response_model()
+                annotation.to_response_model()
                 for annotation in self.annotations
             ]
 

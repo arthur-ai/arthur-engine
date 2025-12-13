@@ -37,7 +37,7 @@ from arthur_common.models.response_schemas import (
     ChatResponse,
     ExternalDocument,
     FileUploadResult,
-    ListAgenticAnnotationsMetadataResponse,
+    ListAgenticAnnotationsResponse,
     QueryFeedbackResponse,
     QueryInferencesResponse,
     QuerySpansResponse,
@@ -2570,7 +2570,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         trace_id: str,
         search_url: str = None,
-    ) -> tuple[int, ListAgenticAnnotationsMetadataResponse | str]:
+    ) -> tuple[int, ListAgenticAnnotationsResponse | str]:
         """Get an annotation by id."""
         base_url = f"/api/v1/traces/{trace_id}/annotations"
         if search_url:
@@ -2585,7 +2585,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                ListAgenticAnnotationsMetadataResponse.model_validate(resp.json())
+                ListAgenticAnnotationsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -3744,7 +3744,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         task_id: str,
         search_url: str = None,
-    ) -> tuple[int, ListAgenticAnnotationsMetadataResponse]:
+    ) -> tuple[int, ListAgenticAnnotationsResponse]:
         """List continuous evals."""
         base_url = f"/api/v1/tasks/{task_id}/continuous_evals/results"
         if search_url:
@@ -3759,7 +3759,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                ListAgenticAnnotationsMetadataResponse.model_validate(resp.json())
+                ListAgenticAnnotationsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

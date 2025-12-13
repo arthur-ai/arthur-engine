@@ -416,7 +416,7 @@ def test_list_trace_annotations_pagination(
     assert data.count == len(annotations)
     assert len(data.annotations) == len(annotations)
     for i in range(len(data.annotations)):
-        metadata_response = annotations[i].to_metadata_response_model()
+        metadata_response = annotations[i].to_response_model()
         assert data.annotations[i].id == metadata_response.id
         assert (
             data.annotations[i].annotation_score == metadata_response.annotation_score
@@ -440,7 +440,7 @@ def test_list_trace_annotations_pagination(
     assert data.count == len(annotations)
     assert len(data.annotations) == len(annotations)
     for i in range(len(data.annotations)):
-        metadata_response = annotations[i].to_metadata_response_model()
+        metadata_response = annotations[i].to_response_model()
         assert data.annotations[i].id == metadata_response.id
         assert (
             data.annotations[i].annotation_score == metadata_response.annotation_score
@@ -463,7 +463,7 @@ def test_list_trace_annotations_pagination(
     assert data.count == len(annotations) // 2
     assert len(data.annotations) == len(annotations) // 2
     for i in range(len(data.annotations)):
-        metadata_response = annotations[i].to_metadata_response_model()
+        metadata_response = annotations[i].to_response_model()
         assert data.annotations[i].id == metadata_response.id
         assert (
             data.annotations[i].annotation_score == metadata_response.annotation_score
@@ -542,7 +542,7 @@ def test_list_trace_annotations_filtering(
     assert data.count == len(annotations) - 1
     assert len(data.annotations) == len(annotations) - 1
     for i in range(len(data.annotations)):
-        metadata_response = continuous_eval_annotations[i].to_metadata_response_model()
+        metadata_response = continuous_eval_annotations[i].to_response_model()
         assert data.annotations[i].id == metadata_response.id
         assert (
             data.annotations[i].annotation_score == metadata_response.annotation_score
@@ -564,7 +564,7 @@ def test_list_trace_annotations_filtering(
     assert status_code == 200
     assert data.count == 1
     assert len(data.annotations) == 1
-    human_annotation_metadata_response = human_annotation.to_metadata_response_model()
+    human_annotation_metadata_response = human_annotation.to_response_model()
     assert data.annotations[0].id == human_annotation_metadata_response.id
     assert (
         data.annotations[0].annotation_score
@@ -596,7 +596,7 @@ def test_list_trace_annotations_filtering(
     assert data.count == len(annotations) - 1
     assert len(data.annotations) == len(annotations) - 1
     for i in range(len(data.annotations)):
-        metadata_response = continuous_eval_annotations[i].to_metadata_response_model()
+        metadata_response = continuous_eval_annotations[i].to_response_model()
         assert data.annotations[i].id == metadata_response.id
         assert (
             data.annotations[i].annotation_score == metadata_response.annotation_score
@@ -618,7 +618,7 @@ def test_list_trace_annotations_filtering(
     assert data.count == len(annotations) - 1
     assert len(data.annotations) == len(annotations) - 1
     for i in range(len(data.annotations)):
-        metadata_response = continuous_eval_annotations[i].to_metadata_response_model()
+        metadata_response = continuous_eval_annotations[i].to_response_model()
         assert data.annotations[i].id == metadata_response.id
         assert (
             data.annotations[i].annotation_score == metadata_response.annotation_score
