@@ -14,6 +14,17 @@ The agent uses a multi-agent workflow with 5 specialized agents:
 
 The websearch and GitHub agents run in parallel for efficiency.
 
+### Dynamic Model Selection
+
+Each agent uses the **model specified in its Arthur prompt configuration**. When a prompt is fetched from Arthur, it includes:
+- `model_provider` (e.g., "openai")
+- `model_name` (e.g., "gpt-4o", "gpt-4-turbo")
+
+The agent automatically uses this model for inference, allowing you to:
+- Change models without code changes (just update the prompt in Arthur)
+- Use different models for different agents (e.g., faster models for planning, more capable models for drafting)
+- A/B test different models by changing prompt configurations
+
 ## Prerequisites
 
 - Node.js 18+

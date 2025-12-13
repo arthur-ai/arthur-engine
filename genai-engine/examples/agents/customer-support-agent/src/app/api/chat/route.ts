@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mastra } from "@/mastra";
 import { getTemplatedPrompt } from "@/mastra/lib/arthur-api-client";
+import { resolveModelFromPrompt } from "@/mastra/lib/model-resolver";
 import { wrapMastra, getAITracing, AISpanType } from "@mastra/core/ai-tracing";
 import { z } from "zod";
 
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
     try {
       // Step 1: Plan
       console.log("Step 1: Creating plan...");
-      const { messages: planMessages } = await getTemplatedPrompt({
+      const planPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-plan",
         promptVersion: "production",
         taskId: process.env.ARTHUR_TASK_ID!,
@@ -78,10 +79,11 @@ export async function POST(req: NextRequest) {
       });
 
       const planAgent = tracedMastra.getAgent("planAgent");
-    const planResult = await planAgent.generate(planMessages, {
-      output: PlanOutputSchema,
-    });
-    const plan = planResult.object;
+      const planResult = await planAgent.generate(planPrompt.messages, {
+        output: PlanOutputSchema,
+        model: resolveModelFromPrompt(planPrompt),
+      });
+      const plan = planResult.object;
 
     // Steps 2-3: Parallel search
     console.log("Steps 2-3: Executing searches...");
@@ -92,7 +94,7 @@ export async function POST(req: NextRequest) {
     if (plan.needsDocs && plan.docsQuery) {
       searchPromises.push(
         (async () => {
-          const { messages } = await getTemplatedPrompt({
+          const websearchPrompt = await getTemplatedPrompt({
             promptName: "mastra-agent-support-websearch",
             promptVersion: "production",
             taskId: process.env.ARTHUR_TASK_ID!,
@@ -103,7 +105,10 @@ export async function POST(req: NextRequest) {
             tracingContext,
           });
           const agent = tracedMastra.getAgent("websearchAgent");
-          const result = await agent.generate(messages, { output: SearchOutputSchema });
+          const result = await agent.generate(websearchPrompt.messages, {
+            output: SearchOutputSchema,
+            model: resolveModelFromPrompt(websearchPrompt),
+          });
           return { type: "docs", data: result.object };
         })()
       );
@@ -112,7 +117,7 @@ export async function POST(req: NextRequest) {
     if (plan.needsCode && plan.codeQuery) {
       searchPromises.push(
         (async () => {
-          const { messages } = await getTemplatedPrompt({
+          const githubPrompt = await getTemplatedPrompt({
             promptName: "mastra-agent-support-github",
             promptVersion: "production",
             taskId: process.env.ARTHUR_TASK_ID!,
@@ -123,7 +128,10 @@ export async function POST(req: NextRequest) {
             tracingContext,
           });
           const agent = tracedMastra.getAgent("githubAgent");
-          const result = await agent.generate(messages, { output: SearchOutputSchema });
+          const result = await agent.generate(githubPrompt.messages, {
+            output: SearchOutputSchema,
+            model: resolveModelFromPrompt(githubPrompt),
+          });
           return { type: "github", data: result.object };
         })()
       );
@@ -137,7 +145,7 @@ export async function POST(req: NextRequest) {
 
       // Step 4: Draft
       console.log("Step 4: Drafting response...");
-      const { messages: draftMessages } = await getTemplatedPrompt({
+      const draftPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-draft",
         promptVersion: "production",
         taskId: process.env.ARTHUR_TASK_ID!,
@@ -150,14 +158,15 @@ export async function POST(req: NextRequest) {
       });
 
       const draftAgent = tracedMastra.getAgent("draftAgent");
-      const draftResult = await draftAgent.generate(draftMessages, {
+      const draftResult = await draftAgent.generate(draftPrompt.messages, {
         output: DraftOutputSchema,
+        model: resolveModelFromPrompt(draftPrompt),
       });
       const draft = draftResult.object;
 
       // Step 5: Review
       console.log("Step 5: Reviewing and finalizing...");
-      const { messages: reviewMessages } = await getTemplatedPrompt({
+      const reviewPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-review",
         promptVersion: "production",
         taskId: process.env.ARTHUR_TASK_ID!,
@@ -170,24 +179,28 @@ export async function POST(req: NextRequest) {
       });
 
       const reviewAgent = tracedMastra.getAgent("reviewAgent");
-      const reviewResult = await reviewAgent.generate(reviewMessages, {
+      const reviewResult = await reviewAgent.generate(reviewPrompt.messages, {
         output: ReviewOutputSchema,
+        model: resolveModelFromPrompt(reviewPrompt),
       });
       const finalOutput = reviewResult.object;
 
       console.log("Request completed");
 
+      // Ensure sources is always an array
+      const sources = finalOutput.sources ?? [];
+
       // End the root span with the final output
       rootSpan.end({
         output: {
           finalResponse: finalOutput.finalResponse,
-          sources: finalOutput.sources,
+          sources: sources,
         },
       });
 
       return NextResponse.json({
         answer: finalOutput.finalResponse,
-        sources: finalOutput.sources,
+        sources: sources,
         completeness: finalOutput.completeness,
         metadata: {
           plan: plan.plan,

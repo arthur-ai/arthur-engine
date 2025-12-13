@@ -19,7 +19,8 @@ import fs from "fs/promises";
 import path from "path";
 import { mastra } from "../src/mastra";
 import { getTemplatedPrompt } from "../src/mastra/lib/arthur-api-client";
-import { wrapMastra, getAITracing, AISpanType } from "@mastra/core/ai-tracing";
+import { resolveModelFromPrompt } from "../src/mastra/lib/model-resolver";
+import { wrapMastra, getAITracing, AISpanType, shutdownAITracingRegistry } from "@mastra/core/ai-tracing";
 import { z } from "zod";
 
 // Define schemas (same as in the API route)
@@ -109,7 +110,7 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
     try {
       // Step 1: Plan
       console.log("Step 1: Creating plan...");
-      const { messages: planMessages } = await getTemplatedPrompt({
+      const planPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-plan",
         promptVersion: "production",
         taskId: process.env.ARTHUR_TASK_ID!,
@@ -118,8 +119,9 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
       });
 
       const planAgent = tracedMastra.getAgent("planAgent");
-      const planResult = await planAgent.generate(planMessages, {
+      const planResult = await planAgent.generate(planPrompt.messages, {
         output: PlanOutputSchema,
+        model: resolveModelFromPrompt(planPrompt),
       });
       const plan = planResult.object;
       console.log(`Plan: ${plan.plan}`);
@@ -135,7 +137,7 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
         console.log(`  - Searching docs with query: "${plan.docsQuery}"`);
         searchPromises.push(
           (async () => {
-            const { messages } = await getTemplatedPrompt({
+            const websearchPrompt = await getTemplatedPrompt({
               promptName: "mastra-agent-support-websearch",
               promptVersion: "production",
               taskId: process.env.ARTHUR_TASK_ID!,
@@ -146,7 +148,10 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
               tracingContext,
             });
             const agent = tracedMastra.getAgent("websearchAgent");
-            const result = await agent.generate(messages, { output: SearchOutputSchema });
+            const result = await agent.generate(websearchPrompt.messages, {
+              output: SearchOutputSchema,
+              model: resolveModelFromPrompt(websearchPrompt),
+            });
             return { type: "docs", data: result.object };
           })()
         );
@@ -156,7 +161,7 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
         console.log(`  - Searching GitHub with query: "${plan.codeQuery}"`);
         searchPromises.push(
           (async () => {
-            const { messages } = await getTemplatedPrompt({
+            const githubPrompt = await getTemplatedPrompt({
               promptName: "mastra-agent-support-github",
               promptVersion: "production",
               taskId: process.env.ARTHUR_TASK_ID!,
@@ -167,7 +172,10 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
               tracingContext,
             });
             const agent = tracedMastra.getAgent("githubAgent");
-            const result = await agent.generate(messages, { output: SearchOutputSchema });
+            const result = await agent.generate(githubPrompt.messages, {
+              output: SearchOutputSchema,
+              model: resolveModelFromPrompt(githubPrompt),
+            });
             return { type: "github", data: result.object };
           })()
         );
@@ -187,7 +195,7 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
 
       // Step 4: Draft
       console.log("\nStep 4: Drafting response...");
-      const { messages: draftMessages } = await getTemplatedPrompt({
+      const draftPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-draft",
         promptVersion: "production",
         taskId: process.env.ARTHUR_TASK_ID!,
@@ -200,15 +208,16 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
       });
 
       const draftAgent = tracedMastra.getAgent("draftAgent");
-      const draftResult = await draftAgent.generate(draftMessages, {
+      const draftResult = await draftAgent.generate(draftPrompt.messages, {
         output: DraftOutputSchema,
+        model: resolveModelFromPrompt(draftPrompt),
       });
       const draft = draftResult.object;
       console.log(`Draft confidence: ${draft.confidence}`);
 
       // Step 5: Review
       console.log("\nStep 5: Reviewing and finalizing...");
-      const { messages: reviewMessages } = await getTemplatedPrompt({
+      const reviewPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-review",
         promptVersion: "production",
         taskId: process.env.ARTHUR_TASK_ID!,
@@ -221,21 +230,25 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
       });
 
       const reviewAgent = tracedMastra.getAgent("reviewAgent");
-      const reviewResult = await reviewAgent.generate(reviewMessages, {
+      const reviewResult = await reviewAgent.generate(reviewPrompt.messages, {
         output: ReviewOutputSchema,
+        model: resolveModelFromPrompt(reviewPrompt),
       });
       const finalOutput = reviewResult.object;
 
       const durationMs = Date.now() - startTime;
       console.log(`\n✓ Completed in ${durationMs}ms`);
       console.log(`Completeness: ${finalOutput.completeness}`);
-      console.log(`Sources: ${finalOutput.sources.length}`);
+      console.log(`Sources: ${finalOutput.sources?.length ?? 0}`);
+
+      // Ensure sources is always an array
+      const sources = finalOutput.sources ?? [];
 
       // End the root span with success
       rootSpan.end({
         output: {
           finalResponse: finalOutput.finalResponse,
-          sources: finalOutput.sources,
+          sources: sources,
         },
       });
 
@@ -244,7 +257,7 @@ async function processQuestion(question: TestQuestion): Promise<TestResult> {
         question: question.question,
         category: question.category,
         answer: finalOutput.finalResponse,
-        sources: finalOutput.sources,
+        sources: sources,
         completeness: finalOutput.completeness,
         metadata: {
           plan: plan.plan,
@@ -357,12 +370,26 @@ async function main() {
   console.log("Test harness completed!");
   console.log("=".repeat(80));
   
+  // Gracefully shutdown AI tracing to flush all spans
+  console.log("\nFlushing traces to Arthur...");
+  await shutdownAITracingRegistry();
+  console.log("✓ All traces flushed successfully");
+  
   // Exit with error code if any tests failed
   process.exit(failed.length > 0 ? 1 : 0);
 }
 
 // Run the test harness
-main().catch((error) => {
+main().catch(async (error) => {
   console.error("Fatal error in test harness:", error);
+  
+  // Attempt to flush traces even on error
+  try {
+    console.log("\nAttempting to flush traces...");
+    await shutdownAITracingRegistry();
+  } catch (shutdownError) {
+    console.error("Error during trace shutdown:", shutdownError);
+  }
+  
   process.exit(1);
 });
