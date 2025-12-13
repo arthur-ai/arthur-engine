@@ -8,11 +8,11 @@ import { Annotation } from "./schema";
 import { AnnotationsTable } from "./table";
 
 import { CopyableChip } from "@/components/common";
-import type { AgenticAnnotationMetadataResponse } from "@/lib/api-client/api-client";
+import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { cn } from "@/utils/cn";
 
 type Props = {
-  annotations: AgenticAnnotationMetadataResponse[];
+  annotations: AgenticAnnotationResponse[];
   traceId: string;
   className?: string;
 };

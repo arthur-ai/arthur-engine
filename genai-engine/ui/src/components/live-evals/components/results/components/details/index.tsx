@@ -3,9 +3,13 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import { Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Paper, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
 
 import { CopyableChip } from "@/components/common";
+import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
+import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
 import { formatDate } from "@/utils/formatters";
 
 type Props = {
@@ -14,7 +18,13 @@ type Props = {
 };
 
 export const Details = ({ annotationId, onClose }: Props) => {
+  const api = useApi()!;
+  const { task } = useTask();
   const { data, isLoading } = useAnnotation(annotationId);
+
+  // Eval instructions state
+  const [evalInstructions, setEvalInstructions] = useState<string | null>(null);
+  const [loadingInstructions, setLoadingInstructions] = useState(false);
 
   const getStatusChip = (status: string) => {
     const isPassed = status === "passed";
@@ -35,25 +45,39 @@ export const Details = ({ annotationId, onClose }: Props) => {
     return "error.main";
   };
 
+  // Fetch eval instructions when data is available
+  useEffect(() => {
+    const fetchInstructions = async () => {
+      if (!data?.eval_name || data.eval_version == null || !task?.id || !api) {
+        setEvalInstructions(null);
+        return;
+      }
+
+      try {
+        setLoadingInstructions(true);
+        const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
+          data.eval_name,
+          String(data.eval_version),
+          task.id
+        );
+        setEvalInstructions(response.data.instructions || null);
+      } catch (error) {
+        console.error("Failed to load eval instructions:", error);
+        setEvalInstructions(null);
+      } finally {
+        setLoadingInstructions(false);
+      }
+    };
+
+    fetchInstructions();
+  }, [data?.eval_name, data?.eval_version, task?.id, api]);
+
   return (
     <Dialog open={!!annotationId} onClose={onClose} maxWidth="xl" fullWidth>
-      <DialogTitle className="flex items-center justify-between gap-4">
-        <Box className="flex items-center gap-3">
-          <Typography variant="h6" fontWeight={600}>
-            Annotation Details
-          </Typography>
-          {data?.run_status && getStatusChip(data.run_status)}
-        </Box>
-        {data?.annotation_score != null && (
-          <Box className="flex items-center gap-2">
-            <Typography variant="body2" color="text.secondary">
-              Score
-            </Typography>
-            <Typography variant="h5" fontWeight={700} sx={{ color: getScoreColor(data.annotation_score) }}>
-              {data.annotation_score}
-            </Typography>
-          </Box>
-        )}
+      <DialogTitle>
+        <Typography variant="h6" fontWeight={600}>
+          Annotation Details
+        </Typography>
       </DialogTitle>
 
       <DialogContent dividers>
@@ -63,85 +87,48 @@ export const Details = ({ annotationId, onClose }: Props) => {
           </Box>
         ) : data ? (
           <Box className="flex flex-col gap-4">
-            {/* IDs Section */}
-            <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                  Annotation ID
-                </Typography>
-                <CopyableChip label={data.id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
-              </Paper>
-
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                  Trace ID
-                </Typography>
-                <CopyableChip label={data.trace_id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
-              </Paper>
-
-              {data.continuous_eval_id && (
+            {/* Status, Score, and Eval Name Section */}
+            <Box className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {data.run_status && (
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                    Continuous Eval ID
+                    Status
                   </Typography>
-                  <CopyableChip label={data.continuous_eval_id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
+                  {getStatusChip(data.run_status)}
                 </Paper>
               )}
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                  Annotation Type
-                </Typography>
-                <Chip label={data.annotation_type} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
-              </Paper>
+              {data.annotation_score != null && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                    Score
+                  </Typography>
+                  <Typography variant="h5" fontWeight={700} sx={{ color: getScoreColor(data.annotation_score) }}>
+                    {data.annotation_score}
+                  </Typography>
+                </Paper>
+              )}
+
+              {data.eval_name && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                    Eval Name
+                  </Typography>
+                  <Box className="flex items-center gap-1">
+                    <Chip label={data.eval_name} size="small" color="primary" variant="outlined" sx={{ fontWeight: 500 }} />
+                    {data.eval_version != null && (
+                      <Chip label={`v${data.eval_version}`} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
+                    )}
+                  </Box>
+                </Paper>
+              )}
             </Box>
 
-            {/* Stats Row */}
-            <Box className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
-                <AttachMoneyIcon color="action" />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Cost
-                  </Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    ${data.cost?.toFixed(6) ?? "N/A"}
-                  </Typography>
-                </Box>
-              </Paper>
-
-              <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
-                <AccessTimeIcon color="action" />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Created
-                  </Typography>
-                  <Typography variant="body2" fontWeight={500}>
-                    {data.created_at ? formatDate(data.created_at) : "N/A"}
-                  </Typography>
-                </Box>
-              </Paper>
-
-              <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
-                <AccessTimeIcon color="action" />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Updated
-                  </Typography>
-                  <Typography variant="body2" fontWeight={500}>
-                    {data.updated_at ? formatDate(data.updated_at) : "N/A"}
-                  </Typography>
-                </Box>
-              </Paper>
-            </Box>
-
-            <Divider />
-
-            {/* Description */}
+            {/* Explanation */}
             {data.annotation_description && (
               <Box>
                 <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                  Description
+                  Explanation
                 </Typography>
                 <Paper
                   variant="outlined"
@@ -157,6 +144,50 @@ export const Details = ({ annotationId, onClose }: Props) => {
                 </Paper>
               </Box>
             )}
+
+            {/* Eval Instructions */}
+            {loadingInstructions ? (
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  Evaluation Criteria
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, display: "flex", justifyContent: "center" }}>
+                  <CircularProgress size={24} />
+                </Paper>
+              </Box>
+            ) : evalInstructions ? (
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  Evaluation Criteria
+                </Typography>
+                <Box
+                  sx={{
+                    "& .MuiTextField-root": {
+                      display: "flex",
+                      flexDirection: "column",
+                    },
+                    "& .MuiInputBase-root": {
+                      maxHeight: 300,
+                      alignItems: "flex-start",
+                    },
+                    "& .MuiInputBase-input": {
+                      overflow: "auto !important",
+                    },
+                  }}
+                >
+                  <NunjucksHighlightedTextField
+                    value={evalInstructions}
+                    onChange={() => {}} // Read-only, no-op
+                    disabled
+                    multiline
+                    minRows={4}
+                    size="small"
+                  />
+                </Box>
+              </Box>
+            ) : null}
+
+            <Divider />
 
             {/* Input Variables */}
             {data.input_variables && data.input_variables.length > 0 && (
@@ -201,6 +232,92 @@ export const Details = ({ annotationId, onClose }: Props) => {
                 </Box>
               </Box>
             )}
+
+            <Divider />
+
+            {/* Stats Row */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                Metadata
+              </Typography>
+              <Box className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <AttachMoneyIcon color="action" />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Cost
+                    </Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      ${data.cost?.toFixed(6) ?? "N/A"}
+                    </Typography>
+                  </Box>
+                </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <AccessTimeIcon color="action" />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Created
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {data.created_at ? formatDate(data.created_at) : "N/A"}
+                    </Typography>
+                  </Box>
+                </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <AccessTimeIcon color="action" />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Updated
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {data.updated_at ? formatDate(data.updated_at) : "N/A"}
+                    </Typography>
+                  </Box>
+                </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                    Annotation Type
+                  </Typography>
+                  <Chip label={data.annotation_type} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
+                </Paper>
+              </Box>
+            </Box>
+
+            <Divider />
+
+            {/* IDs Section */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                IDs
+              </Typography>
+              <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                    Annotation ID
+                  </Typography>
+                  <CopyableChip label={data.id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
+                </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                    Trace ID
+                  </Typography>
+                  <CopyableChip label={data.trace_id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
+                </Paper>
+
+                {data.continuous_eval_id && (
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                      Continuous Eval ID
+                    </Typography>
+                    <CopyableChip label={data.continuous_eval_id} sx={{ fontFamily: "monospace", fontSize: 12 }} />
+                  </Paper>
+                )}
+              </Box>
+            </Box>
           </Box>
         ) : (
           <Typography color="text.secondary" className="text-center py-8">
