@@ -1,5 +1,5 @@
 import LaunchIcon from "@mui/icons-material/Launch";
-import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, IconButton, Typography, capitalize } from "@mui/material";
+import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, IconButton, Typography, Chip } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -63,6 +63,25 @@ export const AnnotationsTable = ({ annotations }: Props) => {
 
 const columnHelper = createColumnHelper<Annotation>();
 
+const getStatusChipSx = (status: string) => {
+  const colorMap: Record<string, any> = {
+    pending: { color: "text.secondary", borderColor: "text.secondary" },
+    running: { color: "primary.main", borderColor: "primary.main" },
+    passed: { color: "success.main", borderColor: "success.main" },
+    failed: { color: "error.main", borderColor: "error.main" },
+    error: { color: "error.main", borderColor: "error.main" },
+    skipped: { color: "warning.main", borderColor: "warning.main" },
+  };
+
+  const colors = colorMap[status.toLowerCase()] || { color: "text.secondary", borderColor: "text.secondary" };
+  return {
+    ...colors,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderStyle: "solid",
+  };
+};
+
 const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { annotation_type: "continuous_eval" }>) => void }) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
@@ -78,46 +97,59 @@ const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { 
       );
     },
   }),
+  columnHelper.accessor("eval_name", {
+    header: "Eval Name",
+    cell: ({ row }) => {
+      if (!isContinuousEvalAnnotation(row.original)) return null;
+
+      const evalName = row.original.eval_name;
+      const evalVersion = row.original.eval_version;
+
+      if (!evalName) return null;
+
+      return (
+        <Typography variant="body2">
+          {evalName} {evalVersion != null && `(v${evalVersion})`}
+        </Typography>
+      );
+    },
+  }),
   columnHelper.accessor("annotation_score", {
     header: "Annotation Score",
     cell: ({ getValue }) => getValue(),
   }),
   columnHelper.accessor("annotation_description", {
-    header: "Annotation Description",
+    header: "Annotation Explanation",
   }),
-  columnHelper.group({
-    header: "Continuous Eval",
-    columns: [
-      columnHelper.accessor("run_status", {
-        header: "Run Status",
-        cell: ({ row }) => {
-          if (!isContinuousEvalAnnotation(row.original)) return;
+  columnHelper.accessor("run_status", {
+    header: "Run Status",
+    cell: ({ row }) => {
+      if (!isContinuousEvalAnnotation(row.original)) return;
 
-          return capitalize(row.original.run_status);
-        },
-      }),
-      columnHelper.accessor("cost", {
-        header: "Cost",
-        cell: ({ row }) => {
-          if (!isContinuousEvalAnnotation(row.original)) return;
+      const status = row.original.run_status;
+      return <Chip label={status} size="small" sx={getStatusChipSx(status)} />;
+    },
+  }),
+  columnHelper.accessor("cost", {
+    header: "Cost",
+    cell: ({ row }) => {
+      if (!isContinuousEvalAnnotation(row.original)) return;
 
-          return formatCurrency(row.original.cost ?? 0);
-        },
-      }),
-      columnHelper.display({
-        id: "actions",
-        cell: ({ row }) => {
-          const annotation = row.original;
+      return formatCurrency(row.original.cost ?? 0);
+    },
+  }),
+  columnHelper.display({
+    id: "actions",
+    cell: ({ row }) => {
+      const annotation = row.original;
 
-          if (annotation.annotation_type === "human") return;
+      if (annotation.annotation_type === "human") return;
 
-          return (
-            <IconButton onClick={() => onView(annotation)} size="small">
-              <LaunchIcon fontSize="small" />
-            </IconButton>
-          );
-        },
-      }),
-    ],
+      return (
+        <IconButton onClick={() => onView(annotation)} size="small">
+          <LaunchIcon fontSize="small" />
+        </IconButton>
+      );
+    },
   }),
 ];

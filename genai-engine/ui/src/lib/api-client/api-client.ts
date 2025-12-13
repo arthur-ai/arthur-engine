@@ -40,6 +40,11 @@ export interface AgenticAnnotation {
    */
   continuous_eval_id?: string | null;
   /**
+   * Continuous Eval Name
+   * Name of the continuous eval this annotation belongs to
+   */
+  continuous_eval_name?: string | null;
+  /**
    * Cost
    * Cost of the continuous eval run
    */
@@ -50,6 +55,16 @@ export interface AgenticAnnotation {
    * @format date-time
    */
   created_at?: string;
+  /**
+   * Eval Name
+   * Name of the eval the continuous eval used when scoring
+   */
+  eval_name?: string | null;
+  /**
+   * Eval Version
+   * Version of the eval the continuous eval used when scoring
+   */
+  eval_version?: number | null;
   /**
    * Id
    * Unique identifier for the annotation
@@ -74,54 +89,6 @@ export interface AgenticAnnotation {
    * @format date-time
    */
   updated_at?: string;
-}
-
-/** AgenticAnnotationMetadataResponse */
-export interface AgenticAnnotationMetadataResponse {
-  /**
-   * Annotation Score
-   * Binary score for a positive or negative annotation.
-   */
-  annotation_score?: number | null;
-  /** Type of annotation */
-  annotation_type: AgenticAnnotationType;
-  /**
-   * Continuous Eval Id
-   * ID of the continuous eval this annotation belongs to
-   */
-  continuous_eval_id?: string | null;
-  /**
-   * Cost
-   * Cost of the continuous eval run
-   */
-  cost?: number | null;
-  /**
-   * Created At
-   * Time the annotation was created
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Id
-   * ID of the annotation
-   */
-  id: string;
-  /**
-   * Run Status
-   * Status of the continuous eval run
-   */
-  run_status?: string | null;
-  /**
-   * Trace Id
-   * ID of the trace this annotation belongs to
-   */
-  trace_id: string;
-  /**
-   * Updated At
-   * Time the annotation was last updated
-   * @format date-time
-   */
-  updated_at: string;
 }
 
 /** AgenticAnnotationRequest */
@@ -160,6 +127,11 @@ export interface AgenticAnnotationResponse {
    */
   continuous_eval_id?: string | null;
   /**
+   * Continuous Eval Name
+   * Name of the continuous eval this annotation belongs to
+   */
+  continuous_eval_name?: string | null;
+  /**
    * Cost
    * Cost of the continuous eval run
    */
@@ -170,6 +142,16 @@ export interface AgenticAnnotationResponse {
    * @format date-time
    */
   created_at: string;
+  /**
+   * Eval Name
+   * Name of the eval the continuous eval used when scoring
+   */
+  eval_name?: string | null;
+  /**
+   * Eval Version
+   * Version of the eval the continuous eval used when scoring
+   */
+  eval_version?: number | null;
   /**
    * Id
    * ID of the annotation
@@ -3297,13 +3279,13 @@ export interface LLMVersionResponse {
   version: number;
 }
 
-/** ListAgenticAnnotationsMetadataResponse */
-export interface ListAgenticAnnotationsMetadataResponse {
+/** ListAgenticAnnotationsResponse */
+export interface ListAgenticAnnotationsResponse {
   /**
    * Annotations
    * List of annotations
    */
-  annotations: AgenticAnnotationMetadataResponse[];
+  annotations: AgenticAnnotationResponse[];
   /**
    * Count
    * Total number of annotations
@@ -3311,7 +3293,7 @@ export interface ListAgenticAnnotationsMetadataResponse {
   count: number;
 }
 
-export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData = ListAgenticAnnotationsMetadataResponse;
+export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData = ListAgenticAnnotationsResponse;
 
 export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetError = HTTPValidationError;
 
@@ -3367,7 +3349,7 @@ export interface ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetParams {
   traceId: string;
 }
 
-export type ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetData = ListAgenticAnnotationsMetadataResponse;
+export type ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetData = ListAgenticAnnotationsResponse;
 
 export type ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetError = HTTPValidationError;
 
@@ -7630,7 +7612,7 @@ export interface TraceMetadataResponse {
    * Annotations
    * Annotations for the trace.
    */
-  annotations?: AgenticAnnotationMetadataResponse[] | null;
+  annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -7736,7 +7718,7 @@ export interface TraceResponse {
    * Annotations
    * Annotations for this trace.
    */
-  annotations?: AgenticAnnotationMetadataResponse[] | null;
+  annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -9249,7 +9231,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.249
+ * @version 2.1.251
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

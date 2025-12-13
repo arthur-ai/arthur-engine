@@ -18,6 +18,7 @@ import { buildThresholdsFromSample } from "../utils/duration";
 import { flattenSpans, getSpanDuration } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
+import { AnnotationCell } from "./AnnotationCell";
 import { DrawerPagination } from "./DrawerPagination";
 import { FeedbackPanel } from "./feedback/FeedbackPanel";
 import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
@@ -157,10 +158,12 @@ export const TraceDrawerContent = ({ id }: Props) => {
         <Stack
           direction="row"
           alignItems="center"
+          gap={2}
           sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}
         >
           <DrawerPagination />
           <Box sx={{ flex: 1 }} />
+          {trace.annotations && trace.annotations.length > 0 && <AnnotationCell annotations={trace.annotations} traceId={id} />}
           <FeedbackPanel containerRef={containerRef} annotations={trace.annotations} traceId={id} />
         </Stack>
 
