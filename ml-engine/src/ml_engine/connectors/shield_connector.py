@@ -416,18 +416,6 @@ class ShieldBaseConnector(Connector, ABC):
             # delete is idempotent
             pass
 
-    def query_spans_with_metrics(
-        self,
-        task_ids: list[str],
-        start_time: datetime,
-        end_time: datetime,
-    ) -> QueryTracesWithMetricsResponse:
-        return self._spans_client.query_spans_with_metrics_v1_traces_metrics_get(
-            task_ids=task_ids,
-            start_time=start_time,
-            end_time=end_time,
-        )
-
     def read_llm_evals(
         self,
         task_id: str,
