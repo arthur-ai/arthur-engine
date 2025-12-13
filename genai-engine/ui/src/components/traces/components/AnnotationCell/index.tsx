@@ -76,7 +76,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
         >
           <div ref={ref} className="overflow-visible w-min flex items-center">
             {/* <Icon sx={{ fontSize: 12, ml: 1 }} /> */}
-            <Typography variant="caption" color="inherit" fontWeight={500} className="select-none leading-none" sx={{ mx: 0.5 }}>
+            <Typography variant="caption" color="inherit" fontWeight={500} className="select-none leading-none" sx={{ mx: 1 }}>
               {passedCount} / {failedCount} / {erroredCount}
             </Typography>
             <Box className="border-l border-(--color)/50 bg-(--color)/10 group-hover:block group-focus-visible:block hidden" sx={{ pl: 0.5, pr: 0.75 }}>
