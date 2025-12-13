@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 
 import { TraceTransform } from "../form/shared";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-
 
 // Fetches transforms for a task
 export function useTransforms(datasetId: string | undefined) {
@@ -20,8 +20,8 @@ export function useTransforms(datasetId: string | undefined) {
       try {
         const response = await api.api.listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet({ taskId });
         return (response.data.transforms || []) as TraceTransform[];
-      } catch (error: any) {
-        if (error.response?.status === 404) return [];
+      } catch (error: unknown) {
+        if (error instanceof AxiosError && error.response?.status === 404) return [];
         throw error;
       }
     },
