@@ -7,6 +7,7 @@ from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunS
 from arthur_common.models.response_schemas import TraceResponse
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.llm_eval_models import DatabaseContinuousEval
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import AgenticAnnotationRequest
 from schemas.response_schemas import SessionTracesResponse
@@ -16,12 +17,51 @@ from tests.clients.base_test_client import (
 )
 
 
+def create_mock_continuous_eval(
+    continuous_eval_id: uuid.UUID,
+    task_id: str,
+    name: str,
+    llm_eval_name: str,
+    llm_eval_version: int,
+    transform_id: uuid.UUID,
+) -> DatabaseContinuousEval:
+    db_session = override_get_db_session()
+    db_continuous_eval = DatabaseContinuousEval(
+        id=continuous_eval_id,
+        task_id=task_id,
+        name=name,
+        llm_eval_name=llm_eval_name,
+        llm_eval_version=llm_eval_version,
+        transform_id=transform_id,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    db_session.add(db_continuous_eval)
+    db_session.commit()
+    db_session.refresh(db_continuous_eval)
+    return db_continuous_eval
+
+
+def delete_mock_continuous_eval(continuous_eval_id: uuid.UUID) -> None:
+    db_session = override_get_db_session()
+    db_continuous_eval = (
+        db_session.query(DatabaseContinuousEval)
+        .filter(DatabaseContinuousEval.id == continuous_eval_id)
+        .first()
+    )
+    if db_continuous_eval:
+        db_session.delete(db_continuous_eval)
+        db_session.commit()
+
+
 def create_mock_annotation(
     trace_id: str,
     annotation_type: AgenticAnnotationType,
     annotation_score: Optional[int] = None,
     continuous_eval_id: Optional[str] = None,
     run_status: Optional[ContinuousEvalRunStatus] = None,
+    annotation_description: Optional[str] = None,
+    input_variables: Optional[list] = None,
 ) -> tuple[int, DatabaseAgenticAnnotation]:
     db_session = override_get_db_session()
     db_annotation = DatabaseAgenticAnnotation(
@@ -29,6 +69,8 @@ def create_mock_annotation(
         annotation_type=annotation_type.value,
         trace_id=trace_id,
         annotation_score=annotation_score,
+        annotation_description=annotation_description,
+        input_variables=input_variables,
         continuous_eval_id=continuous_eval_id,
         run_status=run_status.value if run_status else None,
         created_at=datetime.now(),
@@ -385,19 +427,35 @@ def test_list_trace_annotations_pagination(
     annotations = []
     trace_id = str(uuid.uuid4())
     continuous_eval_id = uuid.uuid4()
+    transform_id = uuid.uuid4()
 
+    # Create a mock continuous eval to test the new fields
+    continuous_eval = create_mock_continuous_eval(
+        continuous_eval_id=continuous_eval_id,
+        task_id=comprehensive_test_data["task_id"],
+        name="Test Continuous Eval",
+        llm_eval_name="test_hallucination_eval",
+        llm_eval_version=1,
+        transform_id=transform_id,
+    )
+
+    # Create a human annotation (no continuous eval fields)
     annotation = create_mock_annotation(
         trace_id=trace_id,
         annotation_type=AgenticAnnotationType.HUMAN,
         annotation_score=1,
+        annotation_description="Human annotation description",
     )
     annotations.append(AgenticAnnotation.from_db_model(annotation))
 
+    # Create continuous eval annotations (with continuous eval fields)
     for i in range(1, 10):
         annotation = create_mock_annotation(
             trace_id=trace_id,
             annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
             annotation_score=i % 2,
+            annotation_description=f"Continuous eval annotation {i}",
+            input_variables=[{"key": "value", "name": f"var_{i}"}],
             continuous_eval_id=continuous_eval_id,
             run_status=(
                 ContinuousEvalRunStatus.PASSED
@@ -416,19 +474,43 @@ def test_list_trace_annotations_pagination(
     assert data.count == len(annotations)
     assert len(data.annotations) == len(annotations)
     for i in range(len(data.annotations)):
-        metadata_response = annotations[i].to_response_model()
-        assert data.annotations[i].id == metadata_response.id
+        response_model = annotations[i].to_response_model()
+        assert data.annotations[i].id == response_model.id
         assert (
-            data.annotations[i].annotation_score == metadata_response.annotation_score
+            data.annotations[i].annotation_score == response_model.annotation_score
         )
-        assert data.annotations[i].annotation_type == metadata_response.annotation_type
+        assert data.annotations[i].annotation_type == response_model.annotation_type
         assert (
             data.annotations[i].continuous_eval_id
-            == metadata_response.continuous_eval_id
+            == response_model.continuous_eval_id
         )
-        assert data.annotations[i].run_status == metadata_response.run_status
-        assert data.annotations[i].created_at == metadata_response.created_at
-        assert data.annotations[i].updated_at == metadata_response.updated_at
+        assert data.annotations[i].run_status == response_model.run_status
+        assert data.annotations[i].created_at == response_model.created_at
+        assert data.annotations[i].updated_at == response_model.updated_at
+
+        # Check fields that were previously excluded from metadata response
+        assert (
+            data.annotations[i].annotation_description
+            == response_model.annotation_description
+        )
+        assert data.annotations[i].input_variables == response_model.input_variables
+
+        # Check new continuous eval fields
+        if annotations[i].annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
+            assert (
+                data.annotations[i].continuous_eval_name
+                == "Test Continuous Eval"
+            )
+            assert (
+                data.annotations[i].eval_name
+                == "test_hallucination_eval"
+            )
+            assert data.annotations[i].eval_version == 1
+        else:
+            # Human annotations should have None for these fields
+            assert data.annotations[i].continuous_eval_name is None
+            assert data.annotations[i].eval_name is None
+            assert data.annotations[i].eval_version is None
 
     # test sort=asc
     annotations = sorted(annotations, key=lambda x: x.created_at)
@@ -440,19 +522,43 @@ def test_list_trace_annotations_pagination(
     assert data.count == len(annotations)
     assert len(data.annotations) == len(annotations)
     for i in range(len(data.annotations)):
-        metadata_response = annotations[i].to_response_model()
-        assert data.annotations[i].id == metadata_response.id
+        response_model = annotations[i].to_response_model()
+        assert data.annotations[i].id == response_model.id
         assert (
-            data.annotations[i].annotation_score == metadata_response.annotation_score
+            data.annotations[i].annotation_score == response_model.annotation_score
         )
-        assert data.annotations[i].annotation_type == metadata_response.annotation_type
+        assert data.annotations[i].annotation_type == response_model.annotation_type
         assert (
             data.annotations[i].continuous_eval_id
-            == metadata_response.continuous_eval_id
+            == response_model.continuous_eval_id
         )
-        assert data.annotations[i].run_status == metadata_response.run_status
-        assert data.annotations[i].created_at == metadata_response.created_at
-        assert data.annotations[i].updated_at == metadata_response.updated_at
+        assert data.annotations[i].run_status == response_model.run_status
+        assert data.annotations[i].created_at == response_model.created_at
+        assert data.annotations[i].updated_at == response_model.updated_at
+
+        # Check fields that were previously excluded from metadata response
+        assert (
+            data.annotations[i].annotation_description
+            == response_model.annotation_description
+        )
+        assert data.annotations[i].input_variables == response_model.input_variables
+
+        # Check new continuous eval fields
+        if annotations[i].annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
+            assert (
+                data.annotations[i].continuous_eval_name
+                == "Test Continuous Eval"
+            )
+            assert (
+                data.annotations[i].eval_name
+                == "test_hallucination_eval"
+            )
+            assert data.annotations[i].eval_version == 1
+        else:
+            # Human annotations should have None for these fields
+            assert data.annotations[i].continuous_eval_name is None
+            assert data.annotations[i].eval_name is None
+            assert data.annotations[i].eval_version is None
 
     # test sort=asc and page_size=5
     status_code, data = client.list_agentic_annotations_for_trace(
