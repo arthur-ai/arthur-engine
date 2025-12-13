@@ -58,11 +58,11 @@ def create_mock_annotation(
     trace_id: str,
     annotation_type: AgenticAnnotationType,
     annotation_score: Optional[int] = None,
-    continuous_eval_id: Optional[str] = None,
+    continuous_eval_id: Optional[uuid.UUID] = None,
     run_status: Optional[ContinuousEvalRunStatus] = None,
     annotation_description: Optional[str] = None,
     input_variables: Optional[list] = None,
-) -> tuple[int, DatabaseAgenticAnnotation]:
+) -> DatabaseAgenticAnnotation:
     db_session = override_get_db_session()
     db_annotation = DatabaseAgenticAnnotation(
         id=uuid.uuid4(),
@@ -432,7 +432,7 @@ def test_list_trace_annotations_pagination(
     # Create a mock continuous eval to test the new fields
     continuous_eval = create_mock_continuous_eval(
         continuous_eval_id=continuous_eval_id,
-        task_id=comprehensive_test_data["task_id"],
+        task_id="api_task1",
         name="Test Continuous Eval",
         llm_eval_name="test_hallucination_eval",
         llm_eval_version=1,
@@ -455,7 +455,7 @@ def test_list_trace_annotations_pagination(
             annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
             annotation_score=i % 2,
             annotation_description=f"Continuous eval annotation {i}",
-            input_variables=[{"key": "value", "name": f"var_{i}"}],
+            input_variables=[{"name": f"var_{i}", "value": f"value_{i}"}],
             continuous_eval_id=continuous_eval_id,
             run_status=(
                 ContinuousEvalRunStatus.PASSED
@@ -476,13 +476,10 @@ def test_list_trace_annotations_pagination(
     for i in range(len(data.annotations)):
         response_model = annotations[i].to_response_model()
         assert data.annotations[i].id == response_model.id
-        assert (
-            data.annotations[i].annotation_score == response_model.annotation_score
-        )
+        assert data.annotations[i].annotation_score == response_model.annotation_score
         assert data.annotations[i].annotation_type == response_model.annotation_type
         assert (
-            data.annotations[i].continuous_eval_id
-            == response_model.continuous_eval_id
+            data.annotations[i].continuous_eval_id == response_model.continuous_eval_id
         )
         assert data.annotations[i].run_status == response_model.run_status
         assert data.annotations[i].created_at == response_model.created_at
@@ -497,14 +494,8 @@ def test_list_trace_annotations_pagination(
 
         # Check new continuous eval fields
         if annotations[i].annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
-            assert (
-                data.annotations[i].continuous_eval_name
-                == "Test Continuous Eval"
-            )
-            assert (
-                data.annotations[i].eval_name
-                == "test_hallucination_eval"
-            )
+            assert data.annotations[i].continuous_eval_name == "Test Continuous Eval"
+            assert data.annotations[i].eval_name == "test_hallucination_eval"
             assert data.annotations[i].eval_version == 1
         else:
             # Human annotations should have None for these fields
@@ -524,13 +515,10 @@ def test_list_trace_annotations_pagination(
     for i in range(len(data.annotations)):
         response_model = annotations[i].to_response_model()
         assert data.annotations[i].id == response_model.id
-        assert (
-            data.annotations[i].annotation_score == response_model.annotation_score
-        )
+        assert data.annotations[i].annotation_score == response_model.annotation_score
         assert data.annotations[i].annotation_type == response_model.annotation_type
         assert (
-            data.annotations[i].continuous_eval_id
-            == response_model.continuous_eval_id
+            data.annotations[i].continuous_eval_id == response_model.continuous_eval_id
         )
         assert data.annotations[i].run_status == response_model.run_status
         assert data.annotations[i].created_at == response_model.created_at
@@ -545,14 +533,8 @@ def test_list_trace_annotations_pagination(
 
         # Check new continuous eval fields
         if annotations[i].annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
-            assert (
-                data.annotations[i].continuous_eval_name
-                == "Test Continuous Eval"
-            )
-            assert (
-                data.annotations[i].eval_name
-                == "test_hallucination_eval"
-            )
+            assert data.annotations[i].continuous_eval_name == "Test Continuous Eval"
+            assert data.annotations[i].eval_name == "test_hallucination_eval"
             assert data.annotations[i].eval_version == 1
         else:
             # Human annotations should have None for these fields
@@ -595,6 +577,7 @@ def test_list_trace_annotations_pagination(
     # Cleanup
     for annotation in annotations:
         delete_mock_annotation(annotation.id)
+    delete_mock_continuous_eval(continuous_eval_id)
 
 
 @pytest.mark.unit_tests
