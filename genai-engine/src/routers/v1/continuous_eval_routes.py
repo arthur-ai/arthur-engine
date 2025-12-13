@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.response_schemas import ListAgenticAnnotationsMetadataResponse
+from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 
@@ -110,7 +110,7 @@ def list_continuous_evals(
     "/tasks/{task_id}/continuous_evals/results",
     summary="Get all continuous eval run results for a specific task",
     description="Get all continuous eval run results for a specific task",
-    response_model=ListAgenticAnnotationsMetadataResponse,
+    response_model=ListAgenticAnnotationsResponse,
     response_model_exclude_none=True,
     tags=["Continuous Evals"],
 )
@@ -127,7 +127,7 @@ def list_continuous_eval_run_results(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> ListAgenticAnnotationsMetadataResponse:
+) -> ListAgenticAnnotationsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         agentic_annotations = continuous_eval_repo.list_continuous_eval_run_results(
@@ -135,10 +135,9 @@ def list_continuous_eval_run_results(
             pagination_parameters,
             filter_request,
         )
-        return ListAgenticAnnotationsMetadataResponse(
+        return ListAgenticAnnotationsResponse(
             annotations=[
-                annotation.to_metadata_response_model()
-                for annotation in agentic_annotations
+                annotation.to_response_model() for annotation in agentic_annotations
             ],
             count=len(agentic_annotations),
         )
