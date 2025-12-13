@@ -80,7 +80,7 @@ litellm = "^1.77.7"
 jinja2 = "^3.1.6"
 python-benedict = "^0.35.0"
 weaviate-client = "^4.17.0"
-arthur-common = "2.4.16"
+arthur-common = "2.4.17"
 
 
 [[tool.poetry.source]]
