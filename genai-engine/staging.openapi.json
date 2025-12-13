@@ -5366,7 +5366,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ListAgenticAnnotationsMetadataResponse"
+                                    "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
                                 }
                             }
                         }
@@ -11856,7 +11856,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ListAgenticAnnotationsMetadataResponse"
+                                    "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
                                 }
                             }
                         }
@@ -12646,6 +12646,42 @@
                         "title": "Continuous Eval Id",
                         "description": "Continuous eval ID this annotation belongs to"
                     },
+                    "continuous_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Name",
+                        "description": "Name of the continuous eval this annotation belongs to"
+                    },
+                    "eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Name",
+                        "description": "Name of the eval the continuous eval used when scoring"
+                    },
+                    "eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Version",
+                        "description": "Version of the eval the continuous eval used when scoring"
+                    },
                     "annotation_score": {
                         "anyOf": [
                             {
@@ -12731,93 +12767,6 @@
                 ],
                 "title": "AgenticAnnotation"
             },
-            "AgenticAnnotationMetadataResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id",
-                        "description": "ID of the annotation"
-                    },
-                    "annotation_type": {
-                        "$ref": "#/components/schemas/AgenticAnnotationType",
-                        "description": "Type of annotation"
-                    },
-                    "trace_id": {
-                        "type": "string",
-                        "title": "Trace Id",
-                        "description": "ID of the trace this annotation belongs to"
-                    },
-                    "continuous_eval_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Continuous Eval Id",
-                        "description": "ID of the continuous eval this annotation belongs to"
-                    },
-                    "annotation_score": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Annotation Score",
-                        "description": "Binary score for a positive or negative annotation."
-                    },
-                    "run_status": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Run Status",
-                        "description": "Status of the continuous eval run"
-                    },
-                    "cost": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Cost",
-                        "description": "Cost of the continuous eval run"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Time the annotation was created"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Updated At",
-                        "description": "Time the annotation was last updated"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "annotation_type",
-                    "trace_id",
-                    "created_at",
-                    "updated_at"
-                ],
-                "title": "AgenticAnnotationMetadataResponse"
-            },
             "AgenticAnnotationRequest": {
                 "properties": {
                     "annotation_score": {
@@ -12873,6 +12822,42 @@
                         ],
                         "title": "Continuous Eval Id",
                         "description": "ID of the continuous eval this annotation belongs to"
+                    },
+                    "continuous_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Name",
+                        "description": "Name of the continuous eval this annotation belongs to"
+                    },
+                    "eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Name",
+                        "description": "Name of the eval the continuous eval used when scoring"
+                    },
+                    "eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Version",
+                        "description": "Version of the eval the continuous eval used when scoring"
                     },
                     "annotation_score": {
                         "anyOf": [
@@ -17002,11 +16987,11 @@
                 ],
                 "title": "LLMVersionResponse"
             },
-            "ListAgenticAnnotationsMetadataResponse": {
+            "ListAgenticAnnotationsResponse": {
                 "properties": {
                     "annotations": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticAnnotationMetadataResponse"
+                            "$ref": "#/components/schemas/AgenticAnnotationResponse"
                         },
                         "type": "array",
                         "title": "Annotations",
@@ -17023,7 +17008,7 @@
                     "annotations",
                     "count"
                 ],
-                "title": "ListAgenticAnnotationsMetadataResponse"
+                "title": "ListAgenticAnnotationsResponse"
             },
             "ListContinuousEvalsResponse": {
                 "properties": {
@@ -22494,7 +22479,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/AgenticAnnotationMetadataResponse"
+                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
                                 },
                                 "type": "array"
                             },
@@ -22648,7 +22633,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/AgenticAnnotationMetadataResponse"
+                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
                                 },
                                 "type": "array"
                             },

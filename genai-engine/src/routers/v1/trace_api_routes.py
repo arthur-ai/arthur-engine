@@ -7,7 +7,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
-    ListAgenticAnnotationsMetadataResponse,
+    ListAgenticAnnotationsResponse,
     SpanWithMetricsResponse,
     TraceResponse,
 )
@@ -702,7 +702,7 @@ def get_annotation_by_id(
     "/traces/{trace_id}/annotations",
     summary="List Annotations for a Trace",
     description="List annotations for a trace",
-    response_model=ListAgenticAnnotationsMetadataResponse,
+    response_model=ListAgenticAnnotationsResponse,
     response_model_exclude_none=True,
     tags=["Traces"],
 )
@@ -719,7 +719,7 @@ def list_annotations_for_trace(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> ListAgenticAnnotationsMetadataResponse:
+) -> ListAgenticAnnotationsResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -728,10 +728,8 @@ def list_annotations_for_trace(
             pagination_parameters=pagination_parameters,
             filter_request=filter_request,
         )
-        return ListAgenticAnnotationsMetadataResponse(
-            annotations=[
-                annotation.to_metadata_response_model() for annotation in annotations
-            ],
+        return ListAgenticAnnotationsResponse(
+            annotations=[annotation.to_response_model() for annotation in annotations],
             count=len(annotations),
         )
     except ValueError as e:

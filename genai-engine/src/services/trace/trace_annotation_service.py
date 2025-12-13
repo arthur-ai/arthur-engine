@@ -258,7 +258,7 @@ class TraceAnnotationService:
         annotations = self.get_annotations_by_trace_id(trace_response.trace_id)
         if annotations:
             trace_response.annotations = [
-                annotation.to_metadata_response_model() for annotation in annotations
+                annotation.to_response_model() for annotation in annotations
             ]
 
         return trace_response
