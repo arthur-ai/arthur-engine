@@ -747,7 +747,7 @@ def list_annotations_for_trace(
     "/traces/{trace_id}/annotations",
     summary="Annotate a Trace",
     description="Annotate a trace with a score and description (1 = liked, 0 = disliked)",
-    response_model=AgenticAnnotationResponse,
+    response_model=AgenticAnnotation,
     response_model_exclude_none=True,
     tags=["Traces"],
 )
@@ -757,14 +757,14 @@ def annotate_trace(
     annotation_request: AgenticAnnotationRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> AgenticAnnotationResponse:
+) -> AgenticAnnotation:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
         span_repo = _get_span_repository(db_session)
         return span_repo.annotate_trace(
             trace_id=trace_id,
             annotation_request=annotation_request,
-        ).to_response_model()
+        )
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         if "not found" in str(e).lower():
