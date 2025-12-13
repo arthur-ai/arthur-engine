@@ -104,16 +104,25 @@ def build_and_validate_agentic_filter_params(
                 filter_params[f"{field_name}{suffix}"] = value
 
         # Handle list-based fields (support both EQUALS with list value and IN operator)
-        elif field_name in ["trace_ids", "span_ids", "session_ids", "user_ids", "span_types"]:
+        elif field_name in [
+            "trace_ids",
+            "span_ids",
+            "session_ids",
+            "user_ids",
+            "span_types",
+        ]:
             if op == DataResultFilterOp.EQUALS:
-                filter_params[field_name] = (
-                    [value] if isinstance(value, str) else value
-                )
+                filter_params[field_name] = [value] if isinstance(value, str) else value
             elif op == DataResultFilterOp.IN:
                 filter_params[field_name] = value
 
         # Handle string fields
-        elif field_name in ["tool_name", "span_name", "span_name_contains", "continuous_eval_name"]:
+        elif field_name in [
+            "tool_name",
+            "span_name",
+            "span_name_contains",
+            "continuous_eval_name",
+        ]:
             if op == DataResultFilterOp.EQUALS:
                 filter_params[field_name] = value
 

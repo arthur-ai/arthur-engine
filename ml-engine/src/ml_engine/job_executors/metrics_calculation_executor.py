@@ -30,8 +30,6 @@ from arthur_client.api_bindings import (
     TestCustomAggregationJobSpec,
 )
 from arthur_client.api_bindings.exceptions import NotFoundException
-from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.metrics import (
     DatasetReference,
     Dimension,
@@ -45,7 +43,6 @@ from duckdb import DuckDBPyConnection
 from pydantic import Field
 
 from config import Config
-from connectors.shield_connector import ShieldBaseConnector
 from dataset_loader import DatasetLoader
 from metric_calculators.custom_metric_sql_calculator import CustomMetricSQLCalculator
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator

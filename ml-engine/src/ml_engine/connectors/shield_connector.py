@@ -65,7 +65,6 @@ from genai_client.models import (
     LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
     NewTaskRequest,
-    QueryTracesWithMetricsResponse,
     RuleType,
     SearchTasksRequest,
     UpdateRuleRequest,

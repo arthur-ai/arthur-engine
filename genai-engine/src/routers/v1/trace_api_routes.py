@@ -25,7 +25,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v1.legacy_span_routes import _create_response, trace_query_parameters
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import AgenticAnnotation, User
+from schemas.internal_schemas import User
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
     AgenticAnnotationRequest,
