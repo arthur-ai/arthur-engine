@@ -1,10 +1,9 @@
 import logging
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from arthur_client.api_bindings import DataResultFilter, DataResultFilterOp
 from arthur_common.models.enums import ToolClassEnum
-from arthur_common.models.request_schemas import TraceQueryRequest
+from genai_client.models import AgenticAnnotationType, ContinuousEvalRunStatus
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,9 @@ SHIELD_ALLOWED_FILTERS = {
 }
 
 # Supported agentic filter fields
+# Note: task_ids is NOT supported as a filter field because the task_id
+# is specified via the dataset locator and passed directly to the API.
+# Users cannot override or filter by additional task IDs.
 AGENTIC_SUPPORTED_FIELDS = {
     "query_relevance",
     "response_relevance",
@@ -31,19 +33,28 @@ AGENTIC_SUPPORTED_FIELDS = {
     "tool_name",
     "span_types",
     "trace_ids",
+    "span_ids",
+    "session_ids",
+    "user_ids",
+    "span_name",
+    "span_name_contains",
+    "annotation_score",
+    "annotation_type",
+    "continuous_eval_run_status",
+    "continuous_eval_name",
     "tool_selection",
     "tool_usage",
 }
 
 
 def _map_comparison_operator_to_suffix(op: DataResultFilterOp) -> Optional[str]:
-    """Map DataResultFilterOp to TraceQueryRequest field suffix.
+    """Map DataResultFilterOp to TracesApi filter field suffix.
 
     Args:
         op: The comparison operator from DataResultFilter
 
     Returns:
-        The corresponding suffix for TraceQueryRequest fields, or None if not supported
+        The corresponding suffix for TracesApi filter fields, or None if not supported
 
     Examples:
         _map_comparison_operator_to_suffix(DataResultFilterOp.GREATER_THAN) -> "_gt"
@@ -60,15 +71,12 @@ def _map_comparison_operator_to_suffix(op: DataResultFilterOp) -> Optional[str]:
 
 
 def build_and_validate_agentic_filter_params(
-    task_ids: list[str],
     filters: list[DataResultFilter],
-    start_time: datetime,
-    end_time: datetime,
 ) -> Dict[str, Any]:
-    """Build and validate filter parameters, returning only the filter fields.
+    """Build filter parameters for the list_traces_metadata API.
 
-    Uses TraceQueryRequest for validation but returns only the filter parameters
-    that should be passed to the API (excludes task_ids, start_time, end_time).
+    Converts DataResultFilter objects to the format expected by the TracesApi
+    list_traces_metadata endpoint. The API itself will handle validation.
     """
 
     # Build filter parameters
@@ -83,7 +91,7 @@ def build_and_validate_agentic_filter_params(
             f"Ignoring unsupported agentic filters: {', '.join(sorted(unsupported_fields))}",
         )
 
-    # Map DataResultFilter to TraceQueryRequest fields
+    # Map DataResultFilter to TracesApi filter parameters
     for filter_item in filters:
         field_name = filter_item.field_name
         op = filter_item.op
@@ -95,17 +103,41 @@ def build_and_validate_agentic_filter_params(
             if suffix:
                 filter_params[f"{field_name}{suffix}"] = value
 
-        # Handle direct mapping fields
-        elif field_name in ["tool_name", "span_types", "trace_ids"]:
+        # Handle list-based fields (support both EQUALS with list value and IN operator)
+        elif field_name in ["trace_ids", "span_ids", "session_ids", "user_ids", "span_types"]:
             if op == DataResultFilterOp.EQUALS:
-                if field_name in ["trace_ids", "span_types"]:
-                    filter_params[field_name] = (
-                        [value] if isinstance(value, str) else value
-                    )
-                else:
-                    filter_params[field_name] = value
+                filter_params[field_name] = (
+                    [value] if isinstance(value, str) else value
+                )
             elif op == DataResultFilterOp.IN:
                 filter_params[field_name] = value
+
+        # Handle string fields
+        elif field_name in ["tool_name", "span_name", "span_name_contains", "continuous_eval_name"]:
+            if op == DataResultFilterOp.EQUALS:
+                filter_params[field_name] = value
+
+        # Handle integer fields
+        elif field_name == "annotation_score":
+            if op == DataResultFilterOp.EQUALS:
+                filter_params[field_name] = int(value)
+
+        # Handle enum fields
+        elif field_name == "annotation_type":
+            if op == DataResultFilterOp.EQUALS:
+                # Convert to AgenticAnnotationType if needed
+                if isinstance(value, str):
+                    filter_params[field_name] = AgenticAnnotationType(value)
+                else:
+                    filter_params[field_name] = value
+
+        elif field_name == "continuous_eval_run_status":
+            if op == DataResultFilterOp.EQUALS:
+                # Convert to ContinuousEvalRunStatus if needed
+                if isinstance(value, str):
+                    filter_params[field_name] = ContinuousEvalRunStatus(value)
+                else:
+                    filter_params[field_name] = value
 
         # Handle tool classification enums
         elif field_name in ["tool_selection", "tool_usage"]:
@@ -116,15 +148,7 @@ def build_and_validate_agentic_filter_params(
                 else:
                     filter_params[field_name] = value
 
-    # Validate all parameters by creating TraceQueryRequest (this will raise ValidationError if invalid)
-    TraceQueryRequest(
-        task_ids=task_ids,
-        start_time=start_time,
-        end_time=end_time,
-        **filter_params,
-    )
-
-    # Return only the filter parameters
+    # Return the filter parameters (API will handle validation)
     return filter_params
 
 
