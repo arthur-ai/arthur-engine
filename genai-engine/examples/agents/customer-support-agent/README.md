@@ -266,10 +266,31 @@ yarn dev
 
 The application will be available at http://localhost:3000
 
+## Running the Test Harness
+
+To test the agent with multiple questions:
+
+1. **Add your test questions** to `scripts/test-questions.json`
+2. **Run the test harness**:
+
+```bash
+yarn test:questions
+```
+
+The test harness will:
+- Process each question through the full agent workflow
+- Generate unified traces for each question in Arthur
+- Save detailed results to `scripts/test-results-{timestamp}.json`
+- Print a summary of successes/failures and average duration
+
+See `scripts/README.md` for more details.
+
 ## Available Scripts
 
 - `yarn dev` - Starts the development server with Turbopack
 - `yarn dev:debug` - Starts development server with debug logging enabled
+- `yarn test:questions` - Runs the test harness with questions from `scripts/test-questions.json`
+- `yarn test:questions:debug` - Runs test harness with debug logging
 - `yarn build` - Builds the application for production
 - `yarn start` - Starts the production server
 - `yarn lint` - Runs ESLint for code linting
