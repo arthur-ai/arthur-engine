@@ -1,13 +1,16 @@
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from sqlalchemy import JSON, UUID, CheckConstraint, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
 
 from db_models.base import Base
+
+if TYPE_CHECKING:
+    from db_models.llm_eval_models import DatabaseContinuousEval
 
 
 class DatabaseAgenticAnnotation(Base):
@@ -57,6 +60,13 @@ class DatabaseAgenticAnnotation(Base):
         TIMESTAMP,
         default=datetime.now,
         nullable=False,
+    )
+
+    # Relationships
+    continuous_eval: Mapped[Optional["DatabaseContinuousEval"]] = relationship(
+        "DatabaseContinuousEval",
+        foreign_keys=[continuous_eval_id],
+        lazy="selectin",
     )
 
     __table_args__ = (

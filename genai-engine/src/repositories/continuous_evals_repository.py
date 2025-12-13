@@ -334,10 +334,10 @@ class ContinuousEvalsRepository:
             for continuous_eval in continuous_evals:
                 annotation = DatabaseAgenticAnnotation(
                     id=uuid.uuid4(),
-                    annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+                    annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
                     trace_id=trace_id,
                     continuous_eval_id=continuous_eval.id,
-                    run_status=ContinuousEvalRunStatus.PENDING.value,
+                    run_status=ContinuousEvalRunStatus.PENDING,
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
                 )
