@@ -11,12 +11,12 @@ import { useRef } from "react";
 import z from "zod";
 
 import { useApi } from "@/hooks/useApi";
-import { AgenticAnnotationMetadataResponse, TraceResponse } from "@/lib/api-client/api-client";
+import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
-  annotations?: AgenticAnnotationMetadataResponse[] | null;
+  annotations?: AgenticAnnotationResponse[] | null;
   traceId: string;
 };
 

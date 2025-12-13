@@ -3,20 +3,14 @@ import {
   Autocomplete,
   Box,
   Button,
-  Checkbox,
   Divider,
-  FormControl,
-  FormControlLabel,
-  FormGroup,
-  FormLabel,
   Paper,
   Stack,
   TextField,
   Typography,
-  useTheme,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import z from "zod";
 
@@ -26,7 +20,6 @@ import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { VariableChip } from "@/components/evaluators/VariableChip";
 import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
@@ -37,7 +30,6 @@ import { useTask } from "@/hooks/useTask";
 type Evaluator = {
   name: string | null;
   version: string | null;
-  variables: Record<string, boolean>;
 };
 
 type Transform = {
@@ -46,7 +38,6 @@ type Transform = {
 
 export const LiveEvalsNew = () => {
   const { task } = useTask();
-  const { spacing } = useTheme();
 
   const navigate = useNavigate();
 
@@ -69,7 +60,6 @@ export const LiveEvalsNew = () => {
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
-          variables: z.record(z.string(), z.boolean()),
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
@@ -94,21 +84,6 @@ export const LiveEvalsNew = () => {
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
 
   const { eval: evaluatorData } = useEval(task?.id, evaluator.name ?? undefined, evaluator.version ?? undefined);
-
-  // Initialize variables when evaluator data loads
-  useEffect(() => {
-    if (evaluatorData) {
-      const variables =
-        evaluatorData.variables?.reduce(
-          (acc, variable) => {
-            acc[variable] = true;
-            return acc;
-          },
-          {} as Record<string, boolean>
-        ) ?? {};
-      form.setFieldValue("evaluator.variables", variables);
-    }
-  }, [evaluatorData, form]);
 
   return (
     <Stack
@@ -158,35 +133,12 @@ export const LiveEvalsNew = () => {
         <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" />
 
         {evaluatorData && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 items-start" style={{ gap: spacing(2) }}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <NunjucksHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
-            </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="body1" color="text.primary" fontWeight="bold">
-                Variable Requirements
-              </Typography>
-              <FormControl component="fieldset" variant="standard">
-                <FormLabel component="legend">Mark as required (eval won't run if missing)</FormLabel>
-                <FormGroup>
-                  {Object.entries(evaluator.variables ?? {}).map(([variable]) => (
-                    <form.AppField
-                      key={variable}
-                      name={`evaluator.variables.${variable}`}
-                      children={(field) => (
-                        <FormControlLabel
-                          control={
-                            <Checkbox size="small" checked={field.state.value} onChange={(event) => field.handleChange(event.target.checked)} />
-                          }
-                          label={<VariableChip variable={variable} />}
-                        />
-                      )}
-                    />
-                  ))}
-                </FormGroup>
-              </FormControl>
-            </Paper>
-          </div>
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="body1" color="text.primary" fontWeight="bold" mb={2}>
+              Evaluator Instructions
+            </Typography>
+            <NunjucksHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
+          </Paper>
         )}
 
         <Divider sx={{ my: 2 }} />
