@@ -91,9 +91,9 @@ __metadata:
   linkType: hard
 
 "@arizeai/openinference-semantic-conventions@npm:^2.1.1":
-  version: 2.1.2
-  resolution: "@arizeai/openinference-semantic-conventions@npm:2.1.2"
-  checksum: 10c0/fe9bcdf7681c1c2256428c8ea5aba0439f3b0ca8e35adfcad88c8571ddac9e48db3f75d7994810f5ac018e38be4078d83cd0ca161a969e1e748b14cd19df941d
+  version: 2.1.7
+  resolution: "@arizeai/openinference-semantic-conventions@npm:2.1.7"
+  checksum: 10c0/dedd8643aa8b42c9dbed42bc936bd08067213cdb77220ec77b6c5452e2b5e684323aae32bd4dd2823fa29b2b3b19915614dec037148b219391fd5dff12da2e7a
   languageName: node
   linkType: hard
 
