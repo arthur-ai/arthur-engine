@@ -165,8 +165,24 @@ class AggregationCalculationExecutor(ABC):
         raise NotImplementedError
 
     def execute(self, job: Job, job_spec: AggCalculationJobSpecTypes) -> None:
-        self._validate_job(job, job_spec)
         datasets = self._datasets_for_calculation(job_spec)
+        is_agentic = any(
+            dataset.model_problem_type == ModelProblemType.AGENTIC_TRACE
+            for dataset in datasets
+        )
+
+        self._validate_job(job, job_spec)
+
+        # Explicitly run metric computation for agentic datasets, via connector
+        if is_agentic:
+            for ds in datasets:
+                connector_id, task_ids = self._extract_connector_id_and_task_ids(ds)
+                if connector_id is not None and task_ids:
+                    self._run_agentic_metric_computation(
+                        connector_id,
+                        job_spec,
+                        task_ids,
+                    )
 
         duckdb_conn, failed_to_load_datasets = self._load_data(datasets, job_spec)
         # run metrics calculation on datasets that were successfully loaded only
@@ -198,6 +214,49 @@ class AggregationCalculationExecutor(ABC):
                 f"Error calculating aggregation(s) with id(s) {', '.join(failed_agg_ids)}. Metrics were still "
                 f"calculated for any other aggregations configured for the model.",
             )
+
+    # Extract task IDs and connector ID from a single dataset
+    def _extract_connector_id_and_task_ids(
+        self,
+        dataset: Dataset,
+    ) -> Tuple[str | None, list[str]]:
+        if not dataset.connector:
+            return None, []
+
+        if not dataset.dataset_locator:
+            return dataset.connector.id, []
+
+        task_ids = []
+        for field in dataset.dataset_locator.fields:
+            if field.key == SHIELD_DATASET_TASK_ID_FIELD:
+                task_ids.append(field.value)
+
+        return dataset.connector.id, task_ids
+
+    # Run metric computation agentic models before aggregation
+    def _run_agentic_metric_computation(
+        self,
+        connector_id: str,
+        job_spec: MetricsCalculationJobSpec,
+        task_ids: list[str],
+    ) -> None:
+        connector = self.connector_constructor.get_connector_from_spec(connector_id)
+
+        if not isinstance(connector, ShieldBaseConnector):
+            raise ValueError(f"Expected ShieldBaseConnector, got {type(connector)}")
+
+        self.logger.info(
+            f"Triggered metric computation for connector {connector_id} and agentic task: {task_ids}",
+        )
+        # Call the metrics endpoint to trigger computation. Ignore the response.
+        connector.query_spans_with_metrics(
+            task_ids=task_ids,
+            start_time=job_spec.start_timestamp,
+            end_time=job_spec.end_timestamp,
+        )
+        self.logger.info(
+            f"Finished metric computation for connector {connector_id} and agentic tasks: {task_ids}",
+        )
 
     def _submit_alert_check_job(
         self,
