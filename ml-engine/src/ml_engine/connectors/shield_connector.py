@@ -51,6 +51,7 @@ from genai_client import (
     LLMEvalsApi,
     SpansApi,
     TasksApi,
+    TracesApi,
     TransformsApi,
 )
 from genai_client.exceptions import (
@@ -64,7 +65,6 @@ from genai_client.models import (
     LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
     NewTaskRequest,
-    QueryTracesWithMetricsResponse,
     RuleType,
     SearchTasksRequest,
     UpdateRuleRequest,
@@ -103,6 +103,7 @@ class ShieldBaseConnector(Connector, ABC):
         self._tasks_client = TasksApi(api_client=self._genai_client)
         self._api_keys_client = APIKeysApi(api_client=self._genai_client)
         self._spans_client = SpansApi(api_client=self._genai_client)
+        self._traces_client = TracesApi(api_client=self._genai_client)
         self._evals_client = LLMEvalsApi(api_client=self._genai_client)
         self._cont_evals_client = ContinuousEvalsApi(api_client=self._genai_client)
         self._transforms_client = TransformsApi(api_client=self._genai_client)
@@ -177,17 +178,15 @@ class ShieldBaseConnector(Connector, ABC):
                 try:
                     # Build and validate filter parameters directly
                     filter_params = build_and_validate_agentic_filter_params(
-                        task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
                         filters=filters or [],
-                        start_time=start_time,
-                        end_time=end_time,
                     )
 
                     self.logger.info(
                         f"Fetching page {params['page']} of traces with {len(filter_params)} filters",
                     )
-                    resp = self._spans_client.query_spans_v1_traces_query_get_with_http_info(
+                    resp = self._traces_client.list_traces_metadata_api_v1_traces_get_with_http_info(
                         task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
+                        include_spans=True,
                         start_time=start_time,
                         end_time=end_time,
                         page=params["page"],
@@ -415,18 +414,6 @@ class ShieldBaseConnector(Connector, ABC):
         ):
             # delete is idempotent
             pass
-
-    def query_spans_with_metrics(
-        self,
-        task_ids: list[str],
-        start_time: datetime,
-        end_time: datetime,
-    ) -> QueryTracesWithMetricsResponse:
-        return self._spans_client.query_spans_with_metrics_v1_traces_metrics_get(
-            task_ids=task_ids,
-            start_time=start_time,
-            end_time=end_time,
-        )
 
     def read_llm_evals(
         self,

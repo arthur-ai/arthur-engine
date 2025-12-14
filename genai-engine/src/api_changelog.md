@@ -2,6 +2,17 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/14/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_spans'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans' to the response with the '200' status
+
+# 12/13/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'continuous_eval_id/anyOf[subschema #1]/' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'id' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotation'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'updated_at' became required for the status '200'
+
 # 12/13/2025
 - **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotationMetadataResponse'
 - **CHANGE** for Component/Schema:  removed the schema 'ListAgenticAnnotationsMetadataResponse'
