@@ -11,7 +11,9 @@
     "start": "next start",
     "lint": "next lint",
     "test:questions": "node scripts/run-test.js",
-    "test:questions:debug": "LOG_LEVEL=debug node scripts/run-test.js"
+    "test:questions:debug": "LOG_LEVEL=debug node scripts/run-test.js",
+    "test:demo": "node scripts/run-demo.js",
+    "test:demo:debug": "LOG_LEVEL=debug node scripts/run-demo.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",
