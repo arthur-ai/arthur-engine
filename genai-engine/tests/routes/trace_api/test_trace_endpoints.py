@@ -48,7 +48,7 @@ def test_list_traces_metadata_functionality(
 ):
     """Test trace metadata listing functionality for single and multiple tasks."""
 
-    # Test single task
+    # Test single task without spans (default behavior)
     status_code, data = client.trace_api_list_traces_metadata(task_ids=["api_task1"])
     assert status_code == 200
     assert data.count == 3  # api_trace1, api_trace2, api_trace4 belong to api_task1
@@ -76,6 +76,9 @@ def test_list_traces_metadata_functionality(
         assert hasattr(trace_metadata, "prompt_token_cost")
         assert hasattr(trace_metadata, "completion_token_cost")
         assert hasattr(trace_metadata, "total_token_cost")
+        # Verify spans field is present but None when include_spans=false (default)
+        assert hasattr(trace_metadata, "spans")
+        assert trace_metadata.spans is None
 
     # Verify specific traces have expected input/output content and token data
     trace1 = next((t for t in data.traces if t.trace_id == "api_trace1"), None)
@@ -126,6 +129,47 @@ def test_list_traces_metadata_functionality(
     task_ids = {trace.task_id for trace in data.traces}
     assert task_ids == {"api_task1", "api_task2"}
 
+    # Test with include_spans=true
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+        include_spans=True,
+    )
+    assert status_code == 200
+    assert data.count == 3
+    assert len(data.traces) == 3
+
+    # Verify spans are populated as a flat list
+    for trace_metadata in data.traces:
+        assert hasattr(trace_metadata, "spans")
+        assert trace_metadata.spans is not None
+        assert isinstance(trace_metadata.spans, list)
+        # Verify span count matches
+        assert len(trace_metadata.spans) == trace_metadata.span_count
+        # Verify each span has expected structure
+        for span in trace_metadata.spans:
+            assert hasattr(span, "id")
+            assert hasattr(span, "trace_id")
+            assert hasattr(span, "span_id")
+            assert hasattr(span, "span_name")
+            assert hasattr(span, "start_time")
+            assert hasattr(span, "end_time")
+            assert hasattr(span, "status_code")
+            assert hasattr(span, "metric_results")
+            # Verify span belongs to this trace
+            assert span.trace_id == trace_metadata.trace_id
+
+    # Verify api_trace1 has correct number of spans (should have 2: api_span1 and api_span2)
+    trace1_with_spans = next(
+        (t for t in data.traces if t.trace_id == "api_trace1"), None
+    )
+    if trace1_with_spans:
+        assert trace1_with_spans.spans is not None
+        assert len(trace1_with_spans.spans) == 2
+        # Verify spans are flat (not nested)
+        span_ids = {s.span_id for s in trace1_with_spans.spans}
+        assert "api_span1" in span_ids
+        assert "api_span2" in span_ids
+
 
 @pytest.mark.unit_tests
 def test_list_traces_metadata_filtering_by_user_ids(
@@ -169,6 +213,26 @@ def test_list_traces_metadata_filtering_by_user_ids(
     assert status_code == 200
     assert data.count == 0
     assert len(data.traces) == 0
+
+    # Test with include_spans=true and user filtering
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+        user_ids=["user1"],
+        include_spans=True,
+    )
+    assert status_code == 200
+    assert data.count == 3
+    assert len(data.traces) == 3
+
+    # Verify spans are populated for filtered traces
+    for trace_metadata in data.traces:
+        assert trace_metadata.user_id == "user1"
+        assert trace_metadata.spans is not None
+        assert isinstance(trace_metadata.spans, list)
+        assert len(trace_metadata.spans) == trace_metadata.span_count
+        # Verify all spans belong to the correct trace
+        for span in trace_metadata.spans:
+            assert span.trace_id == trace_metadata.trace_id
 
 
 @pytest.mark.unit_tests
@@ -385,6 +449,15 @@ def test_list_traces_metadata_empty_results(
     )
     assert status_code == 200
 
+    assert data.count == 0
+    assert len(data.traces) == 0
+
+    # Test with include_spans=true on empty results (should not error)
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["non_existent_task"],
+        include_spans=True,
+    )
+    assert status_code == 200
     assert data.count == 0
     assert len(data.traces) == 0
 

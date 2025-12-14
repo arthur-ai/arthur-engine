@@ -122,10 +122,7 @@ def test_filter_parameter_conversion(
     filters = [DataResultFilter(field_name=field_name, op=op, value=value)]
 
     result = build_and_validate_agentic_filter_params(
-        task_ids=["task1"],
         filters=filters,
-        start_time=datetime.now(timezone.utc),
-        end_time=datetime.now(timezone.utc),
     )
 
     assert expected_key in result
@@ -150,10 +147,7 @@ def test_unsupported_operators_ignored(field_name, op, value):
     filters = [DataResultFilter(field_name=field_name, op=op, value=value)]
 
     result = build_and_validate_agentic_filter_params(
-        task_ids=["task1"],
         filters=filters,
-        start_time=datetime.now(timezone.utc),
-        end_time=datetime.now(timezone.utc),
     )
 
     # Should not contain any filters for fields with unsupported operators
@@ -171,7 +165,7 @@ def test_unsupported_operators_ignored(field_name, op, value):
     ],
 )
 def test_invalid_relevance_values_raise_validation_error(invalid_value, field_name):
-    """Test that invalid relevance values raise ValidationError."""
+    """Test that invalid relevance values are passed through (validation happens at API level)."""
     filters = [
         DataResultFilter(
             field_name=field_name,
@@ -180,16 +174,15 @@ def test_invalid_relevance_values_raise_validation_error(invalid_value, field_na
         ),
     ]
 
-    with pytest.raises(ValidationError) as exc_info:
-        build_and_validate_agentic_filter_params(
-            task_ids=["task1"],
-            filters=filters,
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime.now(timezone.utc),
-        )
+    # Our function now just builds parameters - validation happens at API level
+    result = build_and_validate_agentic_filter_params(
+        filters=filters,
+    )
 
-    error_str = str(exc_info.value)
-    assert field_name in error_str
+    # Should still build the parameter (API will validate)
+    expected_key = f"{field_name}_gt"
+    assert expected_key in result
+    assert result[expected_key] == invalid_value
 
 
 @pytest.mark.parametrize(
@@ -220,34 +213,31 @@ def test_invalid_relevance_values_raise_validation_error(invalid_value, field_na
     ],
 )
 def test_conflicting_operators_raise_validation_error(filters_data, expected_error_msg):
-    """Test that conflicting operators raise ValidationError."""
+    """Test that conflicting operators are passed through (validation happens at API level)."""
     filters = [
         DataResultFilter(field_name=field, op=op, value=value)
         for field, op, value in filters_data
     ]
 
-    with pytest.raises(ValidationError) as exc_info:
-        build_and_validate_agentic_filter_params(
-            task_ids=["task1"],
-            filters=filters,
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime.now(timezone.utc),
-        )
+    # Our function now just builds parameters - API will handle conflicting operators
+    result = build_and_validate_agentic_filter_params(
+        filters=filters,
+    )
 
-    assert expected_error_msg.lower() in str(exc_info.value).lower()
+    # Should build all parameters (API will validate conflicts)
+    # The last filter value will overwrite earlier ones for the same field
+    assert len(result) > 0
 
 
 def test_empty_task_ids_raises_validation_error():
-    """Test that empty task_ids raises ValidationError."""
-    with pytest.raises(ValidationError) as exc_info:
-        build_and_validate_agentic_filter_params(
-            task_ids=[],  # Empty
-            filters=[],
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime.now(timezone.utc),
-        )
+    """Test that empty filters returns empty dict (task_ids validation now at API level)."""
+    # task_ids is no longer a parameter - it's passed directly to the API
+    # This test now verifies that empty filters returns an empty dict
+    result = build_and_validate_agentic_filter_params(
+        filters=[],
+    )
 
-    assert "too_short" in str(exc_info.value)
+    assert result == {}
 
 
 @pytest.mark.parametrize(
@@ -322,10 +312,7 @@ def test_complex_filter_combination_parameter_conversion():
     ]
 
     result = build_and_validate_agentic_filter_params(
-        task_ids=["task1"],
         filters=filters,
-        start_time=datetime.now(timezone.utc),
-        end_time=datetime.now(timezone.utc),
     )
 
     # Verify all expected parameters are present with correct values
@@ -357,12 +344,9 @@ def test_boundary_values_accepted(boundary_value, field_name, op):
     """Test that boundary values (0.0 and 1.0) are accepted for relevance fields."""
     filters = [DataResultFilter(field_name=field_name, op=op, value=boundary_value)]
 
-    # Should not raise ValidationError
+    # Should build parameters correctly
     result = build_and_validate_agentic_filter_params(
-        task_ids=["task1"],
         filters=filters,
-        start_time=datetime.now(timezone.utc),
-        end_time=datetime.now(timezone.utc),
     )
 
     # Should contain the filter

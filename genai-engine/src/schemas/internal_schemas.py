@@ -739,6 +739,9 @@ class TraceMetadata(TokenCountCostSchema):
     # Annotation information (separate table only used for response model conversion)
     annotations: Optional[List[AgenticAnnotation]] = None
 
+    # Spans information (only populated when include_spans=true)
+    spans: Optional[List["Span"]] = None
+
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
         return TraceMetadata(
@@ -792,6 +795,10 @@ class TraceMetadata(TokenCountCostSchema):
                 annotation.to_response_model() for annotation in self.annotations
             ]
 
+        spans_response = None
+        if self.spans:
+            spans_response = [span._to_response_model() for span in self.spans]
+
         return TraceMetadataResponse(
             trace_id=self.trace_id,
             task_id=self.task_id,
@@ -812,6 +819,7 @@ class TraceMetadata(TokenCountCostSchema):
             input_content=self.input_content,
             output_content=self.output_content,
             annotations=annotation_response,
+            spans=spans_response,
         )
 
 
