@@ -3451,7 +3451,7 @@
                     "Traces"
                 ],
                 "summary": "List Trace Metadata",
-                "description": "Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.",
+                "description": "Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance. Set include_spans=true to include flat list of spans for each trace.",
                 "operationId": "list_traces_metadata_api_v1_traces_get",
                 "security": [
                     {
@@ -3459,6 +3459,18 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "include_spans",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include flat list of spans for each trace. Defaults to false for performance.",
+                            "default": false,
+                            "title": "Include Spans"
+                        },
+                        "description": "Include flat list of spans for each trace. Defaults to false for performance."
+                    },
                     {
                         "name": "sort",
                         "in": "query",
@@ -22338,6 +22350,21 @@
                         ],
                         "title": "Annotations",
                         "description": "Annotations for the trace."
+                    },
+                    "spans": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/SpanWithMetricsResponse"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Spans",
+                        "description": "Flat list of spans in this trace (only populated when include_spans=true)."
                     }
                 },
                 "type": "object",

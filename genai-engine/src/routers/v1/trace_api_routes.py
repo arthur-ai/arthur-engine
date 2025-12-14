@@ -98,7 +98,7 @@ def receive_traces(
 @trace_api_routes.get(
     "/traces",
     summary="List Trace Metadata",
-    description="Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.",
+    description="Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance. Set include_spans=true to include flat list of spans for each trace.",
     response_model=TraceListResponse,
     response_model_exclude_none=True,
     tags=["Traces"],
@@ -113,6 +113,10 @@ def list_traces_metadata(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
+    include_spans: bool = Query(
+        False,
+        description="Include flat list of spans for each trace. Defaults to false for performance.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceListResponse:
@@ -123,6 +127,7 @@ def list_traces_metadata(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
             user_ids=trace_query.user_ids,
+            include_spans=include_spans,
         )
 
         traces = [

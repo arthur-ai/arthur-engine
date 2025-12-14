@@ -1925,6 +1925,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         annotation_type: str | None = None,
         continuous_eval_run_status: str | None = None,
         continuous_eval_name: str | None = None,
+        include_spans: bool | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1979,6 +1980,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["continuous_eval_name"] = continuous_eval_name
         if user_ids is not None:
             params["user_ids"] = user_ids
+        if include_spans is not None:
+            params["include_spans"] = include_spans
         # Query relevance filters
         if query_relevance_eq is not None:
             params["query_relevance_eq"] = query_relevance_eq

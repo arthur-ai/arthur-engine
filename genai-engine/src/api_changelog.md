@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/14/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_spans'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans' to the response with the '200' status
+
 # 12/13/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'continuous_eval_id/anyOf[subschema #1]/' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'id' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
