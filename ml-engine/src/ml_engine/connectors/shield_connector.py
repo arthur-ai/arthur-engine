@@ -186,6 +186,7 @@ class ShieldBaseConnector(Connector, ABC):
                     )
                     resp = self._traces_client.list_traces_metadata_api_v1_traces_get_with_http_info(
                         task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
+                        include_spans=True,
                         start_time=start_time,
                         end_time=end_time,
                         page=params["page"],

@@ -749,6 +749,7 @@ def test_agentic_dataset_filter_parameter_mapping(
     # Build base parameters for the list traces metadata API
     base_params = {
         "task_ids": MOCK_SHIELD_TASK_ID,
+        "include_spans": "true",
         "start_time": start_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
         "end_time": end_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
         "page": "0",
