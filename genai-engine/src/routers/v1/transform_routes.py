@@ -9,7 +9,7 @@ from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import (
     get_db_session,
-    get_validated_agentic_task,
+    get_validated_task,
     transform_list_filter_parameters,
 )
 from repositories.metrics_repository import MetricRepository
@@ -58,7 +58,7 @@ def list_transforms_for_task(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> ListTraceTransformsResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
@@ -89,6 +89,13 @@ def get_transform(
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.get_transform_by_id(transform_id)
+
+        if not trace_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+
         return trace_transform.to_response_model()
     except HTTPException:
         raise
@@ -107,7 +114,7 @@ def create_transform_for_task(
     request: NewTraceTransformRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
@@ -188,6 +195,12 @@ def execute_trace_transform_extraction(
         trace_transform = trace_transform_repo.get_transform_by_id(
             transform_id,
         )
+
+        if not trace_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
 
         # Fetch the trace
         tasks_metrics_repo = TasksMetricsRepository(db_session)

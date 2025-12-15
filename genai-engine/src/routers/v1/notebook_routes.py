@@ -4,7 +4,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_agentic_task
+from dependencies import get_db_session, get_validated_task
 from repositories.notebook_repository import NotebookRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -44,7 +44,7 @@ def create_notebook(
     notebook_request: CreateNotebookRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     """
     Create a new notebook for a task.
@@ -84,7 +84,7 @@ def list_notebooks(
     name: str | None = None,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     """
     List all notebooks for a given task.

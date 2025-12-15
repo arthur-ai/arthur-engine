@@ -5,11 +5,13 @@ import arthur_client
 import genai_client.exceptions
 from arthur_client.api_bindings import (
     ConnectorType,
+    ContinuousEvalResponse,
     CreateModelLinkTaskJobSpec,
     Dataset,
     DatasetLocator,
     DatasetLocatorField,
     DatasetsV1Api,
+    LLMEval,
     Model,
     ModelProblemType,
     ModelsV1Api,
@@ -20,6 +22,7 @@ from arthur_client.api_bindings import (
     PutTaskStateCacheRequest,
     RegenerateTaskValidationKeyJobSpec,
     TasksV1Api,
+    TraceTransformResponse,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
 from arthur_common.models.request_schemas import NewMetricRequest, NewRuleRequest
@@ -148,7 +151,130 @@ class _TaskManagementJobExecutor:
 
         return model, task_dataset, conn, task_id
 
-    def upload_final_task_state(self, model_id: str, task: TaskResponse) -> None:
+    def _get_task_transforms(
+        self,
+        connector: ShieldBaseConnector,
+        task_id: str,
+    ) -> list[TraceTransformResponse]:
+        """
+        Retrieves transforms for a task.
+
+        Args:
+            connector: Shield connector to use for querying
+            task_id: Task ID to query
+
+        Returns:
+            List of TraceTransformResponse objects or empty list if fetch fails
+        """
+        try:
+            self.logger.info(f"Fetching transforms for task {task_id}")
+            transforms = connector.read_transforms(
+                task_id=task_id,
+                page_size=100,
+            )
+            self.logger.info(f"Retrieved {len(transforms)} transforms")
+            return transforms
+        except Exception as e:
+            self.logger.warning(f"Failed to fetch transforms: {e}")
+            return []
+
+    def _get_task_continuous_evals(
+        self,
+        connector: ShieldBaseConnector,
+        task_id: str,
+    ) -> list[ContinuousEvalResponse]:
+        """
+        Retrieves continuous evals for a task.
+
+        Args:
+            connector: Shield connector to use for querying
+            task_id: Task ID to query
+
+        Returns:
+            List of ContinuousEvalResponse objects or empty list if fetch fails
+        """
+        try:
+            self.logger.info(f"Fetching continuous evals for task {task_id}")
+            continuous_evals = connector.read_continuous_evals(
+                task_id=task_id,
+                page_size=100,
+            )
+            self.logger.info(f"Retrieved {len(continuous_evals)} continuous evals")
+            return continuous_evals
+        except Exception as e:
+            self.logger.warning(f"Failed to fetch continuous evals: {e}")
+            return []
+
+    def _get_task_llm_evals(
+        self,
+        connector: ShieldBaseConnector,
+        task_id: str,
+    ) -> list[LLMEval]:
+        """
+        Retrieves LLM evals with their latest versions for a task.
+
+        Args:
+            connector: Shield connector to use for querying
+            task_id: Task ID to query
+
+        Returns:
+            List of latest LLM eval versions or empty list if fetch fails
+        """
+        try:
+            self.logger.info(f"Fetching LLM evals for task {task_id}")
+            llm_evals_response = connector.read_llm_evals(
+                task_id=task_id,
+                page_size=100,
+            )
+
+            # For each eval, get the latest version
+            llm_evals_with_versions: list[LLMEval] = []
+            self.logger.info(
+                f"Retrieved {len(llm_evals_response.llm_metadata)} LLM eval definitions"
+            )
+
+            for eval_metadata in llm_evals_response.llm_metadata:
+                try:
+                    self.logger.info(
+                        f"Fetching latest version for eval: {eval_metadata.name}",
+                    )
+                    latest_version: LLMEval = connector.read_llm_eval_latest_version(
+                        task_id=task_id,
+                        eval_name=eval_metadata.name,
+                    )
+                    llm_evals_with_versions.append(latest_version)
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to fetch latest version for eval {eval_metadata.name}: {e}",
+                    )
+
+            self.logger.info(
+                f"Retrieved latest versions for {len(llm_evals_with_versions)} LLM evals",
+            )
+            return llm_evals_with_versions
+        except Exception as e:
+            self.logger.warning(f"Failed to fetch LLM evals: {e}")
+            return []
+
+    def upload_final_task_state(
+        self,
+        model_id: str,
+        task: TaskResponse,
+        connector: ShieldBaseConnector,
+    ) -> None:
+        """
+        Uploads the final task state to the platform API, including eval state.
+
+        Args:
+            model_id: Model ID to upload state for
+            task: Task response to upload
+            connector: Shield connector to fetch eval state
+        """
+        # Fetch eval state components
+        transforms = self._get_task_transforms(connector, task.id)
+        continuous_evals = self._get_task_continuous_evals(connector, task.id)
+        llm_evals = self._get_task_llm_evals(connector, task.id)
+
         # convert shield task response type to scope task response type since each is from a separate API client
         self.tasks_client.put_task_state_cache(
             model_id=model_id,
@@ -156,9 +282,16 @@ class _TaskManagementJobExecutor:
                 task=ScopeClientTypeConverter.task_response_api_to_scope_client(
                     task,
                 ),
+                transforms=transforms,
+                continuous_evals=continuous_evals,
+                evals=llm_evals,
             ),
         )
-        self.logger.info(f"Uploaded final task state to the platform API")
+        self.logger.info(
+            f"Uploaded final task state to the platform API with "
+            f"{len(transforms)} transforms, {len(continuous_evals)} continuous evals, "
+            f"and {len(llm_evals)} LLM evals",
+        )
 
 
 class _TaskRuleAdder:
@@ -612,6 +745,7 @@ class CreateTaskJobExecutor(_TaskManagementJobExecutor):
         self.upload_final_task_state(
             model_id=model.id,
             task=task,
+            connector=conn,
         )
 
 
@@ -632,6 +766,7 @@ class LinkTaskJobExecutor(_TaskManagementJobExecutor):
         self.upload_final_task_state(
             model_id=model.id,
             task=task,
+            connector=conn,
         )
 
 
@@ -687,7 +822,11 @@ class UpdateTaskJobExecutor(_TaskManagementJobExecutor):
         # upload latest task definition
         self.logger.info(f"Fetching final task definition: {task_id}")
         shield_task_state = connector.read_task(task_id=task_id)
-        self.upload_final_task_state(model.id, shield_task_state)
+        self.upload_final_task_state(
+            model_id=model.id,
+            task=shield_task_state,
+            connector=connector,
+        )
 
     @staticmethod
     def _delete_task_rule_idempotent(
@@ -737,7 +876,11 @@ class FetchTaskJobExecutor(_TaskManagementJobExecutor):
         )
         self.logger.info(f"Fetching task: {task_id}")
         shield_task_state = connector.read_task(task_id=task_id)
-        self.upload_final_task_state(model.id, shield_task_state)
+        self.upload_final_task_state(
+            model_id=model.id,
+            task=shield_task_state,
+            connector=connector,
+        )
 
 
 class RegenerateTaskValidationKeyJobExecutor(_TaskManagementJobExecutor):

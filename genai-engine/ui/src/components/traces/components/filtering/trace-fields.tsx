@@ -1,4 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { capitalize } from "@mui/material";
 
 import { createPrimitiveField, Field } from "./fields";
 import { Operators, type Operator } from "./types";
@@ -86,5 +87,22 @@ export const TRACE_FIELDS = [
     operators: [EnumOperators.IN, EnumOperators.EQUALS],
     options: ["Ok", "Error"],
     itemToStringLabel: (option) => (option === "Ok" ? "Pass" : "Fail"),
+    type: "enum",
+    name: "annotation_type",
+    operators: [EnumOperators.EQUALS],
+    options: ["human", "continuous_eval"],
+    itemToStringLabel: (option) => option,
+  }),
+  createPrimitiveField({
+    type: "enum",
+    name: "continuous_eval_run_status",
+    operators: [EnumOperators.EQUALS],
+    options: ["pending", "passed", "running", "failed", "skipped", "error"],
+    itemToStringLabel: (option) => capitalize(option),
+  }),
+  createPrimitiveField({
+    type: "text",
+    name: "continuous_eval_name",
+    operators: [TextOperators.CONTAINS],
   }),
 ] as const satisfies Field[];

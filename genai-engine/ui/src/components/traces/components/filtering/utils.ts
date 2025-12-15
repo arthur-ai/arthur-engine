@@ -28,6 +28,9 @@ const NAME_TO_LABEL = {
   user_ids: "User IDs",
   session_ids: "Session IDs",
   annotation_score: "Annotation Score",
+  annotation_type: "Annotation Type",
+  continuous_eval_run_status: "Continuous Eval Run Status",
+  continuous_eval_name: "Continuous Eval Name",
 } as const;
 
 export const getFieldLabel = (name: string) => {

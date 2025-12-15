@@ -73,24 +73,6 @@ def test_get_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_get_agentic_prompt_non_agentic_task(client: GenaiEngineTestClientBase):
-    """Test getting a prompt from a non-agentic task should fail"""
-    # Create a non-agentic task
-    task_name = f"non_agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=False)
-    assert status_code == 200
-    assert task.is_agentic == False
-
-    # Try to get a prompt from non-agentic task
-    response = client.base_client.get(
-        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/1",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 400
-    assert "not agentic" in response.json()["detail"].lower()
-
-
-@pytest.mark.unit_tests
 def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
     """Test getting all prompts for an agentic task"""
     # Create an agentic task

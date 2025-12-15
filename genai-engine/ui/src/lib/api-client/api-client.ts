@@ -29,11 +29,26 @@ export interface AgenticAnnotation {
   annotation_description?: string | null;
   /**
    * Annotation Score
-   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)
-   * @min 0
-   * @max 1
+   * Binary score for positive or negative annotation.
    */
-  annotation_score: number;
+  annotation_score?: number | null;
+  /** Type of annotation */
+  annotation_type: AgenticAnnotationType;
+  /**
+   * Continuous Eval Id
+   * Continuous eval ID this annotation belongs to
+   */
+  continuous_eval_id?: string | null;
+  /**
+   * Continuous Eval Name
+   * Name of the continuous eval this annotation belongs to
+   */
+  continuous_eval_name?: string | null;
+  /**
+   * Cost
+   * Cost of the continuous eval run
+   */
+  cost?: number | null;
   /**
    * Created At
    * When the annotation was created
@@ -41,11 +56,28 @@ export interface AgenticAnnotation {
    */
   created_at?: string;
   /**
+   * Eval Name
+   * Name of the eval the continuous eval used when scoring
+   */
+  eval_name?: string | null;
+  /**
+   * Eval Version
+   * Version of the eval the continuous eval used when scoring
+   */
+  eval_version?: number | null;
+  /**
    * Id
    * Unique identifier for the annotation
    * @format uuid
    */
   id: string;
+  /**
+   * Input Variables
+   * Input variables for the continuous eval
+   */
+  input_variables?: VariableTemplateValue[] | null;
+  /** Status of the continuous eval run */
+  run_status?: ContinuousEvalRunStatus | null;
   /**
    * Trace Id
    * Trace ID this annotation belongs to
@@ -84,10 +116,69 @@ export interface AgenticAnnotationResponse {
   annotation_description?: string | null;
   /**
    * Annotation Score
-   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked).
+   * Binary score for a positive or negative annotation.
    */
   annotation_score?: number | null;
+  /** Type of annotation */
+  annotation_type: AgenticAnnotationType;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval this annotation belongs to
+   */
+  continuous_eval_id?: string | null;
+  /**
+   * Continuous Eval Name
+   * Name of the continuous eval this annotation belongs to
+   */
+  continuous_eval_name?: string | null;
+  /**
+   * Cost
+   * Cost of the continuous eval run
+   */
+  cost?: number | null;
+  /**
+   * Created At
+   * Time the annotation was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Eval Name
+   * Name of the eval the continuous eval used when scoring
+   */
+  eval_name?: string | null;
+  /**
+   * Eval Version
+   * Version of the eval the continuous eval used when scoring
+   */
+  eval_version?: number | null;
+  /**
+   * Id
+   * ID of the annotation
+   */
+  id: string;
+  /**
+   * Input Variables
+   * Input variables for the continuous eval
+   */
+  input_variables?: VariableTemplateValue[] | null;
+  /** Status of the continuous eval run */
+  run_status?: ContinuousEvalRunStatus | null;
+  /**
+   * Trace Id
+   * ID of the trace this annotation belongs to
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * Time the annotation was last updated
+   * @format date-time
+   */
+  updated_at: string;
 }
+
+/** AgenticAnnotationType */
+export type AgenticAnnotationType = "human" | "continuous_eval";
 
 /** AgenticPrompt */
 export interface AgenticPrompt {
@@ -640,6 +731,21 @@ export interface ContinuousEvalCreateRequest {
   transform_id: string;
 }
 
+/** ContinuousEvalRerunResponse */
+export interface ContinuousEvalRerunResponse {
+  /**
+   * Run Id
+   * ID of the continuous eval run that was rerun.
+   * @format uuid
+   */
+  run_id: string;
+  /**
+   * Trace Id
+   * ID of the trace that was rerun.
+   */
+  trace_id: string;
+}
+
 /** ContinuousEvalResponse */
 export interface ContinuousEvalResponse {
   /**
@@ -692,6 +798,9 @@ export interface ContinuousEvalResponse {
    */
   updated_at: string;
 }
+
+/** ContinuousEvalRunStatus */
+export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
 
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
@@ -1865,6 +1974,10 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
 
 /** Response Get All Tasks Api V2 Tasks Get */
 export type GetAllTasksApiV2TasksGetData = TaskResponse[];
+
+export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetData = AgenticAnnotationResponse;
+
+export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError = HTTPValidationError;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
@@ -3166,6 +3279,135 @@ export interface LLMVersionResponse {
   version: number;
 }
 
+/** ListAgenticAnnotationsResponse */
+export interface ListAgenticAnnotationsResponse {
+  /**
+   * Annotations
+   * List of annotations
+   */
+  annotations: AgenticAnnotationResponse[];
+  /**
+   * Count
+   * Total number of annotations
+   */
+  count: number;
+}
+
+export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData = ListAgenticAnnotationsResponse;
+
+export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetError = HTTPValidationError;
+
+export interface ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetParams {
+  /**
+   * Annotation Score
+   * Annotation score to filter on.
+   */
+  annotation_score?: number | null;
+  /**
+   * Annotation Type
+   * Annotation type to filter on.
+   */
+  annotation_type?: string | null;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval to filter on.
+   */
+  continuous_eval_id?: string | null;
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Run Status
+   * Run status to filter on.
+   */
+  run_status?: ContinuousEvalRunStatus | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /** Trace Id */
+  traceId: string;
+}
+
+export type ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetData = ListAgenticAnnotationsResponse;
+
+export type ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetError = HTTPValidationError;
+
+export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetParams {
+  /**
+   * Annotation Score
+   * Annotation score to filter on.
+   */
+  annotation_score?: number | null;
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Id
+   * ID of the continuous eval to filter on.
+   */
+  id?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Run Status
+   * Run status to filter on.
+   */
+  run_status?: ContinuousEvalRunStatus | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+  /**
+   * Trace Id
+   * Trace ID to filter on.
+   */
+  trace_id?: string | null;
+}
+
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
@@ -3419,6 +3661,15 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * @max 1
    */
   annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -3621,6 +3872,15 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @max 1
    */
   annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -5510,6 +5770,15 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @max 1
    */
   annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -5703,6 +5972,15 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * @max 1
    */
   annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -6293,6 +6571,10 @@ export interface RenderedPromptResponse {
    */
   messages: OpenAIMessageOutput[];
 }
+
+export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData = ContinuousEvalRerunResponse;
+
+export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError = HTTPValidationError;
 
 export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
 
@@ -7326,8 +7608,11 @@ export interface TraceListResponse {
  * Lightweight trace metadata for list operations
  */
 export interface TraceMetadataResponse {
-  /** Annotation for the trace. */
-  annotation?: AgenticAnnotationResponse | null;
+  /**
+   * Annotations
+   * Annotations for the trace.
+   */
+  annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -7429,8 +7714,11 @@ export interface TraceMetadataResponse {
  * Response model for a single trace containing nested spans
  */
 export interface TraceResponse {
-  /** Annotation for this trace. */
-  annotation?: AgenticAnnotationResponse | null;
+  /**
+   * Annotations
+   * Annotations for this trace.
+   */
+  annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -7691,21 +7979,7 @@ export interface TransformExtractionResponseList {
    * Variables
    * List of extracted variables.
    */
-  variables: TransformExtractionResponseVariable[];
-}
-
-/** TransformExtractionResponseVariable */
-export interface TransformExtractionResponseVariable {
-  /**
-   * Value
-   * Value of the extracted variable.
-   */
-  value: string;
-  /**
-   * Variable Name
-   * Name of the extracted variable.
-   */
-  variable_name: string;
+  variables: VariableTemplateValue[];
 }
 
 /**
@@ -8957,7 +9231,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.247
+ * @version 2.1.251
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -10096,6 +10370,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get an annotation by id
+     *
+     * @tags Traces
+     * @name GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGet
+     * @summary Get an annotation by id
+     * @request GET:/api/v1/traces/annotations/{annotation_id}
+     * @secure
+     */
+    getAnnotationByIdApiV1TracesAnnotationsAnnotationIdGet: (annotationId: string, params: RequestParams = {}) =>
+      this.request<GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetData, GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError>({
+        path: `/api/v1/traces/annotations/${annotationId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a continuous eval by id
      *
      * @tags Continuous Evals
@@ -10840,6 +11132,53 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description List annotations for a trace
+     *
+     * @tags Traces
+     * @name ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGet
+     * @summary List Annotations for a Trace
+     * @request GET:/api/v1/traces/{trace_id}/annotations
+     * @secure
+     */
+    listAnnotationsForTraceApiV1TracesTraceIdAnnotationsGet: (
+      { traceId, ...query }: ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData, ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetError>({
+        path: `/api/v1/traces/${traceId}/annotations`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all continuous eval run results for a specific task
+     *
+     * @tags Continuous Evals
+     * @name ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet
+     * @summary Get all continuous eval run results for a specific task
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/results
+     * @secure
+     */
+    listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet: (
+      { taskId, ...query }: ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetData,
+        ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/results`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get all continuous evals for a specific task
      *
      * @tags Continuous Evals
@@ -11178,6 +11517,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Rerun a failed continuous eval
+     *
+     * @tags Continuous Evals
+     * @name RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPost
+     * @summary Rerun a failed continuous eval
+     * @request POST:/api/v1/continuous_evals/results/{run_id}/rerun
+     * @secure
+     */
+    rerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPost: (runId: string, params: RequestParams = {}) =>
+      this.request<
+        RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData,
+        RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError
+      >({
+        path: `/api/v1/continuous_evals/results/${runId}/rerun`,
+        method: "POST",
+        secure: true,
         format: "json",
         ...params,
       }),
