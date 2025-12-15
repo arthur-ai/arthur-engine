@@ -235,26 +235,28 @@ name = "arthur-common"
 version = "2.4.19"
 description = "Utility code common to Arthur platform components."
 optional = false
-python-versions = "<4.0,>=3.12"
+python-versions = "^3.12"
 groups = ["main"]
-files = [
-    {file = "arthur_common-2.4.19-py3-none-any.whl", hash = "sha256:4cd7f222b759ea541226e3f7484e51acba4fb39937cdb1a700df26a103cee5dc"},
-    {file = "arthur_common-2.4.19.tar.gz", hash = "sha256:b077811eea21f05ab0ed641a9e0c1889a13d25a78516edf15b828be59a0c834c"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 datasketches = ">=5.1.0"
 duckdb = ">=1.1.3"
 fastapi = ">=0.115.8"
 fsspec = ">=2024.10.0"
-litellm = ">=1.77.7,<2.0.0"
-openinference-semantic-conventions = ">=0.1.12,<0.2.0"
+litellm = "^1.77.7"
+openinference-semantic-conventions = "^0.1.12"
 pandas = ">=2.2.2"
 pydantic = ">=2"
 simple-settings = ">=1.2.0"
 types-python-dateutil = ">=2.9.0"
 types-requests = ">=2.32.0.20241016"
 typing-extensions = ">=4.7.1"
+
+[package.source]
+type = "directory"
+url = "../../arthur-common"
 
 [[package]]
 name = "asn1crypto"
@@ -4879,4 +4881,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "e7da8c74cdb32525bef09198eedfe5dad390a6cec7b733332b4736729c66c912"
+content-hash = "4aa10dc561e4d9c1041d486156ad7234db2490f629f84a525aec5a4441d24d74"
