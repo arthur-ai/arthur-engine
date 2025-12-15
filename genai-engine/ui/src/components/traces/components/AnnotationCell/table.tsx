@@ -1,8 +1,9 @@
 import LaunchIcon from "@mui/icons-material/Launch";
-import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, IconButton, Typography, Chip } from "@mui/material";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, Typography, Chip, ButtonGroup, Button } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
 
@@ -14,17 +15,14 @@ type Props = {
 };
 
 export const AnnotationsTable = ({ annotations }: Props) => {
-  const navigate = useNavigate();
   const { task } = useTask();
 
   const columns = useMemo(
     () =>
       createColumns({
-        onView: (annotation) => {
-          navigate(`/tasks/${task!.id}/continuous-evals?id=${annotation.id}&tab=results`);
-        },
+        taskId: task!.id,
       }),
-    [task, navigate]
+    [task]
   );
 
   const table = useReactTable({
@@ -64,7 +62,7 @@ export const AnnotationsTable = ({ annotations }: Props) => {
 const columnHelper = createColumnHelper<Annotation>();
 
 const getStatusChipSx = (status: string) => {
-  const colorMap: Record<string, any> = {
+  const colorMap: Record<string, { color: string; borderColor: string }> = {
     pending: { color: "text.secondary", borderColor: "text.secondary" },
     running: { color: "primary.main", borderColor: "primary.main" },
     passed: { color: "success.main", borderColor: "success.main" },
@@ -82,7 +80,7 @@ const getStatusChipSx = (status: string) => {
   };
 };
 
-const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { annotation_type: "continuous_eval" }>) => void }) => [
+const createColumns = ({ taskId }: { taskId: string }) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
     cell: ({ getValue }) => {
@@ -120,6 +118,9 @@ const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { 
   }),
   columnHelper.accessor("annotation_description", {
     header: "Annotation Explanation",
+    cell: ({ getValue }) => {
+      return <div className="max-h-32 overflow-auto">{getValue()}</div>;
+    },
   }),
   columnHelper.accessor("run_status", {
     header: "Run Status",
@@ -135,7 +136,7 @@ const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { 
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return;
 
-      return formatCurrency(row.original.cost ?? 0);
+      return <span className="text-nowrap">{formatCurrency(row.original.cost ?? 0)}</span>;
     },
   }),
   columnHelper.display({
@@ -143,12 +144,28 @@ const createColumns = ({ onView }: { onView: (annotation: Extract<Annotation, { 
     cell: ({ row }) => {
       const annotation = row.original;
 
-      if (annotation.annotation_type === "human") return;
+      if (!isContinuousEvalAnnotation(annotation)) return;
 
       return (
-        <IconButton onClick={() => onView(annotation)} size="small">
-          <LaunchIcon fontSize="small" />
-        </IconButton>
+        <ButtonGroup>
+          <Button
+            component={Link}
+            to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results`}
+            size="small"
+            startIcon={<LaunchIcon fontSize="small" />}
+          >
+            View
+          </Button>
+          <Button
+            component={Link}
+            to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results&action=rerun`}
+            size="small"
+            startIcon={<RestartAltIcon fontSize="small" />}
+            disabled={annotation.run_status === "passed"}
+          >
+            Rerun
+          </Button>
+        </ButtonGroup>
       );
     },
   }),

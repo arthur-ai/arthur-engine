@@ -2,22 +2,22 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Chip, IconButton } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 
-import { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
+import { AgenticAnnotationResponse, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<AgenticAnnotationResponse>();
 
-const getStatusChipSx = (status: string) => {
-  const colorMap: Record<string, any> = {
-    pending: { color: "text.secondary", borderColor: "text.secondary" },
-    running: { color: "primary.main", borderColor: "primary.main" },
-    passed: { color: "success.main", borderColor: "success.main" },
-    failed: { color: "error.main", borderColor: "error.main" },
-    error: { color: "error.main", borderColor: "error.main" },
-    skipped: { color: "warning.main", borderColor: "warning.main" },
-  };
+const colorMap = {
+  pending: { color: "text.secondary", borderColor: "text.secondary" },
+  running: { color: "primary.main", borderColor: "primary.main" },
+  passed: { color: "success.main", borderColor: "success.main" },
+  failed: { color: "error.main", borderColor: "error.main" },
+  error: { color: "error.main", borderColor: "error.main" },
+  skipped: { color: "warning.main", borderColor: "warning.main" },
+};
 
-  const colors = colorMap[status.toLowerCase()] || { color: "text.secondary", borderColor: "text.secondary" };
+const getStatusChipSx = (status: ContinuousEvalRunStatus) => {
+  const colors = colorMap[status] || { color: "text.secondary", borderColor: "text.secondary" };
   return {
     ...colors,
     backgroundColor: "transparent",
