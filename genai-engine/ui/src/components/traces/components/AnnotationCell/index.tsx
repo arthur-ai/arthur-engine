@@ -30,18 +30,19 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
     })
     .filter((annotation): annotation is Annotation => Boolean(annotation));
 
-  // Count continuous eval annotations by status
+  // Get annotation metrics
   const continuousEvalAnnotations = parsed.filter(isContinuousEvalAnnotation);
-  const passedCount = continuousEvalAnnotations.filter((a) => a.run_status === "passed").length;
-  const failedCount = continuousEvalAnnotations.filter((a) => a.run_status === "failed").length;
+  const passedCount = parsed.filter((a) => a.annotation_score === 1).length;
+  const failedCount = parsed.filter((a) => a.annotation_score === 0).length;
+  const skippedCount = continuousEvalAnnotations.filter((a) => a.run_status === "skipped").length;
   const erroredCount = continuousEvalAnnotations.filter((a) => a.run_status === "error").length;
 
   // Determine button color based on results
   const getButtonColor = () => {
-    const totalResults = passedCount + failedCount + erroredCount;
+    const totalResults = passedCount + failedCount + erroredCount + skippedCount;
     if (totalResults === 0) return "var(--color-gray-600)"; // No continuous eval results
 
-    if (failedCount + erroredCount === 0) {
+    if (failedCount + erroredCount + skippedCount === 0) {
       return "var(--color-green-700)"; // All passed
     } else if (passedCount === 0) {
       return "var(--color-red-700)"; // All failed or errored
@@ -61,7 +62,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
 
   return (
     <>
-      <Tooltip title={`Passed / Failed / Errored (${parsed.length} total annotation${parsed.length !== 1 ? "s" : ""})`} arrow>
+      <Tooltip title={`Passed / Failed / Skipped / Errored (${parsed.length} total annotation${parsed.length !== 1 ? "s" : ""})`} arrow>
         <motion.button
           className={cn(
             "bg-[color-mix(in_oklab,var(--color)_20%,white)] border border-(--color)/50 text-(--color) rounded-md text-nowrap overflow-hidden cursor-pointer group",
@@ -77,7 +78,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
           <div ref={ref} className="overflow-visible w-min flex items-center">
             {/* <Icon sx={{ fontSize: 12, ml: 1 }} /> */}
             <Typography variant="caption" color="inherit" fontWeight={500} className="select-none leading-none" sx={{ mx: 1 }}>
-              {passedCount} / {failedCount} / {erroredCount}
+              {passedCount} / {failedCount} / {skippedCount} / {erroredCount}
             </Typography>
             <Box className="border-l border-(--color)/50 bg-(--color)/10 group-hover:block group-focus-visible:block hidden" sx={{ pl: 0.5, pr: 0.75 }}>
               <OpenInFullIcon sx={{ fontSize: 12 }} />
