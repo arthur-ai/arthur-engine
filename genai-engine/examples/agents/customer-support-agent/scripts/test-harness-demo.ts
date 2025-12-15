@@ -71,31 +71,44 @@ interface TestResult {
 }
 
 /**
- * Temporarily override Date to return a specific timestamp
+ * Temporarily override Date to return backdated timestamps while preserving elapsed time
+ * 
+ * This class calculates a time offset between the target (backdated) time and real time,
+ * then applies that offset to all Date operations. This ensures:
+ * - Start times are backdated to the target date
+ * - End times are also backdated but preserve the actual elapsed duration
+ * - Time progresses naturally during the inference run
  */
 class DateOverride {
   private originalDate: DateConstructor;
-  private targetTimestamp: number;
+  private timeOffset: number;
 
   constructor(targetDate: Date) {
     this.originalDate = Date;
-    this.targetTimestamp = targetDate.getTime();
+    
+    // Calculate the offset: target time - current real time
+    // This offset will be added to all timestamps
+    const realNow = this.originalDate.now();
+    const targetTimestamp = targetDate.getTime();
+    this.timeOffset = targetTimestamp - realNow;
     
     // Override Date constructor and Date.now()
-    const targetTimestamp = this.targetTimestamp;
+    const timeOffset = this.timeOffset;
     const OriginalDate = this.originalDate;
     
     (global as any).Date = class extends OriginalDate {
       constructor(...args: any[]) {
         if (args.length === 0) {
-          super(targetTimestamp);
+          // Apply offset to current time
+          super(OriginalDate.now() + timeOffset);
         } else {
           super(...args);
         }
       }
       
       static now() {
-        return targetTimestamp;
+        // Apply offset to current real time
+        return OriginalDate.now() + timeOffset;
       }
       
       // Copy all static methods from original Date
@@ -120,11 +133,6 @@ async function processQuestion(
   try {
     const startTime = Date.now();
     
-    console.log(`\n${"=".repeat(80)}`);
-    console.log(`[Run ${runNumber}/100] [Day ${dayNumber + 1}] Processing: ${question.id}`);
-    console.log(`Target timestamp: ${new Date().toISOString()}`);
-    console.log("=".repeat(80));
-
     // Get the AI tracing instance from the global registry
     const aiTracing = getAITracing("arthur");
     if (!aiTracing) {
@@ -155,7 +163,6 @@ async function processQuestion(
 
     try {
       // Step 1: Plan
-      console.log("Step 1: Creating plan...");
       const planPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-plan",
         promptVersion: "production",
@@ -170,17 +177,13 @@ async function processQuestion(
         model: resolveModelFromPrompt(planPrompt),
       });
       const plan = planResult.object;
-      console.log(`Plan: ${plan.plan}`);
-      console.log(`Needs docs: ${plan.needsDocs}, Needs code: ${plan.needsCode}`);
 
       // Steps 2-3: Parallel search
-      console.log("\nSteps 2-3: Executing searches...");
       const searchPromises = [];
       let docsResults = null;
       let githubResults = null;
 
       if (plan.needsDocs && plan.docsQuery) {
-        console.log(`  - Searching docs with query: "${plan.docsQuery}"`);
         searchPromises.push(
           (async () => {
             const websearchPrompt = await getTemplatedPrompt({
@@ -204,7 +207,6 @@ async function processQuestion(
       }
 
       if (plan.needsCode && plan.codeQuery) {
-        console.log(`  - Searching GitHub with query: "${plan.codeQuery}"`);
         searchPromises.push(
           (async () => {
             const githubPrompt = await getTemplatedPrompt({
@@ -231,16 +233,13 @@ async function processQuestion(
       searchResults.forEach((r) => {
         if (r.type === "docs") {
           docsResults = r.data;
-          console.log(`  ✓ Docs search completed: ${r.data.sources.length} sources`);
         }
         if (r.type === "github") {
           githubResults = r.data;
-          console.log(`  ✓ GitHub search completed: ${r.data.sources.length} sources`);
         }
       });
 
       // Step 4: Draft
-      console.log("\nStep 4: Drafting response...");
       const draftPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-draft",
         promptVersion: "production",
@@ -259,10 +258,8 @@ async function processQuestion(
         model: resolveModelFromPrompt(draftPrompt),
       });
       const draft = draftResult.object;
-      console.log(`Draft confidence: ${draft.confidence}`);
 
       // Step 5: Review
-      console.log("\nStep 5: Reviewing and finalizing...");
       const reviewPrompt = await getTemplatedPrompt({
         promptName: "mastra-agent-support-review",
         promptVersion: "production",
@@ -283,9 +280,6 @@ async function processQuestion(
       const finalOutput = reviewResult.object;
 
       const durationMs = Date.now() - startTime;
-      console.log(`\n✓ Completed in ${durationMs}ms`);
-      console.log(`Completeness: ${finalOutput.completeness}`);
-      console.log(`Sources: ${finalOutput.sources?.length ?? 0}`);
 
       // Ensure sources is always an array
       const sources = finalOutput.sources ?? [];
@@ -326,8 +320,6 @@ async function processQuestion(
       throw error;
     }
   } catch (error) {
-    console.error(`✗ Error processing question ${question.id}:`, error);
-    
     return {
       questionId: question.id,
       question: question.question,
@@ -353,11 +345,69 @@ async function processQuestion(
   }
 }
 
+/**
+ * Semaphore for limiting concurrent operations
+ */
+class Semaphore {
+  private permits: number;
+  private waiting: Array<() => void> = [];
+
+  constructor(permits: number) {
+    this.permits = permits;
+  }
+
+  async acquire(): Promise<void> {
+    if (this.permits > 0) {
+      this.permits--;
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      this.waiting.push(resolve);
+    });
+  }
+
+  release(): void {
+    this.permits++;
+    if (this.waiting.length > 0) {
+      const resolve = this.waiting.shift()!;
+      this.permits--;
+      resolve();
+    }
+  }
+
+  async use<T>(fn: () => Promise<T>): Promise<T> {
+    await this.acquire();
+    try {
+      return await fn();
+    } finally {
+      this.release();
+    }
+  }
+}
+
 async function main() {
   console.log("Customer Support Agent Demo Test Harness");
   console.log("==========================================");
+  
+  // ==================== CONFIGURATION ====================
+  // Set this to resume from a specific day (1-10)
+  // Set to 1 to start from the beginning
+  const START_FROM_DAY = 1; // <-- CHANGE THIS TO RESUME FROM A DIFFERENT DAY
+  
+  // Set the number of parallel inferences to run at once
+  // Higher = faster, but risks rate limiting
+  // Recommended: 3-5 for most APIs, 1-2 for strict rate limits
+  const PARALLEL_INFERENCES = 5; // <-- CHANGE THIS TO CONTROL CONCURRENCY
+  // =======================================================
+  
   console.log("Running 100 inferences with backdated timestamps");
-  console.log("10 inferences per day for 10 days\n");
+  console.log("10 inferences per day for 10 days");
+  console.log(`Parallelization: ${PARALLEL_INFERENCES} concurrent inferences`);
+  if (START_FROM_DAY > 1) {
+    console.log(`\n⚠️  RESUMING FROM DAY ${START_FROM_DAY} (skipping days 1-${START_FROM_DAY - 1})`);
+  }
+  console.log("");
 
   // Load test questions
   const questionsPath = path.join(__dirname, "test-questions.json");
@@ -367,8 +417,7 @@ async function main() {
   const { questions } = JSON.parse(questionsData) as { questions: TestQuestion[] };
   
   console.log(`Loaded ${questions.length} test questions`);
-  console.log(`Will run ${questions.length} questions x 10 times = ${questions.length * 10} total inferences\n`);
-
+  
   // Today's date at start of day
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -379,9 +428,23 @@ async function main() {
   const RUNS_PER_DAY = 10;
   const TOTAL_DAYS = TOTAL_RUNS / RUNS_PER_DAY;
   
-  let runNumber = 1;
+  // Calculate starting day offset (0-based)
+  const startDayOffset = START_FROM_DAY - 1;
   
-  for (let dayOffset = 0; dayOffset < TOTAL_DAYS; dayOffset++) {
+  // Calculate starting run number based on which day we're starting from
+  let runNumber = (startDayOffset * RUNS_PER_DAY) + 1;
+  
+  const runsToComplete = (TOTAL_DAYS - startDayOffset) * RUNS_PER_DAY;
+  console.log(`Will run ${runsToComplete} inferences (days ${START_FROM_DAY}-${TOTAL_DAYS})\n`);
+  
+  // Create semaphore to limit concurrency
+  const semaphore = new Semaphore(PARALLEL_INFERENCES);
+  
+  // Track progress
+  let completedRuns = 0;
+  const startTime = Date.now();
+  
+  for (let dayOffset = startDayOffset; dayOffset < TOTAL_DAYS; dayOffset++) {
     // Calculate the target date (going backwards from today)
     const targetDate = new Date(today);
     targetDate.setDate(targetDate.getDate() - (TOTAL_DAYS - 1 - dayOffset));
@@ -390,23 +453,46 @@ async function main() {
     console.log(`DAY ${dayOffset + 1} - ${targetDate.toDateString()}`);
     console.log("=".repeat(80));
     
-    // Run 10 questions for this day
+    // Create all promises for this day's questions
+    const dayPromises: Promise<TestResult>[] = [];
+    
     for (let questionIdx = 0; questionIdx < RUNS_PER_DAY; questionIdx++) {
       const question = questions[questionIdx % questions.length];
+      const currentRunNumber = runNumber++;
       
       // Add some time variation within the day (spread across 12 hours)
       const targetDateTime = new Date(targetDate);
       targetDateTime.setHours(8); // Start at 8am
       targetDateTime.setMinutes(questionIdx * 72); // Spread across 12 hours (720 minutes / 10 = 72 minutes apart)
       
-      const result = await processQuestion(question, runNumber, dayOffset, targetDateTime);
-      results.push(result);
-      runNumber++;
+      // Create promise wrapped in semaphore for concurrency control
+      const promise = semaphore.use(async () => {
+        const result = await processQuestion(question, currentRunNumber, dayOffset, targetDateTime);
+        completedRuns++;
+        
+        // Log progress
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        const rate = (completedRuns / (Date.now() - startTime) * 1000 * 60).toFixed(1);
+        console.log(`  ✓ [${completedRuns}/${runsToComplete}] Run #${currentRunNumber} completed (${elapsed}s elapsed, ${rate} runs/min)`);
+        
+        return result;
+      });
       
-      // Brief pause between questions
-      await new Promise(resolve => setTimeout(resolve, 500));
+      dayPromises.push(promise);
     }
+    
+    // Wait for all questions in this day to complete
+    const dayResults = await Promise.all(dayPromises);
+    results.push(...dayResults);
+    
+    // Brief pause between days
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
+  
+  const totalElapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
+  console.log(`\n${"=".repeat(80)}`);
+  console.log(`All inferences completed in ${totalElapsed} minutes`);
+  console.log("=".repeat(80));
 
   // Generate summary
   console.log("\n" + "=".repeat(80));
@@ -416,10 +502,10 @@ async function main() {
   const successful = results.filter(r => !r.error);
   const failed = results.filter(r => r.error);
   
-  console.log(`\nTotal inferences: ${results.length}`);
+  console.log(`\nTotal inferences in this run: ${results.length}`);
   console.log(`Successful: ${successful.length}`);
   console.log(`Failed: ${failed.length}`);
-  console.log(`Days simulated: ${TOTAL_DAYS}`);
+  console.log(`Days processed: ${START_FROM_DAY} to ${TOTAL_DAYS}`);
   console.log(`Inferences per day: ${RUNS_PER_DAY}`);
   
   if (successful.length > 0) {
@@ -440,7 +526,7 @@ async function main() {
   console.log("RESULTS BY DAY");
   console.log("=".repeat(80));
   
-  for (let day = 1; day <= TOTAL_DAYS; day++) {
+  for (let day = START_FROM_DAY; day <= TOTAL_DAYS; day++) {
     const dayResults = resultsByDay.get(day) || [];
     const daySuccessful = dayResults.filter(r => !r.error).length;
     const dayFailed = dayResults.filter(r => r.error).length;
@@ -461,7 +547,8 @@ async function main() {
 
   // Save results to file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const resultsPath = path.join(__dirname, `demo-results-${timestamp}.json`);
+  const dayRange = START_FROM_DAY === 1 ? "full" : `day${START_FROM_DAY}-${TOTAL_DAYS}`;
+  const resultsPath = path.join(__dirname, `demo-results-${dayRange}-${timestamp}.json`);
   await fs.writeFile(resultsPath, JSON.stringify(results, null, 2));
   console.log(`\n${"=".repeat(80)}`);
   console.log(`Results saved to: ${resultsPath}`);

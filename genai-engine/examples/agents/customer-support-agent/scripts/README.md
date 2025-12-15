@@ -68,15 +68,19 @@ This is a special version of the test harness designed for creating demo data. I
 2. Backdate timestamps to show 10 inferences per day over 10 days
 3. Start from today and go backwards in time
 4. Each inference is spread throughout the day (8am-8pm)
-5. Save results to `demo-results-{timestamp}.json`
-6. Create traces in Arthur with backdated timestamps for a realistic demo dataset
+5. **Run multiple inferences in parallel** (5 concurrent by default)
+6. Save results to `demo-results-{timestamp}.json`
+7. Create traces in Arthur with backdated timestamps for a realistic demo dataset
 
 This is useful for:
 - Creating a realistic-looking historical dataset for demos
 - Testing date-based filtering and analytics features
 - Preparing presentations that show trends over time
 
-**Note**: This will run 100 inferences, which will take significantly longer than the standard test harness (expect 30-60 minutes depending on your API rate limits).
+**Performance**: 
+- With parallel execution (default): ~10-20 minutes
+- Sequential execution: ~30-60 minutes
+- Concurrency is configurable to respect API rate limits
 
 ### Run demo with debug logging
 
