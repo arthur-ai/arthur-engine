@@ -29,7 +29,7 @@ from sqlalchemy import (
     or_,
     select,
 )
-from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlalchemy.orm import InstrumentedAttribute, Session, selectinload
 from sqlalchemy.types import Numeric
 
 from db_models import (
@@ -872,8 +872,10 @@ class SpanQueryService:
         if not trace_ids:
             return []
 
-        query = select(DatabaseTraceMetadata).where(
-            DatabaseTraceMetadata.trace_id.in_(trace_ids),
+        query = (
+            select(DatabaseTraceMetadata)
+            .where(DatabaseTraceMetadata.trace_id.in_(trace_ids))
+            .options(selectinload(DatabaseTraceMetadata.annotations))
         )
 
         results = self.db_session.execute(query).scalars().all()

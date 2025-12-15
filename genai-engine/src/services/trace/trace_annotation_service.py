@@ -11,9 +11,8 @@ from sqlalchemy import asc, desc
 from sqlalchemy.orm import Query, Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
-from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.telemetry_models import DatabaseTraceMetadata
-from schemas.internal_schemas import AgenticAnnotation, TraceMetadata
+from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
     AgenticAnnotationRequest,
@@ -206,50 +205,6 @@ class TraceAnnotationService:
 
         self.db_session.delete(db_annotation)
         self.db_session.commit()
-
-    def append_annotation_info_to_trace_metadata(
-        self,
-        trace_metadata_list: List[TraceMetadata],
-        annotation_score: Optional[int] = None,
-        annotation_type: Optional[str] = None,
-        continuous_eval_run_status: Optional[str] = None,
-        continuous_eval_name: Optional[str] = None,
-    ) -> List[TraceMetadata]:
-        for trace_metadata in trace_metadata_list:
-            query = self.db_session.query(DatabaseAgenticAnnotation).filter(
-                DatabaseAgenticAnnotation.trace_id == trace_metadata.trace_id,
-            )
-
-            # apply filters
-            if annotation_score is not None:
-                query = query.filter(
-                    DatabaseAgenticAnnotation.annotation_score == annotation_score,
-                )
-            if annotation_type is not None:
-                query = query.filter(
-                    DatabaseAgenticAnnotation.annotation_type == annotation_type,
-                )
-            if continuous_eval_run_status is not None:
-                query = query.filter(
-                    DatabaseAgenticAnnotation.run_status == continuous_eval_run_status,
-                )
-            if continuous_eval_name is not None:
-                query = query.join(
-                    DatabaseContinuousEval,
-                    DatabaseAgenticAnnotation.continuous_eval_id
-                    == DatabaseContinuousEval.id,
-                ).filter(DatabaseContinuousEval.name.ilike(f"%{continuous_eval_name}%"))
-
-            db_annotations = query.all()
-            annotations = [
-                AgenticAnnotation.from_db_model(db_annotation)
-                for db_annotation in db_annotations
-            ]
-
-            if annotations:
-                trace_metadata.annotations = annotations
-
-        return trace_metadata_list
 
     def append_annotation_info_to_trace_response(
         self,
