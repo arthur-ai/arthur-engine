@@ -3899,6 +3899,17 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
+    def delete_rag_experiment(self, experiment_id: str) -> int:
+        """Delete a RAG experiment."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
 
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,

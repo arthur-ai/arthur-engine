@@ -2,7 +2,7 @@ from typing import Annotated, Optional
 from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session, get_validated_agentic_task
@@ -318,6 +318,44 @@ def get_rag_config_results(
             total_pages=total_pages,
             total_count=total_count,
         )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@rag_experiment_routes.delete(
+    "/rag_experiments/{experiment_id}",
+    summary="Delete RAG experiment",
+    description="Delete a RAG experiment and all its associated data",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_204_NO_CONTENT: {"description": "Experiment deleted successfully."},
+    },
+    tags=["RAG Experiments"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_rag_experiment(
+    experiment_id: str = Path(
+        ...,
+        description="The ID of the experiment to delete",
+        title="Experiment ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    """
+    Delete a RAG experiment.
+
+    This will remove the experiment and all associated test case results.
+    This operation cannot be undone.
+    """
+    try:
+        repo = RagExperimentRepository(db_session)
+        repo.delete_experiment(experiment_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
     except Exception as e:
