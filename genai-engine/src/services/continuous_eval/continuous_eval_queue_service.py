@@ -258,9 +258,13 @@ class ContinuousEvalQueueService:
             }
 
             if missing_variables:
-                raise ValueError(
-                    f"Could not extract variables: {', '.join(missing_variables)} using transform {continuous_eval.transform_id} on trace {job.trace_id}",
+                self._update_annotation_status(
+                    db_session,
+                    job.annotation_id,
+                    ContinuousEvalRunStatus.SKIPPED.value,
+                    annotation_description=f"Could not extract variables: {', '.join(missing_variables)} using transform {continuous_eval.transform_id} on trace {job.trace_id}",
                 )
+                return
 
             llm_eval_repository = LLMEvalsRepository(db_session)
             completion_request = BaseCompletionRequest(
