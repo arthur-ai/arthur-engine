@@ -67,7 +67,7 @@ class DatabaseTraceMetadata(Base):
     annotations: Mapped[List["DatabaseAgenticAnnotation"]] = relationship(
         "DatabaseAgenticAnnotation",
         foreign_keys="DatabaseAgenticAnnotation.trace_id",
-        lazy="select",
+        lazy="selectin",
     )
 
     __table_args__ = (

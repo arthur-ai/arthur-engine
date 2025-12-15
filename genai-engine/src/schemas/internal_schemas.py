@@ -744,13 +744,10 @@ class TraceMetadata(TokenCountCostSchema):
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
-        # Add annotations if they're loaded
-        annotations = None
-        if hasattr(x, "annotations") and x.annotations:
-            annotations = [
-                AgenticAnnotation.from_db_model(annotation)
-                for annotation in x.annotations
-            ]
+        # Add formatted annotations
+        annotations = [
+            AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
+        ]
 
         return TraceMetadata(
             trace_id=x.trace_id,
