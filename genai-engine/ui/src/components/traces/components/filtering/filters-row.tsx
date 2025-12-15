@@ -340,6 +340,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                   options={fieldConfig.options}
                   getOptionLabel={(option) => fieldConfig.itemToStringLabel?.(option) ?? option}
                   multiple={multiple}
+                  autoHighlight={false}
                   onClose={onClose}
                   size="small"
                   sx={{

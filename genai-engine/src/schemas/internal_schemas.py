@@ -2234,7 +2234,7 @@ class TraceQuerySchema(BaseModel):
             span_ids=request.span_ids,
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,
-            status_code=[code.value for code in request.status_code] if request.status_code else None,
+            status_code=request.status_code,
         )
 
 

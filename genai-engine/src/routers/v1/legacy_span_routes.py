@@ -144,7 +144,7 @@ def trace_query_parameters(
         None,
         description="Return only results where span name contains this substring.",
     ),
-    status_code: list[StatusCodeEnum] = Query(
+    status_code: list[str] = Query(
         None,
         description="Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
     ),

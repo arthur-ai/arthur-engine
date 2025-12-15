@@ -87,6 +87,8 @@ export const TRACE_FIELDS = [
     operators: [EnumOperators.IN, EnumOperators.EQUALS],
     options: ["Ok", "Error"],
     itemToStringLabel: (option) => (option === "Ok" ? "Pass" : "Fail"),
+  }),
+  createPrimitiveField({
     type: "enum",
     name: "annotation_type",
     operators: [EnumOperators.EQUALS],

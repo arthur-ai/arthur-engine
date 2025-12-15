@@ -21,6 +21,7 @@ const NAME_TO_LABEL = {
   span_types: "Span Types",
   span_ids: "Span IDs",
   span_name: "Span Name",
+  status_code: "Status",
   response_relevance: "Response Relevance",
   trace_duration: "Trace Duration",
   tool_usage: "Tool Usage",
