@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, List, Literal, Optional, Union
 from uuid import UUID
 
@@ -14,7 +16,17 @@ from schemas.base_experiment_schemas import (
     EvalResultSummary,
 )
 from schemas.common_schemas import BasePaginationResponse
-from schemas.request_schemas import RagSearchSettingConfigurationRequestTypes
+from schemas.internal_schemas import (
+    WeaviateHybridSearchSettingsConfiguration,
+    WeaviateKeywordSearchSettingsConfiguration,
+    WeaviateVectorSimilarityTextSearchSettingsConfiguration,
+)
+from schemas.request_schemas import (
+    RagSearchSettingConfigurationRequestTypes,
+    WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+)
 from schemas.response_schemas import (
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponseTypes,
@@ -32,6 +44,67 @@ class SavedRagConfig(BaseModel):
     query_column: DatasetColumnVariableSource = Field(
         description="Dataset column to use as the RAG search query",
     )
+
+    @staticmethod
+    def to_response(config: "RagConfig") -> "RagConfigResponse":
+        """
+        Convert a RagConfig (with request types) to RagConfigResponse (with response types).
+
+        This method handles the conversion between request and response schemas
+        for RAG configurations, converting request settings types to response settings types.
+        """
+        if config.type == "saved":
+            # Saved configs don't need conversion - they're the same in both request and response
+            return SavedRagConfig(
+                type="saved",
+                setting_configuration_id=config.setting_configuration_id,
+                version=config.version,
+                query_column=config.query_column,
+            )
+        elif config.type == "unsaved":
+            # Convert request settings to response settings via internal model
+            if isinstance(
+                config.settings,
+                WeaviateHybridSearchSettingsConfigurationRequest,
+            ):
+                internal = (
+                    WeaviateHybridSearchSettingsConfiguration._from_request_model(
+                        config.settings,
+                    )
+                )
+                response_settings = internal.to_response_model()
+            elif isinstance(
+                config.settings,
+                WeaviateKeywordSearchSettingsConfigurationRequest,
+            ):
+                internal = (
+                    WeaviateKeywordSearchSettingsConfiguration._from_request_model(
+                        config.settings,
+                    )
+                )
+                response_settings = internal.to_response_model()
+            elif isinstance(
+                config.settings,
+                WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+            ):
+                internal = WeaviateVectorSimilarityTextSearchSettingsConfiguration._from_request_model(
+                    config.settings,
+                )
+                response_settings = internal.to_response_model()
+            else:
+                raise ValueError(
+                    f"Unknown settings type: {type(config.settings)}",
+                )
+
+            return UnsavedRagConfigResponse(
+                type="unsaved",
+                unsaved_id=config.unsaved_id,
+                rag_provider_id=config.rag_provider_id,
+                settings=response_settings,
+                query_column=config.query_column,
+            )
+        else:
+            raise ValueError(f"Unknown RAG config type: {config.type}")
 
 
 class UnsavedRagConfig(BaseModel):

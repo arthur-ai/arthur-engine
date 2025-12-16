@@ -38,11 +38,6 @@ from schemas.base_experiment_schemas import (
     TestCaseStatus,
 )
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
-from schemas.internal_schemas import (
-    WeaviateHybridSearchSettingsConfiguration,
-    WeaviateKeywordSearchSettingsConfiguration,
-    WeaviateVectorSimilarityTextSearchSettingsConfiguration,
-)
 from schemas.rag_experiment_schemas import (
     CreateRagExperimentRequest,
     RagConfig,
@@ -56,12 +51,6 @@ from schemas.rag_experiment_schemas import (
     RagTestCase,
     SavedRagConfig,
     UnsavedRagConfig,
-    UnsavedRagConfigResponse,
-)
-from schemas.request_schemas import (
-    WeaviateHybridSearchSettingsConfigurationRequest,
-    WeaviateKeywordSearchSettingsConfigurationRequest,
-    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
 )
 from schemas.response_schemas import RagProviderQueryResponse
 
@@ -77,64 +66,6 @@ RagConfigResponseAdapter = TypeAdapter(RagConfigResponse)
 class RagExperimentRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
-
-    def _convert_rag_config_to_response(
-        self,
-        config: RagConfig,
-    ) -> RagConfigResponse:
-        """Convert a RagConfig (with request types) to RagConfigResponse (with response types)"""
-        if config.type == "saved":
-            # Saved configs don't need conversion - they're the same in both request and response
-            return SavedRagConfig(
-                type="saved",
-                setting_configuration_id=config.setting_configuration_id,
-                version=config.version,
-                query_column=config.query_column,
-            )
-        elif config.type == "unsaved":
-            # Convert request settings to response settings via internal model
-            if isinstance(
-                config.settings,
-                WeaviateHybridSearchSettingsConfigurationRequest,
-            ):
-                internal = (
-                    WeaviateHybridSearchSettingsConfiguration._from_request_model(
-                        config.settings,
-                    )
-                )
-                response_settings = internal.to_response_model()
-            elif isinstance(
-                config.settings,
-                WeaviateKeywordSearchSettingsConfigurationRequest,
-            ):
-                internal = (
-                    WeaviateKeywordSearchSettingsConfiguration._from_request_model(
-                        config.settings,
-                    )
-                )
-                response_settings = internal.to_response_model()
-            elif isinstance(
-                config.settings,
-                WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
-            ):
-                internal = WeaviateVectorSimilarityTextSearchSettingsConfiguration._from_request_model(
-                    config.settings,
-                )
-                response_settings = internal.to_response_model()
-            else:
-                raise ValueError(
-                    f"Unknown settings type: {type(config.settings)}",
-                )
-
-            return UnsavedRagConfigResponse(
-                type="unsaved",
-                unsaved_id=config.unsaved_id,
-                rag_provider_id=config.rag_provider_id,
-                settings=response_settings,
-                query_column=config.query_column,
-            )
-        else:
-            raise ValueError(f"Unknown RAG config type: {config.type}")
 
     def _get_db_experiment(self, experiment_id: str) -> DatabaseRagExperiment:
         """Get database experiment by ID or raise 404"""
@@ -165,8 +96,7 @@ class RagExperimentRepository:
 
         # Convert request types to response types
         rag_configs = [
-            self._convert_rag_config_to_response(config)
-            for config in rag_configs_request
+            SavedRagConfig.to_response(config) for config in rag_configs_request
         ]
 
         # Get dataset name from relationship
@@ -211,8 +141,7 @@ class RagExperimentRepository:
 
         # Convert request types to response types
         rag_configs = [
-            self._convert_rag_config_to_response(config)
-            for config in rag_configs_request
+            SavedRagConfig.to_response(config) for config in rag_configs_request
         ]
 
         # Convert JSON eval configs to Pydantic models
@@ -265,6 +194,7 @@ class RagExperimentRepository:
             eval_list=eval_list,
             dataset_row_filter=dataset_row_filter,
             summary_results=summary_results,
+            notebook_id=db_experiment.notebook_id,
         )
 
     def _db_test_case_to_schema(
@@ -994,6 +924,21 @@ class RagExperimentRepository:
             )
 
         return config_results, total_count
+
+    def attach_notebook_to_experiment(
+        self,
+        experiment_id: str,
+        notebook_id: str,
+    ) -> RagExperimentSummary:
+        """Attach a RAG notebook to an experiment."""
+        db_experiment = self._get_db_experiment(experiment_id)
+
+        # Update notebook_id
+        db_experiment.notebook_id = notebook_id
+        self.db_session.commit()
+
+        # Return updated summary
+        return self._db_experiment_to_summary(db_experiment)
 
     def delete_experiment(self, experiment_id: str) -> None:
         """Delete an experiment and its test cases (cascaded)"""
