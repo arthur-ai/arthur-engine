@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/16/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'status_code'
+
 # 12/14/2025
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_spans'
 - **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans' to the response with the '200' status
