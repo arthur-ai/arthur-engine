@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.259"
+version = "2.1.260"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -30,7 +30,7 @@ psycopg2-binary = "2.9.11"
 sqlalchemy = "2.0.44"
 pgvector = "0.4.2"
 python-multipart = "0.0.20"
-pypdf = "6.4.0"
+pypdf = "6.4.2"
 httpx = "0.28.1"
 transformers = "4.56.2"
 authlib = "1.6.6"
@@ -53,7 +53,7 @@ presidio-analyzer = "2.2.360"
 presidio-anonymizer = "2.2.360"
 python-keycloak = "5.8.1"
 bcrypt = "4.3.0"
-cachetools = "6.2.3"
+cachetools = "6.2.4"
 sentence-transformers = "5.1.2"
 en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
 torch = [

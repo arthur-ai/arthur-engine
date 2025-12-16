@@ -107,17 +107,6 @@ class SpanRepository:
             sort_method=pagination_parameters.sort,
         )
 
-        # add annotation info to trace metadata list
-        trace_metadata_list = (
-            self.trace_annotation_service.append_annotation_info_to_trace_metadata(
-                trace_metadata_list,
-                annotation_score=internal_filters.annotation_score,
-                annotation_type=internal_filters.annotation_type,
-                continuous_eval_run_status=internal_filters.continuous_eval_run_status,
-                continuous_eval_name=internal_filters.continuous_eval_name,
-            )
-        )
-
         # Optionally fetch and attach spans as a flat list
         if include_spans and trace_metadata_list:
             # Fetch all spans for the paginated trace_ids
