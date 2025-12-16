@@ -53,7 +53,7 @@ export function formatCurrency(amount: number) {
 
 export function formatDuration(duration: number) {
   return dayjs
-    .duration(+duration.toFixed(3), "millisecond")
+    .duration(+duration.toFixed(0), "millisecond")
     .format("H[h] m[m] s[s] SSS[ms]")
     .replace(/\b0[hmst]\b/g, "");
 }
