@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { useSnackbar } from "notistack";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import { annotationQueryOptions } from "./useAnnotation";
 
@@ -24,7 +24,9 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
 
   const queryClient = useQueryClient();
 
-  const [running, setRunning] = useState(() => rerunOnMount);
+  const [running, setRunning] = useState(false);
+
+  const hasAutoTriggeredRef = useRef(false);
 
   const annotationQuery = useQuery({
     ...annotationQueryOptions({
@@ -38,16 +40,19 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
     },
   });
 
-  useEffect(() => {
-    const status = annotationQuery.data?.run_status;
-
-    if (status === "pending") return;
-
+  const handleDone = useEffectEvent(() => {
     setRunning(false);
     queryClient.invalidateQueries({ queryKey: [queryKeys.annotations.byId(annotationId)] });
     queryClient.invalidateQueries({ queryKey: [queryKeys.continuousEvals.results(task!.id)] });
     queryClient.invalidateQueries({ queryKey: [queryKeys.traces.list], exact: false });
-  }, [annotationId, annotationQuery.data, queryClient, task]);
+  });
+
+  useEffect(() => {
+    const status = annotationQuery.data?.run_status;
+    if (!status || status === "pending") return;
+
+    handleDone();
+  }, [annotationQuery.data]);
 
   const mutation = useMutation({
     mutationFn: async (annotationId: string) => {
@@ -68,9 +73,19 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
     },
   });
 
+  const runFromAutoTrigger = useEffectEvent(() => {
+    mutation.mutate(annotationId);
+  });
+
   useEffect(() => {
-    if (rerunOnMount && !mutation.isPending) mutation.mutate(annotationId);
-  }, [mutation.mutate, mutation.isPending, rerunOnMount, annotationId]);
+    if (!rerunOnMount) return;
+    if (!annotationId) return;
+    if (hasAutoTriggeredRef.current) return;
+
+    hasAutoTriggeredRef.current = true;
+
+    runFromAutoTrigger();
+  }, [rerunOnMount, annotationId]);
 
   return {
     mutate: mutation.mutate,

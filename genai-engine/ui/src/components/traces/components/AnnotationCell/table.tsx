@@ -1,8 +1,25 @@
+import { Menu } from "@base-ui-components/react/menu";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LaunchIcon from "@mui/icons-material/Launch";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import { Paper, Table, TableRow, TableCell, TableHead, TableContainer, TableBody, Typography, Chip, ButtonGroup, Button } from "@mui/material";
+import {
+  Paper,
+  Table,
+  TableRow,
+  TableCell,
+  TableHead,
+  TableContainer,
+  TableBody,
+  Typography,
+  Chip,
+  Button,
+  List,
+  ListItemButton,
+  ListItemText,
+  ListItemIcon,
+} from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
@@ -16,11 +33,13 @@ type Props = {
 
 export const AnnotationsTable = ({ annotations }: Props) => {
   const { task } = useTask();
+  const container = useRef<HTMLDivElement>(null);
 
   const columns = useMemo(
     () =>
       createColumns({
         taskId: task!.id,
+        container,
       }),
     [task]
   );
@@ -32,7 +51,7 @@ export const AnnotationsTable = ({ annotations }: Props) => {
   });
 
   return (
-    <TableContainer component={Paper} variant="outlined" sx={{ flexGrow: 0, flexShrink: 1 }}>
+    <TableContainer ref={container} component={Paper} variant="outlined" sx={{ flexGrow: 0, flexShrink: 1 }}>
       <Table stickyHeader size="small">
         <TableHead>
           {table.getHeaderGroups().map((header) => (
@@ -80,7 +99,7 @@ const getStatusChipSx = (status: string) => {
   };
 };
 
-const createColumns = ({ taskId }: { taskId: string }) => [
+const createColumns = ({ taskId, container }: { taskId: string; container: React.RefObject<HTMLDivElement | null> }) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
     cell: ({ getValue }) => {
@@ -147,25 +166,42 @@ const createColumns = ({ taskId }: { taskId: string }) => [
       if (!isContinuousEvalAnnotation(annotation)) return;
 
       return (
-        <ButtonGroup>
-          <Button
-            component={Link}
-            to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results`}
-            size="small"
-            startIcon={<LaunchIcon fontSize="small" />}
-          >
-            View
-          </Button>
-          <Button
-            component={Link}
-            to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results&action=rerun`}
-            size="small"
-            startIcon={<RestartAltIcon fontSize="small" />}
-            disabled={annotation.run_status === "passed"}
-          >
-            Rerun
-          </Button>
-        </ButtonGroup>
+        <Menu.Root>
+          <Menu.Trigger render={<Button variant="outlined" size="small" endIcon={<ArrowDropDownIcon />} />}>Result</Menu.Trigger>
+          <Menu.Portal keepMounted container={container.current}>
+            <Menu.Positioner sideOffset={8} side="bottom" align="center" className="z-10">
+              <Menu.Popup
+                render={<List component={Paper} dense className="outline-none origin-(--transform-origin) min-w-(--anchor-width) z-1000" />}
+              >
+                <Menu.Item
+                  render={
+                    <ListItemButton component={Link} to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results`} className="gap-4" />
+                  }
+                >
+                  <ListItemText primary="View Results" />
+                  <ListItemIcon sx={{ minWidth: "min-content" }}>
+                    <LaunchIcon color="action" fontSize="small" />
+                  </ListItemIcon>
+                </Menu.Item>
+                <Menu.Item
+                  render={
+                    <ListItemButton
+                      disabled={annotation.run_status !== "error"}
+                      component={Link}
+                      to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results&action=rerun`}
+                      className="gap-4"
+                    />
+                  }
+                >
+                  <ListItemText primary="Rerun Annotation" />
+                  <ListItemIcon sx={{ minWidth: "min-content" }}>
+                    <RestartAltIcon color="action" fontSize="small" />
+                  </ListItemIcon>
+                </Menu.Item>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
       );
     },
   }),

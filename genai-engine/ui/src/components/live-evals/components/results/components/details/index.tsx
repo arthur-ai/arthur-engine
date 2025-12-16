@@ -18,15 +18,12 @@ import {
   Paper,
   Typography,
 } from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useState } from "react";
 
 import { CopyableChip } from "@/components/common";
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { annotationQueryOptions, useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
+import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
 import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
-import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { formatDate } from "@/utils/formatters";
 
@@ -69,7 +66,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
   const isPending = data?.run_status === "pending";
 
   return (
-    <Dialog open={!!annotationId} onClose={onClose} maxWidth="xl" fullWidth>
+    <>
       <DialogTitle>
         <Typography variant="h6" fontWeight={600}>
           Annotation Details
@@ -347,6 +344,6 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
           Close
         </Button>
       </DialogActions>
-    </Dialog>
+    </>
   );
 };

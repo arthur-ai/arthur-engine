@@ -1,4 +1,4 @@
-import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
+import { Box, Dialog, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
@@ -96,12 +96,14 @@ export const Results = () => {
         </>
       )}
 
-      <Details
-        annotationId={annotationId || undefined}
-        onClose={() => setAnnotationId("")}
-        onRerunComplete={() => setAction(null)}
-        rerunOnMount={action === "rerun"}
-      />
+      <Dialog open={!!annotationId} onClose={() => setAnnotationId("")} maxWidth="xl" fullWidth>
+        <Details
+          annotationId={annotationId || undefined}
+          onClose={() => setAnnotationId("")}
+          onRerunComplete={() => setAction(null)}
+          rerunOnMount={action === "rerun"}
+        />
+      </Dialog>
     </>
   );
 };
