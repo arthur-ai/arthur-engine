@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.259"
+        "version": "2.1.263"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2512,6 +2512,20 @@
                         "description": "Return only results where span name contains this substring."
                     },
                     {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -2981,6 +2995,20 @@
                             "title": "Span Name Contains"
                         },
                         "description": "Return only results where span name contains this substring."
+                    },
+                    {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3693,6 +3721,20 @@
                         "description": "Return only results where span name contains this substring."
                     },
                     {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
+                    },
+                    {
                         "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
@@ -4161,6 +4203,20 @@
                             "title": "Span Name Contains"
                         },
                         "description": "Return only results where span name contains this substring."
+                    },
+                    {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
                     },
                     {
                         "name": "query_relevance_eq",

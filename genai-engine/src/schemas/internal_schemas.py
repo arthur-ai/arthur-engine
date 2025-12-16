@@ -744,6 +744,11 @@ class TraceMetadata(TokenCountCostSchema):
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
+        # Add formatted annotations
+        annotations = [
+            AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
+        ]
+
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id,
@@ -762,6 +767,7 @@ class TraceMetadata(TokenCountCostSchema):
             updated_at=x.updated_at,
             input_content=x.input_content,
             output_content=x.output_content,
+            annotations=annotations,
         )
 
     def _to_database_model(self):
@@ -2193,6 +2199,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Return only results where span name contains this substring.",
     )
+    status_code: Optional[list[str]] = Field(
+        None,
+        description="Status codes to filter on. Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2230,6 +2240,7 @@ class TraceQuerySchema(BaseModel):
             span_ids=request.span_ids,
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,
+            status_code=request.status_code,
         )
 
 
