@@ -820,6 +820,11 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
+class ContinuousEvalTransformVariableMappingRequest(BaseModel):
+    transform_variable: str = Field(description="Name of the transform variable")
+    eval_variable: str = Field(description="Name of the eval variable")
+
+
 class ContinuousEvalCreateRequest(BaseModel):
     """Request schema for creating a continuous eval"""
 
@@ -836,6 +841,11 @@ class ContinuousEvalCreateRequest(BaseModel):
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
+    )
+    transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest] = (
+        Field(
+            description="Mapping of transform variables to eval variables.",
+        )
     )
 
 
@@ -859,6 +869,12 @@ class UpdateContinuousEvalRequest(BaseModel):
         default=None,
         description="ID of the transform to create the continuous eval for",
     )
+    transform_variable_mapping: Optional[
+        List[ContinuousEvalTransformVariableMappingRequest]
+    ] = Field(
+        default=None,
+        description="Mapping of transform variables to eval variables.",
+    )
 
     @model_validator(mode="after")
     def validate_request(self):
@@ -866,6 +882,15 @@ class UpdateContinuousEvalRequest(BaseModel):
             raise ValueError(
                 "Must specify which version of the llm eval this continuous eval should be associated with",
             )
+        if self.transform_variable_mapping is None:
+            if (
+                self.transform_id is not None
+                or self.llm_eval_name is not None
+                or self.llm_eval_version is not None
+            ):
+                raise ValueError(
+                    "Must also update the transform variable mapping if updating the transform or llm eval",
+                )
         return self
 
 

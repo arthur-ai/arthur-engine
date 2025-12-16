@@ -51,7 +51,7 @@ def create_test_llm_eval(
     llm_eval_data = {
         "model_name": "gpt-4o",
         "model_provider": "openai",
-        "instructions": "Test instructions",
+        "instructions": "Test instructions {{test_variable}}",
     }
     return client.save_llm_eval(
         task_id=task_id,
@@ -314,6 +314,12 @@ def test_create_continuous_eval_success(client: GenaiEngineTestClientBase):
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 200
@@ -358,6 +364,12 @@ def test_create_continuous_eval_allows_duplicates(client: GenaiEngineTestClientB
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 200
@@ -371,6 +383,12 @@ def test_create_continuous_eval_allows_duplicates(client: GenaiEngineTestClientB
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 200
@@ -442,6 +460,12 @@ def test_create_continuous_eval_failures(client: GenaiEngineTestClientBase):
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 404
@@ -457,6 +481,12 @@ def test_create_continuous_eval_failures(client: GenaiEngineTestClientBase):
                 "llm_eval_name": "fake_llm_eval_name",
                 "llm_eval_version": "latest",
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 404
@@ -498,6 +528,12 @@ def test_update_continuous_eval_success(client: GenaiEngineTestClientBase):
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 200
@@ -566,6 +602,12 @@ def test_update_continuous_eval_failures(client: GenaiEngineTestClientBase):
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 200
@@ -618,6 +660,12 @@ def test_get_continuous_eval_by_id_success(client: GenaiEngineTestClientBase):
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 200
@@ -686,6 +734,12 @@ def test_list_continuous_evals_success(client: GenaiEngineTestClientBase):
                     "llm_eval_name": llm_eval.name,
                     "llm_eval_version": llm_eval.version,
                     "transform_id": str(transform.id),
+                    "transform_variable_mapping": [
+                        {
+                            "transform_variable": "test_variable",
+                            "eval_variable": "test_variable",
+                        },
+                    ],
                 },
             )
             assert status_code == 200
@@ -758,6 +812,12 @@ def test_list_continuous_evals_pagination(client: GenaiEngineTestClientBase):
                     "llm_eval_name": llm_eval.name,
                     "llm_eval_version": llm_eval.version,
                     "transform_id": str(transform.id),
+                    "transform_variable_mapping": [
+                        {
+                            "transform_variable": "test_variable",
+                            "eval_variable": "test_variable",
+                        },
+                    ],
                 },
             )
             assert status_code == 200
@@ -872,6 +932,12 @@ def test_list_continuous_evals_filtering(client: GenaiEngineTestClientBase):
                     "llm_eval_name": llm_evals[i % 2].name,
                     "llm_eval_version": llm_evals[i % 2].version,
                     "transform_id": str(transforms[i].id),
+                    "transform_variable_mapping": [
+                        {
+                            "transform_variable": "test_variable",
+                            "eval_variable": "test_variable",
+                        },
+                    ],
                 },
             )
             assert status_code == 200
@@ -947,6 +1013,12 @@ def test_delete_continuous_eval_success(client: GenaiEngineTestClientBase):
                 "llm_eval_name": llm_eval.name,
                 "llm_eval_version": llm_eval.version,
                 "transform_id": str(transform.id),
+                "transform_variable_mapping": [
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
+                ],
             },
         )
         assert status_code == 200
@@ -1033,6 +1105,12 @@ def test_list_continuous_eval_run_results_pagination(client: GenaiEngineTestClie
             "llm_eval_name": llm_eval.name,
             "llm_eval_version": llm_eval.version,
             "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "test_variable",
+                    "eval_variable": "test_variable",
+                },
+            ],
         },
     )
 
@@ -1163,6 +1241,12 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
             "llm_eval_name": llm_eval.name,
             "llm_eval_version": llm_eval.version,
             "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "test_variable",
+                    "eval_variable": "test_variable",
+                },
+            ],
         },
     )
 
@@ -1306,6 +1390,12 @@ def test_rerun_continuous_eval_success(
             "llm_eval_name": llm_eval.name,
             "llm_eval_version": llm_eval.version,
             "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "test_variable",
+                    "eval_variable": "test_variable",
+                },
+            ],
         },
     )
 
@@ -1363,6 +1453,12 @@ def test_rerun_continuous_eval_failures(
             "llm_eval_name": llm_eval.name,
             "llm_eval_version": llm_eval.version,
             "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "test_variable",
+                    "eval_variable": "test_variable",
+                },
+            ],
         },
     )
 
@@ -1408,3 +1504,177 @@ def test_rerun_continuous_eval_failures(
         delete_mock_annotation(annotation.id)
         delete_mock_annotation(human_annotation.id)
         cleanup_test_data(test_data)
+
+
+def test_get_continuous_eval_variables_and_mappings_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting continuous eval variables and mappings successfully"""
+
+    # Create a task
+    status_code, agentic_task = client.create_task(
+        name="test_get_continuous_eval_variables_and_mappings_success",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    task_id = agentic_task.id
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create a transform
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+
+    try:
+        # get the continuous eval variables and mappings
+        status_code, continuous_eval_variables_and_mappings = (
+            client.get_continuous_eval_variables_and_mappings(
+                task_id=task_id,
+                transform_id=transform.id,
+                eval_name=llm_eval.name,
+                eval_version=str(llm_eval.version),
+            )
+        )
+        assert status_code == 200
+        assert continuous_eval_variables_and_mappings.matching_variables == [
+            "test_variable",
+        ]
+        assert continuous_eval_variables_and_mappings.transform_variables == [
+            "test_variable",
+        ]
+        assert continuous_eval_variables_and_mappings.eval_variables == [
+            "test_variable",
+        ]
+    finally:
+        client.delete_llm_eval(task_id, llm_eval.name)
+        client.delete_transform(transform.id)
+        client.delete_task(agentic_task.id)
+
+
+def test_get_continuous_eval_variables_and_mappings_no_matching_variables(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting continuous eval variables and mappings with no matching variables"""
+    # Create a task
+    status_code, agentic_task = client.create_task(
+        name="test_get_continuous_eval_variables_and_mappings_no_matching_variables",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    task_id = agentic_task.id
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create a transform
+    status_code, transform = client.create_transform(
+        task_id=task_id,
+        name="test_transform",
+        description="Test transform description",
+        definition={
+            "variables": [
+                {
+                    "variable_name": "test_variable2",
+                    "span_name": "test_span",
+                    "attribute_path": "test_attribute",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+
+    try:
+        # get the continuous eval variables and mappings
+        status_code, continuous_eval_variables_and_mappings = (
+            client.get_continuous_eval_variables_and_mappings(
+                task_id=task_id,
+                transform_id=transform.id,
+                eval_name=llm_eval.name,
+                eval_version=str(llm_eval.version),
+            )
+        )
+        assert status_code == 200
+        assert continuous_eval_variables_and_mappings.matching_variables == []
+        assert continuous_eval_variables_and_mappings.transform_variables == [
+            "test_variable2",
+        ]
+        assert continuous_eval_variables_and_mappings.eval_variables == [
+            "test_variable",
+        ]
+    finally:
+        client.delete_llm_eval(task_id, llm_eval.name)
+        client.delete_transform(transform.id)
+        client.delete_task(agentic_task.id)
+
+
+def test_get_continuous_eval_variables_and_mappings_missing_params(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting continuous eval variables and mappings with missing params"""
+
+    # Create a task
+    status_code, agentic_task = client.create_task(
+        name="test_get_continuous_eval_variables_and_mappings_missing_params",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    task_id = agentic_task.id
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create a transform
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+
+    try:
+        # get the continuous eval variables and mappings with a fake transform id
+        fake_transform_id = uuid.uuid4()
+        status_code, response = client.get_continuous_eval_variables_and_mappings(
+            task_id=task_id,
+            transform_id=fake_transform_id,
+            eval_name=llm_eval.name,
+            eval_version=str(llm_eval.version),
+        )
+        assert status_code == 404
+        assert (
+            f"transform {fake_transform_id} not found"
+            in response.get("detail", "").lower()
+        )
+
+        # get the continuous eval variables and mappings with a fake eval name
+        status_code, response = client.get_continuous_eval_variables_and_mappings(
+            task_id=task_id,
+            transform_id=transform.id,
+            eval_name="fake_llm_eval_name",
+            eval_version=str(llm_eval.version),
+        )
+        assert status_code == 404
+        assert (
+            f"'fake_llm_eval_name' (version '{llm_eval.version}') not found for task '{task_id}'"
+            in response.get("detail", "").lower()
+        )
+
+        # get the continuous eval variables and mappings with a non-existent eval version
+        status_code, response = client.get_continuous_eval_variables_and_mappings(
+            task_id=task_id,
+            transform_id=transform.id,
+            eval_name=llm_eval.name,
+            eval_version="999999",
+        )
+        assert status_code == 404
+        assert (
+            f"'{llm_eval.name}' (version '999999') not found for task '{task_id}'"
+            in response.get("detail", "").lower()
+        )
+    finally:
+        client.delete_llm_eval(task_id, llm_eval.name)
+        client.delete_transform(transform.id)
+        client.delete_task(agentic_task.id)

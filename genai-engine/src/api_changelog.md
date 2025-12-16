@@ -3,6 +3,16 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 12/16/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new required request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the optional property 'missing_variables' to the response with the '200' status
+
+# 12/16/2025
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'
 - **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'status_code'
 - **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'status_code'
