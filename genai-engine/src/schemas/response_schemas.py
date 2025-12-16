@@ -5,8 +5,9 @@ from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationMetadataResponse,
+    AgenticAnnotationResponse,
     ExternalInference,
+    SpanWithMetricsResponse,
     TokenCountCostSchema,
     TraceResponse,
 )
@@ -193,9 +194,13 @@ class TraceMetadataResponse(TokenCountCostSchema):
         None,
         description="Root span output value from trace metadata",
     )
-    annotations: Optional[List[AgenticAnnotationMetadataResponse]] = Field(
+    annotations: Optional[List[AgenticAnnotationResponse]] = Field(
         default=None,
         description="Annotations for the trace.",
+    )
+    spans: Optional[List[SpanWithMetricsResponse]] = Field(
+        default=None,
+        description="Flat list of spans in this trace (only populated when include_spans=true).",
     )
 
 

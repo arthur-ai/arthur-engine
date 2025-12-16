@@ -144,6 +144,10 @@ def trace_query_parameters(
         None,
         description="Return only results where span name contains this substring.",
     ),
+    status_code: list[str] = Query(
+        None,
+        description="Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+    ),
     # Query relevance filters
     query_relevance_eq: float = Query(
         None,
@@ -259,6 +263,7 @@ def trace_query_parameters(
         user_ids=user_ids,
         span_name=span_name,
         span_name_contains=span_name_contains,
+        status_code=status_code,
         query_relevance_eq=query_relevance_eq,
         query_relevance_gt=query_relevance_gt,
         query_relevance_gte=query_relevance_gte,

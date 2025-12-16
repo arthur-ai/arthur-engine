@@ -353,6 +353,7 @@ def test_get_trace_requests_continuous_eval_filtering(
     # create different named continuous evals
     continuous_eval_1 = create_mock_continuous_eval(name="test_continuous_eval_1")
     continuous_eval_2 = create_mock_continuous_eval(name="test_continuous_eval_2")
+    continuous_eval_3 = create_mock_continuous_eval(name="test_continuous_eval_3")
 
     # Add continuous eval run results to the trace
     positive_run_result = create_mock_continuous_eval_run_result(
@@ -365,6 +366,13 @@ def test_get_trace_requests_continuous_eval_filtering(
     negative_run_result = create_mock_continuous_eval_run_result(
         trace_id="api_trace1",
         continuous_eval_id=continuous_eval_2.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=0,
+    )
+    negative_run_result_trace_2 = create_mock_continuous_eval_run_result(
+        trace_id="api_trace2",
+        continuous_eval_id=continuous_eval_3.id,
         run_status=ContinuousEvalRunStatus.FAILED,
         annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
         annotation_score=0,
@@ -390,12 +398,13 @@ def test_get_trace_requests_continuous_eval_filtering(
         assert status_code == 200
         assert len(data.traces) == 1
         assert data.traces[0].trace_id == "api_trace1"
-        print("-" * 100)
-        print(data.traces[0].annotations)
-        print("-" * 100)
-        assert len(data.traces[0].annotations) == 2
+        assert len(data.traces[0].annotations) == 3
+
+        num_passed_annotations = 0
         for annotation in data.traces[0].annotations:
-            assert annotation.annotation_score == 1
+            if annotation.annotation_score == 1:
+                num_passed_annotations += 1
+        assert num_passed_annotations == 2
 
         # Test filtering on only negative annotation scores
         status_code, data = client.trace_api_list_traces_metadata(
@@ -403,11 +412,16 @@ def test_get_trace_requests_continuous_eval_filtering(
             annotation_score=0,
         )
         assert status_code == 200
-        assert len(data.traces) == 1
-        assert data.traces[0].trace_id == "api_trace1"
-        assert len(data.traces[0].annotations) == 1
-        assert data.traces[0].annotations[0].annotation_score == 0
-        assert data.traces[0].annotations[0].annotation_type == "continuous_eval"
+        assert len(data.traces) == 2
+        assert sum(len(trace.annotations) for trace in data.traces) == 4
+
+        num_failed_annotations = 0
+        for trace in data.traces:
+            for annotation in trace.annotations:
+                if annotation.annotation_score == 0:
+                    assert annotation.annotation_type == "continuous_eval"
+                    num_failed_annotations += 1
+        assert num_failed_annotations == 2
 
         # Test filtering on annotation type
         status_code, data = client.trace_api_list_traces_metadata(
@@ -415,11 +429,20 @@ def test_get_trace_requests_continuous_eval_filtering(
             annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
         )
         assert status_code == 200
-        assert len(data.traces) == 1
-        assert data.traces[0].trace_id == "api_trace1"
-        assert len(data.traces[0].annotations) == 2
-        for annotation in data.traces[0].annotations:
-            assert annotation.annotation_type == "continuous_eval"
+        assert len(data.traces) == 2
+        assert sum(len(trace.annotations) for trace in data.traces) == 4
+
+        num_human_annotations = 0
+        num_continuous_eval_annotations = 0
+
+        for trace in data.traces:
+            for annotation in trace.annotations:
+                if annotation.annotation_type == "continuous_eval":
+                    num_continuous_eval_annotations += 1
+                elif annotation.annotation_type == "human":
+                    num_human_annotations += 1
+        assert num_continuous_eval_annotations == 3
+        assert num_human_annotations == 1
 
         # Test filtering on continuous eval run status
         status_code, data = client.trace_api_list_traces_metadata(
@@ -429,26 +452,15 @@ def test_get_trace_requests_continuous_eval_filtering(
         assert status_code == 200
         assert len(data.traces) == 1
         assert data.traces[0].trace_id == "api_trace1"
-        assert len(data.traces[0].annotations) == 1
-        assert data.traces[0].annotations[0].annotation_score == 1
-        assert (
-            data.traces[0].annotations[0].run_status
-            == ContinuousEvalRunStatus.PASSED.value
-        )
+        assert len(data.traces[0].annotations) == 3
 
         status_code, data = client.trace_api_list_traces_metadata(
             task_ids=["api_task1"],
             continuous_eval_run_status=ContinuousEvalRunStatus.FAILED.value,
         )
         assert status_code == 200
-        assert len(data.traces) == 1
-        assert data.traces[0].trace_id == "api_trace1"
-        assert len(data.traces[0].annotations) == 1
-        assert data.traces[0].annotations[0].annotation_score == 0
-        assert (
-            data.traces[0].annotations[0].run_status
-            == ContinuousEvalRunStatus.FAILED.value
-        )
+        assert len(data.traces) == 2
+        assert sum(len(trace.annotations) for trace in data.traces) == 4
 
         # Test filtering on continuous eval name
         status_code, data = client.trace_api_list_traces_metadata(
@@ -458,10 +470,7 @@ def test_get_trace_requests_continuous_eval_filtering(
         assert status_code == 200
         assert len(data.traces) == 1
         assert data.traces[0].trace_id == "api_trace1"
-        assert len(data.traces[0].annotations) == 1
-        assert data.traces[0].annotations[0].continuous_eval_id == str(
-            continuous_eval_1.id,
-        )
+        assert len(data.traces[0].annotations) == 3
 
         status_code, data = client.trace_api_list_traces_metadata(
             task_ids=["api_task1"],
@@ -470,27 +479,34 @@ def test_get_trace_requests_continuous_eval_filtering(
         assert status_code == 200
         assert len(data.traces) == 1
         assert data.traces[0].trace_id == "api_trace1"
-        assert len(data.traces[0].annotations) == 1
-        assert data.traces[0].annotations[0].continuous_eval_id == str(
-            continuous_eval_2.id,
+        assert len(data.traces[0].annotations) == 3
+
+        status_code, data = client.trace_api_list_traces_metadata(
+            task_ids=["api_task1"],
+            continuous_eval_name="test_continuous_eval_3",
         )
+        assert status_code == 200
+        assert len(data.traces) == 1
+        assert data.traces[0].trace_id == "api_trace2"
+        assert len(data.traces[0].annotations) == 1
 
         status_code, data = client.trace_api_list_traces_metadata(
             task_ids=["api_task1"],
             continuous_eval_name="test_continuous_eval",
         )
         assert status_code == 200
-        assert len(data.traces) == 1
-        assert data.traces[0].trace_id == "api_trace1"
-        assert len(data.traces[0].annotations) == 2
+        assert len(data.traces) == 2
+        assert sum(len(trace.annotations) for trace in data.traces) == 4
     finally:
         # Cleanup
         status_code, _ = client.trace_api_delete_annotation_from_trace("api_trace1")
         assert status_code == 204
         delete_mock_continuous_eval_run_result(positive_run_result["id"])
         delete_mock_continuous_eval_run_result(negative_run_result["id"])
+        delete_mock_continuous_eval_run_result(negative_run_result_trace_2["id"])
         delete_mock_continuous_eval(continuous_eval_1.id)
         delete_mock_continuous_eval(continuous_eval_2.id)
+        delete_mock_continuous_eval(continuous_eval_3.id)
 
 
 # ============================================================================

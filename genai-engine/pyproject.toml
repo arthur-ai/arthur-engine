@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.249"
+version = "2.1.261"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -28,9 +28,9 @@ boto3 = "1.41.5"
 python-dotenv = "1.1.1"
 psycopg2-binary = "2.9.11"
 sqlalchemy = "2.0.44"
-pgvector = "0.4.1"
+pgvector = "0.4.2"
 python-multipart = "0.0.20"
-pypdf = "6.4.0"
+pypdf = "6.4.2"
 httpx = "0.28.1"
 transformers = "4.56.2"
 authlib = "1.6.6"
@@ -53,7 +53,7 @@ presidio-analyzer = "2.2.360"
 presidio-anonymizer = "2.2.360"
 python-keycloak = "5.8.1"
 bcrypt = "4.3.0"
-cachetools = "6.2.2"
+cachetools = "6.2.4"
 sentence-transformers = "5.1.2"
 en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
 torch = [
@@ -63,7 +63,7 @@ torch = [
 ]
 commonmark = "0.9.1"
 gunicorn = "^23.0.0"
-fastapi-pagination = "0.15.2"
+fastapi-pagination = "0.15.3"
 pydantic-settings = "^2.3.4"
 spacy = ">=3.8.3"
 date-spacy = "^0.0.1"
@@ -80,7 +80,7 @@ litellm = "^1.77.7"
 jinja2 = "^3.1.6"
 python-benedict = "^0.35.0"
 weaviate-client = "^4.17.0"
-arthur-common = "2.4.15"
+arthur-common = "2.4.20"
 
 
 [[tool.poetry.source]]

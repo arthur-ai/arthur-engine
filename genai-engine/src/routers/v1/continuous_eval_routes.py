@@ -2,13 +2,13 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.response_schemas import ListAgenticAnnotationsMetadataResponse
+from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 
 from dependencies import (
     get_db_session,
-    get_validated_agentic_task,
+    get_validated_task,
 )
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
@@ -86,7 +86,7 @@ def list_continuous_evals(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> ListContinuousEvalsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
@@ -110,7 +110,7 @@ def list_continuous_evals(
     "/tasks/{task_id}/continuous_evals/results",
     summary="Get all continuous eval run results for a specific task",
     description="Get all continuous eval run results for a specific task",
-    response_model=ListAgenticAnnotationsMetadataResponse,
+    response_model=ListAgenticAnnotationsResponse,
     response_model_exclude_none=True,
     tags=["Continuous Evals"],
 )
@@ -126,8 +126,8 @@ def list_continuous_eval_run_results(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-) -> ListAgenticAnnotationsMetadataResponse:
+    task: Task = Depends(get_validated_task),
+) -> ListAgenticAnnotationsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         agentic_annotations = continuous_eval_repo.list_continuous_eval_run_results(
@@ -135,10 +135,9 @@ def list_continuous_eval_run_results(
             pagination_parameters,
             filter_request,
         )
-        return ListAgenticAnnotationsMetadataResponse(
+        return ListAgenticAnnotationsResponse(
             annotations=[
-                annotation.to_metadata_response_model()
-                for annotation in agentic_annotations
+                annotation.to_response_model() for annotation in agentic_annotations
             ],
             count=len(agentic_annotations),
         )
@@ -159,7 +158,7 @@ def create_continuous_eval(
     create_request: ContinuousEvalCreateRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> ContinuousEvalResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted

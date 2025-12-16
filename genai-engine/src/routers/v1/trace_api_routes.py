@@ -7,7 +7,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
-    ListAgenticAnnotationsMetadataResponse,
+    ListAgenticAnnotationsResponse,
     SpanWithMetricsResponse,
     TraceResponse,
 )
@@ -25,7 +25,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v1.legacy_span_routes import _create_response, trace_query_parameters
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import AgenticAnnotation, User
+from schemas.internal_schemas import User
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
     AgenticAnnotationRequest,
@@ -98,7 +98,7 @@ def receive_traces(
 @trace_api_routes.get(
     "/traces",
     summary="List Trace Metadata",
-    description="Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.",
+    description="Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance. Set include_spans=true to include flat list of spans for each trace.",
     response_model=TraceListResponse,
     response_model_exclude_none=True,
     tags=["Traces"],
@@ -113,6 +113,10 @@ def list_traces_metadata(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
+    include_spans: bool = Query(
+        False,
+        description="Include flat list of spans for each trace. Defaults to false for performance.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceListResponse:
@@ -123,6 +127,7 @@ def list_traces_metadata(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
             user_ids=trace_query.user_ids,
+            include_spans=include_spans,
         )
 
         traces = [
@@ -702,7 +707,7 @@ def get_annotation_by_id(
     "/traces/{trace_id}/annotations",
     summary="List Annotations for a Trace",
     description="List annotations for a trace",
-    response_model=ListAgenticAnnotationsMetadataResponse,
+    response_model=ListAgenticAnnotationsResponse,
     response_model_exclude_none=True,
     tags=["Traces"],
 )
@@ -719,7 +724,7 @@ def list_annotations_for_trace(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> ListAgenticAnnotationsMetadataResponse:
+) -> ListAgenticAnnotationsResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -728,10 +733,8 @@ def list_annotations_for_trace(
             pagination_parameters=pagination_parameters,
             filter_request=filter_request,
         )
-        return ListAgenticAnnotationsMetadataResponse(
-            annotations=[
-                annotation.to_metadata_response_model() for annotation in annotations
-            ],
+        return ListAgenticAnnotationsResponse(
+            annotations=[annotation.to_response_model() for annotation in annotations],
             count=len(annotations),
         )
     except ValueError as e:
@@ -749,7 +752,7 @@ def list_annotations_for_trace(
     "/traces/{trace_id}/annotations",
     summary="Annotate a Trace",
     description="Annotate a trace with a score and description (1 = liked, 0 = disliked)",
-    response_model=AgenticAnnotation,
+    response_model=AgenticAnnotationResponse,
     response_model_exclude_none=True,
     tags=["Traces"],
 )
@@ -759,14 +762,14 @@ def annotate_trace(
     annotation_request: AgenticAnnotationRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> AgenticAnnotation:
+) -> AgenticAnnotationResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
         span_repo = _get_span_repository(db_session)
         return span_repo.annotate_trace(
             trace_id=trace_id,
             annotation_request=annotation_request,
-        )
+        ).to_response_model()
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         if "not found" in str(e).lower():
