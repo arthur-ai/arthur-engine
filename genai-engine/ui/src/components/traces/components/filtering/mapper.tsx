@@ -54,7 +54,7 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
     }
 
     if (key === "continuous_eval_name" && filter.operator === Operators.CONTAINS) {
-      return (request["continuous_eval_name_contains"] = filter.value as string);
+      return (request["continuous_eval_name"] = filter.value as string);
     }
 
     const keyPart = OPERATOR_TO_KEY_PART.get(filter.operator);
