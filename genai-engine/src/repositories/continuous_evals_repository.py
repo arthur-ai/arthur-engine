@@ -17,11 +17,13 @@ from sqlalchemy.orm import Query, Session
 from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
-from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
+from schemas.internal_schemas import AgenticAnnotation, ContinuousEval, TraceTransform
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
     ContinuousEvalRunResultsListFilterRequest,
+    ContinuousEvalTransformVariableMappingRequest,
     UpdateContinuousEvalRequest,
 )
 from schemas.response_schemas import ContinuousEvalRerunResponse
@@ -81,11 +83,58 @@ class ContinuousEvalsRepository:
 
         return db_eval_transform
 
+    def validate_transform_variable_mapping(
+        self,
+        transform: TraceTransform,
+        eval: LLMEval,
+        transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest],
+    ) -> None:
+        transform_vars = {v.variable_name for v in transform.definition.variables}
+        eval_vars = set(eval.variables)
+
+        # Extract the mapped variables from the mapping
+        mapped_transform_vars = {
+            mapping.transform_variable for mapping in transform_variable_mapping
+        }
+        mapped_eval_vars = {
+            mapping.eval_variable for mapping in transform_variable_mapping
+        }
+
+        # Check that all transform variables in the mapping exist in the transform
+        invalid_transform_vars = mapped_transform_vars - transform_vars
+        if invalid_transform_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Transform variables in mapping do not exist in transform: {sorted(invalid_transform_vars)}",
+            )
+
+        # Check that all eval variables in the mapping exist in the eval
+        invalid_eval_vars = mapped_eval_vars - eval_vars
+        if invalid_eval_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Eval variables in mapping do not exist in eval: {sorted(invalid_eval_vars)}",
+            )
+
+        # Check that all eval variables are covered by the mapping
+        unmapped_eval_vars = eval_vars - mapped_eval_vars
+        if unmapped_eval_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"All eval variables must be mapped. Missing mappings for: {sorted(unmapped_eval_vars)}",
+            )
+
     def create_continuous_eval(
         self,
         task_id: str,
         continuous_eval_request: ContinuousEvalCreateRequest,
     ) -> ContinuousEval:
+        # Convert Pydantic models to dicts for JSON serialization
+        transform_variable_mapping_dicts = [
+            mapping.model_dump()
+            for mapping in continuous_eval_request.transform_variable_mapping
+        ]
+
         db_continuous_eval = DatabaseContinuousEval(
             id=uuid.uuid4(),
             name=continuous_eval_request.name,
@@ -96,6 +145,7 @@ class ContinuousEvalsRepository:
             transform_id=continuous_eval_request.transform_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
+            transform_variable_mapping=transform_variable_mapping_dicts,
         )
 
         try:
@@ -147,6 +197,13 @@ class ContinuousEvalsRepository:
             has_changes = True
         if update_continuous_eval.transform_id:
             db_continuous_eval.transform_id = update_continuous_eval.transform_id
+            has_changes = True
+        if update_continuous_eval.transform_variable_mapping:
+            # Convert Pydantic models to dicts for JSON serialization
+            db_continuous_eval.transform_variable_mapping = [
+                mapping.model_dump()
+                for mapping in update_continuous_eval.transform_variable_mapping
+            ]
             has_changes = True
 
         if not has_changes:

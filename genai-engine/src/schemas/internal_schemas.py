@@ -3515,6 +3515,11 @@ class RagSearchSettingConfiguration(BaseModel):
         )
 
 
+class ContinuousEvalTransformVariableMapping(BaseModel):
+    transform_variable: str
+    eval_variable: str
+
+
 class ContinuousEval(BaseModel):
     id: uuid.UUID
     name: str
@@ -3525,8 +3530,17 @@ class ContinuousEval(BaseModel):
     transform_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    transform_variable_mapping: List[ContinuousEvalTransformVariableMapping] = Field(
+        default_factory=list,
+        description="Mapping of transform variables to eval variables.",
+    )
 
     def to_db_model(self) -> DatabaseContinuousEval:
+        # Convert Pydantic models to dicts for JSON serialization
+        transform_variable_mapping_dicts = [
+            mapping.model_dump() for mapping in self.transform_variable_mapping
+        ]
+
         return DatabaseContinuousEval(
             id=self.id,
             name=self.name,
@@ -3537,12 +3551,19 @@ class ContinuousEval(BaseModel):
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            transform_variable_mapping=transform_variable_mapping_dicts,
         )
 
     @staticmethod
     def from_db_model(
         db_eval: DatabaseContinuousEval,
     ) -> "ContinuousEval":
+        # Convert dicts from database to Pydantic models
+        transform_variable_mapping = [
+            ContinuousEvalTransformVariableMapping(**mapping)
+            for mapping in db_eval.transform_variable_mapping
+        ]
+
         return ContinuousEval(
             id=db_eval.id,
             name=db_eval.name,
@@ -3553,9 +3574,18 @@ class ContinuousEval(BaseModel):
             transform_id=db_eval.transform_id,
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
+            transform_variable_mapping=transform_variable_mapping,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
+        transform_variable_mapping = [
+            ContinuousEvalTransformVariableMappingResponse(
+                transform_variable=mapping.transform_variable,
+                eval_variable=mapping.eval_variable,
+            )
+            for mapping in self.transform_variable_mapping
+        ]
+
         return ContinuousEvalResponse(
             id=self.id,
             name=self.name,
@@ -3566,6 +3596,7 @@ class ContinuousEval(BaseModel):
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            transform_variable_mapping=transform_variable_mapping,
         )
 
 
