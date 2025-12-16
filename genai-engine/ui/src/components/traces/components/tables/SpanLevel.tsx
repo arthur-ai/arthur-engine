@@ -14,6 +14,7 @@ import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
+import { TracesWelcomePage } from "../TracesWelcomePage";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -25,7 +26,11 @@ import { getFilteredSpans } from "@/services/tracing";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
-export const SpanLevel = () => {
+interface SpanLevelProps {
+  welcomeDismissed: boolean;
+}
+
+export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
@@ -89,13 +94,18 @@ export const SpanLevel = () => {
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
+  // Check if any filters are active
+  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+
   if (error) {
     return <Alert severity="error">There was an error fetching spans.</Alert>;
   }
 
   return (
     <>
-      <FiltersRow />
+      {/* Only show FiltersRow if we have spans or if filters are active */}
+      {(data?.spans?.length || hasActiveFilters) && <FiltersRow />}
+
       {data?.spans?.length ? (
         <>
           <BucketProvider thresholds={thresholds}>
@@ -122,12 +132,20 @@ export const SpanLevel = () => {
             }}
           />
         </>
-      ) : (
+      ) : hasActiveFilters ? (
         <TracesEmptyState title="No spans found">
           <Typography variant="body1" color="text.secondary">
             Try adjusting your search query
           </Typography>
         </TracesEmptyState>
+      ) : welcomeDismissed ? (
+        <TracesEmptyState title="No spans yet">
+          <Typography variant="body1" color="text.secondary">
+            Spans will appear here once your application starts sending data
+          </Typography>
+        </TracesEmptyState>
+      ) : (
+        <TracesWelcomePage />
       )}
     </>
   );

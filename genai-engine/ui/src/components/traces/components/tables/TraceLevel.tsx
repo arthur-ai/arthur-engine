@@ -14,6 +14,7 @@ import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
+import { TracesWelcomePage } from "../TracesWelcomePage";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -25,7 +26,11 @@ import { getFilteredTraces } from "@/services/tracing";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
-export function TraceLevel() {
+interface TraceLevelProps {
+  welcomeDismissed: boolean;
+}
+
+export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
   const { task } = useTask();
   const pagination = useDatasetPagination(FETCH_SIZE);
 
@@ -91,13 +96,18 @@ export function TraceLevel() {
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
+  // Check if any filters are active
+  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+
   if (error) {
     return <Alert severity="error">There was an error fetching traces.</Alert>;
   }
 
   return (
     <>
-      <FiltersRow />
+      {/* Only show FiltersRow if we have traces or if filters are active */}
+      {(data?.traces?.length || hasActiveFilters) && <FiltersRow />}
+
       {data?.traces?.length ? (
         <>
           <BucketProvider thresholds={thresholds}>
@@ -122,12 +132,20 @@ export function TraceLevel() {
             }}
           />
         </>
-      ) : (
+      ) : hasActiveFilters ? (
         <TracesEmptyState title="No traces found">
           <Typography variant="body1" color="text.secondary">
             Try adjusting your search query
           </Typography>
         </TracesEmptyState>
+      ) : welcomeDismissed ? (
+        <TracesEmptyState title="No traces yet">
+          <Typography variant="body1" color="text.secondary">
+            Traces will appear here once your application starts sending data
+          </Typography>
+        </TracesEmptyState>
+      ) : (
+        <TracesWelcomePage />
       )}
     </>
   );

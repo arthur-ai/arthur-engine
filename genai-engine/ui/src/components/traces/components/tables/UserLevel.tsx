@@ -8,6 +8,7 @@ import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
+import { TracesWelcomePage } from "../TracesWelcomePage";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -16,7 +17,11 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getUsers } from "@/services/tracing";
 
-export const UserLevel = () => {
+interface UserLevelProps {
+  welcomeDismissed: boolean;
+}
+
+export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
@@ -84,12 +89,14 @@ export const UserLevel = () => {
             }}
           />
         </>
-      ) : (
-        <TracesEmptyState title="No users found">
+      ) : welcomeDismissed ? (
+        <TracesEmptyState title="No users yet">
           <Typography variant="body1" color="text.secondary">
-            Try adjusting your search query
+            Users will appear here once your application starts sending data
           </Typography>
         </TracesEmptyState>
+      ) : (
+        <TracesWelcomePage />
       )}
     </>
   );

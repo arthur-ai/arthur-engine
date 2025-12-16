@@ -10,6 +10,7 @@ import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
+import { TracesWelcomePage } from "../TracesWelcomePage";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -18,7 +19,11 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSessions } from "@/services/tracing";
 
-export const SessionLevel = () => {
+interface SessionLevelProps {
+  welcomeDismissed: boolean;
+}
+
+export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const filters = useFilterStore((state) => state.filters);
@@ -66,13 +71,18 @@ export const SessionLevel = () => {
     [task?.id, api]
   );
 
+  // Check if any filters are active
+  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+
   if (error) {
     return <Alert severity="error">There was an error fetching sessions.</Alert>;
   }
 
   return (
     <>
-      <FiltersRow />
+      {/* Only show FiltersRow if we have sessions or if filters are active */}
+      {(data?.sessions?.length || hasActiveFilters) && <FiltersRow />}
+
       {data?.sessions?.length ? (
         <>
           <TracesTable
@@ -96,12 +106,20 @@ export const SessionLevel = () => {
             }}
           />
         </>
-      ) : (
+      ) : hasActiveFilters ? (
         <TracesEmptyState title="No sessions found">
           <Typography variant="body1" color="text.secondary">
             Try adjusting your search query
           </Typography>
         </TracesEmptyState>
+      ) : welcomeDismissed ? (
+        <TracesEmptyState title="No sessions yet">
+          <Typography variant="body1" color="text.secondary">
+            Sessions will appear here once your application starts sending data
+          </Typography>
+        </TracesEmptyState>
+      ) : (
+        <TracesWelcomePage />
       )}
     </>
   );
