@@ -20,6 +20,7 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.request_schemas import BaseCompletionRequest
 from utils.transform_executor import execute_transform
+from schemas.internal_schemas import ContinuousEval
 
 logger = logging.getLogger(__name__)
 
@@ -253,22 +254,46 @@ class ContinuousEvalQueueService:
 
             # Execute the transform over the trace
             transform_results = execute_transform(trace, trace_transform.definition)
-            missing_variables = {
-                v.name for v in transform_results.variables if v.value == ""
-            }
-
-            if missing_variables:
+            if len(transform_results.missing_variables) > 0:
                 self._update_annotation_status(
                     db_session,
                     job.annotation_id,
                     ContinuousEvalRunStatus.SKIPPED.value,
-                    annotation_description=f"Could not extract variables: {', '.join(missing_variables)} using transform {continuous_eval.transform_id} on trace {job.trace_id}",
+                    annotation_description=f"Could not extract variables: {', '.join(transform_results.missing_variables)} using transform {continuous_eval.transform_id} on trace {job.trace_id}",
                 )
                 return
 
+            # Get the mapping from transform var to eval var
+            continuous_eval = ContinuousEval.from_db_model(continuous_eval)
+            mapping_dict = {mapping.transform_variable: mapping.eval_variable for mapping in continuous_eval.transform_variable_mapping}
+
+            # Build the completion request variables
+            completion_request_variables = []
+            mapped_eval_vars = set()
+            for variable in transform_results.variables:
+                if variable.name in mapping_dict:
+                    completion_request_variables.append(VariableTemplateValue(name=mapping_dict[variable.name], value=variable.value))
+                    mapped_eval_vars.add(mapping_dict[variable.name])
+
             llm_eval_repository = LLMEvalsRepository(db_session)
+            llm_eval = llm_eval_repository.get_llm_item(
+                continuous_eval.task_id,
+                continuous_eval.llm_eval_name,
+                str(continuous_eval.llm_eval_version),
+            )
+
+            # Validate that the mapped eval vars match the llm eval vars
+            if mapped_eval_vars != set(llm_eval.variables):
+                self._update_annotation_status(
+                    db_session,
+                    job.annotation_id,
+                    ContinuousEvalRunStatus.SKIPPED.value,
+                    annotation_description=f"Mapped eval variables: {', '.join(mapped_eval_vars)} do not match LLM eval variables: {', '.join(llm_eval.variables)}",
+                )
+                return
+
             completion_request = BaseCompletionRequest(
-                variables=transform_results.variables,
+                variables=completion_request_variables,
             )
 
             # Update annotation status to running
@@ -314,7 +339,7 @@ class ContinuousEvalQueueService:
                 db_session,
                 job.annotation_id,
                 run_status,
-                input_variables=transform_results.variables,
+                input_variables=completion_request_variables,
                 annotation_score=llm_eval_run_result.score,
                 annotation_description=llm_eval_run_result.reason,
                 cost=llm_eval_run_result.cost,

@@ -763,6 +763,27 @@ class TransformExtractionResponseList(BaseModel):
     variables: list[VariableTemplateValue] = Field(
         description="List of extracted variables.",
     )
+    missing_variables: List[str] = Field(
+        default_factory=list,
+        description="List of variable names that had missing values (no matching span or attribute path).",
+    )
+
+
+class ContinuousEvalVariableMappingResponse(BaseModel):
+    matching_variables: List[str] = Field(
+        description="List of matching variables.",
+    )
+    transform_variables: List[str] = Field(
+        description="List of transform variables.",
+    )
+    eval_variables: List[str] = Field(
+        description="List of eval variables.",
+    )
+
+
+class ContinuousEvalTransformVariableMappingResponse(BaseModel):
+    transform_variable: str
+    eval_variable: str
 
 
 class ContinuousEvalResponse(BaseModel):
@@ -782,7 +803,10 @@ class ContinuousEvalResponse(BaseModel):
     updated_at: datetime = Field(
         description="Timestamp representing the time the continuous eval was last updated.",
     )
-
+    transform_variable_mapping: List[ContinuousEvalTransformVariableMappingResponse] = Field(
+        default_factory=list,
+        description="Mapping of transform variables to eval variables.",
+    )
 
 class ListContinuousEvalsResponse(BaseModel):
     evals: List[ContinuousEvalResponse] = Field(

@@ -126,6 +126,13 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
 
+    transform_variable_mapping: Mapped[List[Dict[str, str]]] = mapped_column(
+        JSON,
+        nullable=False,
+        server_default="[]",
+        default=list,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         default=datetime.now,
