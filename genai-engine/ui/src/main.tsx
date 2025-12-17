@@ -8,7 +8,7 @@ import { initAmplitude } from "./services/amplitude";
 
 // Initialize Amplitude before rendering the app
 initAmplitude();
-// noop comment to test workflow
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <NuqsAdapter>
