@@ -58,7 +58,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 
 const PromptsPlayground = () => {
-  const [state, dispatch] = useReducer(promptsReducer, initialState);
+  const [state] = useReducer(promptsReducer, initialState);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
@@ -254,18 +254,7 @@ const PromptsPlayground = () => {
       // Fetch the experiment details to get config info
       const experimentResponse = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(experimentId);
       const configData = experimentResponse.data;
-      setExperimentConfig(configData);
-
-      // Fetch all experiments with the same name to show runs history
-      const experimentsListResponse = await apiClient.api.listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet({
-        taskId: task.id,
-        page: 0,
-        page_size: 100, // Fetch up to 100 experiments
-      });
-
-      // Filter experiments with the same name as the current config
-      const matchingExperiments = experimentsListResponse.data.data.filter((exp: any) => exp.name === configData.name);
-      setExperimentRuns(matchingExperiments);
+      experimentActions.setExperimentConfig(configData);
 
       // Fetch the specific prompt version using the correct API endpoint
       const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
@@ -277,37 +266,25 @@ const PromptsPlayground = () => {
       // Convert backend prompt to frontend format
       const frontendPrompt = toFrontendPrompt(promptResponse.data);
 
-      if (state.prompts.length > 0) {
-        dispatch({
-          type: "updatePrompt",
-          payload: { promptId: state.prompts[0].id, prompt: frontendPrompt },
-        });
+      if (prompts.length > 0) {
+        actions.updatePrompt(prompts[0].id, frontendPrompt);
       } else {
-        dispatch({
-          type: "hydratePrompt",
-          payload: { promptData: frontendPrompt },
-        });
+        actions.addPrompt(frontendPrompt);
       }
 
       // Initialize variable values from the experiment config
       // The variable mappings tell us which variables exist in the prompt
       if (configData.prompt_variable_mapping && configData.prompt_variable_mapping.length > 0) {
-        configData.prompt_variable_mapping.forEach((mapping: any) => {
+        configData.prompt_variable_mapping.forEach((mapping) => {
           // Initialize each variable with empty string
           // User will need to fill these in or they'll be replaced by dataset values when running
-          dispatch({
-            type: "updateKeywordValue",
-            payload: {
-              keyword: mapping.variable_name,
-              value: "",
-            },
-          });
+          actions.updateKeywordValue(mapping.variable_name, "");
         });
       }
     } catch (error) {
       console.error("Failed to fetch experiment config:", error);
     }
-  }, [experimentId, promptName, promptVersion, apiClient, task, state.prompts]);
+  }, [experimentId, promptName, promptVersion, apiClient, task?.id, experimentActions, prompts, actions]);
 
   useEffect(() => {
     if (isConfigMode) {
@@ -342,21 +319,15 @@ const PromptsPlayground = () => {
       const frontendPrompt = toFrontendPrompt(response.data);
 
       // Update the first empty prompt instead of adding a new one
-      if (state.prompts.length > 0) {
-        dispatch({
-          type: "updatePrompt",
-          payload: { promptId: state.prompts[0].id, prompt: frontendPrompt },
-        });
+      if (prompts.length > 0) {
+        actions.updatePrompt(prompts[0].id, frontendPrompt);
       } else {
-        dispatch({
-          type: "hydratePrompt",
-          payload: { promptData: frontendPrompt },
-        });
+        actions.addPrompt(frontendPrompt);
       }
     } catch (error) {
       console.error("Failed to fetch prompt data:", error);
     }
-  }, [promptName, promptVersion, apiClient, task?.id, state.prompts]);
+  }, [promptName, promptVersion, apiClient, task?.id, prompts.length, actions, prompts]);
 
   useEffect(() => {
     if (promptName && promptVersion && !isConfigMode) {
@@ -483,7 +454,7 @@ const PromptsPlayground = () => {
         experimentActions.finishRun();
       }
     },
-    [experimentConfig, task?.id, apiClient, isRunningExperiment, prompts, notebookId, experimentActions, createExperimentMutation]
+    [experimentConfig, task?.id, apiClient, isRunningExperiment, prompts, notebookId, experimentActions]
   );
 
   const handleRunAllPrompts = () => {
@@ -648,7 +619,7 @@ const PromptsPlayground = () => {
 
       // Check if we have prompts to load and existing prompts in the notebook
       const hasPromptsToLoad = formData.promptVersions.length > 0;
-      const hasExistingPrompts = state.prompts.length > 0;
+      const hasExistingPrompts = prompts.length > 0;
 
       console.log("[handleCreateExperimentSubmit] hasPromptsToLoad:", hasPromptsToLoad, "hasExistingPrompts:", hasExistingPrompts);
 
@@ -676,7 +647,7 @@ const PromptsPlayground = () => {
       // Return a dummy id since this is not creating an actual experiment
       return { id: "config-only" };
     },
-    [notebookId, refetchNotebookHistory, state.prompts.length, handleLoadConfig]
+    [prompts.length, handleLoadConfig, experimentActions, notebookId, refetchNotebookHistory]
   );
 
   const handlePromptOverwriteConfirm = useCallback(
@@ -693,7 +664,7 @@ const PromptsPlayground = () => {
   const handlePromptOverwriteCancel = useCallback(() => {
     // Just apply the config without loading prompts
     if (pendingConfigForPromptOverwrite) {
-      setExperimentConfig(pendingConfigForPromptOverwrite);
+      experimentActions.setExperimentConfig(pendingConfigForPromptOverwrite);
       setConfigModeActive(true);
       hasUnsavedChangesRef.current = true;
       setSaveStatus("unsaved");
@@ -704,7 +675,7 @@ const PromptsPlayground = () => {
     }
     setPendingConfigForPromptOverwrite(null);
     setShowPromptOverwriteDialog(false);
-  }, [pendingConfigForPromptOverwrite, notebookId, refetchNotebookHistory]);
+  }, [pendingConfigForPromptOverwrite, notebookId, refetchNotebookHistory, experimentActions]);
 
   const handleExpandRun = useCallback(
     async (runId: string) => {
@@ -755,10 +726,6 @@ const PromptsPlayground = () => {
     }
     return null;
   }, [allPromptsHaveModelConfig, blankVariablesCount, isRunningExperiment]);
-
-  // if (notebookStateLoading) {
-  //   return <DatasetLoadingState type="full" message="Loading notebook state..." />;
-  // }
 
   return (
     <PromptProvider handleRunSingleWithConfig={handleRunSingleWithConfig}>
@@ -961,7 +928,7 @@ const PromptsPlayground = () => {
             taskId={task?.id}
             onLoadConfig={handleLoadConfig}
             onCreateNewConfig={handleCreateNewConfig}
-            hasExistingPrompts={state.prompts.length > 0}
+            hasExistingPrompts={prompts.length > 0}
           />
         ) : (
           <Drawer
