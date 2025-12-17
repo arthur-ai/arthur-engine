@@ -1,13 +1,11 @@
-import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 from litellm.types.utils import ModelResponse
-from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
@@ -24,12 +22,6 @@ from services.trace.span_normalization_service import SpanNormalizationService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
-)
-from tests.routes.trace_api.conftest import (
-    _create_base_trace_request,
-    _create_span,
-    _delete_spans_from_db,
-    _delete_trace_metadata_from_db,
 )
 
 
@@ -288,7 +280,7 @@ def test_continuous_eval_execution(
 ):
     """Test continuous eval execution."""
     test_data = setup_test_data()
-    
+
     # Mock LLM response to return score of 1
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
@@ -931,12 +923,14 @@ def test_continuous_eval_execution_transform_errors(
         task_id=test_data["task_id"],
         delay_seconds=0,
     )
-    with pytest.raises(ValueError) as exc_info:
-        continuous_eval_queue_service._execute_job(job)
-    assert "Could not extract variables:" in str(exc_info.value)
+    continuous_eval_queue_service._execute_job(job)
     status_code, received_annotation = client.get_annotation_by_id(annotation.id)
     assert status_code == 200
-    assert received_annotation.run_status == ContinuousEvalRunStatus.ERROR.value
+    assert received_annotation.run_status == ContinuousEvalRunStatus.SKIPPED.value
+    assert (
+        received_annotation.annotation_description
+        == f"Could not extract variables: model_name using transform {incorrect_transform.id} on trace {test_data['trace_id']}"
+    )
 
     delete_mock_annotation(annotation.id)
 
@@ -986,4 +980,3 @@ def test_continuous_eval_execution_transform_errors(
     shutdown_continuous_eval_queue_service()
     cleanup_model_provider(client)
     cleanup_test_data(test_data)
-

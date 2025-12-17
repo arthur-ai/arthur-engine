@@ -35,7 +35,6 @@ from arthur_common.models.request_schemas import (
     TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
-    AgenticAnnotationMetadataResponse,
     AgenticAnnotationResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
@@ -602,6 +601,18 @@ class AgenticAnnotation(BaseModel):
         default=None,
         description="Continuous eval ID this annotation belongs to",
     )
+    continuous_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the continuous eval this annotation belongs to",
+    )
+    eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the eval the continuous eval used when scoring",
+    )
+    eval_version: Optional[int] = Field(
+        default=None,
+        description="Version of the eval the continuous eval used when scoring",
+    )
 
     annotation_score: Optional[int] = Field(
         default=None,
@@ -650,11 +661,23 @@ class AgenticAnnotation(BaseModel):
 
     @staticmethod
     def from_db_model(db_annotation: DatabaseAgenticAnnotation) -> "AgenticAnnotation":
+        continuous_eval_name = None
+        eval_name = None
+        eval_version = None
+
+        if db_annotation.continuous_eval_id and db_annotation.continuous_eval:
+            continuous_eval_name = db_annotation.continuous_eval.name
+            eval_name = db_annotation.continuous_eval.llm_eval_name
+            eval_version = db_annotation.continuous_eval.llm_eval_version
+
         return AgenticAnnotation(
             id=db_annotation.id,
             annotation_type=AgenticAnnotationType(db_annotation.annotation_type),
             trace_id=db_annotation.trace_id,
             continuous_eval_id=db_annotation.continuous_eval_id,
+            continuous_eval_name=continuous_eval_name,
+            eval_name=eval_name,
+            eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
             annotation_description=db_annotation.annotation_description,
             input_variables=db_annotation.input_variables,
@@ -687,24 +710,12 @@ class AgenticAnnotation(BaseModel):
             continuous_eval_id=(
                 str(self.continuous_eval_id) if self.continuous_eval_id else None
             ),
+            continuous_eval_name=self.continuous_eval_name,
+            eval_name=self.eval_name,
+            eval_version=self.eval_version,
             annotation_score=self.annotation_score,
             annotation_description=self.annotation_description,
             input_variables=self.input_variables,
-            run_status=self.run_status,
-            cost=self.cost,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-        )
-
-    def to_metadata_response_model(self) -> AgenticAnnotationMetadataResponse:
-        return AgenticAnnotationMetadataResponse(
-            id=str(self.id),
-            annotation_type=self.annotation_type,
-            trace_id=self.trace_id,
-            continuous_eval_id=(
-                str(self.continuous_eval_id) if self.continuous_eval_id else None
-            ),
-            annotation_score=self.annotation_score,
             run_status=self.run_status,
             cost=self.cost,
             created_at=self.created_at,
@@ -728,8 +739,16 @@ class TraceMetadata(TokenCountCostSchema):
     # Annotation information (separate table only used for response model conversion)
     annotations: Optional[List[AgenticAnnotation]] = None
 
+    # Spans information (only populated when include_spans=true)
+    spans: Optional[List["Span"]] = None
+
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
+        # Add formatted annotations
+        annotations = [
+            AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
+        ]
+
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id,
@@ -748,6 +767,7 @@ class TraceMetadata(TokenCountCostSchema):
             updated_at=x.updated_at,
             input_content=x.input_content,
             output_content=x.output_content,
+            annotations=annotations,
         )
 
     def _to_database_model(self):
@@ -778,9 +798,12 @@ class TraceMetadata(TokenCountCostSchema):
         annotation_response = None
         if self.annotations:
             annotation_response = [
-                annotation.to_metadata_response_model()
-                for annotation in self.annotations
+                annotation.to_response_model() for annotation in self.annotations
             ]
+
+        spans_response = None
+        if self.spans:
+            spans_response = [span._to_response_model() for span in self.spans]
 
         return TraceMetadataResponse(
             trace_id=self.trace_id,
@@ -802,6 +825,7 @@ class TraceMetadata(TokenCountCostSchema):
             input_content=self.input_content,
             output_content=self.output_content,
             annotations=annotation_response,
+            spans=spans_response,
         )
 
 
@@ -2175,6 +2199,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Return only results where span name contains this substring.",
     )
+    status_code: Optional[list[str]] = Field(
+        None,
+        description="Status codes to filter on. Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2212,6 +2240,7 @@ class TraceQuerySchema(BaseModel):
             span_ids=request.span_ids,
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,
+            status_code=request.status_code,
         )
 
 

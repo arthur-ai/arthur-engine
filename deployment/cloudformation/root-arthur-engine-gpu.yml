@@ -389,6 +389,29 @@ Parameters:
     Type: Number
     Default: 60
     Description: 'Task rules cache TTL in seconds'
+  GenaiEngineUseInternalModelRepository:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: 'Enable internal model repository. When enabled, models are uploaded to an S3 bucket during deployment instead of being downloaded from the internet at runtime. Required for airgapped deployments.'
+  GenaiEngineModelUploadImageLocation:
+    Description: 'The container image location for Arthur GenAI Engine Model Upload task'
+    Type: String
+    Default: 'arthurplatform/genai-engine-models'
+  GenaiEngineModelUploadImageTag:
+    Description: 'The container image tag for Arthur GenAI Engine Model Upload task'
+    Type: String
+    Default: 'latest'
+  GenaiEngineModelUploadFargateTaskCPUValue:
+    Type: Number
+    Default: 2048
+    Description: 'CPU value for AWS Fargate for the Model Upload ECS task'
+  GenaiEngineModelUploadFargateTaskMemoryValue:
+    Type: Number
+    Default: 4096
+    Description: 'Memory value for AWS Fargate for the Model Upload ECS task'
   MLEngineBYOTaskRoleIAMArn:
     Type: String
     Description: '(Optional) IAM Role ARN to use for ML Engine ECS task role. If not specified, one will be provisioned.'
@@ -548,6 +571,14 @@ Metadata:
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
           - GenaiEngineUsePIIModelV2
+      - Label:
+          default: 'Advanced - GenAI Engine (Internal Model Repository)'
+        Parameters:
+          - GenaiEngineUseInternalModelRepository
+          - GenaiEngineModelUploadImageLocation
+          - GenaiEngineModelUploadImageTag
+          - GenaiEngineModelUploadFargateTaskCPUValue
+          - GenaiEngineModelUploadFargateTaskMemoryValue
       - Label:
           default: 'Advanced ML Engine'
         Parameters:
@@ -723,6 +754,16 @@ Metadata:
         default: 'Enable task rules cache'
       GenaiEngineCacheTaskRulesCacheTTL:
         default: 'Task rules cache TTL in seconds'
+      GenaiEngineUseInternalModelRepository:
+        default: 'Use Internal Model Repository (Airgapped Mode)'
+      GenaiEngineModelUploadImageLocation:
+        default: 'Model Upload Container Image Location'
+      GenaiEngineModelUploadImageTag:
+        default: 'Model Upload Container Image Tag'
+      GenaiEngineModelUploadFargateTaskCPUValue:
+        default: 'Model Upload Task CPU Value'
+      GenaiEngineModelUploadFargateTaskMemoryValue:
+        default: 'Model Upload Task Memory Value'
       ArthurApiHost:
         default: 'Arthur Platform URL'
       MLEngineClientId:
@@ -764,6 +805,8 @@ Metadata:
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
+  UseInternalModelRepository:
+    !Equals [ !Ref GenaiEngineUseInternalModelRepository, 'true' ]
 Resources:
   CoreVPCStack:
     Type: AWS::CloudFormation::Stack
@@ -850,6 +893,7 @@ Resources:
             - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineSecretStoreKeySecretOutput ]
+        GenaiEngineUseInternalModelRepository: !Ref GenaiEngineUseInternalModelRepository
       TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-iam.yml"
   MLEngineIAMStack:
     Type: AWS::CloudFormation::Stack
@@ -886,8 +930,29 @@ Resources:
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         MLEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-security-groups.yml"
+  GenaiEngineModelUploadStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: UseInternalModelRepository
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        GenaiEngineModelUploadImageLocation: !Ref GenaiEngineModelUploadImageLocation
+        GenaiEngineModelUploadImageTag: !Ref GenaiEngineModelUploadImageTag
+        ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
+        ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
+        GenaiEngineECSTaskExecutionRoleARN: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineTaskExecutionRoleOutput ]
+        GenaiEngineModelUploadTaskRoleARN: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineModelUploadTaskRoleOutput ]
+        ArthurECSClusterARN: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterARNOutput ]
+        GenaiEngineECSServiceSubnetIDs: !Join [ ',', !Ref ArthurPrivateSubnets ]
+        GenaiEngineECSSecurityGroups: !GetAtt [ GenaiEngineSecurityGroupStack, Outputs.GenaiEngineAppSecurityGroupsOutput ]
+        GenaiEngineModelUploadFargateTaskCPUValue: !Ref GenaiEngineModelUploadFargateTaskCPUValue
+        GenaiEngineModelUploadFargateTaskMemoryValue: !Ref GenaiEngineModelUploadFargateTaskMemoryValue
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-model-upload.yml"
   GenaiEngineECSGPUTaskDefinitionStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - GenaiEngineIAMStack
     Properties:
       Parameters:
         ArthurResourceNamespace: !Ref ArthurResourceNamespace
@@ -921,6 +986,10 @@ Resources:
         GenaiEngineOpenAIProvider: !Ref GenaiEngineOpenAIProvider
         GenaiEngineCacheTaskRulesCacheEnabled: !Ref GenaiEngineCacheTaskRulesCacheEnabled
         GenaiEngineCacheTaskRulesCacheTTL: !Ref GenaiEngineCacheTaskRulesCacheTTL
+        GenaiEngineModelRepositoryURL: !If
+          - UseInternalModelRepository
+          - !GetAtt [ GenaiEngineModelUploadStack, Outputs.GenaiEngineModelRepositoryURL ]
+          - ''
       TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-ecs-task-definition-gpu.yml"
   MLEngineECSTaskDefinitionStack:
     Type: AWS::CloudFormation::Stack

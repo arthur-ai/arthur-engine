@@ -35,12 +35,23 @@ Parameters:
     Description: '(Optional) IAM instance profile ARN to use for GenAI Engine ECS cluster EC2 instances to assume. If not specified, one will be provisioned.'
     AllowedPattern: '(arn:aws:iam:.+)?'
     Default: ''
+  GenaiEngineUseInternalModelRepository:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: 'Enable internal model repository. When enabled, creates roles with S3 access for model storage.'
 
 Conditions:
   CreateGenaiEngineEC2InstanceProfile: !Equals [ !Ref GenaiEngineBYOEC2InstanceProfileIAMArn, '' ]
   CreateGenaiEngineTaskRole: !Equals [ !Ref GenaiEngineBYOTaskRoleIAMArn, '' ]
   CreateGenaiEngineTaskExecutionRole: !Equals [ !Ref GenaiEngineBYOTaskExecutionRoleIAMArn, '' ]
   CreateGenaiEngineAuthSecrets: !Not [ !Equals [ !Join [ ",", !Ref GenaiEngineAuthSecretArns ], '' ] ]
+  UseInternalModelRepository: !Equals [ !Ref GenaiEngineUseInternalModelRepository, 'true' ]
+  CreateTaskRoleWithModelAccess: !And
+    - !Condition CreateGenaiEngineTaskRole
+    - !Condition UseInternalModelRepository
 
 Resources:
   GenaiEngineTaskRole:
@@ -58,6 +69,53 @@ Resources:
                 - ecs-tasks.amazonaws.com
             Action:
               - 'sts:AssumeRole'
+      Policies:
+        - !If
+          - UseInternalModelRepository
+          - PolicyName: !Sub "${ArthurResourceNamespace}-genai-engine-s3-model-read${ArthurResourceNameSuffix}"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 's3:GetObject'
+                    - 's3:HeadObject'
+                    - 's3:ListBucket'
+                  Resource:
+                    - !Sub "arn:aws:s3:::${ArthurResourceNamespace}-genai-engine-models${ArthurResourceNameSuffix}-${AWS::AccountId}"
+                    - !Sub "arn:aws:s3:::${ArthurResourceNamespace}-genai-engine-models${ArthurResourceNameSuffix}-${AWS::AccountId}/*"
+          - !Ref AWS::NoValue
+
+  # Model Upload Task Role - for uploading models to S3
+  GenaiEngineModelUploadTaskRole:
+    Type: AWS::IAM::Role
+    Condition: UseInternalModelRepository
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-genai-engine-model-upload-role${ArthurResourceNameSuffix}"
+      Description: 'Role for GenAI Engine Model Upload ECS task to write models to S3.'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: !Sub "${ArthurResourceNamespace}-genai-engine-s3-model-write${ArthurResourceNameSuffix}"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:HeadObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArthurResourceNamespace}-genai-engine-models${ArthurResourceNameSuffix}-${AWS::AccountId}"
+                  - !Sub "arn:aws:s3:::${ArthurResourceNamespace}-genai-engine-models${ArthurResourceNameSuffix}-${AWS::AccountId}/*"
   GenaiEngineTaskExecutionRole:
     Type: AWS::IAM::Role
     Condition: CreateGenaiEngineTaskExecutionRole
@@ -196,3 +254,6 @@ Outputs:
   GenaiEngineTaskScalingLambdaRoleOutput:
     Description: 'IAM role for GenAI Engine task scaling Lambda function'
     Value: !GetAtt GenaiEngineTaskScalingLambdaRole.Arn
+  GenaiEngineModelUploadTaskRoleOutput:
+    Description: 'IAM role for GenAI Engine Model Upload ECS task'
+    Value: !If [ UseInternalModelRepository, !GetAtt [ GenaiEngineModelUploadTaskRole, Arn ], '' ]

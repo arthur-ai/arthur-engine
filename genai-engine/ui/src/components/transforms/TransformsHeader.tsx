@@ -24,7 +24,7 @@ const TransformsHeader: React.FC<TransformsHeaderProps> = ({ onCreateTransform }
         }}
       >
         <Box>
-          <Typography variant="h5" fontWeight="bold">
+          <Typography variant="h5" fontWeight="bold" color="text.primary">
             Transforms
           </Typography>
           <Typography variant="body2" color="text.secondary">

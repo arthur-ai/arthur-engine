@@ -1,0 +1,54 @@
+import { capitalize } from "@mui/material";
+
+import { createPrimitiveField, Field } from "@/components/traces/components/filtering/fields";
+import { EnumOperators, Operators, TextOperators } from "@/components/traces/components/filtering/types";
+
+export const CONTINUOUS_EVAL_FILTER_FIELDS = [
+  createPrimitiveField({
+    name: "name",
+    type: "text",
+    operators: [TextOperators.CONTAINS],
+  }),
+  createPrimitiveField({
+    name: "llm_eval_name",
+    type: "text",
+    operators: [TextOperators.CONTAINS],
+  }),
+  createPrimitiveField({
+    name: "created_at",
+    type: "date",
+    operators: [Operators.GREATER_THAN, Operators.LESS_THAN],
+  }),
+] as const satisfies Field[];
+
+export const CONTINUOUS_EVAL_RESULT_FIELDS = [
+  createPrimitiveField({
+    name: "id",
+    type: "text",
+    operators: [Operators.EQUALS, Operators.IN],
+  }),
+  createPrimitiveField({
+    name: "trace_id",
+    type: "text",
+    operators: [Operators.EQUALS, Operators.IN],
+  }),
+  createPrimitiveField({
+    name: "annotation_score",
+    type: "enum",
+    operators: [EnumOperators.EQUALS],
+    options: [0, 1].map(String),
+    itemToStringLabel: (option) => option,
+  }),
+  createPrimitiveField({
+    name: "run_status",
+    type: "enum",
+    operators: [EnumOperators.EQUALS],
+    options: ["pending", "passed", "running", "failed", "skipped", "error"],
+    itemToStringLabel: (option) => capitalize(option),
+  }),
+  createPrimitiveField({
+    name: "created_at",
+    type: "date",
+    operators: [Operators.GREATER_THAN, Operators.LESS_THAN],
+  }),
+] as const satisfies Field[];

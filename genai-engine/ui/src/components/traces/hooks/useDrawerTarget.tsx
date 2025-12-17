@@ -1,4 +1,4 @@
-import { createParser, createSerializer, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { createSerializer, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 
 import { LEVELS } from "../constants";
 
