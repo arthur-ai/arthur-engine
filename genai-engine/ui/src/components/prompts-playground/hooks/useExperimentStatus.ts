@@ -14,7 +14,7 @@ type Options = {
    * @default 2000 milliseconds
    */
   interval?: number;
-  onCompleted?: () => void;
+  onCompleted?: () => Promise<void> | void;
 };
 
 export const useExperimentStatus = (options: Options) => {
@@ -33,7 +33,7 @@ export const useExperimentStatus = (options: Options) => {
         const { data } = await api.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(runningExperimentId!);
 
         if (data.status === "completed") {
-          onCompleted?.();
+          await onCompleted?.();
         } else {
           enqueueSnackbar("Experiment running with status: " + data.status, { variant: "info" });
         }

@@ -26,12 +26,14 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAutosave } from "./hooks/useAutosave";
 import { useExperimentStatus } from "./hooks/useExperimentStatus";
 import { useSyncNotebookState } from "./hooks/useSyncNotebookState";
+import { useSyncPromptData } from "./hooks/useSyncPromptData";
 import { useSyncSpanData } from "./hooks/useSyncSpanData";
 import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
@@ -49,13 +51,11 @@ import VariableInputs from "./VariableInputs";
 import { CreateExperimentModal, type ExperimentFormData } from "@/components/prompt-experiments/CreateExperimentModal";
 import { useApi } from "@/hooks/useApi";
 import { useNotebook, useNotebookHistory, useSetNotebookStateMutation, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
+import { useCreateExperiment, usePromptExperiments } from "@/hooks/usePromptExperiments";
 import { useTask } from "@/hooks/useTask";
 import { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
-import { useSnackbar } from "notistack";
-import { useCreateExperiment } from "@/hooks/usePromptExperiments";
-import { useSyncPromptData } from "./hooks/useSyncPromptData";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -76,15 +76,12 @@ const PromptsPlayground = () => {
   const experimentId = searchParams.get("experimentId");
   const promptName = searchParams.get("promptName");
   const promptVersion = searchParams.get("promptVersion");
-  const promptNameParam = searchParams.get("promptName");
-  const promptVersionParam = searchParams.get("version");
   const notebookId = searchParams.get("notebookId");
 
   // Track if playground is opened with config from "Open in Notebook"
   const isConfigMode = !!experimentId;
 
   const [, setConfigModeActive] = useState(isConfigMode);
-  const [experimentRuns, setExperimentRuns] = useState<PromptExperimentDetail[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [runDetails, setRunDetails] = useState<Map<string, any>>(new Map());
 
@@ -127,11 +124,16 @@ const PromptsPlayground = () => {
 
   // Poll the current experiment status until it is completed
   useExperimentStatus({
-    onCompleted: () => {
+    onCompleted: async () => {
       enqueueSnackbar("Experiment completed", { variant: "success" });
       experimentActions.finishRun();
+
+      await refreshExperimentRuns();
     },
   });
+
+  const experimentsQuery = usePromptExperiments(task?.id, 0, 100);
+  const experimentRuns = experimentsQuery.experiments.filter((experiment) => experiment.name === experimentConfig?.name);
 
   useSyncSpanData({ enabled: !!spanId, spanId: spanId! });
 
@@ -161,7 +163,7 @@ const PromptsPlayground = () => {
 
   const createExperimentMutation = useCreateExperiment(task?.id);
 
-  const { loading: notebookStateLoading } = useSyncNotebookState({
+  useSyncNotebookState({
     enabled: !!notebookId,
     notebookId: notebookId!,
     onSuccess: (data) => {
@@ -169,7 +171,7 @@ const PromptsPlayground = () => {
 
       // If there are URL parameters for loading a prompt and the notebook is empty,
       // skip hydration to allow the prompt loading logic to populate the first prompt
-      const hasPromptUrlParams = promptNameParam && promptVersionParam;
+      const hasPromptUrlParams = promptName && promptVersion;
 
       if (hasPromptUrlParams && isEmpty) {
         console.log("Skipping notebook state hydration - will load prompt from URL params");
@@ -319,13 +321,13 @@ const PromptsPlayground = () => {
    * Triggered if URL has promptName and version parameters (without experimentId)
    */
   useSyncPromptData({
-    enabled: !!promptNameParam && !!promptVersionParam && !experimentId,
-    promptName: promptNameParam!,
-    promptVersion: promptVersionParam!,
+    enabled: !!promptName && !!promptVersion && !experimentId,
+    promptName: promptName!,
+    promptVersion: promptVersion!,
   });
 
   const fetchPromptData = useCallback(async () => {
-    if (hasFetchedPrompt.current || !promptNameParam || !promptVersionParam || !apiClient || !task?.id) {
+    if (hasFetchedPrompt.current || !promptName || !promptVersion || !apiClient || !task?.id) {
       return;
     }
 
@@ -333,8 +335,8 @@ const PromptsPlayground = () => {
 
     try {
       const response = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-        promptNameParam,
-        promptVersionParam,
+        promptName,
+        promptVersion,
         task.id
       );
       const frontendPrompt = toFrontendPrompt(response.data);
@@ -354,13 +356,13 @@ const PromptsPlayground = () => {
     } catch (error) {
       console.error("Failed to fetch prompt data:", error);
     }
-  }, [promptNameParam, promptVersionParam, apiClient, task?.id, state.prompts]);
+  }, [promptName, promptVersion, apiClient, task?.id, state.prompts]);
 
   useEffect(() => {
-    if (promptNameParam && promptVersionParam && !isConfigMode) {
+    if (promptName && promptVersion && !isConfigMode) {
       fetchPromptData();
     }
-  }, [fetchPromptData, promptNameParam, promptVersionParam, isConfigMode]);
+  }, [fetchPromptData, promptName, promptVersion, isConfigMode]);
 
   const handleAddPrompt = () => {
     actions.addPrompt();
@@ -376,21 +378,8 @@ const PromptsPlayground = () => {
       return;
     }
 
-    if (!experimentConfig || !task?.id || !apiClient) return;
-
-    try {
-      const experimentsListResponse = await apiClient.api.listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet({
-        taskId: task.id,
-        page: 0,
-        page_size: 100,
-      });
-
-      const matchingExperiments = experimentsListResponse.data.data.filter((exp) => exp.name === experimentConfig.name);
-      setExperimentRuns(matchingExperiments);
-    } catch (error) {
-      console.error("Failed to refresh experiment runs:", error);
-    }
-  }, [notebookId, refetchNotebookHistory, experimentConfig, task?.id, apiClient]);
+    experimentsQuery.refetch();
+  }, [notebookId, refetchNotebookHistory, experimentsQuery]);
 
   /**
    * Run experiment with all prompts in config mode
@@ -592,73 +581,7 @@ const PromptsPlayground = () => {
         refetchNotebookHistory();
       }
     },
-    //   console.log("[handleLoadConfig] Called with overwritePrompts:", overwritePrompts);
-    //   console.log("[handleLoadConfig] Config:", config);
-    //   console.log("[handleLoadConfig] prompt_configs:", config.prompt_configs);
-
-    //   // If overwritePrompts is true, load the prompts from the experiment's prompt configs
-    //   if (overwritePrompts && config.prompt_configs && config.prompt_configs.length > 0 && apiClient && task?.id) {
-    //     console.log("[handleLoadConfig] Entering overwrite block");
-    //     try {
-    //       const prompts = [];
-    //       for (const promptConfig of config.prompt_configs) {
-    //         console.log("[handleLoadConfig] Processing prompt config:", promptConfig);
-    //         if (promptConfig.type === "saved") {
-    //           const savedConfig = promptConfig;
-    //           console.log(`[handleLoadConfig] Fetching saved prompt ${savedConfig.name} v${savedConfig.version}`);
-    //           try {
-    //             const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-    //               savedConfig.name,
-    //               savedConfig.version.toString(),
-    //               task.id
-    //             );
-    //             const frontendPrompt = toFrontendPrompt(promptResponse.data);
-    //             console.log("[handleLoadConfig] Loaded prompt:", frontendPrompt);
-    //             prompts.push(frontendPrompt);
-    //           } catch (error) {
-    //             console.error(`Failed to fetch saved prompt ${savedConfig.name} v${savedConfig.version}:`, error);
-    //           }
-    //         }
-    //       }
-
-    //       // Overwrite prompts if we loaded any using hydrateNotebookState
-    //       console.log(`[handleLoadConfig] Loaded ${prompts.length} prompts, dispatching hydrateNotebookState`);
-    //       if (prompts.length > 0) {
-    //         dispatch({
-    //           type: "hydrateNotebookState",
-    //           payload: {
-    //             prompts,
-    //             keywords: new Map<string, string>(),
-    //           },
-    //         });
-    //         console.log("[handleLoadConfig] Dispatched hydrateNotebookState");
-    //       }
-    //     } catch (error) {
-    //       console.error("Failed to load prompts from experiment:", error);
-    //     }
-    //   } else {
-    //     console.log("[handleLoadConfig] Skipping overwrite block. Conditions:", {
-    //       overwritePrompts,
-    //       hasPromptConfigs: config.prompt_configs && config.prompt_configs.length > 0,
-    //       hasApiClient: !!apiClient,
-    //       hasTaskId: !!task?.id,
-    //     });
-    //   }
-
-    //   // Update experiment config and activate experiment mode
-    //   setExperimentConfig(config);
-    //   setConfigModeActive(true);
-
-    //   // Mark state as unsaved so auto-save will persist the config
-    //   hasUnsavedChangesRef.current = true;
-    //   setSaveStatus("unsaved");
-
-    //   // Refetch notebook history since we're now in experiment mode
-    //   if (notebookId) {
-    //     refetchNotebookHistory();
-    //   }
-    // },
-    [notebookId, apiClient, task?.id, refetchNotebookHistory]
+    [experimentActions, actions, notebookId, queryClient, task, apiClient, refetchNotebookHistory]
   );
 
   const handleCreateNewConfig = useCallback(() => {
