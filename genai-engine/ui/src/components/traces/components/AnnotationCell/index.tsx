@@ -80,7 +80,10 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
             <Typography variant="caption" color="inherit" fontWeight={500} className="select-none leading-none" sx={{ mx: 1 }}>
               {passedCount} / {failedCount} / {skippedCount} / {erroredCount}
             </Typography>
-            <Box className="border-l border-(--color)/50 bg-(--color)/10 group-hover:block group-focus-visible:block hidden" sx={{ pl: 0.5, pr: 0.75 }}>
+            <Box
+              className="border-l border-(--color)/50 bg-(--color)/10 group-hover:block group-focus-visible:block hidden"
+              sx={{ pl: 0.5, pr: 0.75 }}
+            >
               <OpenInFullIcon sx={{ fontSize: 12 }} />
             </Box>
           </div>

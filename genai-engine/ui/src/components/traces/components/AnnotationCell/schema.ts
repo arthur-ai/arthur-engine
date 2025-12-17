@@ -1,6 +1,6 @@
 import z from "zod";
 
-import type { ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
+import type { AgenticAnnotationResponse, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
 
 export const HumanAnnotation = z.object({
   id: z.string(),
@@ -44,3 +44,14 @@ export type HumanAnnotation = z.infer<typeof HumanAnnotation>;
 
 export const isContinuousEvalAnnotation = (annotation: Annotation): annotation is ContinuousEvalAnnotation =>
   annotation.annotation_type === "continuous_eval";
+
+export const parseAnnotations = (annotations: AgenticAnnotationResponse[]): Annotation[] => {
+  return annotations
+    .map((annotation) => {
+      const parsed = Annotation.safeParse(annotation);
+      if (!parsed.success) return;
+
+      return parsed.data;
+    })
+    .filter((annotation): annotation is Annotation => Boolean(annotation));
+};

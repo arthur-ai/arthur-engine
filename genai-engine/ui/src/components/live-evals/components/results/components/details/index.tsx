@@ -2,29 +2,47 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
-import { Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Paper, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  LinearProgress,
+  Paper,
+  Typography,
+} from "@mui/material";
 
 import { CopyableChip } from "@/components/common";
+import { useEval } from "@/components/evaluators/hooks/useEval";
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
-import { useApi } from "@/hooks/useApi";
+import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
 import { useTask } from "@/hooks/useTask";
 import { formatDate } from "@/utils/formatters";
 
 type Props = {
   annotationId?: string;
   onClose: () => void;
+  onRerunComplete: () => void;
+  rerunOnMount?: boolean;
 };
 
-export const Details = ({ annotationId, onClose }: Props) => {
-  const api = useApi()!;
+export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunComplete }: Props) => {
   const { task } = useTask();
-  const { data, isLoading } = useAnnotation(annotationId);
 
-  // Eval instructions state
-  const [evalInstructions, setEvalInstructions] = useState<string | null>(null);
-  const [loadingInstructions, setLoadingInstructions] = useState(false);
+  const { data, isLoading } = useAnnotation(annotationId!);
+
+  const rerunMutation = useRerunContinuousEval({ annotationId: annotationId!, rerunOnMount, onSuccess: onRerunComplete });
+
+  const { eval: evalData, isLoading: isLoadingEval } = useEval(task?.id, data?.eval_name ?? undefined, data?.eval_version?.toString() ?? undefined);
+  const instructions = evalData?.instructions;
 
   const getStatusChip = (status: string) => {
     const isPassed = status === "passed";
@@ -45,40 +63,17 @@ export const Details = ({ annotationId, onClose }: Props) => {
     return "error.main";
   };
 
-  // Fetch eval instructions when data is available
-  useEffect(() => {
-    const fetchInstructions = async () => {
-      if (!data?.eval_name || data.eval_version == null || !task?.id || !api) {
-        setEvalInstructions(null);
-        return;
-      }
-
-      try {
-        setLoadingInstructions(true);
-        const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
-          data.eval_name,
-          String(data.eval_version),
-          task.id
-        );
-        setEvalInstructions(response.data.instructions || null);
-      } catch (error) {
-        console.error("Failed to load eval instructions:", error);
-        setEvalInstructions(null);
-      } finally {
-        setLoadingInstructions(false);
-      }
-    };
-
-    fetchInstructions();
-  }, [data?.eval_name, data?.eval_version, task?.id, api]);
+  const isPending = data?.run_status === "pending";
 
   return (
-    <Dialog open={!!annotationId} onClose={onClose} maxWidth="xl" fullWidth>
+    <>
       <DialogTitle>
         <Typography variant="h6" fontWeight={600}>
           Annotation Details
         </Typography>
       </DialogTitle>
+
+      {isPending ? <LinearProgress /> : null}
 
       <DialogContent dividers>
         {isLoading ? (
@@ -87,10 +82,30 @@ export const Details = ({ annotationId, onClose }: Props) => {
           </Box>
         ) : data ? (
           <Box className="flex flex-col gap-4">
+            {/* Error Alert with Rerun Action */}
+            {data.run_status === "error" && (
+              <Alert
+                severity="error"
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    startIcon={<RestartAltIcon />}
+                    onClick={() => rerunMutation.mutate(data.id)}
+                    loading={rerunMutation.isPending}
+                  >
+                    Rerun
+                  </Button>
+                }
+              >
+                This evaluation failed. You can retry it.
+              </Alert>
+            )}
+
             {/* Status, Score, and Eval Name Section */}
             <Box className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {data.run_status && (
-                <Paper variant="outlined" sx={{ p: 2 }}>
+                <Paper variant="outlined" sx={{ p: 2, opacity: isPending ? 0.5 : 1 }}>
                   <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                     Status
                   </Typography>
@@ -116,9 +131,7 @@ export const Details = ({ annotationId, onClose }: Props) => {
                   </Typography>
                   <Box className="flex items-center gap-1">
                     <Chip label={data.eval_name} size="small" color="primary" variant="outlined" sx={{ fontWeight: 500 }} />
-                    {data.eval_version != null && (
-                      <Chip label={`v${data.eval_version}`} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
-                    )}
+                    {data.eval_version != null && <Chip label={`v${data.eval_version}`} size="small" variant="outlined" sx={{ fontWeight: 500 }} />}
                   </Box>
                 </Paper>
               )}
@@ -146,7 +159,7 @@ export const Details = ({ annotationId, onClose }: Props) => {
             )}
 
             {/* Eval Instructions */}
-            {loadingInstructions ? (
+            {isLoadingEval ? (
               <Box>
                 <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                   Evaluation Criteria
@@ -155,7 +168,7 @@ export const Details = ({ annotationId, onClose }: Props) => {
                   <CircularProgress size={24} />
                 </Paper>
               </Box>
-            ) : evalInstructions ? (
+            ) : instructions ? (
               <Box>
                 <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                   Evaluation Criteria
@@ -176,7 +189,7 @@ export const Details = ({ annotationId, onClose }: Props) => {
                   }}
                 >
                   <NunjucksHighlightedTextField
-                    value={evalInstructions}
+                    value={instructions}
                     onChange={() => {}} // Read-only, no-op
                     disabled
                     multiline
@@ -331,6 +344,6 @@ export const Details = ({ annotationId, onClose }: Props) => {
           Close
         </Button>
       </DialogActions>
-    </Dialog>
+    </>
   );
 };
