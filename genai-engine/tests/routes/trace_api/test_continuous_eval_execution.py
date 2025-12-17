@@ -1207,6 +1207,12 @@ def test_continuous_eval_execution_less_transform_vars_than_eval_vars(
                 "span_name": "rag-retrieval-savedQueries",
                 "attribute_path": "attributes.input.value.context",
             },
+            # keep the below to bypass the pydantic model validator
+            {
+                "variable_name": "model_version",
+                "span_name": "rag-retrieval-savedQueries",
+                "attribute_path": "attributes.input.value.sqlQuery",
+            },
         ],
     }
     status_code, transform = client.create_transform(
@@ -1230,8 +1236,47 @@ def test_continuous_eval_execution_less_transform_vars_than_eval_vars(
                     "transform_variable": "model_name",
                     "eval_variable": "model_name",
                 },
+                {
+                    "transform_variable": "model_version",
+                    "eval_variable": "model_version",
+                },
             ],
         },
+    )
+    assert status_code == 200
+    
+    # Also verify saving a continuous eval without all eval variables mapped returns a 400 error
+    status_code, bad_ce = client.save_continuous_eval(
+        task_id=agentic_task.id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": "test_llm_eval",
+            "llm_eval_version": 1,
+            "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "model_name",
+                    "eval_variable": "model_name",
+                },
+            ],
+        },
+    )
+    assert status_code == 400
+    
+    # remove the model_version variable from the transform
+    transform_definition = {
+        "variables": [
+            {
+                "variable_name": "model_name",
+                "span_name": "rag-retrieval-savedQueries",
+                "attribute_path": "attributes.input.value.context",
+            },
+        ],
+    }
+    status_code, transform = client.update_transform(
+        transform_id=transform.id,
+        definition=transform_definition,
     )
     assert status_code == 200
 
