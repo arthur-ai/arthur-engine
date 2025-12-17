@@ -1,4 +1,4 @@
-import { Alert, TablePagination, Typography } from "@mui/material";
+import { Alert, Box, TablePagination } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -8,9 +8,8 @@ import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
-import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
-import { TracesWelcomePage } from "../TracesWelcomePage";
+import { WelcomeOrEmptyState } from "../WelcomeOrEmptyState";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -75,11 +74,15 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const hasActiveFilters = filters && Object.keys(filters).length > 0;
 
   if (error) {
-    return <Alert severity="error">There was an error fetching sessions.</Alert>;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">There was an error fetching sessions.</Alert>
+      </Box>
+    );
   }
 
   return (
-    <>
+    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
       {/* Only show FiltersRow if we have sessions or if filters are active */}
       {(data?.sessions?.length || hasActiveFilters) && <FiltersRow />}
 
@@ -106,21 +109,9 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
             }}
           />
         </>
-      ) : hasActiveFilters ? (
-        <TracesEmptyState title="No sessions found">
-          <Typography variant="body1" color="text.secondary">
-            Try adjusting your search query
-          </Typography>
-        </TracesEmptyState>
-      ) : welcomeDismissed ? (
-        <TracesEmptyState title="No sessions yet">
-          <Typography variant="body1" color="text.secondary">
-            Sessions will appear here once your application starts sending data
-          </Typography>
-        </TracesEmptyState>
       ) : (
-        <TracesWelcomePage />
+        <WelcomeOrEmptyState hasActiveFilters={hasActiveFilters} welcomeDismissed={welcomeDismissed} dataType="sessions" />
       )}
-    </>
+    </Box>
   );
 };

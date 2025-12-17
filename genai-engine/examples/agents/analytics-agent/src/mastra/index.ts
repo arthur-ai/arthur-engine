@@ -11,6 +11,12 @@ import { ArthurExporter } from "./observability/arthur";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || "info";
 
+// Debug environment variables
+console.log("🔍 DEBUG: Environment variables at import time:");
+console.log("ARTHUR_BASE_URL:", process.env.ARTHUR_BASE_URL);
+console.log("ARTHUR_API_KEY:", process.env.ARTHUR_API_KEY ? "✓ Set" : "✗ Not set");
+console.log("ARTHUR_TASK_ID:", process.env.ARTHUR_TASK_ID ? "✓ Set" : "✗ Not set");
+
 export const mastra = new Mastra({
   agents: {
     dataAnalystAgent,

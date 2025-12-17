@@ -1,4 +1,4 @@
-import { Alert, TablePagination, Typography } from "@mui/material";
+import { Alert, Box, TablePagination } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -12,9 +12,8 @@ import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
-import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
-import { TracesWelcomePage } from "../TracesWelcomePage";
+import { WelcomeOrEmptyState } from "../WelcomeOrEmptyState";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -98,11 +97,15 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const hasActiveFilters = filters && Object.keys(filters).length > 0;
 
   if (error) {
-    return <Alert severity="error">There was an error fetching spans.</Alert>;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">There was an error fetching spans.</Alert>
+      </Box>
+    );
   }
 
   return (
-    <>
+    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
       {/* Only show FiltersRow if we have spans or if filters are active */}
       {(data?.spans?.length || hasActiveFilters) && <FiltersRow />}
 
@@ -132,21 +135,9 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
             }}
           />
         </>
-      ) : hasActiveFilters ? (
-        <TracesEmptyState title="No spans found">
-          <Typography variant="body1" color="text.secondary">
-            Try adjusting your search query
-          </Typography>
-        </TracesEmptyState>
-      ) : welcomeDismissed ? (
-        <TracesEmptyState title="No spans yet">
-          <Typography variant="body1" color="text.secondary">
-            Spans will appear here once your application starts sending data
-          </Typography>
-        </TracesEmptyState>
       ) : (
-        <TracesWelcomePage />
+        <WelcomeOrEmptyState hasActiveFilters={hasActiveFilters} welcomeDismissed={welcomeDismissed} dataType="spans" />
       )}
-    </>
+    </Box>
   );
 };

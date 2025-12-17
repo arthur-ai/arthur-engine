@@ -9,17 +9,12 @@ import ShowChartIcon from "@mui/icons-material/ShowChart";
 import BoltIcon from "@mui/icons-material/Bolt";
 import { Box, Button, Link, Paper, Stack, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useTask } from "@/hooks/useTask";
+import { useWelcomeStore } from "../stores/welcome.store";
 
-interface StepStatus {
-  apiKeyClicked: boolean;
-  taskIdCopied: boolean;
-  tracingStarted: boolean;
-  dismissed: boolean;
-}
+import { useTask } from "@/hooks/useTask";
 
 export const TracesWelcomePage: React.FC = () => {
   const { task } = useTask();
@@ -27,29 +22,16 @@ export const TracesWelcomePage: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();
   const { enqueueSnackbar } = useSnackbar();
 
-  // Create storage key scoped to the specific task
-  const STORAGE_KEY = `traces-welcome-steps-${taskId}`;
-
-  const [stepStatus, setStepStatus] = useState<StepStatus>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return { apiKeyClicked: false, taskIdCopied: false, tracingStarted: false, dismissed: false };
-      }
-    }
-    return { apiKeyClicked: false, taskIdCopied: false, tracingStarted: false, dismissed: false };
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stepStatus));
-    // Dispatch custom event to notify other components of the change
-    window.dispatchEvent(new CustomEvent("traces-welcome-updated", { detail: { taskId, stepStatus } }));
-  }, [stepStatus, STORAGE_KEY, taskId]);
+  const welcomeStore = useWelcomeStore(taskId || "");
+  const stepStatus = welcomeStore((state) => ({
+    apiKeyClicked: state.apiKeyClicked,
+    taskIdCopied: state.taskIdCopied,
+    tracingStarted: state.tracingStarted,
+    dismissed: state.dismissed,
+  }));
 
   const handleApiKeyClick = () => {
-    setStepStatus((prev) => ({ ...prev, apiKeyClicked: true }));
+    welcomeStore.getState().setApiKeyClicked(true);
     navigate(`/tasks/${taskId}/api-keys`);
   };
 
@@ -57,7 +39,8 @@ export const TracesWelcomePage: React.FC = () => {
     if (task?.id) {
       try {
         await navigator.clipboard.writeText(task.id);
-        setStepStatus((prev) => ({ ...prev, taskIdCopied: true, tracingStarted: true }));
+        welcomeStore.getState().setTaskIdCopied(true);
+        welcomeStore.getState().setTracingStarted(true);
         enqueueSnackbar("Task ID copied to clipboard", { variant: "success" });
       } catch (err) {
         enqueueSnackbar("Failed to copy Task ID", { variant: "error" });
@@ -82,10 +65,10 @@ export const TracesWelcomePage: React.FC = () => {
           maxWidth: 750,
           borderRadius: 3,
           p: { xs: 2.5, sm: 3, md: 3.5 },
-          backgroundColor: "background.paper",
+          backgroundColor: "#ffffff",
           boxShadow: "0 4px 24px rgba(0, 0, 0, 0.06)",
           border: "1px solid",
-          borderColor: "divider",
+          borderColor: "#e5e7eb",
         }}
       >
         <Box
@@ -466,7 +449,7 @@ export const TracesWelcomePage: React.FC = () => {
                     fontWeight: 500,
                   }}
                 >
-                  {task?.id}
+                  {task?.id || taskId || "Loading..."}
                 </Typography>
                 <Button
                   size="small"
@@ -623,12 +606,7 @@ export const TracesWelcomePage: React.FC = () => {
           disabled={!stepStatus.tracingStarted}
           onClick={() => {
             if (stepStatus.tracingStarted) {
-              const newStepStatus = { ...stepStatus, dismissed: true };
-              setStepStatus(newStepStatus);
-
-              // Immediately dispatch event to notify TracesView
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(newStepStatus));
-              window.dispatchEvent(new CustomEvent("traces-welcome-updated", { detail: { taskId, stepStatus: newStepStatus } }));
+              welcomeStore.getState().setDismissed(true);
             }
           }}
         >

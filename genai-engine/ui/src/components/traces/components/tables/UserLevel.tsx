@@ -1,4 +1,4 @@
-import { Alert, TablePagination, Typography } from "@mui/material";
+import { Alert, Box, TablePagination } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useState } from "react";
@@ -6,9 +6,8 @@ import { useState } from "react";
 import { userLevelColumns } from "../../data/user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
-import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
-import { TracesWelcomePage } from "../TracesWelcomePage";
+import { WelcomeOrEmptyState } from "../WelcomeOrEmptyState";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -61,11 +60,15 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   });
 
   if (error) {
-    return <Alert severity="error">There was an error fetching users.</Alert>;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">There was an error fetching users.</Alert>
+      </Box>
+    );
   }
 
   return (
-    <>
+    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
       {data?.users?.length ? (
         <>
           <TracesTable
@@ -89,15 +92,9 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
             }}
           />
         </>
-      ) : welcomeDismissed ? (
-        <TracesEmptyState title="No users yet">
-          <Typography variant="body1" color="text.secondary">
-            Users will appear here once your application starts sending data
-          </Typography>
-        </TracesEmptyState>
       ) : (
-        <TracesWelcomePage />
+        <WelcomeOrEmptyState hasActiveFilters={false} welcomeDismissed={welcomeDismissed} dataType="users" />
       )}
-    </>
+    </Box>
   );
 };
