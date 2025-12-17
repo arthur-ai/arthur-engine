@@ -21,7 +21,7 @@ export const dataAnalystAgent = new Agent({
 
 export const textToSqlAgent = new Agent({
   name: "textToSqlAgent",
-  model: openai("gpt-4.1"),
+  model: openai("gpt-5-mini"),
   instructions: "",
 });
 

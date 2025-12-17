@@ -188,9 +188,9 @@ Parameters:
       - 'enabled'
       - 'disabled'
     Default: 'enabled'
-  ModelRepositoryURL:
+  GenaiEngineModelRepositoryURL:
     Type: String
-    Description: '(Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used.'
+    Description: '(Optional) URL for internal model repository (S3 bucket). When set, GenAI Engine will download models from this location instead of the internet.'
     Default: ''
 
 Conditions:
@@ -199,7 +199,7 @@ Conditions:
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
   ImportAuthServiceCertificate: !Not [ !Equals [ !Ref AuthLoadBalancerCertificateURL, '' ] ]
   ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !Not [ !Equals [ !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN, '' ] ]
-  HasModelRepositoryURL: !Not [ !Equals [ !Ref ModelRepositoryURL, '' ] ]
+  UseInternalModelRepository: !Not [ !Equals [ !Ref GenaiEngineModelRepositoryURL, '' ] ]
 
 Resources:
   GenaiEngineECSLogGroup:
@@ -324,9 +324,9 @@ Resources:
                 Value: 'true'
               - !Ref AWS::NoValue
             - !If
-              - HasModelRepositoryURL
+              - UseInternalModelRepository
               - Name: 'MODEL_REPOSITORY_URL'
-                Value: !Ref ModelRepositoryURL
+                Value: !Ref GenaiEngineModelRepositoryURL
               - !Ref AWS::NoValue
           Secrets:
             - Name: 'GENAI_ENGINE_ADMIN_KEY'

@@ -423,12 +423,17 @@ class ODBCConnector(Connector):
 
                 if not already_ordered:
                     insp = inspect(self.engine)
-                    pk_cols = (
-                        insp.get_pk_constraint(table.name, schema=table.schema).get(
-                            "constrained_columns",
+                    # Views typically don't have primary keys, so handle gracefully
+                    try:
+                        pk_constraint = insp.get_pk_constraint(
+                            table.name,
+                            schema=table.schema,
                         )
-                        or []
-                    )
+                        pk_cols = pk_constraint.get("constrained_columns") or []
+                    except Exception:
+                        # If get_pk_constraint fails (e.g., for views), use empty list
+                        pk_cols = []
+
                     if pk_cols:
                         order_col = table.c[pk_cols[0]]
                     else:
@@ -462,6 +467,10 @@ class ODBCConnector(Connector):
         inspector = inspect(self.engine)
         schema = self._get_default_schema()
         tables = inspector.get_table_names(schema=schema)
+        views = inspector.get_view_names(schema=schema)
+
+        # Combine tables and views into a single list
+        all_datasets = tables + views
 
         return PutAvailableDatasets(
             available_datasets=[
@@ -476,6 +485,6 @@ class ODBCConnector(Connector):
                         ],
                     ),
                 )
-                for tbl in tables
+                for tbl in all_datasets
             ],
         )

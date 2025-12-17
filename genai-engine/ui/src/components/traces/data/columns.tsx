@@ -27,15 +27,16 @@ export const columns = [
       );
     },
   }),
-  columnHelper.accessor("annotation", {
-    header: "Annotation",
+  columnHelper.accessor("annotations", {
+    header: "Annotations",
     cell: ({ getValue, row }) => {
-      const annotation = getValue();
+      const annotations = getValue();
 
-      if (!annotation) return;
+      if (!annotations) return;
 
-      return <AnnotationCell annotation={annotation} traceId={row.original.trace_id} />;
+      return <AnnotationCell annotations={annotations} traceId={row.original.trace_id} />;
     },
+    size: 100,
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",

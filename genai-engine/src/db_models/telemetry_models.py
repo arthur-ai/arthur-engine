@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional
 
@@ -9,7 +8,6 @@ from sqlalchemy import (
     JSON,
     TIMESTAMP,
     Boolean,
-    CheckConstraint,
     Float,
     ForeignKey,
     Index,
@@ -23,6 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db_models.base import Base, IsArchivable
 
 if TYPE_CHECKING:
+    from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
     from db_models.task_models import DatabaseTask
 
 
@@ -62,6 +61,13 @@ class DatabaseTraceMetadata(Base):
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
         nullable=False,
+    )
+
+    # Relationships
+    annotations: Mapped[List["DatabaseAgenticAnnotation"]] = relationship(
+        "DatabaseAgenticAnnotation",
+        foreign_keys="DatabaseAgenticAnnotation.trace_id",
+        lazy="selectin",
     )
 
     __table_args__ = (
@@ -235,44 +241,4 @@ class DatabaseMetricResult(Base):
 
     __table_args__ = (
         Index("idx_metric_results_span_id_metric_type", "span_id", "metric_type"),
-    )
-
-
-class DatabaseAgenticAnnotation(Base):
-    __tablename__ = "agentic_annotations"
-    id: Mapped[uuid.UUID] = mapped_column(
-        postgresql.UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        index=True,
-    )
-
-    # NOTE: trace_id is optional so we can scale horizontally in the future (i.e. adding annotations to spans, etc.)
-    trace_id: Mapped[Optional[str]] = mapped_column(
-        String,
-        ForeignKey("trace_metadata.trace_id"),
-        nullable=True,
-        index=True,
-        unique=True,
-    )
-
-    annotation_score: Mapped[int] = mapped_column(Integer, nullable=False)
-    annotation_description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP,
-        default=datetime.now,
-        nullable=False,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP,
-        default=datetime.now,
-        nullable=False,
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            "annotation_score IN (0, 1)",
-            name="ck_annotation_score_binary",
-        ),
     )

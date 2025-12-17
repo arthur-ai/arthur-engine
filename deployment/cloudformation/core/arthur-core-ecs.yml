@@ -27,3 +27,6 @@ Outputs:
   ArthurECSClusterNameOutput:
     Description: 'ECS cluster name for Arthur'
     Value: !Ref ArthurECSCluster
+  ArthurECSClusterARNOutput:
+    Description: 'ECS cluster ARN for Arthur'
+    Value: !GetAtt ArthurECSCluster.Arn

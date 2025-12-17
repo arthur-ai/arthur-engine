@@ -37,6 +37,7 @@ from db_models import (
     DatabaseSpan,
     DatabaseTraceMetadata,
 )
+from db_models.llm_eval_models import DatabaseContinuousEval
 from schemas.internal_schemas import (
     SessionMetadata,
     Span,
@@ -235,17 +236,52 @@ class SpanQueryService:
                 )
             conditions.extend(duration_conditions)
 
-        # Annotation score filter
-        if filters.annotation_score is not None:
-            query = query.join(
-                DatabaseAgenticAnnotation,
-                and_(
-                    DatabaseAgenticAnnotation.trace_id
-                    == DatabaseTraceMetadata.trace_id,
+        # Annotation filters - join with agentic_annotations table if any annotation filter is present
+        if (
+            filters.annotation_score is not None
+            or filters.annotation_type is not None
+            or filters.continuous_eval_run_status is not None
+            or filters.continuous_eval_name is not None
+        ):
+            join_conditions = [
+                DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+            ]
+
+            if filters.annotation_score is not None:
+                join_conditions.append(
                     DatabaseAgenticAnnotation.annotation_score
                     == filters.annotation_score,
-                ),
+                )
+
+            if filters.annotation_type is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.annotation_type
+                    == filters.annotation_type.value,
+                )
+
+            if filters.continuous_eval_run_status is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.run_status
+                    == filters.continuous_eval_run_status.value,
+                )
+
+            query = query.join(
+                DatabaseAgenticAnnotation,
+                and_(*join_conditions),
             )
+
+            # If filtering by continuous eval name, join with continuous_evals table
+            if filters.continuous_eval_name is not None:
+                query = query.join(
+                    DatabaseContinuousEval,
+                    and_(
+                        DatabaseAgenticAnnotation.continuous_eval_id
+                        == DatabaseContinuousEval.id,
+                        DatabaseContinuousEval.name.ilike(
+                            f"%{filters.continuous_eval_name}%",
+                        ),
+                    ),
+                )
 
         if conditions:
             query = query.where(and_(*conditions))
@@ -277,7 +313,7 @@ class SpanQueryService:
         if filters.span_name_contains:
             # Use ilike for case-insensitive substring matching
             span_name_conditions.append(
-                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%")
+                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%"),
             )
 
         if span_name_conditions:
@@ -311,6 +347,22 @@ class SpanQueryService:
                 ),
             )
             query = query.where(span_ids_exists)
+
+        # Apply status_code filter even when no span_types are detected
+        # Use EXISTS clause to filter traces that contain spans with matching status codes
+        if filters.status_code:
+            status_code_exists = exists(
+                select(1)
+                .select_from(DatabaseSpan)
+                .where(
+                    and_(
+                        DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
+                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        DatabaseSpan.status_code.in_(filters.status_code),
+                    ),
+                ),
+            )
+            query = query.where(status_code_exists)
 
         if not span_types:
             return query
@@ -626,8 +678,11 @@ class SpanQueryService:
             or filters.end_time
             or filters.trace_duration_filters
             or filters.annotation_score is not None
+            or filters.annotation_type is not None
+            or filters.continuous_eval_run_status is not None
+            or filters.continuous_eval_name is not None
             or filters.user_ids
-            or filters.session_ids
+            or filters.session_ids,
         )
 
     def _apply_trace_filters_with_join(
@@ -678,17 +733,52 @@ class SpanQueryService:
                 )
             conditions.extend(duration_conditions)
 
-        # Annotation score filter
-        if filters.annotation_score is not None:
-            query = query.join(
-                DatabaseAgenticAnnotation,
-                and_(
-                    DatabaseAgenticAnnotation.trace_id
-                    == DatabaseTraceMetadata.trace_id,
+        # Annotation filters - join with agentic_annotations table if any annotation filter is present
+        if (
+            filters.annotation_score is not None
+            or filters.annotation_type is not None
+            or filters.continuous_eval_run_status is not None
+            or filters.continuous_eval_name is not None
+        ):
+            join_conditions = [
+                DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+            ]
+
+            if filters.annotation_score is not None:
+                join_conditions.append(
                     DatabaseAgenticAnnotation.annotation_score
                     == filters.annotation_score,
-                ),
+                )
+
+            if filters.annotation_type is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.annotation_type
+                    == filters.annotation_type.value,
+                )
+
+            if filters.continuous_eval_run_status is not None:
+                join_conditions.append(
+                    DatabaseAgenticAnnotation.run_status
+                    == filters.continuous_eval_run_status.value,
+                )
+
+            query = query.join(
+                DatabaseAgenticAnnotation,
+                and_(*join_conditions),
             )
+
+            # If filtering by continuous eval name, join with continuous_evals table
+            if filters.continuous_eval_name is not None:
+                query = query.join(
+                    DatabaseContinuousEval,
+                    and_(
+                        DatabaseAgenticAnnotation.continuous_eval_id
+                        == DatabaseContinuousEval.id,
+                        DatabaseContinuousEval.name.ilike(
+                            f"%{filters.continuous_eval_name}%",
+                        ),
+                    ),
+                )
 
         if conditions:
             query = query.where(and_(*conditions))
@@ -718,11 +808,15 @@ class SpanQueryService:
         if filters.span_name_contains:
             # Use ilike for case-insensitive substring matching
             span_name_conditions.append(
-                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%")
+                DatabaseSpan.span_name.ilike(f"%{filters.span_name_contains}%"),
             )
 
         if span_name_conditions:
             query = query.where(and_(*span_name_conditions))
+
+        # Apply status_code filter even when no span_types are detected
+        if filters.status_code:
+            query = query.where(DatabaseSpan.status_code.in_(filters.status_code))
 
         if not span_types:
             return query

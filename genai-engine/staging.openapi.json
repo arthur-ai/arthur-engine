@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.247"
+        "version": "2.1.264"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2417,6 +2417,37 @@
                         "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -2479,6 +2510,20 @@
                             "title": "Span Name Contains"
                         },
                         "description": "Return only results where span name contains this substring."
+                    },
+                    {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -2857,6 +2902,37 @@
                         "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -2919,6 +2995,20 @@
                             "title": "Span Name Contains"
                         },
                         "description": "Return only results where span name contains this substring."
+                    },
+                    {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3389,7 +3479,7 @@
                     "Traces"
                 ],
                 "summary": "List Trace Metadata",
-                "description": "Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.",
+                "description": "Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance. Set include_spans=true to include flat list of spans for each trace.",
                 "operationId": "list_traces_metadata_api_v1_traces_get",
                 "security": [
                     {
@@ -3397,6 +3487,18 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "include_spans",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include flat list of spans for each trace. Defaults to false for performance.",
+                            "default": false,
+                            "title": "Include Spans"
+                        },
+                        "description": "Include flat list of spans for each trace. Defaults to false for performance."
+                    },
                     {
                         "name": "sort",
                         "in": "query",
@@ -3524,6 +3626,37 @@
                         "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -3586,6 +3719,20 @@
                             "title": "Span Name Contains"
                         },
                         "description": "Return only results where span name contains this substring."
+                    },
+                    {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -3963,6 +4110,37 @@
                         "description": "Filter by trace annotation score (0 or 1)."
                     },
                     {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/AgenticAnnotationType",
+                            "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                        },
+                        "description": "Filter by trace annotation type (i.e. 'human' or 'continuous_eval')."
+                    },
+                    {
+                        "name": "continuous_eval_run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ContinuousEvalRunStatus",
+                            "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                        },
+                        "description": "Filter by trace annotation run status (e.g. 'passed', 'failed', etc.)."
+                    },
+                    {
+                        "name": "continuous_eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Filter by continuous eval name.",
+                            "title": "Continuous Eval Name"
+                        },
+                        "description": "Filter by continuous eval name."
+                    },
+                    {
                         "name": "span_ids",
                         "in": "query",
                         "required": false,
@@ -4025,6 +4203,20 @@
                             "title": "Span Name Contains"
                         },
                         "description": "Return only results where span name contains this substring."
+                    },
+                    {
+                        "name": "status_code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+                            "title": "Status Code"
+                        },
+                        "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset."
                     },
                     {
                         "name": "query_relevance_eq",
@@ -5020,7 +5212,245 @@
                 }
             }
         },
+        "/api/v1/traces/annotations/{annotation_id}": {
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get an annotation by id",
+                "description": "Get an annotation by id",
+                "operationId": "get_annotation_by_id_api_v1_traces_annotations__annotation_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "annotation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Annotation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/traces/{trace_id}/annotations": {
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "List Annotations for a Trace",
+                "description": "List annotations for a trace",
+                "operationId": "list_annotations_for_trace_api_v1_traces__trace_id__annotations_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Trace Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "continuous_eval_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "ID of the continuous eval to filter on.",
+                            "title": "Continuous Eval Id"
+                        },
+                        "description": "ID of the continuous eval to filter on."
+                    },
+                    {
+                        "name": "annotation_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Annotation type to filter on.",
+                            "title": "Annotation Type"
+                        },
+                        "description": "Annotation type to filter on."
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Annotation score to filter on.",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Annotation score to filter on."
+                    },
+                    {
+                        "name": "run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Run status to filter on.",
+                            "title": "Run Status"
+                        },
+                        "description": "Run status to filter on."
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "tags": [
                     "Traces"
@@ -5060,7 +5490,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AgenticAnnotation"
+                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
                                 }
                             }
                         }
@@ -11320,6 +11750,249 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/continuous_evals/results": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get all continuous eval run results for a specific task",
+                "description": "Get all continuous eval run results for a specific task",
+                "operationId": "list_continuous_eval_run_results_api_v1_tasks__task_id__continuous_evals_results_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "ID of the continuous eval to filter on.",
+                            "title": "Id"
+                        },
+                        "description": "ID of the continuous eval to filter on."
+                    },
+                    {
+                        "name": "trace_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Trace ID to filter on.",
+                            "title": "Trace Id"
+                        },
+                        "description": "Trace ID to filter on."
+                    },
+                    {
+                        "name": "annotation_score",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Annotation score to filter on.",
+                            "title": "Annotation Score"
+                        },
+                        "description": "Annotation score to filter on."
+                    },
+                    {
+                        "name": "run_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Run status to filter on.",
+                            "title": "Run Status"
+                        },
+                        "description": "Run status to filter on."
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/results/{run_id}/rerun": {
+            "post": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Rerun a failed continuous eval",
+                "description": "Rerun a failed continuous eval",
+                "operationId": "rerun_continuous_eval_api_v1_continuous_evals_results__run_id__rerun_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Run ID",
+                            "description": "The id of the continuous eval run to rerun."
+                        },
+                        "description": "The id of the continuous eval run to rerun."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalRerunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -12011,59 +12684,6 @@
                 ],
                 "title": "APIKeysRolesEnum"
             },
-            "AgenticAnnotation": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id",
-                        "description": "Unique identifier for the annotation"
-                    },
-                    "trace_id": {
-                        "type": "string",
-                        "title": "Trace Id",
-                        "description": "Trace ID this annotation belongs to"
-                    },
-                    "annotation_score": {
-                        "type": "integer",
-                        "maximum": 1.0,
-                        "minimum": 0.0,
-                        "title": "Annotation Score",
-                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)"
-                    },
-                    "annotation_description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Annotation Description",
-                        "description": "Description of the annotation"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "When the annotation was created"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Updated At",
-                        "description": "When the annotation was last updated"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "trace_id",
-                    "annotation_score"
-                ],
-                "title": "AgenticAnnotation"
-            },
             "AgenticAnnotationRequest": {
                 "properties": {
                     "annotation_score": {
@@ -12094,6 +12714,68 @@
             },
             "AgenticAnnotationResponse": {
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the annotation"
+                    },
+                    "annotation_type": {
+                        "$ref": "#/components/schemas/AgenticAnnotationType",
+                        "description": "Type of annotation"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the trace this annotation belongs to"
+                    },
+                    "continuous_eval_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval this annotation belongs to"
+                    },
+                    "continuous_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Continuous Eval Name",
+                        "description": "Name of the continuous eval this annotation belongs to"
+                    },
+                    "eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Name",
+                        "description": "Name of the eval the continuous eval used when scoring"
+                    },
+                    "eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Version",
+                        "description": "Version of the eval the continuous eval used when scoring"
+                    },
                     "annotation_score": {
                         "anyOf": [
                             {
@@ -12104,7 +12786,7 @@
                             }
                         ],
                         "title": "Annotation Score",
-                        "description": "Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)."
+                        "description": "Binary score for a positive or negative annotation."
                     },
                     "annotation_description": {
                         "anyOf": [
@@ -12117,10 +12799,75 @@
                         ],
                         "title": "Annotation Description",
                         "description": "Description of the annotation."
+                    },
+                    "input_variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/VariableTemplateValue"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Variables",
+                        "description": "Input variables for the continuous eval"
+                    },
+                    "run_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ContinuousEvalRunStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Status of the continuous eval run"
+                    },
+                    "cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Cost",
+                        "description": "Cost of the continuous eval run"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Time the annotation was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Time the annotation was last updated"
                     }
                 },
                 "type": "object",
+                "required": [
+                    "id",
+                    "annotation_type",
+                    "trace_id",
+                    "created_at",
+                    "updated_at"
+                ],
                 "title": "AgenticAnnotationResponse"
+            },
+            "AgenticAnnotationType": {
+                "type": "string",
+                "enum": [
+                    "human",
+                    "continuous_eval"
+                ],
+                "title": "AgenticAnnotationType"
             },
             "AgenticPrompt": {
                 "properties": {
@@ -12995,6 +13742,27 @@
                 "title": "ContinuousEvalCreateRequest",
                 "description": "Request schema for creating a continuous eval"
             },
+            "ContinuousEvalRerunResponse": {
+                "properties": {
+                    "run_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Run Id",
+                        "description": "ID of the continuous eval run that was rerun."
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the trace that was rerun."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "run_id",
+                    "trace_id"
+                ],
+                "title": "ContinuousEvalRerunResponse"
+            },
             "ContinuousEvalResponse": {
                 "properties": {
                     "id": {
@@ -13066,6 +13834,18 @@
                     "updated_at"
                 ],
                 "title": "ContinuousEvalResponse"
+            },
+            "ContinuousEvalRunStatus": {
+                "type": "string",
+                "enum": [
+                    "pending",
+                    "passed",
+                    "running",
+                    "failed",
+                    "skipped",
+                    "error"
+                ],
+                "title": "ContinuousEvalRunStatus"
             },
             "ConversationBaseResponse": {
                 "properties": {
@@ -16123,6 +16903,29 @@
                     "model_name"
                 ],
                 "title": "LLMVersionResponse"
+            },
+            "ListAgenticAnnotationsResponse": {
+                "properties": {
+                    "annotations": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                        },
+                        "type": "array",
+                        "title": "Annotations",
+                        "description": "List of annotations"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of annotations"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "annotations",
+                    "count"
+                ],
+                "title": "ListAgenticAnnotationsResponse"
             },
             "ListContinuousEvalsResponse": {
                 "properties": {
@@ -21589,16 +22392,35 @@
                         "title": "Output Content",
                         "description": "Root span output value from trace metadata"
                     },
-                    "annotation": {
+                    "annotations": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                "items": {
+                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "description": "Annotation for the trace."
+                        "title": "Annotations",
+                        "description": "Annotations for the trace."
+                    },
+                    "spans": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/SpanWithMetricsResponse"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Spans",
+                        "description": "Flat list of spans in this trace (only populated when include_spans=true)."
                     }
                 },
                 "type": "object",
@@ -21739,16 +22561,20 @@
                         "description": "Root spans (spans with no parent) in this trace, with children nested",
                         "default": []
                     },
-                    "annotation": {
+                    "annotations": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                "items": {
+                                    "$ref": "#/components/schemas/AgenticAnnotationResponse"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "description": "Annotation for this trace."
+                        "title": "Annotations",
+                        "description": "Annotations for this trace."
                     }
                 },
                 "type": "object",
@@ -22085,7 +22911,7 @@
                 "properties": {
                     "variables": {
                         "items": {
-                            "$ref": "#/components/schemas/TransformExtractionResponseVariable"
+                            "$ref": "#/components/schemas/VariableTemplateValue"
                         },
                         "type": "array",
                         "title": "Variables",
@@ -22097,26 +22923,6 @@
                     "variables"
                 ],
                 "title": "TransformExtractionResponseList"
-            },
-            "TransformExtractionResponseVariable": {
-                "properties": {
-                    "variable_name": {
-                        "type": "string",
-                        "title": "Variable Name",
-                        "description": "Name of the extracted variable."
-                    },
-                    "value": {
-                        "type": "string",
-                        "title": "Value",
-                        "description": "Value of the extracted variable."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "variable_name",
-                    "value"
-                ],
-                "title": "TransformExtractionResponseVariable"
             },
             "UnregisteredRootSpanGroup": {
                 "properties": {

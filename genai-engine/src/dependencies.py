@@ -303,17 +303,14 @@ def get_task_repository(
     )
 
 
-def get_validated_agentic_task(
+def get_validated_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
 ) -> Task:
-    """Dependency that validates task exists and is agentic"""
+    """Dependency that validates task exists"""
     task_repo = get_task_repository(db_session, application_config)
     task = task_repo.get_task_by_id(str(task_id))
-
-    if not task.is_agentic:
-        raise HTTPException(status_code=400, detail="Task is not agentic")
 
     return task
 
