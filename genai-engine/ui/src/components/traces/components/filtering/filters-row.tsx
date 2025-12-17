@@ -46,7 +46,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
     const storeFilters = useFilterStore((state) => state.filters);
     const hasInitializedRef = useRef(false);
 
-    const isFilterComplete = (item: { name: string; operator: Operator | ""; value: string | string[] }): boolean => {
+    const isFilterComplete = (item: { name: string; operator: Operator | ""; value: string | string[] | null }): boolean => {
       // Check if name is non-empty
       if (!item.name || item.name.trim() === "") {
         return false;
@@ -61,7 +61,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
       if (Array.isArray(item.value)) {
         return item.value.length > 0;
       }
-      return typeof item.value === "string" && item.value.trim() !== "";
+      return typeof item.value === "string" && item.value.trim() !== "" && item.value !== null;
     };
 
     const form = useAppForm({
@@ -245,7 +245,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                   const isMultiple = value === EnumOperators.IN;
 
                   form.resetField(`config[${index}].value`);
-                  form.setFieldValue(`config[${index}].value`, isMultiple ? [] : "");
+                  form.setFieldValue(`config[${index}].value`, isMultiple ? [] : null);
                 },
               }}
               validators={{
