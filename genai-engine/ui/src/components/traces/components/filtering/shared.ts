@@ -7,7 +7,7 @@ type Config = {
   id: string;
   name: string;
   operator: Operator | "";
-  value: string | string[];
+  value: string | string[] | null;
 };
 
 export const sharedFormOptions = formOptions({
