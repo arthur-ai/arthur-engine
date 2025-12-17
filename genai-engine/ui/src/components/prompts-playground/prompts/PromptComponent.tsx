@@ -81,6 +81,7 @@ const Prompt = memo(({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptCom
   useEffect(() => {
     if (prompt.running && !hasTriggeredRunRef.current) {
       hasTriggeredRunRef.current = true;
+      console.log("running prompt", prompt.id);
       runPrompt();
     } else if (!prompt.running && hasTriggeredRunRef.current) {
       hasTriggeredRunRef.current = false;
@@ -91,6 +92,7 @@ const Prompt = memo(({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptCom
   useEffect(() => {
     // React Query handles debouncing and caching automatically
     if (variablesQuery.data !== undefined) {
+      actions.extractPromptVariables(prompt.id, variablesQuery.data);
       // dispatch({
       //   type: "extractPromptVariables",
       //   payload: {

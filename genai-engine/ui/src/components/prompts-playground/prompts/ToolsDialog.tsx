@@ -19,7 +19,7 @@ import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { PromptType, FrontendTool } from "../types";
 import getToolChoiceDisplayValue from "../utils/getToolChoiceDisplayValue";
 
@@ -115,7 +115,7 @@ interface ToolsDialogProps {
 }
 
 const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
-  const { dispatch } = usePromptContext();
+  const actions = usePromptPlaygroundStore((state) => state.actions);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [prevToolCount, setPrevToolCount] = useState(prompt.tools.length);
 
@@ -124,11 +124,8 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
   }, [setOpen]);
 
   const handleAddTool = useCallback(() => {
-    dispatch({
-      type: "addTool",
-      payload: { promptId: prompt.id },
-    });
-  }, [dispatch, prompt.id]);
+    actions.addTool(prompt.id);
+  }, [actions, prompt.id]);
 
   // Handle accordion expand/collapse
   const handleToolAccordionChange = (toolId: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
@@ -145,12 +142,9 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
 
   const handleDeleteTool = useCallback(
     (toolId: string) => {
-      dispatch({
-        type: "deleteTool",
-        payload: { promptId: prompt.id, toolId },
-      });
+      actions.deleteTool(prompt.id, toolId);
     },
-    [dispatch, prompt.id]
+    [actions, prompt.id]
   );
 
   const handleToolChoiceChange = useCallback(
@@ -159,10 +153,7 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
 
       // If it's one of the predefined selections, set as ToolChoiceEnum
       if (validToolEnumValues.includes(selectedValue as ToolChoiceEnum)) {
-        dispatch({
-          type: "updateToolChoice",
-          payload: { promptId: prompt.id, toolChoice: selectedValue as ToolChoiceEnum },
-        });
+        actions.updateToolChoice(prompt.id, selectedValue as ToolChoiceEnum);
       } else {
         // Otherwise, it's a tool ID - find the tool and convert to ToolChoice object
         const selectedTool = prompt.tools.find((tool) => tool.id === selectedValue);
@@ -173,36 +164,23 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
             },
             type: "function",
           };
-          dispatch({
-            type: "updateToolChoice",
-            payload: { promptId: prompt.id, toolChoice },
-          });
+          actions.updateToolChoice(prompt.id, toolChoice);
         }
       }
     },
-    [dispatch, prompt.id, prompt.tools]
+    [prompt.id, prompt.tools]
   );
 
   const handleToolChange = useCallback(
     (toolId: string, newValue: string) => {
       try {
         const parsedTool = JSON.parse(newValue);
-        dispatch({
-          type: "updateTool",
-          payload: {
-            parentId: prompt.id,
-            toolId,
-            tool: {
-              ...parsedTool,
-              id: toolId,
-            },
-          },
-        });
+        actions.updateTool(prompt.id, toolId, parsedTool);
       } catch (error) {
         console.error("Invalid JSON:", error);
       }
     },
-    [dispatch, prompt.id]
+    [actions, prompt.id]
   );
 
   // Auto-expand newly added tools when modal is open

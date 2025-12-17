@@ -9,7 +9,7 @@ import Tooltip from "@mui/material/Tooltip";
 import { useCallback, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
-import { useExperimentStore } from "../stores/experiment.store";
+import { useExperimentStore, useIsExperimentRunning } from "../stores/experiment.store";
 import { useBlankVariableCount, usePromptPlaygroundStore } from "../stores/playground.store";
 import { PromptType } from "../types";
 
@@ -24,7 +24,9 @@ interface ManagementButtonsProps {
 const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps) => {
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
-  const { handleRunSingleWithConfig, isRunningExperiment } = usePromptContext();
+  const { handleRunSingleWithConfig } = usePromptContext();
+
+  const isRunningExperiment = useIsExperimentRunning();
 
   const mode = usePromptPlaygroundStore((state) => state.mode);
   const experimentConfig = useExperimentStore((state) => state.experimentConfig);

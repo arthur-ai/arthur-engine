@@ -20,7 +20,9 @@ import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import React, { useState, useEffect } from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useExperimentStore } from "../stores/experiment.store";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
+
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import type { TestCase } from "@/lib/api-client/api-client";
 
@@ -71,9 +73,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
   if (!testCase) return null;
 
   // Get the prompt result for this specific prompt using the prompt key
-  const promptResult = promptKey
-    ? testCase.prompt_results?.find((pr: any) => pr.prompt_key === promptKey)
-    : testCase.prompt_results?.[0];
+  const promptResult = promptKey ? testCase.prompt_results?.find((pr: any) => pr.prompt_key === promptKey) : testCase.prompt_results?.[0];
 
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
@@ -119,10 +119,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
         }}
       >
         {/* Modal Header */}
-        <Box
-          className="flex items-center justify-between p-4 border-b"
-          sx={{ backgroundColor: "#f9fafb" }}
-        >
+        <Box className="flex items-center justify-between p-4 border-b" sx={{ backgroundColor: "#f9fafb" }}>
           <Typography variant="h6" className="font-semibold text-gray-900">
             Test Case {testCaseIndex + 1}
           </Typography>
@@ -148,9 +145,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                         (() => {
                           try {
                             const messages = JSON.parse(promptResult.rendered_prompt) as Message[];
-                            return messages.map((message, msgIndex) => (
-                              <MessageDisplay key={msgIndex} message={message} />
-                            ));
+                            return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                           } catch {
                             // If not JSON, display as plain text
                             return (
@@ -209,11 +204,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                                 </Typography>
                                 {evalResult?.score !== undefined ? (
                                   <>
-                                    <Chip
-                                      label={evalResult.score === 1 ? "Pass" : "Fail"}
-                                      size="small"
-                                      sx={getEvalChipSx(evalResult.score === 1)}
-                                    />
+                                    <Chip label={evalResult.score === 1 ? "Pass" : "Fail"} size="small" sx={getEvalChipSx(evalResult.score === 1)} />
                                   </>
                                 ) : (
                                   <Chip label="Pending" size="small" sx={getPendingChipSx()} />
@@ -241,13 +232,17 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
 };
 
 const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
-  const { experimentConfig, runningExperimentId, lastCompletedExperimentId, state } = usePromptContext();
+  const runningExperimentId = useExperimentStore((state) => state.runningExperimentId);
+  const prompts = usePromptPlaygroundStore((state) => state.prompts);
   const [selectedTestCase, setSelectedTestCase] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
 
+  const experimentConfig = useExperimentStore((state) => state.experimentConfig);
+  const lastCompletedExperimentId = useExperimentStore((state) => state.lastCompletedExperimentId);
+
   // Find the prompt to get its key for filtering results
-  const prompt = state.prompts.find((p) => p.id === promptId);
+  const prompt = prompts.find((p) => p.id === promptId);
 
   // Generate the prompt key using the same logic as toExperimentPromptConfig
   // Saved prompts (not dirty): "saved:{name}:{version}"
@@ -299,9 +294,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
     setSelectedTestCase(null);
   };
 
-  const getStatusColor = (
-    status: TestCase["status"]
-  ): "default" | "primary" | "info" | "success" | "error" => {
+  const getStatusColor = (status: TestCase["status"]): "default" | "primary" | "info" | "success" | "error" => {
     switch (status) {
       case "queued":
         return "default";
@@ -372,8 +365,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             {runningExperimentId
               ? "Experiment is running. Results will appear here..."
               : experimentIdToShow
-              ? "No test cases found for this experiment."
-              : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
+                ? "No test cases found for this experiment."
+                : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
           </Typography>
         </Box>
       ) : (
@@ -454,9 +447,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   </TableCell>
                   {evals.map((evalRef: any) => {
                     // Find the result for THIS specific prompt using the prompt key
-                    const promptResult = testCase.prompt_results?.find(
-                      (pr: any) => pr.prompt_key === promptKey
-                    );
+                    const promptResult = testCase.prompt_results?.find((pr: any) => pr.prompt_key === promptKey);
                     // Compare eval version as strings since API returns them as strings
                     const evalResult = promptResult?.evals?.find(
                       (e: any) => e.eval_name === evalRef.name && String(e.eval_version) === String(evalRef.version)
@@ -502,7 +493,13 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
         </TableContainer>
       )}
 
-      <TestCaseDetailModal testCase={selectedTestCase} testCaseIndex={selectedTestCaseIndex} open={modalOpen} onClose={handleCloseModal} promptKey={promptKey} />
+      <TestCaseDetailModal
+        testCase={selectedTestCase}
+        testCaseIndex={selectedTestCaseIndex}
+        open={modalOpen}
+        onClose={handleCloseModal}
+        promptKey={promptKey}
+      />
     </Box>
   );
 };

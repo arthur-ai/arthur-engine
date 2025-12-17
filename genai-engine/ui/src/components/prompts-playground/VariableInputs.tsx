@@ -9,11 +9,11 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useRef, useState, useEffect } from "react";
 
-import { usePromptContext } from "./PromptsPlaygroundContext";
+import { useExperimentStore } from "./stores/experiment.store";
 import { usePromptPlaygroundStore } from "./stores/playground.store";
 
 const VariableInputs = () => {
-  const { experimentConfig } = usePromptContext();
+  const experimentConfig = useExperimentStore((state) => state.experimentConfig);
 
   const keywords = usePromptPlaygroundStore((state) => state.keywords);
   const actions = usePromptPlaygroundStore((state) => state.actions);

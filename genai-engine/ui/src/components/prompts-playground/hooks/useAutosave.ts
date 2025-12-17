@@ -25,7 +25,7 @@ export const useAutosave = ({ notebookId, enabled }: Props) => {
     async () => {
       const { prompts } = usePromptPlaygroundStore.getState();
       const { experimentConfig } = useExperimentStore.getState();
-      const serializedState = serializePlaygroundState({ experimentConfig, prompts });
+      const serializedState = serializePlaygroundState({ prompts }, experimentConfig);
 
       actions.resetMutation();
 

@@ -37,7 +37,7 @@ import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { initialState, promptsReducer } from "./reducer";
 import SetConfigDrawer from "./SetConfigDrawer";
-import { useExperimentStore } from "./stores/experiment.store";
+import { useExperimentStore, useIsExperimentRunning } from "./stores/experiment.store";
 import { useAllPromptsHaveModelConfig, useBlankVariableCount, useIsPlaygroundDirty, usePromptPlaygroundStore } from "./stores/playground.store";
 import { createPrompt } from "./stores/utils/factories";
 import { PromptExperimentStateConfig } from "./types";
@@ -91,10 +91,9 @@ const PromptsPlayground = () => {
   const experimentConfig = useExperimentStore((state) => state.experimentConfig);
 
   // Track the currently running experiment for this session
-  const [runningExperimentId, setRunningExperimentId] = useState<string | null>(null);
-  const [isRunningExperiment, setIsRunningExperiment] = useState(false);
-  const [lastCompletedExperimentId, setLastCompletedExperimentId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isRunningExperiment = useIsExperimentRunning();
 
   // Notebook state management
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
@@ -201,7 +200,7 @@ const PromptsPlayground = () => {
     const { prompts } = usePromptPlaygroundStore.getState();
     const experimentConfig = useExperimentStore.getState().experimentConfig;
 
-    const serializedState = serializePlaygroundState({ experimentConfig, prompts });
+    const serializedState = serializePlaygroundState({ prompts }, experimentConfig);
 
     await setNotebookStateMutation.mutateAsync({
       notebookId,
@@ -310,6 +309,7 @@ const PromptsPlayground = () => {
 
   useEffect(() => {
     if (isConfigMode) {
+      console.log("fetching experiment config");
       fetchExperimentConfig();
     }
   }, [fetchExperimentConfig, isConfigMode]);
@@ -393,54 +393,6 @@ const PromptsPlayground = () => {
   }, [notebookId, refetchNotebookHistory, experimentConfig, task?.id, apiClient]);
 
   /**
-   * Poll experiment status until completion
-   */
-  const pollExperimentStatus = useCallback(
-    async (expId: string) => {
-      if (!apiClient) return;
-
-      try {
-        const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(expId);
-        const experiment = response.data;
-
-        // Check if experiment is still running
-        // Keep polling while status is not completed or failed
-        if (experiment.status !== "completed" && experiment.status !== "failed") {
-          // Continue polling
-          return;
-        }
-
-        // Experiment completed or failed - stop polling
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
-        setIsRunningExperiment(false);
-        // Keep the experiment ID so results persist, but store in lastCompleted
-        setLastCompletedExperimentId(expId);
-        setRunningExperimentId(null);
-
-        // Refresh the runs list to show the completed experiment
-        await refreshExperimentRuns();
-
-        // Auto-expand the completed run details
-        setExpandedRunId(expId);
-        setRunDetails((prev) => new Map(prev).set(expId, experiment));
-      } catch (error) {
-        console.error("Failed to poll experiment status:", error);
-        // Stop polling on error
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
-        setIsRunningExperiment(false);
-        setRunningExperimentId(null);
-      }
-    },
-    [apiClient, refreshExperimentRuns]
-  );
-
-  /**
    * Run experiment with all prompts in config mode
    */
   const handleRunAllWithConfig = useCallback(async () => {
@@ -455,7 +407,7 @@ const PromptsPlayground = () => {
     }
 
     try {
-      setIsRunningExperiment(true);
+      // setIsRunningExperiment(true);
 
       // Convert all playground prompts to experiment prompt configs
       const promptConfigs = prompts.map((prompt) => toExperimentPromptConfig(prompt));
@@ -477,8 +429,6 @@ const PromptsPlayground = () => {
       // Create and run the experiment
       const { id } = await createExperimentMutation.mutateAsync(experimentRequest);
 
-      setRunningExperimentId(id);
-
       // Finish the run and set the running experiment ID
       experimentActions.finishRun();
       experimentActions.setRunningExperimentId(id);
@@ -490,8 +440,7 @@ const PromptsPlayground = () => {
       });
     } catch (error) {
       console.error("Failed to create experiment:", error);
-      setIsRunningExperiment(false);
-      setRunningExperimentId(null);
+      experimentActions.finishRun();
     }
   }, [apiClient, createExperimentMutation, experimentActions, experimentConfig, isRunningExperiment, notebookId, prompts, task?.id]);
 
@@ -517,8 +466,6 @@ const PromptsPlayground = () => {
       }
 
       try {
-        setIsRunningExperiment(true);
-
         // Convert the single prompt to experiment prompt config
         const promptConfig = toExperimentPromptConfig(prompt);
 
@@ -539,17 +486,15 @@ const PromptsPlayground = () => {
         const response = await apiClient.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(task.id, experimentRequest);
 
         const newExperimentId = response.data.id;
-        setRunningExperimentId(newExperimentId);
 
         experimentActions.finishRun();
         experimentActions.setRunningExperimentId(newExperimentId);
       } catch (error) {
         console.error("Failed to create experiment:", error);
-        setIsRunningExperiment(false);
-        setRunningExperimentId(null);
+        experimentActions.finishRun();
       }
     },
-    [experimentConfig, task?.id, apiClient, prompts, isRunningExperiment]
+    [experimentConfig, task?.id, apiClient, isRunningExperiment, prompts, notebookId, experimentActions, createExperimentMutation]
   );
 
   const handleRunAllPrompts = () => {
@@ -561,7 +506,7 @@ const PromptsPlayground = () => {
 
     // Otherwise, run in normal playground mode
     // Calculate tracking properties
-    const nonRunningPrompts = state.prompts.filter((prompt) => !prompt.running);
+    const nonRunningPrompts = prompts.filter((prompt) => !prompt.running);
     const promptCount = nonRunningPrompts.length;
 
     // Track the event
@@ -570,11 +515,10 @@ const PromptsPlayground = () => {
     });
 
     // Run all non-running prompts
-    state.prompts.forEach((prompt) => {
+    prompts.forEach((prompt) => {
       if (!prompt.running) {
         // Only run prompts that are not already running
         actions.runPrompt(prompt.id);
-        // dispatch({ type: "runPrompt", payload: { promptId: prompt.id } });
       }
     });
   };
@@ -638,7 +582,7 @@ const PromptsPlayground = () => {
         }
       });
 
-      const prompts = (await Promise.all(promises)).filter(Boolean).map(toFrontendPrompt);
+      const prompts = (await Promise.all(promises)).filter((prompt) => prompt !== undefined).map(toFrontendPrompt);
 
       actions.overwritePrompts(prompts);
 
@@ -894,15 +838,7 @@ const PromptsPlayground = () => {
   // }
 
   return (
-    <PromptProvider
-      state={state}
-      dispatch={dispatch}
-      experimentConfig={experimentConfig}
-      handleRunSingleWithConfig={handleRunSingleWithConfig}
-      isRunningExperiment={isRunningExperiment}
-      runningExperimentId={runningExperimentId}
-      lastCompletedExperimentId={lastCompletedExperimentId}
-    >
+    <PromptProvider handleRunSingleWithConfig={handleRunSingleWithConfig}>
       <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
         {/* Header with action buttons */}
         <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 shrink-0">
@@ -1079,9 +1015,9 @@ const PromptsPlayground = () => {
         <Box component="main" className="flex-1 flex flex-col">
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
             <Stack direction="row" spacing={1} sx={{ height: "100%" }}>
-              {prompts.map((prompt) => (
+              {prompts.map((prompt, index) => (
                 <Box
-                  key={prompt.id}
+                  key={`prompt-${prompt.id}-${index}`}
                   className="flex-1 h-full"
                   sx={{
                     minWidth: 400,

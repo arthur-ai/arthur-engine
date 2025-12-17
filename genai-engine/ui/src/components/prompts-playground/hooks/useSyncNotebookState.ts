@@ -53,7 +53,7 @@ export const useSyncNotebookState = ({ enabled, notebookId, onSuccess }: Props) 
 
       // Initialize prompts with saved prompts
       const prompts = await Promise.all(promises)
-        .then((responses) => responses.map((response) => response?.data).filter(Boolean))
+        .then((responses) => responses.map((response) => response?.data).filter((prompt) => prompt !== undefined))
         .then((prompts) => prompts.map((prompt) => toFrontendPrompt(prompt)));
 
       // Add unsaved prompts

@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
-import { MESSAGE_ROLE_OPTIONS, MessageType, ModelParametersType, promptClassificationEnum, PromptType } from "../../types";
+import { FrontendTool, MESSAGE_ROLE_OPTIONS, MessageType, ModelParametersType, promptClassificationEnum, PromptType } from "../../types";
 import { generateId } from "../../utils";
 
 import { MessageRole } from "@/lib/api-client/api-client";
@@ -76,3 +76,27 @@ export const duplicateMessage = (original: MessageType): MessageType =>
     ...original,
     id: generateId("msg"),
   });
+
+export const createTool = (counter: number = 1, overrides: Partial<FrontendTool> = {}): FrontendTool => ({
+  id: generateId("tool"),
+  function: {
+    name: `tool_func_${counter}`,
+    description: "description",
+    parameters: {
+      type: "object",
+      properties: {
+        tool_arg: {
+          type: "string",
+          description: null,
+          enum: null,
+          items: null,
+        },
+      },
+      required: [],
+      additionalProperties: null,
+    },
+  },
+  strict: false,
+  type: "function",
+  ...overrides,
+});

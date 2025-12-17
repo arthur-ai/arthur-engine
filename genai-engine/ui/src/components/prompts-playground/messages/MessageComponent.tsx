@@ -11,7 +11,6 @@ import { debounce } from "@mui/material/utils";
 import { useDebouncedCallback } from "@tanstack/react-pacer";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
 import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
 
@@ -23,7 +22,6 @@ const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
 
 const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultContent = "", content, toolCalls, dragHandleProps }) => {
-  const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
   const [toolCallsValue, setToolCallsValue] = useState(toolCalls && toolCalls.length > 0 ? JSON.stringify(toolCalls, null, 2) : "");
   const actions = usePromptPlaygroundStore((state) => state.actions);
@@ -75,14 +73,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
       debounce((value: string) => {
         try {
           const parsed = value.trim() ? JSON.parse(value) : null;
-          dispatch({
-            type: "editMessageToolCalls",
-            payload: {
-              parentId,
-              id,
-              toolCalls: parsed,
-            },
-          });
+          actions.editMessageToolCalls(parentId, id, parsed);
         } catch (error) {
           // Invalid JSON - don't update
           console.error("Invalid tool calls JSON:", error);

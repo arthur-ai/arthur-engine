@@ -10,7 +10,7 @@ import { NotebookStateInput, NotebookStateOutput, SavedPromptConfig, UnsavedProm
  * For Iteration Mode, this only includes prompts
  * For Experiment Mode, includes prompts + dataset + evals + mappings
  */
-export const serializePlaygroundState = (state: PromptPlaygroundState, experimentConfig?: any): NotebookStateInput => {
+export const serializePlaygroundState = (state: { prompts: PromptType[] }, experimentConfig?: any): NotebookStateInput => {
   // Convert prompts to experiment prompt configs
   const prompt_configs = state.prompts
     .map((prompt) => {
@@ -21,7 +21,7 @@ export const serializePlaygroundState = (state: PromptPlaygroundState, experimen
         return null;
       }
     })
-    .filter(Boolean);
+    .filter((config) => config !== null);
 
   // If experimentConfig is provided, include it in the serialized state (Experiment Mode)
   if (experimentConfig && experimentConfig.dataset_ref) {

@@ -17,11 +17,9 @@ type Options = {
   onCompleted?: () => void;
 };
 
-export const useExperimentStatus = (
-  { interval, onCompleted }: Options = {
-    interval: REFRESH_INTERVAL,
-  }
-) => {
+export const useExperimentStatus = (options: Options) => {
+  const { interval = REFRESH_INTERVAL, onCompleted } = options ?? {};
+
   const api = useApi()!;
   const { enqueueSnackbar } = useSnackbar();
 
@@ -47,6 +45,8 @@ export const useExperimentStatus = (
         return null;
       }
     },
-    refetchInterval: interval,
+    refetchInterval: (query) => {
+      return query.state.data?.status === "completed" ? false : interval;
+    },
   });
 };

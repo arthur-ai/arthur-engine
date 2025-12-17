@@ -93,7 +93,7 @@ export function streamCompletions(
     try {
       const authHeaders = await getAuthHeaders();
 
-      const response = await fetch(`${baseURL}/api/v1/completions`, {
+      const response = await fetch(`${baseURL}api/v1/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

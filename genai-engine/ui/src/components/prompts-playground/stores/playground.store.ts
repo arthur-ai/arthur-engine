@@ -3,12 +3,13 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
-import { ModelParametersType, PromptType } from "../types";
+import { FrontendTool, ModelParametersType, PromptType } from "../types";
+import { cleanupAndRecalculateKeywords } from "../utils";
 
 import { useExperimentStore } from "./experiment.store";
-import { createPrompt, duplicateMessage, duplicatePrompt, newMessage } from "./utils/factories";
+import { createPrompt, createTool, duplicateMessage, duplicatePrompt, newMessage } from "./utils/factories";
 
-import { MessageRole, ModelProvider } from "@/lib/api-client/api-client";
+import { MessageRole, ModelProvider, ToolCall, ToolChoice, ToolChoiceEnum } from "@/lib/api-client/api-client";
 
 const now = () => new Date();
 
@@ -30,12 +31,18 @@ interface PromptPlaygroundActions {
 
   changeMessageRole: (parentId: string, id: string, role: MessageRole) => void;
   setMessageContent: (parentId: string, id: string, content: string) => void;
+  editMessageToolCalls: (parentId: string, id: string, toolCalls: ToolCall[] | null) => void;
+  addTool: (promptId: string) => void;
+  deleteTool: (promptId: string, toolId: string) => void;
+  updateToolChoice: (promptId: string, toolChoice: ToolChoiceEnum | ToolChoice) => void;
+  updateTool: (promptId: string, toolId: string, tool: Partial<FrontendTool>) => void;
 
   hydrateNotebookState: (prompts: PromptType[], keywords: Map<string, string>) => void;
   overwritePrompts: (prompts: PromptType[]) => void;
 
   updateKeywords: (id: string, messageKeywords: string[]) => void;
   updateKeywordValue: (keyword: string, value: string) => void;
+  extractPromptVariables: (promptId: string, variables: string[]) => void;
 
   updateModelParameters: (promptId: string, modelParameters: ModelParametersType) => void;
   updateResponseFormat: (promptId: string, responseFormat: string | undefined) => void;
@@ -94,7 +101,8 @@ export const usePromptPlaygroundStore = create<PlaygroundStore>()(
               if (!prompt) return;
 
               state.prompts[index] = { ...prompt, ...data };
-              state.prompts[index].isDirty = !!prompt.version;
+              state.prompts[index].isDirty =
+                data.isDirty !== undefined ? data.isDirty : data.version !== undefined && data.messages !== undefined ? false : prompt.isDirty;
               state.mutation.changedAt = now();
             },
             false,
@@ -267,6 +275,94 @@ export const usePromptPlaygroundStore = create<PlaygroundStore>()(
           );
         },
 
+        editMessageToolCalls: (parentId: string, id: string, toolCalls: ToolCall[] | null) => {
+          set(
+            (state) => {
+              const prompt = state.prompts.find((prompt) => prompt.id === parentId);
+              if (!prompt) return;
+
+              const index = prompt.messages.findIndex((message) => message.id === id);
+              const message = prompt.messages[index];
+              if (!message) return;
+
+              const oldToolCalls = message.tool_calls ?? null;
+              const newToolCalls = toolCalls ?? null;
+              const wasChanged = JSON.stringify(oldToolCalls) !== JSON.stringify(newToolCalls);
+
+              if (wasChanged && prompt.version) {
+                prompt.isDirty = true;
+                state.mutation.changedAt = now();
+              }
+            },
+            false,
+            "playground/editMessageToolCalls"
+          );
+        },
+
+        addTool: (promptId: string) => {
+          set(
+            (state) => {
+              const prompt = state.prompts.find((prompt) => prompt.id === promptId);
+              if (!prompt) return;
+
+              prompt.tools.push(createTool(prompt.tools.length + 1));
+              prompt.isDirty = !!prompt.version;
+
+              state.mutation.changedAt = now();
+            },
+            false,
+            "playground/addTool"
+          );
+        },
+
+        deleteTool: (promptId: string, toolId: string) => {
+          set(
+            (state) => {
+              const prompt = state.prompts.find((prompt) => prompt.id === promptId);
+              if (!prompt) return;
+
+              prompt.tools = prompt.tools.filter((tool) => tool.id !== toolId);
+              prompt.isDirty = !!prompt.version;
+
+              state.mutation.changedAt = now();
+            },
+            false,
+            "playground/deleteTool"
+          );
+        },
+
+        updateToolChoice: (promptId: string, toolChoice: ToolChoiceEnum | ToolChoice) => {
+          set(
+            (state) => {
+              const prompt = state.prompts.find((prompt) => prompt.id === promptId);
+              if (!prompt) return;
+
+              prompt.toolChoice = toolChoice;
+              prompt.isDirty = !!prompt.version;
+
+              state.mutation.changedAt = now();
+            },
+            false,
+            "playground/updateToolChoice"
+          );
+        },
+
+        updateTool: (promptId: string, toolId: string, tool: Partial<FrontendTool>) => {
+          set(
+            (state) => {
+              const prompt = state.prompts.find((prompt) => prompt.id === promptId);
+              if (!prompt) return;
+
+              prompt.tools = prompt.tools.map((t) => (t.id === toolId ? { ...t, ...tool } : t));
+              prompt.isDirty = !!prompt.version;
+
+              state.mutation.changedAt = now();
+            },
+            false,
+            "playground/updateTool"
+          );
+        },
+
         hydrateNotebookState: (prompts: PromptType[], keywords: Map<string, string>) => {
           set(
             (state) => {
@@ -343,6 +439,41 @@ export const usePromptPlaygroundStore = create<PlaygroundStore>()(
           );
         },
 
+        extractPromptVariables: (promptId: string, variables: string[]) => {
+          const { keywordTracker, keywords } = get();
+          set(
+            (state) => {
+              const prompt = state.prompts.find((prompt) => prompt.id === promptId);
+              if (!prompt) return;
+
+              const messageIds = prompt.messages.map((m) => m.id);
+
+              const { keywordTracker: newKeywordTracker, keywords: newKeywords } = cleanupAndRecalculateKeywords(
+                state.prompts,
+                keywordTracker,
+                keywords,
+                (tracker) => {
+                  if (variables.length === 0) {
+                    // Remove all message IDs from this prompt from keyword tracker
+                    messageIds.forEach((id) => tracker.delete(id));
+                  } else {
+                    // Map all variables to all message IDs in this prompt
+                    // (Backend doesn't provide per-message mapping, so we associate all variables with all messages)
+                    messageIds.forEach((id) => {
+                      tracker.set(id, variables);
+                    });
+                  }
+                }
+              );
+
+              state.keywordTracker = newKeywordTracker;
+              state.keywords = newKeywords;
+            },
+            false,
+            "playground/extractPromptVariables"
+          );
+        },
+
         updateModelParameters: (promptId: string, modelParameters: ModelParametersType) => {
           set(
             (state) => {
@@ -368,8 +499,10 @@ export const usePromptPlaygroundStore = create<PlaygroundStore>()(
         runPrompt: (promptId: string) => {
           set(
             (state) => {
-              state.prompts = state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, running: true } : prompt));
-              state.mutation.changedAt = now();
+              const prompt = state.prompts.find((prompt) => prompt.id === promptId);
+              if (!prompt) return;
+
+              prompt.running = true;
             },
             false,
             "playground/runPrompt"

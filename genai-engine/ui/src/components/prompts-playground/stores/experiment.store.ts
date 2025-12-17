@@ -15,6 +15,7 @@ interface ExperimentStoreActions {
 interface ExperimentStore {
   experimentConfig: PromptExperimentStateConfig | null;
   runningExperimentId: string | null;
+  lastCompletedExperimentId: string | null;
   actions: ExperimentStoreActions;
 }
 
@@ -23,6 +24,7 @@ export const useExperimentStore = create<ExperimentStore>()(
     immer((set, get) => ({
       experimentConfig: null,
       runningExperimentId: null,
+      lastCompletedExperimentId: null,
       actions: {
         setExperimentConfig: (experimentConfig: PromptExperimentStateConfig) => {
           set({ experimentConfig }, false, "experiment/setExperimentConfig");
@@ -33,7 +35,8 @@ export const useExperimentStore = create<ExperimentStore>()(
         },
 
         finishRun: () => {
-          set({ runningExperimentId: null }, false, "experiment/finishRun");
+          const { runningExperimentId } = get();
+          set({ runningExperimentId: null, lastCompletedExperimentId: runningExperimentId }, false, "experiment/finishRun");
         },
 
         reset: () => {

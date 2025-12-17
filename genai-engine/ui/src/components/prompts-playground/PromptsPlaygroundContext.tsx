@@ -1,26 +1,12 @@
 import { ReactNode, createContext, useContext } from "react";
 
-import { PromptPlaygroundState, PromptAction } from "./types";
-
 interface PromptProviderProps {
   children: ReactNode;
-  state: PromptPlaygroundState;
-  dispatch: (action: PromptAction) => void;
-  experimentConfig?: any;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
-  isRunningExperiment?: boolean;
-  runningExperimentId?: string | null;
-  lastCompletedExperimentId?: string | null;
 }
 
 const PromptContext = createContext<{
-  state: PromptPlaygroundState;
-  dispatch: (action: PromptAction) => void;
-  experimentConfig?: any;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
-  isRunningExperiment?: boolean;
-  runningExperimentId?: string | null;
-  lastCompletedExperimentId?: string | null;
 } | null>(null);
 
 export const usePromptContext = () => {
@@ -29,26 +15,11 @@ export const usePromptContext = () => {
   return context;
 };
 
-export const PromptProvider = ({
-  children,
-  state,
-  dispatch,
-  experimentConfig,
-  handleRunSingleWithConfig,
-  isRunningExperiment,
-  runningExperimentId,
-  lastCompletedExperimentId,
-}: PromptProviderProps) => {
+export const PromptProvider = ({ children, handleRunSingleWithConfig }: PromptProviderProps) => {
   return (
     <PromptContext.Provider
       value={{
-        state,
-        dispatch,
-        experimentConfig,
         handleRunSingleWithConfig,
-        isRunningExperiment,
-        runningExperimentId,
-        lastCompletedExperimentId,
       }}
     >
       {children}
