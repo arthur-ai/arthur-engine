@@ -5,7 +5,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_agentic_task
+from dependencies import get_db_session, get_validated_task
 from repositories.rag_experiment_repository import RagExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -53,7 +53,7 @@ def list_rag_experiments(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     """
     List all RAG experiments for a given task.
@@ -104,7 +104,7 @@ def create_rag_experiment(
     experiment_request: CreateRagExperimentRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     """
     Create a new RAG experiment and start execution.
