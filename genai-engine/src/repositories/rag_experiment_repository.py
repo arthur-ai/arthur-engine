@@ -994,3 +994,9 @@ class RagExperimentRepository:
             )
 
         return config_results, total_count
+
+    def delete_experiment(self, experiment_id: str) -> None:
+        """Delete an experiment and its test cases (cascaded)"""
+        db_experiment = self._get_db_experiment(experiment_id)
+        self.db_session.delete(db_experiment)
+        self.db_session.commit()

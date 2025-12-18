@@ -692,8 +692,25 @@ def test_rag_experiment_routes_happy_path(
     )
     assert failed_experiment_detail.finished_at is not None
 
-    # Cleanup: Delete experiment, dataset, RAG provider, LLM eval, and task
-    # Note: Experiments are typically not deleted via API, but we can clean up other resources
+    # Cleanup: Delete experiments, dataset, RAG provider, LLM eval, and task
+    status_code = client.delete_rag_experiment(experiment_id)
+    assert status_code == 204, f"Failed to delete RAG experiment: {status_code}"
+
+    # Validate that deleted experiment cannot be fetched
+    status_code, _ = client.get_rag_experiment(experiment_id)
+    assert (
+        status_code == 404
+    ), f"Expected 404 after deleting experiment, got {status_code}"
+
+    # Validate that test cases for deleted experiment cannot be fetched
+    status_code, _ = client.get_rag_experiment_test_cases(experiment_id)
+    assert (
+        status_code == 404
+    ), f"Expected 404 when fetching test cases for deleted experiment, got {status_code}"
+
+    status_code = client.delete_rag_experiment(failed_experiment_id)
+    assert status_code == 204, f"Failed to delete failed RAG experiment: {status_code}"
+
     status_code, _ = client.delete_llm_eval(task_id=task_id, llm_eval_name=eval_name)
     assert status_code in [200, 204], f"Failed to delete LLM eval: {status_code}"
 

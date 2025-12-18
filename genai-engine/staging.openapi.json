@@ -11134,6 +11134,47 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "Delete RAG experiment",
+                "description": "Delete a RAG experiment and all its associated data",
+                "operationId": "delete_rag_experiment_api_v1_rag_experiments__experiment_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment to delete"
+                        },
+                        "description": "The ID of the experiment to delete"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Experiment deleted successfully."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/rag_experiments/{experiment_id}/test_cases": {

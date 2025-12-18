@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/15/2025
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
+
 # 12/12/2025
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results  endpoint added
