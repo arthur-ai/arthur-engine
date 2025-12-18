@@ -2,16 +2,107 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 12/15/2025
+
+# 12/18/2025
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
 
-# 12/12/2025
+# 12/18/2025
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/test_cases  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
--
+
+# 12/16/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'status_code'
+
+# 12/14/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_spans'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans' to the response with the '200' status
+
+# 12/13/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'continuous_eval_id/anyOf[subschema #1]/' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'id' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotation'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'updated_at' became required for the status '200'
+
+# 12/13/2025
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotationMetadataResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'ListAgenticAnnotationsMetadataResponse'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+
 # 12/11/2025
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'continuous_eval_name'
 - **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'continuous_eval_name'

@@ -71,10 +71,12 @@ class SpanRepository:
         filters: TraceQueryRequest,
         pagination_parameters: PaginationParameters,
         user_ids: Optional[list[str]] = None,
+        include_spans: bool = False,
     ) -> tuple[int, list[TraceMetadata]]:
         """Get lightweight trace metadata for browsing/filtering operations.
 
         Returns metadata only without spans or metrics for fast performance.
+        When include_spans=True, also fetches and attaches all spans for each trace as a flat list.
         """
         # Convert to internal schema format
         internal_filters: TraceQuerySchema = TraceQuerySchema._from_request_model(
@@ -105,16 +107,33 @@ class SpanRepository:
             sort_method=pagination_parameters.sort,
         )
 
-        # add annotation info to trace metadata list
-        trace_metadata_list = (
-            self.trace_annotation_service.append_annotation_info_to_trace_metadata(
-                trace_metadata_list,
-                annotation_score=internal_filters.annotation_score,
-                annotation_type=internal_filters.annotation_type,
-                continuous_eval_run_status=internal_filters.continuous_eval_run_status,
-                continuous_eval_name=internal_filters.continuous_eval_name,
+        # Optionally fetch and attach spans as a flat list
+        if include_spans and trace_metadata_list:
+            # Fetch all spans for the paginated trace_ids
+            spans, _ = self.span_query_service.query_spans_from_db(
+                trace_ids=paginated_trace_ids,
             )
-        )
+
+            # Validate spans
+            valid_spans = self.span_query_service.validate_spans(spans)
+
+            # Add metrics to spans (existing metrics only, no computation)
+            if valid_spans:
+                valid_spans = self.metrics_integration_service.add_metrics_to_spans(
+                    valid_spans,
+                    compute_new_metrics=False,
+                )
+
+            # Group spans by trace_id for easy lookup
+            spans_by_trace: dict[str, list[Span]] = {}
+            for span in valid_spans:
+                if span.trace_id not in spans_by_trace:
+                    spans_by_trace[span.trace_id] = []
+                spans_by_trace[span.trace_id].append(span)
+
+            # Attach spans to each trace_metadata
+            for trace_metadata in trace_metadata_list:
+                trace_metadata.spans = spans_by_trace.get(trace_metadata.trace_id, [])
 
         return total_count, trace_metadata_list
 

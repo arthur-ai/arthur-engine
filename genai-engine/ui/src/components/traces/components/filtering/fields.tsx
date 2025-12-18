@@ -41,7 +41,12 @@ export type FreeSoloField = {
   getAutocompleteProps?: (value?: string | string[]) => Partial<AutocompleteProps<string, boolean, boolean, boolean>>;
 };
 
-export type PrimitiveFieldType = NumericField | EnumField | TextField | FreeSoloField;
+export type DateField = {
+  type: "date";
+  operators: Operator[];
+};
+
+export type PrimitiveFieldType = NumericField | EnumField | TextField | FreeSoloField | DateField;
 
 export function createPrimitiveField<Type extends PrimitiveFieldType, const Name extends string>(field: { name: Name } & Type) {
   return field;

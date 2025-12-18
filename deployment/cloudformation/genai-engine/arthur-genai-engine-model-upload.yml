@@ -1,0 +1,335 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Arthur GenAI Engine Model Upload - S3 bucket, ECS task, and Lambda for airgapped deployments'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  GenaiEngineModelUploadImageLocation:
+    Description: 'The container image location for Arthur GenAI Engine Model Upload task'
+    Type: String
+    AllowedPattern: '.+'
+    ConstraintDescription: 'The container image location for Arthur GenAI Engine Model Upload must be specified.'
+  GenaiEngineModelUploadImageTag:
+    Description: 'The container image tag for Arthur GenAI Engine Model Upload task'
+    Type: String
+    Default: 'latest'
+  ContainerRepositoryCredentialRequired:
+    Type: String
+    Description: 'Is credential required to access the container repository?'
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  ContainerRepositoryCredentialsSecretARN:
+    Type: String
+    Description: 'ARN for the container repository credentials secret'
+    Default: ''
+  GenaiEngineECSTaskExecutionRoleARN:
+    Type: String
+    Description: "ARN for GenAI Engine's ECS task execution role"
+  GenaiEngineModelUploadTaskRoleARN:
+    Type: String
+    Description: "ARN for GenAI Engine Model Upload's ECS task role"
+  ArthurECSClusterARN:
+    Type: String
+    Description: 'The ARN of the ECS cluster to run the model upload task in'
+  GenaiEngineECSServiceSubnetIDs:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: 'GenAI Engine ECS service subnet IDs'
+  GenaiEngineECSSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: 'Security groups for Arthur GenAI Engine'
+  GenaiEngineModelUploadFargateTaskCPUValue:
+    Type: Number
+    Default: 2048
+    Description: 'CPU value for AWS Fargate for the Model Upload ECS task'
+  GenaiEngineModelUploadFargateTaskMemoryValue:
+    Type: Number
+    Default: 4096
+    Description: 'Memory value for AWS Fargate for the Model Upload ECS task'
+
+Conditions:
+  IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
+
+Resources:
+  # S3 Bucket for storing models
+  GenaiEngineModelsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ArthurResourceNamespace}-genai-engine-models${ArthurResourceNameSuffix}-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: !Sub "${ArthurResourceNamespace}-genai-engine-models${ArthurResourceNameSuffix}"
+        - Key: Purpose
+          Value: 'Arthur GenAI Engine Model Storage'
+
+  # S3 Bucket Policy - restrict access to GenAI Engine only
+  GenaiEngineModelsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref GenaiEngineModelsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonSecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt GenaiEngineModelsBucket.Arn
+              - !Sub "${GenaiEngineModelsBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  # CloudWatch Log Group for Model Upload Task
+  GenaiEngineModelUploadLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/arthur/ecs/${ArthurResourceNamespace}-genai-engine-model-upload${ArthurResourceNameSuffix}"
+      RetentionInDays: 30
+
+  # ECS Task Definition for Model Upload
+  GenaiEngineModelUploadTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn: GenaiEngineModelUploadLogGroup
+    Properties:
+      Family: !Sub "${ArthurResourceNamespace}-genai-engine-model-upload${ArthurResourceNameSuffix}"
+      NetworkMode: 'awsvpc'
+      RequiresCompatibilities:
+        - 'FARGATE'
+      Cpu: !Ref GenaiEngineModelUploadFargateTaskCPUValue
+      Memory: !Ref GenaiEngineModelUploadFargateTaskMemoryValue
+      TaskRoleArn: !Ref GenaiEngineModelUploadTaskRoleARN
+      ExecutionRoleArn: !Ref GenaiEngineECSTaskExecutionRoleARN
+      ContainerDefinitions:
+        - Name: 'arthur-genai-engine-model-upload'
+          Image: !Sub "${GenaiEngineModelUploadImageLocation}:${GenaiEngineModelUploadImageTag}"
+          RepositoryCredentials: !If
+            - IsContainerRepositoryCredentialRequired
+            - CredentialsParameter: !Ref ContainerRepositoryCredentialsSecretARN
+            - !Ref AWS::NoValue
+          Essential: true
+          Environment:
+            - Name: 'S3_BUCKET'
+              Value: !Ref GenaiEngineModelsBucket
+            - Name: 'S3_PREFIX'
+              Value: 'models'
+            - Name: 'LOG_LEVEL'
+              Value: 'INFO'
+          LogConfiguration:
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-group: !Sub "/arthur/ecs/${ArthurResourceNamespace}-genai-engine-model-upload${ArthurResourceNameSuffix}"
+              awslogs-region: !Sub "${AWS::Region}"
+              awslogs-stream-prefix: 'ecs'
+
+  # Lambda execution role for running ECS tasks
+  ModelUploadLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-model-upload-lambda${ArthurResourceNameSuffix}"
+      Description: 'Role for Lambda function that runs the model upload ECS task'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: RunECSTask
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:RunTask
+                  - ecs:DescribeTasks
+                  - ecs:StopTask
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource:
+                  - !Ref GenaiEngineECSTaskExecutionRoleARN
+                  - !Ref GenaiEngineModelUploadTaskRoleARN
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  # Lambda function to run ECS task
+  ModelUploadLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ArthurResourceNamespace}-model-upload-trigger${ArthurResourceNameSuffix}"
+      Description: 'Triggers the model upload ECS task and waits for completion'
+      Runtime: python3.11
+      Handler: index.handler
+      Timeout: 900
+      MemorySize: 256
+      Role: !GetAtt ModelUploadLambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          ECS_CLUSTER_ARN: !Ref ArthurECSClusterARN
+          TASK_DEFINITION_ARN: !Ref GenaiEngineModelUploadTaskDefinition
+          SUBNETS: !Join [ ',', !Ref GenaiEngineECSServiceSubnetIDs ]
+          SECURITY_GROUPS: !Join [ ',', !Ref GenaiEngineECSSecurityGroups ]
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import time
+          import os
+          import cfnresponse
+
+          def handler(event, context):
+              print(f"Received event: {json.dumps(event)}")
+
+              request_type = event.get('RequestType', '')
+
+              # Only run on Create and Update
+              if request_type == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+
+              ecs = boto3.client('ecs')
+
+              cluster_arn = os.environ['ECS_CLUSTER_ARN']
+              task_definition_arn = os.environ['TASK_DEFINITION_ARN']
+              subnets = os.environ['SUBNETS'].split(',')
+              security_groups = os.environ['SECURITY_GROUPS'].split(',')
+
+              try:
+                  # Run the ECS task
+                  print(f"Starting ECS task with definition: {task_definition_arn}")
+                  response = ecs.run_task(
+                      cluster=cluster_arn,
+                      taskDefinition=task_definition_arn,
+                      launchType='FARGATE',
+                      networkConfiguration={
+                          'awsvpcConfiguration': {
+                              'subnets': subnets,
+                              'securityGroups': security_groups,
+                              'assignPublicIp': 'DISABLED'
+                          }
+                      },
+                      count=1
+                  )
+
+                  if not response.get('tasks'):
+                      failures = response.get('failures', [])
+                      error_msg = f"Failed to start ECS task: {failures}"
+                      print(error_msg)
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': error_msg})
+                      return
+
+                  task_arn = response['tasks'][0]['taskArn']
+                  print(f"Started ECS task: {task_arn}")
+
+                  # Wait for task completion (with timeout)
+                  max_wait_time = 840  # 14 minutes (Lambda timeout is 15 min)
+                  start_time = time.time()
+
+                  while time.time() - start_time < max_wait_time:
+                      describe_response = ecs.describe_tasks(
+                          cluster=cluster_arn,
+                          tasks=[task_arn]
+                      )
+
+                      if not describe_response.get('tasks'):
+                          print("Task not found, waiting...")
+                          time.sleep(10)
+                          continue
+
+                      task = describe_response['tasks'][0]
+                      status = task.get('lastStatus', '')
+                      print(f"Task status: {status}")
+
+                      if status == 'STOPPED':
+                          # Check exit code
+                          containers = task.get('containers', [])
+                          if containers:
+                              exit_code = containers[0].get('exitCode')
+                              if exit_code == 0:
+                                  print("Model upload completed successfully!")
+                                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                                      'TaskArn': task_arn,
+                                      'Status': 'COMPLETED'
+                                  })
+                                  return
+                              else:
+                                  error_msg = f"Model upload failed with exit code: {exit_code}"
+                                  stop_reason = task.get('stoppedReason', 'Unknown')
+                                  print(f"{error_msg}. Reason: {stop_reason}")
+                                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': error_msg})
+                                  return
+                          break
+
+                      time.sleep(15)
+
+                  # Timeout
+                  error_msg = "Model upload task timed out"
+                  print(error_msg)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': error_msg})
+
+              except Exception as e:
+                  error_msg = f"Error running model upload task: {str(e)}"
+                  print(error_msg)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': error_msg})
+
+  # Custom Resource to trigger the model upload
+  ModelUploadTrigger:
+    Type: Custom::ModelUploadTrigger
+    DependsOn:
+      - GenaiEngineModelsBucket
+      - GenaiEngineModelUploadTaskDefinition
+    Properties:
+      ServiceToken: !GetAtt ModelUploadLambdaFunction.Arn
+      # Adding a unique value forces re-execution on each update
+      TriggerVersion: !Sub "${GenaiEngineModelUploadImageLocation}:${GenaiEngineModelUploadImageTag}"
+
+Outputs:
+  GenaiEngineModelsBucketName:
+    Description: 'S3 bucket name for GenAI Engine models'
+    Value: !Ref GenaiEngineModelsBucket
+  GenaiEngineModelsBucketArn:
+    Description: 'S3 bucket ARN for GenAI Engine models'
+    Value: !GetAtt GenaiEngineModelsBucket.Arn
+  GenaiEngineModelRepositoryURL:
+    Description: 'URL for GenAI Engine to access models from S3'
+    Value: !Sub "s3://${GenaiEngineModelsBucket}/models"
+  GenaiEngineModelUploadTaskDefinitionArn:
+    Description: 'ARN of the model upload task definition'
+    Value: !Ref GenaiEngineModelUploadTaskDefinition

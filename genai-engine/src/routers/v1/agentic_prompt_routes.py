@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from dependencies import (
     get_db_session,
-    get_validated_agentic_task,
+    get_validated_task,
     llm_get_all_filter_parameters,
     llm_get_versions_filter_parameters,
 )
@@ -71,7 +71,7 @@ def get_agentic_prompt(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -110,7 +110,7 @@ def get_all_agentic_prompts(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> LLMGetAllMetadataListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -150,7 +150,7 @@ def get_all_agentic_prompt_versions(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> AgenticPromptVersionListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -449,7 +449,7 @@ async def run_saved_agentic_prompt(
     completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> AgenticPromptRunResponse | StreamingResponse:
     """
     Run and/or stream an unsaved agentic prompt.
@@ -507,7 +507,7 @@ def render_saved_agentic_prompt(
     rendering_request: SavedPromptRenderingRequest = SavedPromptRenderingRequest(),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> AgenticPrompt:
     """
     Render an agentic prompt with template variable substitution.
@@ -566,7 +566,7 @@ def save_agentic_prompt(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -598,7 +598,7 @@ def delete_agentic_prompt(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -635,7 +635,7 @@ def delete_agentic_prompt_version(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -677,7 +677,7 @@ def get_agentic_prompt_by_tag(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -718,7 +718,7 @@ def add_tag_to_agentic_prompt_version(
     tag: str = Body(..., embed=True, description="Tag to add to this prompt version"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
@@ -766,7 +766,7 @@ def delete_tag_from_agentic_prompt_version(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> None:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
