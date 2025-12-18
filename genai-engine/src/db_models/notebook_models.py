@@ -51,6 +51,7 @@ class DatabaseNotebook(Base):
     )
 
     # Draft experiment state (mirrors PromptExperiment but nullable)
+    # For prompt experiments
     prompt_configs: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
         JSON,
         nullable=True,
@@ -59,6 +60,7 @@ class DatabaseNotebook(Base):
         JSON,
         nullable=True,
     )
+    # Shared fields
     dataset_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     dataset_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     dataset_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
