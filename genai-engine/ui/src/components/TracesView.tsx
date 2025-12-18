@@ -2,7 +2,8 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
-import React, { useState } from "react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import React from "react";
 import { useParams } from "react-router-dom";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
@@ -11,23 +12,23 @@ import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
 import { TimeRangeSelect } from "./traces/components/TimeRangeSelect";
-import { Level, TIME_RANGES, TimeRange } from "./traces/constants";
-import { useDrawerTarget } from "./traces/hooks/useDrawerTarget";
-import { useWelcomeStore } from "./traces/stores/welcome.store";
+import { Level, LEVELS, TIME_RANGES } from "./traces/constants";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
+import { useWelcomeStore } from "./traces/stores/welcome.store";
+
+const TIME_RANGE_VALUES = Object.values(TIME_RANGES);
 
 export const TracesView: React.FC = () => {
-  const [current, setDrawerTarget] = useDrawerTarget();
-  const [timeRange, setTimeRange] = useState<TimeRange>(TIME_RANGES["1 month"]);
   const { id: taskId } = useParams<{ id: string }>();
+
+  const [level, setLevel] = useQueryState("level", parseAsStringLiteral(LEVELS).withDefault("trace"));
+  const [timeRange, setTimeRange] = useQueryState("timeRange", parseAsStringLiteral(TIME_RANGE_VALUES).withDefault(TIME_RANGES["1 month"]));
 
   const welcomeStore = useWelcomeStore(taskId || "");
   const welcomeDismissed = welcomeStore((state) => state.dismissed);
 
-  const level = (current?.target as Level) || "trace";
-
   const handleLevelChange = (newValue: Level) => {
-    setDrawerTarget({ target: newValue });
+    setLevel(newValue);
   };
 
   return (
