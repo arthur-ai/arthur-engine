@@ -6,46 +6,46 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, st
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session, get_validated_task
-from repositories.prompt_experiment_repository import PromptExperimentRepository
+from repositories.rag_experiment_repository import RagExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
-from schemas.prompt_experiment_schemas import (
-    CreatePromptExperimentRequest,
-    PromptExperimentDetail,
-    PromptExperimentListResponse,
-    PromptExperimentSummary,
-    PromptVersionResultListResponse,
-    TestCaseListResponse,
+from schemas.rag_experiment_schemas import (
+    CreateRagExperimentRequest,
+    RagConfigResultListResponse,
+    RagExperimentDetail,
+    RagExperimentListResponse,
+    RagExperimentSummary,
+    RagTestCaseListResponse,
 )
-from services.prompt_experiment_executor import PromptExperimentExecutor
+from services.rag_experiment_executor import RagExperimentExecutor
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
-prompt_experiment_routes = APIRouter(
+rag_experiment_routes = APIRouter(
     prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
 
 
-@prompt_experiment_routes.get(
-    "/tasks/{task_id}/prompt_experiments",
-    summary="List prompt experiments",
-    description="List all prompt experiments for a task with optional filtering and pagination",
-    response_model=PromptExperimentListResponse,
+@rag_experiment_routes.get(
+    "/tasks/{task_id}/rag_experiments",
+    summary="List RAG experiments",
+    description="List all RAG experiments for a task with optional filtering and pagination",
+    response_model=RagExperimentListResponse,
     response_model_exclude_none=True,
-    tags=["Prompt Experiments"],
+    tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def list_prompt_experiments(
+def list_rag_experiments(
     pagination_parameters: Annotated[
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
     search: Optional[str] = Query(
         None,
-        description="Search text to filter experiments by name, description, prompt name, or dataset name",
+        description="Search text to filter experiments by name or description",
     ),
     dataset_id: Optional[UUID] = Query(
         None,
@@ -56,18 +56,18 @@ def list_prompt_experiments(
     task: Task = Depends(get_validated_task),
 ):
     """
-    List all prompt experiments for a given task.
+    List all RAG experiments for a given task.
 
     Returns paginated list of experiment summaries.
-    Optionally filter by search text matching experiment name, description, prompt name, or dataset name.
+    Optionally filter by search text matching experiment name or description.
     Optionally filter by dataset ID.
     """
     try:
-        repo = PromptExperimentRepository(db_session)
+        repo = RagExperimentRepository(db_session)
         experiments, total_count = repo.list_experiments(
             task_id=task.id,
-            pagination_params=pagination_parameters,
-            search_text=search,
+            pagination_parameters=pagination_parameters,
+            search=search,
             dataset_id=dataset_id,
         )
 
@@ -77,7 +77,7 @@ def list_prompt_experiments(
             (total_count + page_size - 1) // page_size if total_count > 0 else 0
         )
 
-        return PromptExperimentListResponse(
+        return RagExperimentListResponse(
             data=experiments,
             page=page,
             page_size=page_size,
@@ -90,60 +90,60 @@ def list_prompt_experiments(
         db_session.close()
 
 
-@prompt_experiment_routes.post(
-    "/tasks/{task_id}/prompt_experiments",
-    summary="Create and run a prompt experiment",
-    description="Create a new prompt experiment and initiate execution",
-    response_model=PromptExperimentSummary,
+@rag_experiment_routes.post(
+    "/tasks/{task_id}/rag_experiments",
+    summary="Create and run a RAG experiment",
+    description="Create a new RAG experiment and initiate execution",
+    response_model=RagExperimentSummary,
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
-    tags=["Prompt Experiments"],
+    tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def create_prompt_experiment(
-    experiment_request: CreatePromptExperimentRequest,
+def create_rag_experiment(
+    experiment_request: CreateRagExperimentRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
 ):
     """
-    Create a new prompt experiment and start execution.
+    Create a new RAG experiment and start execution.
 
-    The experiment will test the specified prompt configurations (saved or unsaved)
+    The experiment will test the specified RAG configurations
     against the dataset using the configured evaluations.
     """
     try:
-        # Validate at least one prompt is provided
+        # Validate at least one RAG config is provided
         if (
-            not experiment_request.prompt_configs
-            or len(experiment_request.prompt_configs) == 0
+            not experiment_request.rag_configs
+            or len(experiment_request.rag_configs) == 0
         ):
             raise HTTPException(
                 status_code=400,
-                detail="At least one prompt configuration is required",
+                detail="At least one RAG configuration is required",
             )
 
-        # Check for duplicate prompt configs
-        prompt_keys_seen = set()
-        for config in experiment_request.prompt_configs:
+        # Check for duplicate RAG configs
+        rag_config_keys_seen = set()
+        for config in experiment_request.rag_configs:
             if config.type == "saved":
-                key = f"saved:{config.name}:{config.version}"
+                key = f"saved:{config.setting_configuration_id}:{config.version}"
             else:  # unsaved
-                # For unsaved prompts, we check for identical message/model combinations
-                # since auto_name will be generated by the backend
-                key = f"unsaved:{hash(str(config.messages))}"
+                # For unsaved configs, we check for identical settings/provider combinations
+                # using the unsaved_id UUID
+                key = f"unsaved:{config.unsaved_id}"
 
-            if key in prompt_keys_seen:
+            if key in rag_config_keys_seen:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Duplicate prompt configuration detected: {key}",
+                    detail=f"Duplicate RAG configuration detected: {key}",
                 )
-            prompt_keys_seen.add(key)
+            rag_config_keys_seen.add(key)
 
         # Generate a unique experiment ID
         experiment_id = str(uuid4())
 
-        repo = PromptExperimentRepository(db_session)
+        repo = RagExperimentRepository(db_session)
         experiment = repo.create_experiment(
             task_id=task.id,
             experiment_id=experiment_id,
@@ -151,7 +151,7 @@ def create_prompt_experiment(
         )
 
         # Kick off async execution of the experiment
-        executor = PromptExperimentExecutor()
+        executor = RagExperimentExecutor()
         executor.execute_experiment_async(experiment_id)
 
         return experiment
@@ -163,16 +163,16 @@ def create_prompt_experiment(
         db_session.close()
 
 
-@prompt_experiment_routes.get(
-    "/prompt_experiments/{experiment_id}",
-    summary="Get prompt experiment details",
-    description="Get detailed information about a specific prompt experiment including summary results",
-    response_model=PromptExperimentDetail,
+@rag_experiment_routes.get(
+    "/rag_experiments/{experiment_id}",
+    summary="Get RAG experiment details",
+    description="Get detailed information about a specific RAG experiment including summary results",
+    response_model=RagExperimentDetail,
     response_model_exclude_none=True,
-    tags=["Prompt Experiments"],
+    tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def get_prompt_experiment(
+def get_rag_experiment(
     experiment_id: str = Path(
         ...,
         description="The ID of the experiment to retrieve",
@@ -182,12 +182,12 @@ def get_prompt_experiment(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """
-    Get detailed information about a prompt experiment.
+    Get detailed information about a RAG experiment.
 
     Returns full experiment configuration and summary results across all test cases.
     """
     try:
-        repo = PromptExperimentRepository(db_session)
+        repo = RagExperimentRepository(db_session)
         return repo.get_experiment(experiment_id)
     except HTTPException:
         raise
@@ -202,16 +202,16 @@ def get_prompt_experiment(
         db_session.close()
 
 
-@prompt_experiment_routes.get(
-    "/prompt_experiments/{experiment_id}/test_cases",
+@rag_experiment_routes.get(
+    "/rag_experiments/{experiment_id}/test_cases",
     summary="Get experiment test cases",
-    description="Get paginated list of test case results for a prompt experiment",
-    response_model=TestCaseListResponse,
+    description="Get paginated list of test case results for a RAG experiment",
+    response_model=RagTestCaseListResponse,
     response_model_exclude_none=True,
-    tags=["Prompt Experiments"],
+    tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def get_experiment_test_cases(
+def get_rag_experiment_test_cases(
     pagination_parameters: Annotated[
         PaginationParameters,
         Depends(common_pagination_parameters),
@@ -225,16 +225,16 @@ def get_experiment_test_cases(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """
-    Get detailed test case results for an experiment.
+    Get detailed test case results for a RAG experiment.
 
-    Returns paginated list of individual test cases with their inputs, outputs,
+    Returns paginated list of individual test cases with their inputs, RAG search outputs,
     and evaluation results.
     """
     try:
-        repo = PromptExperimentRepository(db_session)
+        repo = RagExperimentRepository(db_session)
         test_cases, total_count = repo.get_test_cases(
             experiment_id=experiment_id,
-            pagination_params=pagination_parameters,
+            pagination_parameters=pagination_parameters,
         )
 
         page = pagination_parameters.page
@@ -243,7 +243,7 @@ def get_experiment_test_cases(
             (total_count + page_size - 1) // page_size if total_count > 0 else 0
         )
 
-        return TestCaseListResponse(
+        return RagTestCaseListResponse(
             data=test_cases,
             page=page,
             page_size=page_size,
@@ -258,16 +258,16 @@ def get_experiment_test_cases(
         db_session.close()
 
 
-@prompt_experiment_routes.get(
-    "/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results",
-    summary="Get prompt results",
-    description="Get paginated list of results for a specific prompt within an experiment (supports both saved and unsaved prompts)",
-    response_model=PromptVersionResultListResponse,
+@rag_experiment_routes.get(
+    "/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results",
+    summary="Get RAG config results",
+    description="Get paginated list of results for a specific RAG configuration within an experiment (supports both saved and unsaved configs)",
+    response_model=RagConfigResultListResponse,
     response_model_exclude_none=True,
-    tags=["Prompt Experiments"],
+    tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def get_prompt_version_results(
+def get_rag_config_results(
     pagination_parameters: Annotated[
         PaginationParameters,
         Depends(common_pagination_parameters),
@@ -277,32 +277,32 @@ def get_prompt_version_results(
         description="The ID of the experiment",
         title="Experiment ID",
     ),
-    prompt_key: str = Path(
+    rag_config_key: str = Path(
         ...,
-        description="The prompt key (format: 'saved:name:version' or 'unsaved:auto_name'). URL-encode colons as %3A",
-        title="Prompt Key",
+        description="The RAG config key (format: 'saved:setting_config_id:version' or 'unsaved:uuid'). URL-encode colons as %3A",
+        title="RAG Config Key",
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagConfigResultListResponse:
     """
-    Get detailed results for a specific prompt within an experiment.
+    Get detailed results for a specific RAG configuration within an experiment.
 
-    Returns paginated list of results showing inputs, rendered prompt, outputs,
-    and evaluation results for the specified prompt across all test cases.
+    Returns paginated list of results showing inputs, query text, RAG search outputs,
+    and evaluation results for the specified RAG configuration across all test cases.
 
-    The prompt_key parameter should be:
-    - For saved prompts: 'saved:name:version' (e.g., 'saved:my_prompt:1')
-    - For unsaved prompts: 'unsaved:auto_name' (e.g., 'unsaved:unsaved_prompt_1')
+    The rag_config_key parameter should be:
+    - For saved configs: 'saved:setting_config_id:version' (e.g., 'saved:123e4567-e89b-12d3-a456-426614174000:1')
+    - For unsaved configs: 'unsaved:uuid' (e.g., 'unsaved:123e4567-e89b-12d3-a456-426614174000')
 
-    Note: Colons in the prompt_key should be URL-encoded as %3A in the URL path.
+    Note: Colons in the rag_config_key should be URL-encoded as %3A in the URL path.
     """
     try:
-        repo = PromptExperimentRepository(db_session)
-        results, total_count = repo.get_prompt_version_results(
+        repo = RagExperimentRepository(db_session)
+        results, total_count = repo.get_rag_config_results(
             experiment_id=experiment_id,
-            prompt_key=prompt_key,
-            pagination_params=pagination_parameters,
+            rag_config_key=rag_config_key,
+            pagination_parameters=pagination_parameters,
         )
 
         page = pagination_parameters.page
@@ -311,7 +311,7 @@ def get_prompt_version_results(
             (total_count + page_size - 1) // page_size if total_count > 0 else 0
         )
 
-        return PromptVersionResultListResponse(
+        return RagConfigResultListResponse(
             data=results,
             page=page,
             page_size=page_size,
@@ -326,18 +326,18 @@ def get_prompt_version_results(
         db_session.close()
 
 
-@prompt_experiment_routes.delete(
-    "/prompt_experiments/{experiment_id}",
-    summary="Delete prompt experiment",
-    description="Delete a prompt experiment and all its associated data",
+@rag_experiment_routes.delete(
+    "/rag_experiments/{experiment_id}",
+    summary="Delete RAG experiment",
+    description="Delete a RAG experiment and all its associated data",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_204_NO_CONTENT: {"description": "Experiment deleted successfully."},
     },
-    tags=["Prompt Experiments"],
+    tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def delete_prompt_experiment(
+def delete_rag_experiment(
     experiment_id: str = Path(
         ...,
         description="The ID of the experiment to delete",
@@ -347,54 +347,17 @@ def delete_prompt_experiment(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
     """
-    Delete a prompt experiment.
+    Delete a RAG experiment.
 
     This will remove the experiment and all associated test case results.
     This operation cannot be undone.
     """
     try:
-        repo = PromptExperimentRepository(db_session)
+        repo = RagExperimentRepository(db_session)
         repo.delete_experiment(experiment_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
-    except ValueError as e:
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
-
-
-@prompt_experiment_routes.patch(
-    "/prompt_experiments/{experiment_id}/notebook",
-    summary="Attach notebook to experiment",
-    description="Attach a notebook to an existing experiment",
-    response_model=PromptExperimentSummary,
-    response_model_exclude_none=True,
-    tags=["Prompt Experiments"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def attach_notebook_to_experiment(
-    experiment_id: str = Path(..., description="ID of the experiment"),
-    notebook_id: str = Query(..., description="ID of the notebook to attach"),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> PromptExperimentSummary:
-    """Attach a notebook to an existing experiment."""
-    try:
-        repo = PromptExperimentRepository(db_session)
-        return repo.attach_notebook_to_experiment(experiment_id, notebook_id)
-    except HTTPException:
-        raise
-    except ValueError as e:
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

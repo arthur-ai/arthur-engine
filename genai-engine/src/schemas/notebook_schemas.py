@@ -5,11 +5,13 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from db_models.notebook_models import DatabaseNotebook
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
-from schemas.prompt_experiment_schemas import (
+from schemas.base_experiment_schemas import (
     DatasetRef,
     EvalRef,
     ExperimentStatus,
+)
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.prompt_experiment_schemas import (
     PromptConfig,
     PromptExperimentSummary,
     PromptVariableMapping,
