@@ -1,3 +1,6 @@
+import AddIcon from "@mui/icons-material/Add";
+import BuildIcon from "@mui/icons-material/Build";
+import CodeIcon from "@mui/icons-material/Code";
 import Alert from "@mui/material/Alert";
 import Badge from "@mui/material/Badge";
 import Button from "@mui/material/Button";
@@ -6,9 +9,6 @@ import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
 import Tooltip from "@mui/material/Tooltip";
-import AddIcon from "@mui/icons-material/Add";
-import BuildIcon from "@mui/icons-material/Build";
-import CodeIcon from "@mui/icons-material/Code";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 
 import MessagesSection from "../messages/MessagesSection";
@@ -19,11 +19,13 @@ import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";
 import PromptSelectors from "./PromptSelectors";
 import ResizableSplitter from "./ResizableSplitter";
+import ResultsTable from "./ResultsTable";
 import SavePromptDialog from "./SavePromptDialog";
 import ToolsDialog from "./ToolsDialog";
 
-import useRunPrompt from "@/components/prompts-playground/hooks/useRunPrompt";
 import useContainerWidth from "@/components/prompts-playground/hooks/useContainerWidth";
+import { useExtractPromptVariables } from "@/components/prompts-playground/hooks/useExtractPromptVariables";
+import useRunPrompt from "@/components/prompts-playground/hooks/useRunPrompt";
 import useSnackbar from "@/hooks/useSnackbar";
 
 /**
@@ -42,7 +44,8 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
   const hasTriggeredRunRef = useRef<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { dispatch } = usePromptContext();
+  const { dispatch, experimentConfig } = usePromptContext();
+  const isConfigMode = !!experimentConfig;
 
   // Use container width to determine icon-only mode (container queries approach)
   // Switch to icon-only mode when container is less than 600px wide
@@ -56,6 +59,8 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
       showSnackbar(error, "error");
     },
   });
+
+  const variablesQuery = useExtractPromptVariables(prompt.messages);
 
   const handleAddMessage = () => {
     dispatch({
@@ -80,6 +85,20 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
       hasTriggeredRunRef.current = false;
     }
   }, [prompt.running, runPrompt]);
+
+  // Extract variables from prompt messages when they change
+  useEffect(() => {
+    // React Query handles debouncing and caching automatically
+    if (variablesQuery.data !== undefined) {
+      dispatch({
+        type: "extractPromptVariables",
+        payload: {
+          promptId: prompt.id,
+          variables: variablesQuery.data,
+        },
+      });
+    }
+  }, [prompt.id, variablesQuery.data, dispatch]);
 
   const handleResize = useCallback((newRatio: number) => {
     setMessagesHeightRatio(newRatio);
@@ -124,19 +143,43 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
                 {/* Full buttons with text when there's space */}
                 {prompt.tools.length > 0 ? (
                   <Badge badgeContent={prompt.tools.length} color="primary">
-                    <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)} startIcon={<BuildIcon />} sx={{ minWidth: "auto", px: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => setToolsDialogOpen(true)}
+                      startIcon={<BuildIcon />}
+                      sx={{ minWidth: "auto", px: 1 }}
+                    >
                       Tools
                     </Button>
                   </Badge>
                 ) : (
-                  <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)} startIcon={<BuildIcon />} sx={{ minWidth: "auto", px: 1 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setToolsDialogOpen(true)}
+                    startIcon={<BuildIcon />}
+                    sx={{ minWidth: "auto", px: 1 }}
+                  >
                     Tools
                   </Button>
                 )}
-                <Button variant="outlined" size="small" onClick={handleAddMessage} startIcon={<AddIcon />} sx={{ minWidth: "auto", px: 1, whiteSpace: "nowrap" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleAddMessage}
+                  startIcon={<AddIcon />}
+                  sx={{ minWidth: "auto", px: 1, whiteSpace: "nowrap" }}
+                >
                   Add Message
                 </Button>
-                <Button variant="outlined" size="small" onClick={handleOpenResponseSchemaDialog} startIcon={<CodeIcon />} sx={{ minWidth: "auto", px: 1, whiteSpace: "nowrap" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleOpenResponseSchemaDialog}
+                  startIcon={<CodeIcon />}
+                  sx={{ minWidth: "auto", px: 1, whiteSpace: "nowrap" }}
+                >
                   Format Response
                 </Button>
               </>
@@ -172,14 +215,18 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
             }}
           >
             <Paper elevation={2} className="p-1" sx={{ overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
-              <OutputField
-                promptId={prompt.id}
-                running={prompt.running || false}
-                runResponse={prompt.runResponse}
-                responseFormat={prompt.responseFormat}
-                dialogOpen={responseSchemaDialogOpen}
-                onCloseDialog={() => setResponseSchemaDialogOpen(false)}
-              />
+              {isConfigMode ? (
+                <ResultsTable promptId={prompt.id} />
+              ) : (
+                <OutputField
+                  promptId={prompt.id}
+                  running={prompt.running || false}
+                  runResponse={prompt.runResponse}
+                  responseFormat={prompt.responseFormat}
+                  dialogOpen={responseSchemaDialogOpen}
+                  onCloseDialog={() => setResponseSchemaDialogOpen(false)}
+                />
+              )}
             </Paper>
           </div>
         </div>

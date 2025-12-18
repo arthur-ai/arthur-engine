@@ -84,6 +84,9 @@ COPY alembic.ini /app/
 # Copy built UI from ui-build stage
 COPY --from=ui-build /app/ui-dist /app/static
 
+# Create models directory for model downloads
+RUN mkdir -p /home/nonroot/models
+
 
 #####################################################################################
 #                                                                                   #
@@ -110,11 +113,15 @@ COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
 COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
+# Copy models directory (created in install stage, owned by nonroot)
+COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
 ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
 ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
+# Default model storage path for nonroot user
+ENV MODEL_STORAGE_PATH="/home/nonroot/models"
 
 # Set working directory (this is where the entrypoint will be run)
 WORKDIR /home/nonroot/app

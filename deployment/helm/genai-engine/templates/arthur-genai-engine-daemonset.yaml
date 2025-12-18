@@ -125,6 +125,10 @@ spec:
               value: {{ .Values.genaiEngineWorkers | default "1" | quote }}
             - name: ALLOW_ADMIN_KEY_GENERAL_ACCESS
               value: {{ .Values.genaiEngineAllowAdminKeyGeneralAccess }}
+            {{- if .Values.modelRepositoryURL }}
+            - name: MODEL_REPOSITORY_URL
+              value: {{ .Values.modelRepositoryURL | quote }}
+            {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

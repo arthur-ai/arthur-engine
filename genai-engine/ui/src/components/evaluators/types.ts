@@ -18,6 +18,7 @@ interface EvalVersionDrawerProps {
   latestVersion: number | null;
   onSelectVersion: (version: number) => void;
   onDelete?: (version: number) => Promise<void>;
+  onRefetchTrigger?: number;
 }
 interface EvalFullScreenViewProps {
   evalName: string;
@@ -34,7 +35,7 @@ interface EvalDetailViewProps {
   latestVersion: number | null;
   taskId: string;
   onClose?: () => void;
-  onRefetch?: () => void;
+  onRefetch?: (newVersion?: number) => void;
 }
 
 interface FiltersBase {

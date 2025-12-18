@@ -1,9 +1,11 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { Box, Paper } from "@mui/material";
+import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
+import { DurationCell } from "../components/DurationCell";
+import { ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
-import { getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
+import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
 
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
@@ -54,6 +56,24 @@ const PANELS = {
     },
     defaultOpen: true,
   },
+  TOOLS: {
+    label: "Tools",
+    render: (span: NestedSpanWithMetricsResponse) => <ToolsTab span={span} />,
+    defaultOpen: false,
+  },
+} as const;
+
+const WIDGETS = {
+  LATENCY: {
+    wrapped: false,
+    render: (span: NestedSpanWithMetricsResponse) => {
+      const latency = getSpanDuration(span);
+
+      if (typeof latency !== "number") return null;
+
+      return <DurationCell duration={latency} />;
+    },
+  },
 } as const;
 
 const spanDetailsStrategy = [
@@ -61,13 +81,15 @@ const spanDetailsStrategy = [
     kind: OpenInferenceSpanKind.AGENT,
     panels: [PANELS.INPUT, PANELS.OUTPUT],
     raw: PANELS.RAW_DATA,
-    widgets: [],
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
   },
   {
     kind: OpenInferenceSpanKind.CHAIN,
     panels: [PANELS.INPUT, PANELS.OUTPUT],
     raw: PANELS.RAW_DATA,
-    widgets: [],
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
   },
   {
     kind: OpenInferenceSpanKind.LLM,
@@ -105,8 +127,10 @@ const spanDetailsStrategy = [
       PANELS.METRICS,
     ],
     raw: PANELS.RAW_DATA,
+    tabs: [PANELS.TOOLS, PANELS.RAW_DATA],
     widgets: [
       {
+        wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
           const model = getSpanModel(span);
 
@@ -114,6 +138,7 @@ const spanDetailsStrategy = [
         },
       },
       {
+        wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
           const cost = getCost(span);
 
@@ -133,6 +158,7 @@ const spanDetailsStrategy = [
         },
       },
       {
+        wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
           const tokens = getTokens(span);
 
@@ -151,19 +177,57 @@ const spanDetailsStrategy = [
           return <TokenCountTooltip prompt={input} completion={output} total={total} />;
         },
       },
+      WIDGETS.LATENCY,
     ],
   },
   {
     kind: OpenInferenceSpanKind.TOOL,
     panels: [PANELS.INPUT, PANELS.OUTPUT],
     raw: PANELS.RAW_DATA,
-    widgets: [],
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
   },
   {
     kind: OpenInferenceSpanKind.RETRIEVER,
     panels: [PANELS.INPUT, PANELS.OUTPUT],
     raw: PANELS.RAW_DATA,
-    widgets: [],
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
+  },
+  {
+    kind: OpenInferenceSpanKind.RERANKER,
+    panels: [PANELS.INPUT, PANELS.OUTPUT],
+    raw: PANELS.RAW_DATA,
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
+  },
+  {
+    kind: OpenInferenceSpanKind.GUARDRAIL,
+    panels: [PANELS.INPUT, PANELS.OUTPUT],
+    raw: PANELS.RAW_DATA,
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
+  },
+  {
+    kind: OpenInferenceSpanKind.EVALUATOR,
+    panels: [PANELS.INPUT, PANELS.OUTPUT],
+    raw: PANELS.RAW_DATA,
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
+  },
+  {
+    kind: OpenInferenceSpanKind.EMBEDDING,
+    panels: [PANELS.INPUT, PANELS.OUTPUT],
+    raw: PANELS.RAW_DATA,
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
+  },
+  {
+    kind: "UNKNOWN",
+    panels: [PANELS.INPUT, PANELS.OUTPUT],
+    raw: PANELS.RAW_DATA,
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
   },
 ] as const;
 

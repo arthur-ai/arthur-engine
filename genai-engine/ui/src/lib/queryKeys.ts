@@ -3,8 +3,8 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 export const queryKeys = {
   datasets: {
     search: {
-      all: () => ["getDatasetsApiV2DatasetsSearchGet"] as const,
-      filtered: (filters: Record<string, unknown>) => ["getDatasetsApiV2DatasetsSearchGet", filters] as const,
+      all: () => ["getDatasetsApiV2TasksTaskIdDatasetsSearchGet"] as const,
+      filtered: (filters: Record<string, unknown>) => ["getDatasetsApiV2TasksTaskIdDatasetsSearchGet", filters] as const,
     },
     detail: (datasetId: string) => ["getDatasetApiV2DatasetsDatasetIdGet", datasetId] as const,
     versions: (datasetId: string) =>
@@ -30,6 +30,7 @@ export const queryKeys = {
   },
   traces: {
     listPaginated: (params: GetFilteredTracesParams) => ["listTracesMetadataApiV1TracesGet", params] as const,
+    list: ["listTracesMetadataApiV1TracesGet"] as const,
     byId: (traceId: string) => ["getTraceByIdApiV1TracesTraceIdGet", traceId] as const,
   },
   users: {
@@ -43,5 +44,16 @@ export const queryKeys = {
   ragCollections: {
     all: () => ["listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet"] as const,
     list: (providerId: string) => ["listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet", { providerId }] as const,
+  },
+  continuousEvals: {
+    all: (taskId: string) => ["listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet", { taskId }] as const,
+    byId: (evalId: string) => ["getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet", { evalId }] as const,
+    results: (taskId: string) => ["listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet", { taskId }] as const,
+  },
+  transforms: {
+    byId: (transformId: string) => ["getTransformApiV1TracesTransformsTransformIdGet", { transformId }] as const,
+  },
+  annotations: {
+    byId: (annotationId: string) => ["getAnnotationByIdApiV1AnnotationsAnnotationIdGet", { annotationId }] as const,
   },
 } as const;

@@ -2,6 +2,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
   Box,
   Table,
@@ -28,7 +29,8 @@ import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 import { EvalInputsDialog } from "./PromptResultDetailModal";
 
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import type { TestCase } from "@/lib/api-client/api-client";
+import type { TestCase, DatasetVersionRowResponse } from "@/lib/api-client/api-client";
+import { useApi } from "@/hooks/useApi";
 import { formatCurrency } from "@/utils/formatters";
 
 interface Message {
@@ -40,8 +42,10 @@ interface ExperimentResultsTableProps {
   taskId: string;
   experimentId: string;
   promptSummaries?: Array<{
-    prompt_name: string;
-    prompt_version: string;
+    prompt_key?: string | null;
+    prompt_type?: string | null;
+    prompt_name?: string | null;
+    prompt_version?: string | null;
     eval_results: Array<{
       eval_name: string;
       eval_version: string;
@@ -50,6 +54,8 @@ interface ExperimentResultsTableProps {
     }>;
   }>;
   refreshTrigger?: number;
+  datasetId?: string;
+  datasetVersion?: number;
 }
 
 interface TestCaseDetailModalProps {
@@ -179,21 +185,26 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
               Prompt Results
             </Typography>
             <Box className="space-y-4">
-              {testCase.prompt_results.map((promptResult, index) => (
-                <Card key={index} elevation={2}>
-                  {/* Prompt Header */}
-                  <Box className="bg-indigo-100 border-b border-indigo-200 px-4 py-3 flex items-center justify-between">
-                    <Typography variant="h6" className="font-semibold text-indigo-900">
-                      {promptResult.name} v{promptResult.version}
-                    </Typography>
-                    {promptResult.output && (
-                      <Chip
-                        label={`Cost: $${promptResult.output.cost}`}
-                        size="small"
-                        className="bg-white"
-                      />
-                    )}
-                  </Box>
+              {testCase.prompt_results.map((promptResult, index) => {
+                const promptDisplayName = promptResult.name && promptResult.version
+                  ? `${promptResult.name} v${promptResult.version}`
+                  : promptResult.name || "Unsaved Prompt";
+
+                return (
+                  <Card key={index} elevation={2}>
+                    {/* Prompt Header */}
+                    <Box className="bg-indigo-100 border-b border-indigo-200 px-4 py-3 flex items-center justify-between">
+                      <Typography variant="h6" className="font-semibold text-indigo-900">
+                        {promptDisplayName}
+                      </Typography>
+                      {promptResult.output && (
+                        <Chip
+                          label={`Cost: $${promptResult.output.cost}`}
+                          size="small"
+                          className="bg-white"
+                        />
+                      )}
+                    </Box>
 
                   <CardContent>
 
@@ -313,7 +324,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                     )}
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </Box>
           </Box>
         </Box>
@@ -323,8 +335,9 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 };
 
 interface PromptEvalColumn {
-  promptName: string;
-  promptVersion: string;
+  promptKey: string;
+  promptName?: string | null;
+  promptVersion?: string | null;
   evalName: string;
   evalVersion: string;
 }
@@ -332,7 +345,7 @@ interface PromptEvalColumn {
 interface EvalGroup {
   evalName: string;
   evalVersion: string;
-  promptVersions: Array<{ promptName: string; promptVersion: string }>;
+  promptVersions: Array<{ promptKey: string }>;
 }
 
 interface RowProps {
@@ -340,9 +353,10 @@ interface RowProps {
   promptEvalColumns: PromptEvalColumn[];
   evalGroups: EvalGroup[];
   onClick: () => void;
+  onViewData?: () => void;
 }
 
-const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick }) => {
+const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick, onViewData }) => {
 
   const getStatusColor = (
     status: TestCase["status"]
@@ -399,7 +413,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
       </TableCell>
       {promptEvalColumns.map((column, index) => {
         const promptResult = testCase.prompt_results.find(
-          (pr) => pr.name === column.promptName && pr.version === column.promptVersion
+          (pr) => pr.prompt_key === column.promptKey
         );
         const evalResult = promptResult?.evals.find(
           (e) => e.eval_name === column.evalName && e.eval_version === column.evalVersion
@@ -411,8 +425,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
         // Check if this is the last eval in its prompt group
         const isLastInGroup =
           index === promptEvalColumns.length - 1 ||
-          promptEvalColumns[index + 1].promptName !== column.promptName ||
-          promptEvalColumns[index + 1].promptVersion !== column.promptVersion;
+          promptEvalColumns[index + 1].promptKey !== column.promptKey;
 
         return (
           <TableCell
@@ -467,7 +480,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
 
         evalGroup.promptVersions.forEach((promptVersion) => {
           const promptResult = testCase.prompt_results.find(
-            (pr) => pr.name === promptVersion.promptName && pr.version === promptVersion.promptVersion
+            (pr) => pr.prompt_key === promptVersion.promptKey
           );
           const evalResult = promptResult?.evals.find(
             (e) => e.eval_name === evalGroup.evalName && e.eval_version === evalGroup.evalVersion
@@ -509,7 +522,108 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
       <TableCell align="right">
         {testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}
       </TableCell>
+      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+        {onViewData && (
+          <IconButton
+            size="small"
+            onClick={onViewData}
+            title="View dataset row"
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+        )}
+      </TableCell>
     </TableRow>
+  );
+};
+
+interface DatasetRowModalProps {
+  open: boolean;
+  onClose: () => void;
+  datasetId: string;
+  versionNumber: number;
+  rowId: string;
+}
+
+const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datasetId, versionNumber, rowId }) => {
+  const [rowData, setRowData] = useState<DatasetVersionRowResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const api = useApi();
+
+  useEffect(() => {
+    if (!open || !api) return;
+
+    const fetchRowData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await api.api.getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet(
+          datasetId,
+          versionNumber,
+          rowId
+        );
+        setRowData(response.data);
+      } catch (err) {
+        console.error("Failed to fetch dataset row:", err);
+        setError(err instanceof Error ? err.message : "Failed to load dataset row");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRowData();
+  }, [open, api, datasetId, versionNumber, rowId]);
+
+  return (
+    <Modal open={open} onClose={onClose} aria-labelledby="dataset-row-modal">
+      <Box
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-4xl max-h-[80vh] bg-white rounded-lg shadow-xl overflow-auto"
+      >
+        {/* Modal Header */}
+        <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+          <Typography variant="h6" className="font-semibold text-gray-900">
+            Dataset Row Data
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        {/* Modal Content */}
+        <Box className="p-6">
+          {loading ? (
+            <Box className="flex justify-center items-center py-8">
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Box className="flex justify-center items-center py-8">
+              <Typography color="error">{error}</Typography>
+            </Box>
+          ) : rowData ? (
+            <Box>
+              <Box className="mb-4">
+                <Typography variant="body2" className="text-gray-600 mb-2">
+                  Dataset: {datasetId} | Version: {versionNumber} | Row ID: {rowId}
+                </Typography>
+              </Box>
+              <Box className="space-y-3">
+                {rowData.data.map((item, index) => (
+                  <Box key={index} className="p-4 bg-gray-50 rounded border border-gray-200">
+                    <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
+                      {item.column_name}
+                    </Typography>
+                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap break-words">
+                      {item.column_value}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          ) : null}
+        </Box>
+      </Box>
+    </Modal>
   );
 };
 
@@ -518,6 +632,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   experimentId,
   promptSummaries = [],
   refreshTrigger,
+  datasetId,
+  datasetVersion,
 }) => {
   const [page, setPage] = useState(0);
   const pageSize = 20;
@@ -527,6 +643,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
+  const [datasetRowModalOpen, setDatasetRowModalOpen] = useState(false);
+  const [selectedDatasetRow, setSelectedDatasetRow] = useState<{datasetId: string; versionNumber: number; rowId: string} | null>(null);
 
   // Refetch test cases when refreshTrigger changes
   useEffect(() => {
@@ -567,6 +685,20 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     setSelectedEvalExecution(null);
   };
 
+  const handleViewDatasetRow = (testCase: TestCase, datasetId: string, versionNumber: number) => {
+    setSelectedDatasetRow({
+      datasetId,
+      versionNumber,
+      rowId: testCase.dataset_row_id,
+    });
+    setDatasetRowModalOpen(true);
+  };
+
+  const handleCloseDatasetRowModal = () => {
+    setDatasetRowModalOpen(false);
+    setSelectedDatasetRow(null);
+  };
+
   const handlePrevious = async () => {
     if (selectedTestCaseIndex > 0) {
       // Navigate within current page
@@ -599,8 +731,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       // Use provided sorted summaries
       const columns: PromptEvalColumn[] = [];
       promptSummaries.forEach((summary) => {
+        const promptKey = summary.prompt_key ||
+          (summary.prompt_name && summary.prompt_version
+            ? `saved:${summary.prompt_name}:${summary.prompt_version}`
+            : `unknown`);
         summary.eval_results.forEach((evalResult) => {
           columns.push({
+            promptKey: promptKey,
             promptName: summary.prompt_name,
             promptVersion: summary.prompt_version,
             evalName: evalResult.eval_name,
@@ -612,22 +749,23 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     } else {
       // Fallback: extract from test cases
       const promptMap = new Map<string, {
-        promptName: string;
-        promptVersion: string;
+        promptKey: string;
+        promptName: string | null | undefined;
+        promptVersion: string | null | undefined;
         evals: Array<{ evalName: string; evalVersion: string }>;
       }>();
 
       testCases.forEach((tc) => {
         tc.prompt_results.forEach((pr) => {
-          const promptKey = `${pr.name}-${pr.version}`;
-          if (!promptMap.has(promptKey)) {
-            promptMap.set(promptKey, {
-              promptName: pr.name,
-              promptVersion: pr.version,
+          if (!promptMap.has(pr.prompt_key)) {
+            promptMap.set(pr.prompt_key, {
+              promptKey: pr.prompt_key,
+              promptName: pr.name ?? null,
+              promptVersion: pr.version ?? null,
               evals: [],
             });
           }
-          const promptData = promptMap.get(promptKey)!;
+          const promptData = promptMap.get(pr.prompt_key)!;
           pr.evals.forEach((e) => {
             const evalExists = promptData.evals.some(
               (ev) => ev.evalName === e.eval_name && ev.evalVersion === e.eval_version
@@ -646,6 +784,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       promptMap.forEach((promptData) => {
         promptData.evals.forEach((evalData) => {
           columns.push({
+            promptKey: promptData.promptKey,
             promptName: promptData.promptName,
             promptVersion: promptData.promptVersion,
             evalName: evalData.evalName,
@@ -659,17 +798,17 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
 
   // Group columns by prompt for the header
   const promptGroups = React.useMemo(() => {
-    const groups = new Map<string, { promptName: string; promptVersion: string; evalCount: number }>();
+    const groups = new Map<string, { promptKey: string; promptName?: string | null; promptVersion?: string | null; evalCount: number }>();
     promptEvalColumns.forEach((col) => {
-      const key = `${col.promptName}-${col.promptVersion}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          promptName: col.promptName,
-          promptVersion: col.promptVersion,
+      if (!groups.has(col.promptKey)) {
+        groups.set(col.promptKey, {
+          promptKey: col.promptKey,
+          promptName: col.promptName ?? null,
+          promptVersion: col.promptVersion ?? null,
           evalCount: 0,
         });
       }
-      groups.get(key)!.evalCount++;
+      groups.get(col.promptKey)!.evalCount++;
     });
     return Array.from(groups.values());
   }, [promptEvalColumns]);
@@ -688,12 +827,11 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       }
       const group = groups.get(key)!;
       const promptExists = group.promptVersions.some(
-        (pv) => pv.promptName === col.promptName && pv.promptVersion === col.promptVersion
+        (pv) => pv.promptKey === col.promptKey
       );
       if (!promptExists) {
         group.promptVersions.push({
-          promptName: col.promptName,
-          promptVersion: col.promptVersion,
+          promptKey: col.promptKey,
         });
       }
     });
@@ -721,22 +859,28 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Status
                 </Box>
               </TableCell>
-              {promptGroups.map((group, index) => (
-                <TableCell
-                  key={`${group.promptName}-${group.promptVersion}`}
-                  colSpan={group.evalCount}
-                  align="center"
-                  sx={{
-                    backgroundColor: "grey.50",
-                    borderRight: index === promptGroups.length - 1 ? 3 : 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <Box component="span" className="font-semibold">
-                    {group.promptName} (v{group.promptVersion})
-                  </Box>
-                </TableCell>
-              ))}
+              {promptGroups.map((group, index) => {
+                const displayName = group.promptName && group.promptVersion
+                  ? `${group.promptName} (v${group.promptVersion})`
+                  : group.promptName || "Unsaved Prompt";
+
+                return (
+                  <TableCell
+                    key={group.promptKey}
+                    colSpan={group.evalCount}
+                    align="center"
+                    sx={{
+                      backgroundColor: "grey.50",
+                      borderRight: index === promptGroups.length - 1 ? 3 : 1,
+                      borderColor: "divider",
+                    }}
+                  >
+                    <Box component="span" className="font-semibold">
+                      {displayName}
+                    </Box>
+                  </TableCell>
+                );
+              })}
               <TableCell
                 colSpan={evalGroups.length}
                 align="center"
@@ -757,6 +901,15 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
               >
                 <Box component="span" className="font-semibold">
                   Cost
+                </Box>
+              </TableCell>
+              <TableCell
+                rowSpan={2}
+                align="center"
+                sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}
+              >
+                <Box component="span" className="font-semibold">
+                  View Data
                 </Box>
               </TableCell>
             </TableRow>
@@ -808,19 +961,19 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
+                <TableCell colSpan={3 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography>Loading results...</Typography>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
+                <TableCell colSpan={3 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography color="error">{error.message}</Typography>
                 </TableCell>
               </TableRow>
             ) : testCases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2 + promptEvalColumns.length + evalGroups.length} align="center">
+                <TableCell colSpan={3 + promptEvalColumns.length + evalGroups.length} align="center">
                   <Typography className="text-gray-600">No test cases found</Typography>
                 </TableCell>
               </TableRow>
@@ -832,6 +985,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   promptEvalColumns={promptEvalColumns}
                   evalGroups={evalGroups}
                   onClick={() => handleRowClick(index)}
+                  onViewData={datasetId && datasetVersion ? () => handleViewDatasetRow(testCase, datasetId, datasetVersion) : undefined}
                 />
               ))
             )}
@@ -867,6 +1021,17 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
         onClose={handleCloseEvalInputsDialog}
         evalExecution={selectedEvalExecution}
       />
+
+      {/* Dataset Row Modal */}
+      {selectedDatasetRow && (
+        <DatasetRowModal
+          open={datasetRowModalOpen}
+          onClose={handleCloseDatasetRowModal}
+          datasetId={selectedDatasetRow.datasetId}
+          versionNumber={selectedDatasetRow.versionNumber}
+          rowId={selectedDatasetRow.rowId}
+        />
+      )}
     </Box>
   );
 };

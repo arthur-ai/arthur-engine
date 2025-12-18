@@ -58,6 +58,46 @@ export const Message = z.discriminatedUnion("role", [
   }),
 ]);
 
+export const Tool = z
+  .object({
+    name: z.string(),
+    description: z.string(),
+    input_schema: z.record(z.string(), z.any()),
+  })
+  .brand("Tool");
+
+export const LiteLLMTool = z
+  .object({
+    type: z.literal("function"),
+    function: z.object({
+      name: z.string(),
+      description: z.string(),
+      parameters: z.record(z.string(), z.any()),
+    }),
+  })
+  .brand("LiteLLMTool");
+
+export const LLMToolsField = z.array(
+  z.object({
+    tool: z.object({
+      json_schema: z
+        .string()
+        .transform((val, ctx) => {
+          try {
+            return JSON.parse(val);
+          } catch {
+            ctx.addIssue({
+              code: "custom",
+              message: "Invalid JSON schema",
+            });
+            return z.NEVER;
+          }
+        })
+        .pipe(z.union([Tool, LiteLLMTool])),
+    }),
+  })
+);
+
 export type Message = z.infer<typeof Message>;
 export type ToolCall = z.infer<typeof ToolCall>;
 
@@ -66,3 +106,7 @@ export type ToolCallContent = z.infer<typeof ToolCallContent>;
 export type ToolResultContent = z.infer<typeof ToolResultContent>;
 
 export type LLMOutputMessage = z.infer<typeof LLMOutputMessage>;
+
+export type Tool = z.infer<typeof Tool>;
+export type LiteLLMTool = z.infer<typeof LiteLLMTool>;
+export type LLMToolsField = z.infer<typeof LLMToolsField>;

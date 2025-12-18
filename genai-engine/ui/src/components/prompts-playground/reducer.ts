@@ -10,7 +10,7 @@ import {
   PromptType,
   FrontendTool,
 } from "./types";
-import { generateId, arrayUtils } from "./utils";
+import { generateId, arrayUtils, cleanupAndRecalculateKeywords } from "./utils";
 
 import { LLMGetAllMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
@@ -87,7 +87,7 @@ const createModelParameters = (overrides: Partial<ModelParametersType> = {}): Mo
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: "-" + uuidv4(), // New prompts get a default id
+  id: uuidv4().slice(0, 8), // New prompts get a short 8-character id
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   created_at: undefined, // created on BE
@@ -108,7 +108,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
 const newPrompt = (): PromptType => createPrompt();
 
 const duplicatePrompt = (original: PromptType): PromptType => {
-  const newId = "-" + uuidv4(); // TODO: overwrite on save
+  const newId = uuidv4().slice(0, 8); // Short 8-character id for duplicates
 
   return createPrompt({
     ...original,
@@ -144,9 +144,32 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     case "deletePrompt": {
       const { id } = action.payload;
       const index = state.prompts.findIndex((prompt) => prompt.id === id);
+
+      // Get message IDs from the prompt being deleted before removing it
+      const promptToDelete = state.prompts[index];
+      const messageIdsToRemove = promptToDelete ? promptToDelete.messages.map((msg) => msg.id) : [];
+
+      // Create new state with prompt removed
+      const newPrompts = [...state.prompts.slice(0, index), ...state.prompts.slice(index + 1)];
+
+      // Clean up keywordTracker by removing entries for deleted message IDs and recalculate keywords
+      const { keywordTracker: newKeywordTracker, keywords: newKeywords } = cleanupAndRecalculateKeywords(
+        newPrompts,
+        state.keywordTracker,
+        state.keywords,
+        (tracker) => {
+          // Remove keywordTracker entries for message IDs from the deleted prompt
+          messageIdsToRemove.forEach((messageId) => {
+            tracker.delete(messageId);
+          });
+        }
+      );
+
       return {
         ...state,
-        prompts: [...state.prompts.slice(0, index), ...state.prompts.slice(index + 1)],
+        prompts: newPrompts,
+        keywords: newKeywords,
+        keywordTracker: newKeywordTracker,
       };
     }
     case "duplicatePrompt": {
@@ -166,6 +189,20 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: [...state.prompts, hydratePrompt(promptData)],
+      };
+    }
+    case "clearPrompts": {
+      return {
+        ...state,
+        prompts: [],
+      };
+    }
+    case "hydrateNotebookState": {
+      const { prompts, keywords } = action.payload;
+      return {
+        ...state,
+        prompts: prompts.length > 0 ? prompts : [newPrompt()],
+        keywords,
       };
     }
     case "updatePromptName": {
@@ -231,11 +268,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 responseFormat: prompt.responseFormat ?? p.responseFormat,
                 // Explicit isDirty in payload takes precedence, otherwise detect backend load, otherwise preserve existing
                 isDirty:
-                  prompt.isDirty !== undefined
-                    ? prompt.isDirty
-                    : prompt.version !== undefined && prompt.messages !== undefined
-                      ? false
-                      : p.isDirty,
+                  prompt.isDirty !== undefined ? prompt.isDirty : prompt.version !== undefined && prompt.messages !== undefined ? false : p.isDirty,
               }
             : p
         ),
@@ -267,9 +300,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === parentId
-            ? { ...prompt, messages: [...prompt.messages, newMessage()], isDirty: prompt.version ? true : false }
-            : prompt
+          prompt.id === parentId ? { ...prompt, messages: [...prompt.messages, newMessage()], isDirty: prompt.version ? true : false } : prompt
         ),
       };
     }
@@ -413,6 +444,43 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           newKeywords.delete(keyword);
         }
       }
+
+      return {
+        ...state,
+        keywords: newKeywords,
+        keywordTracker: newKeywordTracker,
+      };
+    }
+    case "extractPromptVariables": {
+      const { promptId, variables } = action.payload;
+
+      // Find the prompt to get its message IDs
+      const prompt = state.prompts.find((p) => p.id === promptId);
+      if (!prompt) {
+        return state;
+      }
+
+      // Get all message IDs from this prompt
+      const messageIds = prompt.messages.map((msg) => msg.id);
+
+      // Clean up keywordTracker and update with new variables, then recalculate keywords
+      const { keywordTracker: newKeywordTracker, keywords: newKeywords } = cleanupAndRecalculateKeywords(
+        state.prompts,
+        state.keywordTracker,
+        state.keywords,
+        (tracker) => {
+          if (variables.length === 0) {
+            // Remove all message IDs from this prompt from keyword tracker
+            messageIds.forEach((id) => tracker.delete(id));
+          } else {
+            // Map all variables to all message IDs in this prompt
+            // (Backend doesn't provide per-message mapping, so we associate all variables with all messages)
+            messageIds.forEach((id) => {
+              tracker.set(id, variables);
+            });
+          }
+        }
+      );
 
       return {
         ...state,

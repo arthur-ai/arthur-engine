@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from dependencies import (
     get_db_session,
-    get_validated_agentic_task,
+    get_validated_task,
     llm_get_all_filter_parameters,
     llm_get_versions_filter_parameters,
 )
@@ -59,7 +59,7 @@ def get_llm_eval(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -103,7 +103,7 @@ def get_all_llm_eval_versions(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     try:
 
@@ -140,7 +140,7 @@ def get_all_llm_evals(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -178,7 +178,7 @@ def run_saved_llm_eval(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -212,7 +212,7 @@ def save_llm_eval(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -244,7 +244,7 @@ def delete_llm_eval(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -283,7 +283,7 @@ def soft_delete_llm_eval_version(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -325,7 +325,7 @@ def get_llm_eval_by_tag(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> LLMEval:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -368,7 +368,7 @@ def add_tag_to_llm_eval_version(
     tag: str = Body(..., embed=True, description="Tag to add to this llm eval version"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> LLMEval:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
@@ -418,7 +418,7 @@ def delete_tag_from_llm_eval_version(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ) -> None:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)

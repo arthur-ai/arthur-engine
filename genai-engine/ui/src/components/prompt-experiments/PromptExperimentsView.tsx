@@ -184,12 +184,16 @@ export const PromptExperimentsView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_ref: {
-          name: data.promptVersions[0].promptName,
-          version_list: data.promptVersions.map(pv => pv.version),
-          variable_mapping: promptVariableMapping,
-        },
+        prompt_configs: data.promptVersions.map(pv => ({
+          type: "saved" as const,
+          name: pv.promptName,
+          version: pv.version,
+        })),
+        prompt_variable_mapping: promptVariableMapping,
         eval_list: evalList,
+        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0
+          ? data.datasetRowFilter
+          : undefined,
       });
       handleCloseModal();
       return { id: result.id };
@@ -317,10 +321,21 @@ export const PromptExperimentsView: React.FC = () => {
             const filteredExperiments = experiments.filter((exp) => {
               if (!modalSearchText) return true;
               const searchLower = modalSearchText.toLowerCase();
+
+              // Search in prompt configs
+              const promptMatches = exp.prompt_configs?.some((config: any) => {
+                if (config.type === "saved") {
+                  return config.name.toLowerCase().includes(searchLower);
+                } else if (config.type === "unsaved" && config.auto_name) {
+                  return config.auto_name.toLowerCase().includes(searchLower);
+                }
+                return false;
+              });
+
               return (
                 exp.name.toLowerCase().includes(searchLower) ||
                 (exp.description && exp.description.toLowerCase().includes(searchLower)) ||
-                exp.prompt_name.toLowerCase().includes(searchLower)
+                promptMatches
               );
             });
 
@@ -373,18 +388,39 @@ export const PromptExperimentsView: React.FC = () => {
                                 {experiment.description}
                               </Typography>
                             )}
-                            <Box className="flex gap-4 text-sm">
-                              <Typography variant="caption" className="text-gray-600">
-                                <strong>Prompt:</strong> {experiment.prompt_name}
-                              </Typography>
-                              <Typography variant="caption" className="text-gray-600">
-                                <strong>Rows:</strong> {experiment.total_rows}
-                              </Typography>
-                              {experiment.total_cost && (
-                                <Typography variant="caption" className="text-gray-600">
-                                  <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                            <Box className="flex flex-col gap-2">
+                              <Box className="flex flex-wrap gap-1">
+                                <Typography variant="caption" className="text-gray-600 mr-2">
+                                  <strong>Prompts:</strong>
                                 </Typography>
-                              )}
+                                {experiment.prompt_configs?.map((config: any, idx: number) => (
+                                  <Chip
+                                    key={idx}
+                                    label={
+                                      config.type === "saved"
+                                        ? `${config.name} (v${config.version})`
+                                        : config.auto_name || "Unsaved Prompt"
+                                    }
+                                    size="small"
+                                    sx={{
+                                      height: "20px",
+                                      fontSize: "0.688rem",
+                                      backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
+                                      borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
+                                    }}
+                                  />
+                                ))}
+                              </Box>
+                              <Box className="flex gap-4 text-sm">
+                                <Typography variant="caption" className="text-gray-600">
+                                  <strong>Rows:</strong> {experiment.total_rows}
+                                </Typography>
+                                {experiment.total_cost && (
+                                  <Typography variant="caption" className="text-gray-600">
+                                    <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                                  </Typography>
+                                )}
+                              </Box>
                             </Box>
                           </Box>
                         }

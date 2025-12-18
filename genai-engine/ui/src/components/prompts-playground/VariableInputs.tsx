@@ -1,18 +1,18 @@
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import React, { useRef, useState, useEffect } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
 
 const VariableInputs = () => {
-  const { state, dispatch } = usePromptContext();
+  const { state, dispatch, experimentConfig } = usePromptContext();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
 
@@ -21,6 +21,24 @@ const VariableInputs = () => {
   };
 
   const variables = Array.from(state.keywords.keys());
+
+  // Create a map of variable names to their source mappings (dataset column or experiment output)
+  const variableMappings = new Map<string, { type: 'dataset' | 'experiment'; value: string }>();
+  if (experimentConfig?.prompt_variable_mapping) {
+    experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
+      if (mapping.source?.type === 'dataset_column' && mapping.source?.dataset_column?.name) {
+        variableMappings.set(mapping.variable_name, {
+          type: 'dataset',
+          value: mapping.source.dataset_column.name,
+        });
+      } else if (mapping.source?.type === 'experiment_output' && mapping.source?.experiment_output?.json_path) {
+        variableMappings.set(mapping.variable_name, {
+          type: 'experiment',
+          value: mapping.source.experiment_output.json_path,
+        });
+      }
+    });
+  }
 
   // Check if content is scrollable
   useEffect(() => {
@@ -53,8 +71,8 @@ const VariableInputs = () => {
         .
       </Typography>
       <Typography variant="body2">
-        When you define a variable below, it will automatically replace all instances in your prompt messages. This lets
-        you quickly test different values without editing each message individually.
+        When you define a variable below, it will automatically replace all instances in your prompt messages. This lets you quickly test different
+        values without editing each message individually.
       </Typography>
     </Box>
   );
@@ -108,20 +126,54 @@ const VariableInputs = () => {
             in one of your prompts to manage it here.
           </Typography>
         ) : (
-          <Stack spacing={2}>
-            {variables.map((variable) => (
-              <TextField
-                key={variable}
-                id={`variable-${variable}`}
-                label={variable}
-                value={state.keywords.get(variable)}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  handleKeywordValueChange(variable, e.target.value);
-                }}
-                variant="standard"
-                fullWidth
-              />
-            ))}
+          <Stack spacing={1}>
+            {variables.map((variable) => {
+              const mapping = variableMappings.get(variable);
+              const isMapped = !!mapping;
+              const value = state.keywords.get(variable) || "";
+              const isMissing = !isMapped && value.trim() === "";
+
+              // Construct helper text based on mapping type
+              let helperText: string | undefined = undefined;
+              if (isMapped) {
+                if (mapping.type === 'dataset') {
+                  helperText = `Mapped to dataset column: ${mapping.value}`;
+                } else if (mapping.type === 'experiment') {
+                  helperText = `Mapped to experiment output (path: ${mapping.value})`;
+                }
+              }
+
+              return (
+                <TextField
+                  key={variable}
+                  id={`variable-${variable}`}
+                  label={variable}
+                  value={value}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    handleKeywordValueChange(variable, e.target.value);
+                  }}
+                  variant="standard"
+                  fullWidth
+                  disabled={isMapped}
+                  helperText={helperText}
+                  sx={{
+                    "& .MuiInputBase-input.Mui-disabled": {
+                      WebkitTextFillColor: "rgba(0, 0, 0, 0.5)",
+                      color: "rgba(0, 0, 0, 0.5)",
+                    },
+                    "& .MuiInputLabel-root.Mui-disabled": {
+                      color: "rgba(0, 0, 0, 0.5)",
+                    },
+                    ...(isMissing && {
+                      "& .MuiInputLabel-root": {
+                        fontWeight: 600,
+                        color: "rgba(0, 0, 0, 0.87)",
+                      },
+                    }),
+                  }}
+                />
+              );
+            })}
           </Stack>
         )}
       </Box>

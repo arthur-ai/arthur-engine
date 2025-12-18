@@ -2,6 +2,317 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/16/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'status_code'
+
+# 12/14/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_spans'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans' to the response with the '200' status
+
+# 12/13/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'continuous_eval_id/anyOf[subschema #1]/' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'id' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotation'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'updated_at' became required for the status '200'
+
+# 12/13/2025
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotationMetadataResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'ListAgenticAnnotationsMetadataResponse'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+
+# 12/11/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'continuous_eval_run_status'
+
+# 12/09/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+
+# 12/08/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'annotation_score' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'annotation_score' response's property type/format changed from 'integer'/'' to ''/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  removed the required property 'variables/items/variable_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed the optional property 'annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed the optional property 'annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for Component/Schema:  removed the schema 'TransformExtractionResponseVariable'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/results/{run_id}/rerun  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'continuous_eval_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'cost' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'run_status' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added 'subschema #1, subschema #2' to the 'annotation_score' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the required property 'annotation_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'variables/items/name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations' to the response with the '200' status
+
+# 12/03/2025
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/unregistered  endpoint added
+
+# 12/02/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
+- **CHANGE** for Component/Schema:  removed the schema 'DatasetTransformResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'ListDatasetTransformsResponse'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 12/02/2025
+- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** in API GET /v1/spans/query
+- **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+
+# 11/26/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/search  api path removed without deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+# 11/25/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tools' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_provider' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'name' to the response with the '200' status
+
+# 11/21/2025
+- `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
+- `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
+
+# 11/20/2025
+- `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Made `name` and `version` optional in `data.items.prompt_results.items` (changed from required string to optional with multiple types)
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Removed required fields `prompt_name`, `prompt_ref` from request/response; added required request fields `prompt_configs`, `prompt_variable_mapping`
+- Added endpoint: `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results`
+- Added endpoint: `/api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}`
+- `/api/v1/prompt_experiments/{experiment_id}`: Added required response fields `prompt_configs`, `prompt_variable_mapping`
+- `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Added required fields `prompt_key`, `prompt_type` to `data.items.prompt_results.items` response
+- `/api/v1/tasks/{task_id}/prompt_experiments`: Added required response field `prompt_configs` to both root and `data.items`
+- Removed schemas: `PromptRef-Input`, `PromptRef-Output`
+
+# 11/19/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotation' to the response with the '200' status
+-
+
 # 11/18/2025
 - **CHANGE** for **URL**: /api/v1/prompt_variables  endpoint added
 

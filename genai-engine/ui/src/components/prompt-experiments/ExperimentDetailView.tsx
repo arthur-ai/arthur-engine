@@ -3,9 +3,10 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import LaunchIcon from "@mui/icons-material/Launch";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton, Link } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
 import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
@@ -13,12 +14,15 @@ import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
 import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
+import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
 interface PromptVersionDetails {
-  prompt_name: string;
-  prompt_version: string;
+  prompt_key?: string | null; // Format: "saved:name:version" or "unsaved:auto_name"
+  prompt_type?: string | null; // "saved" or "unsaved"
+  prompt_name?: string | null; // For saved prompts or auto_name for unsaved
+  prompt_version?: string | null; // For saved prompts only
   eval_results: Array<{
     eval_name: string;
     eval_version: string;
@@ -41,6 +45,9 @@ export const ExperimentDetailView: React.FC = () => {
   const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId, !isDeleting);
   const createExperiment = useCreateExperiment(taskId);
   const deleteExperiment = useDeleteExperiment();
+  const createNotebook = useCreateNotebookMutation(taskId);
+  const attachExperimentToNotebook = useAttachExperimentToNotebookMutation();
+  const setNotebookState = useSetNotebookStateMutation();
 
   const handlePromptClick = (promptSummary: PromptVersionDetails) => {
     setSelectedPrompt(promptSummary);
@@ -50,6 +57,61 @@ export const ExperimentDetailView: React.FC = () => {
   const handleDrawerClose = () => {
     setDrawerOpen(false);
   };
+
+  const handleOpenInNotebook = async (promptName: string, promptVersion: string, event: React.MouseEvent) => {
+    // Prevent the card click event from firing
+    event.stopPropagation();
+
+    if (!experiment || !experimentId || !taskId) return;
+
+    try {
+      let notebookId = experiment.notebook_id;
+
+      // Create notebook if it doesn't exist
+      if (!notebookId) {
+        const notebook = await createNotebook.mutateAsync({
+          name: `${experiment.name} - Notebook`,
+          description: `Notebook for experiment: ${experiment.name}`,
+        });
+
+        // Attach the experiment to the newly created notebook
+        await attachExperimentToNotebook.mutateAsync({
+          experimentId,
+          notebookId: notebook.id,
+        });
+
+        notebookId = notebook.id;
+      }
+
+      // Save the experiment config to the notebook state
+      await setNotebookState.mutateAsync({
+        notebookId,
+        request: {
+          state: {
+            prompt_configs: experiment.prompt_configs || null,
+            prompt_variable_mapping: experiment.prompt_variable_mapping || null,
+            dataset_ref: experiment.dataset_ref
+              ? {
+                  id: experiment.dataset_ref.id,
+                  name: experiment.dataset_ref.name,
+                  version: experiment.dataset_ref.version,
+                }
+              : null,
+            eval_list: experiment.eval_list || null,
+            dataset_row_filter: experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0
+              ? experiment.dataset_row_filter
+              : null,
+          },
+        },
+      });
+
+      // Navigate to the notebook with experiment config loaded
+      navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebookId}&experimentId=${experimentId}`);
+    } catch (error) {
+      console.error("Failed to open in notebook:", error);
+    }
+  };
+
 
   // Refetch data when window gains focus (but not if we're deleting)
   useEffect(() => {
@@ -201,12 +263,14 @@ export const ExperimentDetailView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_ref: {
-          name: data.promptVersions[0].promptName,
-          version_list: data.promptVersions.map((pv) => pv.version),
-          variable_mapping: promptVariableMapping,
-        },
+        prompt_configs: data.promptVersions.map(pv => ({
+          type: "saved" as const,
+          name: pv.promptName,
+          version: pv.version,
+        })),
+        prompt_variable_mapping: promptVariableMapping,
         eval_list: evalList,
+        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
       });
       handleCloseModal();
       return { id: result.id };
@@ -305,7 +369,18 @@ export const ExperimentDetailView: React.FC = () => {
                 ) : null;
               })()}
             <Box>
-              <span className="font-medium">Prompt:</span> {experiment.prompt_name}
+              <span className="font-medium">Prompts:</span> {experiment.prompt_configs.length} prompt{experiment.prompt_configs.length > 1 ? 's' : ''}
+            </Box>
+            <Box>
+              <span className="font-medium">Dataset:</span>{" "}
+              <Link
+                component={RouterLink}
+                to={`/tasks/${taskId}/datasets/${experiment.dataset_ref.id}?version=${experiment.dataset_ref.version}`}
+                underline="hover"
+                sx={{ cursor: "pointer" }}
+              >
+                {experiment.dataset_ref.name} (v{experiment.dataset_ref.version})
+              </Link>
             </Box>
             {experiment.total_cost && (
               <Box>
@@ -313,6 +388,45 @@ export const ExperimentDetailView: React.FC = () => {
               </Box>
             )}
           </Box>
+
+          {/* Dataset Row Filter Section */}
+          {experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 && (
+            <Box className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+              <Box className="flex items-center gap-2 mb-2">
+                <Typography variant="body2" className="font-medium text-gray-900">
+                  Dataset Row Filter Applied
+                </Typography>
+                <Tooltip
+                  title="This experiment only includes dataset rows that match ALL of the following conditions."
+                  arrow
+                  placement="right"
+                >
+                  <InfoOutlinedIcon
+                    sx={{
+                      fontSize: 16,
+                      color: "text.secondary",
+                      cursor: "help",
+                    }}
+                  />
+                </Tooltip>
+              </Box>
+              <Box className="flex flex-wrap gap-2">
+                {experiment.dataset_row_filter.map((filter, index) => (
+                  <Chip
+                    key={index}
+                    label={`${filter.column_name} = "${filter.column_value}"`}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      backgroundColor: "white",
+                      borderColor: "#3b82f6",
+                      color: "#1e40af",
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
         </Box>
 
         {/* Overall Prompt Performance Section */}
@@ -343,7 +457,7 @@ export const ExperimentDetailView: React.FC = () => {
               </Typography>
             </Box>
           ) : (
-            <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+            <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {(() => {
                 const sortedSummaries = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {
                   // Calculate total passes for each prompt
@@ -356,7 +470,7 @@ export const ExperimentDetailView: React.FC = () => {
                   }
 
                   // If tied, sort by version descending (higher version first)
-                  return parseInt(b.prompt_version) - parseInt(a.prompt_version);
+                  return parseInt(b.prompt_version || "0") - parseInt(a.prompt_version || "0");
                 });
 
                 // Find the max total passes to identify best performing prompts
@@ -369,18 +483,26 @@ export const ExperimentDetailView: React.FC = () => {
                   const totalPasses = promptSummary.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0);
                   const isBestPerforming = totalPasses === maxTotalPasses;
 
+                  // Get display name for prompt
+                  const promptDisplayName = (promptSummary.prompt_type === "saved" || !promptSummary.prompt_type)
+                    ? `${promptSummary.prompt_name} (v${promptSummary.prompt_version})`
+                    : promptSummary.prompt_name || "Unsaved Prompt";
+
                   return (
                     <Card
-                      key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`}
+                      key={promptSummary.prompt_key || `${promptSummary.prompt_name}-${promptSummary.prompt_version}`}
                       elevation={1}
                       onClick={() => handlePromptClick(promptSummary)}
                       sx={{ cursor: "pointer", "&:hover": { boxShadow: 3 }, position: "relative" }}
                     >
-                      <CardContent sx={{ position: "relative", paddingBottom: "16px !important" }}>
+                      <CardContent sx={{ position: "relative", paddingBottom: "40px !important", minHeight: "200px" }}>
                         <Box className="flex items-center gap-2 mb-3">
                           <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
-                            Prompt: {promptSummary.prompt_name} (v{promptSummary.prompt_version})
+                            Prompt: {promptDisplayName}
                           </Typography>
+                          {promptSummary.prompt_type === "unsaved" && (
+                            <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} className="shrink-0" />
+                          )}
                           {isBestPerforming && <Chip label="Best" size="small" color="success" sx={{ fontWeight: 600 }} className="shrink-0" />}
                         </Box>
 
@@ -416,6 +538,28 @@ export const ExperimentDetailView: React.FC = () => {
                             );
                           })}
                         </Box>
+
+                        {/* Open in Notebook button in lower left corner - only for saved prompts */}
+                        {(promptSummary.prompt_type === "saved" || !promptSummary.prompt_type) && promptSummary.prompt_name && promptSummary.prompt_version && (
+                          <Button
+                            size="small"
+                            startIcon={<LaunchIcon />}
+                            onClick={(e) => handleOpenInNotebook(promptSummary.prompt_name!, promptSummary.prompt_version!, e)}
+                            sx={{
+                              position: "absolute",
+                              bottom: 8,
+                              left: 8,
+                              textTransform: 'none',
+                              fontSize: '0.75rem',
+                              color: 'text.secondary',
+                              '&:hover': {
+                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                              },
+                            }}
+                          >
+                            Open in Notebook
+                          </Button>
+                        )}
 
                         {/* Expand icon in lower right corner */}
                         <Box
@@ -463,6 +607,8 @@ export const ExperimentDetailView: React.FC = () => {
               taskId={taskId}
               experimentId={experimentId}
               refreshTrigger={refreshTrigger}
+              datasetId={experiment.dataset_ref.id}
+              datasetVersion={experiment.dataset_ref.version}
               promptSummaries={(() => {
                 // Sort prompt summaries the same way as in Overall Prompt Performance
                 const sorted = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {
@@ -471,7 +617,7 @@ export const ExperimentDetailView: React.FC = () => {
                   if (totalPassesB !== totalPassesA) {
                     return totalPassesB - totalPassesA;
                   }
-                  return parseInt(b.prompt_version) - parseInt(a.prompt_version);
+                  return parseInt(b.prompt_version || "0") - parseInt(a.prompt_version || "0");
                 });
                 return sorted;
               })()}
@@ -491,6 +637,7 @@ export const ExperimentDetailView: React.FC = () => {
           promptDetails={selectedPrompt}
           taskId={taskId}
           experimentId={experimentId}
+          experimentPromptConfigs={experiment.prompt_configs}
         />
       )}
 

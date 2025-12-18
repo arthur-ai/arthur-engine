@@ -2,7 +2,10 @@ import logging
 from typing import Optional
 
 from arthur_common.models.enums import PaginationSortMethod
-from arthur_common.models.response_schemas import TraceResponse
+from arthur_common.models.response_schemas import (
+    NestedSpanWithMetricsResponse,
+    TraceResponse,
+)
 
 from db_models import DatabaseTraceMetadata
 from schemas.internal_schemas import Span
@@ -32,7 +35,7 @@ class TreeBuildingService:
             }
 
         # Group spans by trace_id
-        traces_dict = {}
+        traces_dict: dict[str, list[Span]] = {}
         for span in spans:
             trace_id = span.trace_id
             if trace_id not in traces_dict:
@@ -119,29 +122,47 @@ class TreeBuildingService:
             traces.sort(key=lambda t: t.start_time, reverse=True)
         return traces
 
-    def _build_span_tree(self, spans: list[Span]) -> list:
-        """Build a nested tree structure from a list of spans."""
+    def _build_span_tree(
+        self,
+        spans: list[Span],
+    ) -> list[NestedSpanWithMetricsResponse]:
+        """Build a nested tree structure from a list of spans.
+
+        This method handles incomplete traces by promoting orphaned spans
+        (spans whose parent_span_id references a non-existent parent) to
+        root status, allowing users to see partial trees.
+        """
         if not spans:
             return []
 
-        # Create a mapping to store children for each span
-        children_by_parent = {}
-        root_spans = []
+        # Create a set of all valid span IDs for O(1) lookup
+        valid_span_ids: set[str] = {span.span_id for span in spans}
 
-        # First pass: identify parent-child relationships
+        # Create a mapping to store children for each span
+        children_by_parent: dict[str, list[Span]] = {}
+        root_spans: list[Span] = []
+
+        # Single pass: identify parent-child relationships and detect orphans
         for span in spans:
             parent_id = span.parent_span_id
             if parent_id is None:
                 # This is a root span
                 root_spans.append(span)
-            else:
-                # This span has a parent
+            elif parent_id in valid_span_ids:
+                # This span has a valid parent
                 if parent_id not in children_by_parent:
                     children_by_parent[parent_id] = []
                 children_by_parent[parent_id].append(span)
+            else:
+                # This span's parent doesn't exist - it's orphaned, promote to root
+                root_spans.append(span)
+                logger.info(
+                    f"Promoted orphaned span {span.span_id} to root status. "
+                    f"Parent {parent_id} not found in trace.",
+                )
 
-        # Second pass: build nested structure recursively
-        def build_nested_span(span: Span):
+        # Build nested structure recursively
+        def build_nested_span(span: Span) -> NestedSpanWithMetricsResponse:
             # Get children for this span (if any)
             children_spans = children_by_parent.get(span.span_id, [])
             children_spans.sort(key=lambda s: s.start_time)

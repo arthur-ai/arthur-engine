@@ -18,28 +18,13 @@ const PANEL_RENDERERS = {
   files: (content: LLMOutputMessage["files"]) => {
     return <Highlight code={tryFormatJson(content)} language="json" />;
   },
-  text: (content: LLMOutputMessage["text"]) => (
-    <TextMessageRenderer text={content} />
-  ),
-  sources: (content: LLMOutputMessage["sources"]) => (
-    <Highlight code={tryFormatJson(content)} language="json" />
-  ),
-  reasoning: (content: LLMOutputMessage["reasoning"]) => (
-    <Highlight code={tryFormatJson(content)} language="json" />
-  ),
-  object: (content: LLMOutputMessage["object"]) => (
-    <Highlight code={tryFormatJson(content)} language="json" />
-  ),
-} satisfies Record<
-  keyof LLMOutputMessage,
-  (content: LLMOutputMessage[keyof LLMOutputMessage]) => React.ReactNode
->;
+  text: (content: LLMOutputMessage["text"]) => <TextMessageRenderer text={content} />,
+  sources: (content: LLMOutputMessage["sources"]) => <Highlight code={tryFormatJson(content)} language="json" />,
+  reasoning: (content: LLMOutputMessage["reasoning"]) => <Highlight code={tryFormatJson(content)} language="json" />,
+  object: (content: LLMOutputMessage["object"]) => <Highlight code={tryFormatJson(content)} language="json" />,
+} satisfies Record<keyof LLMOutputMessage, (content: LLMOutputMessage[keyof LLMOutputMessage]) => React.ReactNode>;
 
-export const OutputMessageRenderer = ({
-  message,
-}: {
-  message: LLMOutputMessage;
-}) => {
+export const OutputMessageRenderer = ({ message }: { message: LLMOutputMessage }) => {
   const entries = Object.entries(message)
     .filter(([, value]) => (Array.isArray(value) ? value.length > 0 : !!value))
     .map(([key, content]) => ({
@@ -62,9 +47,7 @@ export const OutputMessageRenderer = ({
       </Tabs.List>
       {entries.map((entry) => (
         <Tabs.Panel key={entry.type} value={entry.type}>
-          {PANEL_RENDERERS[entry.type as keyof typeof PANEL_RENDERERS](
-            entry.content
-          )}
+          {PANEL_RENDERERS[entry.type as keyof typeof PANEL_RENDERERS](entry.content)}
         </Tabs.Panel>
       ))}
       <Tabs.Panel value="raw">

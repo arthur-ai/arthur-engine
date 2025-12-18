@@ -7,24 +7,21 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from dependencies import get_db_session
+from dependencies import get_db_session, get_validated_task
 from repositories.datasets_repository import DatasetRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import Dataset, DatasetTransform, User
+from schemas.internal_schemas import Dataset, Task, User
 from schemas.request_schemas import (
-    DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
-    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
 )
 from schemas.response_schemas import (
     DatasetResponse,
-    DatasetTransformResponse,
     DatasetVersionResponse,
-    ListDatasetTransformsResponse,
+    DatasetVersionRowResponse,
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
@@ -44,7 +41,7 @@ datasets_router_tag = "Datasets"
 
 
 @dataset_management_routes.post(
-    "/datasets",
+    "/tasks/{task_id}/datasets",
     description="Register a new dataset.",
     response_model=DatasetResponse,
     tags=[datasets_router_tag],
@@ -54,10 +51,11 @@ def create_dataset(
     request: NewDatasetRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_task),
 ) -> DatasetResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
-        dataset = Dataset._from_request_model(request)
+        dataset = Dataset._from_request_model(task.id, request)
         dataset_repo.create_dataset(dataset)
         return dataset.to_response_model()
     finally:
@@ -107,7 +105,7 @@ def delete_dataset(
 
 
 @dataset_management_routes.get(
-    "/datasets/search",
+    "/tasks/{task_id}/datasets/search",
     description="Search datasets. Optionally can filter by dataset IDs and dataset name.",
     tags=[datasets_router_tag],
     response_model=SearchDatasetsResponse,
@@ -128,10 +126,12 @@ def get_datasets(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_task),
 ) -> SearchDatasetsResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
         datasets, count = dataset_repo.query_datasets(
+            task.id,
             pagination_parameters,
             dataset_ids,
             dataset_name,
@@ -249,116 +249,40 @@ def get_dataset_version(
         db_session.close()
 
 
-###################################
-#### Transform Management Routes ##
-###################################
-
-
-@dataset_management_routes.post(
-    "/datasets/{dataset_id}/transforms",
-    description="Create a new transform for a dataset.",
-    response_model=DatasetTransformResponse,
+@dataset_management_routes.get(
+    "/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}",
+    description="Fetch a specific row from a dataset version by row ID.",
     tags=[datasets_router_tag],
+    response_model=DatasetVersionRowResponse,
 )
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
-def create_transform(
-    request: NewDatasetTransformRequest,
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def get_dataset_version_row(
     dataset_id: UUID = Path(
-        description="ID of the dataset to create the transform for.",
+        description="ID of the dataset.",
     ),
+    version_number: int = Path(description="Version number of the dataset."),
+    row_id: UUID = Path(description="ID of the row to fetch."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> DatasetTransformResponse:
+) -> DatasetVersionRowResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
-        transform = DatasetTransform._from_request_model(dataset_id, request)
-        dataset_repo.create_transform(transform)
-        return transform.to_response_model()
-    finally:
-        db_session.close()
-
-
-@dataset_management_routes.get(
-    "/datasets/{dataset_id}/transforms",
-    description="List all transforms for a dataset.",
-    response_model=ListDatasetTransformsResponse,
-    tags=[datasets_router_tag],
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
-def list_transforms(
-    dataset_id: UUID = Path(description="ID of the dataset to list transforms for."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> ListDatasetTransformsResponse:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        transforms = dataset_repo.list_transforms(dataset_id)
-        return ListDatasetTransformsResponse(
-            transforms=[transform.to_response_model() for transform in transforms],
+        db_row = dataset_repo.get_dataset_version_row(
+            dataset_id,
+            version_number,
+            row_id,
         )
-    finally:
-        db_session.close()
 
+        # Convert database row to response format
+        row_data = [
+            {"column_name": key, "column_value": value}
+            for key, value in db_row.data.items()
+        ]
 
-@dataset_management_routes.get(
-    "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Get a specific transform.",
-    response_model=DatasetTransformResponse,
-    tags=[datasets_router_tag],
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
-def get_transform(
-    dataset_id: UUID = Path(description="ID of the dataset."),
-    transform_id: UUID = Path(description="ID of the transform to fetch."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> DatasetTransformResponse:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        return dataset_repo.get_transform(dataset_id, transform_id).to_response_model()
-    finally:
-        db_session.close()
-
-
-@dataset_management_routes.put(
-    "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Update a transform.",
-    response_model=DatasetTransformResponse,
-    tags=[datasets_router_tag],
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
-def update_transform(
-    request: DatasetTransformUpdateRequest,
-    dataset_id: UUID = Path(description="ID of the dataset."),
-    transform_id: UUID = Path(description="ID of the transform to update."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> DatasetTransformResponse:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        dataset_repo.update_transform(dataset_id, transform_id, request)
-        transform = dataset_repo.get_transform(dataset_id, transform_id)
-        return transform.to_response_model()
-    finally:
-        db_session.close()
-
-
-@dataset_management_routes.delete(
-    "/datasets/{dataset_id}/transforms/{transform_id}",
-    description="Delete a transform.",
-    tags=[datasets_router_tag],
-    status_code=HTTP_204_NO_CONTENT,
-)
-@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
-def delete_transform(
-    dataset_id: UUID = Path(description="ID of the dataset."),
-    transform_id: UUID = Path(description="ID of the transform to delete."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> Response:
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        dataset_repo.delete_transform(dataset_id, transform_id)
-        return Response(status_code=HTTP_204_NO_CONTENT)
+        return DatasetVersionRowResponse(
+            id=db_row.id,
+            data=row_data,
+            created_at=int(db_row.created_at.timestamp() * 1000),
+        )
     finally:
         db_session.close()

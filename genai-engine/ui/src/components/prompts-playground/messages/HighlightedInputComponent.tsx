@@ -6,12 +6,10 @@ import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 export const HighlightedInputComponent = ({
   value,
   onChange,
-  label,
   placeholder,
 }: {
   value: string | OpenAIMessageItem[];
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  label?: string;
   placeholder?: string;
 }) => {
   // Convert OpenAIMessageItem[] to string

@@ -63,7 +63,7 @@ def test_trace_api_receive_traces_with_resource_attributes(
 def test_trace_api_receive_traces_missing_task_id(
     client: GenaiEngineTestClientBase,
 ):
-    """Test trace ingestion with missing task ID should be rejected."""
+    """Test trace ingestion with missing task ID should be accepted (unregistered trace)."""
 
     # Create trace without task ID in resource attributes
     trace_request, resource_span, scope_span = _create_base_trace_request(task_id=None)
@@ -84,15 +84,12 @@ def test_trace_api_receive_traces_missing_task_id(
     status_code, response_text = client.trace_api_receive_traces(
         trace_request.SerializeToString(),
     )
-    assert status_code == 422
+    assert status_code == 200
 
     response_json = json.loads(response_text)
-    assert response_json["accepted_spans"] == 0
-    assert response_json["rejected_spans"] == 1
-    assert (
-        "Missing or invalid task ID in resource attributes"
-        in response_json["rejection_reasons"][0]
-    )
+    assert response_json["accepted_spans"] == 1
+    assert response_json["rejected_spans"] == 0
+    assert response_json["status"] == "success"
 
 
 @pytest.mark.unit_tests
@@ -328,58 +325,6 @@ def test_trace_api_batch_ingestion_performance(
     status_code, traces_data = client.trace_api_list_traces_metadata(task_ids=[task_id])
     assert status_code == 200
     assert traces_data.count == 3  # 3 traces created
-
-
-@pytest.mark.unit_tests
-def test_trace_api_partial_success_response(
-    client: GenaiEngineTestClientBase,
-):
-    """Test partial success when some spans are accepted and some rejected."""
-
-    # Create a trace request with mixed valid and invalid spans
-    trace_request, resource_span, scope_span = _create_base_trace_request(
-        task_id="partial_test_api",
-    )
-
-    # Add a valid span
-    valid_span = _create_span(
-        trace_id=b"partial_trace_api",
-        span_id=b"valid_span_api",
-        name="valid_span",
-        span_type="LLM",
-    )
-    scope_span.spans.append(valid_span)
-
-    # Add resource span to main request
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    # Add another resource span without task_id (will be rejected)
-    invalid_resource_span = ResourceSpans()
-    invalid_scope_span = ScopeSpans()
-
-    invalid_span = _create_span(
-        trace_id=b"invalid_trace_api",
-        span_id=b"invalid_span_api",
-        name="invalid_span",
-        span_type="LLM",
-    )
-    invalid_scope_span.spans.append(invalid_span)
-    invalid_resource_span.scope_spans.append(invalid_scope_span)
-    trace_request.resource_spans.append(invalid_resource_span)
-
-    # Send the trace
-    status_code, response_text = client.trace_api_receive_traces(
-        trace_request.SerializeToString(),
-    )
-    assert status_code == 206  # Partial success
-
-    response_json = json.loads(response_text)
-    assert response_json["total_spans"] == 2
-    assert response_json["accepted_spans"] == 1
-    assert response_json["rejected_spans"] == 1
-    assert response_json["status"] == "partial_success"
-    assert len(response_json["rejection_reasons"]) == 1
 
 
 @pytest.mark.unit_tests

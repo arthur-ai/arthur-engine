@@ -331,9 +331,17 @@ const StringMessageContent = ({ role, content }: { role: Message["role"]; conten
     return <ToolContentRenderer content={content} />;
   }
 
+  // Try to parse as JSON
+  const parsedContent = parseJson(content);
+  const isJson = parsedContent !== null && typeof parsedContent === "object";
+
   return (
     <ContentBox label="Content">
-      <TextMessageRenderer text={content} unwrapped />
+      {isJson ? (
+        <Highlight code={tryFormatJson(content)} language="json" unwrapped />
+      ) : (
+        <TextMessageRenderer text={content} unwrapped />
+      )}
     </ContentBox>
   );
 };

@@ -245,7 +245,7 @@ def timestamp_ns_to_datetime(timestamp_ns: int) -> datetime:
     return datetime.fromtimestamp(timestamp_s)
 
 
-def value_dict_to_value(value: dict[str, Any]) -> Any:
+def value_dict_to_value(value: dict[str, Any]) -> str | int | float | bool | Any:
     """
     Convert a OpenTelemetry-standard value dictionary from string to a value
     """
@@ -303,6 +303,8 @@ def get_nested_value(
         get_nested_value({"a": {"b": 1}}, "a.c") -> None
         get_nested_value({"a": {"b": 1}}, "a.c", default=0) -> 0
         get_nested_value(None, "a.b", default="missing") -> "missing"
+        get_nested_value({"a": [{"b": 1}, {"b": 2}]}, "a.0.b") -> 1
+        get_nested_value({"attributes": {"input": [{"content": "hello"}]}}, "attributes.input.0.content") -> "hello"
     """
     if not isinstance(obj, dict):
         return default
@@ -313,6 +315,16 @@ def get_nested_value(
     for key in keys:
         if isinstance(current, dict) and key in current:
             current = current[key]
+        elif isinstance(current, list):
+            # Try to parse key as integer index
+            if not key.isdigit():
+                return default
+
+            index = int(key)
+            if 0 <= index < len(current):
+                current = current[index]
+            else:
+                return default
         else:
             return default
 
@@ -348,7 +360,7 @@ def validate_span_version(raw_data: Dict[str, Any]) -> bool:
 
 def extract_token_cost_from_span(
     span_raw_data: dict[str, Any],
-    span_kind: str,
+    span_kind: str | None = None,
 ) -> TokenCountCost:
     """
     Extract token counts and costs from span attributes.
@@ -358,7 +370,7 @@ def extract_token_cost_from_span(
         TokenCountCost object with token_count and token_cost
     """
 
-    if span_kind != SPAN_KIND_LLM:
+    if span_kind is None or span_kind != SPAN_KIND_LLM:
         return TokenCountCost(
             prompt_token_count=None,
             completion_token_count=None,

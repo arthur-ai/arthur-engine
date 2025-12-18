@@ -4,7 +4,11 @@ from datetime import datetime
 from typing import Annotated
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import ToolClassEnum
+from arthur_common.models.enums import (
+    AgenticAnnotationType,
+    ContinuousEvalRunStatus,
+    ToolClassEnum,
+)
 from arthur_common.models.request_schemas import SpanQueryRequest, TraceQueryRequest
 from arthur_common.models.response_schemas import (
     QuerySpansResponse,
@@ -101,6 +105,48 @@ def trace_query_parameters(
     span_types: list[str] = Query(
         None,
         description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([k.value for k in OpenInferenceSpanKindValues]))}",  # type: ignore[name-defined]
+    ),
+    annotation_score: int = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Filter by trace annotation score (0 or 1).",
+    ),
+    annotation_type: AgenticAnnotationType = Query(
+        None,
+        description="Filter by trace annotation type (i.e. 'human' or 'continuous_eval').",
+    ),
+    continuous_eval_run_status: ContinuousEvalRunStatus = Query(
+        None,
+        description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
+    ),
+    continuous_eval_name: str = Query(
+        None,
+        description="Filter by continuous eval name.",
+    ),
+    span_ids: list[str] = Query(
+        None,
+        description="Span IDs to filter on. Optional.",
+    ),
+    session_ids: list[str] = Query(
+        None,
+        description="Session IDs to filter on. Optional.",
+    ),
+    user_ids: list[str] = Query(
+        None,
+        description="User IDs to filter on. Optional.",
+    ),
+    span_name: str = Query(
+        None,
+        description="Return only results with this span name.",
+    ),
+    span_name_contains: str = Query(
+        None,
+        description="Return only results where span name contains this substring.",
+    ),
+    status_code: list[str] = Query(
+        None,
+        description="Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
     ),
     # Query relevance filters
     query_relevance_eq: float = Query(
@@ -208,6 +254,16 @@ def trace_query_parameters(
         end_time=end_time,
         tool_name=tool_name,
         span_types=span_types,
+        annotation_score=annotation_score,
+        annotation_type=annotation_type,
+        continuous_eval_run_status=continuous_eval_run_status,
+        continuous_eval_name=continuous_eval_name,
+        span_ids=span_ids,
+        session_ids=session_ids,
+        user_ids=user_ids,
+        span_name=span_name,
+        span_name_contains=span_name_contains,
+        status_code=status_code,
         query_relevance_eq=query_relevance_eq,
         query_relevance_gt=query_relevance_gt,
         query_relevance_gte=query_relevance_gte,
@@ -246,7 +302,7 @@ def receive_traces(
     """Receive and process OpenInference trace data."""
     try:
         span_repo = _get_span_repository(db_session)
-        span_results = span_repo.create_traces(body)
+        _, span_results = span_repo.create_traces(body)
         return _create_response(*span_results)
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")

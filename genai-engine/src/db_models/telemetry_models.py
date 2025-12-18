@@ -21,6 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db_models.base import Base, IsArchivable
 
 if TYPE_CHECKING:
+    from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
     from db_models.task_models import DatabaseTask
 
 
@@ -28,10 +29,10 @@ class DatabaseTraceMetadata(Base):
     __tablename__ = "trace_metadata"
 
     trace_id: Mapped[str] = mapped_column(String, primary_key=True)
-    task_id: Mapped[str] = mapped_column(
+    task_id: Mapped[str | None] = mapped_column(
         String,
         ForeignKey("tasks.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     session_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -60,6 +61,13 @@ class DatabaseTraceMetadata(Base):
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
         nullable=False,
+    )
+
+    # Relationships
+    annotations: Mapped[List["DatabaseAgenticAnnotation"]] = relationship(
+        "DatabaseAgenticAnnotation",
+        foreign_keys="DatabaseAgenticAnnotation.trace_id",
+        lazy="selectin",
     )
 
     __table_args__ = (

@@ -118,3 +118,4 @@ By adopting OpenInference, Arthur Engine provides a flexible and future proof wa
 - Join the Arthur community on [Discord](https://discord.gg/tdfUAtaVHz) to get help and share your feedback.
 - To make a request for a bug fix or a new feature, please file a [Github issue](https://github.com/arthur-ai/arthur-engine/issues).
 - For making code contributions, please review the [contributing guidelines](CONTRIBUTE.md).
+- Thank you!

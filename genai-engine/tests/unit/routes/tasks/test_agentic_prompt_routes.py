@@ -73,24 +73,6 @@ def test_get_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_get_agentic_prompt_non_agentic_task(client: GenaiEngineTestClientBase):
-    """Test getting a prompt from a non-agentic task should fail"""
-    # Create a non-agentic task
-    task_name = f"non_agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=False)
-    assert status_code == 200
-    assert task.is_agentic == False
-
-    # Try to get a prompt from non-agentic task
-    response = client.base_client.get(
-        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/1",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 400
-    assert "not agentic" in response.json()["detail"].lower()
-
-
-@pytest.mark.unit_tests
 def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
     """Test getting all prompts for an agentic task"""
     # Create an agentic task
@@ -188,10 +170,10 @@ def test_run_agentic_prompt_success(
     """Test running an agentic prompt"""
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Test LLM response",
-        "tool_calls": None,
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Test LLM response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
@@ -241,10 +223,10 @@ def test_run_saved_agentic_prompt_success(
     """Test running a saved agentic prompt"""
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Saved prompt response",
-        "tool_calls": [{"id": "call_123", "function": {"name": "test_tool"}}],
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Saved prompt response"
+    mock_message.tool_calls = [{"id": "call_123", "function": {"name": "test_tool"}}]
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
@@ -979,10 +961,10 @@ def test_run_deleted_prompt_spawns_error(
     """Test running a deleted version of a saved prompt spawns an error"""
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Test LLM response",
-        "tool_calls": None,
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Test LLM response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
@@ -1248,10 +1230,10 @@ def test_run_agentic_prompt_strict_mode(
 
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message = {
-        "content": "Test LLM response",
-        "tool_calls": None,
-    }
+    mock_message = MagicMock()
+    mock_message.content = "Test LLM response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
@@ -1328,7 +1310,13 @@ def test_run_agentic_prompt_strict_mode(
     else:
         assert response.status_code == 200
         rendered_prompt = response.json()
+        # Verify full AgenticPrompt response object
+        assert rendered_prompt["name"] == prompt_name
         assert rendered_prompt["messages"] is not None
+        assert rendered_prompt["model_name"] == "gpt-4"
+        assert rendered_prompt["model_provider"] == "openai"
+        assert rendered_prompt["version"] == 1
+        assert "created_at" in rendered_prompt
         # Verify the template was actually rendered if we have variables
         if variables:
             for message in rendered_prompt["messages"]:
@@ -1365,7 +1353,13 @@ def test_run_agentic_prompt_strict_mode(
     )
     assert response.status_code == 200
     rendered_prompt = response.json()
+    # Verify full AgenticPrompt response object
+    assert rendered_prompt["name"] == prompt_name
     assert rendered_prompt["messages"] is not None
+    assert rendered_prompt["model_name"] == "gpt-4"
+    assert rendered_prompt["model_provider"] == "openai"
+    assert rendered_prompt["version"] == 1
+    assert "created_at" in rendered_prompt
 
 
 @pytest.mark.unit_tests
@@ -1496,7 +1490,18 @@ def test_render_endpoints(
         assert response.json()["detail"] == expected_error
     else:
         rendered_prompt = response.json()
-        assert rendered_prompt["messages"] is not None
+
+        if endpoint_type == "saved":
+            # Verify full AgenticPrompt response object for saved endpoints
+            assert rendered_prompt["name"] == prompt_name
+            assert rendered_prompt["messages"] is not None
+            assert rendered_prompt["model_name"] == "gpt-4"
+            assert rendered_prompt["model_provider"] == "openai"
+            assert rendered_prompt["version"] == 1
+            assert "created_at" in rendered_prompt
+        else:
+            # Unsaved endpoint still returns RenderedPromptResponse (only messages)
+            assert rendered_prompt["messages"] is not None
 
         # Check that expected content is in the rendered messages
         if expected_content:

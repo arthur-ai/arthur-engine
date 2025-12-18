@@ -16,7 +16,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 
 import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalVersionDrawerProps } from "../types";
@@ -32,6 +32,7 @@ const EvalVersionDrawer = ({
   latestVersion,
   onSelectVersion,
   onDelete,
+  onRefetchTrigger,
 }: EvalVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -42,6 +43,13 @@ const EvalVersionDrawer = ({
     sort: sortOrder,
     exclude_deleted: false,
   });
+
+  // Refetch versions when the trigger changes (e.g., when a new version is created)
+  useEffect(() => {
+    if (onRefetchTrigger !== undefined) {
+      refetch();
+    }
+  }, [onRefetchTrigger, refetch]);
 
   const sortedAndFilteredVersions = useMemo(() => {
     // Sort by creation date

@@ -1,26 +1,36 @@
-import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
-
 import { flattenSpans } from "./spans";
 
 import { SessionTracesResponse } from "@/lib/api-client/api-client";
-import { getTokens } from "@/utils/llm";
+import { getCost, getTokens } from "@/utils/llm";
 
 export function getSessionTotals(session: SessionTracesResponse) {
   const traces = session.traces;
   const spans = flattenSpans(traces.flatMap((trace) => trace.root_spans ?? []));
 
   const totals = {
-    [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: 0,
-    [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: 0,
-    [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: 0,
+    token: {
+      total: 0,
+      prompt: 0,
+      completion: 0,
+    },
+    cost: {
+      total: 0,
+      prompt: 0,
+      completion: 0,
+    },
   };
 
   for (const span of spans) {
     const tokens = getTokens(span);
+    const cost = getCost(span);
 
-    totals[SemanticConventions.LLM_TOKEN_COUNT_TOTAL] += tokens.total ?? 0;
-    totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT] += tokens.input ?? 0;
-    totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION] += tokens.output ?? 0;
+    totals.token.total += tokens.total ?? 0;
+    totals.token.prompt += tokens.input ?? 0;
+    totals.token.completion += tokens.output ?? 0;
+
+    totals.cost.total += cost.total ?? 0;
+    totals.cost.prompt += cost.prompt ?? 0;
+    totals.cost.completion += cost.completion ?? 0;
   }
 
   return totals;

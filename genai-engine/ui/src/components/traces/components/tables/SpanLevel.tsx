@@ -3,9 +3,13 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
+import { BucketProvider } from "../../context/bucket-context";
 import { spanLevelColumns } from "../../data/span-level-columns";
+import { useDrawerTarget } from "../../hooks/useDrawerTarget";
+import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
-import { useTracesHistoryStore } from "../../stores/history.store";
+import { usePaginationContext } from "../../stores/pagination-context";
+import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
@@ -24,12 +28,16 @@ const DEFAULT_DATA: SpanMetadataResponse[] = [];
 export const SpanLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
-  const push = useTracesHistoryStore((state) => state.push);
-
+  const [, setDrawerTarget] = useDrawerTarget();
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
+
+  // Sync filters with URL parameters
+  useSyncFiltersToUrl();
+
+  const setContext = usePaginationContext((state) => state.actions.setContext);
 
   const params = {
     taskId: task?.id ?? "",
@@ -63,9 +71,23 @@ export const SpanLevel = () => {
     () =>
       createFilterRow(SPAN_FIELDS, {
         trace_ids: { taskId: task?.id ?? "", api },
+        session_ids: { taskId: task?.id ?? "", api },
+        span_ids: { taskId: task?.id ?? "", api },
+        user_ids: { taskId: task?.id ?? "", api },
       }),
     [task?.id, api]
   );
+
+  const handleRowClick = (row: SpanMetadataResponse) => {
+    setContext({
+      type: "span",
+      ids: data?.spans.map((span) => span.span_id) ?? [],
+    });
+
+    setDrawerTarget({ target: "span", id: row.span_id });
+  };
+
+  const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
   if (error) {
     return <Alert severity="error">There was an error fetching spans.</Alert>;
@@ -76,16 +98,15 @@ export const SpanLevel = () => {
       <FiltersRow />
       {data?.spans?.length ? (
         <>
-          <TracesTable
-            table={table}
-            loading={isFetching}
-            onRowClick={(row) => {
-              push({
-                type: "span",
-                id: row.original.span_id,
-              });
-            }}
-          />
+          <BucketProvider thresholds={thresholds}>
+            <TracesTable
+              table={table}
+              loading={isFetching}
+              onRowClick={(row) => {
+                handleRowClick(row.original);
+              }}
+            />
+          </BucketProvider>
 
           <TablePagination
             component="div"
