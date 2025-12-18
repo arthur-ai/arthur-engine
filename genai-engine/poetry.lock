@@ -260,14 +260,14 @@ trio = ["trio (>=0.31.0)"]
 
 [[package]]
 name = "arthur-common"
-version = "2.4.20"
+version = "2.4.21"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.4.20-py3-none-any.whl", hash = "sha256:b98c9c1528ef7a73f26fb9aafff297fa8f7a73a78b9244af64ebfe8e887f66f2"},
-    {file = "arthur_common-2.4.20.tar.gz", hash = "sha256:d030c0aee3c3c39f92d1de2824032704ca6152e1a51584b55ed769169d7239ec"},
+    {file = "arthur_common-2.4.21-py3-none-any.whl", hash = "sha256:f79d615c1b1a719a815988b83c4ec8f43da9a0322b6454b61ee270c4349adab6"},
+    {file = "arthur_common-2.4.21.tar.gz", hash = "sha256:d6c9c5bc3990aec507b26b0f08f884e162ca368efbae923ed59507d148f7ccb7"},
 ]
 
 [package.dependencies]
@@ -5465,14 +5465,14 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "pre-commit"
-version = "4.5.0"
+version = "4.5.1"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "pre_commit-4.5.0-py2.py3-none-any.whl", hash = "sha256:25e2ce09595174d9c97860a95609f9f852c0614ba602de3561e267547f2335e1"},
-    {file = "pre_commit-4.5.0.tar.gz", hash = "sha256:dc5a065e932b19fc1d4c653c6939068fe54325af8e741e74e88db4d28a4dd66b"},
+    {file = "pre_commit-4.5.1-py2.py3-none-any.whl", hash = "sha256:3b3afd891e97337708c1674210f8eba659b52a38ea5f822ff142d10786221f77"},
+    {file = "pre_commit-4.5.1.tar.gz", hash = "sha256:eb545fcff725875197837263e977ea257a402056661f09dae08e4b149b030a61"},
 ]
 
 [package.dependencies]
@@ -6303,14 +6303,14 @@ requests-toolbelt = ">=0.6.0"
 
 [[package]]
 name = "python-multipart"
-version = "0.0.20"
+version = "0.0.21"
 description = "A streaming multipart parser for Python"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "python_multipart-0.0.20-py3-none-any.whl", hash = "sha256:8a62d3a8335e06589fe01f2a3e178cdcc632f3fbe0d492ad9ee0ec35aab1f104"},
-    {file = "python_multipart-0.0.20.tar.gz", hash = "sha256:8dd0cab45b8e23064ae09147625994d090fa46f5b0d1e13af944c331a7fa9d13"},
+    {file = "python_multipart-0.0.21-py3-none-any.whl", hash = "sha256:cf7a6713e01c87aa35387f4774e812c4361150938d20d232800f75ffcf266090"},
+    {file = "python_multipart-0.0.21.tar.gz", hash = "sha256:7137ebd4d3bbf70ea1622998f902b97a29434a9e8dc40eb203bbcf7c2a2cba92"},
 ]
 
 [[package]]
@@ -9016,4 +9016,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "8729bb98133859fdf724e76d42646bb9fa93aa665e8c108bc63e9f1b63b68096"
+content-hash = "bf6ab3cfcc39ac20e733d3be13a82d41420a7ebc4794b33715441f0c1d3519e2"

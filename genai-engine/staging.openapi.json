@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.265"
+        "version": "2.1.268"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -10976,6 +10976,456 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/rag_experiments": {
+            "get": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "List RAG experiments",
+                "description": "List all RAG experiments for a task with optional filtering and pagination",
+                "operationId": "list_rag_experiments_api_v1_tasks__task_id__rag_experiments_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Search text to filter experiments by name or description",
+                            "title": "Search"
+                        },
+                        "description": "Search text to filter experiments by name or description"
+                    },
+                    {
+                        "name": "dataset_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter experiments by dataset ID",
+                            "title": "Dataset Id"
+                        },
+                        "description": "Filter experiments by dataset ID"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagExperimentListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "Create and run a RAG experiment",
+                "description": "Create a new RAG experiment and initiate execution",
+                "operationId": "create_rag_experiment_api_v1_tasks__task_id__rag_experiments_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateRagExperimentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagExperimentSummary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_experiments/{experiment_id}": {
+            "get": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "Get RAG experiment details",
+                "description": "Get detailed information about a specific RAG experiment including summary results",
+                "operationId": "get_rag_experiment_api_v1_rag_experiments__experiment_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment to retrieve"
+                        },
+                        "description": "The ID of the experiment to retrieve"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagExperimentDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "Delete RAG experiment",
+                "description": "Delete a RAG experiment and all its associated data",
+                "operationId": "delete_rag_experiment_api_v1_rag_experiments__experiment_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment to delete"
+                        },
+                        "description": "The ID of the experiment to delete"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Experiment deleted successfully."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_experiments/{experiment_id}/test_cases": {
+            "get": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "Get experiment test cases",
+                "description": "Get paginated list of test case results for a RAG experiment",
+                "operationId": "get_rag_experiment_test_cases_api_v1_rag_experiments__experiment_id__test_cases_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment"
+                        },
+                        "description": "The ID of the experiment"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagTestCaseListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results": {
+            "get": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "Get RAG config results",
+                "description": "Get paginated list of results for a specific RAG configuration within an experiment (supports both saved and unsaved configs)",
+                "operationId": "get_rag_config_results_api_v1_rag_experiments__experiment_id__rag_configs__rag_config_key__results_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment"
+                        },
+                        "description": "The ID of the experiment"
+                    },
+                    {
+                        "name": "rag_config_key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "RAG Config Key",
+                            "description": "The RAG config key (format: 'saved:setting_config_id:version' or 'unsaved:uuid'). URL-encode colons as %3A"
+                        },
+                        "description": "The RAG config key (format: 'saved:setting_config_id:version' or 'unsaved:uuid'). URL-encode colons as %3A"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagConfigResultListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/traces/transforms": {
             "get": {
                 "tags": [
@@ -14017,6 +14467,29 @@
                         "$ref": "#/components/schemas/DatasetRefInput",
                         "description": "Reference to the dataset to use"
                     },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Input"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations to run"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used."
+                    },
                     "prompt_configs": {
                         "items": {
                             "oneOf": [
@@ -14046,6 +14519,41 @@
                         "type": "array",
                         "title": "Prompt Variable Mapping",
                         "description": "Shared variable mapping for all prompts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "dataset_ref",
+                    "eval_list",
+                    "prompt_configs",
+                    "prompt_variable_mapping"
+                ],
+                "title": "CreatePromptExperimentRequest",
+                "description": "Request to create a new prompt experiment"
+            },
+            "CreateRagExperimentRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name for the experiment"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the experiment"
+                    },
+                    "dataset_ref": {
+                        "$ref": "#/components/schemas/DatasetRefInput",
+                        "description": "Reference to the dataset to use"
                     },
                     "eval_list": {
                         "items": {
@@ -14069,18 +14577,39 @@
                         ],
                         "title": "Dataset Row Filter",
                         "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used."
+                    },
+                    "rag_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedRagConfig-Input"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedRagConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedRagConfig-Input",
+                                    "unsaved": "#/components/schemas/UnsavedRagConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Rag Configs",
+                        "description": "List of RAG configurations to test. Each config specifies which dataset column to use as the query."
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "dataset_ref",
-                    "prompt_configs",
-                    "prompt_variable_mapping",
-                    "eval_list"
+                    "eval_list",
+                    "rag_configs"
                 ],
-                "title": "CreatePromptExperimentRequest",
-                "description": "Request to create a new prompt experiment"
+                "title": "CreateRagExperimentRequest",
+                "description": "Request to create a new RAG experiment"
             },
             "CreateUserRequest": {
                 "properties": {
@@ -14800,7 +15329,7 @@
                             }
                         ],
                         "title": "Json Path",
-                        "description": "Optional JSON path to extract from experiment output"
+                        "description": "Optional JSON path to extract from experiment output. Should use dot notation for array indexing (eg. response.objects.0.properties.category)"
                     }
                 },
                 "type": "object",
@@ -14837,7 +15366,7 @@
                     "completed"
                 ],
                 "title": "ExperimentStatus",
-                "description": "Status of a prompt experiment"
+                "description": "Status of an experiment"
             },
             "ExternalDocument": {
                 "properties": {
@@ -19025,28 +19554,6 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_configs": {
-                        "items": {
-                            "oneOf": [
-                                {
-                                    "$ref": "#/components/schemas/SavedPromptConfig"
-                                },
-                                {
-                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            ],
-                            "discriminator": {
-                                "propertyName": "type",
-                                "mapping": {
-                                    "saved": "#/components/schemas/SavedPromptConfig",
-                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            }
-                        },
-                        "type": "array",
-                        "title": "Prompt Configs",
-                        "description": "List of prompts being tested"
-                    },
                     "total_rows": {
                         "type": "integer",
                         "title": "Total Rows",
@@ -19078,14 +19585,6 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "prompt_variable_mapping": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
-                        },
-                        "type": "array",
-                        "title": "Prompt Variable Mapping",
-                        "description": "Shared variable mapping for all prompts"
-                    },
                     "eval_list": {
                         "items": {
                             "$ref": "#/components/schemas/EvalRef-Output"
@@ -19108,6 +19607,36 @@
                         ],
                         "title": "Dataset Row Filter",
                         "description": "Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment."
+                    },
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompts being tested"
+                    },
+                    "prompt_variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                        },
+                        "type": "array",
+                        "title": "Prompt Variable Mapping",
+                        "description": "Shared variable mapping for all prompts"
                     },
                     "summary_results": {
                         "$ref": "#/components/schemas/SummaryResults",
@@ -19132,13 +19661,13 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_configs",
                     "total_rows",
                     "completed_rows",
                     "failed_rows",
                     "dataset_ref",
-                    "prompt_variable_mapping",
                     "eval_list",
+                    "prompt_configs",
+                    "prompt_variable_mapping",
                     "summary_results"
                 ],
                 "title": "PromptExperimentDetail",
@@ -19146,14 +19675,6 @@
             },
             "PromptExperimentListResponse": {
                 "properties": {
-                    "data": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptExperimentSummary"
-                        },
-                        "type": "array",
-                        "title": "Data",
-                        "description": "List of prompt experiment summaries"
-                    },
                     "page": {
                         "type": "integer",
                         "title": "Page",
@@ -19172,16 +19693,24 @@
                     "total_count": {
                         "type": "integer",
                         "title": "Total Count",
-                        "description": "Total number of prompt experiments"
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptExperimentSummary"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of prompt experiment summaries"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "data",
                     "page",
                     "page_size",
                     "total_pages",
-                    "total_count"
+                    "total_count",
+                    "data"
                 ],
                 "title": "PromptExperimentListResponse",
                 "description": "Paginated list of prompt experiments"
@@ -19231,28 +19760,6 @@
                         "$ref": "#/components/schemas/ExperimentStatus",
                         "description": "Current status of the experiment"
                     },
-                    "prompt_configs": {
-                        "items": {
-                            "oneOf": [
-                                {
-                                    "$ref": "#/components/schemas/SavedPromptConfig"
-                                },
-                                {
-                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            ],
-                            "discriminator": {
-                                "propertyName": "type",
-                                "mapping": {
-                                    "saved": "#/components/schemas/SavedPromptConfig",
-                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
-                                }
-                            }
-                        },
-                        "type": "array",
-                        "title": "Prompt Configs",
-                        "description": "List of prompts being tested"
-                    },
                     "dataset_id": {
                         "type": "string",
                         "format": "uuid",
@@ -19295,6 +19802,28 @@
                         ],
                         "title": "Total Cost",
                         "description": "Total cost of running the experiment"
+                    },
+                    "prompt_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedPromptConfig"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedPromptConfig",
+                                    "unsaved": "#/components/schemas/UnsavedPromptConfig"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Prompt Configs",
+                        "description": "List of prompts being tested"
                     }
                 },
                 "type": "object",
@@ -19303,13 +19832,13 @@
                     "name",
                     "created_at",
                     "status",
-                    "prompt_configs",
                     "dataset_id",
                     "dataset_name",
                     "dataset_version",
                     "total_rows",
                     "completed_rows",
-                    "failed_rows"
+                    "failed_rows",
+                    "prompt_configs"
                 ],
                 "title": "PromptExperimentSummary",
                 "description": "Summary of a prompt experiment"
@@ -19343,6 +19872,14 @@
             },
             "PromptResult": {
                 "properties": {
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalExecution"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "Evaluation results for this execution"
+                    },
                     "prompt_key": {
                         "type": "string",
                         "title": "Prompt Key",
@@ -19392,22 +19929,14 @@
                             }
                         ],
                         "description": "Output from the prompt (None if not yet executed)"
-                    },
-                    "evals": {
-                        "items": {
-                            "$ref": "#/components/schemas/EvalExecution"
-                        },
-                        "type": "array",
-                        "title": "Evals",
-                        "description": "Evaluation results for this prompt output"
                     }
                 },
                 "type": "object",
                 "required": [
+                    "evals",
                     "prompt_key",
                     "prompt_type",
-                    "rendered_prompt",
-                    "evals"
+                    "rendered_prompt"
                 ],
                 "title": "PromptResult",
                 "description": "Results from a prompt execution with evals"
@@ -19501,6 +20030,26 @@
                         "title": "Dataset Row Id",
                         "description": "ID of the dataset row"
                     },
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalExecution"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "Evaluation results for this specific config"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost for this config test case execution"
+                    },
                     "prompt_input_variables": {
                         "items": {
                             "$ref": "#/components/schemas/InputVariable"
@@ -19524,49 +20073,21 @@
                             }
                         ],
                         "description": "Output from the prompt (None if not yet executed)"
-                    },
-                    "evals": {
-                        "items": {
-                            "$ref": "#/components/schemas/EvalExecution"
-                        },
-                        "type": "array",
-                        "title": "Evals",
-                        "description": "Evaluation results for this prompt output"
-                    },
-                    "total_cost": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Total Cost",
-                        "description": "Total cost for this specific prompt execution"
                     }
                 },
                 "type": "object",
                 "required": [
                     "status",
                     "dataset_row_id",
+                    "evals",
                     "prompt_input_variables",
-                    "rendered_prompt",
-                    "evals"
+                    "rendered_prompt"
                 ],
                 "title": "PromptVersionResult",
                 "description": "Result for a specific prompt version within a test case"
             },
             "PromptVersionResultListResponse": {
                 "properties": {
-                    "data": {
-                        "items": {
-                            "$ref": "#/components/schemas/PromptVersionResult"
-                        },
-                        "type": "array",
-                        "title": "Data",
-                        "description": "List of results for the prompt version"
-                    },
                     "page": {
                         "type": "integer",
                         "title": "Page",
@@ -19585,16 +20106,24 @@
                     "total_count": {
                         "type": "integer",
                         "title": "Total Count",
-                        "description": "Total number of results"
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVersionResult"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of results for the prompt version"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "data",
                     "page",
                     "page_size",
                     "total_pages",
-                    "total_count"
+                    "total_count",
+                    "data"
                 ],
                 "title": "PromptVersionResultListResponse",
                 "description": "Paginated list of results for a specific prompt version"
@@ -19849,6 +20378,486 @@
                 ],
                 "title": "RagAPIKeyAuthenticationProviderEnum"
             },
+            "RagConfigResult": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TestCaseStatus",
+                        "description": "Status of the test case"
+                    },
+                    "dataset_row_id": {
+                        "type": "string",
+                        "title": "Dataset Row Id",
+                        "description": "ID of the dataset row"
+                    },
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalExecution"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "Evaluation results for this specific config"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost for this config test case execution"
+                    },
+                    "query_text": {
+                        "type": "string",
+                        "title": "Query Text",
+                        "description": "Query text used for the search"
+                    },
+                    "output": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RagSearchOutput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Output from the RAG search (None if not yet executed)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "dataset_row_id",
+                    "evals",
+                    "query_text"
+                ],
+                "title": "RagConfigResult",
+                "description": "Result for a specific RAG configuration within a test case"
+            },
+            "RagConfigResultListResponse": {
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagConfigResult"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of results for the RAG configuration"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count",
+                    "data"
+                ],
+                "title": "RagConfigResultListResponse",
+                "description": "Paginated list of results for a specific RAG configuration"
+            },
+            "RagEvalResultSummaries": {
+                "properties": {
+                    "rag_config_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rag Config Key",
+                        "description": "RAG config key: 'saved:setting_config_id:version' for saved, 'unsaved:uuid' for unsaved"
+                    },
+                    "rag_config_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rag Config Type",
+                        "description": "Type: 'saved' or 'unsaved'"
+                    },
+                    "setting_configuration_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Setting Configuration Id",
+                        "description": "ID of the RAG search setting configuration (for saved configs only)"
+                    },
+                    "setting_configuration_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Setting Configuration Version",
+                        "description": "Version of the RAG search setting configuration (for saved configs only)"
+                    },
+                    "eval_results": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalResultSummary"
+                        },
+                        "type": "array",
+                        "title": "Eval Results",
+                        "description": "Results for each evaluation run on this RAG configuration"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "eval_results"
+                ],
+                "title": "RagEvalResultSummaries",
+                "description": "Summary of evaluation results for a RAG configuration"
+            },
+            "RagExperimentDetail": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the experiment"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the experiment"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the experiment"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when experiment was created"
+                    },
+                    "finished_at": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Finished At",
+                        "description": "ISO timestamp when experiment finished"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ExperimentStatus",
+                        "description": "Current status of the experiment"
+                    },
+                    "total_rows": {
+                        "type": "integer",
+                        "title": "Total Rows",
+                        "description": "Total number of test rows in the experiment"
+                    },
+                    "completed_rows": {
+                        "type": "integer",
+                        "title": "Completed Rows",
+                        "description": "Number of test rows completed successfully"
+                    },
+                    "failed_rows": {
+                        "type": "integer",
+                        "title": "Failed Rows",
+                        "description": "Number of test rows that failed"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost of running the experiment"
+                    },
+                    "dataset_ref": {
+                        "$ref": "#/components/schemas/DatasetRef",
+                        "description": "Reference to the dataset used"
+                    },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment."
+                    },
+                    "rag_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedRagConfig-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedRagConfigResponse"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedRagConfig-Output",
+                                    "unsaved": "#/components/schemas/UnsavedRagConfigResponse"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Rag Configs",
+                        "description": "List of RAG configurations being tested"
+                    },
+                    "summary_results": {
+                        "$ref": "#/components/schemas/RagSummaryResults",
+                        "description": "Summary of results across all test cases"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "created_at",
+                    "status",
+                    "total_rows",
+                    "completed_rows",
+                    "failed_rows",
+                    "dataset_ref",
+                    "eval_list",
+                    "rag_configs",
+                    "summary_results"
+                ],
+                "title": "RagExperimentDetail",
+                "description": "Detailed information about a RAG experiment"
+            },
+            "RagExperimentListResponse": {
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagExperimentSummary"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of RAG experiment summaries"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count",
+                    "data"
+                ],
+                "title": "RagExperimentListResponse",
+                "description": "Paginated list of RAG experiments"
+            },
+            "RagExperimentSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the experiment"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the experiment"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the experiment"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when experiment was created"
+                    },
+                    "finished_at": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Finished At",
+                        "description": "ISO timestamp when experiment finished"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ExperimentStatus",
+                        "description": "Current status of the experiment"
+                    },
+                    "dataset_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Dataset Id",
+                        "description": "ID of the dataset used"
+                    },
+                    "dataset_name": {
+                        "type": "string",
+                        "title": "Dataset Name",
+                        "description": "Name of the dataset used"
+                    },
+                    "dataset_version": {
+                        "type": "integer",
+                        "title": "Dataset Version",
+                        "description": "Version of the dataset used"
+                    },
+                    "total_rows": {
+                        "type": "integer",
+                        "title": "Total Rows",
+                        "description": "Total number of test rows in the experiment"
+                    },
+                    "completed_rows": {
+                        "type": "integer",
+                        "title": "Completed Rows",
+                        "description": "Number of test rows completed successfully"
+                    },
+                    "failed_rows": {
+                        "type": "integer",
+                        "title": "Failed Rows",
+                        "description": "Number of test rows that failed"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost of running the experiment"
+                    },
+                    "rag_configs": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/SavedRagConfig-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/UnsavedRagConfigResponse"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "saved": "#/components/schemas/SavedRagConfig-Output",
+                                    "unsaved": "#/components/schemas/UnsavedRagConfigResponse"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Rag Configs",
+                        "description": "List of RAG configurations being tested"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "created_at",
+                    "status",
+                    "dataset_id",
+                    "dataset_name",
+                    "dataset_version",
+                    "total_rows",
+                    "completed_rows",
+                    "failed_rows",
+                    "rag_configs"
+                ],
+                "title": "RagExperimentSummary",
+                "description": "Summary of a RAG experiment"
+            },
             "RagHybridSearchSettingRequest": {
                 "properties": {
                     "settings": {
@@ -20060,6 +21069,92 @@
                     "authentication_config"
                 ],
                 "title": "RagProviderTestConfigurationRequest"
+            },
+            "RagResult": {
+                "properties": {
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalExecution"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "Evaluation results for this execution"
+                    },
+                    "rag_config_key": {
+                        "type": "string",
+                        "title": "Rag Config Key",
+                        "description": "RAG config key: 'saved:setting_config_id:version' for saved, 'unsaved:uuid' for unsaved"
+                    },
+                    "rag_config_type": {
+                        "type": "string",
+                        "title": "Rag Config Type",
+                        "description": "Type: 'saved' or 'unsaved'"
+                    },
+                    "setting_configuration_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Setting Configuration Id",
+                        "description": "ID of the RAG search setting configuration (for saved configs only)"
+                    },
+                    "setting_configuration_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Setting Configuration Version",
+                        "description": "Version of the RAG search setting configuration (for saved configs only)"
+                    },
+                    "query_text": {
+                        "type": "string",
+                        "title": "Query Text",
+                        "description": "Query text used for the search"
+                    },
+                    "output": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RagSearchOutput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Output from the RAG search (None if not yet executed)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "evals",
+                    "rag_config_key",
+                    "rag_config_type",
+                    "query_text"
+                ],
+                "title": "RagResult",
+                "description": "Results from a RAG search execution with evals"
+            },
+            "RagSearchOutput": {
+                "properties": {
+                    "response": {
+                        "$ref": "#/components/schemas/RagProviderQueryResponse",
+                        "description": "RAG search response"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "response"
+                ],
+                "title": "RagSearchOutput",
+                "description": "Output from a RAG search execution"
             },
             "RagSearchSettingConfigurationNewVersionRequest": {
                 "properties": {
@@ -20377,6 +21472,107 @@
                     "tags"
                 ],
                 "title": "RagSearchSettingConfigurationVersionUpdateRequest"
+            },
+            "RagSummaryResults": {
+                "properties": {
+                    "rag_eval_summaries": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagEvalResultSummaries"
+                        },
+                        "type": "array",
+                        "title": "Rag Eval Summaries",
+                        "description": "Summary for each RAG configuration tested"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rag_eval_summaries"
+                ],
+                "title": "RagSummaryResults",
+                "description": "Summary results across all RAG configurations and evaluations"
+            },
+            "RagTestCase": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TestCaseStatus",
+                        "description": "Status of the test case"
+                    },
+                    "dataset_row_id": {
+                        "type": "string",
+                        "title": "Dataset Row Id",
+                        "description": "ID of the dataset row"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost for this test case"
+                    },
+                    "rag_results": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagResult"
+                        },
+                        "type": "array",
+                        "title": "Rag Results",
+                        "description": "Results for each RAG configuration tested"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "dataset_row_id",
+                    "rag_results"
+                ],
+                "title": "RagTestCase",
+                "description": "Individual test case result for RAG experiment"
+            },
+            "RagTestCaseListResponse": {
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagTestCase"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of test cases"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count",
+                    "data"
+                ],
+                "title": "RagTestCaseListResponse",
+                "description": "Paginated list of RAG test cases"
             },
             "RagVectorSimilarityTextSearchSettingRequest": {
                 "properties": {
@@ -20731,6 +21927,72 @@
                 "type": "object",
                 "title": "SavedPromptRenderingRequest",
                 "description": "Request schema for rendering an unsaved agentic prompt with variables"
+            },
+            "SavedRagConfig-Input": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "saved",
+                        "title": "Type",
+                        "default": "saved"
+                    },
+                    "setting_configuration_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Setting Configuration Id",
+                        "description": "ID of the RAG search setting configuration"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the RAG search setting configuration"
+                    },
+                    "query_column": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column to use as the RAG search query"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "setting_configuration_id",
+                    "version",
+                    "query_column"
+                ],
+                "title": "SavedRagConfig",
+                "description": "Configuration for a saved RAG setting configuration version"
+            },
+            "SavedRagConfig-Output": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "saved",
+                        "title": "Type",
+                        "default": "saved"
+                    },
+                    "setting_configuration_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Setting Configuration Id",
+                        "description": "ID of the RAG search setting configuration"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the RAG search setting configuration"
+                    },
+                    "query_column": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column to use as the RAG search query"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "setting_configuration_id",
+                    "version",
+                    "query_column"
+                ],
+                "title": "SavedRagConfig",
+                "description": "Configuration for a saved RAG setting configuration version"
             },
             "SearchDatasetsResponse": {
                 "properties": {
@@ -21773,6 +23035,18 @@
                         "title": "Dataset Row Id",
                         "description": "ID of the dataset row"
                     },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost for this test case"
+                    },
                     "prompt_input_variables": {
                         "items": {
                             "$ref": "#/components/schemas/InputVariable"
@@ -21788,18 +23062,6 @@
                         "type": "array",
                         "title": "Prompt Results",
                         "description": "Results for each prompt version tested"
-                    },
-                    "total_cost": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Total Cost",
-                        "description": "Total cost for this test case"
                     }
                 },
                 "type": "object",
@@ -21814,14 +23076,6 @@
             },
             "TestCaseListResponse": {
                 "properties": {
-                    "data": {
-                        "items": {
-                            "$ref": "#/components/schemas/TestCase"
-                        },
-                        "type": "array",
-                        "title": "Data",
-                        "description": "List of test cases"
-                    },
                     "page": {
                         "type": "integer",
                         "title": "Page",
@@ -21840,16 +23094,24 @@
                     "total_count": {
                         "type": "integer",
                         "title": "Total Count",
-                        "description": "Total number of test cases"
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/TestCase"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of test cases"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "data",
                     "page",
                     "page_size",
                     "total_pages",
-                    "total_count"
+                    "total_count",
+                    "data"
                 ],
                 "title": "TestCaseListResponse",
                 "description": "Paginated list of test cases"
@@ -23117,6 +24379,118 @@
                 ],
                 "title": "UnsavedPromptVariablesRequest",
                 "description": "Request schema for getting the list of variables needed from an unsaved prompt's messages"
+            },
+            "UnsavedRagConfig": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "unsaved",
+                        "title": "Type",
+                        "default": "unsaved"
+                    },
+                    "unsaved_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unsaved Id",
+                        "description": "Unique identifier for this unsaved RAG configuration (generated by backend if not provided)"
+                    },
+                    "rag_provider_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Rag Provider Id",
+                        "description": "ID of the RAG provider to use for this search"
+                    },
+                    "settings": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/WeaviateHybridSearchSettingsConfigurationRequest"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsConfigurationRequest"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest"
+                            }
+                        ],
+                        "title": "Settings",
+                        "description": "RAG search settings configuration"
+                    },
+                    "query_column": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column to use as the RAG search query"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rag_provider_id",
+                    "settings",
+                    "query_column"
+                ],
+                "title": "UnsavedRagConfig",
+                "description": "Configuration for an unsaved RAG search setting"
+            },
+            "UnsavedRagConfigResponse": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "unsaved",
+                        "title": "Type",
+                        "default": "unsaved"
+                    },
+                    "unsaved_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unsaved Id",
+                        "description": "Unique identifier for this unsaved RAG configuration (generated by backend if not provided)"
+                    },
+                    "rag_provider_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Rag Provider Id",
+                        "description": "ID of the RAG provider to use for this search"
+                    },
+                    "settings": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/WeaviateHybridSearchSettingsConfigurationResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsConfigurationResponse"
+                            }
+                        ],
+                        "title": "Settings",
+                        "description": "RAG search settings configuration"
+                    },
+                    "query_column": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column to use as the RAG search query"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rag_provider_id",
+                    "settings",
+                    "query_column"
+                ],
+                "title": "UnsavedRagConfigResponse",
+                "description": "Configuration for an unsaved RAG search setting (response version)"
             },
             "UpdateContinuousEvalRequest": {
                 "properties": {
