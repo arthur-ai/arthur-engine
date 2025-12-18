@@ -1,4 +1,4 @@
-import { Alert, TablePagination, Typography } from "@mui/material";
+import { Alert, Box, TablePagination } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -8,8 +8,8 @@ import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
-import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
+import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -18,7 +18,11 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSessions } from "@/services/tracing";
 
-export const SessionLevel = () => {
+interface SessionLevelProps {
+  welcomeDismissed: boolean;
+}
+
+export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const filters = useFilterStore((state) => state.filters);
@@ -66,43 +70,55 @@ export const SessionLevel = () => {
     [task?.id, api]
   );
 
+  // Check if any filters are active
+  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+
   if (error) {
-    return <Alert severity="error">There was an error fetching sessions.</Alert>;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">There was an error fetching sessions.</Alert>
+      </Box>
+    );
   }
 
+  const hasData = Boolean(data?.sessions?.length);
+
   return (
-    <>
-      <FiltersRow />
-      {data?.sessions?.length ? (
-        <>
-          <TracesTable
-            table={table}
-            loading={isFetching}
-            onRowClick={(row) => {
-              setDrawerTarget({ target: "session", id: row.original.session_id });
-            }}
-          />
-          <TablePagination
-            component="div"
-            count={data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            disabled={isPlaceholderData}
-            sx={{
-              overflow: "visible",
-            }}
-          />
-        </>
-      ) : (
-        <TracesEmptyState title="No sessions found">
-          <Typography variant="body1" color="text.secondary">
-            Try adjusting your search query
-          </Typography>
-        </TracesEmptyState>
-      )}
-    </>
+    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+      <DataContentGate
+        welcomeDismissed={welcomeDismissed}
+        hasData={hasData}
+        hasActiveFilters={hasActiveFilters}
+        dataType="sessions"
+      >
+        {/* Only show FiltersRow if we have sessions or if filters are active */}
+        {(hasData || hasActiveFilters) && <FiltersRow />}
+
+        {hasData && (
+          <>
+            <TracesTable
+              table={table}
+              loading={isFetching}
+              onRowClick={(row) => {
+                setDrawerTarget({ target: "session", id: row.original.session_id });
+              }}
+            />
+            <TablePagination
+              component="div"
+              count={data?.count ?? 0}
+              onPageChange={pagination.handlePageChange}
+              page={pagination.page}
+              rowsPerPage={pagination.rowsPerPage}
+              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              disabled={isPlaceholderData}
+              sx={{
+                overflow: "visible",
+              }}
+            />
+          </>
+        )}
+      </DataContentGate>
+    </Box>
   );
 };
