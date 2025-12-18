@@ -50,7 +50,6 @@ export class ArthurExporter implements AITracingExporter {
     this.taskId = config.taskId;
     this.serviceName = config.serviceName;
 
-    console.log(config.url);
     // Ensure URL ends with '/v1/traces' regardless of trailing slash
     const baseUrl = config.url.endsWith("/")
       ? config.url.slice(0, -1)

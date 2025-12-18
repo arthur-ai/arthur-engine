@@ -10,10 +10,10 @@ import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
+import { DataContentGate } from "../DataContentGate";
 import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { TracesTable } from "../TracesTable";
-import { WelcomeOrEmptyState } from "../WelcomeOrEmptyState";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -106,38 +106,40 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
     );
   }
 
+  const hasData = Boolean(data?.traces?.length);
+
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      {/* Only show FiltersRow if we have traces or if filters are active */}
-      {(data?.traces?.length || hasActiveFilters) && <FiltersRow />}
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
+        {/* Only show FiltersRow if we have traces or if filters are active */}
+        {(hasData || hasActiveFilters) && <FiltersRow />}
 
-      {data?.traces?.length ? (
-        <>
-          <BucketProvider thresholds={thresholds}>
-            <TracesTable
-              table={table}
-              loading={isFetching}
-              onRowClick={(row) => {
-                handleRowClick(row.original);
+        {hasData && (
+          <>
+            <BucketProvider thresholds={thresholds}>
+              <TracesTable
+                table={table}
+                loading={isFetching}
+                onRowClick={(row) => {
+                  handleRowClick(row.original);
+                }}
+              />
+            </BucketProvider>
+            <TablePagination
+              component="div"
+              count={data?.count ?? 0}
+              onPageChange={pagination.handlePageChange}
+              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              page={pagination.page}
+              rowsPerPage={pagination.rowsPerPage}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              sx={{
+                overflow: "visible",
               }}
             />
-          </BucketProvider>
-          <TablePagination
-            component="div"
-            count={data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            sx={{
-              overflow: "visible",
-            }}
-          />
-        </>
-      ) : (
-        <WelcomeOrEmptyState hasActiveFilters={hasActiveFilters} welcomeDismissed={welcomeDismissed} dataType="traces" />
-      )}
+          </>
+        )}
+      </DataContentGate>
     </Box>
   );
 }

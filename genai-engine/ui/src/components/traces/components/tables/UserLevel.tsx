@@ -7,7 +7,7 @@ import { userLevelColumns } from "../../data/user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { TracesTable } from "../TracesTable";
-import { WelcomeOrEmptyState } from "../WelcomeOrEmptyState";
+import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -67,34 +67,41 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     );
   }
 
+  const hasData = Boolean(data?.users?.length);
+
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      {data?.users?.length ? (
-        <>
-          <TracesTable
-            table={table}
-            loading={isFetching}
-            onRowClick={(row) => {
-              setDrawerTarget({ target: "user", id: row.original.user_id });
-            }}
-          />
-          <TablePagination
-            component="div"
-            count={data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            disabled={isPlaceholderData}
-            sx={{
-              overflow: "visible",
-            }}
-          />
-        </>
-      ) : (
-        <WelcomeOrEmptyState hasActiveFilters={false} welcomeDismissed={welcomeDismissed} dataType="users" />
-      )}
+      <DataContentGate
+        welcomeDismissed={welcomeDismissed}
+        hasData={hasData}
+        hasActiveFilters={false}
+        dataType="users"
+      >
+        {hasData && (
+          <>
+            <TracesTable
+              table={table}
+              loading={isFetching}
+              onRowClick={(row) => {
+                setDrawerTarget({ target: "user", id: row.original.user_id });
+              }}
+            />
+            <TablePagination
+              component="div"
+              count={data?.count ?? 0}
+              onPageChange={pagination.handlePageChange}
+              page={pagination.page}
+              rowsPerPage={pagination.rowsPerPage}
+              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              disabled={isPlaceholderData}
+              sx={{
+                overflow: "visible",
+              }}
+            />
+          </>
+        )}
+      </DataContentGate>
     </Box>
   );
 };

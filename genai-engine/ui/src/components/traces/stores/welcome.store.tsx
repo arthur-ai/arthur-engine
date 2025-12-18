@@ -4,12 +4,10 @@ import { devtools, persist } from "zustand/middleware";
 export interface WelcomeState {
   apiKeyClicked: boolean;
   taskIdCopied: boolean;
-  tracingStarted: boolean;
   dismissed: boolean;
 
   setApiKeyClicked: (clicked: boolean) => void;
   setTaskIdCopied: (copied: boolean) => void;
-  setTracingStarted: (started: boolean) => void;
   setDismissed: (dismissed: boolean) => void;
   reset: () => void;
 }
@@ -17,7 +15,6 @@ export interface WelcomeState {
 const initialState = {
   apiKeyClicked: false,
   taskIdCopied: false,
-  tracingStarted: false,
   dismissed: false,
 };
 
@@ -34,10 +31,6 @@ export const createWelcomeStore = (taskId: string) =>
 
           setTaskIdCopied: (copied) => {
             set({ taskIdCopied: copied }, false, "welcome/setTaskIdCopied");
-          },
-
-          setTracingStarted: (started) => {
-            set({ tracingStarted: started }, false, "welcome/setTracingStarted");
           },
 
           setDismissed: (dismissed) => {

@@ -9,7 +9,7 @@ import { useFilterStore } from "../../stores/filter.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
 import { TracesTable } from "../TracesTable";
-import { WelcomeOrEmptyState } from "../WelcomeOrEmptyState";
+import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -81,37 +81,44 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     );
   }
 
+  const hasData = Boolean(data?.sessions?.length);
+
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      {/* Only show FiltersRow if we have sessions or if filters are active */}
-      {(data?.sessions?.length || hasActiveFilters) && <FiltersRow />}
+      <DataContentGate
+        welcomeDismissed={welcomeDismissed}
+        hasData={hasData}
+        hasActiveFilters={hasActiveFilters}
+        dataType="sessions"
+      >
+        {/* Only show FiltersRow if we have sessions or if filters are active */}
+        {(hasData || hasActiveFilters) && <FiltersRow />}
 
-      {data?.sessions?.length ? (
-        <>
-          <TracesTable
-            table={table}
-            loading={isFetching}
-            onRowClick={(row) => {
-              setDrawerTarget({ target: "session", id: row.original.session_id });
-            }}
-          />
-          <TablePagination
-            component="div"
-            count={data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            disabled={isPlaceholderData}
-            sx={{
-              overflow: "visible",
-            }}
-          />
-        </>
-      ) : (
-        <WelcomeOrEmptyState hasActiveFilters={hasActiveFilters} welcomeDismissed={welcomeDismissed} dataType="sessions" />
-      )}
+        {hasData && (
+          <>
+            <TracesTable
+              table={table}
+              loading={isFetching}
+              onRowClick={(row) => {
+                setDrawerTarget({ target: "session", id: row.original.session_id });
+              }}
+            />
+            <TablePagination
+              component="div"
+              count={data?.count ?? 0}
+              onPageChange={pagination.handlePageChange}
+              page={pagination.page}
+              rowsPerPage={pagination.rowsPerPage}
+              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              disabled={isPlaceholderData}
+              sx={{
+                overflow: "visible",
+              }}
+            />
+          </>
+        )}
+      </DataContentGate>
     </Box>
   );
 };

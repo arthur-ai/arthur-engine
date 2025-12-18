@@ -13,7 +13,7 @@ import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { TracesTable } from "../TracesTable";
-import { WelcomeOrEmptyState } from "../WelcomeOrEmptyState";
+import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -104,40 +104,47 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
     );
   }
 
+  const hasData = Boolean(data?.spans?.length);
+
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      {/* Only show FiltersRow if we have spans or if filters are active */}
-      {(data?.spans?.length || hasActiveFilters) && <FiltersRow />}
+      <DataContentGate
+        welcomeDismissed={welcomeDismissed}
+        hasData={hasData}
+        hasActiveFilters={hasActiveFilters}
+        dataType="spans"
+      >
+        {/* Only show FiltersRow if we have spans or if filters are active */}
+        {(hasData || hasActiveFilters) && <FiltersRow />}
 
-      {data?.spans?.length ? (
-        <>
-          <BucketProvider thresholds={thresholds}>
-            <TracesTable
-              table={table}
-              loading={isFetching}
-              onRowClick={(row) => {
-                handleRowClick(row.original);
+        {hasData && (
+          <>
+            <BucketProvider thresholds={thresholds}>
+              <TracesTable
+                table={table}
+                loading={isFetching}
+                onRowClick={(row) => {
+                  handleRowClick(row.original);
+                }}
+              />
+            </BucketProvider>
+
+            <TablePagination
+              component="div"
+              count={data?.count ?? 0}
+              onPageChange={pagination.handlePageChange}
+              page={pagination.page}
+              rowsPerPage={pagination.rowsPerPage}
+              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              disabled={isPlaceholderData}
+              sx={{
+                overflow: "visible",
               }}
             />
-          </BucketProvider>
-
-          <TablePagination
-            component="div"
-            count={data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            disabled={isPlaceholderData}
-            sx={{
-              overflow: "visible",
-            }}
-          />
-        </>
-      ) : (
-        <WelcomeOrEmptyState hasActiveFilters={hasActiveFilters} welcomeDismissed={welcomeDismissed} dataType="spans" />
-      )}
+          </>
+        )}
+      </DataContentGate>
     </Box>
   );
 };
