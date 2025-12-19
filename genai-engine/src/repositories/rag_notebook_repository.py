@@ -19,6 +19,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchSettingConfigurationVersion,
 )
 from repositories.rag_experiment_repository import RagExperimentRepository
+from schemas.internal_schemas import RagNotebook
 from schemas.rag_experiment_schemas import (
     RagConfig,
     RagConfigResponse,
@@ -26,7 +27,6 @@ from schemas.rag_experiment_schemas import (
 )
 from schemas.rag_notebook_schemas import (
     CreateRagNotebookRequest,
-    RagNotebook,
     RagNotebookDetail,
     RagNotebookListResponse,
     RagNotebookState,

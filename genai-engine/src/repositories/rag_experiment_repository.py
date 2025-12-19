@@ -38,6 +38,7 @@ from schemas.base_experiment_schemas import (
     TestCaseStatus,
 )
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.internal_schemas import InternalSavedRagConfig
 from schemas.rag_experiment_schemas import (
     CreateRagExperimentRequest,
     RagConfig,
@@ -49,7 +50,6 @@ from schemas.rag_experiment_schemas import (
     RagSearchOutput,
     RagSummaryResults,
     RagTestCase,
-    SavedRagConfig,
     UnsavedRagConfig,
 )
 from schemas.response_schemas import RagProviderQueryResponse
@@ -96,7 +96,7 @@ class RagExperimentRepository:
 
         # Convert request types to response types
         rag_configs = [
-            SavedRagConfig.to_response(config) for config in rag_configs_request
+            InternalSavedRagConfig.to_response(config) for config in rag_configs_request
         ]
 
         # Get dataset name from relationship
@@ -141,7 +141,7 @@ class RagExperimentRepository:
 
         # Convert request types to response types
         rag_configs = [
-            SavedRagConfig.to_response(config) for config in rag_configs_request
+            InternalSavedRagConfig.to_response(config) for config in rag_configs_request
         ]
 
         # Convert JSON eval configs to Pydantic models
