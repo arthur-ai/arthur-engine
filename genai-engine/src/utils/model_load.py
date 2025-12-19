@@ -1,7 +1,5 @@
-import logging
 import os
 from functools import wraps
-from logging import getLogger
 from multiprocessing import get_context
 from typing import Callable
 
@@ -29,33 +27,19 @@ from config.config import Config
 from custom_types import P, T
 from utils import constants
 from utils.classifiers import get_device
-from utils.utils import get_env_var, relevance_models_enabled
+from utils.utils import get_env_var, get_logger, relevance_models_enabled
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _init_worker_logging():
     """Initialize logging in spawned worker processes."""
     # Get the root logger
-    root_logger = logging.getLogger()
-
-    # Set log level from config
-    log_level = Config.get_log_level()
-    root_logger.setLevel(log_level)
-
-    # Add stream handler if not already present
-    if not root_logger.handlers:
-        stream_handler = logging.StreamHandler()
-        log_formatter = logging.Formatter(
-            fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
-            datefmt="%Y-%m-%d %H:%M:%S %z",
-        )
-        stream_handler.setFormatter(log_formatter)
-        root_logger.addHandler(stream_handler)
-
-    # Set model_load logger to DEBUG
-    model_load_logger = logging.getLogger("utils.model_load")
-    model_load_logger.setLevel(log_level)
+    root_logger = get_logger(log_level=Config.get_log_level())
+    model_load_logger = get_logger(
+        logger_name="utils.model_load",
+        log_level=Config.get_log_level(),
+    )
 
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
