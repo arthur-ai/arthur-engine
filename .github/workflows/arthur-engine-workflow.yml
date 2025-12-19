@@ -410,7 +410,7 @@ jobs:
           fi
 
   check-models-updates:
-    environment: shared-protected-branch-secrets
+    # environment: shared-protected-branch-secrets
     # if: |
     #   contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
     #   github.ref == 'refs/heads/dev'
