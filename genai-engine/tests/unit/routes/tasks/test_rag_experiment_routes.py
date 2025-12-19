@@ -12,7 +12,6 @@ and clean up test state after execution.
 
 import random
 import time
-from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -20,7 +19,10 @@ from uuid import uuid4
 import pytest
 from litellm.types.utils import ModelResponse
 
-from schemas.base_experiment_schemas import ExperimentStatus, TestCaseStatus
+from schemas.base_experiment_schemas import (
+    ExperimentStatus,
+    TestCaseStatus,
+)
 from schemas.common_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
@@ -35,11 +37,9 @@ from schemas.rag_experiment_schemas import (
     RagTestCase,
     RagTestCaseListResponse,
 )
-from tests.clients.base_test_client import (
-    GenaiEngineTestClientBase,
-    override_get_db_session,
-)
+from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.mocks.mock_weaviate_client import MockWeaviateClientFactory
+from tests.unit.routes.conftest import setup_db_session_context_mock
 
 # Maximum time to wait for experiment completion (in seconds)
 MAX_WAIT_TIME = 30
@@ -147,34 +147,7 @@ def test_rag_experiment_routes_happy_path(
     """
 
     # Mock db_session_context for background thread execution to use test database
-    # The real db_session_context uses get_db_session() which is a generator
-    # We need to replicate that behavior but use override_get_db_session
-    # This ensures all background threads use the same test database engine
-    def mock_get_db_session_generator():
-        """Generator that yields a test database session, matching get_db_session() behavior"""
-        session = override_get_db_session()
-        try:
-            yield session
-        finally:
-            session.close()
-
-    @contextmanager
-    def mock_db_session_context_func():
-        """Context manager that uses override_get_db_session for background threads"""
-        # Replicate the exact behavior of db_session_context
-        session_gen = mock_get_db_session_generator()
-        session = next(session_gen)
-        try:
-            yield session
-        finally:
-            try:
-                next(session_gen)  # This will raise StopIteration and close the session
-            except StopIteration:
-                pass
-
-    # db_session_context is a context manager function, so when called it should return a context manager
-    # Use side_effect to return a new context manager each time it's called
-    mock_db_session_context.side_effect = lambda: mock_db_session_context_func()
+    setup_db_session_context_mock(mock_db_session_context)
 
     # Setup: Create task
     task_name = f"rag_experiment_task_{random.random()}"

@@ -362,3 +362,30 @@ def delete_rag_experiment(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
+
+
+@rag_experiment_routes.patch(
+    "/rag_experiments/{experiment_id}/notebook",
+    summary="Attach notebook to RAG experiment",
+    description="Attach a RAG notebook to an existing experiment",
+    response_model=RagExperimentSummary,
+    response_model_exclude_none=True,
+    tags=["RAG Experiments"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def attach_notebook_to_rag_experiment(
+    experiment_id: str = Path(..., description="ID of the experiment"),
+    notebook_id: str = Query(..., description="ID of the notebook to attach"),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagExperimentSummary:
+    """Attach a RAG notebook to an existing experiment."""
+    try:
+        repo = RagExperimentRepository(db_session)
+        return repo.attach_notebook_to_experiment(experiment_id, notebook_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()

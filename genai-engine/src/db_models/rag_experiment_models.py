@@ -28,12 +28,21 @@ from db_models.base_experiment_models import (
 # while still providing type hints for IDEs and mypy.
 if TYPE_CHECKING:
     from db_models.dataset_models import DatabaseDataset
+    from db_models.rag_notebook_models import DatabaseRagNotebook
 
 
 class DatabaseRagExperiment(DatabaseBaseExperiment):
     """Database model for storing RAG experiments associated with tasks"""
 
     __tablename__ = "rag_experiments"
+
+    # Foreign key to RAG notebook (optional)
+    notebook_id: Mapped[Optional[str]] = mapped_column(
+        String,
+        ForeignKey("rag_notebooks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # RAG configuration
     # Structure: [SavedRagConfig | UnsavedRagConfig, ...]
@@ -42,6 +51,9 @@ class DatabaseRagExperiment(DatabaseBaseExperiment):
     rag_configs: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
 
     # Relationships
+    notebook: Mapped[Optional["DatabaseRagNotebook"]] = relationship(
+        back_populates="experiments",
+    )
     test_cases: Mapped[List["DatabaseRagExperimentTestCase"]] = relationship(
         back_populates="experiment",
         lazy="select",
