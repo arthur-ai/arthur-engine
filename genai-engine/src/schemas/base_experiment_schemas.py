@@ -236,6 +236,10 @@ class BaseExperimentDetail(BaseModel):
         description="Optional list of column name and value filters applied to dataset rows. "
         "Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.",
     )
+    notebook_id: Optional[str] = Field(
+        default=None,
+        description="Optional notebook ID this experiment is linked to",
+    )
 
 
 class BaseTestCase(BaseModel):

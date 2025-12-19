@@ -48,14 +48,6 @@ class DatabaseBaseExperiment(Base):
         index=True,
     )
 
-    # Foreign key to notebook (optional)
-    notebook_id: Mapped[Optional[str]] = mapped_column(
-        String,
-        ForeignKey("notebooks.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-
     # Basic experiment metadata
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

@@ -49,6 +49,7 @@ from routers.v1.model_provider_routes import model_provider_routes
 from routers.v1.notebook_routes import notebook_routes
 from routers.v1.prompt_experiment_routes import prompt_experiment_routes
 from routers.v1.rag_experiment_routes import rag_experiment_routes
+from routers.v1.rag_notebook_routes import rag_notebook_routes
 from routers.v1.rag_routes import rag_routes
 from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
@@ -410,6 +411,7 @@ def get_app_with_routes() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
             rag_experiment_routes,
             transform_routes,
@@ -446,6 +448,7 @@ def get_test_app() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
             rag_experiment_routes,
             transform_routes,
@@ -492,6 +495,7 @@ def get_app() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
             rag_experiment_routes,
             transform_routes,

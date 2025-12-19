@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, List, Literal, Optional, Union
 from uuid import UUID
 
@@ -14,7 +16,9 @@ from schemas.base_experiment_schemas import (
     EvalResultSummary,
 )
 from schemas.common_schemas import BasePaginationResponse
-from schemas.request_schemas import RagSearchSettingConfigurationRequestTypes
+from schemas.request_schemas import (
+    RagSearchSettingConfigurationRequestTypes,
+)
 from schemas.response_schemas import (
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponseTypes,
