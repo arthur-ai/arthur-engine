@@ -4,7 +4,7 @@ import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { FrontendTool, ModelParametersType, PromptType } from "../types";
-import { cleanupAndRecalculateKeywords } from "../utils";
+import { arrayUtils, cleanupAndRecalculateKeywords } from "../utils";
 
 import { useExperimentStore } from "./experiment.store";
 import { createPrompt, createTool, duplicateMessage, duplicatePrompt, newMessage } from "./utils/factories";
@@ -24,6 +24,7 @@ interface PromptPlaygroundActions {
   addMessage: (parentId: string) => void;
   deleteMessage: (parentId: string, id: string) => void;
   duplicateMessage: (parentId: string, id: string) => void;
+  moveMessage: (parentId: string, oldIndex: number, newIndex: number) => void;
 
   setPromptProvider: (id: string, provider: ModelProvider | null) => void;
   setPromptModelName: (id: string, modelName: string | null) => void;
@@ -169,6 +170,21 @@ export const usePromptPlaygroundStore = create<PlaygroundStore>()(
           );
         },
 
+        moveMessage: (parentId: string, oldIndex: number, newIndex: number) => {
+          set(
+            (state) => {
+              const prompt = state.prompts.find((prompt) => prompt.id === parentId);
+              if (!prompt) return;
+
+              prompt.messages = arrayUtils.moveItem(prompt.messages, oldIndex, newIndex);
+              prompt.isDirty = !!prompt.version;
+
+              state.mutation.changedAt = now();
+            },
+            false,
+            "playground/moveMessage"
+          );
+        },
         duplicateMessage: (parentId: string, id: string) => {
           set(
             (state) => {

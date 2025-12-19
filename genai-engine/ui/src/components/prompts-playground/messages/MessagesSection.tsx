@@ -3,7 +3,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import Typography from "@mui/material/Typography";
 import React from "react";
 
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { PromptType } from "../types";
 
 import SortableMessage from "./SortableMessage";
@@ -13,7 +13,7 @@ interface MessagesSectionProps {
 }
 
 const MessagesSection = ({ prompt }: MessagesSectionProps) => {
-  const { dispatch } = usePromptContext();
+  const actions = usePromptPlaygroundStore((state) => state.actions);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -33,14 +33,7 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
       const oldIndex = prompt.messages.findIndex((item) => item.id === active.id);
       const newIndex = prompt.messages.findIndex((item) => item.id === over?.id);
 
-      dispatch({
-        type: "moveMessage",
-        payload: {
-          parentId: prompt.id,
-          fromIndex: oldIndex,
-          toIndex: newIndex,
-        },
-      });
+      actions.moveMessage(prompt.id, oldIndex, newIndex);
     }
   };
 

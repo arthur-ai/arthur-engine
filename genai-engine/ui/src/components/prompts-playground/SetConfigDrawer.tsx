@@ -15,18 +15,16 @@ import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 
-import { PromptExperimentStateConfig } from "./types";
-
 import { useApi } from "@/hooks/useApi";
 import { usePromptExperiments } from "@/hooks/usePromptExperiments";
-import type { PromptExperimentSummary } from "@/lib/api-client/api-client";
+import type { PromptExperimentDetail, PromptExperimentSummary } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
 interface SetConfigDrawerProps {
   open: boolean;
   onClose: () => void;
   taskId: string | undefined;
-  onLoadConfig: (config: PromptExperimentStateConfig, overwritePrompts: boolean) => void;
+  onLoadConfig: (config: PromptExperimentDetail, overwritePrompts: boolean) => void;
   onCreateNewConfig: () => void;
   hasExistingPrompts: boolean;
 }
@@ -35,7 +33,7 @@ const SetConfigDrawer = ({ open, onClose, taskId, onLoadConfig, onCreateNewConfi
   const [selectedExperimentId, setSelectedExperimentId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
-  const [pendingConfig, setPendingConfig] = useState<PromptExperimentStateConfig | null>(null);
+  const [pendingConfig, setPendingConfig] = useState<PromptExperimentDetail | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -53,23 +51,12 @@ const SetConfigDrawer = ({ open, onClose, taskId, onLoadConfig, onCreateNewConfi
         queryFn: () => apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(selectedExperimentId),
       });
 
-      const config: PromptExperimentStateConfig = {
-        experimentId: selectedExperimentId,
-        name: data.name,
-        description: data.description || "",
-        dataset_ref: data.dataset_ref,
-        eval_list: data.eval_list || [],
-        prompt_variable_mapping: data.prompt_variable_mapping || [],
-        dataset_row_filter: data.dataset_row_filter || [],
-        prompt_configs: data.prompt_configs || [],
-      };
-
       if (hasExistingPrompts) {
-        setPendingConfig(config);
+        setPendingConfig(data);
         setShowOverwriteDialog(true);
       } else {
         // No prompts, load with overwrite
-        onLoadConfig(config, true);
+        onLoadConfig(data, true);
         onClose();
       }
     } catch (error) {

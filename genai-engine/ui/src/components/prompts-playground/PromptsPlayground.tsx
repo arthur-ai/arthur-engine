@@ -65,7 +65,7 @@ const PromptsPlayground = () => {
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [createExperimentModalOpen, setCreateExperimentModalOpen] = useState(false);
   const [showPromptOverwriteDialog, setShowPromptOverwriteDialog] = useState(false);
-  const [pendingConfigForPromptOverwrite, setPendingConfigForPromptOverwrite] = useState<PromptExperimentStateConfig | null>(null);
+  const [pendingConfigForPromptOverwrite, setPendingConfigForPromptOverwrite] = useState<PromptExperimentDetail | null>(null);
   const variablesButtonRef = useRef<HTMLButtonElement>(null);
   const hasFetchedConfig = useRef(false);
   const hasFetchedPrompt = useRef(false);
@@ -189,7 +189,6 @@ const PromptsPlayground = () => {
           eval_list: data.fullState.eval_list || [],
           prompt_variable_mapping: data.fullState.prompt_variable_mapping || [],
           dataset_row_filter: data.fullState.dataset_row_filter || [],
-          experimentId: notebook?.id || "",
           prompt_configs: [],
         });
       }
@@ -254,7 +253,17 @@ const PromptsPlayground = () => {
       // Fetch the experiment details to get config info
       const experimentResponse = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(experimentId);
       const configData = experimentResponse.data;
-      experimentActions.setExperimentConfig(configData);
+      experimentActions.setExperimentConfig({
+        id: configData.id,
+        experimentId: configData.id,
+        name: configData.name,
+        description: configData.description ?? "",
+        dataset_ref: configData.dataset_ref,
+        eval_list: configData.eval_list,
+        prompt_variable_mapping: configData.prompt_variable_mapping,
+        dataset_row_filter: configData.dataset_row_filter ?? [],
+        prompt_configs: configData.prompt_configs,
+      });
 
       // Fetch the specific prompt version using the correct API endpoint
       const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
@@ -1027,46 +1036,43 @@ const PromptsPlayground = () => {
                     <Divider />
 
                     {/* Prompt Variable Mappings Section */}
-                    {((experimentConfig.prompt_ref?.variable_mapping && experimentConfig.prompt_ref.variable_mapping.length > 0) ||
-                      (experimentConfig.prompt_variable_mapping && experimentConfig.prompt_variable_mapping.length > 0)) && (
+                    {experimentConfig.prompt_variable_mapping && experimentConfig.prompt_variable_mapping.length > 0 && (
                       <>
                         <Box>
                           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: "text.secondary" }}>
                             PROMPT VARIABLE MAPPINGS
                           </Typography>
                           <Stack spacing={1}>
-                            {(experimentConfig.prompt_variable_mapping || experimentConfig.prompt_ref?.variable_mapping || []).map(
-                              (mapping: any, idx: number) => (
-                                <Box
-                                  key={idx}
+                            {experimentConfig.prompt_variable_mapping.map((mapping: any, idx: number) => (
+                              <Box
+                                key={idx}
+                                sx={{
+                                  backgroundColor: "#e3f2fd",
+                                  borderLeft: "3px solid #2196f3",
+                                  px: 1.5,
+                                  py: 1,
+                                  borderRadius: 0.5,
+                                }}
+                              >
+                                <Typography
+                                  variant="body2"
                                   sx={{
-                                    backgroundColor: "#e3f2fd",
-                                    borderLeft: "3px solid #2196f3",
-                                    px: 1.5,
-                                    py: 1,
-                                    borderRadius: 0.5,
+                                    fontSize: "0.813rem",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
                                   }}
                                 >
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: "0.813rem",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      whiteSpace: "nowrap",
-                                    }}
-                                  >
-                                    <Box component="span" sx={{ fontWeight: 600 }}>
-                                      {mapping.variable_name}
-                                    </Box>
-                                    {" → Dataset column: "}
-                                    <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
-                                      {mapping.source?.dataset_column?.name}
-                                    </Box>
-                                  </Typography>
-                                </Box>
-                              )
-                            )}
+                                  <Box component="span" sx={{ fontWeight: 600 }}>
+                                    {mapping.variable_name}
+                                  </Box>
+                                  {" → Dataset column: "}
+                                  <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
+                                    {mapping.source?.dataset_column?.name}
+                                  </Box>
+                                </Typography>
+                              </Box>
+                            ))}
                           </Stack>
                         </Box>
                         <Divider />
@@ -1081,7 +1087,7 @@ const PromptsPlayground = () => {
                             EVAL VARIABLE MAPPINGS
                           </Typography>
                           <Stack spacing={2}>
-                            {experimentConfig.eval_list.map((evalRef: any, evalIdx: number) => (
+                            {experimentConfig.eval_list.map((evalRef, evalIdx) => (
                               <Box key={evalIdx}>
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
@@ -1106,8 +1112,8 @@ const PromptsPlayground = () => {
                                   </IconButton>
                                 </Box>
                                 <Stack spacing={1}>
-                                  {evalRef.variable_mapping?.map((mapping: any, mapIdx: number) => {
-                                    const isDatasetColumn = mapping.source?.type === "dataset_column";
+                                  {evalRef.variable_mapping?.map((mapping, mapIdx) => {
+                                    const isDatasetColumn = mapping.source.type === "dataset_column";
                                     return (
                                       <Box
                                         key={mapIdx}
@@ -1132,7 +1138,7 @@ const PromptsPlayground = () => {
                                             {mapping.variable_name}
                                           </Box>
                                           {" → "}
-                                          {isDatasetColumn ? (
+                                          {mapping.source.type === "dataset_column" ? (
                                             <>
                                               Dataset column:{" "}
                                               <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>

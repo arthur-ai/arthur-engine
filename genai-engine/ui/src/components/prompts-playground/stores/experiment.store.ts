@@ -2,10 +2,11 @@ import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { create } from "zustand/react";
 
-import { PromptExperimentStateConfig } from "../types";
+import { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 interface ExperimentStoreActions {
-  setExperimentConfig: (experimentConfig: PromptExperimentStateConfig) => void;
+  setExperimentConfig: (experimentConfig: Partial<PromptExperimentDetail>) => void;
+
   setRunningExperimentId: (runningExperimentId: string) => void;
   finishRun: () => void;
 
@@ -13,7 +14,7 @@ interface ExperimentStoreActions {
 }
 
 interface ExperimentStore {
-  experimentConfig: PromptExperimentStateConfig | null;
+  experimentConfig: Partial<PromptExperimentDetail> | null;
   runningExperimentId: string | null;
   lastCompletedExperimentId: string | null;
   actions: ExperimentStoreActions;
@@ -26,7 +27,7 @@ export const useExperimentStore = create<ExperimentStore>()(
       runningExperimentId: null,
       lastCompletedExperimentId: null,
       actions: {
-        setExperimentConfig: (experimentConfig: PromptExperimentStateConfig) => {
+        setExperimentConfig: (experimentConfig: Partial<PromptExperimentDetail>) => {
           set({ experimentConfig }, false, "experiment/setExperimentConfig");
         },
 

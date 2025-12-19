@@ -10,7 +10,7 @@ import TextField from "@mui/material/TextField";
 import { useCallback, useEffect, useState } from "react";
 
 import { useBackendPrompts } from "../hooks/useBackendPrompts";
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { SavePromptDialogProps } from "../types";
 import { toBackendPromptBaseConfig } from "../utils/toBackendPrompt";
 
@@ -22,7 +22,7 @@ import { AgenticPrompt } from "@/lib/api-client/api-client";
 const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
-  const { dispatch } = usePromptContext();
+  const actions = usePromptPlaygroundStore((state) => state.actions);
   const promptsQuery = useBackendPrompts();
 
   const apiClient = useApi();
@@ -64,16 +64,10 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
       handleClose();
       promptsQuery.refetch();
       // Update name, version, and clear dirty flag after saving
-      dispatch({
-        type: "updatePrompt",
-        payload: {
-          promptId: prompt.id,
-          prompt: {
-            name: nameInputValue,
-            version: data.version,
-            isDirty: false,
-          },
-        },
+      actions.updatePrompt(prompt.id, {
+        name: nameInputValue,
+        version: data.version,
+        isDirty: false,
       });
     } catch (error: unknown) {
       const apiError = error as { response: { data: { detail: string } } };
@@ -83,7 +77,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
         showSnackbar("Failed to save prompt", "error");
       }
     }
-  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, handleClose, promptsQuery, dispatch]);
+  }, [nameInputValue, apiClient, taskId, prompt, showSnackbar, handleClose, promptsQuery, actions]);
 
   return (
     <>
