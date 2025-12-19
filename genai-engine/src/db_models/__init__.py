@@ -56,11 +56,23 @@ from db_models.agentic_prompt_models import (
 from db_models.secret_storage_models import DatabaseSecretStorage
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from db_models.notebook_models import DatabaseNotebook
+from db_models.rag_notebook_models import DatabaseRagNotebook
+from db_models.base_experiment_models import (
+    DatabaseBaseExperiment,
+    DatabaseBaseExperimentTestCase,
+    DatabaseBaseEvalScore,
+)
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
     DatabasePromptExperimentTestCasePromptResult,
     DatabasePromptExperimentTestCasePromptResultEvalScore,
+)
+from db_models.rag_experiment_models import (
+    DatabaseRagExperiment,
+    DatabaseRagExperimentTestCase,
+    DatabaseRagExperimentTestCaseRagResult,
+    DatabaseRagExperimentTestCaseRagResultEvalScore,
 )
 from db_models.transform_models import DatabaseTraceTransform
 
@@ -125,11 +137,21 @@ __all__ = [
     "DatabaseContinuousEval",
     # Notebook models
     "DatabaseNotebook",
+    "DatabaseRagNotebook",
+    # Base Experiment models
+    "DatabaseBaseExperiment",
+    "DatabaseBaseExperimentTestCase",
+    "DatabaseBaseEvalScore",
     # Prompt Experiment models
     "DatabasePromptExperiment",
     "DatabasePromptExperimentTestCase",
     "DatabasePromptExperimentTestCasePromptResult",
     "DatabasePromptExperimentTestCasePromptResultEvalScore",
+    # RAG Experiment models
+    "DatabaseRagExperiment",
+    "DatabaseRagExperimentTestCase",
+    "DatabaseRagExperimentTestCaseRagResult",
+    "DatabaseRagExperimentTestCaseRagResultEvalScore",
     # Transform models
     "DatabaseTraceTransform",
 ]

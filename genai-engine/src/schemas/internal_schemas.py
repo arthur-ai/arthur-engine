@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from arthur_common.models.common_schemas import (
     AuthUserRole,
@@ -95,6 +95,7 @@ from db_models import (
     DatabaseMetricResult,
     DatabasePIIEntity,
     DatabasePromptRuleResult,
+    DatabaseRagNotebook,
     DatabaseRegexEntity,
     DatabaseResponseRuleResult,
     DatabaseRule,
@@ -121,6 +122,8 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchVersionTag,
 )
 from db_models.transform_models import DatabaseTraceTransform
+from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
@@ -133,20 +136,40 @@ from schemas.enums import (
     SecretType,
 )
 from schemas.metric_schemas import MetricScoreDetails
+from schemas.rag_experiment_schemas import (
+    RagConfig,
+    RagConfigResponse,
+    RagExperimentSummary,
+    UnsavedRagConfigResponse,
+)
+from schemas.rag_notebook_schemas import (
+    CreateRagNotebookRequest,
+    RagConfigAdapter,
+    RagNotebookDetail,
+    RagNotebookState,
+    RagNotebookStateResponse,
+    RagNotebookSummary,
+)
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
     NewDatasetRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
     NewTraceTransformRequest,
+    RagHybridSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
     TraceTransformDefinition,
     WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
@@ -2976,6 +2999,26 @@ class WeaviateVectorSimilarityTextSearchSettingsConfiguration(
             return_properties=self.return_properties,
         )
 
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> RagVectorSimilarityTextSearchSettingRequest:
+        return RagVectorSimilarityTextSearchSettingRequest(
+            settings=WeaviateVectorSimilarityTextSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                certainty=self.certainty,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
+        )
+
 
 class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
@@ -3021,6 +3064,25 @@ class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
             auto_limit=self.auto_limit,
             return_metadata=self.return_metadata,
             return_properties=self.return_properties,
+        )
+
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> RagKeywordSearchSettingRequest:
+        return RagKeywordSearchSettingRequest(
+            settings=WeaviateKeywordSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
         )
 
 
@@ -3098,6 +3160,26 @@ class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
             auto_limit=self.auto_limit,
             return_metadata=self.return_metadata,
             return_properties=self.return_properties,
+        )
+
+    def to_client_request_model(self, query_text: str) -> RagHybridSearchSettingRequest:
+        return RagHybridSearchSettingRequest(
+            settings=WeaviateHybridSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                alpha=self.alpha,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                certainty=self.certainty,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
         )
 
 
@@ -3464,3 +3546,300 @@ class ContinuousEval(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
+
+
+class InternalSavedRagConfig(BaseModel):
+    """Internal helper class for converting RAG configs from request to response types"""
+
+    @staticmethod
+    def to_response(config: RagConfig) -> RagConfigResponse:
+        """
+        Convert a RagConfig (with request types) to RagConfigResponse (with response types).
+
+        This method handles the conversion between request and response schemas
+        for RAG configurations, converting request settings types to response settings types.
+        """
+        from schemas.rag_experiment_schemas import SavedRagConfig
+
+        if config.type == "saved":
+            # Saved configs don't need conversion - they're the same in both request and response
+            return SavedRagConfig(
+                type="saved",
+                setting_configuration_id=config.setting_configuration_id,
+                version=config.version,
+                query_column=config.query_column,
+            )
+        elif config.type == "unsaved":
+            # Convert request settings to response settings via internal model
+            if isinstance(
+                config.settings,
+                WeaviateHybridSearchSettingsConfigurationRequest,
+            ):
+                internal = (
+                    WeaviateHybridSearchSettingsConfiguration._from_request_model(
+                        config.settings,
+                    )
+                )
+                response_settings = internal.to_response_model()
+            elif isinstance(
+                config.settings,
+                WeaviateKeywordSearchSettingsConfigurationRequest,
+            ):
+                internal = (
+                    WeaviateKeywordSearchSettingsConfiguration._from_request_model(
+                        config.settings,
+                    )
+                )
+                response_settings = internal.to_response_model()
+            elif isinstance(
+                config.settings,
+                WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+            ):
+                internal = WeaviateVectorSimilarityTextSearchSettingsConfiguration._from_request_model(
+                    config.settings,
+                )
+                response_settings = internal.to_response_model()
+            else:
+                raise ValueError(
+                    f"Unknown settings type: {type(config.settings)}",
+                )
+
+            return UnsavedRagConfigResponse(
+                type="unsaved",
+                unsaved_id=config.unsaved_id,
+                rag_provider_id=config.rag_provider_id,
+                settings=response_settings,
+                query_column=config.query_column,
+            )
+        else:
+            raise ValueError(f"Unknown RAG config type: {config.type}")
+
+
+class RagNotebook(BaseModel):
+    """
+    Internal representation of a RAG notebook.
+    Handles translation between database models and request/response schemas.
+    """
+
+    id: str
+    task_id: str
+    name: str
+    description: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    rag_configs: Optional[List[Dict[str, Any]]]
+    dataset_id: Optional[uuid.UUID]
+    dataset_name: Optional[str]
+    dataset_version: Optional[int]
+    dataset_row_filter: Optional[List[Dict[str, Any]]]
+    eval_configs: Optional[List[Dict[str, Any]]]
+    experiments: List[RagExperimentSummary] = Field(default_factory=list)
+
+    @staticmethod
+    def _from_request_model(
+        task_id: str,
+        notebook_id: str,
+        request: CreateRagNotebookRequest,
+    ) -> "RagNotebook":
+        """Create internal RagNotebook from CreateRagNotebookRequest"""
+        # Prepare state JSON
+        rag_configs = None
+        dataset_id = None
+        dataset_version = None
+        dataset_row_filter = None
+        eval_configs = None
+
+        if request.state:
+            if request.state.rag_configs:
+                rag_configs = [
+                    config.model_dump(mode="json")
+                    for config in request.state.rag_configs
+                ]
+
+            if request.state.dataset_ref:
+                dataset_id = request.state.dataset_ref.id
+                dataset_version = request.state.dataset_ref.version
+
+            if request.state.dataset_row_filter:
+                dataset_row_filter = [
+                    filter_item.model_dump(mode="json")
+                    for filter_item in request.state.dataset_row_filter
+                ]
+
+            if request.state.eval_list:
+                eval_configs = [
+                    eval_ref.model_dump(mode="json")
+                    for eval_ref in request.state.eval_list
+                ]
+
+        return RagNotebook(
+            id=notebook_id,
+            task_id=task_id,
+            name=request.name,
+            description=request.description,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            rag_configs=rag_configs,
+            dataset_id=dataset_id,
+            dataset_name=None,  # Will be populated from database lookup
+            dataset_version=dataset_version,
+            dataset_row_filter=dataset_row_filter,
+            eval_configs=eval_configs,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_notebook: DatabaseRagNotebook,
+        experiments: List[RagExperimentSummary],
+        dataset_name: Optional[str] = None,
+    ) -> "RagNotebook":
+        """Create internal RagNotebook from DatabaseRagNotebook"""
+        return RagNotebook(
+            id=db_notebook.id,
+            task_id=db_notebook.task_id,
+            name=db_notebook.name,
+            description=db_notebook.description,
+            created_at=db_notebook.created_at,
+            updated_at=db_notebook.updated_at,
+            rag_configs=db_notebook.rag_configs,
+            dataset_id=db_notebook.dataset_id,
+            dataset_name=dataset_name,
+            dataset_version=db_notebook.dataset_version,
+            dataset_row_filter=db_notebook.dataset_row_filter,
+            eval_configs=db_notebook.eval_configs,
+            experiments=experiments,
+        )
+
+    def _to_database_model(self) -> DatabaseRagNotebook:
+        """Convert internal RagNotebook to DatabaseRagNotebook"""
+        return DatabaseRagNotebook(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            rag_configs=self.rag_configs,
+            dataset_id=self.dataset_id,
+            dataset_version=self.dataset_version,
+            dataset_row_filter=self.dataset_row_filter,
+            eval_configs=self.eval_configs,
+        )
+
+    def _to_summary_response(
+        self,
+        run_count: int,
+        latest_run_id: Optional[str],
+        latest_run_status: Optional[ExperimentStatus],
+    ) -> RagNotebookSummary:
+        """Convert internal RagNotebook to RagNotebookSummary response"""
+        return RagNotebookSummary(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at.isoformat() if self.created_at else None,
+            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            run_count=run_count,
+            latest_run_id=latest_run_id,
+            latest_run_status=latest_run_status,
+        )
+
+    def _to_detail_response(self) -> RagNotebookDetail:
+        """Convert internal RagNotebook to RagNotebookDetail response"""
+        # Convert state from JSON to Pydantic models (request types first)
+        state_request = RagNotebookState()
+
+        if self.rag_configs is not None:
+            state_request.rag_configs = [
+                RagConfigAdapter.validate_python(config) for config in self.rag_configs
+            ]
+
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
+            state_request.dataset_ref = DatasetRef(
+                id=self.dataset_id,
+                name=self.dataset_name,
+                version=self.dataset_version,
+            )
+
+        if self.dataset_row_filter is not None:
+            state_request.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
+
+        if self.eval_configs is not None:
+            state_request.eval_list = [
+                EvalRef.model_validate(eval_config) for eval_config in self.eval_configs
+            ]
+
+        # Convert to response state (with response types)
+        state = RagNotebookStateResponse()
+        if state_request.rag_configs is not None:
+            state.rag_configs = [
+                InternalSavedRagConfig.to_response(config)
+                for config in state_request.rag_configs
+            ]
+        state.dataset_ref = state_request.dataset_ref
+        state.dataset_row_filter = state_request.dataset_row_filter
+        state.eval_list = state_request.eval_list
+
+        return RagNotebookDetail(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at.isoformat() if self.created_at else None,
+            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            state=state,
+            experiments=self.experiments,
+        )
+
+    def _to_state_response(self) -> RagNotebookStateResponse:
+        """Convert internal RagNotebook to RagNotebookStateResponse"""
+        # Convert state from JSON to Pydantic models (request types first)
+        state_request = RagNotebookState()
+
+        if self.rag_configs is not None:
+            state_request.rag_configs = [
+                RagConfigAdapter.validate_python(config) for config in self.rag_configs
+            ]
+
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
+            state_request.dataset_ref = DatasetRef(
+                id=self.dataset_id,
+                name=self.dataset_name,
+                version=self.dataset_version,
+            )
+
+        if self.dataset_row_filter is not None:
+            state_request.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
+
+        if self.eval_configs is not None:
+            state_request.eval_list = [
+                EvalRef.model_validate(eval_config) for eval_config in self.eval_configs
+            ]
+
+        # Convert to response state (with response types)
+        state = RagNotebookStateResponse()
+        if state_request.rag_configs is not None:
+            state.rag_configs = [
+                InternalSavedRagConfig.to_response(config)
+                for config in state_request.rag_configs
+            ]
+        state.dataset_ref = state_request.dataset_ref
+        state.dataset_row_filter = state_request.dataset_row_filter
+        state.eval_list = state_request.eval_list
+
+        return state

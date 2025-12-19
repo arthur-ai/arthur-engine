@@ -1,31 +1,33 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
 
 if TYPE_CHECKING:
-    from db_models.prompt_experiment_models import DatabasePromptExperiment
+    from db_models.dataset_models import DatabaseDataset
+    from db_models.rag_experiment_models import DatabaseRagExperiment
 
 
-class DatabaseNotebook(Base):
+class DatabaseRagNotebook(Base):
     """
-    Database model for notebooks - draft experiment configurations.
+    Database model for RAG notebooks - draft RAG experiment configurations.
 
-    A notebook represents a working draft of an experiment configuration associated with a task.
-    It has the same structure as PromptExperiment, but fields can be null/incomplete.
-    When the notebook is "run", it creates a PromptExperiment from the notebook's state.
+    A RAG notebook represents a working draft of a RAG experiment configuration associated with a task.
+    It has the same structure as RagExperiment, but fields can be null/incomplete.
+    When the notebook is "run", it creates a RagExperiment from the notebook's state.
     """
 
-    __tablename__ = "notebooks"
+    __tablename__ = "rag_notebooks"
 
     # Primary identifiers
-    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True)
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("tasks.id", ondelete="CASCADE"),
@@ -50,19 +52,14 @@ class DatabaseNotebook(Base):
         nullable=False,
     )
 
-    # Draft experiment state (mirrors PromptExperiment but nullable)
-    # For prompt experiments
-    prompt_configs: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
-        JSON,
-        nullable=True,
-    )
-    prompt_variable_mapping: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+    # Draft experiment state (mirrors RagExperiment but nullable)
+    # For RAG experiments
+    rag_configs: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
         JSON,
         nullable=True,
     )
     # Shared fields
-    dataset_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    dataset_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    dataset_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID, nullable=True)
     dataset_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     dataset_row_filter: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
         JSON,
@@ -74,8 +71,14 @@ class DatabaseNotebook(Base):
     )
 
     # Relationships
-    experiments: Mapped[List["DatabasePromptExperiment"]] = relationship(
+    dataset: Mapped[Optional["DatabaseDataset"]] = relationship(
+        "DatabaseDataset",
+        primaryjoin="DatabaseRagNotebook.dataset_id == foreign(DatabaseDataset.id)",
+        lazy="select",
+        viewonly=True,
+    )
+    experiments: Mapped[List["DatabaseRagExperiment"]] = relationship(
         back_populates="notebook",
         lazy="select",
-        order_by="desc(DatabasePromptExperiment.created_at)",
+        order_by="desc(DatabaseRagExperiment.created_at)",
     )

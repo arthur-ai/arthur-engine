@@ -3806,6 +3806,288 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code, resp.json() if resp.content else None
 
+    def create_rag_experiment(
+        self,
+        task_id: str,
+        experiment_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new RAG experiment."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_experiments",
+            json=experiment_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_rag_experiment(
+        self,
+        experiment_id: str,
+    ) -> tuple[int, dict]:
+        """Get RAG experiment details."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_rag_experiment_test_cases(
+        self,
+        experiment_id: str,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, dict]:
+        """Get paginated list of test case results for a RAG experiment."""
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = f"/api/v1/rag_experiments/{experiment_id}/test_cases"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_rag_experiments(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        search: str = None,
+        dataset_id: str = None,
+    ) -> tuple[int, dict]:
+        """List RAG experiments for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if search is not None:
+            params["search"] = search
+        if dataset_id is not None:
+            params["dataset_id"] = dataset_id
+
+        url = f"/api/v1/tasks/{task_id}/rag_experiments"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def delete_rag_experiment(self, experiment_id: str) -> int:
+        """Delete a RAG experiment."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def create_rag_notebook(
+        self,
+        task_id: str,
+        notebook_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new RAG notebook."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_notebooks",
+            json=notebook_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def get_rag_notebook(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get RAG notebook details."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_rag_notebooks(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        name: str = None,
+    ) -> tuple[int, dict]:
+        """List RAG notebooks for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if name is not None:
+            params["name"] = name
+
+        url = f"/api/v1/tasks/{task_id}/rag_notebooks"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def update_rag_notebook(
+        self,
+        notebook_id: str,
+        update_request: dict,
+    ) -> tuple[int, dict]:
+        """Update RAG notebook metadata."""
+        resp = self.base_client.put(
+            f"/api/v1/rag_notebooks/{notebook_id}",
+            json=update_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_rag_notebook_state(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get RAG notebook state."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_notebooks/{notebook_id}/state",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def set_rag_notebook_state(
+        self,
+        notebook_id: str,
+        state_request: dict,
+    ) -> tuple[int, dict]:
+        """Set RAG notebook state."""
+        resp = self.base_client.put(
+            f"/api/v1/rag_notebooks/{notebook_id}/state",
+            json=state_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def delete_rag_notebook(self, notebook_id: str) -> int:
+        """Delete a RAG notebook."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def get_rag_notebook_history(
+        self,
+        notebook_id: str,
+        page: int = 0,
+        page_size: int = 10,
+    ) -> tuple[int, dict]:
+        """Get paginated history of experiments run from this RAG notebook."""
+        params = {"page": page, "page_size": page_size}
+
+        url = f"/api/v1/rag_notebooks/{notebook_id}/history"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def attach_notebook_to_rag_experiment(
+        self,
+        experiment_id: str,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Attach a RAG notebook to an existing experiment."""
+        url = f"/api/v1/rag_experiments/{experiment_id}/notebook?notebook_id={notebook_id}"
+
+        resp = self.base_client.patch(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
 
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,
