@@ -83,6 +83,7 @@ from utils.model_load import (
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
+    get_logger,
     is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
@@ -90,15 +91,7 @@ from utils.utils import (
     relevance_models_enabled,
 )
 
-logger = logging.getLogger()
-logger.setLevel(Config.get_log_level())
-stream_handler = logging.StreamHandler()
-log_formatter = logging.Formatter(
-    fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
-    datefmt="%Y-%m-%d %H:%M:%S %z",
-)
-stream_handler.setFormatter(log_formatter)
-logger.addHandler(stream_handler)
+logger = get_logger(log_level=Config.get_log_level())
 logger.info(f"GenAI Engine log level set to: {logging._levelToName[logger.level]}")
 
 tags_metadata = [

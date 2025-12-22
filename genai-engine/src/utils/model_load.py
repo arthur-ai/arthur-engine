@@ -1,7 +1,6 @@
 import os
 from functools import wraps
-from logging import getLogger
-from multiprocessing import Pool
+from multiprocessing import get_context
 from typing import Callable
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
@@ -24,12 +23,24 @@ from transformers import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
+from config.config import Config
 from custom_types import P, T
 from utils import constants
 from utils.classifiers import get_device
-from utils.utils import get_env_var, relevance_models_enabled
+from utils.utils import get_env_var, get_logger, relevance_models_enabled
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
+
+
+def _init_worker_logging():
+    """Initialize logging in spawned worker processes."""
+    # Get the root logger
+    root_logger = get_logger(log_level=Config.get_log_level())
+    model_load_logger = get_logger(
+        logger_name="utils.model_load",
+        log_level=Config.get_log_level(),
+    )
+
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
@@ -252,7 +263,12 @@ def download_models(num_of_process: int) -> None:
         for model_name, filenames in models_to_download.items()
         for filename in filenames
     ]
-    with Pool(processes=num_of_process) as pool:
+    # Use initializer to set up logging in spawned processes
+    logger.warning("Downloading models... this may take a while")
+    with get_context("spawn").Pool(
+        processes=num_of_process,
+        initializer=_init_worker_logging,
+    ) as pool:
         pool.map(download_file, tasks)
 
 
