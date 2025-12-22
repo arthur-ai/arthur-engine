@@ -19,7 +19,7 @@ from schemas.prompt_experiment_schemas import (
     PromptVersionResultListResponse,
     TestCaseListResponse,
 )
-from services.experiment_executor import ExperimentExecutor
+from services.prompt_experiment_executor import PromptExperimentExecutor
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -151,7 +151,7 @@ def create_prompt_experiment(
         )
 
         # Kick off async execution of the experiment
-        executor = ExperimentExecutor()
+        executor = PromptExperimentExecutor()
         executor.execute_experiment_async(experiment_id)
 
         return experiment

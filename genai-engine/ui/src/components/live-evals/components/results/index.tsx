@@ -1,7 +1,7 @@
-import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
+import { Box, Dialog, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useMemo } from "react";
 
 import { CONTINUOUS_EVAL_RESULT_FIELDS } from "../../data/filter-fields";
@@ -22,6 +22,7 @@ export const Results = () => {
   const { task } = useTask();
 
   const [annotationId, setAnnotationId] = useQueryState("id", parseAsString.withDefault(""));
+  const [action, setAction] = useQueryState("action", parseAsStringEnum(["rerun"]));
 
   const filters = useFilterStore((state) => state.filters);
   const pagination = useDatasetPagination();
@@ -72,12 +73,7 @@ export const Results = () => {
               </TableHead>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    hover
-                    onClick={() => setAnnotationId(row.original.id)}
-                    sx={{ cursor: "pointer" }}
-                  >
+                  <TableRow key={row.id} hover onClick={() => setAnnotationId(row.original.id)} sx={{ cursor: "pointer" }}>
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
@@ -100,7 +96,14 @@ export const Results = () => {
         </>
       )}
 
-      <Details annotationId={annotationId || undefined} onClose={() => setAnnotationId("")} />
+      <Dialog open={!!annotationId} onClose={() => setAnnotationId("")} maxWidth="xl" fullWidth>
+        <Details
+          annotationId={annotationId || undefined}
+          onClose={() => setAnnotationId("")}
+          onRerunComplete={() => setAction(null)}
+          rerunOnMount={action === "rerun"}
+        />
+      </Dialog>
     </>
   );
 };

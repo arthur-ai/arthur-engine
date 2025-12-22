@@ -2,6 +2,28 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 12/18/2025
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  endpoint added
+
+# 12/18/2025
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
+
+# 12/18/2025
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/test_cases  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
+
 # 12/16/2025
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'
 - **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'status_code'
