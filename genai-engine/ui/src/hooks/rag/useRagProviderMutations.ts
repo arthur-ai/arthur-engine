@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, UseMutationResult } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
 import type {
@@ -10,38 +10,12 @@ import type {
 } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
-interface CreateProviderVariables {
-  taskId: string;
-  data: RagProviderConfigurationRequest;
-}
-
-interface UpdateProviderVariables {
-  providerId: string;
-  data: RagProviderConfigurationUpdateRequest;
-}
-
-interface DeleteProviderVariables {
-  providerId: string;
-}
-
-interface TestConnectionVariables {
-  taskId: string;
-  data: RagProviderTestConfigurationRequest;
-}
-
-interface UseRagProviderMutationsResult {
-  createProvider: UseMutationResult<RagProviderConfigurationResponse, Error, CreateProviderVariables>;
-  updateProvider: UseMutationResult<RagProviderConfigurationResponse, Error, UpdateProviderVariables>;
-  deleteProvider: UseMutationResult<void, Error, DeleteProviderVariables>;
-  testConnection: UseMutationResult<ConnectionCheckResult, Error, TestConnectionVariables>;
-}
-
-export function useRagProviderMutations(): UseRagProviderMutationsResult {
+export function useRagProviderMutations() {
   const api = useApi();
   const queryClient = useQueryClient();
 
-  const createProvider = useMutation<RagProviderConfigurationResponse, Error, CreateProviderVariables>({
-    mutationFn: async ({ taskId, data }) => {
+  const createProvider = useMutation({
+    mutationFn: async ({ taskId, data }: { taskId: string; data: RagProviderConfigurationRequest }): Promise<RagProviderConfigurationResponse> => {
       if (!api) {
         throw new Error("API client not available");
       }
@@ -56,8 +30,14 @@ export function useRagProviderMutations(): UseRagProviderMutationsResult {
     },
   });
 
-  const updateProvider = useMutation<RagProviderConfigurationResponse, Error, UpdateProviderVariables>({
-    mutationFn: async ({ providerId, data }) => {
+  const updateProvider = useMutation({
+    mutationFn: async ({
+      providerId,
+      data,
+    }: {
+      providerId: string;
+      data: RagProviderConfigurationUpdateRequest;
+    }): Promise<RagProviderConfigurationResponse> => {
       if (!api) {
         throw new Error("API client not available");
       }
@@ -71,8 +51,8 @@ export function useRagProviderMutations(): UseRagProviderMutationsResult {
     },
   });
 
-  const deleteProvider = useMutation<void, Error, DeleteProviderVariables>({
-    mutationFn: async ({ providerId }) => {
+  const deleteProvider = useMutation({
+    mutationFn: async ({ providerId }: { providerId: string }) => {
       if (!api) {
         throw new Error("API client not available");
       }
@@ -86,8 +66,8 @@ export function useRagProviderMutations(): UseRagProviderMutationsResult {
     },
   });
 
-  const testConnection = useMutation<ConnectionCheckResult, Error, TestConnectionVariables>({
-    mutationFn: async ({ taskId, data }) => {
+  const testConnection = useMutation({
+    mutationFn: async ({ taskId, data }: { taskId: string; data: RagProviderTestConfigurationRequest }): Promise<ConnectionCheckResult> => {
       if (!api) {
         throw new Error("API client not available");
       }

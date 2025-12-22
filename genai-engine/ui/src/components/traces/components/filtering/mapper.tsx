@@ -2,6 +2,8 @@ import { TIME_RANGES, type TimeRange } from "../../constants";
 
 import { type Operator, Operators } from "./types";
 
+import type { ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
+
 export type IncomingFilter = {
   name: string;
   operator: Operator;
@@ -24,16 +26,35 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
   filters.forEach((filter) => {
     let key = filter.name;
 
-    if (key === "span_types") {
+    // Handle array fields that should always be arrays
+    if (key === "span_types" || key === "trace_ids" || key === "span_ids" || key === "session_ids" || key === "user_ids" || key === "status_code") {
       return (request[key] = [filter.value].flat());
     }
 
-    if (key === "trace_ids") {
-      return (request[key] = [filter.value].flat());
+    if (key === "annotation_score") {
+      return (request[key] = Number(filter.value));
     }
 
-    if (key === "user_ids") {
-      return (request[key] = [filter.value].flat());
+    // Special handling for span_name with CONTAINS operator
+    if (key === "span_name" && filter.operator === Operators.CONTAINS) {
+      return (request["span_name_contains"] = filter.value as string);
+    }
+
+    // Special handling for span_name with EQUALS operator (backend expects "span_name", not "span_name_eq")
+    if (key === "span_name" && filter.operator === Operators.EQUALS) {
+      return (request["span_name"] = filter.value as string);
+    }
+
+    if (key === "annotation_type" && filter.operator === Operators.EQUALS) {
+      return (request["annotation_type"] = filter.value as "human" | "continuous_eval");
+    }
+
+    if (key === "continuous_eval_run_status" && filter.operator === Operators.EQUALS) {
+      return (request["continuous_eval_run_status"] = filter.value as ContinuousEvalRunStatus);
+    }
+
+    if (key === "continuous_eval_name" && filter.operator === Operators.CONTAINS) {
+      return (request["continuous_eval_name"] = filter.value as string);
     }
 
     const keyPart = OPERATOR_TO_KEY_PART.get(filter.operator);

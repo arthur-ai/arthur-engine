@@ -37,6 +37,7 @@ from arthur_common.models.response_schemas import (
     ChatResponse,
     ExternalDocument,
     FileUploadResult,
+    ListAgenticAnnotationsResponse,
     QueryFeedbackResponse,
     QueryInferencesResponse,
     QuerySpansResponse,
@@ -63,19 +64,20 @@ from schemas.enums import (
     RagProviderEnum,
 )
 from schemas.internal_schemas import AgenticAnnotation
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
+    ContinuousEvalCreateRequest,
     CreateAgenticPromptRequest,
-    DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
-    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
+    NewTraceTransformRequest,
     RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
@@ -86,6 +88,8 @@ from schemas.request_schemas import (
     RagSearchSettingConfigurationRequestTypes,
     RagSearchSettingConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
+    TraceTransformUpdateRequest,
+    UpdateContinuousEvalRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsRequest,
@@ -94,15 +98,16 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    ContinuousEvalRerunResponse,
+    ContinuousEvalResponse,
     DatasetResponse,
-    DatasetTransformResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
-    ExecuteTransformResponse,
-    ListDatasetTransformsResponse,
+    ListContinuousEvalsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
+    ListTraceTransformsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -114,8 +119,10 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceTransformResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
+    TransformExtractionResponseList,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -930,6 +937,7 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_dataset(
         self,
         name: str,
+        task_id: str = None,
         description: str = None,
         metadata: dict = None,
     ) -> tuple[int, DatasetResponse]:
@@ -940,7 +948,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
         resp = self.base_client.post(
-            "/api/v2/datasets",
+            f"/api/v2/tasks/{task_id}/datasets",
             json=request.model_dump(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -1015,19 +1023,19 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def create_transform(
         self,
-        dataset_id: str,
+        task_id: str,
         name: str,
         definition: dict,
         description: str = None,
-    ) -> tuple[int, DatasetTransformResponse]:
-        request = NewDatasetTransformRequest(
+    ) -> tuple[int, TraceTransformResponse]:
+        request = NewTraceTransformRequest(
             name=name,
             description=description,
             definition=definition,
         )
 
         resp = self.base_client.post(
-            f"/api/v2/datasets/{dataset_id}/transforms",
+            f"/api/v1/tasks/{task_id}/traces/transforms",
             json=request.model_dump(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -1037,19 +1045,18 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                DatasetTransformResponse.model_validate(resp.json())
+                TraceTransformResponse.model_validate(resp.json())
                 if resp.status_code == 200
-                else None
+                else resp.json()
             ),
         )
 
     def get_transform(
         self,
-        dataset_id: str,
         transform_id: str,
-    ) -> tuple[int, DatasetTransformResponse]:
+    ) -> tuple[int, TraceTransformResponse]:
         resp = self.base_client.get(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+            f"/api/v1/traces/transforms/{transform_id}",
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -1058,18 +1065,22 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                DatasetTransformResponse.model_validate(resp.json())
+                TraceTransformResponse.model_validate(resp.json())
                 if resp.status_code == 200
-                else None
+                else resp.json()
             ),
         )
 
     def list_transforms(
         self,
-        dataset_id: str,
-    ) -> tuple[int, ListDatasetTransformsResponse]:
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListTraceTransformsResponse]:
+        base_url = f"/api/v1/tasks/{task_id}/traces/transforms"
+        if search_url:
+            base_url = base_url + "?" + search_url
         resp = self.base_client.get(
-            f"/api/v2/datasets/{dataset_id}/transforms",
+            base_url,
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -1078,7 +1089,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                ListDatasetTransformsResponse.model_validate(resp.json())
+                ListTraceTransformsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
@@ -1086,20 +1097,19 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def update_transform(
         self,
-        dataset_id: str,
         transform_id: str,
         name: str = None,
         description: str = None,
         definition: dict = None,
-    ) -> tuple[int, DatasetTransformResponse]:
-        request = DatasetTransformUpdateRequest(
+    ) -> tuple[int, TraceTransformUpdateRequest]:
+        request = TraceTransformUpdateRequest(
             name=name,
             description=description,
             definition=definition,
         )
 
-        resp = self.base_client.put(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+        resp = self.base_client.patch(
+            f"/api/v1/traces/transforms/{transform_id}",
             json=request.model_dump(exclude_none=True),
             headers=self.authorized_user_api_key_headers,
         )
@@ -1109,45 +1119,45 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                DatasetTransformResponse.model_validate(resp.json())
+                TraceTransformResponse.model_validate(resp.json())
                 if resp.status_code == 200
-                else None
+                else resp.json()
             ),
         )
 
-    def delete_transform(self, dataset_id: str, transform_id: str) -> int:
+    def delete_transform(self, transform_id: str) -> tuple[int, Any]:
         resp = self.base_client.delete(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+            f"/api/v1/traces/transforms/{transform_id}",
             headers=self.authorized_user_api_key_headers,
         )
 
         log_response(resp)
 
-        return resp.status_code
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
 
     def execute_transform_extraction(
         self,
-        dataset_id: str,
         transform_id: str,
         trace_id: str,
     ) -> tuple[int, Any]:
         """Execute a transform against a trace to extract dataset rows."""
         resp = self.base_client.post(
-            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions",
-            json={
-                "trace_id": str(trace_id),
-            },
+            f"/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions",
             headers=self.authorized_user_api_key_headers,
         )
 
         log_response(resp)
 
         if resp.status_code == 200:
-            return resp.status_code, ExecuteTransformResponse(**resp.json())
+            return resp.status_code, TransformExtractionResponseList(**resp.json())
         return resp.status_code, resp.json() if resp.content else None
 
     def search_datasets(
         self,
+        task_id: str,
         sort: PaginationSortMethod = None,
         page: int = None,
         page_size: int = None,
@@ -1155,7 +1165,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         dataset_name: str = None,
     ) -> tuple[int, SearchDatasetsResponse]:
         """Search datasets with optional filters and pagination."""
-        path = "api/v2/datasets/search?"
+        path = f"api/v2/tasks/{task_id}/datasets/search?"
         params = get_base_pagination_parameters(
             sort=sort,
             page=page,
@@ -1912,6 +1922,10 @@ class GenaiEngineTestClientBase(httpx.Client):
         span_types: list | None = None,
         user_ids: list[str] | None = None,
         annotation_score: int | None = None,
+        annotation_type: str | None = None,
+        continuous_eval_run_status: str | None = None,
+        continuous_eval_name: str | None = None,
+        include_spans: bool | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1958,8 +1972,16 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["span_types"] = span_types
         if annotation_score is not None:
             params["annotation_score"] = annotation_score
+        if annotation_type is not None:
+            params["annotation_type"] = annotation_type
+        if continuous_eval_run_status is not None:
+            params["continuous_eval_run_status"] = continuous_eval_run_status
+        if continuous_eval_name is not None:
+            params["continuous_eval_name"] = continuous_eval_name
         if user_ids is not None:
             params["user_ids"] = user_ids
+        if include_spans is not None:
+            params["include_spans"] = include_spans
         # Query relevance filters
         if query_relevance_eq is not None:
             params["query_relevance_eq"] = query_relevance_eq
@@ -2065,6 +2087,48 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 TraceResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_unregistered_root_spans(
+        self,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, Any]:
+        """Get grouped root spans for traces without task_id.
+
+        Args:
+            page: Page number (0-indexed)
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, Any]: Status code and response (UnregisteredRootSpansResponse or error text)
+        """
+        from schemas.response_schemas import UnregisteredRootSpansResponse
+
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        resp = self.base_client.get(
+            "/api/v1/traces/spans/unregistered",
+            headers=self.authorized_user_api_key_headers,
+            params=params if params else None,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                UnregisteredRootSpansResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -2480,6 +2544,51 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 TraceUserListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def get_annotation_by_id(
+        self,
+        annotation_id: str,
+    ) -> tuple[int, AgenticAnnotation | str]:
+        """Get an annotation by id."""
+        resp = self.base_client.get(
+            f"/api/v1/traces/annotations/{annotation_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                AgenticAnnotation.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def list_agentic_annotations_for_trace(
+        self,
+        trace_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListAgenticAnnotationsResponse | str]:
+        """Get an annotation by id."""
+        base_url = f"/api/v1/traces/{trace_id}/annotations"
+        if search_url:
+            base_url = base_url + "?" + search_url
+
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -3488,6 +3597,495 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             AgenticPrompt.model_validate(resp.json()),
+        )
+
+    def save_llm_eval(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+        llm_eval_data: dict,
+    ) -> tuple[int, LLMEval]:
+        """Save an llm eval."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
+            json=llm_eval_data,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                LLMEval.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_llm_eval(
+        self,
+        task_id: str,
+        llm_eval_name: str,
+    ) -> tuple[int, Any]:
+        """Delete an llm eval."""
+        resp = self.base_client.delete(
+            f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
+
+    def save_continuous_eval(
+        self,
+        task_id: str,
+        continuous_eval_data: Union[ContinuousEvalCreateRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Create a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, ContinuousEvalCreateRequest)
+            else continuous_eval_data
+        )
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/continuous_evals",
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def update_continuous_eval(
+        self,
+        continuous_eval_id: str,
+        continuous_eval_data: Union[UpdateContinuousEvalRequest, Dict[str, Any]],
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Update a continuous eval."""
+        payload = (
+            continuous_eval_data.model_dump(exclude_none=True)
+            if isinstance(continuous_eval_data, UpdateContinuousEvalRequest)
+            else continuous_eval_data
+        )
+        resp = self.base_client.patch(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_continuous_eval_by_id(
+        self,
+        continuous_eval_id: str,
+    ) -> tuple[int, ContinuousEvalResponse]:
+        """Get a continuous eval by id."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_continuous_evals(
+        self,
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListContinuousEvalsResponse]:
+        """List continuous evals."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals"
+        if search_url:
+            base_url = base_url + "?" + search_url
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListContinuousEvalsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_continuous_eval_run_results(
+        self,
+        task_id: str,
+        search_url: str = None,
+    ) -> tuple[int, ListAgenticAnnotationsResponse]:
+        """List continuous evals."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals/results"
+        if search_url:
+            base_url = base_url + "?" + search_url
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def rerun_continuous_eval(
+        self,
+        run_id: str,
+    ) -> tuple[int, ContinuousEvalRerunResponse]:
+        """Rerun a continuous eval."""
+        resp = self.base_client.post(
+            f"/api/v1/continuous_evals/results/{run_id}/rerun",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalRerunResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_continuous_eval(
+        self,
+        continuous_eval_id: str,
+    ) -> tuple[int, Any]:
+        """Delete a continuous eval."""
+        resp = self.base_client.delete(
+            f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
+
+    def create_rag_experiment(
+        self,
+        task_id: str,
+        experiment_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new RAG experiment."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_experiments",
+            json=experiment_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_rag_experiment(
+        self,
+        experiment_id: str,
+    ) -> tuple[int, dict]:
+        """Get RAG experiment details."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_rag_experiment_test_cases(
+        self,
+        experiment_id: str,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, dict]:
+        """Get paginated list of test case results for a RAG experiment."""
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = f"/api/v1/rag_experiments/{experiment_id}/test_cases"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_rag_experiments(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        search: str = None,
+        dataset_id: str = None,
+    ) -> tuple[int, dict]:
+        """List RAG experiments for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if search is not None:
+            params["search"] = search
+        if dataset_id is not None:
+            params["dataset_id"] = dataset_id
+
+        url = f"/api/v1/tasks/{task_id}/rag_experiments"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def delete_rag_experiment(self, experiment_id: str) -> int:
+        """Delete a RAG experiment."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def create_rag_notebook(
+        self,
+        task_id: str,
+        notebook_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new RAG notebook."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_notebooks",
+            json=notebook_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def get_rag_notebook(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get RAG notebook details."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_rag_notebooks(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        name: str = None,
+    ) -> tuple[int, dict]:
+        """List RAG notebooks for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if name is not None:
+            params["name"] = name
+
+        url = f"/api/v1/tasks/{task_id}/rag_notebooks"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def update_rag_notebook(
+        self,
+        notebook_id: str,
+        update_request: dict,
+    ) -> tuple[int, dict]:
+        """Update RAG notebook metadata."""
+        resp = self.base_client.put(
+            f"/api/v1/rag_notebooks/{notebook_id}",
+            json=update_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_rag_notebook_state(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get RAG notebook state."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_notebooks/{notebook_id}/state",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def set_rag_notebook_state(
+        self,
+        notebook_id: str,
+        state_request: dict,
+    ) -> tuple[int, dict]:
+        """Set RAG notebook state."""
+        resp = self.base_client.put(
+            f"/api/v1/rag_notebooks/{notebook_id}/state",
+            json=state_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def delete_rag_notebook(self, notebook_id: str) -> int:
+        """Delete a RAG notebook."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def get_rag_notebook_history(
+        self,
+        notebook_id: str,
+        page: int = 0,
+        page_size: int = 10,
+    ) -> tuple[int, dict]:
+        """Get paginated history of experiments run from this RAG notebook."""
+        params = {"page": page, "page_size": page_size}
+
+        url = f"/api/v1/rag_notebooks/{notebook_id}/history"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def attach_notebook_to_rag_experiment(
+        self,
+        experiment_id: str,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Attach a RAG notebook to an existing experiment."""
+        url = f"/api/v1/rag_experiments/{experiment_id}/notebook?notebook_id={notebook_id}"
+
+        resp = self.base_client.patch(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
         )
 
 

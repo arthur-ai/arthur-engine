@@ -2,11 +2,12 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
+import { DurationCell } from "../components/DurationCell";
 import { ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
 import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
 
-import { DurationCell, TokenCostTooltip, TokenCountTooltip } from "./common";
+import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { Highlight } from "@/components/common/Highlight";
 import { MessageRenderer } from "@/components/common/llm/MessageRenderer";

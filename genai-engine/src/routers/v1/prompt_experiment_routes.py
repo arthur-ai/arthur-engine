@@ -5,7 +5,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_agentic_task
+from dependencies import get_db_session, get_validated_task
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -19,7 +19,7 @@ from schemas.prompt_experiment_schemas import (
     PromptVersionResultListResponse,
     TestCaseListResponse,
 )
-from services.experiment_executor import ExperimentExecutor
+from services.prompt_experiment_executor import PromptExperimentExecutor
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -53,7 +53,7 @@ def list_prompt_experiments(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     """
     List all prompt experiments for a given task.
@@ -104,7 +104,7 @@ def create_prompt_experiment(
     experiment_request: CreatePromptExperimentRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
+    task: Task = Depends(get_validated_task),
 ):
     """
     Create a new prompt experiment and start execution.
@@ -151,7 +151,7 @@ def create_prompt_experiment(
         )
 
         # Kick off async execution of the experiment
-        executor = ExperimentExecutor()
+        executor = PromptExperimentExecutor()
         executor.execute_experiment_async(experiment_id)
 
         return experiment

@@ -38,3 +38,7 @@ values.yaml
 
 ml-engine/src/genai_client/**
 .vagrant
+
+.cursor/
+
+models/

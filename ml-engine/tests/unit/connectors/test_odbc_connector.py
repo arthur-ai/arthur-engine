@@ -487,6 +487,7 @@ class TestODBCConnectorDatasetListing:
 
         mock_inspector = Mock()
         mock_inspector.get_table_names.return_value = ["table1", "table2", "table3"]
+        mock_inspector.get_view_names.return_value = ["view1", "view2"]
         mock_inspect.return_value = mock_inspector
 
         spec = ConnectorSpec.model_validate(MOCK_ODBC_CONNECTOR_SPEC)
@@ -494,7 +495,7 @@ class TestODBCConnectorDatasetListing:
 
         result = connector.list_datasets()
 
-        assert len(result.available_datasets) == 3
+        assert len(result.available_datasets) == 5
         assert result.available_datasets[0].name == "table1"
         assert (
             result.available_datasets[0].dataset_locator.fields[0].key
@@ -513,6 +514,7 @@ class TestODBCConnectorDatasetListing:
 
         mock_inspector = Mock()
         mock_inspector.get_table_names.return_value = []
+        mock_inspector.get_view_names.return_value = []
         mock_inspect.return_value = mock_inspector
 
         spec = ConnectorSpec.model_validate(MOCK_ODBC_CONNECTOR_SPEC)

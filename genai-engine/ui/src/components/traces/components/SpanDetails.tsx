@@ -57,7 +57,6 @@ export const SpanDetailsHeader = () => {
   const { span } = useSpanDetails();
 
   const duration = getSpanDuration(span);
-  const start = new Date(span.start_time);
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
 
   const onOpenSpanDrawer = () => {
@@ -97,7 +96,7 @@ export const SpanDetailsHeader = () => {
       </Stack>
       <Stack direction="row" spacing={1}>
         <Typography variant="caption" color="text.secondary">
-          {formatDate(start)}
+          {formatDate(span.start_time)}
         </Typography>
         <Typography variant="caption" color="text.secondary">
           {duration}ms

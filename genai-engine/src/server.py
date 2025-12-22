@@ -42,15 +42,19 @@ from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
+from routers.v1.continuous_eval_routes import continuous_eval_routes
 from routers.v1.legacy_span_routes import span_routes
 from routers.v1.llm_eval_routes import llm_eval_routes
 from routers.v1.model_provider_routes import model_provider_routes
 from routers.v1.notebook_routes import notebook_routes
 from routers.v1.prompt_experiment_routes import prompt_experiment_routes
+from routers.v1.rag_experiment_routes import rag_experiment_routes
+from routers.v1.rag_notebook_routes import rag_notebook_routes
 from routers.v1.rag_routes import rag_routes
 from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
+from routers.v1.transform_routes import transform_routes
 from routers.v2.routers import (
     dataset_management_routes,
     feedback_routes,
@@ -59,6 +63,10 @@ from routers.v2.routers import (
     system_management_routes,
     task_management_routes,
     validate_routes,
+)
+from services.continuous_eval import (
+    initialize_continuous_eval_queue_service,
+    shutdown_continuous_eval_queue_service,
 )
 from utils import constants as constants
 from utils.classifiers import get_device
@@ -75,6 +83,7 @@ from utils.model_load import (
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
+    get_logger,
     is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
@@ -82,15 +91,7 @@ from utils.utils import (
     relevance_models_enabled,
 )
 
-logger = logging.getLogger()
-logger.setLevel(Config.get_log_level())
-stream_handler = logging.StreamHandler()
-log_formatter = logging.Formatter(
-    fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
-    datefmt="%Y-%m-%d %H:%M:%S %z",
-)
-stream_handler.setFormatter(log_formatter)
-logger.addHandler(stream_handler)
+logger = get_logger(log_level=Config.get_log_level())
 logger.info(f"GenAI Engine log level set to: {logging._levelToName[logger.level]}")
 
 tags_metadata = [
@@ -145,6 +146,10 @@ tags_metadata = [
     {
         "name": "Prompt Experiments",
         "description": "Endpoints for managing prompt experiments",
+    },
+    {
+        "name": "RAG Experiments",
+        "description": "Endpoints for managing RAG experiments",
     },
     {
         "name": "Notebooks",
@@ -204,6 +209,12 @@ async def lifespan(app: FastAPI):
     get_toxicity_model()
     get_toxicity_tokenizer()
 
+    # Initialize continuous eval queue service
+    try:
+        initialize_continuous_eval_queue_service(num_workers=4)
+    except Exception as e:
+        logger.error(f"Error initializing continuous eval queue service: {e}")
+
     # Conditionally load relevance models
     if relevance_models_enabled():
         get_bert_scorer()
@@ -218,6 +229,9 @@ async def lifespan(app: FastAPI):
     send_telemetry_event(TelemetryEventTypes.SERVER_START_COMPLETED)
 
     yield
+
+    # Shutdown continuous eval queue service
+    shutdown_continuous_eval_queue_service()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -390,7 +404,11 @@ def get_app_with_routes() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
+            rag_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -423,7 +441,11 @@ def get_test_app() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
+            rag_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -466,7 +488,11 @@ def get_app() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
+            rag_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:

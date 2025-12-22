@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from fastapi import HTTPException
+from arthur_common.models.common_schemas import VariableTemplateValue
+from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_core import Url
@@ -125,9 +127,9 @@ class NewDatasetVersionRequest(BaseModel):
     )
 
 
-class DatasetTransformColumnDefinition(BaseModel):
-    column_name: str = Field(
-        description="Name of the column to extract.",
+class TraceTransformVariableDefinition(BaseModel):
+    variable_name: str = Field(
+        description="Name of the variable to extract.",
     )
     span_name: str = Field(
         description="Name of the span to extract data from.",
@@ -141,13 +143,13 @@ class DatasetTransformColumnDefinition(BaseModel):
     )
 
 
-class DatasetTransformDefinition(BaseModel):
-    columns: list[DatasetTransformColumnDefinition] = Field(
-        description="List of column extraction rules.",
+class TraceTransformDefinition(BaseModel):
+    variables: list[TraceTransformVariableDefinition] = Field(
+        description="List of variable extraction rules.",
     )
 
 
-class NewDatasetTransformRequest(BaseModel):
+class NewTraceTransformRequest(BaseModel):
     name: str = Field(
         description="Name of the transform.",
     )
@@ -155,12 +157,12 @@ class NewDatasetTransformRequest(BaseModel):
         default=None,
         description="Description of the transform.",
     )
-    definition: DatasetTransformDefinition = Field(
+    definition: TraceTransformDefinition = Field(
         description="Transform definition specifying extraction rules.",
     )
 
 
-class DatasetTransformUpdateRequest(BaseModel):
+class TraceTransformUpdateRequest(BaseModel):
     name: Optional[str] = Field(
         default=None,
         description="Name of the transform.",
@@ -169,15 +171,9 @@ class DatasetTransformUpdateRequest(BaseModel):
         default=None,
         description="Description of the transform.",
     )
-    definition: Optional[DatasetTransformDefinition] = Field(
+    definition: Optional[TraceTransformDefinition] = Field(
         default=None,
         description="Transform definition specifying extraction rules.",
-    )
-
-
-class ExecuteTransformRequest(BaseModel):
-    trace_id: str = Field(
-        description="ID of the trace to execute the transform against.",
     )
 
 
@@ -309,6 +305,26 @@ class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
         RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
     )
 
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> "RagVectorSimilarityTextSearchSettingRequest":
+        return RagVectorSimilarityTextSearchSettingRequest(
+            settings=WeaviateVectorSimilarityTextSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                certainty=self.certainty,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
+        )
+
 
 class WeaviateVectorSimilarityTextSearchSettingsRequest(
     WeaviateVectorSimilarityTextSearchSettingsBaseConfigurationRequest,
@@ -369,6 +385,25 @@ class WeaviateKeywordSearchSettingsConfigurationRequest(
     WeaviateKeywordSearchSettingsBaseConfigurationRequest,
 ):
     search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
+
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> "RagKeywordSearchSettingRequest":
+        return RagKeywordSearchSettingRequest(
+            settings=WeaviateKeywordSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
+        )
 
 
 class WeaviateKeywordSearchSettingsRequest(
@@ -461,6 +496,29 @@ class WeaviateHybridSearchSettingsConfigurationRequest(
     WeaviateHybridSearchSettingsBaseRequest,
 ):
     search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
+
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> "RagHybridSearchSettingRequest":
+        return RagHybridSearchSettingRequest(
+            settings=WeaviateHybridSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                alpha=self.alpha,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                certainty=self.certainty,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
+        )
 
 
 class WeaviateHybridSearchSettingsRequest(
@@ -728,11 +786,6 @@ class CreateAgenticPromptRequest(BaseModel):
         use_enum_values = True
 
 
-class VariableTemplateValue(BaseModel):
-    name: str = Field(..., description="Name of the variable")
-    value: str = Field(..., description="Value of the variable")
-
-
 class BaseCompletionRequest(BaseModel):
     variables: Optional[List[VariableTemplateValue]] = Field(
         description="List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
@@ -810,3 +863,264 @@ class AgenticAnnotationRequest(BaseModel):
         default=None,
         description="Description of the annotation",
     )
+
+
+class TransformListFilterRequest(BaseModel):
+    """Request schema for filtering transforms with comprehensive filtering options."""
+
+    name: Optional[str] = Field(
+        None,
+        description="Name of the transform to filter on using partial matching.",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+
+class ContinuousEvalCreateRequest(BaseModel):
+    """Request schema for creating a continuous eval"""
+
+    name: str = Field(description="Name of the continuous eval")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval",
+    )
+    llm_eval_name: str = Field(
+        description="Name of the llm eval to create the continuous eval for",
+    )
+    llm_eval_version: Union[str, int] = Field(
+        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    )
+    transform_id: UUID = Field(
+        description="ID of the transform to create the continuous eval for",
+    )
+
+
+class UpdateContinuousEvalRequest(BaseModel):
+    """Request schema for creating a continuous eval"""
+
+    name: Optional[str] = Field(default=None, description="Name of the continuous eval")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval",
+    )
+    llm_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the llm eval to create the continuous eval for",
+    )
+    llm_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    )
+    transform_id: Optional[UUID] = Field(
+        default=None,
+        description="ID of the transform to create the continuous eval for",
+    )
+
+    @model_validator(mode="after")
+    def validate_request(self):
+        if self.llm_eval_name is not None and self.llm_eval_version is None:
+            raise ValueError(
+                "Must specify which version of the llm eval this continuous eval should be associated with",
+            )
+        return self
+
+
+class ContinuousEvalListFilterRequest(BaseModel):
+    """Request schema for filtering continuous evals with comprehensive filtering options."""
+
+    # Optional filters
+    name: Optional[str] = Field(
+        None,
+        description="Name of the continuous eval to filter on",
+    )
+    llm_eval_name: Optional[str] = Field(
+        None,
+        description="LLM eval name to filter on",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+    @staticmethod
+    def from_query_parameters(
+        name: Optional[str] = Query(
+            None,
+            description="Name of the continuous eval to filter on.",
+        ),
+        llm_eval_name: Optional[str] = Query(
+            None,
+            description="Name of the llm eval to filter on",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "ContinuousEvalListFilterRequest":
+        """Create a ContinuousEvalListFilterRequest from query parameters."""
+        return ContinuousEvalListFilterRequest(
+            name=name,
+            llm_eval_name=llm_eval_name,
+            created_after=(
+                datetime.fromisoformat(created_after) if created_after else None
+            ),
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )
+
+
+class ContinuousEvalRunResultsListFilterRequest(BaseModel):
+    """Request schema for filtering continuous eval run results"""
+
+    # Optional filters
+    id: Optional[UUID] = Field(
+        None,
+        description="ID of the continuous eval to filter on",
+    )
+    trace_id: Optional[str] = Field(
+        None,
+        description="Trace ID to filter on",
+    )
+    annotation_score: Optional[int] = Field(
+        None,
+        description="Annotation score to filter on",
+    )
+    run_status: Optional[ContinuousEvalRunStatus] = Field(
+        None,
+        description="Run status to filter on",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+    @staticmethod
+    def from_query_parameters(
+        id: Optional[str] = Query(
+            None,
+            description="ID of the continuous eval to filter on.",
+        ),
+        trace_id: Optional[str] = Query(
+            None,
+            description="Trace ID to filter on.",
+        ),
+        annotation_score: Optional[int] = Query(
+            None,
+            description="Annotation score to filter on.",
+        ),
+        run_status: Optional[ContinuousEvalRunStatus] = Query(
+            None,
+            description="Run status to filter on.",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "ContinuousEvalRunResultsListFilterRequest":
+        """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
+        return ContinuousEvalRunResultsListFilterRequest(
+            id=UUID(id) if id else None,
+            trace_id=trace_id,
+            annotation_score=annotation_score,
+            run_status=run_status,
+            created_after=(
+                datetime.fromisoformat(created_after) if created_after else None
+            ),
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )
+
+
+class AgenticAnnotationListFilterRequest(BaseModel):
+    """Request schema for filtering annotations"""
+
+    # Optional filters
+    continuous_eval_id: Optional[UUID] = Field(
+        None,
+        description="ID of the continuous eval to filter on",
+    )
+    annotation_type: Optional[AgenticAnnotationType] = Field(
+        None,
+        description="Annotation type to filter on",
+    )
+    annotation_score: Optional[int] = Field(
+        None,
+        description="Annotation score to filter on",
+    )
+    run_status: Optional[ContinuousEvalRunStatus] = Field(
+        None,
+        description="Run status to filter on",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+    @staticmethod
+    def from_query_parameters(
+        continuous_eval_id: Optional[str] = Query(
+            None,
+            description="ID of the continuous eval to filter on.",
+        ),
+        annotation_type: Optional[str] = Query(
+            None,
+            description="Annotation type to filter on.",
+        ),
+        annotation_score: Optional[int] = Query(
+            None,
+            description="Annotation score to filter on.",
+        ),
+        run_status: Optional[ContinuousEvalRunStatus] = Query(
+            None,
+            description="Run status to filter on.",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "AgenticAnnotationListFilterRequest":
+        """Create a AgenticAnnotationListFilterRequest from query parameters."""
+        return AgenticAnnotationListFilterRequest(
+            continuous_eval_id=UUID(continuous_eval_id) if continuous_eval_id else None,
+            annotation_type=annotation_type,
+            annotation_score=annotation_score,
+            run_status=run_status,
+            created_after=(
+                datetime.fromisoformat(created_after) if created_after else None
+            ),
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )

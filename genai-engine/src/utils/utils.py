@@ -333,3 +333,19 @@ def public_endpoint(func: Callable[P, T]) -> Callable[P, T]:
     # Mark the function as intentionally public
     async_wrapper._is_public = True  # type: ignore[attr-defined]
     return async_wrapper  # type: ignore[return-value]
+
+
+def get_logger(
+    logger_name: str | None = None,
+    log_level: str = "INFO",
+) -> logging.Logger:
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(log_level)
+    stream_handler = logging.StreamHandler()
+    log_formatter = logging.Formatter(
+        fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
+        datefmt="%Y-%m-%d %H:%M:%S %z",
+    )
+    stream_handler.setFormatter(log_formatter)
+    logger.addHandler(stream_handler)
+    return logger

@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Generator, Optional
 from uuid import UUID
@@ -40,7 +41,11 @@ from schemas.internal_schemas import (
     DocumentStorageConfiguration,
     Task,
 )
-from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
+from schemas.request_schemas import (
+    LLMGetAllFilterRequest,
+    LLMGetVersionsFilterRequest,
+    TransformListFilterRequest,
+)
 from scorer import (
     BinaryPIIDataClassifier,
     BinaryPIIDataClassifierV1,
@@ -124,7 +129,7 @@ def get_db_engine(db_config: DatabaseConfig | None = None):
 
 
 # Access singletons via these functions so test framework can override these via DI
-def get_db_session():
+def get_db_session() -> Generator[Session, None, None]:
     db_config = get_db_config()
     # Make unique session for each request thread
     session_maker = sessionmaker(get_db_engine(db_config))
@@ -184,7 +189,7 @@ def get_scorer_client():
     return SINGLETON_SCORER_CLIENT
 
 
-def get_metrics_engine():
+def get_metrics_engine() -> MetricsEngine:
     global SINGLETON_METRICS_ENGINE
     if not SINGLETON_METRICS_ENGINE:
         scorer_client = get_scorer_client()
@@ -299,17 +304,14 @@ def get_task_repository(
     )
 
 
-def get_validated_agentic_task(
+def get_validated_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
 ) -> Task:
-    """Dependency that validates task exists and is agentic"""
+    """Dependency that validates task exists"""
     task_repo = get_task_repository(db_session, application_config)
     task = task_repo.get_task_by_id(str(task_id))
-
-    if not task.is_agentic:
-        raise HTTPException(status_code=400, detail="Task is not agentic")
 
     return task
 
@@ -392,3 +394,47 @@ def llm_get_all_filter_parameters(
             datetime.fromisoformat(created_before) if created_before else None
         ),
     )
+
+
+def transform_list_filter_parameters(
+    name: Optional[str] = Query(
+        None,
+        description="Name of the transform to filter on using partial matching.",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> TransformListFilterRequest:
+    """Create a LLMGetAllFilterRequest from query parameters."""
+    return TransformListFilterRequest(
+        name=name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+@contextmanager
+def db_session_context() -> Generator[Session, None, None]:
+    """
+    Context manager for database sessions using the FastAPI dependency.
+
+    Usage:
+        with db_session_context() as session:
+            # use session
+    """
+    session_gen = get_db_session()
+    session = next(session_gen)
+    try:
+        yield session
+    finally:
+        try:
+            next(session_gen)
+        except StopIteration:
+            pass

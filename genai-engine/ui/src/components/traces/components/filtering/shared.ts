@@ -7,7 +7,7 @@ type Config = {
   id: string;
   name: string;
   operator: Operator | "";
-  value: string | string[];
+  value: string | string[] | null;
 };
 
 export const sharedFormOptions = formOptions({
@@ -22,4 +22,5 @@ export const validators = {
   value: z.string().min(1, "Value is required"),
   valueArray: z.array(z.string()).min(1, "Value is required"),
   numeric: (min: number, max: number) => z.coerce.number().min(min).max(max),
+  date: z.string().min(1, "Date is required"),
 };

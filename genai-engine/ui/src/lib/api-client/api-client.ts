@@ -29,11 +29,26 @@ export interface AgenticAnnotation {
   annotation_description?: string | null;
   /**
    * Annotation Score
-   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)
-   * @min 0
-   * @max 1
+   * Binary score for positive or negative annotation.
    */
-  annotation_score: number;
+  annotation_score?: number | null;
+  /** Type of annotation */
+  annotation_type: AgenticAnnotationType;
+  /**
+   * Continuous Eval Id
+   * Continuous eval ID this annotation belongs to
+   */
+  continuous_eval_id?: string | null;
+  /**
+   * Continuous Eval Name
+   * Name of the continuous eval this annotation belongs to
+   */
+  continuous_eval_name?: string | null;
+  /**
+   * Cost
+   * Cost of the continuous eval run
+   */
+  cost?: number | null;
   /**
    * Created At
    * When the annotation was created
@@ -41,11 +56,28 @@ export interface AgenticAnnotation {
    */
   created_at?: string;
   /**
+   * Eval Name
+   * Name of the eval the continuous eval used when scoring
+   */
+  eval_name?: string | null;
+  /**
+   * Eval Version
+   * Version of the eval the continuous eval used when scoring
+   */
+  eval_version?: number | null;
+  /**
    * Id
    * Unique identifier for the annotation
    * @format uuid
    */
   id: string;
+  /**
+   * Input Variables
+   * Input variables for the continuous eval
+   */
+  input_variables?: VariableTemplateValue[] | null;
+  /** Status of the continuous eval run */
+  run_status?: ContinuousEvalRunStatus | null;
   /**
    * Trace Id
    * Trace ID this annotation belongs to
@@ -84,10 +116,69 @@ export interface AgenticAnnotationResponse {
   annotation_description?: string | null;
   /**
    * Annotation Score
-   * Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked).
+   * Binary score for a positive or negative annotation.
    */
   annotation_score?: number | null;
+  /** Type of annotation */
+  annotation_type: AgenticAnnotationType;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval this annotation belongs to
+   */
+  continuous_eval_id?: string | null;
+  /**
+   * Continuous Eval Name
+   * Name of the continuous eval this annotation belongs to
+   */
+  continuous_eval_name?: string | null;
+  /**
+   * Cost
+   * Cost of the continuous eval run
+   */
+  cost?: number | null;
+  /**
+   * Created At
+   * Time the annotation was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Eval Name
+   * Name of the eval the continuous eval used when scoring
+   */
+  eval_name?: string | null;
+  /**
+   * Eval Version
+   * Version of the eval the continuous eval used when scoring
+   */
+  eval_version?: number | null;
+  /**
+   * Id
+   * ID of the annotation
+   */
+  id: string;
+  /**
+   * Input Variables
+   * Input variables for the continuous eval
+   */
+  input_variables?: VariableTemplateValue[] | null;
+  /** Status of the continuous eval run */
+  run_status?: ContinuousEvalRunStatus | null;
+  /**
+   * Trace Id
+   * ID of the trace this annotation belongs to
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * Time the annotation was last updated
+   * @format date-time
+   */
+  updated_at: string;
 }
+
+/** AgenticAnnotationType */
+export type AgenticAnnotationType = "human" | "continuous_eval";
 
 /** AgenticPrompt */
 export interface AgenticPrompt {
@@ -394,6 +485,9 @@ export interface BaseDetailsResponse {
   score?: boolean | null;
 }
 
+/** BaseModel */
+export type BaseModel = object;
+
 /** Body_add_tag_to_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__tags_put */
 export interface BodyAddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut {
   /**
@@ -604,6 +698,110 @@ export interface ConnectionCheckResult {
   failure_reason?: string | null;
 }
 
+/**
+ * ContinuousEvalCreateRequest
+ * Request schema for creating a continuous eval
+ */
+export interface ContinuousEvalCreateRequest {
+  /**
+   * Description
+   * Description of the continuous eval
+   */
+  description?: string | null;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval to create the continuous eval for
+   */
+  llm_eval_name: string;
+  /**
+   * Llm Eval Version
+   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
+   */
+  llm_eval_version: string | number;
+  /**
+   * Name
+   * Name of the continuous eval
+   */
+  name: string;
+  /**
+   * Transform Id
+   * ID of the transform to create the continuous eval for
+   * @format uuid
+   */
+  transform_id: string;
+}
+
+/** ContinuousEvalRerunResponse */
+export interface ContinuousEvalRerunResponse {
+  /**
+   * Run Id
+   * ID of the continuous eval run that was rerun.
+   * @format uuid
+   */
+  run_id: string;
+  /**
+   * Trace Id
+   * ID of the trace that was rerun.
+   */
+  trace_id: string;
+}
+
+/** ContinuousEvalResponse */
+export interface ContinuousEvalResponse {
+  /**
+   * Created At
+   * Timestamp representing the time the transform was added to the llm eval.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description of the continuous eval.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the transform.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval.
+   */
+  llm_eval_name: string;
+  /**
+   * Llm Eval Version
+   * Version of the llm eval.
+   */
+  llm_eval_version: number;
+  /**
+   * Name
+   * Name of the continuous eval.
+   */
+  name: string;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Transform Id
+   * ID of the transform.
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Updated At
+   * Timestamp representing the time the continuous eval was last updated.
+   * @format date-time
+   */
+  updated_at: string;
+}
+
+/** ContinuousEvalRunStatus */
+export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
+
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
   /** Id */
@@ -642,9 +840,13 @@ export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
 
 export type CreateApiKeyAuthApiKeysPostError = HTTPValidationError;
 
-export type CreateDatasetApiV2DatasetsPostData = DatasetResponse;
+export type CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostData = ContinuousEvalResponse;
 
-export type CreateDatasetApiV2DatasetsPostError = HTTPValidationError;
+export type CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostError = HTTPValidationError;
+
+export type CreateDatasetApiV2TasksTaskIdDatasetsPostData = DatasetResponse;
+
+export type CreateDatasetApiV2TasksTaskIdDatasetsPostError = HTTPValidationError;
 
 export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData = DatasetVersionResponse;
 
@@ -769,9 +971,9 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 
-export type CreateTransformApiV2DatasetsDatasetIdTransformsPostData = DatasetTransformResponse;
+export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
-export type CreateTransformApiV2DatasetsDatasetIdTransformsPostError = HTTPValidationError;
+export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostError = HTTPValidationError;
 
 /** CreateUserRequest */
 export interface CreateUserRequest {
@@ -897,97 +1099,15 @@ export interface DatasetResponse {
    */
   name: string;
   /**
+   * Task Id
+   * ID of the task the dataset belongs to.
+   */
+  task_id: string;
+  /**
    * Updated At
    * Timestamp representing the time of the last dataset update in unix milliseconds.
    */
   updated_at: number;
-}
-
-/** DatasetTransformColumnDefinition */
-export interface DatasetTransformColumnDefinition {
-  /**
-   * Attribute Path
-   * Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').
-   */
-  attribute_path: string;
-  /**
-   * Column Name
-   * Name of the column to extract.
-   */
-  column_name: string;
-  /**
-   * Fallback
-   * Fallback value to use if the attribute is not found.
-   */
-  fallback?: string | null;
-  /**
-   * Span Name
-   * Name of the span to extract data from.
-   */
-  span_name: string;
-}
-
-/** DatasetTransformDefinition */
-export interface DatasetTransformDefinition {
-  /**
-   * Columns
-   * List of column extraction rules.
-   */
-  columns: DatasetTransformColumnDefinition[];
-}
-
-/** DatasetTransformResponse */
-export interface DatasetTransformResponse {
-  /**
-   * Created At
-   * Timestamp representing the time of transform creation in unix milliseconds.
-   */
-  created_at: number;
-  /**
-   * Dataset Id
-   * ID of the parent dataset.
-   * @format uuid
-   */
-  dataset_id: string;
-  /** Transform definition specifying extraction rules. */
-  definition: DatasetTransformDefinition;
-  /**
-   * Description
-   * Description of the transform.
-   */
-  description?: string | null;
-  /**
-   * Id
-   * ID of the transform.
-   * @format uuid
-   */
-  id: string;
-  /**
-   * Name
-   * Name of the transform.
-   */
-  name: string;
-  /**
-   * Updated At
-   * Timestamp representing the time of the last transform update in unix milliseconds.
-   */
-  updated_at: number;
-}
-
-/** DatasetTransformUpdateRequest */
-export interface DatasetTransformUpdateRequest {
-  /** Transform definition specifying extraction rules. */
-  definition?: DatasetTransformDefinition | null;
-  /**
-   * Description
-   * Description of the transform.
-   */
-  description?: string | null;
-  /**
-   * Name
-   * Name of the transform.
-   */
-  name?: string | null;
 }
 
 /** DatasetUpdateRequest */
@@ -1142,6 +1262,10 @@ export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteData = a
 
 export type DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError = HTTPValidationError;
 
+export type DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteData = any;
+
+export type DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteError = HTTPValidationError;
+
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteError = HTTPValidationError;
@@ -1186,9 +1310,9 @@ export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsE
 
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
 
-export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData = any;
+export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
-export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError = HTTPValidationError;
+export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -1403,27 +1527,9 @@ export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityText
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
 
-export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData = ExecuteTransformResponse;
+export type ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostData = TransformExtractionResponseList;
 
-export type ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError = HTTPValidationError;
-
-/** ExecuteTransformRequest */
-export interface ExecuteTransformRequest {
-  /**
-   * Trace Id
-   * ID of the trace to execute the transform against.
-   */
-  trace_id: string;
-}
-
-/** ExecuteTransformResponse */
-export interface ExecuteTransformResponse {
-  /**
-   * Rows Extracted
-   * List of rows extracted from the trace, ready to be added to a dataset version via the create dataset version API.
-   */
-  rows_extracted: NewDatasetVersionRowRequest[];
-}
+export type ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostError = HTTPValidationError;
 
 /**
  * ExperimentOutputSource
@@ -1869,9 +1975,17 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
 /** Response Get All Tasks Api V2 Tasks Get */
 export type GetAllTasksApiV2TasksGetData = TaskResponse[];
 
+export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetData = AgenticAnnotationResponse;
+
+export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError = HTTPValidationError;
+
 export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
+
+export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
+
+export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError = HTTPValidationError;
 
 export type GetConversationsApiChatConversationsGetData = PageConversationBaseResponse;
 
@@ -1972,11 +2086,11 @@ export interface GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams {
   sort?: PaginationSortMethod;
 }
 
-export type GetDatasetsApiV2DatasetsSearchGetData = SearchDatasetsResponse;
+export type GetDatasetsApiV2TasksTaskIdDatasetsSearchGetData = SearchDatasetsResponse;
 
-export type GetDatasetsApiV2DatasetsSearchGetError = HTTPValidationError;
+export type GetDatasetsApiV2TasksTaskIdDatasetsSearchGetError = HTTPValidationError;
 
-export interface GetDatasetsApiV2DatasetsSearchGetParams {
+export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
   /**
    * Dataset Ids
    * List of dataset ids to query for.
@@ -2004,6 +2118,11 @@ export interface GetDatasetsApiV2DatasetsSearchGetParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
 }
 
 /** Response Get Default Rules Api V2 Default Rules Get */
@@ -2343,9 +2462,45 @@ export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 
-export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData = DatasetTransformResponse;
+export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
-export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError = HTTPValidationError;
+export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
+
+export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
+
+export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetError = HTTPValidationError;
+
+export interface GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetParams {
+  /**
+   * End Time
+   * Inclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+}
 
 export type GetUnsavedPromptVariablesListApiV1PromptVariablesPostData = UnsavedPromptVariablesListResponse;
 
@@ -3124,13 +3279,196 @@ export interface LLMVersionResponse {
   version: number;
 }
 
-/** ListDatasetTransformsResponse */
-export interface ListDatasetTransformsResponse {
+/** ListAgenticAnnotationsResponse */
+export interface ListAgenticAnnotationsResponse {
   /**
-   * Transforms
-   * List of transforms for the dataset.
+   * Annotations
+   * List of annotations
    */
-  transforms: DatasetTransformResponse[];
+  annotations: AgenticAnnotationResponse[];
+  /**
+   * Count
+   * Total number of annotations
+   */
+  count: number;
+}
+
+export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData = ListAgenticAnnotationsResponse;
+
+export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetError = HTTPValidationError;
+
+export interface ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetParams {
+  /**
+   * Annotation Score
+   * Annotation score to filter on.
+   */
+  annotation_score?: number | null;
+  /**
+   * Annotation Type
+   * Annotation type to filter on.
+   */
+  annotation_type?: string | null;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval to filter on.
+   */
+  continuous_eval_id?: string | null;
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Run Status
+   * Run status to filter on.
+   */
+  run_status?: ContinuousEvalRunStatus | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /** Trace Id */
+  traceId: string;
+}
+
+export type ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetData = ListAgenticAnnotationsResponse;
+
+export type ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetError = HTTPValidationError;
+
+export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetParams {
+  /**
+   * Annotation Score
+   * Annotation score to filter on.
+   */
+  annotation_score?: number | null;
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Id
+   * ID of the continuous eval to filter on.
+   */
+  id?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Run Status
+   * Run status to filter on.
+   */
+  run_status?: ContinuousEvalRunStatus | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+  /**
+   * Trace Id
+   * Trace ID to filter on.
+   */
+  trace_id?: string | null;
+}
+
+export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
+
+export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
+
+export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval to filter on
+   */
+  llm_eval_name?: string | null;
+  /**
+   * Name
+   * Name of the continuous eval to filter on.
+   */
+  name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+/** ListContinuousEvalsResponse */
+export interface ListContinuousEvalsResponse {
+  /**
+   * Count
+   * Total number of evals
+   */
+  count: number;
+  /**
+   * Evals
+   * List of continuous evals.
+   */
+  evals: ContinuousEvalResponse[];
 }
 
 /** ListDatasetVersionsResponse */
@@ -3323,6 +3661,15 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * @max 1
    */
   annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -3412,178 +3759,30 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   response_relevance_lte?: number;
   /**
-   * Sort the results (asc/desc)
-   * @default "desc"
+   * Session Ids
+   * Session IDs to filter on. Optional.
    */
-  sort?: PaginationSortMethod;
-  /**
-   * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
-   */
-  span_types?: string[];
-  /**
-   * Start Time
-   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
-   * @format date-time
-   */
-  start_time?: string;
-  /**
-   * Task Ids
-   * Task IDs to filter on. At least one is required.
-   * @minItems 1
-   */
-  task_ids: string[];
-  /**
-   * Tool Name
-   * Return only results with this tool name.
-   */
-  tool_name?: string;
-  /** Tool selection evaluation result. */
-  tool_selection?: ToolClassEnum;
-  /** Tool usage evaluation result. */
-  tool_usage?: ToolClassEnum;
-  /**
-   * Trace Duration Eq
-   * Duration exactly equal to this value (seconds).
-   * @min 0
-   */
-  trace_duration_eq?: number;
-  /**
-   * Trace Duration Gt
-   * Duration greater than this value (seconds).
-   * @min 0
-   */
-  trace_duration_gt?: number;
-  /**
-   * Trace Duration Gte
-   * Duration greater than or equal to this value (seconds).
-   * @min 0
-   */
-  trace_duration_gte?: number;
-  /**
-   * Trace Duration Lt
-   * Duration less than this value (seconds).
-   * @min 0
-   */
-  trace_duration_lt?: number;
-  /**
-   * Trace Duration Lte
-   * Duration less than or equal to this value (seconds).
-   * @min 0
-   */
-  trace_duration_lte?: number;
-  /**
-   * Trace Ids
-   * Trace IDs to filter on. Optional.
-   */
-  trace_ids?: string[];
-}
-
-export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
-
-export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
-
-export interface ListTracesMetadataApiV1TracesGetParams {
-  /**
-   * Annotation Score
-   * Filter by trace annotation score (0 or 1).
-   * @min 0
-   * @max 1
-   */
-  annotation_score?: number;
-  /**
-   * End Time
-   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
-   * @format date-time
-   */
-  end_time?: string;
-  /**
-   * Page
-   * Page number
-   * @default 0
-   */
-  page?: number;
-  /**
-   * Page Size
-   * Page size. Default is 10. Must be greater than 0 and less than 5000.
-   * @default 10
-   */
-  page_size?: number;
-  /**
-   * Query Relevance Eq
-   * Equal to this value.
-   * @min 0
-   * @max 1
-   */
-  query_relevance_eq?: number;
-  /**
-   * Query Relevance Gt
-   * Greater than this value.
-   * @min 0
-   * @max 1
-   */
-  query_relevance_gt?: number;
-  /**
-   * Query Relevance Gte
-   * Greater than or equal to this value.
-   * @min 0
-   * @max 1
-   */
-  query_relevance_gte?: number;
-  /**
-   * Query Relevance Lt
-   * Less than this value.
-   * @min 0
-   * @max 1
-   */
-  query_relevance_lt?: number;
-  /**
-   * Query Relevance Lte
-   * Less than or equal to this value.
-   * @min 0
-   * @max 1
-   */
-  query_relevance_lte?: number;
-  /**
-   * Response Relevance Eq
-   * Equal to this value.
-   * @min 0
-   * @max 1
-   */
-  response_relevance_eq?: number;
-  /**
-   * Response Relevance Gt
-   * Greater than this value.
-   * @min 0
-   * @max 1
-   */
-  response_relevance_gt?: number;
-  /**
-   * Response Relevance Gte
-   * Greater than or equal to this value.
-   * @min 0
-   * @max 1
-   */
-  response_relevance_gte?: number;
-  /**
-   * Response Relevance Lt
-   * Less than this value.
-   * @min 0
-   * @max 1
-   */
-  response_relevance_lt?: number;
-  /**
-   * Response Relevance Lte
-   * Less than or equal to this value.
-   * @min 0
-   * @max 1
-   */
-  response_relevance_lte?: number;
+  session_ids?: string[];
   /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
   /**
    * Span Types
    * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
@@ -3652,9 +3851,260 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   user_ids?: string[];
 }
 
-export type ListTransformsApiV2DatasetsDatasetIdTransformsGetData = ListDatasetTransformsResponse;
+/** ListTraceTransformsResponse */
+export interface ListTraceTransformsResponse {
+  /**
+   * Transforms
+   * List of transforms for the task.
+   */
+  transforms: TraceTransformResponse[];
+}
 
-export type ListTransformsApiV2DatasetsDatasetIdTransformsGetError = HTTPValidationError;
+export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
+
+export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
+
+export interface ListTracesMetadataApiV1TracesGetParams {
+  /**
+   * Annotation Score
+   * Filter by trace annotation score (0 or 1).
+   * @min 0
+   * @max 1
+   */
+  annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
+}
+
+export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData = ListTraceTransformsResponse;
+
+export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetError = HTTPValidationError;
+
+export interface ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Name
+   * Name of the transform to filter on using partial matching.
+   */
+  name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
 
 export type ListUsersMetadataApiV1TracesUsersGetData = TraceUserListResponse;
 
@@ -4044,22 +4494,6 @@ export interface NewDatasetRequest {
   name: string;
 }
 
-/** NewDatasetTransformRequest */
-export interface NewDatasetTransformRequest {
-  /** Transform definition specifying extraction rules. */
-  definition: DatasetTransformDefinition;
-  /**
-   * Description
-   * Description of the transform.
-   */
-  description?: string | null;
-  /**
-   * Name
-   * Name of the transform.
-   */
-  name: string;
-}
-
 /** NewDatasetVersionRequest */
 export interface NewDatasetVersionRequest {
   /**
@@ -4190,6 +4624,22 @@ export interface NewTaskRequest {
    * Name
    * Name of the task.
    * @minLength 1
+   */
+  name: string;
+}
+
+/** NewTraceTransformRequest */
+export interface NewTraceTransformRequest {
+  /** Transform definition specifying extraction rules. */
+  definition: TraceTransformDefinition;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
    */
   name: string;
 }
@@ -5320,6 +5770,15 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @max 1
    */
   annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -5409,10 +5868,30 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   response_relevance_lte?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
   /**
    * Span Types
    * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
@@ -5474,6 +5953,11 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
 export type QuerySpansWithMetricsV1TracesMetricsGetData = QueryTracesWithMetricsResponse;
@@ -5488,6 +5972,15 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * @max 1
    */
   annotation_score?: number;
+  /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
+  annotation_type?: AgenticAnnotationType;
+  /**
+   * Continuous Eval Name
+   * Filter by continuous eval name.
+   */
+  continuous_eval_name?: string;
+  /** Filter by trace annotation run status (e.g. 'passed', 'failed', etc.). */
+  continuous_eval_run_status?: ContinuousEvalRunStatus;
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -5577,10 +6070,30 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   response_relevance_lte?: number;
   /**
+   * Session Ids
+   * Session IDs to filter on. Optional.
+   */
+  session_ids?: string[];
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Span Ids
+   * Span IDs to filter on. Optional.
+   */
+  span_ids?: string[];
+  /**
+   * Span Name
+   * Return only results with this span name.
+   */
+  span_name?: string;
+  /**
+   * Span Name Contains
+   * Return only results where span name contains this substring.
+   */
+  span_name_contains?: string;
   /**
    * Span Types
    * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
@@ -5642,6 +6155,11 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
 /**
@@ -6053,6 +6571,10 @@ export interface RenderedPromptResponse {
    */
   messages: OpenAIMessageOutput[];
 }
+
+export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData = ContinuousEvalRerunResponse;
+
+export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError = HTTPValidationError;
 
 export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
 
@@ -7086,8 +7608,11 @@ export interface TraceListResponse {
  * Lightweight trace metadata for list operations
  */
 export interface TraceMetadataResponse {
-  /** Annotation for the trace. */
-  annotation?: AgenticAnnotationResponse | null;
+  /**
+   * Annotations
+   * Annotations for the trace.
+   */
+  annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -7189,8 +7714,11 @@ export interface TraceMetadataResponse {
  * Response model for a single trace containing nested spans
  */
 export interface TraceResponse {
-  /** Annotation for this trace. */
-  annotation?: AgenticAnnotationResponse | null;
+  /**
+   * Annotations
+   * Annotations for this trace.
+   */
+  annotations?: AgenticAnnotationResponse[] | null;
   /**
    * Completion Token Cost
    * Cost of completion tokens in USD
@@ -7254,6 +7782,94 @@ export interface TraceResponse {
    * ID of the trace
    */
   trace_id: string;
+}
+
+/** TraceTransformDefinition */
+export interface TraceTransformDefinition {
+  /**
+   * Variables
+   * List of variable extraction rules.
+   */
+  variables: TraceTransformVariableDefinition[];
+}
+
+/** TraceTransformResponse */
+export interface TraceTransformResponse {
+  /**
+   * Created At
+   * Timestamp representing the time of transform creation
+   * @format date-time
+   */
+  created_at: string;
+  /** Transform definition specifying extraction rules. */
+  definition: TraceTransformDefinition;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the transform.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name: string;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * Timestamp representing the time of the last transform update
+   * @format date-time
+   */
+  updated_at: string;
+}
+
+/** TraceTransformUpdateRequest */
+export interface TraceTransformUpdateRequest {
+  /** Transform definition specifying extraction rules. */
+  definition?: TraceTransformDefinition | null;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name?: string | null;
+}
+
+/** TraceTransformVariableDefinition */
+export interface TraceTransformVariableDefinition {
+  /**
+   * Attribute Path
+   * Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').
+   */
+  attribute_path: string;
+  /**
+   * Fallback
+   * Fallback value to use if the attribute is not found.
+   */
+  fallback?: string | null;
+  /**
+   * Span Name
+   * Name of the span to extract data from.
+   */
+  span_name: string;
+  /**
+   * Variable Name
+   * Name of the variable to extract.
+   */
+  variable_name: string;
 }
 
 /**
@@ -7357,6 +7973,49 @@ export interface TraceUserMetadataResponse {
   user_id: string;
 }
 
+/** TransformExtractionResponseList */
+export interface TransformExtractionResponseList {
+  /**
+   * Variables
+   * List of extracted variables.
+   */
+  variables: VariableTemplateValue[];
+}
+
+/**
+ * UnregisteredRootSpanGroup
+ * Group of root spans with the same span_name for unregistered traces
+ */
+export interface UnregisteredRootSpanGroup {
+  /**
+   * Count
+   * Number of root spans (and traces) in this group
+   */
+  count: number;
+  /**
+   * Span Name
+   * Name of the root span
+   */
+  span_name: string;
+}
+
+/**
+ * UnregisteredRootSpansResponse
+ * Response for unregistered root spans endpoint
+ */
+export interface UnregisteredRootSpansResponse {
+  /**
+   * Groups
+   * List of grouped root spans, ordered by count descending
+   */
+  groups: UnregisteredRootSpanGroup[];
+  /**
+   * Total Count
+   * Total number of root spans (and traces) across all groups
+   */
+  total_count: number;
+}
+
 /**
  * UnsavedPromptConfig
  * Configuration for an unsaved prompt
@@ -7436,6 +8095,42 @@ export interface UnsavedPromptVariablesRequest {
   messages: OpenAIMessageInput[];
 }
 
+export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
+
+export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValidationError;
+
+/**
+ * UpdateContinuousEvalRequest
+ * Request schema for creating a continuous eval
+ */
+export interface UpdateContinuousEvalRequest {
+  /**
+   * Description
+   * Description of the continuous eval
+   */
+  description?: string | null;
+  /**
+   * Llm Eval Name
+   * Name of the llm eval to create the continuous eval for
+   */
+  llm_eval_name?: string | null;
+  /**
+   * Llm Eval Version
+   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
+   */
+  llm_eval_version?: string | number | null;
+  /**
+   * Name
+   * Name of the continuous eval
+   */
+  name?: string | null;
+  /**
+   * Transform Id
+   * ID of the transform to create the continuous eval for
+   */
+  transform_id?: string | null;
+}
+
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchError = HTTPValidationError;
@@ -7504,9 +8199,9 @@ export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData = TaskResponse;
 
 export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidationError;
 
-export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData = DatasetTransformResponse;
+export type UpdateTransformApiV1TracesTransformsTransformIdPatchData = TraceTransformResponse;
 
-export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError = HTTPValidationError;
+export type UpdateTransformApiV1TracesTransformsTransformIdPatchError = HTTPValidationError;
 
 export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
 
@@ -8536,7 +9231,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.217
+ * @version 2.1.251
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -8794,17 +9489,37 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Create a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPost
+     * @summary Create a continuous eval
+     * @request POST:/api/v1/tasks/{task_id}/continuous_evals
+     * @secure
+     */
+    createContinuousEvalApiV1TasksTaskIdContinuousEvalsPost: (taskId: string, data: ContinuousEvalCreateRequest, params: RequestParams = {}) =>
+      this.request<CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostData, CreateContinuousEvalApiV1TasksTaskIdContinuousEvalsPostError>({
+        path: `/api/v1/tasks/${taskId}/continuous_evals`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Register a new dataset.
      *
      * @tags Datasets
-     * @name CreateDatasetApiV2DatasetsPost
+     * @name CreateDatasetApiV2TasksTaskIdDatasetsPost
      * @summary Create Dataset
-     * @request POST:/api/v2/datasets
+     * @request POST:/api/v2/tasks/{task_id}/datasets
      * @secure
      */
-    createDatasetApiV2DatasetsPost: (data: NewDatasetRequest, params: RequestParams = {}) =>
-      this.request<CreateDatasetApiV2DatasetsPostData, CreateDatasetApiV2DatasetsPostError>({
-        path: `/api/v2/datasets`,
+    createDatasetApiV2TasksTaskIdDatasetsPost: (taskId: string, data: NewDatasetRequest, params: RequestParams = {}) =>
+      this.request<CreateDatasetApiV2TasksTaskIdDatasetsPostData, CreateDatasetApiV2TasksTaskIdDatasetsPostError>({
+        path: `/api/v2/tasks/${taskId}/datasets`,
         method: "POST",
         body: data,
         secure: true,
@@ -9020,17 +9735,17 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Create a new transform for a dataset.
+     * @description Create a new transform for a task.
      *
-     * @tags Datasets
-     * @name CreateTransformApiV2DatasetsDatasetIdTransformsPost
-     * @summary Create Transform
-     * @request POST:/api/v2/datasets/{dataset_id}/transforms
+     * @tags Transforms
+     * @name CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPost
+     * @summary Create Transform For Task
+     * @request POST:/api/v1/tasks/{task_id}/traces/transforms
      * @secure
      */
-    createTransformApiV2DatasetsDatasetIdTransformsPost: (datasetId: string, data: NewDatasetTransformRequest, params: RequestParams = {}) =>
-      this.request<CreateTransformApiV2DatasetsDatasetIdTransformsPostData, CreateTransformApiV2DatasetsDatasetIdTransformsPostError>({
-        path: `/api/v2/datasets/${datasetId}/transforms`,
+    createTransformForTaskApiV1TasksTaskIdTracesTransformsPost: (taskId: string, data: NewTraceTransformRequest, params: RequestParams = {}) =>
+      this.request<CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData, CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostError>({
+        path: `/api/v1/tasks/${taskId}/traces/transforms`,
         method: "POST",
         body: data,
         secure: true,
@@ -9140,6 +9855,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeleteAnnotationFromTraceApiV1TracesTraceIdAnnotationsDeleteError
       >({
         path: `/api/v1/traces/${traceId}/annotations`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDelete
+     * @summary Delete a continuous eval
+     * @request DELETE:/api/v1/continuous_evals/{eval_id}
+     * @secure
+     */
+    deleteContinuousEvalApiV1ContinuousEvalsEvalIdDelete: (evalId: string, params: RequestParams = {}) =>
+      this.request<DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteData, DeleteContinuousEvalApiV1ContinuousEvalsEvalIdDeleteError>({
+        path: `/api/v1/continuous_evals/${evalId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -9355,18 +10087,15 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Delete a transform.
      *
-     * @tags Datasets
-     * @name DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete
+     * @tags Transforms
+     * @name DeleteTransformApiV1TracesTransformsTransformIdDelete
      * @summary Delete Transform
-     * @request DELETE:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @request DELETE:/api/v1/traces/transforms/{transform_id}
      * @secure
      */
-    deleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete: (datasetId: string, transformId: string, params: RequestParams = {}) =>
-      this.request<
-        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData,
-        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError
-      >({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+    deleteTransformApiV1TracesTransformsTransformIdDelete: (transformId: string, params: RequestParams = {}) =>
+      this.request<DeleteTransformApiV1TracesTransformsTransformIdDeleteData, DeleteTransformApiV1TracesTransformsTransformIdDeleteError>({
+        path: `/api/v1/traces/transforms/${transformId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -9454,29 +10183,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Execute a transform against a trace to extract data for dataset rows. Returns data in the format expected by the create dataset version API's rows_to_add parameter.
+     * @description Execute a transform against a trace to extract variables.
      *
-     * @tags Datasets
-     * @name ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost
-     * @summary Execute Transform Endpoint
-     * @request POST:/api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions
+     * @tags Transforms
+     * @name ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost
+     * @summary Execute Trace Transform Extraction
+     * @request POST:/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions
      * @secure
      */
-    executeTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPost: (
-      datasetId: string,
+    executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost: (
+      traceId: string,
       transformId: string,
-      data: ExecuteTransformRequest,
       params: RequestParams = {}
     ) =>
       this.request<
-        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostData,
-        ExecuteTransformEndpointApiV2DatasetsDatasetIdTransformsTransformIdExtractionsPostError
+        ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostData,
+        ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPostError
       >({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}/extractions`,
+        path: `/api/v1/traces/${traceId}/transforms/${transformId}/extractions`,
         method: "POST",
-        body: data,
         secure: true,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -9644,6 +10370,42 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get an annotation by id
+     *
+     * @tags Traces
+     * @name GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGet
+     * @summary Get an annotation by id
+     * @request GET:/api/v1/traces/annotations/{annotation_id}
+     * @secure
+     */
+    getAnnotationByIdApiV1TracesAnnotationsAnnotationIdGet: (annotationId: string, params: RequestParams = {}) =>
+      this.request<GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetData, GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError>({
+        path: `/api/v1/traces/annotations/${annotationId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a continuous eval by id
+     *
+     * @tags Continuous Evals
+     * @name GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet
+     * @summary Get a continuous eval by id
+     * @request GET:/api/v1/continuous_evals/{eval_id}
+     * @secure
+     */
+    getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet: (evalId: string, params: RequestParams = {}) =>
+      this.request<GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData, GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError>({
+        path: `/api/v1/continuous_evals/${evalId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get list of conversation IDs.
      *
      * @tags Chat
@@ -9682,14 +10444,17 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Search datasets. Optionally can filter by dataset IDs and dataset name.
      *
      * @tags Datasets
-     * @name GetDatasetsApiV2DatasetsSearchGet
+     * @name GetDatasetsApiV2TasksTaskIdDatasetsSearchGet
      * @summary Get Datasets
-     * @request GET:/api/v2/datasets/search
+     * @request GET:/api/v2/tasks/{task_id}/datasets/search
      * @secure
      */
-    getDatasetsApiV2DatasetsSearchGet: (query: GetDatasetsApiV2DatasetsSearchGetParams, params: RequestParams = {}) =>
-      this.request<GetDatasetsApiV2DatasetsSearchGetData, GetDatasetsApiV2DatasetsSearchGetError>({
-        path: `/api/v2/datasets/search`,
+    getDatasetsApiV2TasksTaskIdDatasetsSearchGet: (
+      { taskId, ...query }: GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<GetDatasetsApiV2TasksTaskIdDatasetsSearchGetData, GetDatasetsApiV2TasksTaskIdDatasetsSearchGetError>({
+        path: `/api/v2/tasks/${taskId}/datasets/search`,
         method: "GET",
         query: query,
         secure: true,
@@ -10290,16 +11055,38 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Get a specific transform.
      *
-     * @tags Datasets
-     * @name GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGet
+     * @tags Transforms
+     * @name GetTransformApiV1TracesTransformsTransformIdGet
      * @summary Get Transform
-     * @request GET:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @request GET:/api/v1/traces/transforms/{transform_id}
      * @secure
      */
-    getTransformApiV2DatasetsDatasetIdTransformsTransformIdGet: (datasetId: string, transformId: string, params: RequestParams = {}) =>
-      this.request<GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData, GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError>({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+    getTransformApiV1TracesTransformsTransformIdGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<GetTransformApiV1TracesTransformsTransformIdGetData, GetTransformApiV1TracesTransformsTransformIdGetError>({
+        path: `/api/v1/traces/transforms/${transformId}`,
         method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination. Time bounds (start_time/end_time) are recommended for performance on large datasets.
+     *
+     * @tags Spans
+     * @name GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGet
+     * @summary Get Unregistered Root Spans
+     * @request GET:/api/v1/traces/spans/unregistered
+     * @secure
+     */
+    getUnregisteredRootSpansApiV1TracesSpansUnregisteredGet: (
+      query: GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData, GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetError>({
+        path: `/api/v1/traces/spans/unregistered`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -10337,6 +11124,75 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getUserDetailsApiV1TracesUsersUserIdGet: ({ userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams, params: RequestParams = {}) =>
       this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
         path: `/api/v1/traces/users/${userId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List annotations for a trace
+     *
+     * @tags Traces
+     * @name ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGet
+     * @summary List Annotations for a Trace
+     * @request GET:/api/v1/traces/{trace_id}/annotations
+     * @secure
+     */
+    listAnnotationsForTraceApiV1TracesTraceIdAnnotationsGet: (
+      { traceId, ...query }: ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData, ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetError>({
+        path: `/api/v1/traces/${traceId}/annotations`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all continuous eval run results for a specific task
+     *
+     * @tags Continuous Evals
+     * @name ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet
+     * @summary Get all continuous eval run results for a specific task
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/results
+     * @secure
+     */
+    listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet: (
+      { taskId, ...query }: ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetData,
+        ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/results`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all continuous evals for a specific task
+     *
+     * @tags Continuous Evals
+     * @name ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet
+     * @summary Get all continuous evals for a specific task
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals
+     * @secure
+     */
+    listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet: (
+      { taskId, ...query }: ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData, ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError>({
+        path: `/api/v1/tasks/${taskId}/continuous_evals`,
         method: "GET",
         query: query,
         secure: true,
@@ -10464,18 +11320,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description List all transforms for a dataset.
+     * @description List all transforms for a task.
      *
-     * @tags Datasets
-     * @name ListTransformsApiV2DatasetsDatasetIdTransformsGet
-     * @summary List Transforms
-     * @request GET:/api/v2/datasets/{dataset_id}/transforms
+     * @tags Transforms
+     * @name ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGet
+     * @summary List Transforms For Task
+     * @request GET:/api/v1/tasks/{task_id}/traces/transforms
      * @secure
      */
-    listTransformsApiV2DatasetsDatasetIdTransformsGet: (datasetId: string, params: RequestParams = {}) =>
-      this.request<ListTransformsApiV2DatasetsDatasetIdTransformsGetData, ListTransformsApiV2DatasetsDatasetIdTransformsGetError>({
-        path: `/api/v2/datasets/${datasetId}/transforms`,
+    listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet: (
+      { taskId, ...query }: ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData, ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetError>({
+        path: `/api/v1/tasks/${taskId}/traces/transforms`,
         method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -10657,6 +11517,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Rerun a failed continuous eval
+     *
+     * @tags Continuous Evals
+     * @name RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPost
+     * @summary Rerun a failed continuous eval
+     * @request POST:/api/v1/continuous_evals/results/{run_id}/rerun
+     * @secure
+     */
+    rerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPost: (runId: string, params: RequestParams = {}) =>
+      this.request<
+        RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData,
+        RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError
+      >({
+        path: `/api/v1/continuous_evals/results/${runId}/rerun`,
+        method: "POST",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -10936,6 +11817,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Update a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatch
+     * @summary Update a continuous eval
+     * @request PATCH:/api/v1/continuous_evals/{eval_id}
+     * @secure
+     */
+    updateContinuousEvalApiV1ContinuousEvalsEvalIdPatch: (evalId: string, data: UpdateContinuousEvalRequest, params: RequestParams = {}) =>
+      this.request<UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData, UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError>({
+        path: `/api/v1/continuous_evals/${evalId}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Update a dataset.
      *
      * @tags Datasets
@@ -11115,24 +12016,16 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Update a transform.
      *
-     * @tags Datasets
-     * @name UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut
+     * @tags Transforms
+     * @name UpdateTransformApiV1TracesTransformsTransformIdPatch
      * @summary Update Transform
-     * @request PUT:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @request PATCH:/api/v1/traces/transforms/{transform_id}
      * @secure
      */
-    updateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut: (
-      datasetId: string,
-      transformId: string,
-      data: DatasetTransformUpdateRequest,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData,
-        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError
-      >({
-        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
-        method: "PUT",
+    updateTransformApiV1TracesTransformsTransformIdPatch: (transformId: string, data: TraceTransformUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateTransformApiV1TracesTransformsTransformIdPatchData, UpdateTransformApiV1TracesTransformsTransformIdPatchError>({
+        path: `/api/v1/traces/transforms/${transformId}`,
+        method: "PATCH",
         body: data,
         secure: true,
         type: ContentType.Json,

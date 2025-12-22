@@ -7,6 +7,7 @@ import { Button, ButtonGroup, Paper, Stack, TextField, Tooltip, Typography } fro
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
+import { useRef } from "react";
 import z from "zod";
 
 import { useApi } from "@/hooks/useApi";
@@ -15,7 +16,7 @@ import { queryKeys } from "@/lib/queryKeys";
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
-  annotation?: AgenticAnnotationResponse | null;
+  annotations?: AgenticAnnotationResponse[] | null;
   traceId: string;
 };
 
@@ -23,10 +24,14 @@ type Feedback = "positive" | "negative" | null;
 
 const handle = Popover.createHandle<{ feedback: Feedback }>();
 
-export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
+export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => {
   const api = useApi()!;
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
+
+  const annotation = annotations?.find((annotation) => annotation.annotation_type === "human");
+
+  const anchor = useRef<HTMLDivElement>(null);
 
   const sendFeedbackMutation = useMutation({
     mutationFn: async (data: { feedback: Feedback; details: string }) => {
@@ -43,11 +48,14 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
       if (previousData) {
         queryClient.setQueryData(queryKeys.traces.byId(traceId), (old: TraceResponse) => ({
           ...old,
-          annotation: {
-            ...old.annotation,
-            annotation_score: data.feedback === "positive" ? 1 : 0,
-            annotation_description: data.details,
-          },
+          annotations: [
+            ...(old.annotations || []),
+            {
+              annotation_type: "human",
+              annotation_score: data.feedback === "positive" ? 1 : 0,
+              annotation_description: data.details,
+            },
+          ],
         }));
       }
 
@@ -62,6 +70,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.traces.list });
     },
   });
 
@@ -90,6 +99,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.traces.list });
 
       handle.close();
       form.reset();
@@ -100,7 +110,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
     defaultValues: annotation
       ? {
           feedback: annotation.annotation_score === 1 ? ("positive" as const) : ("negative" as const),
-          details: annotation.annotation_description,
+          details: "",
         }
       : {
           feedback: null,
@@ -120,7 +130,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
 
   return (
     <>
-      <ButtonGroup size="small" disableElevation disabled={isMutating}>
+      <ButtonGroup ref={anchor} size="small" disableElevation disabled={isMutating}>
         <Tooltip title="Helpful">
           <Popover.Trigger
             handle={handle}
@@ -163,7 +173,7 @@ export const FeedbackPanel = ({ containerRef, annotation, traceId }: Props) => {
 
           return (
             <Popover.Portal container={containerRef.current}>
-              <Popover.Positioner sideOffset={8} side="bottom" align="end">
+              <Popover.Positioner sideOffset={8} side="bottom" align="end" anchor={anchor.current}>
                 <Popover.Popup render={<Paper />} className="origin-(--transform-origin) p-4 w-80 outline-none">
                   <Stack direction="column" gap={1}>
                     <Stack direction="column" gap={0}>

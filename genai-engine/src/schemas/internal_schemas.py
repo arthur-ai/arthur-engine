@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from arthur_common.models.common_schemas import (
     AuthUserRole,
@@ -13,9 +13,12 @@ from arthur_common.models.common_schemas import (
     PIIConfig,
     RegexConfig,
     ToxicityConfig,
+    VariableTemplateValue,
 )
 from arthur_common.models.enums import (
+    AgenticAnnotationType,
     ComparisonOperatorEnum,
+    ContinuousEvalRunStatus,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
@@ -63,7 +66,7 @@ from arthur_common.models.response_schemas import (
 from fastapi import HTTPException
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, model_validator
 from pydantic_core import Url
 from weaviate.collections.classes.grpc import (
     METADATA,
@@ -92,6 +95,7 @@ from db_models import (
     DatabaseMetricResult,
     DatabasePIIEntity,
     DatabasePromptRuleResult,
+    DatabaseRagNotebook,
     DatabaseRegexEntity,
     DatabaseResponseRuleResult,
     DatabaseRule,
@@ -106,10 +110,10 @@ from db_models import (
     DatabaseUser,
 )
 from db_models.dataset_models import (
-    DatabaseDatasetTransform,
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
@@ -117,6 +121,9 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchSettingConfigurationVersion,
     DatabaseRagSearchVersionTag,
 )
+from db_models.transform_models import DatabaseTraceTransform
+from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
@@ -129,26 +136,46 @@ from schemas.enums import (
     SecretType,
 )
 from schemas.metric_schemas import MetricScoreDetails
+from schemas.rag_experiment_schemas import (
+    RagConfig,
+    RagConfigResponse,
+    RagExperimentSummary,
+    UnsavedRagConfigResponse,
+)
+from schemas.rag_notebook_schemas import (
+    CreateRagNotebookRequest,
+    RagConfigAdapter,
+    RagNotebookDetail,
+    RagNotebookState,
+    RagNotebookStateResponse,
+    RagNotebookSummary,
+)
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
-    DatasetTransformDefinition,
     NewDatasetRequest,
-    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
+    NewTraceTransformRequest,
+    RagHybridSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
+    TraceTransformDefinition,
     WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
+    ContinuousEvalResponse,
     DatasetResponse,
-    DatasetTransformResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
     DatasetVersionRowColumnItemResponse,
@@ -161,6 +188,7 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
+    TraceTransformResponse,
     TraceUserMetadataResponse,
     WeaviateHybridSearchSettingsConfigurationResponse,
     WeaviateKeywordSearchSettingsConfigurationResponse,
@@ -584,18 +612,52 @@ class Task(BaseModel):
 class AgenticAnnotation(BaseModel):
     id: uuid.UUID = Field(..., description="Unique identifier for the annotation")
 
+    annotation_type: AgenticAnnotationType = Field(
+        ...,
+        description="Type of annotation",
+    )
+
     # NOTE: Make this optional in the future when expanding to other annotation types (e.g. span annotations)
     trace_id: str = Field(..., description="Trace ID this annotation belongs to")
 
-    annotation_score: int = Field(
-        ...,
+    continuous_eval_id: Optional[uuid.UUID] = Field(
+        default=None,
+        description="Continuous eval ID this annotation belongs to",
+    )
+    continuous_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the continuous eval this annotation belongs to",
+    )
+    eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the eval the continuous eval used when scoring",
+    )
+    eval_version: Optional[int] = Field(
+        default=None,
+        description="Version of the eval the continuous eval used when scoring",
+    )
+
+    annotation_score: Optional[int] = Field(
+        default=None,
         ge=0,
         le=1,
-        description="Binary score for whether a traces has been liked or disliked (0 = disliked, 1 = liked)",
+        description="Binary score for positive or negative annotation.",
     )
     annotation_description: Optional[str] = Field(
         default=None,
         description="Description of the annotation",
+    )
+    input_variables: Optional[List[VariableTemplateValue]] = Field(
+        default=None,
+        description="Input variables for the continuous eval",
+    )
+    cost: Optional[float] = Field(
+        default=None,
+        description="Cost of the continuous eval run",
+    )
+    run_status: Optional[ContinuousEvalRunStatus] = Field(
+        default=None,
+        description="Status of the continuous eval run",
     )
 
     created_at: datetime = Field(
@@ -607,13 +669,43 @@ class AgenticAnnotation(BaseModel):
         description="When the annotation was last updated",
     )
 
+    @model_validator(mode="after")
+    def validate_required_fields(self) -> "AgenticAnnotation":
+        if self.annotation_type == AgenticAnnotationType.HUMAN:
+            if self.annotation_score is None:
+                raise ValueError("Annotation score is required")
+        elif self.annotation_type == AgenticAnnotationType.CONTINUOUS_EVAL:
+            if self.continuous_eval_id is None:
+                raise ValueError("Continuous eval ID is required")
+            if self.run_status is None:
+                raise ValueError("Run status is required for continuous evals")
+
+        return self
+
     @staticmethod
     def from_db_model(db_annotation: DatabaseAgenticAnnotation) -> "AgenticAnnotation":
+        continuous_eval_name = None
+        eval_name = None
+        eval_version = None
+
+        if db_annotation.continuous_eval_id and db_annotation.continuous_eval:
+            continuous_eval_name = db_annotation.continuous_eval.name
+            eval_name = db_annotation.continuous_eval.llm_eval_name
+            eval_version = db_annotation.continuous_eval.llm_eval_version
+
         return AgenticAnnotation(
             id=db_annotation.id,
+            annotation_type=AgenticAnnotationType(db_annotation.annotation_type),
             trace_id=db_annotation.trace_id,
+            continuous_eval_id=db_annotation.continuous_eval_id,
+            continuous_eval_name=continuous_eval_name,
+            eval_name=eval_name,
+            eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
             annotation_description=db_annotation.annotation_description,
+            input_variables=db_annotation.input_variables,
+            run_status=db_annotation.run_status,
+            cost=db_annotation.cost,
             created_at=db_annotation.created_at,
             updated_at=db_annotation.updated_at,
         )
@@ -621,9 +713,34 @@ class AgenticAnnotation(BaseModel):
     def to_db_model(self) -> DatabaseAgenticAnnotation:
         return DatabaseAgenticAnnotation(
             id=self.id,
+            annotation_type=self.annotation_type,
             trace_id=self.trace_id,
+            continuous_eval_id=self.continuous_eval_id,
             annotation_score=self.annotation_score,
             annotation_description=self.annotation_description,
+            input_variables=self.input_variables,
+            cost=self.cost,
+            run_status=self.run_status,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_response_model(self) -> AgenticAnnotationResponse:
+        return AgenticAnnotationResponse(
+            id=str(self.id),
+            annotation_type=self.annotation_type,
+            trace_id=self.trace_id,
+            continuous_eval_id=(
+                str(self.continuous_eval_id) if self.continuous_eval_id else None
+            ),
+            continuous_eval_name=self.continuous_eval_name,
+            eval_name=self.eval_name,
+            eval_version=self.eval_version,
+            annotation_score=self.annotation_score,
+            annotation_description=self.annotation_description,
+            input_variables=self.input_variables,
+            run_status=self.run_status,
+            cost=self.cost,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -643,10 +760,18 @@ class TraceMetadata(TokenCountCostSchema):
     output_content: Optional[str] = None
 
     # Annotation information (separate table only used for response model conversion)
-    annotation: Optional[AgenticAnnotation] = None
+    annotations: Optional[List[AgenticAnnotation]] = None
+
+    # Spans information (only populated when include_spans=true)
+    spans: Optional[List["Span"]] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
+        # Add formatted annotations
+        annotations = [
+            AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
+        ]
+
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id,
@@ -665,6 +790,7 @@ class TraceMetadata(TokenCountCostSchema):
             updated_at=x.updated_at,
             input_content=x.input_content,
             output_content=x.output_content,
+            annotations=annotations,
         )
 
     def _to_database_model(self):
@@ -693,11 +819,14 @@ class TraceMetadata(TokenCountCostSchema):
         duration_ms = calculate_duration_ms(self.start_time, self.end_time)
 
         annotation_response = None
-        if self.annotation:
-            annotation_response = AgenticAnnotationResponse(
-                annotation_score=self.annotation.annotation_score,
-                annotation_description=self.annotation.annotation_description,
-            )
+        if self.annotations:
+            annotation_response = [
+                annotation.to_response_model() for annotation in self.annotations
+            ]
+
+        spans_response = None
+        if self.spans:
+            spans_response = [span._to_response_model() for span in self.spans]
 
         return TraceMetadataResponse(
             trace_id=self.trace_id,
@@ -718,7 +847,8 @@ class TraceMetadata(TokenCountCostSchema):
             total_token_cost=self.total_token_cost,
             input_content=self.input_content,
             output_content=self.output_content,
-            annotation=annotation_response,
+            annotations=annotation_response,
+            spans=spans_response,
         )
 
 
@@ -2064,6 +2194,38 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Filter by trace annotation score (0 or 1). Optional.",
     )
+    annotation_type: Optional[AgenticAnnotationType] = Field(
+        None,
+        description="Filter by trace annotation type (i.e. 'human' or 'continuous_eval').",
+    )
+    continuous_eval_run_status: Optional[ContinuousEvalRunStatus] = Field(
+        None,
+        description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
+    )
+    continuous_eval_name: Optional[str] = Field(
+        None,
+        description="Filter by continuous eval name",
+    )
+    session_ids: Optional[list[str]] = Field(
+        None,
+        description="Session IDs to filter on. Optional.",
+    )
+    span_ids: Optional[list[str]] = Field(
+        None,
+        description="Span IDs to filter on. Optional.",
+    )
+    span_name: Optional[str] = Field(
+        None,
+        description="Return only results with this span name.",
+    )
+    span_name_contains: Optional[str] = Field(
+        None,
+        description="Return only results where span name contains this substring.",
+    )
+    status_code: Optional[list[str]] = Field(
+        None,
+        description="Status codes to filter on. Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2088,16 +2250,26 @@ class TraceQuerySchema(BaseModel):
             tool_name=request.tool_name,
             span_types=request.span_types,
             annotation_score=request.annotation_score,
+            annotation_type=request.annotation_type,
+            continuous_eval_run_status=request.continuous_eval_run_status,
+            continuous_eval_name=request.continuous_eval_name,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+            user_ids=request.user_ids,
+            session_ids=request.session_ids,
+            span_ids=request.span_ids,
+            span_name=request.span_name,
+            span_name_contains=request.span_name_contains,
+            status_code=request.status_code,
         )
 
 
 class Dataset(BaseModel):
     id: uuid.UUID
+    task_id: str
     created_at: datetime
     updated_at: datetime
     name: str
@@ -2108,6 +2280,7 @@ class Dataset(BaseModel):
     def to_response_model(self) -> DatasetResponse:
         return DatasetResponse(
             id=self.id,
+            task_id=self.task_id,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             name=self.name,
@@ -2119,6 +2292,7 @@ class Dataset(BaseModel):
     def _to_database_model(self) -> DatabaseDataset:
         return DatabaseDataset(
             id=self.id,
+            task_id=self.task_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             name=self.name,
@@ -2128,10 +2302,11 @@ class Dataset(BaseModel):
         )
 
     @staticmethod
-    def _from_request_model(request: NewDatasetRequest) -> "Dataset":
+    def _from_request_model(task_id: str, request: NewDatasetRequest) -> "Dataset":
         curr_time = datetime.now()
         return Dataset(
             id=uuid.uuid4(),
+            task_id=task_id,
             created_at=curr_time,
             updated_at=curr_time,
             name=request.name,
@@ -2144,6 +2319,7 @@ class Dataset(BaseModel):
     def _from_database_model(db_dataset: DatabaseDataset) -> "Dataset":
         return Dataset(
             id=db_dataset.id,
+            task_id=db_dataset.task_id,
             created_at=db_dataset.created_at,
             updated_at=db_dataset.updated_at,
             name=db_dataset.name,
@@ -2153,30 +2329,30 @@ class Dataset(BaseModel):
         )
 
 
-class DatasetTransform(BaseModel):
+class TraceTransform(BaseModel):
     id: uuid.UUID
-    dataset_id: uuid.UUID
+    task_id: str
     name: str
     description: Optional[str]
-    definition: DatasetTransformDefinition
+    definition: TraceTransformDefinition
     created_at: datetime
     updated_at: datetime
 
-    def to_response_model(self) -> DatasetTransformResponse:
-        return DatasetTransformResponse(
+    def to_response_model(self) -> TraceTransformResponse:
+        return TraceTransformResponse(
             id=self.id,
-            dataset_id=self.dataset_id,
+            task_id=self.task_id,
             name=self.name,
             description=self.description,
             definition=self.definition,
-            created_at=_serialize_datetime(self.created_at),
-            updated_at=_serialize_datetime(self.updated_at),
+            created_at=self.created_at,
+            updated_at=self.updated_at,
         )
 
-    def _to_database_model(self) -> DatabaseDatasetTransform:
-        return DatabaseDatasetTransform(
+    def to_db_model(self) -> DatabaseTraceTransform:
+        return DatabaseTraceTransform(
             id=self.id,
-            dataset_id=self.dataset_id,
+            task_id=self.task_id,
             name=self.name,
             description=self.description,
             definition=self.definition.model_dump(),
@@ -2185,14 +2361,14 @@ class DatasetTransform(BaseModel):
         )
 
     @staticmethod
-    def _from_request_model(
-        dataset_id: uuid.UUID,
-        request: NewDatasetTransformRequest,
-    ) -> "DatasetTransform":
+    def from_request_model(
+        task_id: str,
+        request: NewTraceTransformRequest,
+    ) -> "TraceTransform":
         curr_time = datetime.now()
-        return DatasetTransform(
+        return TraceTransform(
             id=uuid.uuid4(),
-            dataset_id=dataset_id,
+            task_id=task_id,
             name=request.name,
             description=request.description,
             definition=request.definition,
@@ -2201,16 +2377,16 @@ class DatasetTransform(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(
-        db_transform: DatabaseDatasetTransform,
-    ) -> "DatasetTransform":
-        return DatasetTransform(
+    def from_db_model(
+        db_transform: DatabaseTraceTransform,
+    ) -> "TraceTransform":
+        return TraceTransform(
             id=db_transform.id,
-            dataset_id=db_transform.dataset_id,
+            task_id=db_transform.task_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=DatasetTransformDefinition.model_validate(
-                db_transform.definition
+            definition=TraceTransformDefinition.model_validate(
+                db_transform.definition,
             ),
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
@@ -2823,6 +2999,26 @@ class WeaviateVectorSimilarityTextSearchSettingsConfiguration(
             return_properties=self.return_properties,
         )
 
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> RagVectorSimilarityTextSearchSettingRequest:
+        return RagVectorSimilarityTextSearchSettingRequest(
+            settings=WeaviateVectorSimilarityTextSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                certainty=self.certainty,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
+        )
+
 
 class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
@@ -2868,6 +3064,25 @@ class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
             auto_limit=self.auto_limit,
             return_metadata=self.return_metadata,
             return_properties=self.return_properties,
+        )
+
+    def to_client_request_model(
+        self,
+        query_text: str,
+    ) -> RagKeywordSearchSettingRequest:
+        return RagKeywordSearchSettingRequest(
+            settings=WeaviateKeywordSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
         )
 
 
@@ -2945,6 +3160,26 @@ class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
             auto_limit=self.auto_limit,
             return_metadata=self.return_metadata,
             return_properties=self.return_properties,
+        )
+
+    def to_client_request_model(self, query_text: str) -> RagHybridSearchSettingRequest:
+        return RagHybridSearchSettingRequest(
+            settings=WeaviateHybridSearchSettingsRequest(
+                collection_name=self.collection_name,
+                query=query_text,
+                limit=self.limit,
+                alpha=self.alpha,
+                return_properties=self.return_properties,
+                include_vector=self.include_vector,
+                return_metadata=self.return_metadata,
+                minimum_match_or_operator=self.minimum_match_or_operator,
+                and_operator=self.and_operator,
+                certainty=self.certainty,
+                distance=self.distance,
+                target_vector=self.target_vector,
+                offset=self.offset,
+                auto_limit=self.auto_limit,
+            ),
         )
 
 
@@ -3257,3 +3492,354 @@ class RagSearchSettingConfiguration(BaseModel):
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
         )
+
+
+class ContinuousEval(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: Optional[str]
+    task_id: str
+    llm_eval_name: str
+    llm_eval_version: int
+    transform_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    def to_db_model(self) -> DatabaseContinuousEval:
+        return DatabaseContinuousEval(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    @staticmethod
+    def from_db_model(
+        db_eval: DatabaseContinuousEval,
+    ) -> "ContinuousEval":
+        return ContinuousEval(
+            id=db_eval.id,
+            name=db_eval.name,
+            description=db_eval.description,
+            task_id=db_eval.task_id,
+            llm_eval_name=db_eval.llm_eval_name,
+            llm_eval_version=db_eval.llm_eval_version,
+            transform_id=db_eval.transform_id,
+            created_at=db_eval.created_at,
+            updated_at=db_eval.updated_at,
+        )
+
+    def to_response_model(self) -> ContinuousEvalResponse:
+        return ContinuousEvalResponse(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            task_id=self.task_id,
+            llm_eval_name=self.llm_eval_name,
+            llm_eval_version=self.llm_eval_version,
+            transform_id=self.transform_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+
+class InternalSavedRagConfig(BaseModel):
+    """Internal helper class for converting RAG configs from request to response types"""
+
+    @staticmethod
+    def to_response(config: RagConfig) -> RagConfigResponse:
+        """
+        Convert a RagConfig (with request types) to RagConfigResponse (with response types).
+
+        This method handles the conversion between request and response schemas
+        for RAG configurations, converting request settings types to response settings types.
+        """
+        from schemas.rag_experiment_schemas import SavedRagConfig
+
+        if config.type == "saved":
+            # Saved configs don't need conversion - they're the same in both request and response
+            return SavedRagConfig(
+                type="saved",
+                setting_configuration_id=config.setting_configuration_id,
+                version=config.version,
+                query_column=config.query_column,
+            )
+        elif config.type == "unsaved":
+            # Convert request settings to response settings via internal model
+            if isinstance(
+                config.settings,
+                WeaviateHybridSearchSettingsConfigurationRequest,
+            ):
+                internal = (
+                    WeaviateHybridSearchSettingsConfiguration._from_request_model(
+                        config.settings,
+                    )
+                )
+                response_settings = internal.to_response_model()
+            elif isinstance(
+                config.settings,
+                WeaviateKeywordSearchSettingsConfigurationRequest,
+            ):
+                internal = (
+                    WeaviateKeywordSearchSettingsConfiguration._from_request_model(
+                        config.settings,
+                    )
+                )
+                response_settings = internal.to_response_model()
+            elif isinstance(
+                config.settings,
+                WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+            ):
+                internal = WeaviateVectorSimilarityTextSearchSettingsConfiguration._from_request_model(
+                    config.settings,
+                )
+                response_settings = internal.to_response_model()
+            else:
+                raise ValueError(
+                    f"Unknown settings type: {type(config.settings)}",
+                )
+
+            return UnsavedRagConfigResponse(
+                type="unsaved",
+                unsaved_id=config.unsaved_id,
+                rag_provider_id=config.rag_provider_id,
+                settings=response_settings,
+                query_column=config.query_column,
+            )
+        else:
+            raise ValueError(f"Unknown RAG config type: {config.type}")
+
+
+class RagNotebook(BaseModel):
+    """
+    Internal representation of a RAG notebook.
+    Handles translation between database models and request/response schemas.
+    """
+
+    id: str
+    task_id: str
+    name: str
+    description: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    rag_configs: Optional[List[Dict[str, Any]]]
+    dataset_id: Optional[uuid.UUID]
+    dataset_name: Optional[str]
+    dataset_version: Optional[int]
+    dataset_row_filter: Optional[List[Dict[str, Any]]]
+    eval_configs: Optional[List[Dict[str, Any]]]
+    experiments: List[RagExperimentSummary] = Field(default_factory=list)
+
+    @staticmethod
+    def _from_request_model(
+        task_id: str,
+        notebook_id: str,
+        request: CreateRagNotebookRequest,
+    ) -> "RagNotebook":
+        """Create internal RagNotebook from CreateRagNotebookRequest"""
+        # Prepare state JSON
+        rag_configs = None
+        dataset_id = None
+        dataset_version = None
+        dataset_row_filter = None
+        eval_configs = None
+
+        if request.state:
+            if request.state.rag_configs:
+                rag_configs = [
+                    config.model_dump(mode="json")
+                    for config in request.state.rag_configs
+                ]
+
+            if request.state.dataset_ref:
+                dataset_id = request.state.dataset_ref.id
+                dataset_version = request.state.dataset_ref.version
+
+            if request.state.dataset_row_filter:
+                dataset_row_filter = [
+                    filter_item.model_dump(mode="json")
+                    for filter_item in request.state.dataset_row_filter
+                ]
+
+            if request.state.eval_list:
+                eval_configs = [
+                    eval_ref.model_dump(mode="json")
+                    for eval_ref in request.state.eval_list
+                ]
+
+        return RagNotebook(
+            id=notebook_id,
+            task_id=task_id,
+            name=request.name,
+            description=request.description,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            rag_configs=rag_configs,
+            dataset_id=dataset_id,
+            dataset_name=None,  # Will be populated from database lookup
+            dataset_version=dataset_version,
+            dataset_row_filter=dataset_row_filter,
+            eval_configs=eval_configs,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_notebook: DatabaseRagNotebook,
+        experiments: List[RagExperimentSummary],
+        dataset_name: Optional[str] = None,
+    ) -> "RagNotebook":
+        """Create internal RagNotebook from DatabaseRagNotebook"""
+        return RagNotebook(
+            id=db_notebook.id,
+            task_id=db_notebook.task_id,
+            name=db_notebook.name,
+            description=db_notebook.description,
+            created_at=db_notebook.created_at,
+            updated_at=db_notebook.updated_at,
+            rag_configs=db_notebook.rag_configs,
+            dataset_id=db_notebook.dataset_id,
+            dataset_name=dataset_name,
+            dataset_version=db_notebook.dataset_version,
+            dataset_row_filter=db_notebook.dataset_row_filter,
+            eval_configs=db_notebook.eval_configs,
+            experiments=experiments,
+        )
+
+    def _to_database_model(self) -> DatabaseRagNotebook:
+        """Convert internal RagNotebook to DatabaseRagNotebook"""
+        return DatabaseRagNotebook(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            rag_configs=self.rag_configs,
+            dataset_id=self.dataset_id,
+            dataset_version=self.dataset_version,
+            dataset_row_filter=self.dataset_row_filter,
+            eval_configs=self.eval_configs,
+        )
+
+    def _to_summary_response(
+        self,
+        run_count: int,
+        latest_run_id: Optional[str],
+        latest_run_status: Optional[ExperimentStatus],
+    ) -> RagNotebookSummary:
+        """Convert internal RagNotebook to RagNotebookSummary response"""
+        return RagNotebookSummary(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at.isoformat() if self.created_at else None,
+            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            run_count=run_count,
+            latest_run_id=latest_run_id,
+            latest_run_status=latest_run_status,
+        )
+
+    def _to_detail_response(self) -> RagNotebookDetail:
+        """Convert internal RagNotebook to RagNotebookDetail response"""
+        # Convert state from JSON to Pydantic models (request types first)
+        state_request = RagNotebookState()
+
+        if self.rag_configs is not None:
+            state_request.rag_configs = [
+                RagConfigAdapter.validate_python(config) for config in self.rag_configs
+            ]
+
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
+            state_request.dataset_ref = DatasetRef(
+                id=self.dataset_id,
+                name=self.dataset_name,
+                version=self.dataset_version,
+            )
+
+        if self.dataset_row_filter is not None:
+            state_request.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
+
+        if self.eval_configs is not None:
+            state_request.eval_list = [
+                EvalRef.model_validate(eval_config) for eval_config in self.eval_configs
+            ]
+
+        # Convert to response state (with response types)
+        state = RagNotebookStateResponse()
+        if state_request.rag_configs is not None:
+            state.rag_configs = [
+                InternalSavedRagConfig.to_response(config)
+                for config in state_request.rag_configs
+            ]
+        state.dataset_ref = state_request.dataset_ref
+        state.dataset_row_filter = state_request.dataset_row_filter
+        state.eval_list = state_request.eval_list
+
+        return RagNotebookDetail(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at.isoformat() if self.created_at else None,
+            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            state=state,
+            experiments=self.experiments,
+        )
+
+    def _to_state_response(self) -> RagNotebookStateResponse:
+        """Convert internal RagNotebook to RagNotebookStateResponse"""
+        # Convert state from JSON to Pydantic models (request types first)
+        state_request = RagNotebookState()
+
+        if self.rag_configs is not None:
+            state_request.rag_configs = [
+                RagConfigAdapter.validate_python(config) for config in self.rag_configs
+            ]
+
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
+            state_request.dataset_ref = DatasetRef(
+                id=self.dataset_id,
+                name=self.dataset_name,
+                version=self.dataset_version,
+            )
+
+        if self.dataset_row_filter is not None:
+            state_request.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
+
+        if self.eval_configs is not None:
+            state_request.eval_list = [
+                EvalRef.model_validate(eval_config) for eval_config in self.eval_configs
+            ]
+
+        # Convert to response state (with response types)
+        state = RagNotebookStateResponse()
+        if state_request.rag_configs is not None:
+            state.rag_configs = [
+                InternalSavedRagConfig.to_response(config)
+                for config in state_request.rag_configs
+            ]
+        state.dataset_ref = state_request.dataset_ref
+        state.dataset_row_filter = state_request.dataset_row_filter
+        state.eval_list = state_request.eval_list
+
+        return state

@@ -22,9 +22,7 @@ from db_models.prompt_experiment_models import (
     DatabasePromptExperimentTestCasePromptResultEvalScore,
 )
 from db_models.task_models import DatabaseTask
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
-from schemas.prompt_experiment_schemas import (
-    CreatePromptExperimentRequest,
+from schemas.base_experiment_schemas import (
     DatasetRef,
     DatasetRefInput,
     EvalExecution,
@@ -32,6 +30,11 @@ from schemas.prompt_experiment_schemas import (
     EvalRef,
     ExperimentStatus,
     InputVariable,
+    TestCaseStatus,
+)
+from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
+from schemas.prompt_experiment_schemas import (
+    CreatePromptExperimentRequest,
     PromptConfig,
     PromptExperimentDetail,
     PromptExperimentSummary,
@@ -42,7 +45,6 @@ from schemas.prompt_experiment_schemas import (
     SavedPromptConfig,
     SummaryResults,
     TestCase,
-    TestCaseStatus,
     UnsavedPromptConfig,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
@@ -69,6 +71,27 @@ class PromptExperimentRepository:
                 detail=f"Experiment {experiment_id} not found.",
             )
         return db_experiment
+
+    def _get_db_test_cases(
+        self,
+        experiment_id: str,
+    ) -> List[DatabasePromptExperimentTestCase]:
+        return (
+            self.db_session.query(DatabasePromptExperimentTestCase)
+            .filter_by(experiment_id=experiment_id)
+            .all()
+        )
+
+    def _get_db_test_case(
+        self,
+        test_case_id: str,
+    ) -> Optional[DatabasePromptExperimentTestCase]:
+        test_case = (
+            self.db_session.query(DatabasePromptExperimentTestCase)
+            .filter_by(id=test_case_id)
+            .first()
+        )
+        return test_case
 
     def _db_experiment_to_summary(
         self,
@@ -715,7 +738,7 @@ class PromptExperimentRepository:
         # Apply dataset_id filter if provided
         if dataset_id:
             base_query = base_query.filter(
-                DatabasePromptExperiment.dataset_id == dataset_id
+                DatabasePromptExperiment.dataset_id == dataset_id,
             )
 
         # Apply search filter if provided
@@ -936,7 +959,9 @@ class PromptExperimentRepository:
         return results, count
 
     def attach_notebook_to_experiment(
-        self, experiment_id: str, notebook_id: str
+        self,
+        experiment_id: str,
+        notebook_id: str,
     ) -> PromptExperimentSummary:
         """Attach a notebook to an experiment."""
         db_experiment = self._get_db_experiment(experiment_id)

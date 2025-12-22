@@ -156,7 +156,15 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
 
   const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
 
-  const { FiltersRow } = useMemo(() => createFilterRow(USER_FILTERS, {}), []);
+  const { FiltersRow } = useMemo(
+    () =>
+      createFilterRow(USER_FILTERS, {
+        session_ids: { taskId, api },
+        user_ids: { taskId, api },
+        span_ids: { taskId, api },
+      }),
+    [taskId, api]
+  );
 
   return (
     <Stack gap={1} mt={1}>

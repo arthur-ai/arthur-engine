@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
-from typing import Any, Optional, Tuple
+from typing import Any, List, Optional, Tuple
+from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -10,6 +11,7 @@ from google.protobuf.message import DecodeError
 from opentelemetry import trace
 from sqlalchemy.orm import Session
 
+from db_models import DatabaseSpan
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import (
@@ -20,7 +22,10 @@ from schemas.internal_schemas import (
     TraceQuerySchema,
     TraceUserMetadata,
 )
-from schemas.request_schemas import AgenticAnnotationRequest
+from schemas.request_schemas import (
+    AgenticAnnotationListFilterRequest,
+    AgenticAnnotationRequest,
+)
 from services.trace.metrics_integration_service import MetricsIntegrationService
 from services.trace.span_query_service import SpanQueryService
 from services.trace.trace_annotation_service import TraceAnnotationService
@@ -66,10 +71,12 @@ class SpanRepository:
         filters: TraceQueryRequest,
         pagination_parameters: PaginationParameters,
         user_ids: Optional[list[str]] = None,
+        include_spans: bool = False,
     ) -> tuple[int, list[TraceMetadata]]:
         """Get lightweight trace metadata for browsing/filtering operations.
 
         Returns metadata only without spans or metrics for fast performance.
+        When include_spans=True, also fetches and attaches all spans for each trace as a flat list.
         """
         # Convert to internal schema format
         internal_filters: TraceQuerySchema = TraceQuerySchema._from_request_model(
@@ -100,12 +107,33 @@ class SpanRepository:
             sort_method=pagination_parameters.sort,
         )
 
-        # add annotation info to trace metadata list
-        trace_metadata_list = (
-            self.trace_annotation_service.append_annotation_info_to_trace_metadata(
-                trace_metadata_list,
+        # Optionally fetch and attach spans as a flat list
+        if include_spans and trace_metadata_list:
+            # Fetch all spans for the paginated trace_ids
+            spans, _ = self.span_query_service.query_spans_from_db(
+                trace_ids=paginated_trace_ids,
             )
-        )
+
+            # Validate spans
+            valid_spans = self.span_query_service.validate_spans(spans)
+
+            # Add metrics to spans (existing metrics only, no computation)
+            if valid_spans:
+                valid_spans = self.metrics_integration_service.add_metrics_to_spans(
+                    valid_spans,
+                    compute_new_metrics=False,
+                )
+
+            # Group spans by trace_id for easy lookup
+            spans_by_trace: dict[str, list[Span]] = {}
+            for span in valid_spans:
+                if span.trace_id not in spans_by_trace:
+                    spans_by_trace[span.trace_id] = []
+                spans_by_trace[span.trace_id].append(span)
+
+            # Attach spans to each trace_metadata
+            for trace_metadata in trace_metadata_list:
+                trace_metadata.spans = spans_by_trace.get(trace_metadata.trace_id, [])
 
         return total_count, trace_metadata_list
 
@@ -396,7 +424,10 @@ class SpanRepository:
     # in span_routes.py. They combine data retrieval with metrics computation
     # for compatibility with the original API design.
 
-    def create_traces(self, trace_data: bytes) -> Tuple[int, int, int, list[str]]:
+    def create_traces(
+        self,
+        trace_data: bytes,
+    ) -> Tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data from protobuf format and store in database."""
         try:
             return self.trace_ingestion_service.process_trace_data(trace_data)
@@ -568,11 +599,70 @@ class SpanRepository:
             annotation_request=annotation_request,
         )
 
+    def get_annotation_by_id(
+        self,
+        annotation_id: UUID,
+    ) -> AgenticAnnotation:
+        """Get an annotation by id."""
+        return self.trace_annotation_service.get_annotation_by_id(
+            annotation_id=annotation_id,
+        )
+
+    def list_annotations_for_trace(
+        self,
+        trace_id: str,
+        pagination_parameters: PaginationParameters,
+        filter_request: AgenticAnnotationListFilterRequest,
+    ) -> List[AgenticAnnotation]:
+        """List annotations for a trace."""
+        return self.trace_annotation_service.list_annotations_for_trace(
+            trace_id=trace_id,
+            pagination_parameters=pagination_parameters,
+            filter_request=filter_request,
+        )
+
     def delete_annotation_from_trace(self, trace_id: str) -> None:
         """Delete an annotation from a trace."""
         self.trace_annotation_service.delete_annotation_by_trace_id(
             trace_id=trace_id,
         )
+
+    def get_unregistered_root_spans_grouped(
+        self,
+        pagination_parameters: PaginationParameters | None = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """
+        Get grouped root spans for traces without task_id.
+
+        Args:
+            pagination_parameters: Optional pagination parameters for limiting results
+            start_time: Optional start time filter (inclusive). If not provided, defaults to 7 days ago.
+            end_time: Optional end time filter (exclusive). If not provided, defaults to now.
+
+        Returns:
+            tuple[list[dict], int]: (groups, total_count) where groups contains
+                dicts with span_name and count (paginated), and total_count is the total number
+                of root spans across ALL groups (before pagination)
+        """
+        results, total_count = (
+            self.span_query_service.get_unregistered_root_spans_grouped(
+                pagination_parameters=pagination_parameters,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        )
+
+        groups = [
+            {
+                "span_name": span_name,
+                "count": count,
+            }
+            for span_name, count in results
+        ]
+
+        return groups, total_count
 
     # ============================================================================
     # Testing/Utility Methods

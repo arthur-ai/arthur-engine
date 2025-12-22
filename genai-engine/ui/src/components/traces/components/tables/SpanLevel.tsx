@@ -1,4 +1,4 @@
-import { Alert, TablePagination, Typography } from "@mui/material";
+import { Alert, Box, TablePagination } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -6,13 +6,14 @@ import { useMemo, useState } from "react";
 import { BucketProvider } from "../../context/bucket-context";
 import { spanLevelColumns } from "../../data/span-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
+import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
-import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
+import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -24,7 +25,11 @@ import { getFilteredSpans } from "@/services/tracing";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
-export const SpanLevel = () => {
+interface SpanLevelProps {
+  welcomeDismissed: boolean;
+}
+
+export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
@@ -32,6 +37,9 @@ export const SpanLevel = () => {
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
+
+  // Sync filters with URL parameters
+  useSyncFiltersToUrl();
 
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
@@ -67,6 +75,9 @@ export const SpanLevel = () => {
     () =>
       createFilterRow(SPAN_FIELDS, {
         trace_ids: { taskId: task?.id ?? "", api },
+        session_ids: { taskId: task?.id ?? "", api },
+        span_ids: { taskId: task?.id ?? "", api },
+        user_ids: { taskId: task?.id ?? "", api },
       }),
     [task?.id, api]
   );
@@ -82,46 +93,58 @@ export const SpanLevel = () => {
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
+  // Check if any filters are active
+  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+
   if (error) {
-    return <Alert severity="error">There was an error fetching spans.</Alert>;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">There was an error fetching spans.</Alert>
+      </Box>
+    );
   }
 
+  const hasData = Boolean(data?.spans?.length);
+
   return (
-    <>
-      <FiltersRow />
-      {data?.spans?.length ? (
-        <>
-          <BucketProvider thresholds={thresholds}>
-            <TracesTable
-              table={table}
-              loading={isFetching}
-              onRowClick={(row) => {
-                handleRowClick(row.original);
+    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+      <DataContentGate
+        welcomeDismissed={welcomeDismissed}
+        hasData={hasData}
+        hasActiveFilters={hasActiveFilters}
+        dataType="spans"
+      >
+        {/* Only show FiltersRow if we have spans or if filters are active */}
+        {(hasData || hasActiveFilters) && <FiltersRow />}
+
+        {hasData && (
+          <>
+            <BucketProvider thresholds={thresholds}>
+              <TracesTable
+                table={table}
+                loading={isFetching}
+                onRowClick={(row) => {
+                  handleRowClick(row.original);
+                }}
+              />
+            </BucketProvider>
+
+            <TablePagination
+              component="div"
+              count={data?.count ?? 0}
+              onPageChange={pagination.handlePageChange}
+              page={pagination.page}
+              rowsPerPage={pagination.rowsPerPage}
+              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              disabled={isPlaceholderData}
+              sx={{
+                overflow: "visible",
               }}
             />
-          </BucketProvider>
-
-          <TablePagination
-            component="div"
-            count={data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            disabled={isPlaceholderData}
-            sx={{
-              overflow: "visible",
-            }}
-          />
-        </>
-      ) : (
-        <TracesEmptyState title="No spans found">
-          <Typography variant="body1" color="text.secondary">
-            Try adjusting your search query
-          </Typography>
-        </TracesEmptyState>
-      )}
-    </>
+          </>
+        )}
+      </DataContentGate>
+    </Box>
   );
 };

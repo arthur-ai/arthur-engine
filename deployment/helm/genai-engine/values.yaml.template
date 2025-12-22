@@ -92,7 +92,7 @@ ingress:
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.221'
+genaiEngineVersion: '2.1.272'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -125,6 +125,8 @@ arthurGenaiEngineService:
   labels: {}
 # Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)
 genaiEngineAllowAdminKeyGeneralAccess: "enabled"
+# (Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used.
+# modelRepositoryURL: ""
 
 ###################################
 ## Advanced - Secrets name customization
