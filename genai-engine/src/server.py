@@ -69,17 +69,8 @@ from services.continuous_eval import (
     shutdown_continuous_eval_queue_service,
 )
 from utils import constants as constants
+from utils import model_load
 from utils.classifiers import get_device
-from utils.model_load import (
-    download_models,
-    get_bert_scorer,
-    get_claim_classifier_embedding_model,
-    get_prompt_injection_model,
-    get_prompt_injection_tokenizer,
-    get_relevance_reranker,
-    get_toxicity_model,
-    get_toxicity_tokenizer,
-)
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
@@ -174,6 +165,13 @@ def bootstrap_genai_engine_keycloak():
             fcntl.flock(f, fcntl.LOCK_UN)
 
 
+def cleanup_cuda_cache() -> None:
+    """Clean up PyTorch CUDA cache when the server is stopped."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        logger.info("Cleared PyTorch CUDA cache")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
@@ -197,17 +195,17 @@ async def lifespan(app: FastAPI):
     # Download models in worker process
     logger.info("Downloading models...")
     try:
-        download_models(1)  # Use single process in worker
+        model_load.download_models(1)  # Use single process in worker
     except Exception as e:
         logger.error(f"Error downloading models: {e}")
         raise e
     logger.info("Models downloaded.")
 
-    get_claim_classifier_embedding_model()
-    get_prompt_injection_model()
-    get_prompt_injection_tokenizer()
-    get_toxicity_model()
-    get_toxicity_tokenizer()
+    model_load.get_claim_classifier_embedding_model()
+    model_load.get_prompt_injection_model()
+    model_load.get_prompt_injection_tokenizer()
+    model_load.get_toxicity_model()
+    model_load.get_toxicity_tokenizer()
 
     # Initialize continuous eval queue service
     try:
@@ -217,8 +215,8 @@ async def lifespan(app: FastAPI):
 
     # Conditionally load relevance models
     if relevance_models_enabled():
-        get_bert_scorer()
-        get_relevance_reranker()
+        model_load.get_bert_scorer()
+        model_load.get_relevance_reranker()
     else:
         logger.info(
             "Skipping relevance models loading - ENABLE_RELEVANCE_MODELS is False",
@@ -230,7 +228,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown continuous eval queue service
+    cleanup_cuda_cache()
     shutdown_continuous_eval_queue_service()
 
 
