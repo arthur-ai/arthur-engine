@@ -485,13 +485,42 @@ jobs:
         run: |
           cd deployment/ecs/model-upload
           python check_model_updates.py --update
-      - name: Commit updated manifest
+      - name: Create PR for updated manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Check if there are changes to commit
+          git add deployment/ecs/model-upload/models-manifest.json
+          if git diff --staged --quiet; then
+            echo "No changes to manifest, skipping PR creation"
+            exit 0
+          fi
+
+          # Configure git
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add deployment/ecs/model-upload/models-manifest.json
-          git diff --staged --quiet || git commit -m "Update models manifest [skip ci]"
-          git push origin ${{ github.ref_name }}
+
+          # Create a unique branch name
+          BRANCH_NAME="update-models-manifest-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+
+          # Commit and push the changes
+          git commit -m "Update models manifest [skip ci]"
+          git push origin "$BRANCH_NAME"
+
+          # Create the PR
+          PR_URL=$(gh pr create \
+            --base "${{ github.ref_name }}" \
+            --head "$BRANCH_NAME" \
+            --title "Update models manifest [skip ci]" \
+            --body "Automated update of models manifest after successful model image build.
+
+          This PR was automatically created by the CI pipeline.")
+
+          echo "Created PR: $PR_URL"
+
+          # Enable auto-merge (requires auto-merge to be enabled in repo settings)
+          gh pr merge "$PR_URL" --auto --squash --delete-branch
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
