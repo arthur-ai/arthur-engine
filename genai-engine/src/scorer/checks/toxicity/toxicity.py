@@ -73,6 +73,7 @@ class ToxicityScorer(RuleScorer):
         harmful_request_tokenizer: PreTrainedTokenizerBase | None,
     ) -> None:
         self.model = get_toxicity_classifier(toxicity_model, toxicity_tokenizer)
+        # This type ignore here is we wanted to keep one source code between Shield and Arthur Engine
         self.harmfulrequest_classifier = get_harmful_request_classifier(  # type: ignore[func-returns-value]
             harmful_request_model,
             harmful_request_tokenizer,
@@ -158,6 +159,7 @@ class ToxicityScorer(RuleScorer):
                     # if we detect profanity we can return early since later we check just if any profanity has been detected
                     return True
 
+            # This type ignore here is cause we know that this is the type that the classifier returns
             prof_inference_res: list[list[dict[str, str | float]]] = self.profanity_classifier(  # type: ignore[assignment]
                 texts,
                 batch_size=TOXICITY_MODEL_BATCH_SIZE,
@@ -285,7 +287,14 @@ class ToxicityScorer(RuleScorer):
             )
 
         if not isinstance(request.toxicity_threshold, float):
-            raise ValueError("Toxicity threshold must be a float")
+            return RuleScore(
+                result=RuleResultEnum.SKIPPED,
+                prompt_tokens=0,
+                completion_tokens=0,
+                details=ScorerRuleDetails(
+                    message=f"Toxicity threshold must be a float. Skipping toxicity check.",
+                ),
+            )
 
         if not request.scoring_text:
             return RuleScore(

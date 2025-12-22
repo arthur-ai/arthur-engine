@@ -65,14 +65,11 @@ class BinaryPIIDataClassifierV1(RuleScorer):
             entity_spans: list[ScorerPIIEntitySpan] = []
             for res in results:
                 entity_type = PIIEntityTypes(value=res.entity_type)
-                if not (scoring_text := request.scoring_text):
-                    # raising TypeError here to not change previous code behavior
-                    raise ValueError("Scoring text is required")
                 found_types.append(entity_type)
                 entity_spans.append(
                     ScorerPIIEntitySpan(
                         entity=entity_type,
-                        span=scoring_text[res.start : res.end],
+                        span=request.scoring_text[res.start : res.end],
                         confidence=res.score,
                     ),
                 )
