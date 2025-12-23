@@ -1,0 +1,44 @@
+{
+  "a4ba41a3-2c57-4bf7-8044-2d85f2d636e8": {
+    "id": "a4ba41a3-2c57-4bf7-8044-2d85f2d636e8",
+    "task_id": "57057493-ee94-47e2-8cbb-9493f423e63d",
+    "name": "Tone Exctractor",
+    "description": null,
+    "definition": {
+      "variables": [
+        {
+          "variable_name": "response",
+          "span_name": "agent run: 'reviewAgent'",
+          "attribute_path": "attributes.output.value.object.finalResponse",
+          "fallback": null
+        }
+      ]
+    },
+    "created_at": "2025-12-15T01:27:08.689296",
+    "updated_at": "2025-12-15T01:27:08.689296"
+  },
+  "40388636-f0b8-4a05-b6a5-8dc3375fe048": {
+    "id": "40388636-f0b8-4a05-b6a5-8dc3375fe048",
+    "task_id": "57057493-ee94-47e2-8cbb-9493f423e63d",
+    "name": "Continuous Eval Extractor",
+    "description": null,
+    "definition": {
+      "variables": [
+        {
+          "variable_name": "conversation",
+          "span_name": "agent run: 'planAgent'",
+          "attribute_path": "attributes.output.value.object.plan",
+          "fallback": null
+        },
+        {
+          "variable_name": "response",
+          "span_name": "agent run: 'reviewAgent'",
+          "attribute_path": "attributes.output.value.object.finalResponse",
+          "fallback": null
+        }
+      ]
+    },
+    "created_at": "2025-12-13T20:51:22.109116",
+    "updated_at": "2025-12-13T20:51:22.109116"
+  }
+}
