@@ -9,10 +9,11 @@ import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
 import Tooltip from "@mui/material/Tooltip";
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, memo } from "react";
 
 import MessagesSection from "../messages/MessagesSection";
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useExperimentStore } from "../stores/experiment.store";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { PromptComponentProps } from "../types";
 
 import ManagementButtons from "./ManagementButtons";
@@ -31,7 +32,7 @@ import useSnackbar from "@/hooks/useSnackbar";
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
-const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponentProps) => {
+const Prompt = memo(({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponentProps) => {
   // This name value updates when an existing prompt is selected
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const [nameInputValue, setNameInputValue] = useState("");
@@ -44,7 +45,9 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
   const hasTriggeredRunRef = useRef<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { dispatch, experimentConfig } = usePromptContext();
+  const actions = usePromptPlaygroundStore((state) => state.actions);
+
+  const experimentConfig = useExperimentStore((state) => state.experimentConfig);
   const isConfigMode = !!experimentConfig;
 
   // Use container width to determine icon-only mode (container queries approach)
@@ -63,23 +66,22 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
   const variablesQuery = useExtractPromptVariables(prompt.messages);
 
   const handleAddMessage = () => {
-    dispatch({
-      type: "addMessage",
-      payload: { parentId: prompt.id },
-    });
+    actions.addMessage(prompt.id);
   };
 
   const handleOpenResponseSchemaDialog = () => {
     setResponseSchemaDialogOpen(true);
   };
 
-  useEffect(() => {
-    setNameInputValue(currentPromptName);
-  }, [currentPromptName]);
+  const handlePromptNameChange = (name: string) => {
+    setCurrentPromptName(name);
+    setNameInputValue(name);
+  };
 
   useEffect(() => {
     if (prompt.running && !hasTriggeredRunRef.current) {
       hasTriggeredRunRef.current = true;
+      console.log("running prompt", prompt.id);
       runPrompt();
     } else if (!prompt.running && hasTriggeredRunRef.current) {
       hasTriggeredRunRef.current = false;
@@ -90,15 +92,16 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
   useEffect(() => {
     // React Query handles debouncing and caching automatically
     if (variablesQuery.data !== undefined) {
-      dispatch({
-        type: "extractPromptVariables",
-        payload: {
-          promptId: prompt.id,
-          variables: variablesQuery.data,
-        },
-      });
+      actions.extractPromptVariables(prompt.id, variablesQuery.data);
+      // dispatch({
+      //   type: "extractPromptVariables",
+      //   payload: {
+      //     promptId: prompt.id,
+      //     variables: variablesQuery.data,
+      //   },
+      // });
     }
-  }, [prompt.id, variablesQuery.data, dispatch]);
+  }, [prompt.id, variablesQuery.data]);
 
   const handleResize = useCallback((newRatio: number) => {
     setMessagesHeightRatio(newRatio);
@@ -190,7 +193,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
           </div>
         </div>
         <div className="shrink-0 min-w-0">
-          <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
+          <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={handlePromptNameChange} />
         </div>
         <div className="mt-1 flex-1 min-h-0 flex flex-col">
           <div
@@ -238,6 +241,8 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
       </Snackbar>
     </div>
   );
-};
+});
+
+Prompt.displayName = "Prompt";
 
 export default Prompt;

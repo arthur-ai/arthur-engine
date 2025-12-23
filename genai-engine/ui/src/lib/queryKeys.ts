@@ -1,3 +1,5 @@
+import { ModelProvider, NotebookStateOutput } from "./api-client/api-client";
+
 import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams, GetUsersParams } from "@/services/tracing";
 
 export const queryKeys = {
@@ -55,5 +57,27 @@ export const queryKeys = {
   },
   annotations: {
     byId: (annotationId: string) => ["getAnnotationByIdApiV1AnnotationsAnnotationIdGet", { annotationId }] as const,
+  },
+  notebooks: {
+    state: {
+      get: (notebookId: string) => ["getNotebookStateApiV1NotebooksNotebookIdStateGet", notebookId] as const,
+      deserialize: (notebookState: NotebookStateOutput) => ["deserializeNotebookState", notebookState] as const,
+    },
+  },
+  providers: {
+    all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
+    availableModels: (provider: ModelProvider) =>
+      ["getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet", provider] as const,
+  },
+  prompts: {
+    all: (taskId: string) => ["getAllAgenticPromptsApiV1TasksTaskIdPromptsGet", taskId] as const,
+    versions: (taskId: string, promptName: string) =>
+      ["getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet", taskId, promptName] as const,
+    version: (taskId: string, promptName: string, version: string) =>
+      ["getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet", taskId, promptName, version] as const,
+    renderUnsaved: ["renderUnsavedAgenticPromptApiV1PromptRendersPost"] as const,
+  },
+  promptExperiments: {
+    get: (experimentId: string) => ["getPromptExperimentApiV1PromptExperimentsExperimentIdGet", experimentId] as const,
   },
 } as const;

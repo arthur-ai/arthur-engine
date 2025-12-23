@@ -7,10 +7,10 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { useFetchBackendPrompts } from "../hooks/useFetchBackendPrompts";
-import { usePromptContext } from "../PromptsPlaygroundContext";
+import { useBackendPrompts } from "../hooks/useBackendPrompts";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 import { SavePromptDialogProps } from "../types";
 import { toBackendPromptBaseConfig } from "../utils/toBackendPrompt";
 
@@ -22,8 +22,8 @@ import { AgenticPrompt } from "@/lib/api-client/api-client";
 const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
-  const { dispatch } = usePromptContext();
-  const fetchPrompts = useFetchBackendPrompts();
+  const actions = usePromptPlaygroundStore((state) => state.actions);
+  const promptsQuery = useBackendPrompts();
 
   const apiClient = useApi();
   const { task } = useTask();
@@ -62,18 +62,12 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
       const { data } = response;
       showSnackbar(`Saved prompt: ${data.name}`, "success");
       handleClose();
-      fetchPrompts(dispatch);
+      promptsQuery.refetch();
       // Update name, version, and clear dirty flag after saving
-      dispatch({
-        type: "updatePrompt",
-        payload: {
-          promptId: prompt.id,
-          prompt: {
-            name: nameInputValue,
-            version: data.version,
-            isDirty: false,
-          },
-        },
+      actions.updatePrompt(prompt.id, {
+        name: nameInputValue,
+        version: data.version,
+        isDirty: false,
       });
     } catch (error: unknown) {
       const apiError = error as { response: { data: { detail: string } } };
@@ -83,7 +77,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
         showSnackbar("Failed to save prompt", "error");
       }
     }
-  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, handleClose, fetchPrompts, dispatch]);
+  }, [nameInputValue, apiClient, taskId, prompt, showSnackbar, handleClose, promptsQuery, actions]);
 
   return (
     <>

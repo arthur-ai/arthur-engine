@@ -2,8 +2,8 @@ import { AxiosError } from "axios";
 import { useCallback, useRef, useEffect } from "react";
 
 import { useApi } from "../../../hooks/useApi";
+import { usePromptPlaygroundStore } from "../stores/playground.store";
 
-import { usePromptContext } from "@/components/prompts-playground/PromptsPlaygroundContext";
 import { PromptType } from "@/components/prompts-playground/types";
 import { streamCompletions } from "@/components/prompts-playground/utils/streamCompletions";
 import toCompletionRequest from "@/components/prompts-playground/utils/toCompletionRequest";
@@ -21,7 +21,9 @@ interface UseRunPromptOptions {
  * @returns A function to run the prompt
  */
 const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
-  const { state, dispatch } = usePromptContext();
+  const keywords = usePromptPlaygroundStore((state) => state.keywords);
+  const actions = usePromptPlaygroundStore((state) => state.actions);
+
   const apiClient = useApi();
   const { token } = useAuth();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -51,7 +53,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
     }
 
     // Replace template strings with variable values before sending to API
-    const completionRequest = toCompletionRequest(prompt, state.keywords);
+    const completionRequest = toCompletionRequest(prompt, keywords);
 
     const isStreaming = completionRequest.completion_request?.stream ?? false;
     if (isStreaming) {
@@ -70,33 +72,21 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
         {
           onChunk: (content: string) => {
             // Update content incrementally
-            dispatch({
-              type: "updatePrompt",
-              payload: {
-                promptId: prompt.id,
-                prompt: {
-                  running: true,
-                  runResponse: {
-                    content,
-                    cost: "0.000000", // Cost will be updated in final_response
-                    tool_calls: null,
-                  },
-                },
+            actions.updatePrompt(prompt.id, {
+              running: true,
+              runResponse: {
+                content,
+                cost: "0.000000", // Cost will be updated in final_response
+                tool_calls: null,
               },
             });
           },
           onFinalResponse: (response: AgenticPromptRunResponse) => {
             // Update with final response including cost and tool_calls
             isRunningRef.current = false;
-            dispatch({
-              type: "updatePrompt",
-              payload: {
-                promptId: prompt.id,
-                prompt: {
-                  running: false,
-                  runResponse: response,
-                },
-              },
+            actions.updatePrompt(prompt.id, {
+              running: false,
+              runResponse: response,
             });
             abortControllerRef.current = null;
           },
@@ -104,15 +94,9 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
             console.error("Error streaming prompt:", error);
             isRunningRef.current = false;
             onError?.(`${error}. Please check the console for more details.`);
-            dispatch({
-              type: "updatePrompt",
-              payload: {
-                promptId: prompt.id,
-                prompt: {
-                  running: false,
-                  runResponse: null,
-                },
-              },
+            actions.updatePrompt(prompt.id, {
+              running: false,
+              runResponse: null,
             });
             abortControllerRef.current = null;
           },
@@ -125,15 +109,9 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
       try {
         const response = await apiClient.api.runAgenticPromptApiV1CompletionsPost(completionRequest);
         isRunningRef.current = false;
-        dispatch({
-          type: "updatePrompt",
-          payload: {
-            promptId: prompt.id,
-            prompt: {
-              running: false,
-              runResponse: response.data,
-            },
-          },
+        actions.updatePrompt(prompt.id, {
+          running: false,
+          runResponse: response.data,
         });
       } catch (error: unknown) {
         isRunningRef.current = false;
@@ -158,19 +136,13 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
         }
 
         onError?.(`${errorMessage}. Please check the console for more details.`);
-        dispatch({
-          type: "updatePrompt",
-          payload: {
-            promptId: prompt.id,
-            prompt: {
-              running: false,
-              runResponse: null,
-            },
-          },
+        actions.updatePrompt(prompt.id, {
+          running: false,
+          runResponse: null,
         });
       }
     }
-  }, [apiClient, prompt, state.keywords, dispatch, onError, token]);
+  }, [apiClient, prompt, keywords, actions, onError, token]);
 
   return runPrompt;
 };

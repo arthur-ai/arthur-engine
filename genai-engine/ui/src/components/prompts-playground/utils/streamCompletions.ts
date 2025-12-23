@@ -93,7 +93,7 @@ export function streamCompletions(
     try {
       const authHeaders = await getAuthHeaders();
 
-      const response = await fetch(`${baseURL}/api/v1/completions`, {
+      const response = await fetch(`${baseURL}api/v1/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,7 +104,7 @@ export function streamCompletions(
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+        const errorData = (await response.json().catch(() => ({ detail: response.statusText }))) as { detail?: string };
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
 
@@ -144,7 +144,7 @@ export function streamCompletions(
               if (dataStr) {
                 try {
                   if (eventType === "chunk") {
-                    const chunk: StreamChunk = JSON.parse(dataStr);
+                    const chunk = JSON.parse(dataStr) as StreamChunk;
                     // Extract content from the chunk
                     const content = chunk.choices?.[0]?.delta?.content;
                     if (content) {
@@ -152,7 +152,7 @@ export function streamCompletions(
                       callbacks.onChunk(accumulatedContent);
                     }
                   } else if (eventType === "final_response") {
-                    const finalResponse: AgenticPromptRunResponse = JSON.parse(dataStr);
+                    const finalResponse = JSON.parse(dataStr) as AgenticPromptRunResponse;
                     callbacks.onFinalResponse(finalResponse);
                     // Stop reading after final response
                     reader.cancel();
@@ -161,7 +161,7 @@ export function streamCompletions(
                     // Try to parse error data as JSON, but fall back to raw string if it fails
                     let errorMessage = "Unknown error";
                     try {
-                      const errorData = JSON.parse(dataStr);
+                      const errorData = JSON.parse(dataStr) as { detail?: string; message?: string; error?: string };
                       if (typeof errorData === "string") {
                         errorMessage = errorData;
                       } else if (errorData && typeof errorData === "object") {

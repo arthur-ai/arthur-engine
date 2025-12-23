@@ -1,5 +1,5 @@
+import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 
 import { MessageType } from "../types";
 import { convertMessagesToApiFormat, hasTemplateVariables } from "../utils/messageUtils";
@@ -18,25 +18,16 @@ const DEBOUNCE_TIME = 500;
  * @returns React Query result object with variables data
  */
 export const useExtractPromptVariables = (messages: MessageType[]): UseQueryResult<string[], Error> => {
-  const apiClient = useApi();
-  const [debouncedMessages, setDebouncedMessages] = useState<MessageType[]>(messages);
+  const apiClient = useApi()!;
 
-  // Debounce messages to avoid excessive API calls
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedMessages(messages);
-    }, DEBOUNCE_TIME);
+  const [debouncedMessages] = useDebouncedValue(messages, {
+    wait: DEBOUNCE_TIME,
+  });
 
-    return () => clearTimeout(timer);
-  }, [messages]);
-
-  return useQuery<string[], Error>({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
+  return useQuery({
     queryKey: ["extractPromptVariables", debouncedMessages],
     queryFn: async () => {
-      if (!apiClient || debouncedMessages.length === 0) {
-        return [];
-      }
+      if (debouncedMessages.length === 0) return [];
 
       try {
         // Convert messages to API format
