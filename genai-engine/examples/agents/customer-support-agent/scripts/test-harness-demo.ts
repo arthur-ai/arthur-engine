@@ -78,13 +78,21 @@ interface TestResult {
  * - Start times are backdated to the target date
  * - End times are also backdated but preserve the actual elapsed duration
  * - Time progresses naturally during the inference run
+ * 
+ * CRITICAL: This also overrides performance.now() and hrtime to ensure OpenTelemetry
+ * spans get consistent backdated timestamps.
  */
 class DateOverride {
   private originalDate: DateConstructor;
+  private originalPerformanceNow: () => number;
+  private originalHrtime: typeof process.hrtime;
   private timeOffset: number;
+  private performanceOffset: number;
 
   constructor(targetDate: Date) {
     this.originalDate = Date;
+    this.originalPerformanceNow = performance.now.bind(performance);
+    this.originalHrtime = process.hrtime;
     
     // Calculate the offset: target time - current real time
     // This offset will be added to all timestamps
@@ -92,17 +100,22 @@ class DateOverride {
     const targetTimestamp = targetDate.getTime();
     this.timeOffset = targetTimestamp - realNow;
     
+    // Calculate performance offset to align with backdated Date.now()
+    this.performanceOffset = this.timeOffset;
+    
     // Override Date constructor and Date.now()
     const timeOffset = this.timeOffset;
     const OriginalDate = this.originalDate;
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).Date = class extends OriginalDate {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       constructor(...args: any[]) {
         if (args.length === 0) {
           // Apply offset to current time
           super(OriginalDate.now() + timeOffset);
         } else {
-          super(...args);
+          super(...(args as [number]));
         }
       }
       
@@ -114,11 +127,61 @@ class DateOverride {
       // Copy all static methods from original Date
       static parse = OriginalDate.parse;
       static UTC = OriginalDate.UTC;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
+    
+    // Override performance.now() to return backdated values
+    const performanceOffset = this.performanceOffset;
+    const originalPerfNow = this.originalPerformanceNow;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (performance as any).now = function() {
+      return originalPerfNow() + performanceOffset;
+    };
+    
+    // Override process.hrtime to return backdated values
+    // This is used by some OpenTelemetry implementations
+    const originalHrtime = this.originalHrtime;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (process as any).hrtime = function(time?: [number, number]): [number, number] {
+      const result = originalHrtime(time);
+      if (!time) {
+        // Add offset in nanoseconds
+        const offsetNs = timeOffset * 1_000_000;
+        const offsetSeconds = Math.floor(offsetNs / 1_000_000_000);
+        const offsetNano = offsetNs % 1_000_000_000;
+        
+        result[0] += offsetSeconds;
+        result[1] += offsetNano;
+        
+        // Handle nanosecond overflow
+        if (result[1] >= 1_000_000_000) {
+          result[0] += 1;
+          result[1] -= 1_000_000_000;
+        }
+      }
+      return result;
+    };
+    
+    // Also override hrtime.bigint if it exists
+    if (originalHrtime.bigint) {
+      const originalHrtimeBigint = originalHrtime.bigint.bind(process.hrtime);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (process.hrtime as any).bigint = function(): bigint {
+        const result = originalHrtimeBigint();
+        // Use Number to avoid BigInt literal ES2020 requirement
+        const offsetNs = BigInt(timeOffset) * BigInt(1_000_000);
+        return result + offsetNs;
+      };
+    }
   }
 
   restore() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).Date = this.originalDate;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (performance as any).now = this.originalPerformanceNow;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (process as any).hrtime = this.originalHrtime;
   }
 }
 
@@ -128,6 +191,9 @@ async function processQuestion(
   dayNumber: number,
   targetDate: Date
 ): Promise<TestResult> {
+  // CRITICAL: Acquire mutex before creating DateOverride to prevent concurrent overrides
+  // This ensures only one inference backdates time at once, preventing timestamp clobbering
+  await dateOverrideMutex.acquire();
   const dateOverride = new DateOverride(targetDate);
   
   try {
@@ -341,7 +407,13 @@ async function processQuestion(
       dayNumber: dayNumber + 1,
     };
   } finally {
+    // CRITICAL: Give all async span processing time to complete before restoring time
+    // This ensures child spans that are ended via microtasks/callbacks still get backdated timestamps
+    await new Promise(resolve => setImmediate(resolve));
     dateOverride.restore();
+    
+    // Release mutex to allow next inference to backdate
+    dateOverrideMutex.release();
   }
 }
 
@@ -386,26 +458,48 @@ class Semaphore {
   }
 }
 
+/**
+ * Global mutex for DateOverride to prevent concurrent inferences from clobbering each other's timestamps
+ * CRITICAL: Only one DateOverride can be active at a time since it modifies global Date/performance/process
+ */
+const dateOverrideMutex = new Semaphore(1);
+
 async function main() {
   console.log("Customer Support Agent Demo Test Harness");
   console.log("==========================================");
   
   // ==================== CONFIGURATION ====================
-  // Set this to resume from a specific day (1-10)
+  // Set this to start from a specific day (1-10)
   // Set to 1 to start from the beginning
-  const START_FROM_DAY = 1; // <-- CHANGE THIS TO RESUME FROM A DIFFERENT DAY
+  const START_FROM_DAY = 7; // <-- CHANGE THIS TO START FROM A DIFFERENT DAY
+  
+  // Set this to end at a specific day (1-10)
+  // Set to 10 to run through the last day
+  // Must be >= START_FROM_DAY
+  const END_DAY = 10; // <-- CHANGE THIS TO END AT A SPECIFIC DAY
   
   // Set the number of parallel inferences to run at once
   // Higher = faster, but risks rate limiting
   // Recommended: 3-5 for most APIs, 1-2 for strict rate limits
-  const PARALLEL_INFERENCES = 5; // <-- CHANGE THIS TO CONTROL CONCURRENCY
+  const PARALLEL_INFERENCES = 3; // <-- CHANGE THIS TO CONTROL CONCURRENCY
   // =======================================================
   
-  console.log("Running 100 inferences with backdated timestamps");
-  console.log("10 inferences per day for 10 days");
+  // Validate configuration
+  if (START_FROM_DAY < 1 || START_FROM_DAY > 10) {
+    throw new Error(`START_FROM_DAY must be between 1 and 10, got ${START_FROM_DAY}`);
+  }
+  if (END_DAY < 1 || END_DAY > 10) {
+    throw new Error(`END_DAY must be between 1 and 10, got ${END_DAY}`);
+  }
+  if (END_DAY < START_FROM_DAY) {
+    throw new Error(`END_DAY (${END_DAY}) must be >= START_FROM_DAY (${START_FROM_DAY})`);
+  }
+  
+  console.log("Running inferences with backdated timestamps");
+  console.log(`Days ${START_FROM_DAY}-${END_DAY} (10 inferences per day)`);
   console.log(`Parallelization: ${PARALLEL_INFERENCES} concurrent inferences`);
-  if (START_FROM_DAY > 1) {
-    console.log(`\n⚠️  RESUMING FROM DAY ${START_FROM_DAY} (skipping days 1-${START_FROM_DAY - 1})`);
+  if (START_FROM_DAY > 1 || END_DAY < 10) {
+    console.log(`\n⚠️  RUNNING SUBSET: Days ${START_FROM_DAY}-${END_DAY} (skipping ${START_FROM_DAY > 1 ? `days 1-${START_FROM_DAY - 1}` : ''}${START_FROM_DAY > 1 && END_DAY < 10 ? ' and ' : ''}${END_DAY < 10 ? `days ${END_DAY + 1}-10` : ''})`);
   }
   console.log("");
 
@@ -428,14 +522,15 @@ async function main() {
   const RUNS_PER_DAY = 10;
   const TOTAL_DAYS = TOTAL_RUNS / RUNS_PER_DAY;
   
-  // Calculate starting day offset (0-based)
+  // Calculate starting and ending day offsets (0-based)
   const startDayOffset = START_FROM_DAY - 1;
+  const endDayOffset = END_DAY - 1;
   
   // Calculate starting run number based on which day we're starting from
   let runNumber = (startDayOffset * RUNS_PER_DAY) + 1;
   
-  const runsToComplete = (TOTAL_DAYS - startDayOffset) * RUNS_PER_DAY;
-  console.log(`Will run ${runsToComplete} inferences (days ${START_FROM_DAY}-${TOTAL_DAYS})\n`);
+  const runsToComplete = (endDayOffset - startDayOffset + 1) * RUNS_PER_DAY;
+  console.log(`Will run ${runsToComplete} inferences (days ${START_FROM_DAY}-${END_DAY})\n`);
   
   // Create semaphore to limit concurrency
   const semaphore = new Semaphore(PARALLEL_INFERENCES);
@@ -444,7 +539,7 @@ async function main() {
   let completedRuns = 0;
   const startTime = Date.now();
   
-  for (let dayOffset = startDayOffset; dayOffset < TOTAL_DAYS; dayOffset++) {
+  for (let dayOffset = startDayOffset; dayOffset <= endDayOffset; dayOffset++) {
     // Calculate the target date (going backwards from today)
     const targetDate = new Date(today);
     targetDate.setDate(targetDate.getDate() - (TOTAL_DAYS - 1 - dayOffset));
@@ -505,7 +600,7 @@ async function main() {
   console.log(`\nTotal inferences in this run: ${results.length}`);
   console.log(`Successful: ${successful.length}`);
   console.log(`Failed: ${failed.length}`);
-  console.log(`Days processed: ${START_FROM_DAY} to ${TOTAL_DAYS}`);
+  console.log(`Days processed: ${START_FROM_DAY} to ${END_DAY}`);
   console.log(`Inferences per day: ${RUNS_PER_DAY}`);
   
   if (successful.length > 0) {
@@ -526,7 +621,7 @@ async function main() {
   console.log("RESULTS BY DAY");
   console.log("=".repeat(80));
   
-  for (let day = START_FROM_DAY; day <= TOTAL_DAYS; day++) {
+  for (let day = START_FROM_DAY; day <= END_DAY; day++) {
     const dayResults = resultsByDay.get(day) || [];
     const daySuccessful = dayResults.filter(r => !r.error).length;
     const dayFailed = dayResults.filter(r => r.error).length;
@@ -547,7 +642,7 @@ async function main() {
 
   // Save results to file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const dayRange = START_FROM_DAY === 1 ? "full" : `day${START_FROM_DAY}-${TOTAL_DAYS}`;
+  const dayRange = START_FROM_DAY === 1 && END_DAY === 10 ? "full" : `day${START_FROM_DAY}-${END_DAY}`;
   const resultsPath = path.join(__dirname, `demo-results-${dayRange}-${timestamp}.json`);
   await fs.writeFile(resultsPath, JSON.stringify(results, null, 2));
   console.log(`\n${"=".repeat(80)}`);
