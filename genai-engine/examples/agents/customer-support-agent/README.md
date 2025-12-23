@@ -277,11 +277,75 @@ yarn dev
 
 The application will be available at http://localhost:3000
 
-## Running the Test Harness
+## Running the Agent
 
-To test the agent with multiple questions:
+### Start the Development Server
 
-1. **Add your test questions** to `scripts/test-questions.json`
+```bash
+yarn dev
+```
+
+The chat interface will be available at http://localhost:3000
+
+### Run with Debug Logging
+
+```bash
+yarn dev:debug
+```
+
+## Demo Setup Scripts
+
+The customer support agent includes several scripts to help you bootstrap and set up demo environments with realistic data.
+
+### 1. Bootstrap Extract - Download Data from Existing Task
+
+Extract all configuration from an existing Arthur task (prompts, evals, transforms, datasets):
+
+```bash
+yarn bootstrap:extract
+```
+
+This will save all task data to `scripts/bootstrap-data/` including:
+- Task configuration
+- All 5 agent prompts with templates
+- LLM evaluations
+- Continuous evaluations with transforms
+- Test question datasets
+
+### 2. Setup New Task - Create Task from Bootstrap Data
+
+Create a complete new Arthur task using the bootstrap data:
+
+```bash
+yarn setup:new-task "Demo Customer Support Agent"
+```
+
+This will create:
+- A new task with the specified name
+- 5 prompts (tagged as `production`)
+- 3 LLM evals
+- 2 transforms
+- 3 continuous evals
+- Test questions dataset
+
+### 3. Test Harness - Run Test Dataset Through API
+
+Test the agent with multiple questions:
+
+1. **Add your test questions** to `scripts/test-questions.json`:
+
+```json
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What metrics does the Arthur platform support?",
+      "category": "metrics"
+    }
+  ]
+}
+```
+
 2. **Run the test harness**:
 
 ```bash
@@ -294,17 +358,58 @@ The test harness will:
 - Save detailed results to `scripts/test-results-{timestamp}.json`
 - Print a summary of successes/failures and average duration
 
-See `scripts/README.md` for more details.
+Run with debug logging:
+
+```bash
+yarn test:questions:debug
+```
+
+### 4. Demo Harness - Generate Multi-Day Demo Data
+
+Create a realistic demo dataset with 100 inferences spread over 10 days:
+
+```bash
+yarn test:demo
+```
+
+This special demo version will:
+- Run 100 inferences (10 loops through 10 test questions)
+- Backdate timestamps to show 10 inferences per day over 10 days
+- Start from today and go backwards in time
+- Spread each inference throughout the day (8am-8pm)
+- Run multiple inferences in parallel (5 concurrent by default)
+- Save results to `scripts/demo-results-{timestamp}.json`
+- Create traces in Arthur with backdated timestamps
+
+**Performance**: ~10-20 minutes with parallel execution (default)
+
+This is useful for:
+- Creating realistic historical datasets for demos
+- Testing date-based filtering and analytics features
+- Preparing presentations that show trends over time
+
+Run with debug logging:
+
+```bash
+yarn test:demo:debug
+```
 
 ## Available Scripts
 
+### Development
 - `yarn dev` - Starts the development server with Turbopack
 - `yarn dev:debug` - Starts development server with debug logging enabled
-- `yarn test:questions` - Runs the test harness with questions from `scripts/test-questions.json`
-- `yarn test:questions:debug` - Runs test harness with debug logging
 - `yarn build` - Builds the application for production
 - `yarn start` - Starts the production server
 - `yarn lint` - Runs ESLint for code linting
+
+### Demo Setup
+- `yarn bootstrap:extract` - Extract data from existing Arthur task
+- `yarn setup:new-task <name>` - Create new task from bootstrap data
+- `yarn test:questions` - Run test harness with questions from `scripts/test-questions.json`
+- `yarn test:questions:debug` - Run test harness with debug logging
+- `yarn test:demo` - Generate multi-day demo data (100 inferences over 10 days)
+- `yarn test:demo:debug` - Run demo harness with debug logging
 
 ## How It Works
 
