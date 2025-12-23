@@ -454,6 +454,12 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
       - uses: ./.github/workflows/composite-actions/set-version
         with:
           version-prefix: "genai-engine-"
@@ -500,27 +506,15 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Create a unique branch name
-          BRANCH_NAME="update-models-manifest-$(date +%Y%m%d-%H%M%S)"
-          git checkout -b "$BRANCH_NAME"
+          # Add and commit the manifest changes
+          git add deployment/ecs/model-upload/models-manifest.json
+          git diff --staged --quiet || git commit -m "Update models manifest [skip ci]"
 
-          # Commit and push the changes
-          git commit -m "Update models manifest [skip ci]"
-          git push origin "$BRANCH_NAME"
+          # Set GH_TOKEN to use the automator app token
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
 
-          # Create the PR
-          PR_URL=$(gh pr create \
-            --base "${{ github.ref_name }}" \
-            --head "$BRANCH_NAME" \
-            --title "Update models manifest [skip ci]" \
-            --body "Automated update of models manifest after successful model image build.
-
-          This PR was automatically created by the CI pipeline.")
-
-          echo "Created PR: $PR_URL"
-
-          # Enable auto-merge (requires auto-merge to be enabled in repo settings)
-          gh pr merge "$PR_URL" --auto --squash --delete-branch
+          # Push the changes to the branch
+          git push origin ${{ github.ref_name }}
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
