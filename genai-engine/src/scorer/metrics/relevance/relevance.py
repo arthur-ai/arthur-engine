@@ -131,7 +131,7 @@ class BaseRelevanceScorer(MetricScorer):
             if isinstance(f, Tensor):
                 return float(f.mean(dim=0))
             else:
-                return None  # TODO: What should we do when score returns tuple[Tensor, Tensor, Tensor]?
+                return None
         except Exception:
             return None
 
