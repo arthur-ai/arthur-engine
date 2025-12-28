@@ -2443,10 +2443,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"abort-controller-x@npm:^0.4.0, abort-controller-x@npm:^0.4.3":
+"abort-controller-x@npm:^0.4.0":
   version: 0.4.3
   resolution: "abort-controller-x@npm:0.4.3"
   checksum: 10c0/8091b5c9279c304890e4e9cc90601947790846b7b2c149bb322a25e873eb3db060ef3da74a93b6fe40ccea41c3962fc4b175468a0ecdf4c4bb6421023ad9d71e
+  languageName: node
+  linkType: hard
+
+"abort-controller-x@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "abort-controller-x@npm:0.5.0"
+  checksum: 10c0/a4eff7a043cc449a968c392f52a4b68bc04f0d4bebd24bf25f5cca0d49f38acd364a892dae85c9642931ff151b92902b850363be288275a517c52c10c569e898
   languageName: node
   linkType: hard
 
@@ -4209,7 +4216,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql@npm:^16.11.0":
+"graphql@npm:^16.12.0":
   version: 16.12.0
   resolution: "graphql@npm:16.12.0"
   checksum: 10c0/b6fffa4e8a4e4a9933ebe85e7470b346dbf49050c1a482fac5e03e4a1a7bed2ecd3a4c97e29f04457af929464bc5e4f2aac991090c2f320111eef26e902a5c75
@@ -5911,13 +5918,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nice-grpc-client-middleware-retry@npm:^3.1.11":
-  version: 3.1.12
-  resolution: "nice-grpc-client-middleware-retry@npm:3.1.12"
+"nice-grpc-client-middleware-retry@npm:^3.1.12":
+  version: 3.1.13
+  resolution: "nice-grpc-client-middleware-retry@npm:3.1.13"
   dependencies:
     abort-controller-x: "npm:^0.4.0"
     nice-grpc-common: "npm:^2.0.2"
-  checksum: 10c0/e2a465354f5cc00546630b1db9e2191dbb9a0a98520dbc8af9c261a5121879e2ce54ba65121022fa4d6b62df691e96d04a7926ca4a8d85866a799fc75a59c619
+  checksum: 10c0/08b6a12ad9218345290b9b16a7daf56fed7ca207c4a472b97476f39e020113c11223d9b1dfdffb5a74d2e91443a04c7a03f624989c0bbb85995d68524348c855
   languageName: node
   linkType: hard
 
@@ -5930,14 +5937,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nice-grpc@npm:^2.1.12":
-  version: 2.1.13
-  resolution: "nice-grpc@npm:2.1.13"
+"nice-grpc@npm:^2.1.13":
+  version: 2.1.14
+  resolution: "nice-grpc@npm:2.1.14"
   dependencies:
     "@grpc/grpc-js": "npm:^1.14.0"
     abort-controller-x: "npm:^0.4.0"
     nice-grpc-common: "npm:^2.0.2"
-  checksum: 10c0/1dcfade47224c9ff2d6ea0369b72953dec4103e1b078e14ba8f8197813d96e18bbe2c345664cf84255547c46f007eda17c4edc24ceb24a8ef2c90d8fd60d2027
+  checksum: 10c0/e9d0978d6167090b3fe7bb2ecb3b6cfbfcdb0da08a2ab20ca570d2ef38eee6e66da47860b431c47c228e2bf74fe6c0de2e382425ccdcaba95e4fffaad139ea9c
   languageName: node
   linkType: hard
 
@@ -8024,18 +8031,18 @@ __metadata:
   linkType: hard
 
 "weaviate-client@npm:^3.8.1":
-  version: 3.9.0
-  resolution: "weaviate-client@npm:3.9.0"
+  version: 3.10.0
+  resolution: "weaviate-client@npm:3.10.0"
   dependencies:
-    abort-controller-x: "npm:^0.4.3"
-    graphql: "npm:^16.11.0"
+    abort-controller-x: "npm:^0.5.0"
+    graphql: "npm:^16.12.0"
     graphql-request: "npm:^6.1.0"
     long: "npm:^5.3.2"
-    nice-grpc: "npm:^2.1.12"
-    nice-grpc-client-middleware-retry: "npm:^3.1.11"
+    nice-grpc: "npm:^2.1.13"
+    nice-grpc-client-middleware-retry: "npm:^3.1.12"
     nice-grpc-common: "npm:^2.0.2"
     uuid: "npm:^9.0.1"
-  checksum: 10c0/7a2deffc7adc60580a79a6e08788f381867d23e8af3ab7f78c56f4b3ec1753578a132831159e70367c100d5a74f87911347fb22e4af44482fbf7376b14224670
+  checksum: 10c0/dbc402b7371e9290a9beed89c9e6f433509b7292e774f4b383be18815608a8c265fd580935adcf05824ce4a19e435dc3bd66f79bdc237c2fb2076d6eed2f2b33
   languageName: node
   linkType: hard
 
