@@ -56,4 +56,10 @@ export const queryKeys = {
   annotations: {
     byId: (annotationId: string) => ["getAnnotationByIdApiV1AnnotationsAnnotationIdGet", { annotationId }] as const,
   },
+  agentExperiments: {
+    all: (taskId: string) => ["listAgentExperimentsApiV1TasksTaskIdAgentExperimentsGet", { taskId }] as const,
+    endpoints: {
+      all: () => ["listAgentExperimentEndpointsApiV1AgentExperimentsEndpointsGet"] as const,
+    },
+  },
 } as const;

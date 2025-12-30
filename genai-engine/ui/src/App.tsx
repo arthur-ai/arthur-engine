@@ -1,5 +1,5 @@
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SnackbarProvider } from "notistack";
@@ -7,6 +7,7 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "react-router-dom";
 
 import "./App.css";
+import { AgentExperiments } from "./components/agent-experiments";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ComingSoon } from "./components/ComingSoon";
@@ -115,16 +116,18 @@ function App() {
                         }
                       />
 
-                      <Route
-                        path="/tasks/:id/agent-experiments"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <ComingSoon featureName="Agent Experiments" description="Test and optimize agent-based task execution strategies." />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                      <Route path="/tasks/:id/agent-experiments">
+                        <Route
+                          index
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <AgentExperiments />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+                      </Route>
 
                       <Route
                         path="/tasks/:id/datasets"
