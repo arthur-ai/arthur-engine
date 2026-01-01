@@ -2074,14 +2074,14 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "lazy-imports"
-version = "1.1.0"
+version = "1.2.0"
 description = "Tool to support lazy imports"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "lazy_imports-1.1.0-py3-none-any.whl", hash = "sha256:49fb1034ffe325fbec6e1f0e1e5b47eaaf43989b17be6c090added97c2b3ec24"},
-    {file = "lazy_imports-1.1.0.tar.gz", hash = "sha256:e6ea5a1e4f09a861357e670b7aa61efcbce6fe29361785dd253df66f8ddbc36b"},
+    {file = "lazy_imports-1.2.0-py3-none-any.whl", hash = "sha256:97134d6552e2ba16f1a278e316f05313ab73b360e848e40d593d08a5c2406fdf"},
+    {file = "lazy_imports-1.2.0.tar.gz", hash = "sha256:3c546b3c1e7c4bf62a07f897f6179d9feda6118e71ef6ecc47a339cab3d2e2d9"},
 ]
 
 [package.extras]
@@ -4874,4 +4874,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "ec68b077d535169a3b2f928763f220c31ab705e83016289f8014c2e47311d3f8"
+content-hash = "f29b8bb3dc2effd47df284c74e3662ba8d165430b8bbe8ec341681f476243f53"
