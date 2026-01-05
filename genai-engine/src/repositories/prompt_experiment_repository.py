@@ -16,7 +16,6 @@ from db_models.dataset_models import (
     DatabaseDatasetVersionRow,
 )
 from db_models.llm_eval_models import DatabaseLLMEval
-from db_models.notebook_models import DatabaseNotebook
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
@@ -751,13 +750,7 @@ class PromptExperimentRepository:
                 DatabasePromptExperiment.dataset_id == DatabaseDataset.id,
             )
 
-            # Join with notebook table to search notebook name and description
-            base_query = base_query.outerjoin(
-                DatabaseNotebook,
-                DatabasePromptExperiment.notebook_id == DatabaseNotebook.id,
-            )
-
-            # Search across experiment name, description, prompt names (from JSON), notebook name/description, and dataset name
+            # Search across experiment name, description, prompt names (from JSON), and dataset name
             search_pattern = f"%{search_text}%"
 
             # Create a subquery to search within the prompt_configs JSON array
@@ -787,8 +780,6 @@ class PromptExperimentRepository:
                     DatabasePromptExperiment.name.ilike(search_pattern),
                     DatabasePromptExperiment.description.ilike(search_pattern),
                     prompt_name_condition,
-                    DatabaseNotebook.name.ilike(search_pattern),
-                    DatabaseNotebook.description.ilike(search_pattern),
                     DatabaseDataset.name.ilike(search_pattern),
                 ),
             )
