@@ -740,7 +740,6 @@ class TransformExtractionResponseList(BaseModel):
         description="List of extracted variables.",
     )
     missing_variables: List[str] = Field(
-        default_factory=list,
         description="List of variable names that had missing values (no matching span or attribute path).",
     )
 
