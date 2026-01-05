@@ -1,4 +1,4 @@
-import { Alert, TablePagination, Typography } from "@mui/material";
+import { Alert, Box, TablePagination } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -10,9 +10,9 @@ import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
+import { DataContentGate } from "../DataContentGate";
 import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
-import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
@@ -25,7 +25,11 @@ import { getFilteredTraces } from "@/services/tracing";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
-export function TraceLevel() {
+interface TraceLevelProps {
+  welcomeDismissed: boolean;
+}
+
+export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
   const { task } = useTask();
   const pagination = useDatasetPagination(FETCH_SIZE);
 
@@ -91,44 +95,51 @@ export function TraceLevel() {
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
+  // Check if any filters are active
+  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+
   if (error) {
-    return <Alert severity="error">There was an error fetching traces.</Alert>;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">There was an error fetching traces.</Alert>
+      </Box>
+    );
   }
 
+  const hasData = Boolean(data?.traces?.length);
+
   return (
-    <>
-      <FiltersRow />
-      {data?.traces?.length ? (
-        <>
-          <BucketProvider thresholds={thresholds}>
-            <TracesTable
-              table={table}
-              loading={isFetching}
-              onRowClick={(row) => {
-                handleRowClick(row.original);
+    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
+        {/* Only show FiltersRow if we have traces or if filters are active */}
+        {(hasData || hasActiveFilters) && <FiltersRow />}
+
+        {hasData && (
+          <>
+            <BucketProvider thresholds={thresholds}>
+              <TracesTable
+                table={table}
+                loading={isFetching}
+                onRowClick={(row) => {
+                  handleRowClick(row.original);
+                }}
+              />
+            </BucketProvider>
+            <TablePagination
+              component="div"
+              count={data?.count ?? 0}
+              onPageChange={pagination.handlePageChange}
+              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              page={pagination.page}
+              rowsPerPage={pagination.rowsPerPage}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              sx={{
+                overflow: "visible",
               }}
             />
-          </BucketProvider>
-          <TablePagination
-            component="div"
-            count={data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            sx={{
-              overflow: "visible",
-            }}
-          />
-        </>
-      ) : (
-        <TracesEmptyState title="No traces found">
-          <Typography variant="body1" color="text.secondary">
-            Try adjusting your search query
-          </Typography>
-        </TracesEmptyState>
-      )}
-    </>
+          </>
+        )}
+      </DataContentGate>
+    </Box>
   );
 }

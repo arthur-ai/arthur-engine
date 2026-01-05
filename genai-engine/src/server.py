@@ -48,6 +48,8 @@ from routers.v1.llm_eval_routes import llm_eval_routes
 from routers.v1.model_provider_routes import model_provider_routes
 from routers.v1.notebook_routes import notebook_routes
 from routers.v1.prompt_experiment_routes import prompt_experiment_routes
+from routers.v1.rag_experiment_routes import rag_experiment_routes
+from routers.v1.rag_notebook_routes import rag_notebook_routes
 from routers.v1.rag_routes import rag_routes
 from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
@@ -67,20 +69,12 @@ from services.continuous_eval import (
     shutdown_continuous_eval_queue_service,
 )
 from utils import constants as constants
+from utils import model_load
 from utils.classifiers import get_device
-from utils.model_load import (
-    download_models,
-    get_bert_scorer,
-    get_claim_classifier_embedding_model,
-    get_prompt_injection_model,
-    get_prompt_injection_tokenizer,
-    get_relevance_reranker,
-    get_toxicity_model,
-    get_toxicity_tokenizer,
-)
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
+    get_logger,
     is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
@@ -88,15 +82,7 @@ from utils.utils import (
     relevance_models_enabled,
 )
 
-logger = logging.getLogger()
-logger.setLevel(Config.get_log_level())
-stream_handler = logging.StreamHandler()
-log_formatter = logging.Formatter(
-    fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
-    datefmt="%Y-%m-%d %H:%M:%S %z",
-)
-stream_handler.setFormatter(log_formatter)
-logger.addHandler(stream_handler)
+logger = get_logger(log_level=Config.get_log_level())
 logger.info(f"GenAI Engine log level set to: {logging._levelToName[logger.level]}")
 
 tags_metadata = [
@@ -153,6 +139,10 @@ tags_metadata = [
         "description": "Endpoints for managing prompt experiments",
     },
     {
+        "name": "RAG Experiments",
+        "description": "Endpoints for managing RAG experiments",
+    },
+    {
         "name": "Notebooks",
         "description": "Endpoints for managing experiment notebooks",
     },
@@ -173,6 +163,13 @@ def bootstrap_genai_engine_keycloak():
             logger.info("GenAI Engine Keycloak bootstrapped")
             # Release the lock
             fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def cleanup_cuda_cache() -> None:
+    """Clean up PyTorch CUDA cache when the server is stopped."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        logger.info("Cleared PyTorch CUDA cache")
 
 
 @asynccontextmanager
@@ -198,17 +195,17 @@ async def lifespan(app: FastAPI):
     # Download models in worker process
     logger.info("Downloading models...")
     try:
-        download_models(1)  # Use single process in worker
+        model_load.download_models(1)  # Use single process in worker
     except Exception as e:
         logger.error(f"Error downloading models: {e}")
         raise e
     logger.info("Models downloaded.")
 
-    get_claim_classifier_embedding_model()
-    get_prompt_injection_model()
-    get_prompt_injection_tokenizer()
-    get_toxicity_model()
-    get_toxicity_tokenizer()
+    model_load.get_claim_classifier_embedding_model()
+    model_load.get_prompt_injection_model()
+    model_load.get_prompt_injection_tokenizer()
+    model_load.get_toxicity_model()
+    model_load.get_toxicity_tokenizer()
 
     # Initialize continuous eval queue service
     try:
@@ -218,8 +215,8 @@ async def lifespan(app: FastAPI):
 
     # Conditionally load relevance models
     if relevance_models_enabled():
-        get_bert_scorer()
-        get_relevance_reranker()
+        model_load.get_bert_scorer()
+        model_load.get_relevance_reranker()
     else:
         logger.info(
             "Skipping relevance models loading - ENABLE_RELEVANCE_MODELS is False",
@@ -231,7 +228,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown continuous eval queue service
+    cleanup_cuda_cache()
     shutdown_continuous_eval_queue_service()
 
 
@@ -405,7 +402,9 @@ def get_app_with_routes() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
+            rag_experiment_routes,
             transform_routes,
             continuous_eval_routes,
         ],
@@ -440,7 +439,9 @@ def get_test_app() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
+            rag_experiment_routes,
             transform_routes,
             continuous_eval_routes,
         ],
@@ -485,7 +486,9 @@ def get_app() -> FastAPI:
             rag_setting_routes,
             llm_eval_routes,
             notebook_routes,
+            rag_notebook_routes,
             prompt_experiment_routes,
+            rag_experiment_routes,
             transform_routes,
             continuous_eval_routes,
         ],
