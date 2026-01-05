@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/05/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_id'
+
 # 12/18/2025
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  endpoint added
