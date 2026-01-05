@@ -37,7 +37,7 @@
     "axios": "^1.12.2",
     "dayjs": "^1.11.18",
     "framer-motion": "^12.23.21",
-    "monaco-editor": "^0.54.0",
+    "monaco-editor": "^0.55.0",
     "notistack": "^3.0.2",
     "nuqs": "^2.8.0",
     "papaparse": "^5.5.3",
