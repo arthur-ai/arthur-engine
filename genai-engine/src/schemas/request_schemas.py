@@ -990,6 +990,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
     # Optional filters
     id: Optional[UUID] = Field(
         None,
+        description="ID of the agentic annotation to filter on",
+    )
+    continuous_eval_id: Optional[UUID] = Field(
+        None,
         description="ID of the continuous eval to filter on",
     )
     trace_id: Optional[str] = Field(
@@ -1019,6 +1023,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
             None,
             description="ID of the continuous eval to filter on.",
         ),
+        continuous_eval_id: Optional[str] = Query(
+            None,
+            description="ID of the continuous eval to filter on.",
+        ),
         trace_id: Optional[str] = Query(
             None,
             description="Trace ID to filter on.",
@@ -1043,6 +1051,7 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
         return ContinuousEvalRunResultsListFilterRequest(
             id=UUID(id) if id else None,
+            continuous_eval_id=UUID(continuous_eval_id) if continuous_eval_id else None,
             trace_id=trace_id,
             annotation_score=annotation_score,
             run_status=run_status,

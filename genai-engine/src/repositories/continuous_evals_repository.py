@@ -246,6 +246,12 @@ class ContinuousEvalsRepository:
                     DatabaseAgenticAnnotation.id == filter_request.id,
                 )
 
+            if filter_request.continuous_eval_id:
+                base_query = base_query.filter(
+                    DatabaseAgenticAnnotation.continuous_eval_id
+                    == filter_request.continuous_eval_id,
+                )
+
             if filter_request.trace_id:
                 base_query = base_query.filter(
                     DatabaseAgenticAnnotation.trace_id == filter_request.trace_id,
