@@ -9,7 +9,7 @@ This module handles the execution of RAG experiments by:
 
 import json
 import logging
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from pydantic import TypeAdapter
 
@@ -95,6 +95,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
         self,
         db_session: Session,
         test_case: DatabaseRagExperimentTestCase,
+        request_time_parameters: Optional[Dict[str, str]] = None,
     ) -> bool:
         """
         Execute all RAG searches for a test case.
@@ -102,6 +103,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
         Args:
             db_session: Database session
             test_case: Test case to execute RAG searches for
+            request_time_parameters: Optional dict of request-time parameters (not used for RAG experiments)
 
         Returns:
             True if all RAG searches executed successfully, False otherwise

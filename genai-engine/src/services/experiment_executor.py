@@ -48,7 +48,11 @@ class BaseExperimentExecutor(ABC):
     def __init__(self) -> None:
         pass
 
-    def execute_experiment_async(self, experiment_id: str) -> None:
+    def execute_experiment_async(
+        self,
+        experiment_id: str,
+        request_time_parameters: Optional[Dict[str, str]] = None,
+    ) -> None:
         """
         Start asynchronous execution of an experiment in a background thread.
 
@@ -56,24 +60,34 @@ class BaseExperimentExecutor(ABC):
 
         Args:
             experiment_id: ID of the experiment to execute
+            request_time_parameters: Optional dict of request-time parameters to pass to the execution thread
         """
         thread = threading.Thread(
             target=self._execute_experiment,
-            args=(experiment_id,),
+            args=(experiment_id, request_time_parameters),
             daemon=True,
         )
         thread.start()
         logger.info(f"Started background execution for experiment {experiment_id}")
 
-    def _execute_experiment(self, experiment_id: str) -> None:
+    def _execute_experiment(
+        self,
+        experiment_id: str,
+        request_time_parameters: Optional[Dict[str, str]] = None,
+    ) -> None:
         """
         Execute an experiment in the background with its own database session.
 
         Args:
             experiment_id: ID of the experiment to execute
+            request_time_parameters: Optional dict of request-time parameters to use during execution
         """
         with db_session_context() as db_session:
-            self._execute_experiment_with_session(db_session, experiment_id)
+            self._execute_experiment_with_session(
+                db_session,
+                experiment_id,
+                request_time_parameters,
+            )
 
     @abstractmethod
     def _get_database_experiment(
@@ -178,6 +192,7 @@ class BaseExperimentExecutor(ABC):
         self,
         db_session: Session,
         experiment_id: str,
+        request_time_parameters: Optional[Dict[str, str]] = None,
     ) -> None:
         """
         Execute an experiment using the provided database session.
@@ -185,6 +200,7 @@ class BaseExperimentExecutor(ABC):
         Args:
             db_session: Database session
             experiment_id: ID of the experiment to execute
+            request_time_parameters: Optional dict of request-time parameters to use during execution
         """
         try:
             # Mark experiment as running
@@ -214,9 +230,13 @@ class BaseExperimentExecutor(ABC):
             failed_count = 0
 
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
-                # Submit all test case jobs
+                # Submit all test case jobs with request_time_parameters
                 futures = {
-                    executor.submit(self._execute_test_case, test_case.id): test_case.id
+                    executor.submit(
+                        self._execute_test_case,
+                        test_case.id,
+                        request_time_parameters,
+                    ): test_case.id
                     for test_case in test_cases
                 }
 
@@ -293,23 +313,33 @@ class BaseExperimentExecutor(ABC):
                     exc_info=True,
                 )
 
-    def _execute_test_case(self, test_case_id: str) -> bool:
+    def _execute_test_case(
+        self,
+        test_case_id: str,
+        request_time_parameters: Optional[Dict[str, str]] = None,
+    ) -> bool:
         """
         Execute a single test case including all configurations and evaluations.
 
         Args:
             test_case_id: ID of the test case to execute
+            request_time_parameters: Optional dict of request-time parameters to use during execution
 
         Returns:
             True if test case completed successfully, False otherwise
         """
         with db_session_context() as db_session:
-            return self._execute_test_case_with_session(db_session, test_case_id)
+            return self._execute_test_case_with_session(
+                db_session,
+                test_case_id,
+                request_time_parameters,
+            )
 
     def _execute_test_case_with_session(
         self,
         db_session: Session,
         test_case_id: str,
+        request_time_parameters: Optional[Dict[str, str]] = None,
     ) -> bool:
         """
         Execute a single test case using the provided database session.
@@ -317,6 +347,7 @@ class BaseExperimentExecutor(ABC):
         Args:
             db_session: Database session
             test_case_id: ID of the test case to execute
+            request_time_parameters: Optional dict of request-time parameters to use during execution
 
         Returns:
             True if test case completed successfully, False otherwise
@@ -331,7 +362,11 @@ class BaseExperimentExecutor(ABC):
             self._update_test_case_status(test_case, TestCaseStatus.RUNNING, db_session)
 
             # Execute all experiment outputs (RAG searches or prompts), tracking failures but continuing
-            all_outputs_passed = self._execute_experiment_outputs(db_session, test_case)
+            all_outputs_passed = self._execute_experiment_outputs(
+                db_session,
+                test_case,
+                request_time_parameters,
+            )
 
             # If any outputs failed, mark test case as failed and return
             if not all_outputs_passed:
@@ -398,6 +433,7 @@ class BaseExperimentExecutor(ABC):
         self,
         db_session: Session,
         test_case: DatabaseBaseExperimentTestCase,
+        request_time_parameters: Optional[Dict[str, str]] = None,
     ) -> bool:
         """
         Execute all experiment outputs for a test case (RAG searches or prompts).
@@ -405,6 +441,7 @@ class BaseExperimentExecutor(ABC):
         Args:
             db_session: Database session
             test_case: Test case to execute outputs for
+            request_time_parameters: Optional dict of request-time parameters to use during execution
 
         Returns:
             True if all outputs executed successfully, False otherwise

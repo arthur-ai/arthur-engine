@@ -2226,6 +2226,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Status codes to filter on. Optional.",
     )
+    include_experiment_traces: bool = Field(
+        default=False,
+        description="Whether to include traces originating from Arthur experiments. Defaults to False.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2264,6 +2268,7 @@ class TraceQuerySchema(BaseModel):
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,
             status_code=request.status_code,
+            include_experiment_traces=request.include_experiment_traces,
         )
 
 
