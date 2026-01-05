@@ -1,0 +1,54 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What metrics does the Arthur Platform provide?",
+      "category": "general"
+    },
+    {
+      "id": "q2",
+      "question": "What specific performance metrics does the Arthur Platform provide?",
+      "category": "general"
+    },
+    {
+      "id": "q3",
+      "question": "What types of environments can I deploy the Arthur Platform in?",
+      "category": "general"
+    },
+    {
+      "id": "q4",
+      "question": "Does the Arthur Platform provide Guardrails? If so, what types?",
+      "category": "general"
+    },
+    {
+      "id": "q5",
+      "question": "How do I get started with the Arthur Platform?",
+      "category": "general"
+    }, 
+    {
+      "id": "q6",
+      "question": "How do I integrate my agent with the Arthur Platform?",
+      "category": "general"
+    },
+    {
+      "id": "q7",
+      "question": "What are the latencies for the Guardrails provided by the Arthur Platform?",
+      "category": "general"
+    }, 
+    {
+      "id": "q8",
+      "question": "How does the Arthur Platform check for Hallucinations?",
+      "category": "general"
+    },
+    {
+      "id": "q9",
+      "question": "How do I set up a guardrail for my use-case?",
+      "category": "general"
+    },
+    {
+      "id": "q10",
+      "question": "How much does the Arthur Platform cost?",
+      "category": "general"
+    }
+  ]
+}

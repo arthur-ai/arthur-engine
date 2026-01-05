@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.269"
+        "version": "2.1.275"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -10465,6 +10465,505 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/rag_notebooks": {
+            "post": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "Create a RAG notebook",
+                "description": "Create a new RAG notebook for organizing experiments within a task",
+                "operationId": "create_rag_notebook_api_v1_tasks__task_id__rag_notebooks_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateRagNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "List RAG notebooks",
+                "description": "List all RAG notebooks for a task with pagination and optional name search",
+                "operationId": "list_rag_notebooks_api_v1_tasks__task_id__rag_notebooks_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Name"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagNotebookListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_notebooks/{notebook_id}": {
+            "get": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "Get RAG notebook details",
+                "description": "Get detailed information about a RAG notebook including state and experiment history",
+                "operationId": "get_rag_notebook_api_v1_rag_notebooks__notebook_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "RAG Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "RAG Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "Update RAG notebook metadata",
+                "description": "Update RAG notebook name or description (not the state)",
+                "operationId": "update_rag_notebook_api_v1_rag_notebooks__notebook_id__put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "RAG Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "RAG Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateRagNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "Delete RAG notebook",
+                "description": "Delete a RAG notebook (experiments are kept)",
+                "operationId": "delete_rag_notebook_api_v1_rag_notebooks__notebook_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "RAG Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "RAG Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_notebooks/{notebook_id}/state": {
+            "get": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "Get RAG notebook state",
+                "description": "Get the current state (draft configuration) of a RAG notebook",
+                "operationId": "get_rag_notebook_state_api_v1_rag_notebooks__notebook_id__state_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "RAG Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "RAG Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagNotebookStateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "Set RAG notebook state",
+                "description": "Set the state (draft configuration) of a RAG notebook",
+                "operationId": "set_rag_notebook_state_api_v1_rag_notebooks__notebook_id__state_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "RAG Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "RAG Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetRagNotebookStateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_notebooks/{notebook_id}/history": {
+            "get": {
+                "tags": [
+                    "RAG Notebooks"
+                ],
+                "summary": "Get RAG notebook history",
+                "description": "Get paginated list of experiments run from this RAG notebook",
+                "operationId": "get_rag_notebook_history_api_v1_rag_notebooks__notebook_id__history_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "RAG Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "RAG Notebook ID"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagExperimentListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/prompt_experiments": {
             "get": {
                 "tags": [
@@ -11409,6 +11908,67 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/RagConfigResultListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_experiments/{experiment_id}/notebook": {
+            "patch": {
+                "tags": [
+                    "RAG Experiments"
+                ],
+                "summary": "Attach notebook to RAG experiment",
+                "description": "Attach a RAG notebook to an existing experiment",
+                "operationId": "attach_notebook_to_rag_experiment_api_v1_rag_experiments__experiment_id__notebook_patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the experiment",
+                            "title": "Experiment Id"
+                        },
+                        "description": "ID of the experiment"
+                    },
+                    {
+                        "name": "notebook_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the notebook to attach",
+                            "title": "Notebook Id"
+                        },
+                        "description": "ID of the notebook to attach"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagExperimentSummary"
                                 }
                             }
                         }
@@ -14610,6 +15170,44 @@
                 ],
                 "title": "CreateRagExperimentRequest",
                 "description": "Request to create a new RAG experiment"
+            },
+            "CreateRagNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the notebook"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "state": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RagNotebookState"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Initial state"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "CreateRagNotebookRequest",
+                "description": "Request to create a new RAG notebook"
             },
             "CreateUserRequest": {
                 "properties": {
@@ -19608,6 +20206,18 @@
                         "title": "Dataset Row Filter",
                         "description": "Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment."
                     },
+                    "notebook_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notebook Id",
+                        "description": "Optional notebook ID this experiment is linked to"
+                    },
                     "prompt_configs": {
                         "items": {
                             "oneOf": [
@@ -19641,18 +20251,6 @@
                     "summary_results": {
                         "$ref": "#/components/schemas/SummaryResults",
                         "description": "Summary of results across all test cases"
-                    },
-                    "notebook_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Notebook Id",
-                        "description": "Optional notebook ID this experiment is linked to"
                     }
                 },
                 "type": "object",
@@ -20644,6 +21242,18 @@
                         "title": "Dataset Row Filter",
                         "description": "Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment."
                     },
+                    "notebook_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notebook Id",
+                        "description": "Optional notebook ID this experiment is linked to"
+                    },
                     "rag_configs": {
                         "items": {
                             "oneOf": [
@@ -20883,6 +21493,347 @@
                     "settings"
                 ],
                 "title": "RagKeywordSearchSettingRequest"
+            },
+            "RagNotebookDetail": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/RagNotebookStateResponse",
+                        "description": "Current draft state"
+                    },
+                    "experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagExperimentSummary"
+                        },
+                        "type": "array",
+                        "title": "Experiments",
+                        "description": "History of experiments run from this notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "state",
+                    "experiments"
+                ],
+                "title": "RagNotebookDetail",
+                "description": "Detailed RAG notebook information"
+            },
+            "RagNotebookListResponse": {
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagNotebookSummary"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of notebook summaries"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count",
+                    "data"
+                ],
+                "title": "RagNotebookListResponse",
+                "description": "Paginated list of RAG notebooks"
+            },
+            "RagNotebookState": {
+                "properties": {
+                    "rag_configs": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SavedRagConfig-Input"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/UnsavedRagConfig"
+                                        }
+                                    ],
+                                    "discriminator": {
+                                        "propertyName": "type",
+                                        "mapping": {
+                                            "saved": "#/components/schemas/SavedRagConfig-Input",
+                                            "unsaved": "#/components/schemas/UnsavedRagConfig"
+                                        }
+                                    }
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rag Configs",
+                        "description": "List of RAG configurations"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRefInput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference (includes name)"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/EvalRef-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "RagNotebookState",
+                "description": "Draft state of a RAG notebook - mirrors RAG experiment config but all fields optional.\nUsed for requests (input)."
+            },
+            "RagNotebookStateResponse": {
+                "properties": {
+                    "rag_configs": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SavedRagConfig-Output"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/UnsavedRagConfigResponse"
+                                        }
+                                    ],
+                                    "discriminator": {
+                                        "propertyName": "type",
+                                        "mapping": {
+                                            "saved": "#/components/schemas/SavedRagConfig-Output",
+                                            "unsaved": "#/components/schemas/UnsavedRagConfigResponse"
+                                        }
+                                    }
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rag Configs",
+                        "description": "List of RAG configurations"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference (includes name)"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/EvalRef-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "RagNotebookStateResponse",
+                "description": "Draft state of a RAG notebook - mirrors RAG experiment config but all fields optional.\nUsed for responses (output)."
+            },
+            "RagNotebookSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "run_count": {
+                        "type": "integer",
+                        "title": "Run Count",
+                        "description": "Number of experiments run from this notebook"
+                    },
+                    "latest_run_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Latest Run Id",
+                        "description": "ID of most recent experiment run"
+                    },
+                    "latest_run_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ExperimentStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Status of most recent experiment"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "run_count"
+                ],
+                "title": "RagNotebookSummary",
+                "description": "Summary of a RAG notebook"
             },
             "RagProviderAuthenticationMethodEnum": {
                 "type": "string",
@@ -22441,6 +23392,20 @@
                 ],
                 "title": "SetNotebookStateRequest",
                 "description": "Request to set the notebook state"
+            },
+            "SetRagNotebookStateRequest": {
+                "properties": {
+                    "state": {
+                        "$ref": "#/components/schemas/RagNotebookState",
+                        "description": "New state for the notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "state"
+                ],
+                "title": "SetRagNotebookStateRequest",
+                "description": "Request to set the RAG notebook state"
             },
             "SpanListResponse": {
                 "properties": {
@@ -24607,6 +25572,37 @@
                 "type": "object",
                 "title": "UpdateNotebookRequest",
                 "description": "Request to update a notebook"
+            },
+            "UpdateRagNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "New name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "New description"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateRagNotebookRequest",
+                "description": "Request to update a RAG notebook"
             },
             "UpdateRuleRequest": {
                 "properties": {

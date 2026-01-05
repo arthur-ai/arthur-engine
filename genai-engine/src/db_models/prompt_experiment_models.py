@@ -34,6 +34,14 @@ class DatabasePromptExperiment(DatabaseBaseExperiment):
 
     __tablename__ = "prompt_experiments"
 
+    # Foreign key to notebook (optional)
+    notebook_id: Mapped[Optional[str]] = mapped_column(
+        String,
+        ForeignKey("notebooks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Multi-prompt configuration
     # Structure: [SavedPromptConfig | UnsavedPromptConfig, ...]
     # SavedPromptConfig: {"type": "saved", "name": str, "version": int}

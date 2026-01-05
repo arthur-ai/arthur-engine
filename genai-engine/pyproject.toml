@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.269"
+version = "2.1.275"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -17,17 +17,17 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13.dev0"
-openai = "1.106.1"
-fastapi = "0.122.0"
+openai = "1.109.1"
+fastapi = "0.128.0"
 uvicorn = "0.35.0"
 pydantic = "2.11.10"
-sse-starlette = "3.0.3"
+sse-starlette = "3.0.4"
 fastapi-sqlalchemy = "0.2.1"
 alembic = "1.17.2"
-boto3 = "1.41.5"
+boto3 = "1.42.21"
 python-dotenv = "1.1.1"
 psycopg2-binary = "2.9.11"
-sqlalchemy = "2.0.44"
+sqlalchemy = "2.0.45"
 pgvector = "0.4.2"
 python-multipart = "0.0.21"
 pypdf = "6.4.2"
@@ -40,7 +40,7 @@ pyjwt = "2.10.1"
 azure-storage-blob = "12.27.1"
 itsdangerous = "2.2.0"
 newrelic = "10.17.0"
-importlib-metadata = "8.7.0"
+importlib-metadata = "8.7.1"
 opentelemetry-instrumentation-logging = "0.57b0"
 opentelemetry-instrumentation = "0.57b0"
 opentelemetry-instrumentation-fastapi = "0.57b0"
@@ -57,13 +57,13 @@ cachetools = "6.2.4"
 sentence-transformers = "5.1.2"
 en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
 torch = [
-    { version = "=2.6.0", source = "PyPI", platform = "darwin" },
-    { version = "=2.6.0+cpu", source = "pytorch-cpu", platform = "linux" },
-    { version = "=2.6.0+cpu", source = "pytorch-cpu", platform = "win32" },
+    { version = "=2.9.1", source = "PyPI", platform = "darwin" },
+    { version = "=2.9.1+cpu", source = "pytorch-cpu", platform = "linux" },
+    { version = "=2.9.1+cpu", source = "pytorch-cpu", platform = "win32" },
 ]
 commonmark = "0.9.1"
 gunicorn = "^23.0.0"
-fastapi-pagination = "0.15.3"
+fastapi-pagination = "0.15.4"
 pydantic-settings = "^2.3.4"
 spacy = ">=3.8.3"
 date-spacy = "^0.0.1"
@@ -107,7 +107,7 @@ pre-commit = "4.5.1"
 
 
 [tool.poetry.group.performance.dependencies]
-locust = "2.41.6"
+locust = "2.43.0"
 black = "25.11.0"
 mypy = "^1.13.0"
 isort = "^7.0.0"

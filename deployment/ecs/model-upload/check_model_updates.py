@@ -15,11 +15,11 @@ from pathlib import Path
 
 from huggingface_hub import HfApi
 
-# Configure logging
+# Configure logging - use stderr to avoid polluting stdout for GitHub Actions output
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
+    handlers=[logging.StreamHandler(sys.stderr)],
 )
 logger = logging.getLogger(__name__)
 

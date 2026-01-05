@@ -95,7 +95,7 @@ jobs:
           with-groups: linters
       - name: Generate GenAI Client
         run: |
-          pip install openapi-generator-cli[jdk4py]
+          pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
           pip install ./ml-engine/src/genai_client
@@ -299,7 +299,7 @@ jobs:
           working-directory: ml-engine
       - name: Generate GenAI Client
         run: |
-          pip install openapi-generator-cli[jdk4py]
+          pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -g python \
             -i ./genai-engine/staging.openapi.json \
             -o ./ml-engine/src/genai_client \
