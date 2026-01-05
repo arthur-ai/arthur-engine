@@ -17,7 +17,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13.dev0"
-openai = "1.106.1"
+openai = "1.109.1"
 fastapi = "0.128.0"
 uvicorn = "0.35.0"
 pydantic = "2.11.10"
