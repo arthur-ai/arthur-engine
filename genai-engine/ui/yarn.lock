@@ -6580,12 +6580,12 @@ __metadata:
   linkType: hard
 
 "react-error-boundary@npm:^6.0.0":
-  version: 6.0.1
-  resolution: "react-error-boundary@npm:6.0.1"
+  version: 6.0.2
+  resolution: "react-error-boundary@npm:6.0.2"
   peerDependencies:
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
-  checksum: 10c0/f557a924ab45169183cdb7b39b5d0d532cbada247991b9202c1e660c3777c18550fcf0388cbe253bd5d0b6d14628f94f3e24717ebc8c021a00662fe246d07479
+  checksum: 10c0/3cfa405114739883a501cf89fce4cd7e26fb30fc5bb9ce4a9306982aa26fdb452ce6b065a416fe15a41fa7bfddba960bc6847a843e95f194e624fa4c322f3f5b
   languageName: node
   linkType: hard
 
