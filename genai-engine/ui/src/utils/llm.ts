@@ -64,6 +64,7 @@ export function getRoleAccentColor(role: Message["role"]) {
   }
 }
 
+// TODO: Replace with unify published package
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function tryFormatJson(content: any) {
   if (!content) return "";
