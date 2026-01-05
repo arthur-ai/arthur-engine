@@ -1,7 +1,7 @@
 """add transform map to ce
 
 Revision ID: aeea38580473
-Revises: 44cd9fd55df9
+Revises: 8aba08c2934f
 Create Date: 2025-12-16 10:49:49.325132
 
 """
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "aeea38580473"
-down_revision = "44cd9fd55df9"
+down_revision = "8aba08c2934f"
 branch_labels = None
 depends_on = None
 
