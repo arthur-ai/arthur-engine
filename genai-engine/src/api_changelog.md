@@ -2,6 +2,19 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/06/2026
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  endpoint added
+
+# 01/06/2026
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
+
 # 01/05/2026
 - **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added

@@ -2,7 +2,7 @@ from typing import Annotated, Optional
 from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session, get_validated_task
@@ -268,6 +268,33 @@ def delete_agentic_experiment(
         repo = AgenticExperimentRepository(db_session)
         repo.delete_experiment(experiment_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@agentic_experiment_routes.patch(
+    "/agentic_experiments/{experiment_id}/notebook",
+    summary="Attach notebook to agentic experiment",
+    description="Attach an agentic notebook to an existing experiment",
+    response_model=AgenticExperimentSummary,
+    response_model_exclude_none=True,
+    tags=["Agentic Experiments"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def attach_notebook_to_agentic_experiment(
+    experiment_id: str = Path(..., description="ID of the experiment"),
+    notebook_id: str = Query(..., description="ID of the notebook to attach"),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> AgenticExperimentSummary:
+    """Attach an agentic notebook to an existing experiment."""
+    try:
+        repo = AgenticExperimentRepository(db_session)
+        return repo.attach_notebook_to_experiment(experiment_id, notebook_id)
     except HTTPException:
         raise
     except Exception as e:
