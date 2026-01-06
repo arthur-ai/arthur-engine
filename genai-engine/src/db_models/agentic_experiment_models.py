@@ -18,6 +18,7 @@ from db_models.base_experiment_models import (
 # This avoids circular import errors (notebook_models imports this file)
 # while still providing type hints for IDEs and mypy.
 if TYPE_CHECKING:
+    from db_models.agentic_notebook_models import DatabaseAgenticNotebook
     from db_models.dataset_models import DatabaseDataset
 
 
@@ -25,6 +26,14 @@ class DatabaseAgenticExperiment(DatabaseBaseExperiment):
     """Database model for storing agentic experiments associated with tasks"""
 
     __tablename__ = "agentic_experiments"
+
+    # Foreign key to agentic notebook (optional)
+    notebook_id: Mapped[Optional[str]] = mapped_column(
+        String,
+        ForeignKey("agentic_notebooks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # HTTP template configuration stored as JSON
     # Structure: {"endpoint_name": str, "endpoint_url": str, "headers": [...], "request_body": {...}}
@@ -62,6 +71,9 @@ class DatabaseAgenticExperiment(DatabaseBaseExperiment):
         return filtered
 
     # Relationships
+    notebook: Mapped[Optional["DatabaseAgenticNotebook"]] = relationship(
+        back_populates="experiments",
+    )
     test_cases: Mapped[List["DatabaseAgenticExperimentTestCase"]] = relationship(
         back_populates="experiment",
         lazy="select",

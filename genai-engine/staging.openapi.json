@@ -10976,6 +10976,505 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/agentic_notebooks": {
+            "post": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "Create an agentic notebook",
+                "description": "Create a new agentic notebook for organizing experiments within a task",
+                "operationId": "create_agentic_notebook_api_v1_tasks__task_id__agentic_notebooks_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateAgenticNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "List agentic notebooks",
+                "description": "List all agentic notebooks for a task with pagination and optional name search",
+                "operationId": "list_agentic_notebooks_api_v1_tasks__task_id__agentic_notebooks_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Name"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticNotebookListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agentic_notebooks/{notebook_id}": {
+            "get": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "Get agentic notebook details",
+                "description": "Get detailed information about an agentic notebook including state and experiment history",
+                "operationId": "get_agentic_notebook_api_v1_agentic_notebooks__notebook_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Agentic Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Agentic Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "Update agentic notebook metadata",
+                "description": "Update agentic notebook name or description (not the state)",
+                "operationId": "update_agentic_notebook_api_v1_agentic_notebooks__notebook_id__put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Agentic Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Agentic Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateAgenticNotebookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "Delete agentic notebook",
+                "description": "Delete an agentic notebook (experiments are kept)",
+                "operationId": "delete_agentic_notebook_api_v1_agentic_notebooks__notebook_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Agentic Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Agentic Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agentic_notebooks/{notebook_id}/state": {
+            "get": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "Get agentic notebook state",
+                "description": "Get the current state (draft configuration) of an agentic notebook",
+                "operationId": "get_agentic_notebook_state_api_v1_agentic_notebooks__notebook_id__state_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Agentic Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Agentic Notebook ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticNotebookStateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "Set agentic notebook state",
+                "description": "Set the state (draft configuration) of an agentic notebook",
+                "operationId": "set_agentic_notebook_state_api_v1_agentic_notebooks__notebook_id__state_put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Agentic Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Agentic Notebook ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetAgenticNotebookStateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticNotebookDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agentic_notebooks/{notebook_id}/history": {
+            "get": {
+                "tags": [
+                    "Agentic Notebooks"
+                ],
+                "summary": "Get agentic notebook history",
+                "description": "Get paginated list of experiments run from this agentic notebook",
+                "operationId": "get_agentic_notebook_history_api_v1_agentic_notebooks__notebook_id__history_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "notebook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Agentic Notebook ID",
+                            "title": "Notebook Id"
+                        },
+                        "description": "Agentic Notebook ID"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticExperimentListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/prompt_experiments": {
             "get": {
                 "tags": [
@@ -12331,6 +12830,67 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AgenticTestCaseListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agentic_experiments/{experiment_id}/notebook": {
+            "patch": {
+                "tags": [
+                    "Agentic Experiments"
+                ],
+                "summary": "Attach notebook to agentic experiment",
+                "description": "Attach an agentic notebook to an existing experiment",
+                "operationId": "attach_notebook_to_agentic_experiment_api_v1_agentic_experiments__experiment_id__notebook_patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the experiment",
+                            "title": "Experiment Id"
+                        },
+                        "description": "ID of the experiment"
+                    },
+                    {
+                        "name": "notebook_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the notebook to attach",
+                            "title": "Notebook Id"
+                        },
+                        "description": "ID of the notebook to attach"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticExperimentSummary"
                                 }
                             }
                         }
@@ -14759,6 +15319,341 @@
                 "title": "AgenticExperimentSummary",
                 "description": "Summary of an agentic experiment"
             },
+            "AgenticNotebookDetail": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/AgenticNotebookStateResponse",
+                        "description": "Current draft state"
+                    },
+                    "experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticExperimentSummary"
+                        },
+                        "type": "array",
+                        "title": "Experiments",
+                        "description": "History of experiments run from this notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "state",
+                    "experiments"
+                ],
+                "title": "AgenticNotebookDetail",
+                "description": "Detailed agentic notebook information"
+            },
+            "AgenticNotebookListResponse": {
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of records"
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticNotebookSummary"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of notebook summaries"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count",
+                    "data"
+                ],
+                "title": "AgenticNotebookListResponse",
+                "description": "Paginated list of agentic notebooks"
+            },
+            "AgenticNotebookState": {
+                "properties": {
+                    "http_template": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/HttpTemplate"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "HTTP template configuration for the agent endpoint"
+                    },
+                    "template_variable_mapping": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/TemplateVariableMapping-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Template Variable Mapping",
+                        "description": "Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRefInput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference (includes name)"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/AgenticEvalRef-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "AgenticNotebookState",
+                "description": "Draft state of an agentic notebook - mirrors agentic experiment config but all fields optional.\nUsed for requests (input)."
+            },
+            "AgenticNotebookStateResponse": {
+                "properties": {
+                    "http_template": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/HttpTemplate"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "HTTP template configuration for the agent endpoint"
+                    },
+                    "template_variable_mapping": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/TemplateVariableMapping-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Template Variable Mapping",
+                        "description": "Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)"
+                    },
+                    "dataset_ref": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Dataset reference (includes name)"
+                    },
+                    "dataset_row_filter": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dataset Row Filter",
+                        "description": "Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included."
+                    },
+                    "eval_list": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/AgenticEvalRef-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval List",
+                        "description": "List of evaluations"
+                    }
+                },
+                "type": "object",
+                "title": "AgenticNotebookStateResponse",
+                "description": "Draft state of an agentic notebook - mirrors agentic experiment config but all fields optional.\nUsed for responses (output)."
+            },
+            "AgenticNotebookSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Notebook ID"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Associated task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Notebook name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "title": "Updated At",
+                        "description": "ISO timestamp when last updated"
+                    },
+                    "run_count": {
+                        "type": "integer",
+                        "title": "Run Count",
+                        "description": "Number of experiments run from this notebook"
+                    },
+                    "latest_run_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Latest Run Id",
+                        "description": "ID of most recent experiment run"
+                    },
+                    "latest_run_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ExperimentStatus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Status of most recent experiment"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "created_at",
+                    "updated_at",
+                    "run_count"
+                ],
+                "title": "AgenticNotebookSummary",
+                "description": "Summary of an agentic notebook"
+            },
             "AgenticOutput": {
                 "properties": {
                     "response_body": {
@@ -16037,6 +16932,44 @@
                 ],
                 "title": "CreateAgenticExperimentRequest",
                 "description": "Request to create a new agentic experiment"
+            },
+            "CreateAgenticNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the notebook"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description"
+                    },
+                    "state": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgenticNotebookState"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Initial state"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "CreateAgenticNotebookRequest",
+                "description": "Request to create a new agentic notebook"
             },
             "CreateAgenticPromptRequest": {
                 "properties": {
@@ -24643,6 +25576,20 @@
                 "title": "SessionTracesResponse",
                 "description": "Response for session traces endpoint"
             },
+            "SetAgenticNotebookStateRequest": {
+                "properties": {
+                    "state": {
+                        "$ref": "#/components/schemas/AgenticNotebookState",
+                        "description": "New state for the notebook"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "state"
+                ],
+                "title": "SetAgenticNotebookStateRequest",
+                "description": "Request to set the agentic notebook state"
+            },
             "SetNotebookStateRequest": {
                 "properties": {
                     "state": {
@@ -26820,6 +27767,37 @@
                 ],
                 "title": "UnsavedRagConfigResponse",
                 "description": "Configuration for an unsaved RAG search setting (response version)"
+            },
+            "UpdateAgenticNotebookRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "New name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "New description"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateAgenticNotebookRequest",
+                "description": "Request to update an agentic notebook"
             },
             "UpdateContinuousEvalRequest": {
                 "properties": {
