@@ -8,7 +8,7 @@ import { NumberField } from "@/components/common/form/NumberField";
 
 export const { useAppForm, withFieldGroup, withForm } = createFormHook({
   fieldComponents: {
-    NumberField: NumberField.Root,
+    NumberField,
     MaterialAutocompleteField,
     DatePickerField,
   },
