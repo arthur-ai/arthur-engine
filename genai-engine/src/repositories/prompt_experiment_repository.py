@@ -5,7 +5,8 @@ from uuid import UUID, uuid4
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import asc, desc, or_
+from sqlalchemy import asc, column, desc, exists, func, or_, select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, joinedload
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
@@ -749,13 +750,36 @@ class PromptExperimentRepository:
                 DatabasePromptExperiment.dataset_id == DatabaseDataset.id,
             )
 
-            # Search across experiment name, description, prompt name, and dataset name
+            # Search across experiment name, description, prompt names (from JSON), and dataset name
             search_pattern = f"%{search_text}%"
+
+            # Create a subquery to search within the prompt_configs JSON array
+            # This checks if any prompt config (saved or unsaved) has a matching name
+            # Cast JSON to JSONB since jsonb_array_elements requires JSONB type
+            config_elem = (
+                func.jsonb_array_elements(
+                    func.cast(DatabasePromptExperiment.prompt_configs, postgresql.JSONB)
+                )
+                .table_valued(column("value", postgresql.JSONB))
+                .lateral("config_lateral")
+            )
+
+            prompt_name_condition = exists(
+                select(1)
+                .select_from(config_elem)
+                .where(
+                    or_(
+                        config_elem.c.value["name"].astext.ilike(search_pattern),
+                        config_elem.c.value["auto_name"].astext.ilike(search_pattern),
+                    )
+                )
+            )
+
             base_query = base_query.filter(
                 or_(
                     DatabasePromptExperiment.name.ilike(search_pattern),
                     DatabasePromptExperiment.description.ilike(search_pattern),
-                    DatabasePromptExperiment.prompt_name.ilike(search_pattern),
+                    prompt_name_condition,
                     DatabaseDataset.name.ilike(search_pattern),
                 ),
             )

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.276"
+        "version": "2.1.279"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -12834,6 +12834,24 @@
                             ],
                             "description": "ID of the continuous eval to filter on.",
                             "title": "Id"
+                        },
+                        "description": "ID of the continuous eval to filter on."
+                    },
+                    {
+                        "name": "continuous_eval_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "ID of the continuous eval to filter on.",
+                            "title": "Continuous Eval Id"
                         },
                         "description": "ID of the continuous eval to filter on."
                     },
