@@ -1303,6 +1303,36 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
 
 
 @pytest.mark.unit_tests
+@patch(
+    "repositories.continuous_evals_repository.ContinuousEvalsRepository.list_continuous_eval_run_results",
+)
+def test_list_continuous_eval_run_results_value_errors(
+    mock_list_continuous_eval_run_results,
+    client: GenaiEngineTestClientBase,
+):
+    """Test listing continuous eval run results returns 400 for ValueError"""
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+
+    try:
+        # make the repository raise a ValueError
+        mock_list_continuous_eval_run_results.side_effect = ValueError(
+            "Invalid parameter value",
+        )
+
+        status_code, error = client.list_continuous_eval_run_results(
+            task_id=task_id,
+        )
+
+        # verify the error is a 400 error
+        assert status_code == 400
+        assert error is not None
+        assert "invalid parameter value" in error.get("detail", "").lower()
+    finally:
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
 @patch("repositories.continuous_evals_repository.get_continuous_eval_queue_service")
 def test_rerun_continuous_eval_success(
     mock_get_continuous_eval_queue_service,
