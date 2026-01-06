@@ -4,6 +4,7 @@ import { Button, DialogActions, DialogContent, DialogTitle, IconButton, Stack, T
 import { useStore } from "@tanstack/react-form";
 import z from "zod";
 
+import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
 
 const FormSchema = z.object({
@@ -48,6 +49,7 @@ export const NewEndpointDialogContent = () => {
           <form.AppField name="name">
             {(field) => (
               <TextField
+                size="small"
                 error={field.state.meta.errors.length > 0}
                 label="Endpoint Name"
                 required
@@ -60,6 +62,7 @@ export const NewEndpointDialogContent = () => {
           <form.Field name="url">
             {(field) => (
               <TextField
+                size="small"
                 label="Endpoint URL"
                 required
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -94,6 +97,7 @@ export const NewEndpointDialogContent = () => {
                         {(field) => (
                           <TextField
                             error={field.state.meta.errors.length > 0}
+                            size="small"
                             label="Header Name"
                             required
                             onChange={(e) => field.handleChange(e.target.value)}
@@ -109,6 +113,7 @@ export const NewEndpointDialogContent = () => {
                         {(field) => (
                           <TextField
                             error={field.state.meta.errors.length > 0}
+                            size="small"
                             label="Header Value"
                             required
                             onChange={(e) => field.handleChange(e.target.value)}
@@ -135,14 +140,11 @@ export const NewEndpointDialogContent = () => {
             </Typography>
             <form.Field name="body">
               {(field) => (
-                <TextField
-                  error={field.state.meta.errors.length > 0}
-                  label="Body"
-                  onChange={(e) => field.handleChange(e.target.value)}
+                <MustacheHighlightedTextField
                   value={field.state.value}
-                  helperText={field.state.meta.errors[0]?.message}
-                  multiline
-                  minRows={2}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Enter request body..."
+                  size="small"
                 />
               )}
             </form.Field>

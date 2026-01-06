@@ -60,6 +60,7 @@ export const queryKeys = {
     all: (taskId: string) => ["listAgentExperimentsApiV1TasksTaskIdAgentExperimentsGet", { taskId }] as const,
     endpoints: {
       all: () => ["listAgentExperimentEndpointsApiV1AgentExperimentsEndpointsGet"] as const,
+      byId: (endpointId: string) => ["getAgentExperimentEndpointByIdApiV1AgentExperimentsEndpointsEndpointIdGet", { endpointId }] as const,
     },
   },
 } as const;

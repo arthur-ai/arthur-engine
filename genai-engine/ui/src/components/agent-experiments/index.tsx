@@ -1,10 +1,12 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, ButtonGroup, Dialog, Skeleton, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { Suspense } from "react";
+import { Activity, Suspense } from "react";
 
 import { Endpoints } from "./components/endpoints";
 import { NewEndpointDialogContent } from "./components/endpoints/new-dialog";
+import { Experiments } from "./components/experiments";
+import { NewExperimentDialogContent } from "./components/experiments/components/new-dialog";
 
 import { getContentHeight } from "@/constants/layout";
 
@@ -56,17 +58,23 @@ export const AgentExperiments = () => {
           <Tab label="Endpoints" value="endpoints" />
           <Tab label="Experiments" value="experiments" />
         </Tabs>
-        {activeTab === "endpoints" && (
-          <>
-            <Suspense fallback={<Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />}>
-              <Endpoints />
-            </Suspense>
-          </>
-        )}
+        <Activity mode={activeTab === "endpoints" ? "visible" : "hidden"}>
+          <Suspense fallback={<Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />}>
+            <Endpoints />
+          </Suspense>
+        </Activity>
+        <Activity mode={activeTab === "experiments" ? "visible" : "hidden"}>
+          <Suspense fallback={<Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />}>
+            <Experiments />
+          </Suspense>
+        </Activity>
       </Stack>
 
-      <Dialog open={activeDialog === "endpoint"} onClose={() => setActiveDialog(null)} fullWidth>
+      <Dialog open={activeDialog === "endpoint"} onClose={() => setActiveDialog(null)} maxWidth="md" fullWidth>
         <NewEndpointDialogContent />
+      </Dialog>
+      <Dialog open={activeDialog === "experiment"} onClose={() => setActiveDialog(null)} maxWidth="md" fullWidth>
+        <NewExperimentDialogContent />
       </Dialog>
     </>
   );

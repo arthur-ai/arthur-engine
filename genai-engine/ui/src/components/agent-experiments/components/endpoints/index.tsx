@@ -17,7 +17,7 @@ export const Endpoints = () => {
     enableFilters: false,
     enableHiding: false,
     muiTablePaperProps: {
-      elevation: 0,
+      elevation: 1,
       sx: {
         borderRadius: 0,
       },
