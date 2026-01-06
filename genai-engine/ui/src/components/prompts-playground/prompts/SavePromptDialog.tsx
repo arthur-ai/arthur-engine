@@ -18,6 +18,7 @@ import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { AgenticPrompt } from "@/lib/api-client/api-client";
+import { track, EVENT_NAMES } from "@/services/amplitude";
 
 const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
@@ -74,6 +75,13 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
             isDirty: false,
           },
         },
+      });
+      // Track prompt saved event
+      track(EVENT_NAMES.PROMPT_SAVED, {
+        prompt_name: nameInputValue,
+        version: data.version,
+        message_count: prompt.messages.length,
+        has_tools: prompt.tools.length > 0,
       });
     } catch (error: unknown) {
       const apiError = error as { response: { data: { detail: string } } };

@@ -1,9 +1,7 @@
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 import CloseIcon from "@mui/icons-material/Close";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -21,8 +19,9 @@ import Typography from "@mui/material/Typography";
 import React, { useState, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
+
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import type { TestCase } from "@/lib/api-client/api-client";
+import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
 
 interface ResultsTableProps {
   promptId: string;
@@ -33,13 +32,6 @@ interface Message {
   content: string;
 }
 
-interface EvalResult {
-  eval_name: string;
-  eval_version: string;
-  score?: number;
-  explanation?: string;
-  cost?: string;
-}
 
 const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
   const roleColors: Record<string, string> = {
@@ -72,7 +64,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
 
   // Get the prompt result for this specific prompt using the prompt key
   const promptResult = promptKey
-    ? testCase.prompt_results?.find((pr: any) => pr.prompt_key === promptKey)
+    ? testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey)
     : testCase.prompt_results?.[0];
 
   const getEvalChipSx = (isPass: boolean) => {
@@ -198,7 +190,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                       Evaluations:
                     </Typography>
                     <Box className="space-y-2">
-                      {promptResult.evals.map((evalData: any, evalIndex: number) => {
+                      {promptResult.evals.map((evalData: EvalExecution, evalIndex: number) => {
                         const evalResult = evalData.eval_results;
                         return (
                           <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
@@ -242,7 +234,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
 
 const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   const { experimentConfig, runningExperimentId, lastCompletedExperimentId, state } = usePromptContext();
-  const [selectedTestCase, setSelectedTestCase] = useState<any | null>(null);
+  const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
 
@@ -409,7 +401,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                 >
                   Status
                 </TableCell>
-                {evals.map((evalRef: any) => (
+                {evals.map((evalRef: EvalRefOutput) => (
                   <TableCell
                     key={`${evalRef.name}-${evalRef.version}`}
                     align="center"
@@ -452,14 +444,14 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                       sx={getStatusChipSx(getStatusColor(testCase.status as "completed" | "running" | "failed" | "queued"))}
                     />
                   </TableCell>
-                  {evals.map((evalRef: any) => {
+                  {evals.map((evalRef: EvalRefOutput) => {
                     // Find the result for THIS specific prompt using the prompt key
                     const promptResult = testCase.prompt_results?.find(
-                      (pr: any) => pr.prompt_key === promptKey
+                      (pr: PromptResult) => pr.prompt_key === promptKey
                     );
                     // Compare eval version as strings since API returns them as strings
                     const evalResult = promptResult?.evals?.find(
-                      (e: any) => e.eval_name === evalRef.name && String(e.eval_version) === String(evalRef.version)
+                      (e: EvalExecution) => e.eval_name === evalRef.name && String(e.eval_version) === String(evalRef.version)
                     );
                     const score = evalResult?.eval_results?.score;
 
