@@ -24,6 +24,7 @@ import { PromptType, FrontendTool } from "../types";
 import getToolChoiceDisplayValue from "../utils/getToolChoiceDisplayValue";
 
 import { ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
+import { track, EVENT_NAMES } from "@/services/amplitude";
 
 const validToolEnumValues = ["auto", "none", "required"] as const;
 
@@ -128,7 +129,12 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
       type: "addTool",
       payload: { promptId: prompt.id },
     });
-  }, [dispatch, prompt.id]);
+    // Track tool added event
+    track(EVENT_NAMES.TOOL_ADDED, {
+      prompt_id: prompt.id,
+      tool_count: prompt.tools.length + 1,
+    });
+  }, [dispatch, prompt.id, prompt.tools.length]);
 
   // Handle accordion expand/collapse
   const handleToolAccordionChange = (toolId: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
@@ -145,12 +151,19 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
 
   const handleDeleteTool = useCallback(
     (toolId: string) => {
+      const toolToDelete = prompt.tools.find((t) => t.id === toolId);
       dispatch({
         type: "deleteTool",
         payload: { promptId: prompt.id, toolId },
       });
+      // Track tool removed event
+      track(EVENT_NAMES.TOOL_REMOVED, {
+        prompt_id: prompt.id,
+        tool_name: toolToDelete?.function.name,
+        tool_count: prompt.tools.length - 1,
+      });
     },
-    [dispatch, prompt.id]
+    [dispatch, prompt.id, prompt.tools]
   );
 
   const handleToolChoiceChange = useCallback(

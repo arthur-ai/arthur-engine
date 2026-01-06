@@ -6,13 +6,16 @@ import TuneIcon from "@mui/icons-material/Tune";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
-import React, { memo, useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
 
 import ModelParamsDialog from "./ModelParamsDialog";
 import PreviewPromptModal from "./PreviewPromptModal";
+
+import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
+import { track, EVENT_NAMES } from "@/services/amplitude";
 
 interface ManagementButtonsProps {
   prompt: PromptType;
@@ -31,12 +34,22 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
       return;
     }
 
+    // Track prompt run event
+    track(EVENT_NAMES.PROMPT_RUN, {
+      model_provider: prompt.modelProvider,
+      model_name: prompt.modelName,
+      message_count: prompt.messages.length,
+      has_tools: prompt.tools.length > 0,
+      is_streaming: prompt.modelParameters?.stream ?? false,
+      config_mode: false,
+    });
+
     // Otherwise, run in normal playground mode
     dispatch({
       type: "runPrompt",
       payload: { promptId: prompt.id },
     });
-  }, [dispatch, prompt.id, experimentConfig, handleRunSingleWithConfig]);
+  }, [dispatch, experimentConfig, handleRunSingleWithConfig, prompt]);
 
   const handleDuplicatePrompt = useCallback(() => {
     dispatch({
@@ -50,8 +63,13 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   }, []);
 
   const handlePreviewOpen = useCallback(() => {
+    track(EVENT_NAMES.PROMPT_PREVIEW, {
+      model_provider: prompt.modelProvider,
+      model_name: prompt.modelName,
+      message_count: prompt.messages.length,
+    });
     setPreviewModalOpen(true);
-  }, []);
+  }, [prompt]);
 
   const handleSavePromptOpen = useCallback(() => {
     setSavePromptOpen(true);
@@ -70,7 +88,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
     if (experimentConfig?.prompt_variable_mapping) {
       // Build a set of mapped variable names
       const mappedVariables = new Set<string>();
-      experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
+      experimentConfig.prompt_variable_mapping.forEach((mapping: PromptVariableMappingOutput) => {
         mappedVariables.add(mapping.variable_name);
       });
 
