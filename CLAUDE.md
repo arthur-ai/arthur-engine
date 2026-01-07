@@ -293,6 +293,86 @@ yarn generate-api
 yarn type-check && yarn lint
 ```
 
+## Critical CI Checks
+
+**IMPORTANT**: Before pushing code, ensure these checks pass locally to avoid CI failures:
+
+### 1. Code Formatting (Black & isort) - GenAI & ML Engines
+
+All Python code must be formatted with black and isort. GitHub CI will fail if formatting is incorrect.
+
+```bash
+# GenAI Engine
+cd genai-engine
+poetry run black --check src/    # Check formatting
+poetry run black src/             # Apply fixes
+poetry run isort --check --profile black src/    # Check imports
+poetry run isort src/ --profile black            # Apply fixes
+
+# ML Engine
+cd ml-engine
+poetry run black --check src/ml_engine/
+poetry run black src/ml_engine/
+poetry run isort --check --profile black src/ml_engine/
+poetry run isort src/ml_engine/ --profile black
+```
+
+**Common issue**: Forgetting to run formatters before committing. Always run formatters on changed files.
+
+### 2. API Changelog Cop - GenAI Engine Only
+
+If you modify API request or response schemas in GenAI Engine, you must update the API changelog. The `changelog_cop.sh` script checks for this.
+
+**Files that trigger this check**:
+- `genai-engine/src/schemas/response_schemas.py`
+- `genai-engine/src/schemas/request_schemas.py`
+
+**How to pass**:
+```bash
+cd genai-engine
+
+# If you changed response_schemas.py or request_schemas.py:
+# 1. Update api_changelog.md with your changes
+# 2. Document if the change is backward compatible
+
+# Run the check locally
+./changelog_cop.sh
+```
+
+**Note**: Internal schema changes (`internal_schemas.py`) do NOT require API changelog updates, as they are not exposed via the public API.
+
+### 3. Pre-commit Checklist
+
+Before every commit, run:
+
+**GenAI Engine**:
+```bash
+cd genai-engine
+poetry run black src/
+poetry run isort src/ --profile black
+poetry run pytest -m "unit_tests"
+# If response_schemas.py or request_schemas.py changed:
+./changelog_cop.sh
+```
+
+**ML Engine**:
+```bash
+cd ml-engine
+poetry run black src/ml_engine/
+poetry run isort src/ml_engine/ --profile black
+poetry run pytest tests/unit
+poetry run mypy src/ml_engine
+```
+
+**Frontend**:
+```bash
+cd genai-engine/ui
+yarn type-check
+yarn lint
+```
+
+**Best practice**: Set up pre-commit hooks to automate these checks.
+
 ## Testing
 
 **GenAI Engine:**
