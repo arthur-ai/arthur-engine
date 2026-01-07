@@ -349,7 +349,8 @@ class ContinuousEvalsRepository:
 
             if filter_request.continuous_eval_enabled is not None:
                 base_query = base_query.filter(
-                    DatabaseContinuousEval.enabled == filter_request.continuous_eval_enabled,
+                    DatabaseContinuousEval.enabled
+                    == filter_request.continuous_eval_enabled,
                 )
 
         if pagination_parameters:

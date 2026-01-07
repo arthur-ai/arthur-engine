@@ -858,7 +858,10 @@ def test_list_continuous_evals_pagination(client: GenaiEngineTestClientBase):
                 received_continuous_evals.evals[i].transform_id
                 == continuous_evals[i].transform_id
             )
-            assert received_continuous_evals.evals[i].enabled == continuous_evals[i].enabled
+            assert (
+                received_continuous_evals.evals[i].enabled
+                == continuous_evals[i].enabled
+            )
 
         # Test page size = 5
         status_code, received_continuous_evals = client.list_continuous_evals(
@@ -886,7 +889,10 @@ def test_list_continuous_evals_pagination(client: GenaiEngineTestClientBase):
                 received_continuous_evals.evals[i].transform_id
                 == continuous_evals[i].transform_id
             )
-            assert received_continuous_evals.evals[i].enabled == continuous_evals[i].enabled
+            assert (
+                received_continuous_evals.evals[i].enabled
+                == continuous_evals[i].enabled
+            )
 
         # Test page size = 5 and page = 2 (over the number of items)
         status_code, received_continuous_evals = client.list_continuous_evals(
@@ -1002,7 +1008,7 @@ def test_list_continuous_evals_filtering(client: GenaiEngineTestClientBase):
 
         status_code, received_continuous_evals = client.list_continuous_evals(
             task_id=agentic_task.id,
-            search_url=f"enabled=False", # also tests case insensitivity
+            search_url=f"enabled=False",  # also tests case insensitivity
         )
         assert status_code == 200
         assert len(received_continuous_evals.evals) == 1
@@ -1452,7 +1458,10 @@ def test_list_continuous_eval_run_results_value_errors(
         )
         assert status_code == 400
         assert error is not None
-        assert "invalid uuid format for parameter 'id': invalid_uuid" in error.get("detail", "").lower()
+        assert (
+            "invalid uuid format for parameter 'id': invalid_uuid"
+            in error.get("detail", "").lower()
+        )
 
         status_code, error = client.list_continuous_eval_run_results(
             task_id=task_id,
@@ -1460,7 +1469,10 @@ def test_list_continuous_eval_run_results_value_errors(
         )
         assert status_code == 400
         assert error is not None
-        assert "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid" in error.get("detail", "").lower()
+        assert (
+            "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid"
+            in error.get("detail", "").lower()
+        )
     finally:
         cleanup_test_data(test_data)
 

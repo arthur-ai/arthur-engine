@@ -1245,7 +1245,7 @@ def test_continuous_eval_execution_less_transform_vars_than_eval_vars(
         },
     )
     assert status_code == 200
-    
+
     # Also verify saving a continuous eval without all eval variables mapped returns a 400 error
     status_code, bad_ce = client.save_continuous_eval(
         task_id=agentic_task.id,
@@ -1264,7 +1264,7 @@ def test_continuous_eval_execution_less_transform_vars_than_eval_vars(
         },
     )
     assert status_code == 400
-    
+
     # remove the model_version variable from the transform
     transform_definition = {
         "variables": [
@@ -1412,7 +1412,7 @@ def test_only_enabled_continuous_evals_are_enqueued(
     # Update the test data spans to use the correct task_id
     db_session = override_get_db_session()
     db_session.query(DatabaseSpan).filter(
-        DatabaseSpan.trace_id == test_data["trace_id"]
+        DatabaseSpan.trace_id == test_data["trace_id"],
     ).update({"task_id": agentic_task.id})
     db_session.commit()
 

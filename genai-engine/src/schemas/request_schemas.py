@@ -1132,7 +1132,11 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
             created_before=(
                 datetime.fromisoformat(created_before) if created_before else None
             ),
-            continuous_eval_enabled=continuous_eval_enabled.lower() == "true" if continuous_eval_enabled else None,
+            continuous_eval_enabled=(
+                continuous_eval_enabled.lower() == "true"
+                if continuous_eval_enabled
+                else None
+            ),
         )
 
 
