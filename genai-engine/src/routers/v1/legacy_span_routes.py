@@ -1,7 +1,8 @@
 import json
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import (
@@ -31,6 +32,35 @@ from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
+
+
+@dataclass
+class SpanDurationFilters:
+    """Container for span duration filter parameters."""
+
+    span_duration_eq: Optional[float] = None
+    span_duration_gt: Optional[float] = None
+    span_duration_gte: Optional[float] = None
+    span_duration_lt: Optional[float] = None
+    span_duration_lte: Optional[float] = None
+
+    def has_filters(self) -> bool:
+        """Check if any span duration filter is set."""
+        return any([
+            self.span_duration_eq is not None,
+            self.span_duration_gt is not None,
+            self.span_duration_gte is not None,
+            self.span_duration_lt is not None,
+            self.span_duration_lte is not None,
+        ])
+
+
+@dataclass
+class ExtendedTraceQuery:
+    """Extended trace query that includes both TraceQueryRequest and span duration filters."""
+
+    trace_query: TraceQueryRequest
+    span_duration_filters: SpanDurationFilters = field(default_factory=SpanDurationFilters)
 
 logger = logging.getLogger(__name__)
 
@@ -245,9 +275,35 @@ def trace_query_parameters(
         ge=0,
         description="Duration less than or equal to this value (seconds).",
     ),
-) -> TraceQueryRequest:
-    """Create a TraceQueryRequest from query parameters."""
-    return TraceQueryRequest(
+    # Span duration filters (for individual span latency filtering)
+    span_duration_eq: float = Query(
+        None,
+        ge=0,
+        description="Span duration exactly equal to this value (seconds).",
+    ),
+    span_duration_gt: float = Query(
+        None,
+        ge=0,
+        description="Span duration greater than this value (seconds).",
+    ),
+    span_duration_gte: float = Query(
+        None,
+        ge=0,
+        description="Span duration greater than or equal to this value (seconds).",
+    ),
+    span_duration_lt: float = Query(
+        None,
+        ge=0,
+        description="Span duration less than this value (seconds).",
+    ),
+    span_duration_lte: float = Query(
+        None,
+        ge=0,
+        description="Span duration less than or equal to this value (seconds).",
+    ),
+) -> ExtendedTraceQuery:
+    """Create an ExtendedTraceQuery from query parameters."""
+    trace_query = TraceQueryRequest(
         task_ids=task_ids,
         trace_ids=trace_ids,
         start_time=start_time,
@@ -282,6 +338,14 @@ def trace_query_parameters(
         trace_duration_lt=trace_duration_lt,
         trace_duration_lte=trace_duration_lte,
     )
+    span_duration = SpanDurationFilters(
+        span_duration_eq=span_duration_eq,
+        span_duration_gt=span_duration_gt,
+        span_duration_gte=span_duration_gte,
+        span_duration_lt=span_duration_lt,
+        span_duration_lte=span_duration_lte,
+    )
+    return ExtendedTraceQuery(trace_query=trace_query, span_duration_filters=span_duration)
 
 
 @span_routes.post(
@@ -329,8 +393,8 @@ def query_spans(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    trace_query: Annotated[
-        TraceQueryRequest,
+    extended_query: Annotated[
+        ExtendedTraceQuery,
         Depends(trace_query_parameters),
     ],
     db_session: Session = Depends(get_db_session),
@@ -340,7 +404,7 @@ def query_spans(
     try:
         span_repo = _get_span_repository(db_session)
         span_count, traces = span_repo.query_traces_with_filters(
-            filters=trace_query,
+            filters=extended_query.trace_query,
             pagination_parameters=pagination_parameters,
             include_metrics=True,  # Include existing metrics
             compute_new_metrics=False,  # Don't compute new metrics
@@ -374,8 +438,8 @@ def query_spans_with_metrics(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    trace_query: Annotated[
-        TraceQueryRequest,
+    extended_query: Annotated[
+        ExtendedTraceQuery,
         Depends(trace_query_parameters),
     ],
     db_session: Session = Depends(get_db_session),
@@ -385,7 +449,7 @@ def query_spans_with_metrics(
     try:
         span_repo = _get_span_repository(db_session)
         span_count, traces = span_repo.query_traces_with_filters(
-            filters=trace_query,
+            filters=extended_query.trace_query,
             pagination_parameters=pagination_parameters,
             include_metrics=True,  # Include existing metrics
             compute_new_metrics=True,  # Compute new metrics

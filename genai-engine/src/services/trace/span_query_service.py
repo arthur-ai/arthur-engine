@@ -818,6 +818,24 @@ class SpanQueryService:
         if filters.status_code:
             query = query.where(DatabaseSpan.status_code.in_(filters.status_code))
 
+        # Apply span duration filters (individual span latency filtering)
+        if filters.span_duration_filters:
+            for filter_item in filters.span_duration_filters:
+                # Calculate span duration in seconds
+                start_epoch = func.extract("epoch", DatabaseSpan.start_time)
+                end_epoch = func.extract("epoch", DatabaseSpan.end_time)
+                duration_seconds = func.round(
+                    sqlalchemy_cast(end_epoch - start_epoch, Numeric),
+                    3,
+                )
+
+                query = query.where(
+                    self.filter_service.build_comparison_condition(
+                        duration_seconds,
+                        filter_item,
+                    ),
+                )
+
         if not span_types:
             return query
 

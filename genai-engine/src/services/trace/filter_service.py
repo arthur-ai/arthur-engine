@@ -95,6 +95,7 @@ class FilterService:
             or filters.span_name_contains
             or filters.span_ids
             or filters.status_code
+            or filters.span_duration_filters
             or self.has_llm_metric_filters(filters),
         )
 

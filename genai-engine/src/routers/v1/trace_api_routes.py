@@ -22,7 +22,12 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
-from routers.v1.legacy_span_routes import _create_response, trace_query_parameters
+from routers.v1.legacy_span_routes import (
+    _create_response,
+    trace_query_parameters,
+    ExtendedTraceQuery,
+    SpanDurationFilters,
+)
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
@@ -109,8 +114,8 @@ def list_traces_metadata(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    trace_query: Annotated[
-        TraceQueryRequest,
+    extended_query: Annotated[
+        ExtendedTraceQuery,
         Depends(trace_query_parameters),
     ],
     include_spans: bool = Query(
@@ -124,9 +129,9 @@ def list_traces_metadata(
     try:
         span_repo = _get_span_repository(db_session)
         count, trace_metadata_list = span_repo.get_traces_metadata(
-            filters=trace_query,
+            filters=extended_query.trace_query,
             pagination_parameters=pagination_parameters,
-            user_ids=trace_query.user_ids,
+            user_ids=extended_query.trace_query.user_ids,
             include_spans=include_spans,
         )
 
@@ -165,8 +170,8 @@ def list_spans_metadata(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    trace_query: Annotated[
-        TraceQueryRequest,
+    extended_query: Annotated[
+        ExtendedTraceQuery,
         Depends(trace_query_parameters),
     ],
     db_session: Session = Depends(get_db_session),
@@ -183,7 +188,8 @@ def list_spans_metadata(
             page_size=pagination_parameters.page_size,
             include_metrics=False,  # No metrics for metadata endpoint
             compute_new_metrics=False,
-            filters=trace_query,  # Enables comprehensive filtering
+            filters=extended_query.trace_query,  # Enables comprehensive filtering
+            span_duration_filters=extended_query.span_duration_filters,  # Span duration filtering
         )
 
         # Transform to metadata response format

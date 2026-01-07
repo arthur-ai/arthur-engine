@@ -24,6 +24,7 @@ const NAME_TO_LABEL = {
   status_code: "Status",
   response_relevance: "Response Relevance",
   trace_duration: "Trace Duration (s)",
+  span_duration: "Span Duration (s)",
   tool_usage: "Tool Usage",
   trace_ids: "Trace IDs",
   user_ids: "User IDs",

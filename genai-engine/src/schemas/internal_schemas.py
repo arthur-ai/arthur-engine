@@ -2186,6 +2186,7 @@ class TraceQuerySchema(BaseModel):
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
     response_relevance_filters: Optional[list[FloatRangeFilter]] = None
     trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+    span_duration_filters: Optional[list[FloatRangeFilter]] = None
     user_ids: Optional[list[str]] = Field(
         None,
         description="User IDs to filter on. Optional.",
@@ -2228,7 +2229,10 @@ class TraceQuerySchema(BaseModel):
     )
 
     @staticmethod
-    def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
+    def _from_request_model(
+        request: TraceQueryRequest,
+        span_duration_filters: Optional[list["FloatRangeFilter"]] = None,
+    ) -> "TraceQuerySchema":
         def resolve_filters(prefix: str) -> Optional[list[FloatRangeFilter]]:
             filters = []
             for op in ComparisonOperatorEnum:
@@ -2258,6 +2262,7 @@ class TraceQuerySchema(BaseModel):
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+            span_duration_filters=span_duration_filters,
             user_ids=request.user_ids,
             session_ids=request.session_ids,
             span_ids=request.span_ids,

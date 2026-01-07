@@ -16,6 +16,8 @@ from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import (
     AgenticAnnotation,
+    ComparisonOperatorEnum,
+    FloatRangeFilter,
     SessionMetadata,
     Span,
     TraceMetadata,
@@ -447,19 +449,53 @@ class SpanRepository:
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
         filters: Optional[TraceQueryRequest] = None,
+        span_duration_filters: Optional[Any] = None,
     ) -> tuple[list[Span], int]:
         """Query spans with optional metrics computation.
 
         Uses comprehensive filtering if filters parameter provided, otherwise uses basic filtering.
 
+        Args:
+            span_duration_filters: Optional SpanDurationFilters object with span_duration_eq,
+                span_duration_gt, span_duration_gte, span_duration_lt, span_duration_lte attributes.
+                Values are in seconds.
+
         Returns:
             tuple[list[Span], int]: (spans, total_count) where total_count is all items matching filters
         """
+        # Convert span_duration_filters to FloatRangeFilter list
+        span_duration_filter_list = None
+        if span_duration_filters is not None and span_duration_filters.has_filters():
+            span_duration_filter_list = []
+            if span_duration_filters.span_duration_eq is not None:
+                span_duration_filter_list.append(
+                    FloatRangeFilter(value=span_duration_filters.span_duration_eq, operator=ComparisonOperatorEnum.EQ)
+                )
+            if span_duration_filters.span_duration_gt is not None:
+                span_duration_filter_list.append(
+                    FloatRangeFilter(value=span_duration_filters.span_duration_gt, operator=ComparisonOperatorEnum.GT)
+                )
+            if span_duration_filters.span_duration_gte is not None:
+                span_duration_filter_list.append(
+                    FloatRangeFilter(value=span_duration_filters.span_duration_gte, operator=ComparisonOperatorEnum.GTE)
+                )
+            if span_duration_filters.span_duration_lt is not None:
+                span_duration_filter_list.append(
+                    FloatRangeFilter(value=span_duration_filters.span_duration_lt, operator=ComparisonOperatorEnum.LT)
+                )
+            if span_duration_filters.span_duration_lte is not None:
+                span_duration_filter_list.append(
+                    FloatRangeFilter(value=span_duration_filters.span_duration_lte, operator=ComparisonOperatorEnum.LTE)
+                )
+
         # Use comprehensive filtering if filters parameter provided
         if filters is not None:
 
             # Convert filters to internal schema format
-            internal_filters = TraceQuerySchema._from_request_model(filters)
+            internal_filters = TraceQuerySchema._from_request_model(
+                filters,
+                span_duration_filters=span_duration_filter_list,
+            )
 
             if not internal_filters.task_ids:
                 raise ValueError("task_ids are required for span queries")
