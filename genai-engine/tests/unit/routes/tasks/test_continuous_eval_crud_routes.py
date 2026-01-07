@@ -1303,6 +1303,34 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
 
 
 @pytest.mark.unit_tests
+def test_list_continuous_eval_run_results_value_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test listing continuous eval run results returns 400 for ValueError"""
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+
+    try:
+        status_code, error = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="id=invalid_uuid",
+        )
+        assert status_code == 400
+        assert error is not None
+        assert "invalid uuid format for parameter 'id': invalid_uuid" in error.get("detail", "").lower()
+
+        status_code, error = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="continuous_eval_id=invalid_uuid",
+        )
+        assert status_code == 400
+        assert error is not None
+        assert "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid" in error.get("detail", "").lower()
+    finally:
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
 @patch("repositories.continuous_evals_repository.get_continuous_eval_queue_service")
 def test_rerun_continuous_eval_success(
     mock_get_continuous_eval_queue_service,
