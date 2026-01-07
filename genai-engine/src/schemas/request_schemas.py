@@ -1015,6 +1015,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
     # Optional filters
     id: Optional[UUID] = Field(
         None,
+        description="ID of the agentic annotation to filter on",
+    )
+    continuous_eval_id: Optional[UUID] = Field(
+        None,
         description="ID of the continuous eval to filter on",
     )
     trace_id: Optional[str] = Field(
@@ -1044,6 +1048,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
             None,
             description="ID of the continuous eval to filter on.",
         ),
+        continuous_eval_id: Optional[str] = Query(
+            None,
+            description="ID of the continuous eval to filter on.",
+        ),
         trace_id: Optional[str] = Query(
             None,
             description="Trace ID to filter on.",
@@ -1066,8 +1074,30 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         ),
     ) -> "ContinuousEvalRunResultsListFilterRequest":
         """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
+        # Validate UUID parameters
+        parsed_id = None
+        if id:
+            try:
+                parsed_id = UUID(id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid UUID format for parameter 'id': {id}",
+                )
+
+        parsed_continuous_eval_id = None
+        if continuous_eval_id:
+            try:
+                parsed_continuous_eval_id = UUID(continuous_eval_id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid UUID format for parameter 'continuous_eval_id': {continuous_eval_id}",
+                )
+
         return ContinuousEvalRunResultsListFilterRequest(
-            id=UUID(id) if id else None,
+            id=parsed_id,
+            continuous_eval_id=parsed_continuous_eval_id,
             trace_id=trace_id,
             annotation_score=annotation_score,
             run_status=run_status,
