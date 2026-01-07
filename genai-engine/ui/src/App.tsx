@@ -8,6 +8,8 @@ import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "rea
 
 import "./App.css";
 import { AgentExperiments } from "./components/agent-experiments";
+import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";
+import { NewAgentExperiment } from "./components/agent-experiments/new";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ComingSoon } from "./components/ComingSoon";
@@ -123,6 +125,28 @@ function App() {
                             <ProtectedRoute>
                               <TaskLayout>
                                 <AgentExperiments />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        <Route
+                          path="new"
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <NewAgentExperiment />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        <Route
+                          path=":experimentId"
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <AgentExperimentDetail />
                               </TaskLayout>
                             </ProtectedRoute>
                           }

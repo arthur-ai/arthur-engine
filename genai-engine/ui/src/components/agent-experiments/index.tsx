@@ -1,19 +1,13 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, ButtonGroup, Dialog, Skeleton, Stack, Tab, Tabs, Typography } from "@mui/material";
-import { parseAsStringEnum, useQueryState } from "nuqs";
-import { Activity, Suspense } from "react";
+import { Box, Button, ButtonGroup, Skeleton, Stack, Typography } from "@mui/material";
+import { Suspense } from "react";
+import { Link } from "react-router-dom";
 
-import { Endpoints } from "./components/endpoints";
-import { NewEndpointDialogContent } from "./components/endpoints/new-dialog";
 import { Experiments } from "./components/experiments";
-import { NewExperimentDialogContent } from "./components/experiments/components/new-dialog";
 
 import { getContentHeight } from "@/constants/layout";
 
 export const AgentExperiments = () => {
-  const [activeTab, setActiveTab] = useQueryState("tab", parseAsStringEnum(["endpoints", "experiments"]).withDefault("endpoints"));
-  const [activeDialog, setActiveDialog] = useQueryState("create", parseAsStringEnum(["endpoint", "experiment"]));
-
   return (
     <>
       <Stack
@@ -41,41 +35,24 @@ export const AgentExperiments = () => {
             </Typography>
           </div>
           <ButtonGroup size="small" variant="contained" disableElevation>
-            <Button startIcon={<AddIcon />} onClick={() => setActiveDialog("endpoint")}>
+            {/* <Button startIcon={<AddIcon />} onClick={() => setActiveDialog("endpoint")}>
               New Endpoint
-            </Button>
-            <Button startIcon={<AddIcon />} onClick={() => setActiveDialog("experiment")}>
+            </Button> */}
+            <Button startIcon={<AddIcon />} to={`./new`} component={Link}>
               New Experiment
             </Button>
           </ButtonGroup>
         </Box>
-        <Tabs
-          variant="fullWidth"
-          value={activeTab}
-          onChange={(_, value) => setActiveTab(value)}
-          sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
+        <Suspense
+          fallback={
+            <Box p={2}>
+              <Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />
+            </Box>
+          }
         >
-          <Tab label="Endpoints" value="endpoints" />
-          <Tab label="Experiments" value="experiments" />
-        </Tabs>
-        <Activity mode={activeTab === "endpoints" ? "visible" : "hidden"}>
-          <Suspense fallback={<Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />}>
-            <Endpoints />
-          </Suspense>
-        </Activity>
-        <Activity mode={activeTab === "experiments" ? "visible" : "hidden"}>
-          <Suspense fallback={<Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />}>
-            <Experiments />
-          </Suspense>
-        </Activity>
+          <Experiments />
+        </Suspense>
       </Stack>
-
-      <Dialog open={activeDialog === "endpoint"} onClose={() => setActiveDialog(null)} maxWidth="md" fullWidth>
-        <NewEndpointDialogContent />
-      </Dialog>
-      <Dialog open={activeDialog === "experiment"} onClose={() => setActiveDialog(null)} maxWidth="md" fullWidth>
-        <NewExperimentDialogContent />
-      </Dialog>
     </>
   );
 };

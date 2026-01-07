@@ -51,13 +51,16 @@ export const queryKeys = {
     results: (taskId: string) => ["listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet", { taskId }] as const,
   },
   transforms: {
+    list: (taskId: string) => ["listTransformsApiV1TasksTaskIdTracesTransformsGet", { taskId }] as const,
     byId: (transformId: string) => ["getTransformApiV1TracesTransformsTransformIdGet", { transformId }] as const,
   },
   annotations: {
     byId: (annotationId: string) => ["getAnnotationByIdApiV1AnnotationsAnnotationIdGet", { annotationId }] as const,
   },
   agentExperiments: {
-    all: (taskId: string) => ["listAgentExperimentsApiV1TasksTaskIdAgentExperimentsGet", { taskId }] as const,
+    all: (taskId: string) => ["listAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet", { taskId }] as const,
+    byId: (experimentId: string) => ["getAgenticExperimentApiV1AgenticExperimentsExperimentIdGet", { experimentId }] as const,
+    testCases: (experimentId: string) => ["getAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGet", { experimentId }] as const,
     endpoints: {
       all: () => ["listAgentExperimentEndpointsApiV1AgentExperimentsEndpointsGet"] as const,
       byId: (endpointId: string) => ["getAgentExperimentEndpointByIdApiV1AgentExperimentsEndpointsEndpointIdGet", { endpointId }] as const,

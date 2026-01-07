@@ -1,23 +1,25 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { AgentExperiment } from "../types";
 
+import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import { Api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 
-export const agentExperimentsQueryOptions = (taskId: string) => {
-  return {
+export const agentExperimentsQueryOptions = ({ taskId, api }: { taskId: string; api: Api<unknown> }) => {
+  return queryOptions({
     queryKey: queryKeys.agentExperiments.all(taskId),
-    queryFn: () => {
-      return MOCK_AGENT_EXPERIMENTS;
-    },
-  };
+    queryFn: () => api.api.listAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet({ taskId }),
+    select: (data) => data.data,
+  });
 };
 
 export const useAgentExperiments = () => {
+  const api = useApi()!;
   const { task } = useTask();
 
-  return useQuery(agentExperimentsQueryOptions(task!.id));
+  return useQuery(agentExperimentsQueryOptions({ taskId: task!.id, api }));
 };
 
 export const MOCK_AGENT_EXPERIMENTS: AgentExperiment[] = [
