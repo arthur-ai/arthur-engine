@@ -74,6 +74,12 @@ from db_models.rag_experiment_models import (
     DatabaseRagExperimentTestCaseRagResult,
     DatabaseRagExperimentTestCaseRagResultEvalScore,
 )
+from db_models.agentic_experiment_models import (
+    DatabaseAgenticExperiment,
+    DatabaseAgenticExperimentTestCase,
+    DatabaseAgenticExperimentTestCaseAgenticResult,
+    DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
+)
 from db_models.transform_models import DatabaseTraceTransform
 
 __all__ = [
@@ -152,6 +158,11 @@ __all__ = [
     "DatabaseRagExperimentTestCase",
     "DatabaseRagExperimentTestCaseRagResult",
     "DatabaseRagExperimentTestCaseRagResultEvalScore",
+    # Agentic Experiment models
+    "DatabaseAgenticExperiment",
+    "DatabaseAgenticExperimentTestCase",
+    "DatabaseAgenticExperimentTestCaseAgenticResult",
+    "DatabaseAgenticExperimentTestCaseAgenticResultEvalScore",
     # Transform models
     "DatabaseTraceTransform",
 ]

@@ -366,6 +366,10 @@ def list_sessions_metadata(
         None,
         description="User IDs to filter on. Optional.",
     ),
+    include_experiment_sessions: bool = Query(
+        default=False,
+        description="Include sessions originating from Arthur experiments. Defaults to false for most uses.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SessionListResponse:
@@ -378,6 +382,7 @@ def list_sessions_metadata(
             end_time=end_time,
             user_ids=user_ids,
             pagination_parameters=pagination_parameters,
+            include_experiment_sessions=include_experiment_sessions,
         )
 
         sessions = [

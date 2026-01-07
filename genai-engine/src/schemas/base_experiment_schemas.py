@@ -53,6 +53,31 @@ class ExperimentOutputSource(BaseModel):
     )
 
 
+class JsonPathExperimentOutputSource(BaseModel):
+    """Reference to experiment output using JSON path extraction (internal use)"""
+
+    type: Literal["json_path"] = Field(
+        default="json_path",
+        description="Type of experiment output source",
+    )
+    json_path: Optional[str] = Field(
+        default=None,
+        description="JSON path to extract from experiment output. Should use dot notation for array indexing (eg. response.objects.0.properties.category)",
+    )
+
+
+class TransformVariableExperimentOutputSource(BaseModel):
+    """Reference to experiment output using transform variable extraction (agentic experiments only)"""
+
+    type: Literal["transform_variable"] = Field(
+        default="transform_variable",
+        description="Type of experiment output source",
+    )
+    transform_variable_name: str = Field(
+        description="Name of the variable to extract from the transform. The transform_id comes from the eval configuration.",
+    )
+
+
 class DatasetColumnVariableSource(BaseModel):
     """Variable source from a dataset column"""
 
