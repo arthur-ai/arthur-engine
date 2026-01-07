@@ -23,10 +23,10 @@ from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v1.legacy_span_routes import (
-    _create_response,
-    trace_query_parameters,
     ExtendedTraceQuery,
     SpanDurationFilters,
+    _create_response,
+    trace_query_parameters,
 )
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum

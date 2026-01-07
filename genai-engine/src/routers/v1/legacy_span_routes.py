@@ -46,13 +46,15 @@ class SpanDurationFilters:
 
     def has_filters(self) -> bool:
         """Check if any span duration filter is set."""
-        return any([
-            self.span_duration_eq is not None,
-            self.span_duration_gt is not None,
-            self.span_duration_gte is not None,
-            self.span_duration_lt is not None,
-            self.span_duration_lte is not None,
-        ])
+        return any(
+            [
+                self.span_duration_eq is not None,
+                self.span_duration_gt is not None,
+                self.span_duration_gte is not None,
+                self.span_duration_lt is not None,
+                self.span_duration_lte is not None,
+            ]
+        )
 
 
 @dataclass
@@ -60,7 +62,10 @@ class ExtendedTraceQuery:
     """Extended trace query that includes both TraceQueryRequest and span duration filters."""
 
     trace_query: TraceQueryRequest
-    span_duration_filters: SpanDurationFilters = field(default_factory=SpanDurationFilters)
+    span_duration_filters: SpanDurationFilters = field(
+        default_factory=SpanDurationFilters
+    )
+
 
 logger = logging.getLogger(__name__)
 
@@ -345,7 +350,9 @@ def trace_query_parameters(
         span_duration_lt=span_duration_lt,
         span_duration_lte=span_duration_lte,
     )
-    return ExtendedTraceQuery(trace_query=trace_query, span_duration_filters=span_duration)
+    return ExtendedTraceQuery(
+        trace_query=trace_query, span_duration_filters=span_duration
+    )
 
 
 @span_routes.post(

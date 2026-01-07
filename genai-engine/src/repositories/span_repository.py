@@ -469,23 +469,38 @@ class SpanRepository:
             span_duration_filter_list = []
             if span_duration_filters.span_duration_eq is not None:
                 span_duration_filter_list.append(
-                    FloatRangeFilter(value=span_duration_filters.span_duration_eq, operator=ComparisonOperatorEnum.EQ)
+                    FloatRangeFilter(
+                        value=span_duration_filters.span_duration_eq,
+                        operator=ComparisonOperatorEnum.EQ,
+                    )
                 )
             if span_duration_filters.span_duration_gt is not None:
                 span_duration_filter_list.append(
-                    FloatRangeFilter(value=span_duration_filters.span_duration_gt, operator=ComparisonOperatorEnum.GT)
+                    FloatRangeFilter(
+                        value=span_duration_filters.span_duration_gt,
+                        operator=ComparisonOperatorEnum.GT,
+                    )
                 )
             if span_duration_filters.span_duration_gte is not None:
                 span_duration_filter_list.append(
-                    FloatRangeFilter(value=span_duration_filters.span_duration_gte, operator=ComparisonOperatorEnum.GTE)
+                    FloatRangeFilter(
+                        value=span_duration_filters.span_duration_gte,
+                        operator=ComparisonOperatorEnum.GTE,
+                    )
                 )
             if span_duration_filters.span_duration_lt is not None:
                 span_duration_filter_list.append(
-                    FloatRangeFilter(value=span_duration_filters.span_duration_lt, operator=ComparisonOperatorEnum.LT)
+                    FloatRangeFilter(
+                        value=span_duration_filters.span_duration_lt,
+                        operator=ComparisonOperatorEnum.LT,
+                    )
                 )
             if span_duration_filters.span_duration_lte is not None:
                 span_duration_filter_list.append(
-                    FloatRangeFilter(value=span_duration_filters.span_duration_lte, operator=ComparisonOperatorEnum.LTE)
+                    FloatRangeFilter(
+                        value=span_duration_filters.span_duration_lte,
+                        operator=ComparisonOperatorEnum.LTE,
+                    )
                 )
 
         # Use comprehensive filtering if filters parameter provided
