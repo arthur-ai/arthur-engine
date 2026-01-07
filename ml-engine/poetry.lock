@@ -232,14 +232,14 @@ urllib3 = ">=2.5.0,<3.0.0"
 
 [[package]]
 name = "arthur-common"
-version = "2.4.21"
+version = "2.4.22"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.4.21-py3-none-any.whl", hash = "sha256:f79d615c1b1a719a815988b83c4ec8f43da9a0322b6454b61ee270c4349adab6"},
-    {file = "arthur_common-2.4.21.tar.gz", hash = "sha256:d6c9c5bc3990aec507b26b0f08f884e162ca368efbae923ed59507d148f7ccb7"},
+    {file = "arthur_common-2.4.22-py3-none-any.whl", hash = "sha256:6eab3ae5a0db6f4c41da7ef3ffcbb408acf758d74191ac48c038b9641620923d"},
+    {file = "arthur_common-2.4.22.tar.gz", hash = "sha256:6727f809fd72cad0aaf9b0aa56eb59640d8b0db4fb039f3dd7da8cd9498b5c29"},
 ]
 
 [package.dependencies]
@@ -4874,4 +4874,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "6c6c59bdf35b7e6b7255e59d277fc310209c9cf22b9c6104dee120560ca0812d"
+content-hash = "84ecf058602229c4bf03cd25dd0555aaf05936bc15caae9967ef97c07ae375f8"
