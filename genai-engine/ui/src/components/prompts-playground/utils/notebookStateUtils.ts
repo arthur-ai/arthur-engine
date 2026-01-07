@@ -1,7 +1,9 @@
 import { PromptType, PromptPlaygroundState } from "../types";
+
 import { toExperimentPromptConfig } from "./toExperimentPromptConfig";
 import toFrontendPrompt from "./toFrontendPrompt";
-import { NotebookStateInput, NotebookStateOutput, SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
+
+import { Api, NotebookStateInput, NotebookStateOutput, PromptExperimentDetail, SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
 
 /**
  * Serializes the current playground state to NotebookStateInput format
@@ -10,7 +12,7 @@ import { NotebookStateInput, NotebookStateOutput, SavedPromptConfig, UnsavedProm
  */
 export const serializePlaygroundState = (
   state: PromptPlaygroundState,
-  experimentConfig?: any
+  experimentConfig?: Partial<PromptExperimentDetail> | null
 ): NotebookStateInput => {
   // Convert prompts to experiment prompt configs
   const prompt_configs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
@@ -42,7 +44,7 @@ export const serializePlaygroundState = (
  */
 export const deserializeNotebookState = async (
   notebookState: NotebookStateOutput,
-  apiClient: any,
+  apiClient: Api<unknown>,
   taskId: string
 ): Promise<{
   prompts: PromptType[];

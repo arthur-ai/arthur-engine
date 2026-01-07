@@ -12,6 +12,20 @@ export const EVENT_NAMES = {
   LOGOUT: "Logout",
   // Prompts Playground events
   RUN_ALL_PROMPTS: "Run All Prompts",
+  PROMPT_SAVED: "Prompt Saved",
+  PROMPT_LOADED: "Prompt Loaded",
+  PROMPT_RUN: "Prompt Run",
+  PROMPT_PREVIEW: "Prompt Preview",
+  EXPERIMENT_CONFIG_CREATED: "Experiment Config Created",
+  EXPERIMENT_RUN_STARTED: "Experiment Run Started",
+  MODEL_PARAMS_CHANGED: "Model Params Changed",
+  TOOL_ADDED: "Tool Added",
+  TOOL_REMOVED: "Tool Removed",
+  OUTPUT_FIELD_CHANGED: "Output Field Changed",
+  VARIABLE_VALUE_CHANGED: "Variable Value Changed",
+  NOTEBOOK_LOADED: "Notebook Loaded",
+  NOTEBOOK_SAVED: "Notebook Saved",
+  NOTEBOOK_RENAMED: "Notebook Renamed",
 } as const;
 
 /**
