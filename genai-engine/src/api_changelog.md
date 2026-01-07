@@ -2,6 +2,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/07/2026
+- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'input_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'output_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'total_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'input_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'output_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'total_tokens' to the response with the '200' status
+
 # 01/05/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_id'
 

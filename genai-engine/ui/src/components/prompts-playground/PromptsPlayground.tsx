@@ -1191,6 +1191,20 @@ const PromptsPlayground = () => {
     return null;
   }, [allPromptsHaveModelConfig, blankVariablesCount, isRunningExperiment]);
 
+  // Determine if cost highlighting should be applied
+  // Highlight when 2+ prompts are visible and at least one has a cost
+  const shouldHighlightCosts = useMemo(() => {
+    if (state.prompts.length < 2) {
+      return false;
+    }
+    // Check if at least one prompt has a cost
+    const hasCost = state.prompts.some((prompt) => {
+      const cost = prompt.runResponse?.cost;
+      return cost && cost !== "-" && cost !== "0.000000" && parseFloat(cost) > 0;
+    });
+    return hasCost;
+  }, [state.prompts]);
+
   return (
     <PromptProvider
       state={state}
@@ -1371,17 +1385,32 @@ const PromptsPlayground = () => {
         <Box component="main" className="flex-1 flex flex-col">
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
             <Stack direction="row" spacing={1} sx={{ height: "100%" }}>
-              {state.prompts.map((prompt) => (
-                <Box
-                  key={prompt.id}
-                  className="flex-1 h-full"
-                  sx={{
-                    minWidth: 400,
-                  }}
-                >
-                  <PromptComponent prompt={prompt} useIconOnlyMode={useIconOnlyMode} />
-                </Box>
-              ))}
+              {state.prompts.map((prompt) => {
+                // Highlight cost if multiple prompts visible and this prompt has a cost
+                const promptHasCost = !!(
+                  prompt.runResponse?.cost && 
+                  prompt.runResponse.cost !== "-" && 
+                  prompt.runResponse.cost !== "0.000000" && 
+                  parseFloat(prompt.runResponse.cost) > 0
+                );
+                const highlightThisPrompt = shouldHighlightCosts && promptHasCost;
+                
+                return (
+                  <Box
+                    key={prompt.id}
+                    className="flex-1 h-full"
+                    sx={{
+                      minWidth: 400,
+                    }}
+                  >
+                    <PromptComponent 
+                      prompt={prompt} 
+                      useIconOnlyMode={useIconOnlyMode}
+                      highlightCost={highlightThisPrompt}
+                    />
+                  </Box>
+                );
+              })}
             </Stack>
           </Box>
         </Box>
