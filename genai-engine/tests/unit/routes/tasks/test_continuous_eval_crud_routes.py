@@ -1259,6 +1259,12 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
             "llm_eval_name": llm_eval.name,
             "llm_eval_version": llm_eval.version,
             "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "test_variable",
+                    "eval_variable": "test_variable",
+                },
+            ],
         },
     )
 
