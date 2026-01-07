@@ -42,6 +42,64 @@ poetry install --only performance
 # See locust/README.md for details
 ```
 
+### Critical CI Checks
+
+**IMPORTANT**: Before pushing code, ensure these checks pass locally to avoid CI failures:
+
+#### 1. Code Formatting (Black & isort)
+
+All Python code must be formatted with black and isort. GitHub CI will fail if formatting is incorrect.
+
+```bash
+# Check formatting (will exit 1 if changes needed)
+poetry run black --check src/
+poetry run isort --check --profile black src/
+
+# Apply formatting fixes
+poetry run black src/
+poetry run isort src/ --profile black
+```
+
+**Common issue**: Forgetting to run formatters before committing. Always run formatters on changed files.
+
+#### 2. API Changelog Cop
+
+If you modify API request or response schemas, you must update the API changelog. The `changelog_cop.sh` script checks for this.
+
+**Files that trigger this check**:
+- `src/schemas/response_schemas.py`
+- `src/schemas/request_schemas.py`
+
+**How to pass**:
+```bash
+# If you changed response_schemas.py or request_schemas.py:
+# 1. Update api_changelog.md with your changes
+# 2. Document if the change is backward compatible
+
+# Run the check locally
+./changelog_cop.sh
+```
+
+**Note**: Internal schema changes (`internal_schemas.py`) do NOT require API changelog updates, as they are not exposed via the public API.
+
+#### 3. Pre-commit Workflow
+
+Before every commit, run:
+
+```bash
+# Format code
+poetry run black src/
+poetry run isort src/ --profile black
+
+# Run tests
+poetry run pytest -m "unit_tests"
+
+# For API changes, update changelog if needed
+# (only if response_schemas.py or request_schemas.py changed)
+```
+
+**Best practice**: Set up pre-commit hooks (see `.pre-commit-config.yaml`) to automate formatting checks.
+
 ### Architecture
 
 **Tech Stack**: Python 3.12, FastAPI, SQLAlchemy, PostgreSQL + pgvector, Alembic, Uvicorn
