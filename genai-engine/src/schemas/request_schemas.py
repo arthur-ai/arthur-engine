@@ -909,6 +909,10 @@ class ContinuousEvalCreateRequest(BaseModel):
             description="Mapping of transform variables to eval variables.",
         )
     )
+    enabled: bool = Field(
+        default=True,
+        description="Whether to enable or disable a continuous eval. Defaults to True.",
+    )
 
 
 class UpdateContinuousEvalRequest(BaseModel):
@@ -936,6 +940,10 @@ class UpdateContinuousEvalRequest(BaseModel):
     ] = Field(
         default=None,
         description="Mapping of transform variables to eval variables.",
+    )
+    enabled: Optional[bool] = Field(
+        default=None,
+        description="Whether to enable or disable a continuous eval.",
     )
 
     @model_validator(mode="after")
@@ -976,6 +984,10 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+    enabled: Optional[bool] = Field(
+        None,
+        description="Whether the continuous eval is enabled.",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -995,6 +1007,10 @@ class ContinuousEvalListFilterRequest(BaseModel):
             None,
             description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
         ),
+        enabled: Optional[str] = Query(
+            None,
+            description="Whether the continuous eval is enabled.",
+        ),
     ) -> "ContinuousEvalListFilterRequest":
         """Create a ContinuousEvalListFilterRequest from query parameters."""
         return ContinuousEvalListFilterRequest(
@@ -1006,6 +1022,7 @@ class ContinuousEvalListFilterRequest(BaseModel):
             created_before=(
                 datetime.fromisoformat(created_before) if created_before else None
             ),
+            enabled=enabled.lower() == "true" if enabled else None,
         )
 
 
@@ -1041,6 +1058,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+    continuous_eval_enabled: Optional[bool] = Field(
+        None,
+        description="Whether the continuous eval is enabled.",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1071,6 +1092,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         created_before: Optional[str] = Query(
             None,
             description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        continuous_eval_enabled: Optional[str] = Query(
+            None,
+            description="Whether the continuous eval is enabled.",
         ),
     ) -> "ContinuousEvalRunResultsListFilterRequest":
         """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
@@ -1107,6 +1132,7 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
             created_before=(
                 datetime.fromisoformat(created_before) if created_before else None
             ),
+            continuous_eval_enabled=continuous_eval_enabled.lower() == "true" if continuous_eval_enabled else None,
         )
 
 

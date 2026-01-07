@@ -3514,6 +3514,10 @@ class ContinuousEval(BaseModel):
         default_factory=list,
         description="Mapping of transform variables to eval variables.",
     )
+    enabled: bool = Field(
+        default=True,
+        description="Whether the continuous eval is enabled.",
+    )
 
     def to_db_model(self) -> DatabaseContinuousEval:
         # Convert Pydantic models to dicts for JSON serialization
@@ -3532,6 +3536,7 @@ class ContinuousEval(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping_dicts,
+            enabled=self.enabled,
         )
 
     @staticmethod
@@ -3555,6 +3560,7 @@ class ContinuousEval(BaseModel):
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
             transform_variable_mapping=transform_variable_mapping,
+            enabled=db_eval.enabled,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
@@ -3577,6 +3583,7 @@ class ContinuousEval(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping,
+            enabled=self.enabled,
         )
 
 

@@ -807,6 +807,9 @@ class ContinuousEvalResponse(BaseModel):
             description="Mapping of transform variables to eval variables.",
         )
     )
+    enabled: bool = Field(
+        description="Whether the continuous eval is enabled.",
+    )
 
 
 class ListContinuousEvalsResponse(BaseModel):

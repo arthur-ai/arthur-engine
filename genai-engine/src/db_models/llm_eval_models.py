@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
+    Boolean,
     TIMESTAMP,
     UUID,
     ForeignKey,
@@ -143,6 +144,7 @@ class DatabaseContinuousEval(Base):
         default=datetime.now,
         nullable=False,
     )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     __table_args__ = (
         ForeignKeyConstraint(
