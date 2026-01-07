@@ -4,7 +4,6 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
     ListAgenticAnnotationsResponse,
@@ -24,7 +23,6 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v1.legacy_span_routes import (
     ExtendedTraceQuery,
-    SpanDurationFilters,
     _create_response,
     trace_query_parameters,
 )
