@@ -24,6 +24,6 @@ export const mapFormToRequest = (form: FormData): CreateAgenticExperimentRequest
       transform_id: e.transform_id,
       variable_mapping: e.variable_mapping,
     })),
-    template_variable_mapping: [],
+    template_variable_mapping: form.templateVariableMapping,
   };
 };

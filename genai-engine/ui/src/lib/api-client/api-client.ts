@@ -4446,6 +4446,12 @@ export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Sessions
+   * Include sessions originating from Arthur experiments. Defaults to false for most uses.
+   * @default false
+   */
+  include_experiment_sessions?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -10934,7 +10940,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.278
+ * @version 2.1.281
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
