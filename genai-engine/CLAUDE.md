@@ -93,3 +93,162 @@ poetry install --only performance
 - Agentic workflow support: multi-step agent trace evaluation
 - Pre-commit hooks enforce black, isort, mypy - see CONTRIBUTING.md
 - Database migrations should be reviewed before applying to ensure idempotency
+
+---
+
+## Coding Standards
+
+### Code Formatting
+
+| Tool | Purpose | Config |
+|------|---------|--------|
+| **Black** | Code formatting | `target-version = ["py312"]` |
+| **isort** | Import sorting | `profile = "black"` |
+| **autoflake** | Remove unused imports | `--remove-all-unused-imports` |
+| **MyPy** | Type checking | `strict = true` |
+
+Run before committing:
+```bash
+poetry run isort src --profile black
+poetry run black src
+poetry run mypy src
+```
+
+### Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Files | lowercase_underscore | `api_key_repository.py` |
+| Database models | `Database{Entity}` | `DatabaseTask`, `DatabaseSpan` |
+| Repositories | `{Entity}Repository` | `TaskRepository` |
+| Services | `{Name}Service` | `TraceIngestionService` |
+| Exceptions | `{Condition}Exception` | `BadCredentialsException` |
+| Pydantic schemas | `{Entity}Request/Response` | `TaskResponse` |
+| Functions | snake_case | `get_task_by_id()` |
+| Private methods | `_` prefix | `_validate_input()` |
+| Constants | UPPER_SNAKE_CASE | `MAX_PAGE_SIZE` |
+
+### Type Annotations
+
+Required on all functions. Use Python 3.10+ syntax:
+
+```python
+# GOOD - modern syntax
+def get_task(task_id: str, include_rules: bool = False) -> Task | None:
+    pass
+
+def query_tasks(ids: list[str] | None = None) -> tuple[list[Task], int]:
+    pass
+
+# AVOID - older style
+from typing import Optional, Union, List
+def get_task(task_id: str) -> Optional[Task]:  # Use Task | None instead
+    pass
+```
+
+### API Router Pattern
+
+```python
+@router.get("/{task_id}", response_model=TaskResponse)
+@permission_checker(permissions=PermissionLevelsEnum.READ.value)
+def get_task(
+    task_id: UUID = Path(description="The task ID"),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TaskResponse:
+    try:
+        repo = TaskRepository(db_session)
+        task = repo.get_task_by_id(str(task_id))
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return task.to_response_model()
+    finally:
+        db_session.close()
+```
+
+### Repository Pattern
+
+All database access goes through repository classes:
+
+```python
+class TaskRepository:
+    def __init__(self, db_session: Session) -> None:
+        self.db_session = db_session
+
+    @tracer.start_as_current_span("query_tasks")
+    def query_tasks(
+        self,
+        ids: list[str] | None = None,
+        page: int = 0,
+        page_size: int = 10,
+    ) -> tuple[list[DatabaseTask], int]:
+        stmt = self.db_session.query(DatabaseTask)
+        if ids:
+            stmt = stmt.where(DatabaseTask.id.in_(ids))
+        count = stmt.count()
+        results = stmt.offset(page * page_size).limit(page_size).all()
+        return results, count
+```
+
+### Pydantic Schemas
+
+Use Field descriptions for OpenAPI docs:
+
+```python
+class CreateTaskRequest(BaseModel):
+    name: str = Field(description="Name of the task", min_length=1, max_length=100)
+    description: str | None = Field(default=None, description="Optional description")
+
+    @model_validator(mode="before")
+    @classmethod
+    def strip_name(cls, values: dict) -> dict:
+        if "name" in values and values["name"]:
+            values["name"] = values["name"].strip()
+        return values
+```
+
+### Import Order
+
+Sorted by isort with black profile:
+
+```python
+# 1. Standard library
+import logging
+from datetime import datetime
+from typing import Any
+
+# 2. Third-party
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+# 3. Local imports
+from config import Config
+from repositories.task_repository import TaskRepository
+```
+
+### OpenTelemetry Tracing
+
+Add spans to significant operations:
+
+```python
+from opentelemetry import trace
+tracer = trace.get_tracer(__name__)
+
+class TaskRepository:
+    @tracer.start_as_current_span("query_tasks")
+    def query_tasks(self, ...) -> tuple[list[DatabaseTask], int]:
+        pass
+```
+
+### Error Handling
+
+- Use HTTPException for API errors with appropriate status codes
+- Always close database sessions in `finally` blocks
+- Log errors before raising exceptions
+
+### Testing Requirements
+
+- Minimum 79% coverage: `poetry run pytest -m "unit_tests" --cov=src --cov-fail-under=79`
+- Use pytest markers: `@pytest.mark.unit_tests`, `@pytest.mark.integration_tests`
+- Fixtures should clean up after themselves

@@ -87,3 +87,189 @@ yarn generate-api:clean
 - Use MUI's sx prop or Tailwind classes for styling, avoid inline styles
 - Authentication token is stored in localStorage and managed by AuthContext
 - The app is a SPA - no server-side rendering
+
+---
+
+## Coding Standards
+
+### Code Formatting
+
+**Prettier** (`.prettierrc`):
+- Trailing comma: `es5`
+- Tab width: `2 spaces`
+- Semicolons: enabled
+- Quotes: double quotes
+- Print width: `150` characters
+
+**ESLint**:
+- Import ordering: `builtin → external → internal → parent → sibling → index`
+- Alphabetized imports (case-insensitive)
+- Unused variables: prefix with `_` to ignore (e.g., `_unusedVar`)
+
+Run before committing:
+```bash
+yarn type-check && yarn lint && yarn format
+```
+
+### Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Components | PascalCase | `PromptsManagement.tsx` |
+| Component files | Same as component | `PromptsManagement.tsx` |
+| Folders | kebab-case | `prompts-management/` |
+| Hooks | `use` prefix, camelCase | `usePrompts`, `useApiQuery` |
+| Utilities | camelCase | `formatDate`, `cn` |
+| Types/Interfaces | PascalCase | `PromptsTableProps` |
+| Constants | UPPER_SNAKE_CASE | `MAX_PAGE_SIZE` |
+
+### Component Pattern
+
+```typescript
+interface ComponentNameProps {
+  required: string;
+  optional?: string;
+  children?: React.ReactNode;
+}
+
+export const ComponentName: React.FC<ComponentNameProps> = ({
+  required,
+  optional = "default"
+}) => {
+  return <div>{required}</div>;
+};
+```
+
+### Co-location
+
+Keep related code close:
+
+```
+components/feature-name/
+├── FeatureName.tsx           # Main component
+├── FeatureNameHeader.tsx     # Sub-components
+├── hooks/
+│   ├── useFeatureData.ts     # Feature-specific hooks
+│   └── useFeatureMutation.ts
+├── types.ts                  # Feature-specific types
+└── table/
+    └── FeatureTable.tsx
+```
+
+### State Management Hierarchy
+
+1. **Server State**: TanStack Query for API data
+2. **Global State**: React Context for auth, current task
+3. **Local State**: `useState` for component-level
+4. **URL State**: `nuqs` for URL parameters
+
+### Avoid Derived State in useState
+
+```typescript
+// BAD - storing derived state
+const [filteredItems, setFilteredItems] = useState([]);
+useEffect(() => {
+  setFilteredItems(items.filter(predicate));
+}, [items]);
+
+// GOOD - compute during render
+const filteredItems = useMemo(() => items.filter(predicate), [items]);
+```
+
+### Data Fetching with TanStack Query
+
+Use centralized query keys:
+
+```typescript
+// lib/queryKeys.ts
+export const queryKeys = {
+  datasets: {
+    all: () => ["datasets"] as const,
+    detail: (id: string) => ["datasets", id] as const,
+  },
+};
+
+// Custom hook
+export function useFeatureData(id: string) {
+  return useApiQuery({
+    method: "getFeatureApiV2FeatureIdGet",
+    args: [{ featureId: id }],
+    enabled: !!id,
+  });
+}
+```
+
+### API Client
+
+- Auto-generated from OpenAPI spec in `src/lib/api-client/`
+- **NEVER manually edit** - regenerate with `yarn generate-api:clean`
+- Always import types from generated client, don't duplicate
+
+### Validation with Zod
+
+```typescript
+import { z } from "zod";
+
+export const featureFormSchema = z.object({
+  name: z.string().min(1, "Required").max(100).trim(),
+  description: z.string().max(500).optional(),
+});
+
+export type FeatureFormValues = z.infer<typeof featureFormSchema>;
+```
+
+### Styling
+
+Use `cn()` utility for conditional Tailwind classes:
+
+```typescript
+import { cn } from "@/utils/cn";
+
+<div className={cn(
+  "p-4 rounded-lg",
+  isActive && "bg-blue-100",
+  isError && "border-red-500"
+)} />
+```
+
+### TypeScript Best Practices
+
+- No `any` type - use `unknown` and narrow
+- All function parameters must have types
+- Use discriminated unions for complex state:
+
+```typescript
+// GOOD
+type State =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; error: Error }
+  | { status: "success"; data: Data };
+```
+
+### Import Order
+
+```typescript
+// 1. React/external libraries
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+// 2. Internal absolute imports (@/)
+import { useApi } from "@/hooks/useApi";
+import { queryKeys } from "@/lib/queryKeys";
+
+// 3. Relative imports
+import { FeatureTable } from "./table/FeatureTable";
+import type { FeatureProps } from "./types";
+```
+
+### Minimize useEffect
+
+Only use for:
+- External system synchronization (subscriptions, event listeners)
+- Data fetching (prefer TanStack Query)
+
+**Avoid** for:
+- Transforming data (compute during render or useMemo)
+- Handling events (use event handlers)
+- Resetting state (use key prop)
