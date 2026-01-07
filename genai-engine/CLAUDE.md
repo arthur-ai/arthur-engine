@@ -206,20 +206,34 @@ class CreateTaskRequest(BaseModel):
 
 **Prefer Pydantic Models Over Generic Dicts:**
 
-Always use strongly-typed Pydantic models instead of generic `dict[str, str]` or `Dict[str, Any]` for function parameters and return values.
+Always use strongly-typed Pydantic models instead of generic `dict[str, str]` or `Dict[str, Any]` for:
+- Class member variables
+- Function parameters
+- Function return values
 
 ```python
-# BAD - generic dict loses type safety
-def process_config(config: dict[str, str]) -> dict[str, Any]:
-    return {"result": config["name"]}
+# BAD - generic dicts lose type safety
+class TaskService:
+    def __init__(self):
+        self.config: dict[str, str] = {}  # Bad: no structure
 
-# GOOD - strongly typed with custom models
+    def process_config(self, config: dict[str, str]) -> dict[str, Any]:
+        return {"result": config["name"]}
+
+# GOOD - strongly typed with Pydantic models
 class TaskConfig(BaseModel):
     name: str
     enabled: bool = True
 
-def process_config(config: TaskConfig) -> ProcessResult:
-    return ProcessResult(task_name=config.name)
+class ProcessResult(BaseModel):
+    task_name: str
+
+class TaskService:
+    def __init__(self):
+        self.config: TaskConfig = TaskConfig(name="default")  # Good: typed
+
+    def process_config(self, config: TaskConfig) -> ProcessResult:
+        return ProcessResult(task_name=config.name)
 ```
 
 Benefits:
