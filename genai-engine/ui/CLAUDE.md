@@ -159,9 +159,46 @@ components/feature-name/
 ### State Management Hierarchy
 
 1. **Server State**: TanStack Query for API data
-2. **Global State**: React Context for auth, current task
+2. **Global State**: React Context for auth, current task; Zustand for complex client state
 3. **Local State**: `useState` for component-level
 4. **URL State**: `nuqs` for URL parameters
+
+### Zustand for Client State
+
+Zustand is available for managing complex client-side state. Use it when:
+- State is shared across multiple unrelated components
+- State changes frequently and Context would cause unnecessary re-renders
+- You need computed/derived state with selectors
+
+**When to use Context vs Zustand:**
+- **Context**: Auth state, theme, rarely-changing global config
+- **Zustand**: UI state (modals, filters, selections), frequently-updated shared state
+
+**Example Zustand Store:**
+
+```typescript
+import { create } from 'zustand';
+
+interface FilterStore {
+  searchTerm: string;
+  selectedTags: string[];
+  setSearchTerm: (term: string) => void;
+  setSelectedTags: (tags: string[]) => void;
+  clearFilters: () => void;
+}
+
+export const useFilterStore = create<FilterStore>((set) => ({
+  searchTerm: '',
+  selectedTags: [],
+  setSearchTerm: (term) => set({ searchTerm: term }),
+  setSelectedTags: (tags) => set({ selectedTags: tags }),
+  clearFilters: () => set({ searchTerm: '', selectedTags: [] }),
+}));
+
+// Usage with selectors (prevents unnecessary re-renders)
+const searchTerm = useFilterStore((state) => state.searchTerm);
+const setSearchTerm = useFilterStore((state) => state.setSearchTerm);
+```
 
 ### Avoid Derived State in useState
 

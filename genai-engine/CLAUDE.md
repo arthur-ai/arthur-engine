@@ -207,6 +207,30 @@ class CreateTaskRequest(BaseModel):
         return values
 ```
 
+**Prefer Pydantic Models Over Generic Dicts:**
+
+Always use strongly-typed Pydantic models instead of generic `dict[str, str]` or `Dict[str, Any]` for function parameters and return values.
+
+```python
+# BAD - generic dict loses type safety
+def process_config(config: dict[str, str]) -> dict[str, Any]:
+    return {"result": config["name"]}
+
+# GOOD - strongly typed with custom models
+class TaskConfig(BaseModel):
+    name: str
+    enabled: bool = True
+
+def process_config(config: TaskConfig) -> ProcessResult:
+    return ProcessResult(task_name=config.name)
+```
+
+Benefits:
+- Type checking catches errors at development time
+- Auto-generated OpenAPI documentation
+- Runtime validation of data
+- IDE autocomplete and refactoring support
+
 ### Import Order
 
 Sorted by isort with black profile:
@@ -225,6 +249,23 @@ from sqlalchemy.orm import Session
 # 3. Local imports
 from config import Config
 from repositories.task_repository import TaskRepository
+```
+
+**IMPORTANT: All imports MUST be at the top of the file only.** Never place imports within functions, class methods, or mid-file. Consolidate all imports in the module header following the order above.
+
+```python
+# BAD - imports inside function
+def process_data():
+    import pandas as pd  # NEVER do this
+    from config import Config  # NEVER do this
+    return pd.DataFrame()
+
+# GOOD - imports at top of file
+import pandas as pd
+from config import Config
+
+def process_data():
+    return pd.DataFrame()
 ```
 
 ### OpenTelemetry Tracing
