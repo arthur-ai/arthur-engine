@@ -53,7 +53,15 @@ class RequestTimeParameterSource(BaseModel):
     type: Literal["request_time_parameter"] = Field(
         description="Type of source: 'request_time_parameter'",
     )
-    parameter_value: str = Field(
+
+
+class RequestTimeParameter(BaseModel):
+    """Request-time parameter with name and value (e.g., API keys, tokens)"""
+
+    name: str = Field(
+        description="Name of the request-time parameter (must match variable_name in template_variable_mapping)",
+    )
+    value: str = Field(
         description="Value of the request-time parameter (not saved, provided at execution time)",
     )
 
@@ -172,11 +180,10 @@ class CreateAgenticExperimentRequest(BaseModel):
     template_variable_mapping: list[TemplateVariableMapping] = Field(
         description="Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)",
     )
-    request_time_parameters: Optional[Dict[str, str]] = Field(
+    request_time_parameters: Optional[List[RequestTimeParameter]] = Field(
         default=None,
-        description="Values for request-time parameters (e.g., API keys, tokens). "
-        "These are NOT stored in the database for security reasons - they are passed directly to the execution thread. "
-        "Keys should match the parameter_value in template_variable_mapping sources of type 'request_time_parameter'.",
+        description="List of request-time parameters (e.g., API keys, tokens). "
+        "These are NOT stored in the database for security reasons - they are passed directly to the execution thread.",
     )
     eval_list: list[AgenticEvalRef] = Field(
         description="List of evaluations to run, each with an associated transform",

@@ -28,6 +28,7 @@ from db_models.rag_experiment_models import (
 from dependencies import db_session_context
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from schemas.agentic_experiment_schemas import RequestTimeParameter
 from schemas.base_experiment_schemas import (
     ExperimentStatus,
     TestCaseStatus,
@@ -51,7 +52,7 @@ class BaseExperimentExecutor(ABC):
     def execute_experiment_async(
         self,
         experiment_id: str,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> None:
         """
         Start asynchronous execution of an experiment in a background thread.
@@ -60,7 +61,7 @@ class BaseExperimentExecutor(ABC):
 
         Args:
             experiment_id: ID of the experiment to execute
-            request_time_parameters: Optional dict of request-time parameters to pass to the execution thread
+            request_time_parameters: Optional list of request-time parameters to pass to the execution thread
         """
         thread = threading.Thread(
             target=self._execute_experiment,
@@ -73,14 +74,14 @@ class BaseExperimentExecutor(ABC):
     def _execute_experiment(
         self,
         experiment_id: str,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> None:
         """
         Execute an experiment in the background with its own database session.
 
         Args:
             experiment_id: ID of the experiment to execute
-            request_time_parameters: Optional dict of request-time parameters to use during execution
+            request_time_parameters: Optional list of request-time parameters to use during execution
         """
         with db_session_context() as db_session:
             self._execute_experiment_with_session(
@@ -192,7 +193,7 @@ class BaseExperimentExecutor(ABC):
         self,
         db_session: Session,
         experiment_id: str,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> None:
         """
         Execute an experiment using the provided database session.
@@ -200,7 +201,7 @@ class BaseExperimentExecutor(ABC):
         Args:
             db_session: Database session
             experiment_id: ID of the experiment to execute
-            request_time_parameters: Optional dict of request-time parameters to use during execution
+            request_time_parameters: Optional list of request-time parameters to use during execution
         """
         try:
             # Mark experiment as running
@@ -316,14 +317,14 @@ class BaseExperimentExecutor(ABC):
     def _execute_test_case(
         self,
         test_case_id: str,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
         Execute a single test case including all configurations and evaluations.
 
         Args:
             test_case_id: ID of the test case to execute
-            request_time_parameters: Optional dict of request-time parameters to use during execution
+            request_time_parameters: Optional list of request-time parameters to use during execution
 
         Returns:
             True if test case completed successfully, False otherwise
@@ -339,7 +340,7 @@ class BaseExperimentExecutor(ABC):
         self,
         db_session: Session,
         test_case_id: str,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
         Execute a single test case using the provided database session.
@@ -347,7 +348,7 @@ class BaseExperimentExecutor(ABC):
         Args:
             db_session: Database session
             test_case_id: ID of the test case to execute
-            request_time_parameters: Optional dict of request-time parameters to use during execution
+            request_time_parameters: Optional list of request-time parameters to use during execution
 
         Returns:
             True if test case completed successfully, False otherwise
@@ -433,7 +434,7 @@ class BaseExperimentExecutor(ABC):
         self,
         db_session: Session,
         test_case: DatabaseBaseExperimentTestCase,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
         Execute all experiment outputs for a test case (RAG searches or prompts).

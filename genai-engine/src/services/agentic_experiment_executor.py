@@ -37,6 +37,7 @@ from schemas.agentic_experiment_schemas import (
     AgenticEvalResultSummaries,
     AgenticSummaryResults,
     HttpTemplate,
+    RequestTimeParameter,
     TemplateVariableMapping,
 )
 from schemas.base_experiment_schemas import (
@@ -99,7 +100,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         self,
         db_session: Session,
         test_case: DatabaseAgenticExperimentTestCase,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
         Execute HTTP request for a test case.
@@ -185,7 +186,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         self,
         test_case: DatabaseAgenticExperimentTestCase,
         experiment: DatabaseAgenticExperiment,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> Dict[str, str]:
         """
         Build variable map from test case input variables, request-time parameters, and generated variables.
@@ -194,8 +195,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         Args:
             test_case: Test case with template_input_variables (will be updated with generated values)
             experiment: Experiment with template_variable_mapping
-            request_time_parameters: Optional dict mapping parameter names to values
-                (keys should match parameter_value from RequestTimeParameterSource)
+            request_time_parameters: Optional list of request-time parameters
+                (name field should match variable_name in template_variable_mapping)
 
         Returns:
             Dictionary mapping variable names to values
@@ -253,14 +254,18 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
 
         # Add request-time parameters by looking up values from template_variable_mapping
         if request_time_parameters:
+            # Convert list to dict for easier lookup by name
+            request_time_params_dict = {
+                param.name: param.value for param in request_time_parameters
+            }
             for mapping in template_mappings:
                 if mapping.source.type == "request_time_parameter":
-                    # The parameter_value is the key in request_time_parameters dict
-                    parameter_name = mapping.source.parameter_value
-                    if parameter_name in request_time_parameters:
+                    # Use variable_name to look up the parameter value
+                    variable_name = mapping.variable_name
+                    if variable_name in request_time_params_dict:
                         # Map the variable_name to the parameter value
-                        variable_map[mapping.variable_name] = request_time_parameters[
-                            parameter_name
+                        variable_map[variable_name] = request_time_params_dict[
+                            variable_name
                         ]
 
         return variable_map
@@ -328,7 +333,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         db_session: Session,
         agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,
         test_case: DatabaseAgenticExperimentTestCase,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
         Execute HTTP request to agent endpoint and wait for trace.
@@ -357,7 +362,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             variable_map = self._build_variable_map(
                 test_case,
                 experiment,
-                request_time_parameters={},
+                request_time_parameters=None,
             )
 
             # Render HTTP template with variables (include session_id)
@@ -376,11 +381,11 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             db_session.commit()
 
             # Make HTTP request - at this point, render the sensitive request time parameters to include in the request
-            request_time_params = request_time_parameters or {}
+            # request_time_parameters is already a List[RequestTimeParameter] or None
             variable_map = self._build_variable_map(
                 test_case,
                 experiment,
-                request_time_parameters=request_time_params,
+                request_time_parameters=request_time_parameters,
             )
             rendered_request = self._render_http_template(
                 http_template,

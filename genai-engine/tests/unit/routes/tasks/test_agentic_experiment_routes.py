@@ -35,6 +35,7 @@ from schemas.agentic_experiment_schemas import (
     GeneratedVariableSource,
     HttpHeader,
     HttpTemplate,
+    RequestTimeParameter,
     RequestTimeParameterSource,
     TemplateVariableMapping,
     TransformVariableExperimentOutputSource,
@@ -245,7 +246,8 @@ def test_agentic_experiment_routes_happy_path(
     - A standard dataset column variable
 
     All response fields are validated to ensure they're set as expected.
-    Request-time parameters are validated to never be persisted or returned.
+    Request-time parameter mappings (structure) are persisted, but their values are not.
+    Request-time parameter values are validated to never be persisted or returned.
     """
 
     # Mock db_session_context for background thread execution to use test database
@@ -399,6 +401,8 @@ def test_agentic_experiment_routes_happy_path(
 
     # Track session IDs for trace creation
     created_session_ids = []
+    # Track actual requests made to agent endpoint to validate request-time parameters are included
+    actual_agent_requests = []
 
     def mock_post_with_trace_creation(*args, **kwargs):
         """Mock HTTP POST response and create trace with session_id."""
@@ -409,6 +413,17 @@ def test_agentic_experiment_routes_happy_path(
             body.get("session_id")
             or headers.get("X-Session-Id")
             or headers.get("x-session-id")
+        )
+
+        # Capture the actual request to validate request-time parameters are included
+        # requests.post(url, headers=..., json=...) - first arg is URL
+        request_url = args[0] if args else kwargs.get("url", "")
+        actual_agent_requests.append(
+            {
+                "url": request_url,
+                "headers": dict(headers) if headers else {},
+                "body": dict(body) if body else {},
+            },
         )
 
         if session_id:
@@ -433,7 +448,7 @@ def test_agentic_experiment_routes_happy_path(
     # This should result in only 1 test case instead of 2
     experiment_name = f"test_agentic_experiment_{random.random()}"
 
-    # Request-time parameter value (should never be persisted)
+    # Request-time parameter value (the value should never be persisted, but the mapping structure is)
     request_time_api_key = "secret-api-key-12345"
 
     experiment_request = CreateAgenticExperimentRequest(
@@ -471,7 +486,6 @@ def test_agentic_experiment_routes_happy_path(
                 variable_name="api_key",
                 source=RequestTimeParameterSource(
                     type="request_time_parameter",
-                    parameter_value="api_key",
                 ),
             ),
             TemplateVariableMapping(
@@ -491,9 +505,12 @@ def test_agentic_experiment_routes_happy_path(
                 ),
             ),
         ],
-        request_time_parameters={
-            "api_key": request_time_api_key,
-        },
+        request_time_parameters=[
+            RequestTimeParameter(
+                name="api_key",
+                value=request_time_api_key,
+            ),
+        ],
         eval_list=[
             AgenticEvalRef(
                 name=eval_name,
@@ -609,27 +626,35 @@ def test_agentic_experiment_routes_happy_path(
         "message": "{{user_message}}",
     }
 
-    # Validate template_variable_mapping - should NOT include request-time parameters
-    # and should contain the expected mappings
+    # Validate template_variable_mapping - should include request-time parameter mappings
+    # (the mapping structure is persisted, but not the values)
     assert experiment_detail.template_variable_mapping is not None
     assert (
-        len(experiment_detail.template_variable_mapping) == 2
-    )  # Only UUID and dataset column
+        len(experiment_detail.template_variable_mapping) == 3
+    )  # UUID generator, dataset column, and request-time parameter
     mapping_variable_names = [
         m.variable_name for m in experiment_detail.template_variable_mapping
     ]
     assert "request_id" in mapping_variable_names  # UUID generator
     assert "user_message" in mapping_variable_names  # Dataset column
     assert (
-        "api_key" not in mapping_variable_names
-    )  # Request-time parameter should be excluded
+        "api_key" in mapping_variable_names
+    )  # Request-time parameter mapping should be included
+
+    # Verify the request-time parameter mapping structure
+    api_key_mapping = None
     for mapping in experiment_detail.template_variable_mapping:
-        source = mapping.source
-        assert (
-            source.type != "request_time_parameter"
-        ), "Request-time parameter found in template_variable_mapping detail response"
-        # Should have UUID generator and dataset column
-        assert source.type in ["generated", "dataset_column"]
+        if mapping.variable_name == "api_key":
+            api_key_mapping = mapping
+            break
+    assert api_key_mapping is not None, "Request-time parameter mapping not found"
+    assert api_key_mapping.source.type == "request_time_parameter"
+
+    # Verify all mapping types are present
+    mapping_types = {m.source.type for m in experiment_detail.template_variable_mapping}
+    assert "generated" in mapping_types
+    assert "dataset_column" in mapping_types
+    assert "request_time_parameter" in mapping_types
 
     # Validate that request_time_parameters are NOT in the detail response
     # (they should not be stored or returned)
@@ -833,6 +858,28 @@ def test_agentic_experiment_routes_happy_path(
         request_time_api_key not in body_str
     ), "Request-time parameter value found in request_body"
 
+    # Validate that the ACTUAL HTTP request to the agent endpoint DOES include the request-time parameter
+    # This is critical: request-time parameter VALUES should be included in the actual request,
+    # even though the values are not stored in the DB or returned in API responses
+    # (the mapping structure IS stored, but not the sensitive values)
+    assert (
+        len(actual_agent_requests) > 0
+    ), "No actual HTTP requests were made to the agent endpoint"
+    actual_request = actual_agent_requests[0]  # Get the first request
+    assert (
+        "Authorization" in actual_request["headers"]
+    ), "Authorization header missing from actual request"
+    actual_auth_header = actual_request["headers"]["Authorization"]
+    assert isinstance(
+        actual_auth_header,
+        str,
+    ), "Authorization header should be a string"
+    # The actual request should contain the real API key value
+    expected_auth_value = f"Bearer {request_time_api_key}"
+    assert (
+        actual_auth_header == expected_auth_value
+    ), f"Actual request Authorization header should contain the API key. Expected '{expected_auth_value}', got '{actual_auth_header}'"
+
     # Validate agentic result output with expected values
     assert test_case.agentic_result.output is not None
     assert test_case.agentic_result.output.response_body is not None
@@ -886,7 +933,6 @@ def test_agentic_experiment_routes_happy_path(
                 variable_name="api_key",
                 source=RequestTimeParameterSource(
                     type="request_time_parameter",
-                    parameter_value="api_key",
                 ),
             ),
             TemplateVariableMapping(
@@ -906,9 +952,12 @@ def test_agentic_experiment_routes_happy_path(
                 ),
             ),
         ],
-        request_time_parameters={
-            "api_key": request_time_api_key,
-        },
+        request_time_parameters=[
+            RequestTimeParameter(
+                name="api_key",
+                value=request_time_api_key,
+            ),
+        ],
         eval_list=[
             AgenticEvalRef(
                 name=eval_name,

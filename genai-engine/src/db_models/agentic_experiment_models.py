@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sqlalchemy import TIMESTAMP, ForeignKey, ForeignKeyConstraint, String, Text
 from sqlalchemy.dialects.postgresql import JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
 from db_models.base_experiment_models import (
@@ -37,29 +37,6 @@ class DatabaseAgenticExperiment(DatabaseBaseExperiment):
         JSON,
         nullable=False,
     )
-
-    @validates("template_variable_mapping")
-    def _filter_request_time_parameters(
-        self,
-        key: str,
-        value: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Automatically filter out request-time parameters before saving to database.
-
-        Request-time parameters should never be saved to the database as they are
-        provided at execution time. This validator ensures they are removed
-        whenever template_variable_mapping is set.
-        """
-        if not value:
-            return value
-
-        filtered = []
-        for mapping in value:
-            # Only save mappings that are NOT request-time parameters
-            source = mapping.get("source", {})
-            if source.get("type") != "request_time_parameter":
-                filtered.append(mapping)
-        return filtered
 
     # Relationships
     test_cases: Mapped[List["DatabaseAgenticExperimentTestCase"]] = relationship(

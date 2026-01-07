@@ -385,7 +385,6 @@ class ContinuousEvalsRepository:
                 continue
 
             # if trace comes from an agent experiment, do not run evals
-            # TODO: add filtering to trace viewer endpoints
             if root_span.session_id is not None and root_span.session_id.startswith(
                 AGENT_EXPERIMENT_SESSION_PREFIX,
             ):

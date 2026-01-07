@@ -10,7 +10,7 @@ This module handles the execution of prompt experiments by:
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -23,6 +23,7 @@ from db_models.prompt_experiment_models import (
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from repositories.prompt_experiment_repository import PromptExperimentRepository
+from schemas.agentic_experiment_schemas import RequestTimeParameter
 from schemas.base_experiment_schemas import (
     EvalResultSummary,
     TestCaseStatus,
@@ -77,7 +78,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
         self,
         db_session: Session,
         test_case: DatabasePromptExperimentTestCase,
-        request_time_parameters: Optional[Dict[str, str]] = None,
+        request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
         Execute all prompts for a test case.
@@ -85,7 +86,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
         Args:
             db_session: Database session
             test_case: Test case to execute prompts for
-            request_time_parameters: Optional dict of request-time parameters (not used for prompt experiments)
+            request_time_parameters: Optional list of request-time parameters (not used for prompt experiments)
 
         Returns:
             True if all prompts executed successfully, False otherwise
