@@ -156,14 +156,11 @@ def get_task(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TaskResponse:
-    try:
-        repo = TaskRepository(db_session)
-        task = repo.get_task_by_id(str(task_id))
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-        return task.to_response_model()
-    finally:
-        db_session.close()
+    repo = TaskRepository(db_session)
+    task = repo.get_task_by_id(str(task_id))
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task.to_response_model()
 ```
 
 ### Repository Pattern
@@ -285,7 +282,6 @@ class TaskRepository:
 ### Error Handling
 
 - Use HTTPException for API errors with appropriate status codes
-- Always close database sessions in `finally` blocks
 - Log errors before raising exceptions
 
 ### Testing Requirements
