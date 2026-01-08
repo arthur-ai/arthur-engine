@@ -448,6 +448,12 @@ jobs:
         with:
           remove-browsers: true
           verbose: true
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -485,12 +491,29 @@ jobs:
         run: |
           cd deployment/ecs/model-upload
           python check_model_updates.py --update
-      - name: Commit updated manifest
+      - name: Create PR for updated manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Check if there are changes to commit
+          git add deployment/ecs/model-upload/models-manifest.json
+          if git diff --staged --quiet; then
+            echo "No changes to manifest, skipping PR creation"
+            exit 0
+          fi
+
+          # Configure git
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add and commit the manifest changes
           git add deployment/ecs/model-upload/models-manifest.json
           git diff --staged --quiet || git commit -m "Update models manifest [skip ci]"
+
+          # Set GH_TOKEN to use the automator app token
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+
+          # Push the changes to the branch
           git push origin ${{ github.ref_name }}
 
   push-all-cfts:
