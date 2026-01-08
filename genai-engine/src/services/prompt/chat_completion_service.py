@@ -129,26 +129,28 @@ class ChatCompletionService:
     # ============================================================================
 
     @staticmethod
-    def _extract_token_counts(response: ModelResponse) -> tuple[None | int, None | int, None | int]:
+    def _extract_token_counts(
+        response: Any,
+    ) -> tuple[None | int, None | int, None | int]:
         """
-        Extract token counts from a ModelResponse's usage object.
-        
+        Extract token counts from a response object's usage attribute.
+
         Args:
-            response: ModelResponse object that may have a usage attribute
-            
+            response: Response object (ModelResponse, TextCompletionResponse, etc.) that may have a usage attribute
+
         Returns:
             Tuple of (input_tokens, output_tokens, total_tokens), all may be None
         """
         input_tokens = None
         output_tokens = None
         total_tokens = None
-        
+
         if hasattr(response, "usage") and response.usage:
             usage = response.usage
             input_tokens = getattr(usage, "prompt_tokens", None)
             output_tokens = getattr(usage, "completion_tokens", None)
             total_tokens = getattr(usage, "total_tokens", None)
-        
+
         return input_tokens, output_tokens, total_tokens
 
     def _get_completion_params(
@@ -298,7 +300,7 @@ class ChatCompletionService:
             input_tokens, output_tokens, total_tokens = self._extract_token_counts(
                 llm_model_response.response
             )
-            
+
             return AgenticPromptRunResponse(
                 content=msg.content,
                 tool_calls=msg.tool_calls,
@@ -359,7 +361,7 @@ class ChatCompletionService:
                 input_tokens, output_tokens, total_tokens = self._extract_token_counts(
                     complete_response
                 )
-                
+
                 data = AgenticPromptRunResponse(
                     content=msg.content,
                     tool_calls=msg.tool_calls,
