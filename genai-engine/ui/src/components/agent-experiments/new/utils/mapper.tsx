@@ -1,6 +1,6 @@
-import { newAgentExperimentFormOpts } from "../form";
+import { NewAgentExperimentFormData, newAgentExperimentFormOpts } from "../form";
 
-import { CreateAgenticExperimentRequest } from "@/lib/api-client/api-client";
+import { AgenticExperimentDetail, CreateAgenticExperimentRequest } from "@/lib/api-client/api-client";
 
 type FormData = typeof newAgentExperimentFormOpts.defaultValues;
 
@@ -25,5 +25,34 @@ export const mapFormToRequest = (form: FormData): CreateAgenticExperimentRequest
       variable_mapping: e.variable_mapping,
     })),
     template_variable_mapping: form.templateVariableMapping,
+  };
+};
+
+export const mapTemplateToRequest = (template?: AgenticExperimentDetail): NewAgentExperimentFormData => {
+  if (!template) {
+    return newAgentExperimentFormOpts.defaultValues;
+  }
+
+  return {
+    ...newAgentExperimentFormOpts.defaultValues,
+    endpoint: {
+      name: template.http_template.endpoint_name,
+      url: template.http_template.endpoint_url,
+      headers: template.http_template.headers ?? [],
+      body: JSON.stringify(template.http_template.request_body),
+    },
+    datasetRef: {
+      id: template.dataset_ref.id,
+      version: template.dataset_ref.version,
+    },
+    evals: template.eval_list.map((e) => ({
+      name: e.name,
+      version: e.version,
+      transform_id: e.transform_id,
+      variable_mapping: e.variable_mapping,
+    })),
+    templateVariableMapping: template.template_variable_mapping,
+    name: template.name,
+    description: template.description ?? "",
   };
 };

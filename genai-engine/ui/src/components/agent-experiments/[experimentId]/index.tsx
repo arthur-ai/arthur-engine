@@ -1,9 +1,12 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Box, Button, Stack, Typography, Link as MuiLink } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { Box, Button, Stack, Typography, Link as MuiLink, ButtonGroup } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { Link, useParams } from "react-router-dom";
 
 import { useAgentExperiment } from "../hooks/useAgentExperiment";
+import { useDeleteAgentExperiment } from "../hooks/useDeleteAgentExperiment";
 
 import { columns } from "./data/columns";
 import { usePollExperiment } from "./hooks/usePollExperiment";
@@ -21,6 +24,8 @@ export const AgentExperimentDetail = () => {
 
   const { data: agentExperiment } = useAgentExperiment(experimentId);
   const { data: testCases } = usePollExperiment(experimentId!);
+
+  const deleteAgentExperimentMutation = useDeleteAgentExperiment();
 
   const table = useMaterialReactTable({
     columns,
@@ -43,48 +48,70 @@ export const AgentExperimentDetail = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <Stack alignItems="flex-start">
-          <Button
-            component={Link}
-            to=".."
-            size="small"
-            variant="text"
-            startIcon={<ArrowBackIcon />}
-            color="inherit"
-            sx={{ color: "text.primary", mb: 2 }}
-          >
-            Back to Experiments
-          </Button>
-          <Stack mb={1}>
-            <Typography variant="h5" color="text.primary" fontWeight="bold">
-              {agentExperiment?.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {agentExperiment?.description}
-            </Typography>
-          </Stack>
-          <Stack direction="row" gap={2}>
-            <Typography variant="body2" color="text.secondary">
-              <span className="font-bold">Created:</span> {formatDate(agentExperiment?.created_at)}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <span className="font-bold">Finished:</span> {formatDate(agentExperiment?.finished_at)}
-            </Typography>
-            {agentExperiment?.finished_at && (
-              <Typography variant="body2" color="text.secondary">
-                <span className="font-bold">Duration:</span> {formatTimestampDuration(agentExperiment.created_at, agentExperiment.finished_at)}
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack alignItems="flex-start">
+            <Button
+              component={Link}
+              to=".."
+              size="small"
+              variant="text"
+              startIcon={<ArrowBackIcon />}
+              color="inherit"
+              sx={{ color: "text.primary", mb: 2 }}
+            >
+              Back to Experiments
+            </Button>
+            <Stack mb={1}>
+              <Typography variant="h5" color="text.primary" fontWeight="bold">
+                {agentExperiment?.name}
               </Typography>
-            )}
-            <Typography variant="body2" color="text.secondary">
-              <span className="font-bold">Dataset:</span>{" "}
-              <MuiLink
-                component={Link}
-                to={`/tasks/${task?.id}/datasets/${agentExperiment?.dataset_ref.id}?version=${agentExperiment?.dataset_ref.version}`}
-              >
-                {agentExperiment?.dataset_ref.name} (v{agentExperiment?.dataset_ref.version})
-              </MuiLink>
-            </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {agentExperiment?.description}
+              </Typography>
+            </Stack>
+            <Stack direction="row" gap={2}>
+              <Typography variant="body2" color="text.secondary">
+                <span className="font-bold">Created:</span> {formatDate(agentExperiment?.created_at)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <span className="font-bold">Finished:</span> {formatDate(agentExperiment?.finished_at)}
+              </Typography>
+              {agentExperiment?.finished_at && (
+                <Typography variant="body2" color="text.secondary">
+                  <span className="font-bold">Duration:</span> {formatTimestampDuration(agentExperiment.created_at, agentExperiment.finished_at)}
+                </Typography>
+              )}
+              <Typography variant="body2" color="text.secondary">
+                <span className="font-bold">Dataset:</span>{" "}
+                <MuiLink
+                  component={Link}
+                  to={`/tasks/${task?.id}/datasets/${agentExperiment?.dataset_ref.id}?version=${agentExperiment?.dataset_ref.version}`}
+                >
+                  {agentExperiment?.dataset_ref.name} (v{agentExperiment?.dataset_ref.version})
+                </MuiLink>
+              </Typography>
+            </Stack>
           </Stack>
+          <ButtonGroup>
+            <Button
+              component={Link}
+              to={`/tasks/${task?.id}/agent-experiments/new?template=${experimentId}`}
+              variant="outlined"
+              color="primary"
+              startIcon={<ContentCopyIcon />}
+            >
+              Copy to new experiment
+            </Button>
+            <Button
+              loading={deleteAgentExperimentMutation.isPending}
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => deleteAgentExperimentMutation.mutate(experimentId!)}
+            >
+              Delete
+            </Button>
+          </ButtonGroup>
         </Stack>
       </Box>
       <Box overflow="auto">

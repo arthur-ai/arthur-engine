@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, Divider, Stack, TextField, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useRef } from "react";
 
@@ -10,8 +10,9 @@ import { EndpointSetup } from "./components/endpoint";
 import { EvaluatorMapper } from "./components/evaluator-mapper";
 import { EvaluatorsSelector } from "./components/evaluator-selector";
 import { newAgentExperimentFormOpts } from "./form";
+import { useCopyFromTemplate } from "./hooks/useCopyFromTemplate";
 import { useCreateNewExperiment } from "./hooks/useCreateNewExperiment";
-import { mapFormToRequest } from "./utils/mapper";
+import { mapFormToRequest, mapTemplateToRequest } from "./utils/mapper";
 
 import { useAppForm, withForm } from "@/components/traces/components/filtering/hooks/form";
 import { getContentHeight } from "@/constants/layout";
@@ -36,9 +37,11 @@ function rebuildMapping(vars: string[], prev: TemplateVariableMappingInput[] | u
 
 export const NewAgentExperiment = () => {
   const lastSignature = useRef<string | null>(null);
+  const { data: template, isLoading: isLoadingTemplate } = useCopyFromTemplate();
+
   const { enqueueSnackbar } = useSnackbar();
   const form = useAppForm({
-    ...newAgentExperimentFormOpts,
+    defaultValues: mapTemplateToRequest(template),
     listeners: {
       onChange: ({ fieldApi, formApi }) => {
         const name = fieldApi.name as string;
@@ -73,6 +76,10 @@ export const NewAgentExperiment = () => {
   });
 
   const newExperimentMutation = useCreateNewExperiment();
+
+  if (isLoadingTemplate) {
+    return <CircularProgress className="mx-auto" />;
+  }
 
   return (
     <Stack
