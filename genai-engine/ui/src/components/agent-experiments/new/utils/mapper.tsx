@@ -26,6 +26,7 @@ export const mapFormToRequest = (form: FormData): CreateAgenticExperimentRequest
     })),
     template_variable_mapping: form.templateVariableMapping,
     dataset_row_filter: form.datasetRowFilter,
+    request_time_parameters: form.requestTimeParameters,
   };
 };
 

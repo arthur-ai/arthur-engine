@@ -9,6 +9,7 @@ import { DatasetSetup } from "./components/dataset";
 import { EndpointSetup } from "./components/endpoint";
 import { EvaluatorMapper } from "./components/evaluator-mapper";
 import { EvaluatorsSelector } from "./components/evaluator-selector";
+import { RequestTimeMapper } from "./components/request-time-mapper";
 import { newAgentExperimentFormOpts } from "./form";
 import { useCopyFromTemplate } from "./hooks/useCopyFromTemplate";
 import { useCreateNewExperiment } from "./hooks/useCreateNewExperiment";
@@ -180,6 +181,7 @@ export const ExperimentSetup = withForm({
           <DatasetSetup form={form} />
           <EvaluatorsSelector form={form} />
           <BodyMapper form={form} />
+          <RequestTimeMapper form={form} />
           <EvaluatorMapper form={form} />
         </Box>
       </Stack>

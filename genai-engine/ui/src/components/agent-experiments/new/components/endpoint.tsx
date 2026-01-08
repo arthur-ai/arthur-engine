@@ -51,18 +51,7 @@ export const EndpointSetup = withForm({
             )}
           </form.AppField>
         </Stack>
-        <form.AppField
-          name="endpoint.headers"
-          validators={{
-            onChange: z.array(
-              z.object({
-                name: z.string().min(1, "Header name is required"),
-                value: z.string().min(1, "Header value is required"),
-              })
-            ),
-          }}
-          mode="array"
-        >
+        <form.AppField name="endpoint.headers" mode="array">
           {(field) => (
             <Stack component={Paper} variant="outlined" p={2}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
