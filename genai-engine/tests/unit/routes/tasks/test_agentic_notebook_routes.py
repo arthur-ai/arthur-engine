@@ -35,7 +35,6 @@ from schemas.agentic_experiment_schemas import (
     GeneratedVariableSource,
     HttpHeader,
     HttpTemplate,
-    RequestTimeParameterSource,
     TemplateVariableMapping,
     TransformVariableExperimentOutputSource,
 )
@@ -927,80 +926,7 @@ def test_agentic_notebook_validation_errors(
     assert response is not None, "Expected error response body"
     assert "not found" in response.get("detail", "").lower()
 
-    # Test 4: Create notebook with request-time parameter (should return 400)
-    notebook_state = AgenticNotebookState(
-        dataset_ref=DatasetRefInput(
-            id=dataset_id,
-            version=dataset_version_number,
-        ),
-        template_variable_mapping=[
-            TemplateVariableMapping(
-                variable_name="api_key",
-                source=RequestTimeParameterSource(
-                    type="request_time_parameter",
-                ),
-            ),
-        ],
-    )
-    notebook_request = CreateAgenticNotebookRequest(
-        name="test_request_time_parameter",
-        state=notebook_state,
-    )
-    status_code, response = client.create_agentic_notebook(
-        task_id=task_id,
-        notebook_request=notebook_request.model_dump(mode="json"),
-    )
-    assert (
-        status_code == 400
-    ), f"Expected 400 for request-time parameter, got {status_code}"
-    assert response is not None, "Expected error response body"
-    assert "request-time parameter" in response.get("detail", "").lower()
-    assert "cannot be stored" in response.get("detail", "").lower()
-
-    # Test 5: Set notebook state with request-time parameter (should return 400)
-    # First create a valid notebook
-    notebook_request = CreateAgenticNotebookRequest(
-        name="test_no_state",
-        description="Notebook without initial state",
-    )
-    status_code, notebook_detail = client.create_agentic_notebook(
-        task_id=task_id,
-        notebook_request=notebook_request.model_dump(mode="json"),
-    )
-    assert (
-        status_code == 201
-    ), f"Expected 201 for notebook without state, got {status_code}"
-    notebook_id = notebook_detail["id"]
-
-    # Try to set state with request-time parameter
-    invalid_state = AgenticNotebookState(
-        dataset_ref=DatasetRefInput(
-            id=dataset_id,
-            version=dataset_version_number,
-        ),
-        template_variable_mapping=[
-            TemplateVariableMapping(
-                variable_name="api_key",
-                source=RequestTimeParameterSource(
-                    type="request_time_parameter",
-                ),
-            ),
-        ],
-    )
-    invalid_state_request = SetAgenticNotebookStateRequest(state=invalid_state)
-
-    status_code, response = client.set_agentic_notebook_state(
-        notebook_id=notebook_id,
-        state_request=invalid_state_request.model_dump(mode="json"),
-    )
-    assert (
-        status_code == 400
-    ), f"Expected 400 for request-time parameter in set state, got {status_code}"
-    assert response is not None, "Expected error response body"
-    assert "request-time parameter" in response.get("detail", "").lower()
-    assert "cannot be stored" in response.get("detail", "").lower()
-
-    # Test 6: Create notebook with no state (should succeed)
+    # Test 4: Create notebook with no state (should succeed)
     notebook_request = CreateAgenticNotebookRequest(
         name="test_no_state_valid",
         description="Notebook without initial state",
@@ -1015,9 +941,6 @@ def test_agentic_notebook_validation_errors(
     notebook_id_2 = notebook_detail["id"]
 
     # Cleanup
-    status_code = client.delete_agentic_notebook(notebook_id)
-    assert status_code == 204, f"Failed to delete notebook: {status_code}"
-
     status_code = client.delete_agentic_notebook(notebook_id_2)
     assert status_code == 204, f"Failed to delete notebook: {status_code}"
 

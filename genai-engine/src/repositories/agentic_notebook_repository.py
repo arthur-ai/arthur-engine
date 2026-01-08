@@ -61,17 +61,6 @@ class AgenticNotebookRepository:
         if state is None:
             return
 
-        # Validate that request-time parameters are not included in template_variable_mapping
-        # Request-time parameters should not be stored in notebooks for security reasons
-        if state.template_variable_mapping:
-            for mapping in state.template_variable_mapping:
-                if mapping.source.type == "request_time_parameter":
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Request-time parameters cannot be stored in notebooks. "
-                        "They should be provided at experiment execution time only.",
-                    )
-
         # Validate dataset exists if provided
         if state.dataset_ref is not None:
             dataset = (
