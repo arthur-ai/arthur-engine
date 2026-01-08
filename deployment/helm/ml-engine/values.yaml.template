@@ -24,7 +24,7 @@ mlEngine:
       create: false
       name: ""
     containerImageName: "ml-engine"
-    containerImageVersion: "2.1.285"
+    containerImageVersion: "2.1.286"
     containerMemoryRequests: "16Gi"
     containerCPURequests: "7"
     containerMemoryLimits: "16Gi"
