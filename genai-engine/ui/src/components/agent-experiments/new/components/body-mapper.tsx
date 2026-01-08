@@ -56,9 +56,8 @@ export const BodyMapper = withForm({
                           </form.AppField>
                           <form.AppField name={`templateVariableMapping[${index}].source`}>
                             {(field) => {
-                              if (field.state.value.type === "generated") return null;
-                              if (field.state.value.type === "request_time_parameter")
-                                return <BodyMapperRequestTimeInput form={form} index={index} />;
+                              if (field.state.value.type === "request_time_parameter") return null;
+                              if (field.state.value.type === "generated") return <BodyMapperGeneratedInput form={form} index={index} />;
 
                               return <BodyMapperDatasetColumnSelector form={form} index={index} />;
                             }}
@@ -110,22 +109,25 @@ const BodyMapperDatasetColumnSelector = withForm({
   },
 });
 
-const BodyMapperRequestTimeInput = withForm({
+const BodyMapperGeneratedInput = withForm({
   ...newAgentExperimentFormOpts,
   props: {} as {
     index: number;
   },
   render: function Render({ form, index }) {
     return (
-      <form.AppField name={`templateVariableMapping[${index}].source.parameter_value`}>
+      <form.AppField name={`templateVariableMapping[${index}].source.generator_type`} defaultValue="uuid">
         {(field) => (
           <TextField
             size="small"
+            select
             value={field.state.value}
-            onChange={(e) => field.handleChange(e.target.value)}
+            onChange={(e) => field.handleChange(e.target.value as "uuid")}
             sx={{ flex: 1 }}
-            label="Request Time Parameter"
-          />
+            label="Generator Type"
+          >
+            <MenuItem value="uuid">UUID</MenuItem>
+          </TextField>
         )}
       </form.AppField>
     );

@@ -1,6 +1,6 @@
 import { formOptions } from "@tanstack/react-form";
 
-import { AgenticEvalRefInput, HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
+import { AgenticEvalRefInput, HttpHeader, NewDatasetVersionRowColumnItemRequest, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 
 export const newAgentExperimentFormOpts = formOptions({
   defaultValues: {
@@ -18,6 +18,7 @@ export const newAgentExperimentFormOpts = formOptions({
     },
     evals: [] as AgenticEvalRefInput[],
     templateVariableMapping: [] as TemplateVariableMappingInput[],
+    datasetRowFilter: [] as NewDatasetVersionRowColumnItemRequest[],
   },
 });
 

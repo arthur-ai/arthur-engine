@@ -1,10 +1,14 @@
-import { Autocomplete, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { Autocomplete, Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
+import z from "zod";
 
 import { newAgentExperimentFormOpts } from "../form";
 
 import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { useDatasets } from "@/hooks/useDatasets";
+import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
 import { useTask } from "@/hooks/useTask";
 
@@ -75,7 +79,90 @@ export const DatasetSetup = withForm({
             }}
           </form.AppField>
         </Stack>
+        <Divider sx={{ my: 2 }} />
+        <DatasetRowFilters form={form} />
       </Stack>
+    );
+  },
+});
+
+const DatasetRowFilters = withForm({
+  ...newAgentExperimentFormOpts,
+  render: function Render({ form }) {
+    const datasetRef = useStore(form.store, (state) => state.values.datasetRef);
+
+    const { version } = useDatasetVersionData(datasetRef.id ?? undefined, datasetRef.version ?? undefined);
+
+    if (!version) return null;
+
+    return (
+      <form.AppField name="datasetRowFilter" mode="array">
+        {(field) => (
+          <>
+            <Stack direction="row" gap={2} alignItems="center" justifyContent="space-between">
+              <Stack>
+                <Typography variant="body2" color="text.primary" fontWeight="bold">
+                  Dataset Row Filters
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Filter the dataset rows that will be used for this experiment.
+                </Typography>
+              </Stack>
+              <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => field.pushValue({ column_name: "", column_value: "" })}>
+                Add Filter Condition
+              </Button>
+            </Stack>
+            <Divider sx={{ my: 2 }} />
+            <Stack gap={2}>
+              {field.state.value.length > 0 ? (
+                field.state.value.map((item, index) => (
+                  <Stack key={index} direction="row" gap={2} alignItems="center">
+                    <form.AppField name={`datasetRowFilter[${index}].column_name`} validators={{ onChange: z.string().min(1, "Column is required") }}>
+                      {(field) => {
+                        return (
+                          <Autocomplete
+                            size="small"
+                            options={version.column_names}
+                            getOptionLabel={(option) => option}
+                            value={field.state.value}
+                            onChange={(_, value) => {
+                              field.handleChange(value ?? "");
+                            }}
+                            renderInput={(params) => <TextField {...params} label="Column" error={field.state.meta.errors.length > 0} />}
+                            sx={{ flex: 1 }}
+                          />
+                        );
+                      }}
+                    </form.AppField>
+                    <form.AppField name={`datasetRowFilter[${index}].column_value`}>
+                      {(field) => {
+                        return (
+                          <TextField
+                            size="small"
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            label="Value"
+                            sx={{ flex: 1 }}
+                          />
+                        );
+                      }}
+                    </form.AppField>
+                    <IconButton size="small" color="error" onClick={() => field.removeValue(index)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Stack>
+                ))
+              ) : (
+                <div className="flex items-center justify-center py-8 border border-dashed border-neutral-200 rounded-md">
+                  <Typography variant="body2" color="text.secondary">
+                    No filters added yet
+                  </Typography>
+                </div>
+              )}
+            </Stack>
+          </>
+        )}
+      </form.AppField>
     );
   },
 });

@@ -25,6 +25,7 @@ export const mapFormToRequest = (form: FormData): CreateAgenticExperimentRequest
       variable_mapping: e.variable_mapping,
     })),
     template_variable_mapping: form.templateVariableMapping,
+    dataset_row_filter: form.datasetRowFilter,
   };
 };
 
@@ -54,5 +55,6 @@ export const mapTemplateToRequest = (template?: AgenticExperimentDetail): NewAge
     templateVariableMapping: template.template_variable_mapping,
     name: template.name,
     description: template.description ?? "",
+    datasetRowFilter: template.dataset_row_filter ?? [],
   };
 };
