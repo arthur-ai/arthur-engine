@@ -331,6 +331,7 @@ def test_create_continuous_eval_success(client: GenaiEngineTestClientBase):
         assert continuous_eval.llm_eval_version == llm_eval.version
         assert continuous_eval.transform_id == transform.id
         assert continuous_eval.created_at is not None
+        assert continuous_eval.enabled == True
     finally:
         client.delete_task(agentic_task.id)
 
@@ -414,6 +415,7 @@ def test_create_continuous_eval_allows_duplicates(client: GenaiEngineTestClientB
         assert retrieved_evals.evals[0].llm_eval_version == llm_eval.version
         assert retrieved_evals.evals[0].transform_id == transform.id
         assert retrieved_evals.evals[0].created_at is not None
+        assert retrieved_evals.evals[0].enabled == True
 
         # check the duplicate has the same parameters
         assert retrieved_evals.evals[1].id == continuous_eval2.id
@@ -426,6 +428,7 @@ def test_create_continuous_eval_allows_duplicates(client: GenaiEngineTestClientB
         assert retrieved_evals.evals[1].llm_eval_version == llm_eval.version
         assert retrieved_evals.evals[1].transform_id == transform.id
         assert retrieved_evals.evals[1].created_at is not None
+        assert retrieved_evals.evals[1].enabled == True
     finally:
         client.delete_task(agentic_task.id)
 
@@ -544,11 +547,13 @@ def test_update_continuous_eval_success(client: GenaiEngineTestClientBase):
             continuous_eval_data={
                 "name": "test_continuous_eval_updated",
                 "description": "Test continuous eval description updated",
+                "enabled": False,
             },
         )
         assert status_code == 200
         assert updated_continuous_eval.id == continuous_eval.id
         assert updated_continuous_eval.name == "test_continuous_eval_updated"
+        assert updated_continuous_eval.enabled == False
         assert (
             updated_continuous_eval.description
             == "Test continuous eval description updated"
@@ -680,6 +685,7 @@ def test_get_continuous_eval_by_id_success(client: GenaiEngineTestClientBase):
         assert retrieved_continuous_eval.llm_eval_version == llm_eval.version
         assert retrieved_continuous_eval.transform_id == transform.id
         assert retrieved_continuous_eval.created_at is not None
+        assert retrieved_continuous_eval.enabled == True
     finally:
         client.delete_task(agentic_task.id)
 
@@ -774,6 +780,7 @@ def test_list_continuous_evals_success(client: GenaiEngineTestClientBase):
                 received_continuous_evals.evals[i].transform_id
                 == sorted_continuous_evals[i].id
             )
+            assert received_continuous_evals.evals[i].enabled == True
     finally:
         client.delete_task(agentic_task.id)
 
@@ -851,6 +858,10 @@ def test_list_continuous_evals_pagination(client: GenaiEngineTestClientBase):
                 received_continuous_evals.evals[i].transform_id
                 == continuous_evals[i].transform_id
             )
+            assert (
+                received_continuous_evals.evals[i].enabled
+                == continuous_evals[i].enabled
+            )
 
         # Test page size = 5
         status_code, received_continuous_evals = client.list_continuous_evals(
@@ -877,6 +888,10 @@ def test_list_continuous_evals_pagination(client: GenaiEngineTestClientBase):
             assert (
                 received_continuous_evals.evals[i].transform_id
                 == continuous_evals[i].transform_id
+            )
+            assert (
+                received_continuous_evals.evals[i].enabled
+                == continuous_evals[i].enabled
             )
 
         # Test page size = 5 and page = 2 (over the number of items)
@@ -938,6 +953,7 @@ def test_list_continuous_evals_filtering(client: GenaiEngineTestClientBase):
                             "eval_variable": "test_variable",
                         },
                     ],
+                    "enabled": False if i == 2 else True,
                 },
             )
             assert status_code == 200
@@ -980,6 +996,23 @@ def test_list_continuous_evals_filtering(client: GenaiEngineTestClientBase):
         assert status_code == 200
         assert len(received_continuous_evals.evals) == 3
         assert received_continuous_evals.count == 3
+
+        # Test filtering by enabled
+        status_code, received_continuous_evals = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url=f"enabled=true",
+        )
+        assert status_code == 200
+        assert len(received_continuous_evals.evals) == 3
+        assert received_continuous_evals.count == 3
+
+        status_code, received_continuous_evals = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url=f"enabled=False",  # also tests case insensitivity
+        )
+        assert status_code == 200
+        assert len(received_continuous_evals.evals) == 1
+        assert received_continuous_evals.count == 1
     finally:
         client.delete_task(agentic_task.id)
 
@@ -1265,6 +1298,7 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
                     "eval_variable": "test_variable",
                 },
             ],
+            "enabled": False,
         },
     )
 
@@ -1378,6 +1412,23 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
             search_url=f"created_before={continuous_eval_annotations[1].created_at.isoformat()}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
+
+        # Test filtering by continuous eval enabled
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="continuous_eval_enabled=true",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 2
+        assert received_run_results.count == 2
+
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="continuous_eval_enabled=false",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
@@ -1530,12 +1581,39 @@ def test_rerun_continuous_eval_failures(
         },
     )
 
+    # Save a disabled continuous eval
+    status_code, disabled_continuous_eval = client.save_continuous_eval(
+        task_id=task_id,
+        continuous_eval_data={
+            "name": "test_disabled_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": llm_eval.name,
+            "llm_eval_version": llm_eval.version,
+            "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "test_variable",
+                    "eval_variable": "test_variable",
+                },
+            ],
+            "enabled": False,
+        },
+    )
+
     # create mock annotations
     annotation = create_mock_annotation(
         trace_id=trace_id,
         annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
         annotation_score=0,
         continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+    )
+
+    disabled_annotation = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=0,
+        continuous_eval_id=disabled_continuous_eval.id,
         run_status=ContinuousEvalRunStatus.FAILED,
     )
 
@@ -1565,12 +1643,22 @@ def test_rerun_continuous_eval_failures(
             "continuous eval queue service is not available."
             in error.get("detail", "").lower()
         )
+
+        # try to rerun an eval for a disabled continuous eval
+        status_code, error = client.rerun_continuous_eval(disabled_annotation.id)
+        assert status_code == 400
+        assert (
+            f"cannot rerun this evaluation because continuous eval {disabled_continuous_eval.id} has been disabled."
+            in error.get("detail", "").lower()
+        )
     finally:
         client.delete_transform(transform.id)
         client.delete_llm_eval(task_id, llm_eval.name)
         client.delete_continuous_eval(continuous_eval.id)
+        client.delete_continuous_eval(disabled_continuous_eval.id)
         delete_mock_annotation(annotation.id)
         delete_mock_annotation(human_annotation.id)
+        delete_mock_annotation(disabled_annotation.id)
         cleanup_test_data(test_data)
 
 

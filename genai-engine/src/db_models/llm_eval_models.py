@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import (
     TIMESTAMP,
     UUID,
+    Boolean,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -143,6 +144,7 @@ class DatabaseContinuousEval(Base):
         default=datetime.now,
         nullable=False,
     )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     __table_args__ = (
         ForeignKeyConstraint(

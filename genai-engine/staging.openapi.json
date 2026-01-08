@@ -13599,6 +13599,24 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "enabled",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Whether the continuous eval is enabled.",
+                            "title": "Enabled"
+                        },
+                        "description": "Whether the continuous eval is enabled."
                     }
                 ],
                 "responses": {
@@ -13866,6 +13884,24 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "continuous_eval_enabled",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Whether the continuous eval is enabled.",
+                            "title": "Continuous Eval Enabled"
+                        },
+                        "description": "Whether the continuous eval is enabled."
                     }
                 ],
                 "responses": {
@@ -16835,6 +16871,12 @@
                         "type": "array",
                         "title": "Transform Variable Mapping",
                         "description": "Mapping of transform variables to eval variables."
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Whether to enable or disable a continuous eval. Defaults to True.",
+                        "default": true
                     }
                 },
                 "type": "object",
@@ -16934,6 +16976,11 @@
                         "type": "array",
                         "title": "Transform Variable Mapping",
                         "description": "Mapping of transform variables to eval variables."
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Whether the continuous eval is enabled."
                     }
                 },
                 "type": "object",
@@ -16946,7 +16993,8 @@
                     "transform_id",
                     "created_at",
                     "updated_at",
-                    "transform_variable_mapping"
+                    "transform_variable_mapping",
+                    "enabled"
                 ],
                 "title": "ContinuousEvalResponse"
             },
@@ -28108,6 +28156,18 @@
                         ],
                         "title": "Transform Variable Mapping",
                         "description": "Mapping of transform variables to eval variables."
+                    },
+                    "enabled": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enabled",
+                        "description": "Whether to enable or disable a continuous eval."
                     }
                 },
                 "type": "object",

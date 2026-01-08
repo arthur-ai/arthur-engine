@@ -146,6 +146,7 @@ class ContinuousEvalsRepository:
             created_at=datetime.now(),
             updated_at=datetime.now(),
             transform_variable_mapping=transform_variable_mapping_dicts,
+            enabled=continuous_eval_request.enabled,
         )
 
         try:
@@ -205,6 +206,9 @@ class ContinuousEvalsRepository:
                 for mapping in update_continuous_eval.transform_variable_mapping
             ]
             has_changes = True
+        if update_continuous_eval.enabled is not None:
+            db_continuous_eval.enabled = update_continuous_eval.enabled
+            has_changes = True
 
         if not has_changes:
             return ContinuousEval.from_db_model(db_continuous_eval)
@@ -262,6 +266,11 @@ class ContinuousEvalsRepository:
             if filter_request.created_before:
                 base_query = base_query.filter(
                     DatabaseContinuousEval.created_at < filter_request.created_before,
+                )
+
+            if filter_request.enabled is not None:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.enabled == filter_request.enabled,
                 )
 
         if pagination_parameters:
@@ -339,6 +348,12 @@ class ContinuousEvalsRepository:
                     < filter_request.created_before,
                 )
 
+            if filter_request.continuous_eval_enabled is not None:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.enabled
+                    == filter_request.continuous_eval_enabled,
+                )
+
         if pagination_parameters:
             base_query = self._apply_sorting_and_pagination(
                 base_query,
@@ -388,6 +403,7 @@ class ContinuousEvalsRepository:
             continuous_evals = (
                 self.db_session.query(DatabaseContinuousEval)
                 .filter(DatabaseContinuousEval.task_id == task_id)
+                .filter(DatabaseContinuousEval.enabled == True)
                 .all()
             )
 
@@ -484,6 +500,12 @@ class ContinuousEvalsRepository:
             )
 
         continuous_eval = self.get_continuous_eval_by_id(annotation.continuous_eval_id)
+
+        if continuous_eval.enabled is False:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot rerun this evaluation because continuous eval {continuous_eval.id} has been disabled.",
+            )
 
         queue_service = get_continuous_eval_queue_service()
         if not queue_service:

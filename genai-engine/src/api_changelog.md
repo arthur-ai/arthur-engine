@@ -23,6 +23,16 @@ The intention of this changelog is to document API changes as they happen to eff
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
 
 # 01/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'evals/items/enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_enabled'
+
+# 01/07/2026
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'input_tokens' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'output_tokens' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'total_tokens' to the response with the '200' status
