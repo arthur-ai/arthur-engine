@@ -4195,6 +4195,181 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
+    def create_agentic_notebook(
+        self,
+        task_id: str,
+        notebook_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new agentic notebook."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/agentic_notebooks",
+            json=notebook_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def get_agentic_notebook(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get agentic notebook details."""
+        resp = self.base_client.get(
+            f"/api/v1/agentic_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_agentic_notebooks(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        name: str = None,
+    ) -> tuple[int, dict]:
+        """List agentic notebooks for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if name is not None:
+            params["name"] = name
+
+        url = f"/api/v1/tasks/{task_id}/agentic_notebooks"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def update_agentic_notebook(
+        self,
+        notebook_id: str,
+        update_request: dict,
+    ) -> tuple[int, dict]:
+        """Update agentic notebook metadata."""
+        resp = self.base_client.put(
+            f"/api/v1/agentic_notebooks/{notebook_id}",
+            json=update_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def get_agentic_notebook_state(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get agentic notebook state."""
+        resp = self.base_client.get(
+            f"/api/v1/agentic_notebooks/{notebook_id}/state",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def set_agentic_notebook_state(
+        self,
+        notebook_id: str,
+        state_request: dict,
+    ) -> tuple[int, dict]:
+        """Set agentic notebook state."""
+        resp = self.base_client.put(
+            f"/api/v1/agentic_notebooks/{notebook_id}/state",
+            json=state_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def delete_agentic_notebook(self, notebook_id: str) -> int:
+        """Delete an agentic notebook."""
+        resp = self.base_client.delete(
+            f"/api/v1/agentic_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def get_agentic_notebook_history(
+        self,
+        notebook_id: str,
+        page: int = 0,
+        page_size: int = 10,
+    ) -> tuple[int, dict]:
+        """Get paginated history of experiments run from this agentic notebook."""
+        params = {"page": page, "page_size": page_size}
+
+        url = f"/api/v1/agentic_notebooks/{notebook_id}/history"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def attach_notebook_to_agentic_experiment(
+        self,
+        experiment_id: str,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Attach an agentic notebook to an existing experiment."""
+        url = f"/api/v1/agentic_experiments/{experiment_id}/notebook?notebook_id={notebook_id}"
+
+        resp = self.base_client.patch(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
 
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,

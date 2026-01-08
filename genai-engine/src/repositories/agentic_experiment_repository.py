@@ -172,7 +172,7 @@ class AgenticExperimentRepository:
             eval_list=eval_list,
             dataset_row_filter=dataset_row_filter,
             summary_results=summary_results,
-            notebook_id=None,  # Agentic experiments don't have notebooks yet
+            notebook_id=db_experiment.notebook_id,
         )
 
     def _db_test_case_to_schema(
@@ -707,6 +707,21 @@ class AgenticExperimentRepository:
         ]
 
         return test_cases, total_count
+
+    def attach_notebook_to_experiment(
+        self,
+        experiment_id: str,
+        notebook_id: str,
+    ) -> AgenticExperimentSummary:
+        """Attach an agentic notebook to an experiment."""
+        db_experiment = self._get_db_experiment(experiment_id)
+
+        # Update notebook_id
+        db_experiment.notebook_id = notebook_id
+        self.db_session.commit()
+
+        # Return updated summary
+        return self._db_experiment_to_summary(db_experiment)
 
     def delete_experiment(self, experiment_id: str) -> None:
         """Delete an experiment and its test cases (cascaded)"""
