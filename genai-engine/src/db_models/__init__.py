@@ -57,6 +57,7 @@ from db_models.secret_storage_models import DatabaseSecretStorage
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from db_models.notebook_models import DatabaseNotebook
 from db_models.rag_notebook_models import DatabaseRagNotebook
+from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.base_experiment_models import (
     DatabaseBaseExperiment,
     DatabaseBaseExperimentTestCase,
@@ -144,6 +145,7 @@ __all__ = [
     # Notebook models
     "DatabaseNotebook",
     "DatabaseRagNotebook",
+    "DatabaseAgenticNotebook",
     # Base Experiment models
     "DatabaseBaseExperiment",
     "DatabaseBaseExperimentTestCase",
