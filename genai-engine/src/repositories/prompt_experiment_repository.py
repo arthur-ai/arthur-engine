@@ -679,7 +679,7 @@ class PromptExperimentRepository:
             total_rows=0,  # Will be updated after creating test cases
             completed_rows=0,
             failed_rows=0,
-            notebook_id=None,
+            notebook_id=request.notebook_id,
         )
 
         self.db_session.add(db_experiment)

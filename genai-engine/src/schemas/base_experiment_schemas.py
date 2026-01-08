@@ -226,6 +226,10 @@ class BaseCreateExperimentRequest(BaseModel):
         "Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. "
         "If not specified, all rows from the dataset will be used.",
     )
+    notebook_id: Optional[str] = Field(
+        default=None,
+        description="Optional notebook ID to link this experiment to",
+    )
 
 
 class BaseExperimentDetail(BaseModel):
