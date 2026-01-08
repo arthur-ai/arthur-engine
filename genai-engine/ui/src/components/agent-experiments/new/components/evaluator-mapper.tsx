@@ -17,14 +17,18 @@ export const EvaluatorMapper = withForm({
 
     const ready = useStore(form.store, (state) => state.values.datasetRef.version && state.values.evals.length > 0);
 
-    if (!ready) return null;
-
     return (
-      <Stack component={Paper} variant="outlined" p={2} gap={2} divider={<Divider />}>
-        <Stack gap={2}>
+      <Stack component={Paper} variant="outlined" p={2} sx={{ opacity: ready ? 1 : 0.5, pointerEvents: ready ? "auto" : "none" }}>
+        <Stack>
           <Typography variant="body2" color="text.primary" fontWeight="bold">
             Map Evaluation Variables
           </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Define the variables that will be used to evaluate the agent's responses.
+          </Typography>
+        </Stack>
+        <Divider sx={{ my: 2 }} />
+        {ready ? (
           <form.AppField name="evals" mode="array">
             {(field) => (
               <Stack gap={2}>
@@ -35,6 +39,7 @@ export const EvaluatorMapper = withForm({
                     p={2}
                     gap={2}
                     divider={<Divider />}
+                    sx={{ backgroundColor: "var(--color-gray-50)" }}
                     key={`${evaluator.name}-${evaluator.version}-${eIndex}`}
                   >
                     <Typography variant="body2" color="text.primary" fontWeight="bold">
@@ -63,7 +68,11 @@ export const EvaluatorMapper = withForm({
               </Stack>
             )}
           </form.AppField>
-        </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No evaluators or no dataset version selected
+          </Typography>
+        )}
       </Stack>
     );
   },

@@ -1,4 +1,4 @@
-import { Autocomplete, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, Button, Chip, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
@@ -59,11 +59,17 @@ export const EvaluatorsSelector = withForm({
     };
 
     return (
-      <Stack component={Paper} variant="outlined" p={2} gap={2}>
-        <Typography variant="body2" color="text.primary" fontWeight="bold">
-          Select Evaluator and Version
-        </Typography>
+      <Stack component={Paper} variant="outlined" p={2}>
         <Stack>
+          <Typography variant="body2" color="text.primary" fontWeight="bold">
+            Select Evaluator and Version
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Choose the evaluator that will assess the agent responses.
+          </Typography>
+        </Stack>
+        <Divider sx={{ my: 2 }} />
+        <Stack gap={2}>
           <Stack direction="row" gap={2} width="100%">
             <Autocomplete
               size="small"
@@ -86,6 +92,7 @@ export const EvaluatorsSelector = withForm({
               onChange={(_, value) => {
                 setCurrentEvaluator({ name: currentEvaluator.name, version: value?.version ?? null });
               }}
+              sx={{ flex: 1 }}
             />
             <Button
               disableElevation
@@ -103,20 +110,20 @@ export const EvaluatorsSelector = withForm({
               This evaluator and version have already been added!
             </Typography>
           )}
+          <form.AppField name="evals" mode="array">
+            {(field) => (
+              <Stack direction="row" gap={2}>
+                {field.state.value.map((evaluator, index) => (
+                  <Chip
+                    key={`${evaluator.name}-${evaluator.version}`}
+                    label={`${evaluator.name} v${evaluator.version}`}
+                    onDelete={() => field.removeValue(index)}
+                  />
+                ))}
+              </Stack>
+            )}
+          </form.AppField>
         </Stack>
-        <form.AppField name="evals" mode="array">
-          {(field) => (
-            <Stack direction="row" gap={2}>
-              {field.state.value.map((evaluator, index) => (
-                <Chip
-                  key={`${evaluator.name}-${evaluator.version}`}
-                  label={`${evaluator.name} v${evaluator.version}`}
-                  onDelete={() => field.removeValue(index)}
-                />
-              ))}
-            </Stack>
-          )}
-        </form.AppField>
       </Stack>
     );
   },

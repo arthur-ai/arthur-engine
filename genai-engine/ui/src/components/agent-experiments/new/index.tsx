@@ -1,4 +1,6 @@
-import { Box, Button, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Divider, Stack, TextField, Typography } from "@mui/material";
+import { useSnackbar } from "notistack";
+import { useRef } from "react";
 
 import { extractVariablesFromText } from "../hooks/useExtractVariables";
 
@@ -13,39 +15,60 @@ import { mapFormToRequest } from "./utils/mapper";
 
 import { useAppForm, withForm } from "@/components/traces/components/filtering/hooks/form";
 import { getContentHeight } from "@/constants/layout";
+import { HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
+
+function computeVars(endpoint: { body: string; headers: HttpHeader[] }): string[] {
+  const bodyVars = extractVariablesFromText(endpoint.body);
+
+  const headerVars = endpoint.headers.flatMap((h) => [...extractVariablesFromText(h.name), ...extractVariablesFromText(h.value)]);
+
+  return Array.from(new Set([...bodyVars, ...headerVars])).sort();
+}
+
+function varsSignature(vars: string[]) {
+  return vars.join("|"); // vars already sorted
+}
+
+function rebuildMapping(vars: string[], prev: TemplateVariableMappingInput[] | undefined): TemplateVariableMappingInput[] {
+  const byVar = new Map((prev ?? []).map((r) => [r.variable_name, r]));
+  return vars.map((v) => byVar.get(v) ?? { variable_name: v, source: { type: "dataset_column", dataset_column: { name: "" } } });
+}
 
 export const NewAgentExperiment = () => {
+  const lastSignature = useRef<string | null>(null);
+  const { enqueueSnackbar } = useSnackbar();
   const form = useAppForm({
     ...newAgentExperimentFormOpts,
     listeners: {
       onChange: ({ fieldApi, formApi }) => {
-        if (!(fieldApi.name as string).startsWith("endpoint")) return;
+        const name = fieldApi.name as string;
+
+        if (name !== "endpoint.body" && !name.startsWith("endpoint.headers")) {
+          return;
+        }
 
         const endpoint = formApi.getFieldValue("endpoint");
+        const vars = computeVars(endpoint);
+        const sig = varsSignature(vars);
 
-        const bodyVariables = extractVariablesFromText(endpoint.body);
-        const headersVariables = endpoint.headers
-          .map((header) => [extractVariablesFromText(header.name), extractVariablesFromText(header.value)])
-          .flat(2);
+        if (sig === lastSignature.current) return;
+        lastSignature.current = sig;
 
-        const variables = Array.from(new Set([...bodyVariables, ...headersVariables]));
+        const prev = formApi.getFieldValue("templateVariableMapping") as TemplateVariableMappingInput[] | undefined;
+        const next = rebuildMapping(vars, prev);
 
-        formApi.setFieldValue(
-          "templateVariableMapping",
-          variables.map((variable) => ({
-            source: {
-              type: "dataset_column",
-              dataset_column: { name: "" },
-            },
-            variable_name: variable,
-          }))
-        );
+        formApi.setFieldValue("templateVariableMapping", next);
       },
     },
     onSubmit: async ({ value }) => {
-      const request = mapFormToRequest(value);
+      try {
+        const request = mapFormToRequest(value);
 
-      await newExperimentMutation.mutateAsync(request);
+        await newExperimentMutation.mutateAsync(request);
+      } catch (error) {
+        console.error(error);
+        enqueueSnackbar("Failed to create experiment. Please check the form and try again.", { variant: "error" });
+      }
     },
   });
 
@@ -80,19 +103,27 @@ export const NewAgentExperiment = () => {
           </Typography>
         </Stack>
       </Box>
-      <Stack divider={<Divider sx={{ my: 3 }} />} p={2} overflow="auto">
-        <>
-          <Typography variant="h6" color="text.primary" fontWeight="bold" mb={1}>
+      <Stack p={2} overflow="auto" gap={4}>
+        <Stack mb={2}>
+          <Typography variant="h6" color="text.primary" fontWeight="bold">
             Endpoint Setup
           </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Configure the API endpoint that will be called during the experiment.
+          </Typography>
+          <Divider sx={{ my: 2 }} />
           <EndpointSetup form={form} />
-        </>
-        <>
-          <Typography variant="h6" color="text.primary" fontWeight="bold" mb={1}>
+        </Stack>
+        <Stack>
+          <Typography variant="h6" color="text.primary" fontWeight="bold">
             Experiment Setup
           </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Define the experiment parameters and select your evaluation dataset.
+          </Typography>
+          <Divider sx={{ my: 2 }} />
           <ExperimentSetup form={form} />
-        </>
+        </Stack>
       </Stack>
       <Stack direction="row" mt="auto" p={2}>
         <form.Subscribe selector={(state) => [state.canSubmit, state.isDirty, state.isSubmitting]}>
@@ -111,37 +142,39 @@ export const ExperimentSetup = withForm({
   ...newAgentExperimentFormOpts,
   render: function Render({ form }) {
     return (
-      <Stack component={Paper} variant="outlined" p={2} gap={2} divider={<Divider />}>
-        <Stack gap={2}>
-          <form.AppField name="name">
-            {(field) => (
-              <TextField
-                size="small"
-                label="Experiment Name"
-                required
-                onChange={(e) => field.handleChange(e.target.value)}
-                value={field.state.value}
-              />
-            )}
-          </form.AppField>
-          <form.AppField name="description">
-            {(field) => (
-              <TextField
-                size="small"
-                label="Experiment Description"
-                required
-                multiline
-                minRows={2}
-                onChange={(e) => field.handleChange(e.target.value)}
-                value={field.state.value}
-              />
-            )}
-          </form.AppField>
+      <Stack gap={2}>
+        <Box className="grid grid-cols-1 items-start" sx={{ gap: 2 }}>
+          <Stack gap={2}>
+            <form.AppField name="name">
+              {(field) => (
+                <TextField
+                  size="small"
+                  label="Experiment Name"
+                  required
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  value={field.state.value}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="description">
+              {(field) => (
+                <TextField
+                  size="small"
+                  label="Experiment Description"
+                  required
+                  multiline
+                  minRows={2}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  value={field.state.value}
+                />
+              )}
+            </form.AppField>
+          </Stack>
           <DatasetSetup form={form} />
-          <BodyMapper form={form} />
           <EvaluatorsSelector form={form} />
+          <BodyMapper form={form} />
           <EvaluatorMapper form={form} />
-        </Stack>
+        </Box>
       </Stack>
     );
   },

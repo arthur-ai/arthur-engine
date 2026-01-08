@@ -12,7 +12,7 @@ export const EndpointSetup = withForm({
   ...newAgentExperimentFormOpts,
   render: function Render({ form }) {
     return (
-      <Stack component={Paper} variant="outlined" p={2} gap={2} divider={<Divider />}>
+      <Stack gap={2}>
         <Stack gap={2}>
           <form.AppField
             name="endpoint.name"
@@ -64,20 +64,28 @@ export const EndpointSetup = withForm({
           mode="array"
         >
           {(field) => (
-            <Stack component={Paper} variant="outlined" p={2} gap={1}>
+            <Stack component={Paper} variant="outlined" p={2}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Stack>
                   <Typography variant="body2" fontWeight="bold">
                     Headers
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Use <code>{"{{variable}}"}</code> placeholders in header names or values for dynamic dataset values.
+                    Add custom HTTP headers. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> for dynamic
+                    values.
                   </Typography>
                 </Stack>
-                <Button size="small" startIcon={<AddIcon />} onClick={() => field.pushValue({ name: "", value: "" })}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disableElevation
+                  startIcon={<AddIcon />}
+                  onClick={() => field.pushValue({ name: "", value: "" })}
+                >
                   Add Header
                 </Button>
               </Stack>
+              <Divider sx={{ my: 2 }} />
               <Stack gap={1}>
                 {field.state.value.length > 0 ? (
                   field.state.value.map((header, index) => (
@@ -129,9 +137,11 @@ export const EndpointSetup = withForm({
                     </Stack>
                   ))
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No headers added yet
-                  </Typography>
+                  <div className="flex items-center justify-center py-8 border border-dashed border-neutral-200 rounded-md">
+                    <Typography variant="body2" color="text.secondary">
+                      No headers added yet
+                    </Typography>
+                  </div>
                 )}
               </Stack>
             </Stack>
@@ -140,19 +150,21 @@ export const EndpointSetup = withForm({
         <form.AppField
           name="endpoint.body"
           validators={{
-            onChange: z.string().min(1, "Body is required"),
+            onChange: z.string(),
           }}
         >
           {(field) => (
-            <Stack component={Paper} variant="outlined" p={2} gap={1}>
+            <Stack component={Paper} variant="outlined" p={2}>
               <Stack>
                 <Typography variant="body2" fontWeight="bold">
                   Request Body (JSON)
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Use <code>{"{{variable}}"}</code> placeholders in request body for dynamic dataset values.
+                  Define the JSON payload. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> placeholders
+                  for dataset values.
                 </Typography>
               </Stack>
+              <Divider sx={{ my: 2 }} />
               <NunjucksHighlightedTextField
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}

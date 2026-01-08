@@ -9,28 +9,32 @@ import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 export const BodyMapper = withForm({
   ...newAgentExperimentFormOpts,
   render: function Render({ form }) {
-    const datasetRef = useStore(form.store, (state) => state.values.datasetRef);
-
-    const hasVariables = useStore(form.store, (state) => state.values.templateVariableMapping.length > 0);
-
-    const { version } = useDatasetVersionData(datasetRef.id ?? undefined, datasetRef.version ?? undefined);
-
-    if (!hasVariables || !version) return null;
+    const ready = useStore(form.store, (state) => state.values.datasetRef.version && state.values.templateVariableMapping.length > 0);
 
     return (
-      <Stack component={Paper} variant="outlined" p={2} gap={2} divider={<Divider />}>
-        <Stack gap={2}>
+      <Stack component={Paper} variant="outlined" p={2} sx={{ opacity: ready ? 1 : 0.5, pointerEvents: ready ? "auto" : "none" }}>
+        <Stack>
           <Typography variant="body2" color="text.primary" fontWeight="bold">
             Endpoint Template Variables Mapper
           </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Map dataset columns to the template variables used in your endpoint configuration.
+          </Typography>
+        </Stack>
+        <Divider sx={{ my: 2 }} />
+        {ready ? (
           <form.AppField name="templateVariableMapping" mode="array">
             {(field) =>
-              field.state.value.map((variable, index) => (
-                <Stack component={Paper} variant="outlined" p={2} gap={2} key={`${variable}-${index}`}>
-                  <Typography variant="body2" color="text.primary" fontWeight="bold">
-                    {variable.variable_name}
-                  </Typography>
-                  <form.AppField key={`${variable}-${index}`} name={`templateVariableMapping[${index}]`}>
+              field.state.value.map((_, index) => (
+                <Stack component={Paper} variant="outlined" p={2} gap={2} sx={{ backgroundColor: "var(--color-gray-50)" }} key={`${index}`}>
+                  <form.Subscribe selector={(state) => state.values.templateVariableMapping[index].variable_name}>
+                    {(variableName) => (
+                      <Typography variant="body2" color="text.primary" fontWeight="bold">
+                        {variableName}
+                      </Typography>
+                    )}
+                  </form.Subscribe>
+                  <form.AppField name={`templateVariableMapping[${index}]`}>
                     {() => (
                       <Stack>
                         <Stack direction="row" gap={2}>
@@ -67,7 +71,11 @@ export const BodyMapper = withForm({
               ))
             }
           </form.AppField>
-        </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No variables to map or no dataset version selected
+          </Typography>
+        )}
       </Stack>
     );
   },

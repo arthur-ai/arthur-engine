@@ -1,42 +1,31 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { AgentExperiment } from "../types";
-
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { Api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import { DEFAULT_PAGINATION_PARAMS, PaginationParams } from "@/types/common";
 
-export const agentExperimentsQueryOptions = ({ taskId, api }: { taskId: string; api: Api<unknown> }) => {
+export const agentExperimentsQueryOptions = ({
+  taskId,
+  api,
+  pagination = DEFAULT_PAGINATION_PARAMS,
+}: {
+  taskId: string;
+  api: Api<unknown>;
+  pagination?: PaginationParams;
+}) => {
   return queryOptions({
-    queryKey: queryKeys.agentExperiments.all(taskId),
-    queryFn: () => api.api.listAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet({ taskId }),
+    queryKey: [queryKeys.agentExperiments.all(taskId), pagination],
+    queryFn: () =>
+      api.api.listAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet({ taskId, page: pagination.page, page_size: pagination.page_size }),
     select: (data) => data.data,
   });
 };
 
-export const useAgentExperiments = () => {
+export const useAgentExperiments = (pagination: PaginationParams = DEFAULT_PAGINATION_PARAMS) => {
   const api = useApi()!;
   const { task } = useTask();
 
-  return useQuery(agentExperimentsQueryOptions({ taskId: task!.id, api }));
+  return useQuery(agentExperimentsQueryOptions({ taskId: task!.id, api, pagination }));
 };
-
-export const MOCK_AGENT_EXPERIMENTS: AgentExperiment[] = [
-  {
-    id: "1",
-    name: "Agent Experiment 1",
-    dataset_id: "1",
-    endpoint_id: "1",
-    variable_mapping: {},
-    runtime_variable_mapping: {},
-  },
-  {
-    id: "2",
-    name: "Agent Experiment 2",
-    dataset_id: "2",
-    endpoint_id: "2",
-    variable_mapping: {},
-    runtime_variable_mapping: {},
-  },
-];

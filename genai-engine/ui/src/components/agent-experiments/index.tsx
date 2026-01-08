@@ -1,6 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, ButtonGroup, Skeleton, Stack, Typography } from "@mui/material";
-import { Suspense } from "react";
+import { Box, Button, ButtonGroup, Stack, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 
 import { Experiments } from "./components/experiments";
@@ -43,15 +42,7 @@ export const AgentExperiments = () => {
             </Button>
           </ButtonGroup>
         </Box>
-        <Suspense
-          fallback={
-            <Box p={2}>
-              <Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />
-            </Box>
-          }
-        >
-          <Experiments />
-        </Suspense>
+        <Experiments />
       </Stack>
     </>
   );

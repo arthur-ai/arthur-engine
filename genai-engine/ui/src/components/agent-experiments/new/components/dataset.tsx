@@ -1,4 +1,4 @@
-import { Autocomplete, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 
 import { newAgentExperimentFormOpts } from "../form";
@@ -19,16 +19,21 @@ export const DatasetSetup = withForm({
     const { versions } = useDatasetVersionHistory(id ?? undefined);
 
     return (
-      <Stack component={Paper} variant="outlined" p={2} gap={2}>
-        <Typography variant="body2" color="text.primary" fontWeight="bold" mb={1}>
-          Select Dataset
-        </Typography>
+      <Stack component={Paper} variant="outlined" p={2}>
+        <Stack>
+          <Typography variant="body2" color="text.primary" fontWeight="bold">
+            Select Dataset
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Choose the dataset and version for this experiment.
+          </Typography>
+        </Stack>
+        <Divider sx={{ my: 2 }} />
         <Stack gap={2} direction="row">
           <form.AppField
             name="datasetRef.id"
             listeners={{
               onChange: ({ value }) => {
-                console.log({ value });
                 const dataset = datasets.find((d) => d.id === value) ?? null;
                 form.setFieldValue("datasetRef.version", dataset?.latest_version_number ?? null);
               },
@@ -47,7 +52,7 @@ export const DatasetSetup = withForm({
                   onChange={(_, value) => {
                     field.handleChange(value?.id ?? null);
                   }}
-                  fullWidth
+                  sx={{ flex: 1 }}
                 />
               );
             }}
@@ -64,6 +69,7 @@ export const DatasetSetup = withForm({
                   getOptionLabel={(option) => `v${option.version_number}`}
                   value={selected}
                   renderInput={(params) => <TextField {...params} label="Version" />}
+                  sx={{ flex: 1 }}
                 />
               );
             }}
