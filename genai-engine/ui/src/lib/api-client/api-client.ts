@@ -1249,9 +1249,9 @@ export interface CreateAgenticExperimentRequest {
   name: string;
   /**
    * Request Time Parameters
-   * Values for request-time parameters (e.g., API keys, tokens). These are NOT stored in the database for security reasons - they are passed directly to the execution thread. Keys should match the parameter_value in template_variable_mapping sources of type 'request_time_parameter'.
+   * List of request-time parameters (e.g., API keys, tokens). These are NOT stored in the database for security reasons - they are passed directly to the execution thread.
    */
-  request_time_parameters?: Record<string, string> | null;
+  request_time_parameters?: RequestTimeParameter[] | null;
   /**
    * Template Variable Mapping
    * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
@@ -8040,15 +8040,27 @@ export interface RenderedPromptResponse {
 }
 
 /**
+ * RequestTimeParameter
+ * Request-time parameter with name and value (e.g., API keys, tokens)
+ */
+export interface RequestTimeParameter {
+  /**
+   * Name
+   * Name of the request-time parameter (must match variable_name in template_variable_mapping)
+   */
+  name: string;
+  /**
+   * Value
+   * Value of the request-time parameter (not saved, provided at execution time)
+   */
+  value: string;
+}
+
+/**
  * RequestTimeParameterSource
  * Variable source from request-time parameters (e.g., tokens, API keys)
  */
 export interface RequestTimeParameterSource {
-  /**
-   * Parameter Value
-   * Value of the request-time parameter (not saved, provided at execution time)
-   */
-  parameter_value: string;
   /**
    * Type
    * Type of source: 'request_time_parameter'
@@ -10940,7 +10952,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.281
+ * @version 2.1.282
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

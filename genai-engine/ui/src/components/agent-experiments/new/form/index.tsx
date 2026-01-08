@@ -20,3 +20,5 @@ export const newAgentExperimentFormOpts = formOptions({
     templateVariableMapping: [] as TemplateVariableMappingInput[],
   },
 });
+
+export type NewAgentExperimentFormData = typeof newAgentExperimentFormOpts.defaultValues;
