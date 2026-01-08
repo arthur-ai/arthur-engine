@@ -1,7 +1,9 @@
+import { Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
 import { CopyableChip } from "@/components/common";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<AgenticExperimentSummary>();
 
@@ -17,6 +19,14 @@ export const createColumns = () => [
   }),
   columnHelper.accessor("http_template.endpoint_url", {
     header: "Endpoint URL",
+  }),
+  columnHelper.accessor("total_cost", {
+    header: "Total Cost",
+    Cell: ({ cell }) => {
+      const value = cell.getValue() as string;
+      if (!value) return "N/A";
+      return <Typography variant="body2">{formatCurrency(parseFloat(value))}</Typography>;
+    },
   }),
   columnHelper.accessor("id", {
     header: "ID",
