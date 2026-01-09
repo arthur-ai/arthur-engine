@@ -73,7 +73,10 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
     {
       id: "agents",
       label: "Agents",
-      items: [{ id: "agent-experiments", label: "Experiments", icon: <ScienceOutlined /> }],
+      items: [
+        { id: "agent-experiments", label: "Agentic Experiments", icon: <ScienceOutlined /> },
+        { id: "agentic-notebooks", label: "Agentic Notebooks", icon: <MenuBookOutlined /> },
+      ],
     },
     {
       id: "settings",

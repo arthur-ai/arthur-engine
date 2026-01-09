@@ -3,18 +3,18 @@ import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { newAgentExperimentFormOpts } from "../form";
+import { NewAgentExperimentFormData } from "../form";
 
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { AgenticEvalVariableMappingInput } from "@/lib/api-client/api-client";
 
-export const EvaluatorsSelector = withForm({
-  ...newAgentExperimentFormOpts,
-  render: function Render({ form }) {
+export const EvaluatorsSelector = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "evals">,
+  render: function Render({ group }) {
     const { task } = useTask();
     const { api } = useApi()!;
     const [currentEvaluator, setCurrentEvaluator] = useState<{ name: string | null; version: number | null }>({ name: null, version: null });
@@ -39,7 +39,7 @@ export const EvaluatorsSelector = withForm({
         const mapping =
           data.variables?.map((v) => ({ source: { type: "experiment_output" }, variable_name: v }) as AgenticEvalVariableMappingInput) ?? [];
 
-        form.pushFieldValue("evals", { name: data.name, version: data.version ?? 1, variable_mapping: mapping, transform_id: "" });
+        group.pushFieldValue("evals", { name: data.name, version: data.version ?? 1, variable_mapping: mapping, transform_id: "" });
         setCurrentEvaluator({ name: null, version: null });
       },
     });
@@ -47,7 +47,7 @@ export const EvaluatorsSelector = withForm({
     const selectedEvaluator = evals.find((e) => e.name === currentEvaluator.name) ?? null;
     const selectedVersion = versions.find((v) => v.version === currentEvaluator.version) ?? null;
 
-    const currentAlreadyAdded = useStore(form.store, (state) =>
+    const currentAlreadyAdded = useStore(group.store, (state) =>
       state.values.evals.some((e) => e.name === currentEvaluator.name && e.version === currentEvaluator.version)
     );
 
@@ -110,7 +110,7 @@ export const EvaluatorsSelector = withForm({
               This evaluator and version have already been added!
             </Typography>
           )}
-          <form.AppField name="evals" mode="array">
+          <group.AppField name="evals" mode="array">
             {(field) => (
               <Stack direction="row" gap={2}>
                 {field.state.value.map((evaluator, index) => (
@@ -122,7 +122,7 @@ export const EvaluatorsSelector = withForm({
                 ))}
               </Stack>
             )}
-          </form.AppField>
+          </group.AppField>
         </Stack>
       </Stack>
     );

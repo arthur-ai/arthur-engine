@@ -42,7 +42,9 @@ export const AgentExperiments = () => {
             </Button>
           </ButtonGroup>
         </Box>
-        <Experiments />
+        <Stack sx={{ flex: 1, overflow: "auto" }}>
+          <Experiments />
+        </Stack>
       </Stack>
     </>
   );

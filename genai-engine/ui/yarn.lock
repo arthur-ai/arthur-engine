@@ -7861,6 +7861,7 @@ __metadata:
     monaco-editor: "npm:^0.55.0"
     notistack: "npm:^3.0.2"
     nuqs: "npm:^2.8.0"
+    ohash: "npm:^2.0.11"
     papaparse: "npm:^5.5.3"
     prettier: "npm:3.7.4"
     prism-react-renderer: "npm:^2.4.1"
