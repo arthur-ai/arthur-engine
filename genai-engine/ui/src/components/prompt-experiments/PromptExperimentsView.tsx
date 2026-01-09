@@ -1,3 +1,4 @@
+import SearchIcon from "@mui/icons-material/Search";
 import {
   Box,
   Dialog,
@@ -15,18 +16,17 @@ import {
   TextField,
   InputAdornment,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { PromptExperimentsEmptyState } from "./PromptExperimentsEmptyState";
-import { PromptExperimentsTable, PromptExperiment } from "./PromptExperimentsTable";
-import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
 import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
+import { PromptExperimentsEmptyState } from "./PromptExperimentsEmptyState";
+import { PromptExperimentsTable, PromptExperiment, PromptConfig } from "./PromptExperimentsTable";
+import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
-import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 export const PromptExperimentsView: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();
@@ -37,24 +37,16 @@ export const PromptExperimentsView: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [searchText, setSearchText] = useState("");
-  const [debouncedSearchText, setDebouncedSearchText] = useState("");
+  const debouncedSearchText = useDebouncedValue(searchText, 300);
   const [modalSearchText, setModalSearchText] = useState("");
 
-  // Debounce search text to avoid too many API calls
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchText(searchText);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchText]);
-
-  const { experiments, totalCount = 0, isLoading, error, refetch } = usePromptExperiments(
-    taskId,
-    page,
-    rowsPerPage,
-    debouncedSearchText || undefined
-  );
+  const {
+    experiments,
+    totalCount = 0,
+    isLoading,
+    error,
+    refetch,
+  } = usePromptExperiments(taskId, page, rowsPerPage, debouncedSearchText || undefined);
   const createExperiment = useCreateExperiment(taskId);
 
   // Fetch full experiment details when cloning
@@ -75,9 +67,7 @@ export const PromptExperimentsView: React.FC = () => {
   // Auto-refresh when any experiment is running
   useEffect(() => {
     // Check if any experiment is in a running state (queued or running)
-    const hasRunningExperiments = experiments.some(
-      (exp) => exp.status === "running" || exp.status === "queued"
-    );
+    const hasRunningExperiments = experiments.some((exp) => exp.status === "running" || exp.status === "queued");
 
     if (!hasRunningExperiments) {
       return;
@@ -122,8 +112,8 @@ export const PromptExperimentsView: React.FC = () => {
 
   const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
     // Validate that datasetVersion is a number
-    if (typeof data.datasetVersion !== 'number') {
-      throw new Error('Dataset version must be selected');
+    if (typeof data.datasetVersion !== "number") {
+      throw new Error("Dataset version must be selected");
     }
 
     try {
@@ -139,10 +129,8 @@ export const PromptExperimentsView: React.FC = () => {
       }));
 
       // Transform eval variable mappings to API format
-      const evalList = data.evaluators.map(evaluator => {
-        const evalMapping = data.evalVariableMappings?.find(
-          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-        );
+      const evalList = data.evaluators.map((evaluator) => {
+        const evalMapping = data.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
 
         const variableMapping = evalMapping
           ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
@@ -184,16 +172,14 @@ export const PromptExperimentsView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_configs: data.promptVersions.map(pv => ({
+        prompt_configs: data.promptVersions.map((pv) => ({
           type: "saved" as const,
           name: pv.promptName,
           version: pv.version,
         })),
         prompt_variable_mapping: promptVariableMapping,
         eval_list: evalList,
-        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0
-          ? data.datasetRowFilter
-          : undefined,
+        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
       });
       handleCloseModal();
       return { id: result.id };
@@ -242,10 +228,7 @@ export const PromptExperimentsView: React.FC = () => {
 
   return (
     <>
-      <Box
-        className="w-full grid overflow-hidden"
-        style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}
-      >
+      <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
         <Box className="px-6 pt-6 pb-4 border-b border-gray-200 bg-white">
           <PromptExperimentsViewHeader
             onCreateExperiment={handleCreateExperiment}
@@ -282,12 +265,7 @@ export const PromptExperimentsView: React.FC = () => {
       </Box>
 
       {/* Select Existing Experiment Modal */}
-      <Dialog
-        open={isSelectExistingModalOpen}
-        onClose={handleCloseSelectExistingModal}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={isSelectExistingModalOpen} onClose={handleCloseSelectExistingModal} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box>
             <Typography variant="h6" className="font-semibold mb-1">
@@ -323,7 +301,7 @@ export const PromptExperimentsView: React.FC = () => {
               const searchLower = modalSearchText.toLowerCase();
 
               // Search in prompt configs
-              const promptMatches = exp.prompt_configs?.some((config: any) => {
+              const promptMatches = exp.prompt_configs?.some((config: PromptConfig) => {
                 if (config.type === "saved") {
                   return config.name.toLowerCase().includes(searchLower);
                 } else if (config.type === "unsaved" && config.auto_name) {
@@ -343,93 +321,83 @@ export const PromptExperimentsView: React.FC = () => {
               return (
                 <Box className="py-8 text-center">
                   <Typography variant="body2" className="text-gray-500 italic">
-                    {experiments.length === 0
-                      ? "No experiments available to clone."
-                      : "No experiments match your search."}
+                    {experiments.length === 0 ? "No experiments available to clone." : "No experiments match your search."}
                   </Typography>
                 </Box>
               );
             }
 
             return (
-              <List sx={{ py: 0, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+              <List sx={{ py: 0, border: 1, borderColor: "divider", borderRadius: 1 }}>
                 {filteredExperiments.map((experiment, index) => (
-                <React.Fragment key={experiment.id}>
-                  {index > 0 && <Divider />}
-                  <ListItem disablePadding>
-                    <ListItemButton
-                      onClick={() => handleSelectExistingExperiment(experiment)}
-                      sx={{
-                        py: 2,
-                        px: 2,
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                        },
-                      }}
-                    >
-                      <ListItemText
-                        disableTypography
-                        primary={
-                          <Box className="flex items-center gap-2 mb-1">
-                            <Typography variant="subtitle1" className="font-semibold">
-                              {experiment.name}
-                            </Typography>
-                            <Chip
-                              label={experiment.status}
-                              size="small"
-                              sx={getStatusChipSx(experiment.status)}
-                            />
-                          </Box>
-                        }
-                        secondary={
-                          <Box>
-                            {experiment.description && (
-                              <Typography variant="body2" className="text-gray-700 mb-2">
-                                {experiment.description}
+                  <React.Fragment key={experiment.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem disablePadding>
+                      <ListItemButton
+                        onClick={() => handleSelectExistingExperiment(experiment)}
+                        sx={{
+                          py: 2,
+                          px: 2,
+                          "&:hover": {
+                            backgroundColor: "action.hover",
+                          },
+                        }}
+                      >
+                        <ListItemText
+                          disableTypography
+                          primary={
+                            <Box className="flex items-center gap-2 mb-1">
+                              <Typography variant="subtitle1" className="font-semibold">
+                                {experiment.name}
                               </Typography>
-                            )}
-                            <Box className="flex flex-col gap-2">
-                              <Box className="flex flex-wrap gap-1">
-                                <Typography variant="caption" className="text-gray-600 mr-2">
-                                  <strong>Prompts:</strong>
+                              <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
+                            </Box>
+                          }
+                          secondary={
+                            <Box>
+                              {experiment.description && (
+                                <Typography variant="body2" className="text-gray-700 mb-2">
+                                  {experiment.description}
                                 </Typography>
-                                {experiment.prompt_configs?.map((config: any, idx: number) => (
-                                  <Chip
-                                    key={idx}
-                                    label={
-                                      config.type === "saved"
-                                        ? `${config.name} (v${config.version})`
-                                        : config.auto_name || "Unsaved Prompt"
-                                    }
-                                    size="small"
-                                    sx={{
-                                      height: "20px",
-                                      fontSize: "0.688rem",
-                                      backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
-                                      borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
-                                    }}
-                                  />
-                                ))}
-                              </Box>
-                              <Box className="flex gap-4 text-sm">
-                                <Typography variant="caption" className="text-gray-600">
-                                  <strong>Rows:</strong> {experiment.total_rows}
-                                </Typography>
-                                {experiment.total_cost && (
-                                  <Typography variant="caption" className="text-gray-600">
-                                    <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                              )}
+                              <Box className="flex flex-col gap-2">
+                                <Box className="flex flex-wrap gap-1">
+                                  <Typography variant="caption" className="text-gray-600 mr-2">
+                                    <strong>Prompts:</strong>
                                   </Typography>
-                                )}
+                                  {experiment.prompt_configs?.map((config: PromptConfig, idx: number) => (
+                                    <Chip
+                                      key={idx}
+                                      label={config.type === "saved" ? `${config.name} (v${config.version})` : config.auto_name || "Unsaved Prompt"}
+                                      size="small"
+                                      sx={{
+                                        height: "20px",
+                                        fontSize: "0.688rem",
+                                        backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
+                                        borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
+                                      }}
+                                    />
+                                  ))}
+                                </Box>
+                                <Box className="flex gap-4 text-sm">
+                                  <Typography variant="caption" className="text-gray-600">
+                                    <strong>Rows:</strong> {experiment.total_rows}
+                                  </Typography>
+                                  {experiment.total_cost && (
+                                    <Typography variant="caption" className="text-gray-600">
+                                      <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                                    </Typography>
+                                  )}
+                                </Box>
                               </Box>
                             </Box>
-                          </Box>
-                        }
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                </React.Fragment>
-              ))}
-            </List>
+                          }
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  </React.Fragment>
+                ))}
+              </List>
             );
           })()}
         </DialogContent>

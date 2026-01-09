@@ -28,8 +28,10 @@ import { PromptExperimentsView } from "./components/prompt-experiments/PromptExp
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
+import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
-import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
+import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
 import { TracesView } from "./components/TracesView";
@@ -321,17 +323,6 @@ function App() {
                       />
 
                       <Route
-                        path="/tasks/:id/playgrounds/retrievals"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <RagRetrievalsPlayground />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
                         path="/tasks/:id/prompt-experiments"
                         element={
                           <ProtectedRoute>
@@ -353,26 +344,48 @@ function App() {
                         }
                       />
 
+                      {/* RAG Experiments - List View */}
                       <Route
                         path="/tasks/:id/rag-experiments"
                         element={
                           <ProtectedRoute>
                             <TaskLayout>
-                              <ComingSoon
-                                featureName="RAG Experiments"
-                                description="Experiment with different retrieval-augmented generation configurations."
-                              />
+                              <RagExperimentsListView />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* RAG Experiments - Detail View */}
+                      <Route
+                        path="/tasks/:id/rag-experiments/:experimentId"
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <RagExperimentDetailView />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* RAG Notebooks routes */}
+                      <Route
+                        path="/tasks/:id/rag-notebooks"
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <RagNotebooks />
                             </TaskLayout>
                           </ProtectedRoute>
                         }
                       />
 
                       <Route
-                        path="/tasks/:id/retrievals"
+                        path="/tasks/:id/rag-notebooks/:notebookId"
                         element={
                           <ProtectedRoute>
                             <TaskLayout>
-                              <ComingSoon featureName="Retrievals" description="Monitor and analyze retrieval operations and their performance." />
+                              <RagExperimentsPage />
                             </TaskLayout>
                           </ProtectedRoute>
                         }

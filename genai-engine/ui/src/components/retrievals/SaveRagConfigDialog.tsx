@@ -10,13 +10,14 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import { useForm, useStore } from "@tanstack/react-form";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 import type { SearchMethod, SearchSettings } from "./types";
 
 import { useCreateRagConfig } from "@/hooks/rag-search-settings/useCreateRagConfig";
 import { useCreateRagVersion } from "@/hooks/rag-search-settings/useCreateRagVersion";
 import { useRagSearchSettings } from "@/hooks/rag-search-settings/useRagSearchSettings";
+import { useUpdateRagConfig } from "@/hooks/rag-search-settings/useUpdateRagConfig";
 import useSnackbar from "@/hooks/useSnackbar";
 import type {
   RagProviderCollectionResponse,
@@ -34,7 +35,7 @@ interface SaveRagConfigDialogProps {
   searchMethod: SearchMethod;
   settings: SearchSettings;
   taskId: string;
-  onSaveSuccess?: (configId: string, versionNumber: number) => void;
+  onSaveSuccess?: (configId: string, configName: string, versionNumber: number) => void;
 }
 
 interface SaveRagConfigFormValues {
@@ -97,6 +98,7 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
 
   const createConfig = useCreateRagConfig();
   const createVersion = useCreateRagVersion();
+  const updateConfig = useUpdateRagConfig();
 
   const { data } = useRagSearchSettings(taskId);
   const existingConfigs = data?.rag_provider_setting_configurations ?? [];
@@ -117,6 +119,15 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
 
       try {
         if (matchedConfig) {
+          // Update the config's provider ID if it has changed
+          if (matchedConfig.rag_provider_id !== currentProviderId) {
+            await updateConfig.mutateAsync({
+              configId: matchedConfig.id,
+              request: {
+                rag_provider_id: currentProviderId,
+              },
+            });
+          }
           const response = await createVersion.mutateAsync({
             configId: matchedConfig.id,
             request: {
@@ -126,7 +137,7 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
           });
           showSnackbar(`Created version ${response.version_number} of "${trimmedName}"`, "success");
           if (onSaveSuccess) {
-            onSaveSuccess(matchedConfig.id, response.version_number);
+            onSaveSuccess(matchedConfig.id, trimmedName, response.version_number);
           }
         } else {
           const response = await createConfig.mutateAsync({
@@ -141,7 +152,7 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
           });
           showSnackbar(`Saved configuration "${trimmedName}"`, "success");
           if (onSaveSuccess) {
-            onSaveSuccess(response.id, response.latest_version_number);
+            onSaveSuccess(response.id, trimmedName, response.latest_version_number);
           }
         }
 
@@ -158,11 +169,14 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
 
   const formValues = useStore(form.store, (state) => state.values);
   const existingConfig = existingConfigs.find((c) => c.name === formValues.name);
-  const isSaving = createConfig.isPending || createVersion.isPending;
+  const isSaving = createConfig.isPending || createVersion.isPending || updateConfig.isPending;
+
+  const [tagInputValue, setTagInputValue] = useState("");
 
   const handleClose = () => {
     setOpen(false);
     form.reset(blankValues);
+    setTagInputValue("");
   };
 
   useEffect(() => {
@@ -171,6 +185,7 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
         ...blankValues,
         name: currentConfigName ?? "",
       });
+      setTagInputValue("");
     }
   }, [open, currentConfigName, form]);
 
@@ -237,7 +252,19 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
                     freeSolo
                     options={[]}
                     value={field.state.value}
-                    onChange={(_e, newValue) => field.handleChange(newValue)}
+                    inputValue={tagInputValue}
+                    onInputChange={(_e, newInputValue) => setTagInputValue(newInputValue)}
+                    onChange={(_e, newValue) => {
+                      field.handleChange(newValue);
+                      setTagInputValue("");
+                    }}
+                    onBlur={() => {
+                      const trimmed = tagInputValue.trim();
+                      if (trimmed && !field.state.value.includes(trimmed)) {
+                        field.handleChange([...field.state.value, trimmed]);
+                      }
+                      setTagInputValue("");
+                    }}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => {
                         const { key, ...tagProps } = getTagProps({ index });
