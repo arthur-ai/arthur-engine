@@ -20,77 +20,6 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
-/** AgenticAnnotation */
-export interface AgenticAnnotation {
-  /**
-   * Annotation Description
-   * Description of the annotation
-   */
-  annotation_description?: string | null;
-  /**
-   * Annotation Score
-   * Binary score for positive or negative annotation.
-   */
-  annotation_score?: number | null;
-  /** Type of annotation */
-  annotation_type: AgenticAnnotationType;
-  /**
-   * Continuous Eval Id
-   * Continuous eval ID this annotation belongs to
-   */
-  continuous_eval_id?: string | null;
-  /**
-   * Continuous Eval Name
-   * Name of the continuous eval this annotation belongs to
-   */
-  continuous_eval_name?: string | null;
-  /**
-   * Cost
-   * Cost of the continuous eval run
-   */
-  cost?: number | null;
-  /**
-   * Created At
-   * When the annotation was created
-   * @format date-time
-   */
-  created_at?: string;
-  /**
-   * Eval Name
-   * Name of the eval the continuous eval used when scoring
-   */
-  eval_name?: string | null;
-  /**
-   * Eval Version
-   * Version of the eval the continuous eval used when scoring
-   */
-  eval_version?: number | null;
-  /**
-   * Id
-   * Unique identifier for the annotation
-   * @format uuid
-   */
-  id: string;
-  /**
-   * Input Variables
-   * Input variables for the continuous eval
-   */
-  input_variables?: VariableTemplateValue[] | null;
-  /** Status of the continuous eval run */
-  run_status?: ContinuousEvalRunStatus | null;
-  /**
-   * Trace Id
-   * Trace ID this annotation belongs to
-   */
-  trace_id: string;
-  /**
-   * Updated At
-   * When the annotation was last updated
-   * @format date-time
-   */
-  updated_at?: string;
-}
-
 /** AgenticAnnotationRequest */
 export interface AgenticAnnotationRequest {
   /**
@@ -179,6 +108,362 @@ export interface AgenticAnnotationResponse {
 
 /** AgenticAnnotationType */
 export type AgenticAnnotationType = "human" | "continuous_eval";
+
+/**
+ * AgenticEvalRef
+ * Reference to an evaluation configuration with transform
+ */
+export interface AgenticEvalRefInput {
+  /**
+   * Name
+   * Name of the evaluation
+   */
+  name: string;
+  /**
+   * Transform Id
+   * ID of the transform to apply to the trace before evaluation
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Variable Mapping
+   * Mapping of eval variables to data sources (supports transform variables for agentic experiments)
+   */
+  variable_mapping: AgenticEvalVariableMappingInput[];
+  /**
+   * Version
+   * Version of the evaluation
+   */
+  version: number;
+}
+
+/**
+ * AgenticEvalRef
+ * Reference to an evaluation configuration with transform
+ */
+export interface AgenticEvalRefOutput {
+  /**
+   * Name
+   * Name of the evaluation
+   */
+  name: string;
+  /**
+   * Transform Id
+   * ID of the transform to apply to the trace before evaluation
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Variable Mapping
+   * Mapping of eval variables to data sources (supports transform variables for agentic experiments)
+   */
+  variable_mapping: AgenticEvalVariableMappingOutput[];
+  /**
+   * Version
+   * Version of the evaluation
+   */
+  version: number;
+}
+
+/**
+ * AgenticEvalResultSummaries
+ * Summary of evaluation results for an agentic experiment
+ */
+export interface AgenticEvalResultSummaries {
+  /**
+   * Eval Name
+   * Name of the evaluation
+   */
+  eval_name: string;
+  /**
+   * Eval Results
+   * Results for this evaluation
+   */
+  eval_results: EvalResultSummary[];
+  /**
+   * Eval Version
+   * Version of the evaluation
+   */
+  eval_version: string;
+  /**
+   * Transform Id
+   * ID of the transform used for this evaluation
+   * @format uuid
+   */
+  transform_id: string;
+}
+
+/**
+ * AgenticEvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output).
+ *
+ * For transform variables, use ExperimentOutputVariableSource with transform_variable_name
+ * in the experiment_output field. The transform_id comes from the associated AgenticEvalRef.
+ */
+export interface AgenticEvalVariableMappingInput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & AgenticExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
+}
+
+/**
+ * AgenticEvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output).
+ *
+ * For transform variables, use ExperimentOutputVariableSource with transform_variable_name
+ * in the experiment_output field. The transform_id comes from the associated AgenticEvalRef.
+ */
+export interface AgenticEvalVariableMappingOutput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & AgenticExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
+}
+
+/**
+ * AgenticExperimentDetail
+ * Detailed information about an agentic experiment
+ */
+export interface AgenticExperimentDetail {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /** Reference to the dataset used */
+  dataset_ref: DatasetRef;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations being run, each with an associated transform
+   */
+  eval_list: AgenticEvalRefOutput[];
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /** HTTP template configuration for the agent endpoint */
+  http_template: HttpTemplate;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /**
+   * Notebook Id
+   * Optional notebook ID this experiment is linked to
+   */
+  notebook_id?: string | null;
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /** Summary of results across all test cases */
+  summary_results: AgenticSummaryResults;
+  /**
+   * Template Variable Mapping
+   * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables)
+   */
+  template_variable_mapping: TemplateVariableMappingOutput[];
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
+/**
+ * AgenticExperimentListResponse
+ * Paginated list of agentic experiments
+ */
+export interface AgenticExperimentListResponse {
+  /**
+   * Data
+   * List of agentic experiment summaries
+   */
+  data: AgenticExperimentSummary[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * AgenticExperimentOutputVariableSource
+ * Variable source from experiment output (agentic experiments only support transform variables)
+ */
+export interface AgenticExperimentOutputVariableSource {
+  /** Experiment output source (only transform variables supported) */
+  experiment_output: TransformVariableExperimentOutputSource;
+  /**
+   * Type
+   * Type of source: 'experiment_output'
+   */
+  type: "experiment_output";
+}
+
+/**
+ * AgenticExperimentSummary
+ * Summary of an agentic experiment
+ */
+export interface AgenticExperimentSummary {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /**
+   * Dataset Id
+   * ID of the dataset used
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Dataset Name
+   * Name of the dataset used
+   */
+  dataset_name: string;
+  /**
+   * Dataset Version
+   * Version of the dataset used
+   */
+  dataset_version: number;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /** HTTP template configuration for the agent endpoint */
+  http_template: HttpTemplate;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
+/**
+ * AgenticOutput
+ * Output from an agent HTTP request execution
+ */
+export interface AgenticOutput {
+  /**
+   * Response Body
+   * Response body from the agent endpoint
+   */
+  response_body: Record<string, any>;
+  /**
+   * Status Code
+   * HTTP status code (None if request failed before receiving a response)
+   */
+  status_code?: number | null;
+  /**
+   * Trace Id
+   * Trace ID if available from the response
+   */
+  trace_id?: string | null;
+}
 
 /** AgenticPrompt */
 export interface AgenticPrompt {
@@ -301,7 +586,106 @@ export interface AgenticPromptVersionResponse {
   version: number;
 }
 
-export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotation;
+/**
+ * AgenticResult
+ * Results from an agent execution with evals
+ */
+export interface AgenticResult {
+  /**
+   * Evals
+   * Evaluation results for this execution
+   */
+  evals: EvalExecution[];
+  /** Output from the agent (None if not yet executed) */
+  output?: AgenticOutput | null;
+  /**
+   * Request Body
+   * Request body that was sent (with variables resolved)
+   */
+  request_body: Record<string, any>;
+  /**
+   * Request Headers
+   * Headers that were sent (with variables resolved)
+   */
+  request_headers: Record<string, string>;
+  /**
+   * Request Url
+   * URL that was called
+   */
+  request_url: string;
+}
+
+/**
+ * AgenticSummaryResults
+ * Summary results across all evaluations
+ */
+export interface AgenticSummaryResults {
+  /**
+   * Eval Summaries
+   * Summary for each evaluation run
+   */
+  eval_summaries: AgenticEvalResultSummaries[];
+}
+
+/**
+ * AgenticTestCase
+ * Individual test case result for agentic experiment
+ */
+export interface AgenticTestCase {
+  /** Result from the agent execution */
+  agentic_result: AgenticResult;
+  /**
+   * Dataset Row Id
+   * ID of the dataset row
+   */
+  dataset_row_id: string;
+  /** Status of the test case */
+  status: TestCaseStatus;
+  /**
+   * Template Input Variables
+   * Input variables used in the template (with values resolved)
+   */
+  template_input_variables: InputVariable[];
+  /**
+   * Total Cost
+   * Total cost for this test case
+   */
+  total_cost?: string | null;
+}
+
+/**
+ * AgenticTestCaseListResponse
+ * Paginated list of agentic test cases
+ */
+export interface AgenticTestCaseListResponse {
+  /**
+   * Data
+   * List of test cases
+   */
+  data: AgenticTestCase[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotationResponse;
 
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
@@ -443,6 +827,23 @@ export type AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebook
 export type AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchError = HTTPValidationError;
 
 export interface AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchParams {
+  /**
+   * Experiment Id
+   * ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Notebook Id
+   * ID of the notebook to attach
+   */
+  notebook_id: string;
+}
+
+export type AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatchData = RagExperimentSummary;
+
+export type AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatchError = HTTPValidationError;
+
+export interface AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatchParams {
   /**
    * Experiment Id
    * ID of the experiment
@@ -813,6 +1214,51 @@ export interface ConversationBaseResponse {
   updated_at: string;
 }
 
+export type CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostData = AgenticExperimentSummary;
+
+export type CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostError = HTTPValidationError;
+
+/**
+ * CreateAgenticExperimentRequest
+ * Request to create a new agentic experiment
+ */
+export interface CreateAgenticExperimentRequest {
+  /** Reference to the dataset to use */
+  dataset_ref: DatasetRefInput;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations to run, each with an associated transform
+   */
+  eval_list: AgenticEvalRefInput[];
+  /** HTTP template configuration for the agent endpoint */
+  http_template: HttpTemplate;
+  /**
+   * Name
+   * Name for the experiment
+   */
+  name: string;
+  /**
+   * Request Time Parameters
+   * List of request-time parameters (e.g., API keys, tokens). These are NOT stored in the database for security reasons - they are passed directly to the execution thread.
+   */
+  request_time_parameters?: RequestTimeParameter[] | null;
+  /**
+   * Template Variable Mapping
+   * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
+   */
+  template_variable_mapping: TemplateVariableMappingInput[];
+}
+
 /** CreateAgenticPromptRequest */
 export interface CreateAgenticPromptRequest {
   /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
@@ -945,6 +1391,74 @@ export interface CreatePromptExperimentRequest {
    * Shared variable mapping for all prompts
    */
   prompt_variable_mapping: PromptVariableMappingInput[];
+}
+
+export type CreateRagExperimentApiV1TasksTaskIdRagExperimentsPostData = RagExperimentSummary;
+
+export type CreateRagExperimentApiV1TasksTaskIdRagExperimentsPostError = HTTPValidationError;
+
+/**
+ * CreateRagExperimentRequest
+ * Request to create a new RAG experiment
+ */
+export interface CreateRagExperimentRequest {
+  /** Reference to the dataset to use */
+  dataset_ref: DatasetRefInput;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations to run
+   */
+  eval_list: EvalRefInput[];
+  /**
+   * Name
+   * Name for the experiment
+   */
+  name: string;
+  /**
+   * Rag Configs
+   * List of RAG configurations to test. Each config specifies which dataset column to use as the query.
+   */
+  rag_configs: (
+    | ({
+        type: "saved";
+      } & SavedRagConfigInput)
+    | ({
+        type: "unsaved";
+      } & UnsavedRagConfig)
+  )[];
+}
+
+export type CreateRagNotebookApiV1TasksTaskIdRagNotebooksPostData = RagNotebookDetail;
+
+export type CreateRagNotebookApiV1TasksTaskIdRagNotebooksPostError = HTTPValidationError;
+
+/**
+ * CreateRagNotebookRequest
+ * Request to create a new RAG notebook
+ */
+export interface CreateRagNotebookRequest {
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the notebook
+   */
+  name: string;
+  /** Initial state */
+  state?: RagNotebookState | null;
 }
 
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
@@ -1250,6 +1764,10 @@ export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = Va
 
 export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
 
+export type DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteData = any;
+
+export type DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteError = HTTPValidationError;
+
 export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData = any;
 
 export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HTTPValidationError;
@@ -1289,6 +1807,14 @@ export type DeleteNotebookApiV1NotebooksNotebookIdDeleteError = HTTPValidationEr
 export type DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteData = any;
 
 export type DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteError = HTTPValidationError;
+
+export type DeleteRagExperimentApiV1RagExperimentsExperimentIdDeleteData = any;
+
+export type DeleteRagExperimentApiV1RagExperimentsExperimentIdDeleteError = HTTPValidationError;
+
+export type DeleteRagNotebookApiV1RagNotebooksNotebookIdDeleteData = any;
+
+export type DeleteRagNotebookApiV1RagNotebooksNotebookIdDeleteError = HTTPValidationError;
 
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteData = any;
 
@@ -1538,7 +2064,7 @@ export type ExecuteTraceTransformExtractionApiV1TracesTraceIdTransformsTransform
 export interface ExperimentOutputSource {
   /**
    * Json Path
-   * Optional JSON path to extract from experiment output
+   * Optional JSON path to extract from experiment output. Should use dot notation for array indexing (eg. response.objects.0.properties.category)
    */
   json_path?: string | null;
 }
@@ -1559,7 +2085,7 @@ export interface ExperimentOutputVariableSource {
 
 /**
  * ExperimentStatus
- * Status of a prompt experiment
+ * Status of an experiment
  */
 export type ExperimentStatus = "queued" | "running" | "failed" | "completed";
 
@@ -1711,6 +2237,56 @@ export interface FileUploadResult {
   type: string;
   /** Word Count */
   word_count: number;
+}
+
+/**
+ * GeneratedVariableSource
+ * Variable source for generated values (e.g., UUIDs, timestamps)
+ */
+export interface GeneratedVariableSource {
+  /**
+   * Generator Type
+   * Type of generator to use. Currently supports 'uuid' for UUID generation.
+   */
+  generator_type: "uuid";
+  /**
+   * Type
+   * Type of source: 'generated'
+   */
+  type: "generated";
+}
+
+export type GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetData = AgenticExperimentDetail;
+
+export type GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetError = HTTPValidationError;
+
+export type GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetData = AgenticTestCaseListResponse;
+
+export type GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetError = HTTPValidationError;
+
+export interface GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetParams {
+  /**
+   * Experiment ID
+   * The ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
 }
 
 export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
@@ -2256,6 +2832,110 @@ export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPrompt
   sort?: PaginationSortMethod;
 }
 
+export type GetRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGetData = RagConfigResultListResponse;
+
+export type GetRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGetError = HTTPValidationError;
+
+export interface GetRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGetParams {
+  /**
+   * Experiment ID
+   * The ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * RAG Config Key
+   * The RAG config key (format: 'saved:setting_config_id:version' or 'unsaved:uuid'). URL-encode colons as %3A
+   */
+  ragConfigKey: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetRagExperimentApiV1RagExperimentsExperimentIdGetData = RagExperimentDetail;
+
+export type GetRagExperimentApiV1RagExperimentsExperimentIdGetError = HTTPValidationError;
+
+export type GetRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGetData = RagTestCaseListResponse;
+
+export type GetRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGetError = HTTPValidationError;
+
+export interface GetRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGetParams {
+  /**
+   * Experiment ID
+   * The ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetRagNotebookApiV1RagNotebooksNotebookIdGetData = RagNotebookDetail;
+
+export type GetRagNotebookApiV1RagNotebooksNotebookIdGetError = HTTPValidationError;
+
+export type GetRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGetData = RagExperimentListResponse;
+
+export type GetRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGetError = HTTPValidationError;
+
+export interface GetRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGetParams {
+  /**
+   * Notebook Id
+   * RAG Notebook ID
+   */
+  notebookId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetRagNotebookStateApiV1RagNotebooksNotebookIdStateGetData = RagNotebookStateResponse;
+
+export type GetRagNotebookStateApiV1RagNotebooksNotebookIdStateGetError = HTTPValidationError;
+
 export type GetRagProviderApiV1RagProvidersProviderIdGetData = RagProviderConfigurationResponse;
 
 export type GetRagProviderApiV1RagProvidersProviderIdGetError = HTTPValidationError;
@@ -2560,6 +3240,50 @@ export interface HallucinationDetailsResponse {
   message?: string | null;
   /** Score */
   score?: boolean | null;
+}
+
+/**
+ * HttpHeader
+ * HTTP header with support for variable placeholders
+ */
+export interface HttpHeader {
+  /**
+   * Name
+   * Header name (supports {{variable}} placeholders)
+   */
+  name: string;
+  /**
+   * Value
+   * Header value (supports {{variable}} placeholders)
+   */
+  value: string;
+}
+
+/**
+ * HttpTemplate
+ * HTTP template configuration for agent endpoint
+ */
+export interface HttpTemplate {
+  /**
+   * Endpoint Name
+   * Name of the endpoint
+   */
+  endpoint_name: string;
+  /**
+   * Endpoint Url
+   * URL of the endpoint
+   */
+  endpoint_url: string;
+  /**
+   * Headers
+   * HTTP headers (supports {{variable}} placeholders in names and values)
+   */
+  headers?: HttpHeader[];
+  /**
+   * Request Body
+   * Request body as JSON (supports {{variable}} placeholders)
+   */
+  request_body: Record<string, any>;
 }
 
 /**
@@ -3293,6 +4017,39 @@ export interface ListAgenticAnnotationsResponse {
   count: number;
 }
 
+export type ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetData = AgenticExperimentListResponse;
+
+export type ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetError = HTTPValidationError;
+
+export interface ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetParams {
+  /** Dataset Id */
+  dataset_id?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /** Search */
+  search?: string | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
 export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData = ListAgenticAnnotationsResponse;
 
 export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetError = HTTPValidationError;
@@ -3359,6 +4116,11 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    * Annotation score to filter on.
    */
   annotation_score?: number | null;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval to filter on.
+   */
+  continuous_eval_id?: string | null;
   /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
@@ -3570,6 +4332,76 @@ export interface ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetParams
   taskId: string;
 }
 
+export type ListRagExperimentsApiV1TasksTaskIdRagExperimentsGetData = RagExperimentListResponse;
+
+export type ListRagExperimentsApiV1TasksTaskIdRagExperimentsGetError = HTTPValidationError;
+
+export interface ListRagExperimentsApiV1TasksTaskIdRagExperimentsGetParams {
+  /**
+   * Dataset Id
+   * Filter experiments by dataset ID
+   */
+  dataset_id?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Search
+   * Search text to filter experiments by name or description
+   */
+  search?: string | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type ListRagNotebooksApiV1TasksTaskIdRagNotebooksGetData = RagNotebookListResponse;
+
+export type ListRagNotebooksApiV1TasksTaskIdRagNotebooksGetError = HTTPValidationError;
+
+export interface ListRagNotebooksApiV1TasksTaskIdRagNotebooksGetParams {
+  /** Name */
+  name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData = SearchRagProviderCollectionsResponse;
 
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError = HTTPValidationError;
@@ -3613,6 +4445,12 @@ export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Sessions
+   * Include sessions originating from Arthur experiments. Defaults to false for most uses.
+   * @default false
+   */
+  include_experiment_sessions?: boolean;
   /**
    * Page
    * Page number
@@ -3795,6 +4633,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   start_time?: string;
   /**
+   * Status Code
+   * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
+   */
+  status_code?: string[];
+  /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
    * @minItems 1
@@ -3887,6 +4730,12 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Spans
+   * Include flat list of spans for each trace. Defaults to false for performance.
+   * @default false
+   */
+  include_spans?: boolean;
   /**
    * Page
    * Page number
@@ -4005,6 +4854,11 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @format date-time
    */
   start_time?: string;
+  /**
+   * Status Code
+   * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
+   */
+  status_code?: string[];
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5204,7 +6058,7 @@ export interface PromptExperimentListResponse {
   page_size: number;
   /**
    * Total Count
-   * Total number of prompt experiments
+   * Total number of records
    */
   total_count: number;
   /**
@@ -5325,7 +6179,7 @@ export interface PromptOutput {
 export interface PromptResult {
   /**
    * Evals
-   * Evaluation results for this prompt output
+   * Evaluation results for this execution
    */
   evals: EvalExecution[];
   /**
@@ -5416,7 +6270,7 @@ export interface PromptVersionResult {
   dataset_row_id: string;
   /**
    * Evals
-   * Evaluation results for this prompt output
+   * Evaluation results for this specific config
    */
   evals: EvalExecution[];
   /** Output from the prompt (None if not yet executed) */
@@ -5435,7 +6289,7 @@ export interface PromptVersionResult {
   status: TestCaseStatus;
   /**
    * Total Cost
-   * Total cost for this specific prompt execution
+   * Total cost for this config test case execution
    */
   total_cost?: string | null;
 }
@@ -5462,7 +6316,7 @@ export interface PromptVersionResultListResponse {
   page_size: number;
   /**
    * Total Count
-   * Total number of results
+   * Total number of records
    */
   total_count: number;
   /**
@@ -5904,6 +6758,11 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   start_time?: string;
   /**
+   * Status Code
+   * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
+   */
+  status_code?: string[];
+  /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
    * @minItems 1
@@ -6106,6 +6965,11 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   start_time?: string;
   /**
+   * Status Code
+   * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
+   */
+  status_code?: string[];
+  /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
    * @minItems 1
@@ -6182,6 +7046,300 @@ export interface QueryTracesWithMetricsResponse {
 /** RagAPIKeyAuthenticationProviderEnum */
 export type RagAPIKeyAuthenticationProviderEnum = "weaviate";
 
+/**
+ * RagConfigResult
+ * Result for a specific RAG configuration within a test case
+ */
+export interface RagConfigResult {
+  /**
+   * Dataset Row Id
+   * ID of the dataset row
+   */
+  dataset_row_id: string;
+  /**
+   * Evals
+   * Evaluation results for this specific config
+   */
+  evals: EvalExecution[];
+  /** Output from the RAG search (None if not yet executed) */
+  output?: RagSearchOutput | null;
+  /**
+   * Query Text
+   * Query text used for the search
+   */
+  query_text: string;
+  /** Status of the test case */
+  status: TestCaseStatus;
+  /**
+   * Total Cost
+   * Total cost for this config test case execution
+   */
+  total_cost?: string | null;
+}
+
+/**
+ * RagConfigResultListResponse
+ * Paginated list of results for a specific RAG configuration
+ */
+export interface RagConfigResultListResponse {
+  /**
+   * Data
+   * List of results for the RAG configuration
+   */
+  data: RagConfigResult[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * RagEvalResultSummaries
+ * Summary of evaluation results for a RAG configuration
+ */
+export interface RagEvalResultSummaries {
+  /**
+   * Eval Results
+   * Results for each evaluation run on this RAG configuration
+   */
+  eval_results: EvalResultSummary[];
+  /**
+   * Rag Config Key
+   * RAG config key: 'saved:setting_config_id:version' for saved, 'unsaved:uuid' for unsaved
+   */
+  rag_config_key?: string | null;
+  /**
+   * Rag Config Type
+   * Type: 'saved' or 'unsaved'
+   */
+  rag_config_type?: string | null;
+  /**
+   * Setting Configuration Id
+   * ID of the RAG search setting configuration (for saved configs only)
+   */
+  setting_configuration_id?: string | null;
+  /**
+   * Setting Configuration Version
+   * Version of the RAG search setting configuration (for saved configs only)
+   */
+  setting_configuration_version?: number | null;
+}
+
+/**
+ * RagExperimentDetail
+ * Detailed information about a RAG experiment
+ */
+export interface RagExperimentDetail {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /** Reference to the dataset used */
+  dataset_ref: DatasetRef;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations being run
+   */
+  eval_list: EvalRefOutput[];
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /**
+   * Notebook Id
+   * Optional notebook ID this experiment is linked to
+   */
+  notebook_id?: string | null;
+  /**
+   * Rag Configs
+   * List of RAG configurations being tested
+   */
+  rag_configs: (
+    | ({
+        type: "saved";
+      } & SavedRagConfigOutput)
+    | ({
+        type: "unsaved";
+      } & UnsavedRagConfigResponse)
+  )[];
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /** Summary of results across all test cases */
+  summary_results: RagSummaryResults;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
+/**
+ * RagExperimentListResponse
+ * Paginated list of RAG experiments
+ */
+export interface RagExperimentListResponse {
+  /**
+   * Data
+   * List of RAG experiment summaries
+   */
+  data: RagExperimentSummary[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * RagExperimentSummary
+ * Summary of a RAG experiment
+ */
+export interface RagExperimentSummary {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /**
+   * Dataset Id
+   * ID of the dataset used
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Dataset Name
+   * Name of the dataset used
+   */
+  dataset_name: string;
+  /**
+   * Dataset Version
+   * Version of the dataset used
+   */
+  dataset_version: number;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /**
+   * Rag Configs
+   * List of RAG configurations being tested
+   */
+  rag_configs: (
+    | ({
+        type: "saved";
+      } & SavedRagConfigOutput)
+    | ({
+        type: "unsaved";
+      } & UnsavedRagConfigResponse)
+  )[];
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
 /** RagHybridSearchSettingRequest */
 export interface RagHybridSearchSettingRequest {
   /** Settings for the hybrid search request to the vector database. */
@@ -6192,6 +7350,199 @@ export interface RagHybridSearchSettingRequest {
 export interface RagKeywordSearchSettingRequest {
   /** Settings for the keyword search request to the vector database. */
   settings: WeaviateKeywordSearchSettingsRequest;
+}
+
+/**
+ * RagNotebookDetail
+ * Detailed RAG notebook information
+ */
+export interface RagNotebookDetail {
+  /**
+   * Created At
+   * ISO timestamp when created
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Experiments
+   * History of experiments run from this notebook
+   */
+  experiments: RagExperimentSummary[];
+  /**
+   * Id
+   * Notebook ID
+   */
+  id: string;
+  /**
+   * Name
+   * Notebook name
+   */
+  name: string;
+  /** Current draft state */
+  state: RagNotebookStateResponse;
+  /**
+   * Task Id
+   * Associated task ID
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * ISO timestamp when last updated
+   */
+  updated_at: string;
+}
+
+/**
+ * RagNotebookListResponse
+ * Paginated list of RAG notebooks
+ */
+export interface RagNotebookListResponse {
+  /**
+   * Data
+   * List of notebook summaries
+   */
+  data: RagNotebookSummary[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * RagNotebookState
+ * Draft state of a RAG notebook - mirrors RAG experiment config but all fields optional.
+ * Used for requests (input).
+ */
+export interface RagNotebookState {
+  /** Dataset reference (includes name) */
+  dataset_ref?: DatasetRefInput | null;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Eval List
+   * List of evaluations
+   */
+  eval_list?: EvalRefInput[] | null;
+  /**
+   * Rag Configs
+   * List of RAG configurations
+   */
+  rag_configs?:
+    | (
+        | ({
+            type: "saved";
+          } & SavedRagConfigInput)
+        | ({
+            type: "unsaved";
+          } & UnsavedRagConfig)
+      )[]
+    | null;
+}
+
+/**
+ * RagNotebookStateResponse
+ * Draft state of a RAG notebook - mirrors RAG experiment config but all fields optional.
+ * Used for responses (output).
+ */
+export interface RagNotebookStateResponse {
+  /** Dataset reference (includes name) */
+  dataset_ref?: DatasetRef | null;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Eval List
+   * List of evaluations
+   */
+  eval_list?: EvalRefOutput[] | null;
+  /**
+   * Rag Configs
+   * List of RAG configurations
+   */
+  rag_configs?:
+    | (
+        | ({
+            type: "saved";
+          } & SavedRagConfigOutput)
+        | ({
+            type: "unsaved";
+          } & UnsavedRagConfigResponse)
+      )[]
+    | null;
+}
+
+/**
+ * RagNotebookSummary
+ * Summary of a RAG notebook
+ */
+export interface RagNotebookSummary {
+  /**
+   * Created At
+   * ISO timestamp when created
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Id
+   * Notebook ID
+   */
+  id: string;
+  /**
+   * Latest Run Id
+   * ID of most recent experiment run
+   */
+  latest_run_id?: string | null;
+  /** Status of most recent experiment */
+  latest_run_status?: ExperimentStatus | null;
+  /**
+   * Name
+   * Notebook name
+   */
+  name: string;
+  /**
+   * Run Count
+   * Number of experiments run from this notebook
+   */
+  run_count: number;
+  /**
+   * Task Id
+   * Associated task ID
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * ISO timestamp when last updated
+   */
+  updated_at: string;
 }
 
 /** RagProviderAuthenticationMethodEnum */
@@ -6290,6 +7641,54 @@ export interface RagProviderQueryResponse {
 export interface RagProviderTestConfigurationRequest {
   /** Configuration of the authentication strategy. */
   authentication_config: ApiKeyRagAuthenticationConfigRequest;
+}
+
+/**
+ * RagResult
+ * Results from a RAG search execution with evals
+ */
+export interface RagResult {
+  /**
+   * Evals
+   * Evaluation results for this execution
+   */
+  evals: EvalExecution[];
+  /** Output from the RAG search (None if not yet executed) */
+  output?: RagSearchOutput | null;
+  /**
+   * Query Text
+   * Query text used for the search
+   */
+  query_text: string;
+  /**
+   * Rag Config Key
+   * RAG config key: 'saved:setting_config_id:version' for saved, 'unsaved:uuid' for unsaved
+   */
+  rag_config_key: string;
+  /**
+   * Rag Config Type
+   * Type: 'saved' or 'unsaved'
+   */
+  rag_config_type: string;
+  /**
+   * Setting Configuration Id
+   * ID of the RAG search setting configuration (for saved configs only)
+   */
+  setting_configuration_id?: string | null;
+  /**
+   * Setting Configuration Version
+   * Version of the RAG search setting configuration (for saved configs only)
+   */
+  setting_configuration_version?: number | null;
+}
+
+/**
+ * RagSearchOutput
+ * Output from a RAG search execution
+ */
+export interface RagSearchOutput {
+  /** RAG search response */
+  response: RagProviderQueryResponse;
 }
 
 /** RagSearchSettingConfigurationNewVersionRequest */
@@ -6466,6 +7865,74 @@ export interface RagSearchSettingConfigurationVersionUpdateRequest {
   tags: string[];
 }
 
+/**
+ * RagSummaryResults
+ * Summary results across all RAG configurations and evaluations
+ */
+export interface RagSummaryResults {
+  /**
+   * Rag Eval Summaries
+   * Summary for each RAG configuration tested
+   */
+  rag_eval_summaries: RagEvalResultSummaries[];
+}
+
+/**
+ * RagTestCase
+ * Individual test case result for RAG experiment
+ */
+export interface RagTestCase {
+  /**
+   * Dataset Row Id
+   * ID of the dataset row
+   */
+  dataset_row_id: string;
+  /**
+   * Rag Results
+   * Results for each RAG configuration tested
+   */
+  rag_results: RagResult[];
+  /** Status of the test case */
+  status: TestCaseStatus;
+  /**
+   * Total Cost
+   * Total cost for this test case
+   */
+  total_cost?: string | null;
+}
+
+/**
+ * RagTestCaseListResponse
+ * Paginated list of RAG test cases
+ */
+export interface RagTestCaseListResponse {
+  /**
+   * Data
+   * List of test cases
+   */
+  data: RagTestCase[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
 /** RagVectorSimilarityTextSearchSettingRequest */
 export interface RagVectorSimilarityTextSearchSettingRequest {
   /** Settings for the similarity text search request to the vector database. */
@@ -6570,6 +8037,35 @@ export interface RenderedPromptResponse {
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
   messages: OpenAIMessageOutput[];
+}
+
+/**
+ * RequestTimeParameter
+ * Request-time parameter with name and value (e.g., API keys, tokens)
+ */
+export interface RequestTimeParameter {
+  /**
+   * Name
+   * Name of the request-time parameter (must match variable_name in template_variable_mapping)
+   */
+  name: string;
+  /**
+   * Value
+   * Value of the request-time parameter (not saved, provided at execution time)
+   */
+  value: string;
+}
+
+/**
+ * RequestTimeParameterSource
+ * Variable source from request-time parameters (e.g., tokens, API keys)
+ */
+export interface RequestTimeParameterSource {
+  /**
+   * Type
+   * Type of source: 'request_time_parameter'
+   */
+  type: "request_time_parameter";
 }
 
 export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData = ContinuousEvalRerunResponse;
@@ -6714,6 +8210,56 @@ export interface SavedPromptConfig {
 export interface SavedPromptRenderingRequest {
   /** Rendering configuration for the unsaved prompt */
   completion_request?: VariableRenderingRequest;
+}
+
+/**
+ * SavedRagConfig
+ * Configuration for a saved RAG setting configuration version
+ */
+export interface SavedRagConfigInput {
+  /** Dataset column to use as the RAG search query */
+  query_column: DatasetColumnVariableSource;
+  /**
+   * Setting Configuration Id
+   * ID of the RAG search setting configuration
+   * @format uuid
+   */
+  setting_configuration_id: string;
+  /**
+   * Type
+   * @default "saved"
+   */
+  type?: "saved";
+  /**
+   * Version
+   * Version of the RAG search setting configuration
+   */
+  version: number;
+}
+
+/**
+ * SavedRagConfig
+ * Configuration for a saved RAG setting configuration version
+ */
+export interface SavedRagConfigOutput {
+  /** Dataset column to use as the RAG search query */
+  query_column: DatasetColumnVariableSource;
+  /**
+   * Setting Configuration Id
+   * ID of the RAG search setting configuration
+   * @format uuid
+   */
+  setting_configuration_id: string;
+  /**
+   * Type
+   * @default "saved"
+   */
+  type?: "saved";
+  /**
+   * Version
+   * Version of the RAG search setting configuration
+   */
+  version: number;
 }
 
 /** SearchDatasetsResponse */
@@ -7049,6 +8595,19 @@ export interface SetNotebookStateRequest {
   state: NotebookStateInput;
 }
 
+export type SetRagNotebookStateApiV1RagNotebooksNotebookIdStatePutData = RagNotebookDetail;
+
+export type SetRagNotebookStateApiV1RagNotebooksNotebookIdStatePutError = HTTPValidationError;
+
+/**
+ * SetRagNotebookStateRequest
+ * Request to set the RAG notebook state
+ */
+export interface SetRagNotebookStateRequest {
+  /** New state for the notebook */
+  state: RagNotebookState;
+}
+
 export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteData = any;
 
 export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteError = HTTPValidationError;
@@ -7350,6 +8909,58 @@ export interface TaskResponse {
 }
 
 /**
+ * TemplateVariableMapping
+ * Mapping of a template variable to its source
+ */
+export interface TemplateVariableMappingInput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "generated";
+      } & GeneratedVariableSource)
+    | ({
+        type: "request_time_parameter";
+      } & RequestTimeParameterSource);
+  /**
+   * Variable Name
+   * Name of the template variable
+   */
+  variable_name: string;
+}
+
+/**
+ * TemplateVariableMapping
+ * Mapping of a template variable to its source
+ */
+export interface TemplateVariableMappingOutput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "generated";
+      } & GeneratedVariableSource)
+    | ({
+        type: "request_time_parameter";
+      } & RequestTimeParameterSource);
+  /**
+   * Variable Name
+   * Name of the template variable
+   */
+  variable_name: string;
+}
+
+/**
  * TestCase
  * Individual test case result
  */
@@ -7400,7 +9011,7 @@ export interface TestCaseListResponse {
   page_size: number;
   /**
    * Total Count
-   * Total number of test cases
+   * Total number of records
    */
   total_count: number;
   /**
@@ -7670,6 +9281,11 @@ export interface TraceMetadataResponse {
    * Number of spans in this trace
    */
   span_count: number;
+  /**
+   * Spans
+   * Flat list of spans in this trace (only populated when include_spans=true).
+   */
+  spans?: SpanWithMetricsResponse[] | null;
   /**
    * Start Time
    * Start time of the earliest span
@@ -7983,6 +9599,24 @@ export interface TransformExtractionResponseList {
 }
 
 /**
+ * TransformVariableExperimentOutputSource
+ * Reference to experiment output using transform variable extraction (agentic experiments only)
+ */
+export interface TransformVariableExperimentOutputSource {
+  /**
+   * Transform Variable Name
+   * Name of the variable to extract from the transform. The transform_id comes from the eval configuration.
+   */
+  transform_variable_name: string;
+  /**
+   * Type
+   * Type of experiment output source
+   * @default "transform_variable"
+   */
+  type?: "transform_variable";
+}
+
+/**
  * UnregisteredRootSpanGroup
  * Group of root spans with the same span_name for unregistered traces
  */
@@ -8095,6 +9729,72 @@ export interface UnsavedPromptVariablesRequest {
   messages: OpenAIMessageInput[];
 }
 
+/**
+ * UnsavedRagConfig
+ * Configuration for an unsaved RAG search setting
+ */
+export interface UnsavedRagConfig {
+  /** Dataset column to use as the RAG search query */
+  query_column: DatasetColumnVariableSource;
+  /**
+   * Rag Provider Id
+   * ID of the RAG provider to use for this search
+   * @format uuid
+   */
+  rag_provider_id: string;
+  /**
+   * Settings
+   * RAG search settings configuration
+   */
+  settings:
+    | WeaviateHybridSearchSettingsConfigurationRequest
+    | WeaviateKeywordSearchSettingsConfigurationRequest
+    | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
+  /**
+   * Type
+   * @default "unsaved"
+   */
+  type?: "unsaved";
+  /**
+   * Unsaved Id
+   * Unique identifier for this unsaved RAG configuration (generated by backend if not provided)
+   */
+  unsaved_id?: string | null;
+}
+
+/**
+ * UnsavedRagConfigResponse
+ * Configuration for an unsaved RAG search setting (response version)
+ */
+export interface UnsavedRagConfigResponse {
+  /** Dataset column to use as the RAG search query */
+  query_column: DatasetColumnVariableSource;
+  /**
+   * Rag Provider Id
+   * ID of the RAG provider to use for this search
+   * @format uuid
+   */
+  rag_provider_id: string;
+  /**
+   * Settings
+   * RAG search settings configuration
+   */
+  settings:
+    | WeaviateHybridSearchSettingsConfigurationResponse
+    | WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
+    | WeaviateKeywordSearchSettingsConfigurationResponse;
+  /**
+   * Type
+   * @default "unsaved"
+   */
+  type?: "unsaved";
+  /**
+   * Unsaved Id
+   * Unique identifier for this unsaved RAG configuration (generated by backend if not provided)
+   */
+  unsaved_id?: string | null;
+}
+
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValidationError;
@@ -8157,6 +9857,27 @@ export type UpdateNotebookApiV1NotebooksNotebookIdPutError = HTTPValidationError
  * Request to update a notebook
  */
 export interface UpdateNotebookRequest {
+  /**
+   * Description
+   * New description
+   */
+  description?: string | null;
+  /**
+   * Name
+   * New name
+   */
+  name?: string | null;
+}
+
+export type UpdateRagNotebookApiV1RagNotebooksNotebookIdPutData = RagNotebookDetail;
+
+export type UpdateRagNotebookApiV1RagNotebooksNotebookIdPutError = HTTPValidationError;
+
+/**
+ * UpdateRagNotebookRequest
+ * Request to update a RAG notebook
+ */
+export interface UpdateRagNotebookRequest {
   /**
    * Description
    * New description
@@ -9231,7 +10952,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.251
+ * @version 2.1.282
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -9411,6 +11132,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Attach a RAG notebook to an existing experiment
+     *
+     * @tags RAG Experiments
+     * @name AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatch
+     * @summary Attach notebook to RAG experiment
+     * @request PATCH:/api/v1/rag_experiments/{experiment_id}/notebook
+     * @secure
+     */
+    attachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatch: (
+      { experimentId, ...query }: AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatchParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatchData,
+        AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNotebookPatchError
+      >({
+        path: `/api/v1/rag_experiments/${experimentId}/notebook`,
+        method: "PATCH",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Chat request for Arthur Chat
      *
      * @tags Chat
@@ -9484,6 +11230,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/${traceId}/metrics`,
         method: "GET",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new agentic experiment and initiate execution
+     *
+     * @tags Agentic Experiments
+     * @name CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPost
+     * @summary Create and run an agentic experiment
+     * @request POST:/api/v1/tasks/{task_id}/agentic_experiments
+     * @secure
+     */
+    createAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPost: (
+      taskId: string,
+      data: CreateAgenticExperimentRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostData,
+        CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/agentic_experiments`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -9609,6 +11382,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
           ...params,
         }
       ),
+
+    /**
+     * @description Create a new RAG experiment and initiate execution
+     *
+     * @tags RAG Experiments
+     * @name CreateRagExperimentApiV1TasksTaskIdRagExperimentsPost
+     * @summary Create and run a RAG experiment
+     * @request POST:/api/v1/tasks/{task_id}/rag_experiments
+     * @secure
+     */
+    createRagExperimentApiV1TasksTaskIdRagExperimentsPost: (taskId: string, data: CreateRagExperimentRequest, params: RequestParams = {}) =>
+      this.request<CreateRagExperimentApiV1TasksTaskIdRagExperimentsPostData, CreateRagExperimentApiV1TasksTaskIdRagExperimentsPostError>({
+        path: `/api/v1/tasks/${taskId}/rag_experiments`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new RAG notebook for organizing experiments within a task
+     *
+     * @tags RAG Notebooks
+     * @name CreateRagNotebookApiV1TasksTaskIdRagNotebooksPost
+     * @summary Create a RAG notebook
+     * @request POST:/api/v1/tasks/{task_id}/rag_notebooks
+     * @secure
+     */
+    createRagNotebookApiV1TasksTaskIdRagNotebooksPost: (taskId: string, data: CreateRagNotebookRequest, params: RequestParams = {}) =>
+      this.request<CreateRagNotebookApiV1TasksTaskIdRagNotebooksPostData, CreateRagNotebookApiV1TasksTaskIdRagNotebooksPostError>({
+        path: `/api/v1/tasks/${taskId}/rag_notebooks`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
 
     /**
      * @description Register a new RAG provider connection configuration.
@@ -9799,6 +11612,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       ),
 
     /**
+     * @description Delete an agentic experiment and all its associated data
+     *
+     * @tags Agentic Experiments
+     * @name DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDelete
+     * @summary Delete agentic experiment
+     * @request DELETE:/api/v1/agentic_experiments/{experiment_id}
+     * @secure
+     */
+    deleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDelete: (experimentId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteData,
+        DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteError
+      >({
+        path: `/api/v1/agentic_experiments/${experimentId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Deletes an entire agentic prompt
      *
      * @tags Prompts
@@ -9976,6 +11809,40 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteError
       >({
         path: `/api/v1/prompt_experiments/${experimentId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a RAG experiment and all its associated data
+     *
+     * @tags RAG Experiments
+     * @name DeleteRagExperimentApiV1RagExperimentsExperimentIdDelete
+     * @summary Delete RAG experiment
+     * @request DELETE:/api/v1/rag_experiments/{experiment_id}
+     * @secure
+     */
+    deleteRagExperimentApiV1RagExperimentsExperimentIdDelete: (experimentId: string, params: RequestParams = {}) =>
+      this.request<DeleteRagExperimentApiV1RagExperimentsExperimentIdDeleteData, DeleteRagExperimentApiV1RagExperimentsExperimentIdDeleteError>({
+        path: `/api/v1/rag_experiments/${experimentId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a RAG notebook (experiments are kept)
+     *
+     * @tags RAG Notebooks
+     * @name DeleteRagNotebookApiV1RagNotebooksNotebookIdDelete
+     * @summary Delete RAG notebook
+     * @request DELETE:/api/v1/rag_notebooks/{notebook_id}
+     * @secure
+     */
+    deleteRagNotebookApiV1RagNotebooksNotebookIdDelete: (notebookId: string, params: RequestParams = {}) =>
+      this.request<DeleteRagNotebookApiV1RagNotebooksNotebookIdDeleteData, DeleteRagNotebookApiV1RagNotebooksNotebookIdDeleteError>({
+        path: `/api/v1/rag_notebooks/${notebookId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -10202,6 +12069,49 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/traces/${traceId}/transforms/${transformId}/extractions`,
         method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get detailed information about a specific agentic experiment including summary results
+     *
+     * @tags Agentic Experiments
+     * @name GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGet
+     * @summary Get agentic experiment details
+     * @request GET:/api/v1/agentic_experiments/{experiment_id}
+     * @secure
+     */
+    getAgenticExperimentApiV1AgenticExperimentsExperimentIdGet: (experimentId: string, params: RequestParams = {}) =>
+      this.request<GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetData, GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetError>({
+        path: `/api/v1/agentic_experiments/${experimentId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of test case results for an agentic experiment
+     *
+     * @tags Agentic Experiments
+     * @name GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGet
+     * @summary Get experiment test cases
+     * @request GET:/api/v1/agentic_experiments/{experiment_id}/test_cases
+     * @secure
+     */
+    getAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGet: (
+      { experimentId, ...query }: GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetData,
+        GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetError
+      >({
+        path: `/api/v1/agentic_experiments/${experimentId}/test_cases`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -10814,6 +12724,132 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get paginated list of results for a specific RAG configuration within an experiment (supports both saved and unsaved configs)
+     *
+     * @tags RAG Experiments
+     * @name GetRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGet
+     * @summary Get RAG config results
+     * @request GET:/api/v1/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results
+     * @secure
+     */
+    getRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGet: (
+      { experimentId, ragConfigKey, ...query }: GetRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGetData,
+        GetRagConfigResultsApiV1RagExperimentsExperimentIdRagConfigsRagConfigKeyResultsGetError
+      >({
+        path: `/api/v1/rag_experiments/${experimentId}/rag_configs/${ragConfigKey}/results`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get detailed information about a specific RAG experiment including summary results
+     *
+     * @tags RAG Experiments
+     * @name GetRagExperimentApiV1RagExperimentsExperimentIdGet
+     * @summary Get RAG experiment details
+     * @request GET:/api/v1/rag_experiments/{experiment_id}
+     * @secure
+     */
+    getRagExperimentApiV1RagExperimentsExperimentIdGet: (experimentId: string, params: RequestParams = {}) =>
+      this.request<GetRagExperimentApiV1RagExperimentsExperimentIdGetData, GetRagExperimentApiV1RagExperimentsExperimentIdGetError>({
+        path: `/api/v1/rag_experiments/${experimentId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of test case results for a RAG experiment
+     *
+     * @tags RAG Experiments
+     * @name GetRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet
+     * @summary Get experiment test cases
+     * @request GET:/api/v1/rag_experiments/{experiment_id}/test_cases
+     * @secure
+     */
+    getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet: (
+      { experimentId, ...query }: GetRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGetData,
+        GetRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGetError
+      >({
+        path: `/api/v1/rag_experiments/${experimentId}/test_cases`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get detailed information about a RAG notebook including state and experiment history
+     *
+     * @tags RAG Notebooks
+     * @name GetRagNotebookApiV1RagNotebooksNotebookIdGet
+     * @summary Get RAG notebook details
+     * @request GET:/api/v1/rag_notebooks/{notebook_id}
+     * @secure
+     */
+    getRagNotebookApiV1RagNotebooksNotebookIdGet: (notebookId: string, params: RequestParams = {}) =>
+      this.request<GetRagNotebookApiV1RagNotebooksNotebookIdGetData, GetRagNotebookApiV1RagNotebooksNotebookIdGetError>({
+        path: `/api/v1/rag_notebooks/${notebookId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of experiments run from this RAG notebook
+     *
+     * @tags RAG Notebooks
+     * @name GetRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGet
+     * @summary Get RAG notebook history
+     * @request GET:/api/v1/rag_notebooks/{notebook_id}/history
+     * @secure
+     */
+    getRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGet: (
+      { notebookId, ...query }: GetRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<GetRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGetData, GetRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGetError>({
+        path: `/api/v1/rag_notebooks/${notebookId}/history`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the current state (draft configuration) of a RAG notebook
+     *
+     * @tags RAG Notebooks
+     * @name GetRagNotebookStateApiV1RagNotebooksNotebookIdStateGet
+     * @summary Get RAG notebook state
+     * @request GET:/api/v1/rag_notebooks/{notebook_id}/state
+     * @secure
+     */
+    getRagNotebookStateApiV1RagNotebooksNotebookIdStateGet: (notebookId: string, params: RequestParams = {}) =>
+      this.request<GetRagNotebookStateApiV1RagNotebooksNotebookIdStateGetData, GetRagNotebookStateApiV1RagNotebooksNotebookIdStateGetError>({
+        path: `/api/v1/rag_notebooks/${notebookId}/state`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a single RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -11132,6 +13168,30 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description List all agentic experiments for a task with optional filtering and pagination
+     *
+     * @tags Agentic Experiments
+     * @name ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet
+     * @summary List agentic experiments
+     * @request GET:/api/v1/tasks/{task_id}/agentic_experiments
+     * @secure
+     */
+    listAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet: (
+      { taskId, ...query }: ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetData, ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetError>(
+        {
+          path: `/api/v1/tasks/${taskId}/agentic_experiments`,
+          method: "GET",
+          query: query,
+          secure: true,
+          format: "json",
+          ...params,
+        }
+      ),
+
+    /**
      * @description List annotations for a trace
      *
      * @tags Traces
@@ -11242,6 +13302,50 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description List all RAG experiments for a task with optional filtering and pagination
+     *
+     * @tags RAG Experiments
+     * @name ListRagExperimentsApiV1TasksTaskIdRagExperimentsGet
+     * @summary List RAG experiments
+     * @request GET:/api/v1/tasks/{task_id}/rag_experiments
+     * @secure
+     */
+    listRagExperimentsApiV1TasksTaskIdRagExperimentsGet: (
+      { taskId, ...query }: ListRagExperimentsApiV1TasksTaskIdRagExperimentsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListRagExperimentsApiV1TasksTaskIdRagExperimentsGetData, ListRagExperimentsApiV1TasksTaskIdRagExperimentsGetError>({
+        path: `/api/v1/tasks/${taskId}/rag_experiments`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all RAG notebooks for a task with pagination and optional name search
+     *
+     * @tags RAG Notebooks
+     * @name ListRagNotebooksApiV1TasksTaskIdRagNotebooksGet
+     * @summary List RAG notebooks
+     * @request GET:/api/v1/tasks/{task_id}/rag_notebooks
+     * @secure
+     */
+    listRagNotebooksApiV1TasksTaskIdRagNotebooksGet: (
+      { taskId, ...query }: ListRagNotebooksApiV1TasksTaskIdRagNotebooksGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListRagNotebooksApiV1TasksTaskIdRagNotebooksGetData, ListRagNotebooksApiV1TasksTaskIdRagNotebooksGetError>({
+        path: `/api/v1/tasks/${taskId}/rag_notebooks`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Lists all available vector database collections.
      *
      * @tags RAG Providers
@@ -11301,7 +13405,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.
+     * @description Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance. Set include_spans=true to include flat list of spans for each trace.
      *
      * @tags Traces
      * @name ListTracesMetadataApiV1TracesGet
@@ -11765,6 +13869,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Set the state (draft configuration) of a RAG notebook
+     *
+     * @tags RAG Notebooks
+     * @name SetRagNotebookStateApiV1RagNotebooksNotebookIdStatePut
+     * @summary Set RAG notebook state
+     * @request PUT:/api/v1/rag_notebooks/{notebook_id}/state
+     * @secure
+     */
+    setRagNotebookStateApiV1RagNotebooksNotebookIdStatePut: (notebookId: string, data: SetRagNotebookStateRequest, params: RequestParams = {}) =>
+      this.request<SetRagNotebookStateApiV1RagNotebooksNotebookIdStatePutData, SetRagNotebookStateApiV1RagNotebooksNotebookIdStatePutError>({
+        path: `/api/v1/rag_notebooks/${notebookId}/state`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Deletes a specific version of an llm eval
      *
      * @tags LLMEvals
@@ -11886,6 +14010,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     updateNotebookApiV1NotebooksNotebookIdPut: (notebookId: string, data: UpdateNotebookRequest, params: RequestParams = {}) =>
       this.request<UpdateNotebookApiV1NotebooksNotebookIdPutData, UpdateNotebookApiV1NotebooksNotebookIdPutError>({
         path: `/api/v1/notebooks/${notebookId}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update RAG notebook name or description (not the state)
+     *
+     * @tags RAG Notebooks
+     * @name UpdateRagNotebookApiV1RagNotebooksNotebookIdPut
+     * @summary Update RAG notebook metadata
+     * @request PUT:/api/v1/rag_notebooks/{notebook_id}
+     * @secure
+     */
+    updateRagNotebookApiV1RagNotebooksNotebookIdPut: (notebookId: string, data: UpdateRagNotebookRequest, params: RequestParams = {}) =>
+      this.request<UpdateRagNotebookApiV1RagNotebooksNotebookIdPutData, UpdateRagNotebookApiV1RagNotebooksNotebookIdPutError>({
+        path: `/api/v1/rag_notebooks/${notebookId}`,
         method: "PUT",
         body: data,
         secure: true,
