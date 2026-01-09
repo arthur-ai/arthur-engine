@@ -69,6 +69,7 @@ export const queryKeys = {
   agentNotebooks: {
     all: (taskId: string) => ["listAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGet", { taskId }] as const,
     byId: (notebookId: string) => ["getAgenticNotebookApiV1AgenticNotebooksNotebookIdGet", { notebookId }] as const,
+    history: (notebookId: string) => ["getAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGet", { notebookId }] as const,
   },
   ragNotebooks: {
     // Prefix matchers for invalidation (no params = matches all queries with this method)

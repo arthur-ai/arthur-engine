@@ -3,7 +3,7 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typog
 import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
 
-import { agentNotebookStateFormOpts } from "../form";
+import { agentNotebookStateFormOpts } from "../../form";
 
 import { withForm } from "@/components/traces/components/filtering/hooks/form";
 

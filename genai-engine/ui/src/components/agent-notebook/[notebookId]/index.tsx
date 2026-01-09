@@ -1,4 +1,4 @@
-import { CircularProgress, Dialog, Stack, Typography } from "@mui/material";
+import { CircularProgress, Dialog, Stack } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
@@ -10,6 +10,7 @@ import { useExecuteAgenticNotebook } from "../hooks/useExecuteAgenticNotebook";
 import { BodyVariableExtractor } from "./components/BodyVariableExtractor";
 import { ExperimentConfigSelector } from "./components/experiment-config-selector";
 import { Header } from "./components/header";
+import { History } from "./components/history";
 import { useMetaStore } from "./store/meta.store";
 import { hashFormState } from "./utils/hash";
 import { mapFormToCreateAgenticExperimentRequest, mapTemplateToForm } from "./utils/mapper";
@@ -119,11 +120,7 @@ const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
 
             <BodyVariableExtractor form={form} />
           </Stack>
-          <Stack p={2} gap={2} height="100%" className="bg-gray-100 border-l border-gray-200">
-            <Typography variant="h6" color="text.primary" fontWeight="bold">
-              Notebook History
-            </Typography>
-          </Stack>
+          <History notebookId={notebook.id} />
         </div>
       </Stack>
 

@@ -1,8 +1,21 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import z from "zod";
 
 import { useAppForm } from "../traces/components/filtering/hooks/form";
@@ -10,6 +23,7 @@ import { useAppForm } from "../traces/components/filtering/hooks/form";
 import { columns } from "./data/columns";
 import { useAgentNotebooks } from "./hooks/useAgentNotebooks";
 import { useCreateAgenticNotebook } from "./hooks/useCreateAgenticNotebook";
+import { useDeleteAgenticNotebook } from "./hooks/useDeleteAgenticNotebook";
 
 import { getContentHeight } from "@/constants/layout";
 import { AgenticNotebookSummary } from "@/lib/api-client/api-client";
@@ -38,6 +52,8 @@ export const AgentNotebook = () => {
     },
   });
 
+  const deleteAgenticNotebook = useDeleteAgenticNotebook();
+
   const table = useMaterialReactTable({
     columns,
     data: data?.data ?? DEFAULT_DATA,
@@ -52,6 +68,19 @@ export const AgentNotebook = () => {
         cursor: "pointer",
       },
     }),
+    enableColumnPinning: true,
+    initialState: { columnPinning: { right: ["mrt-row-actions"] } },
+    enableRowActions: true,
+    positionActionsColumn: "last",
+    renderRowActionMenuItems: ({ row }) => [
+      <MenuItem key="view_run" component={Link} to={`/tasks/${row.original.task_id}/agent-experiments/${row.original.latest_run_id}`}>
+        View Latest Run
+      </MenuItem>,
+      <Divider />,
+      <MenuItem key="delete" onClick={() => deleteAgenticNotebook.mutate(row.original.id)}>
+        Delete
+      </MenuItem>,
+    ],
   });
 
   return (
