@@ -27,7 +27,6 @@ export function useRagConfigVersions(configId: string | null, params?: UseRagCon
         ...params,
       });
 
-      // Transform the response to normalize the key name
       const data: ListRagSearchSettingConfigurationVersionsResponse & { versions: typeof response.data.rag_provider_setting_configurations } = {
         ...response.data,
         versions: response.data.rag_provider_setting_configurations,

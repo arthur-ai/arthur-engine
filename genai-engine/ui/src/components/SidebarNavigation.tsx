@@ -3,8 +3,6 @@ import {
   MenuBookOutlined,
   DescriptionOutlined,
   ScienceOutlined,
-  PlayCircleOutlineOutlined,
-  ViewListOutlined,
   BalanceOutlined,
   TableChartOutlined,
   SettingsOutlined,
@@ -57,9 +55,9 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       id: "rag",
       label: "RAG",
       items: [
-        { id: "playgrounds/retrievals", label: "RAG Playground", icon: <PlayCircleOutlineOutlined /> },
-        { id: "retrievals", label: "RAG Management", icon: <ViewListOutlined /> },
+        { id: "rag-notebooks", label: "RAG Notebooks", icon: <MenuBookOutlined /> },
         { id: "rag-experiments", label: "RAG Experiments", icon: <ScienceOutlined /> },
+        { id: "rag-configurations", label: "RAG Configurations", icon: <StorageOutlined /> },
       ],
     },
     {
@@ -84,7 +82,6 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
         { id: "task-details", label: "Task Details", icon: <SettingsOutlined /> },
         { id: "model-providers", label: "Model Providers", icon: <AppsOutlined /> },
         { id: "api-keys", label: "API Keys", icon: <KeyOutlined /> },
-        { id: "rag-configurations", label: "RAG Configurations", icon: <StorageOutlined /> },
       ],
     },
   ];
@@ -119,7 +116,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                           isActive ? "text-blue-700 bg-blue-50" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         }`}
                       >
-                        <span className="flex-shrink-0">{item.icon}</span>
+                        <span className="shrink-0">{item.icon}</span>
                         <span>{item.label}</span>
                       </button>
                     </li>
