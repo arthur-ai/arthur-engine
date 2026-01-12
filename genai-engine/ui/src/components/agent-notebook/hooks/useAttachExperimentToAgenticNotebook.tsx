@@ -1,8 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
+import { queryKeys } from "@/lib/queryKeys";
 
 export const useAttachExperimentToAgenticNotebook = (notebookId: string) => {
+  const queryClient = useQueryClient();
   const { api } = useApi()!;
 
   return useMutation({
@@ -13,6 +15,10 @@ export const useAttachExperimentToAgenticNotebook = (notebookId: string) => {
       });
 
       return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agentNotebooks.byId(notebookId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agentNotebooks.history(notebookId) });
     },
   });
 };

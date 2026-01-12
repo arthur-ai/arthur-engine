@@ -94,7 +94,7 @@ const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
         sx={{ height: getContentHeight() }}
       >
         <Header form={form} notebook={notebook} onLoadConfig={() => setShowExperimentConfigSelector(true)} isSaving={isSaving} />
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,300px)] flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden">
           <Stack p={2} gap={2} className="flex-1 overflow-auto">
             <EndpointSetup
               form={form}
@@ -120,13 +120,14 @@ const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
 
             <BodyVariableExtractor form={form} />
           </Stack>
-          <History notebookId={notebook.id} />
         </div>
       </Stack>
 
       <Dialog open={showExperimentConfigSelector} onClose={() => setShowExperimentConfigSelector(false)} fullWidth>
         <ExperimentConfigSelector form={form} onClose={() => setShowExperimentConfigSelector(false)} />
       </Dialog>
+
+      <History notebookId={notebook.id} />
     </>
   );
 };

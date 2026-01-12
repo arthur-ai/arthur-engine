@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { Box, Button, ButtonGroup, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import { Link as MuiLink } from "@mui/material";
 import { Link } from "react-router-dom";
 
 import { agentNotebookStateFormOpts } from "../../form";
@@ -9,6 +10,7 @@ import { SubmitButton } from "../submit-button";
 
 import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
+import { formatDate } from "@/utils/formatters";
 
 type Props = {
   notebook: AgenticNotebookDetail;
@@ -65,6 +67,20 @@ export const Header = withForm({
                 )}
                 <Typography variant="body2" color="text.secondary">
                   {notebook.description}
+                </Typography>
+              </Stack>
+              <Stack direction="row" gap={2}>
+                <Typography variant="body2" color="text.secondary">
+                  <span className="font-bold">Created:</span> {formatDate(notebook?.created_at)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <span className="font-bold">Updated:</span> {formatDate(notebook.updated_at)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <span className="font-bold">Runs:</span>{" "}
+                  <MuiLink component={Link} to={`?show=history`}>
+                    {notebook.experiments.length} run(s)
+                  </MuiLink>
                 </Typography>
               </Stack>
             </Stack>
