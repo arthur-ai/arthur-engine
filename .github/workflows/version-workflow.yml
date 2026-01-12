@@ -35,8 +35,6 @@ jobs:
        github.event.inputs.intent == 'bump_version' &&
        github.ref != 'refs/heads/main')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Generate Arthur GitHub Automator App Token
         id: generate-token

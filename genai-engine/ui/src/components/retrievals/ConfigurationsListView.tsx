@@ -19,11 +19,10 @@ import { useTask } from "@/hooks/useTask";
 import type { RagSearchSettingConfigurationResponse } from "@/lib/api-client/api-client";
 
 interface ConfigurationsListViewProps {
-  onConfigSelect: (configId: string, versionNumber?: number) => void;
   onConfigDelete: (configId: string) => void;
 }
 
-export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ onConfigSelect, onConfigDelete }) => {
+export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ onConfigDelete }) => {
   const { task } = useTask();
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -46,12 +45,6 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
     setVersionsDrawerOpen(true);
   };
 
-  const handleVersionLoad = (versionNumber: number) => {
-    if (selectedConfig) {
-      onConfigSelect(selectedConfig.id, versionNumber);
-    }
-  };
-
   return (
     <div className="flex-1 px-4 py-4">
       <div className="bg-white rounded-lg shadow">
@@ -72,7 +65,7 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
           <div className="p-8 text-center text-gray-500">Loading configurations...</div>
         ) : configs.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            {searchQuery ? "No configurations match your search." : "No saved configurations yet. Create one from the Retrievals Playground."}
+            {searchQuery ? "No configurations match your search." : "No saved configurations yet. Save a configuration from the RAG Playground."}
           </div>
         ) : (
           <>
@@ -89,7 +82,7 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
               </TableHead>
               <TableBody>
                 {configs.map((config) => (
-                  <TableRow key={config.id} hover onClick={() => onConfigSelect(config.id)} sx={{ cursor: "pointer" }}>
+                  <TableRow key={config.id} hover>
                     <TableCell>{config.name}</TableCell>
                     <TableCell>{config.description || "-"}</TableCell>
                     <TableCell>{config.latest_version_number}</TableCell>
@@ -102,24 +95,10 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
                     </TableCell>
                     <TableCell>{new Date(config.updated_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewVersions(config);
-                        }}
-                        title="View versions"
-                      >
+                      <IconButton size="small" onClick={() => handleViewVersions(config)} title="View versions">
                         <HistoryIcon />
                       </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onConfigDelete(config.id);
-                        }}
-                        title="Delete configuration"
-                      >
+                      <IconButton size="small" onClick={() => onConfigDelete(config.id)} title="Delete configuration">
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
@@ -152,7 +131,6 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
             setSelectedConfig(null);
           }}
           config={selectedConfig}
-          onVersionLoad={handleVersionLoad}
         />
       )}
     </div>

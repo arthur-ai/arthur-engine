@@ -3,6 +3,11 @@ from unittest.mock import patch
 import pytest
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.routes.trace_api.conftest import (
+    _create_base_trace_request,
+    _create_span,
+)
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -160,7 +165,8 @@ def test_list_traces_metadata_functionality(
 
     # Verify api_trace1 has correct number of spans (should have 2: api_span1 and api_span2)
     trace1_with_spans = next(
-        (t for t in data.traces if t.trace_id == "api_trace1"), None
+        (t for t in data.traces if t.trace_id == "api_trace1"),
+        None,
     )
     if trace1_with_spans:
         assert trace1_with_spans.spans is not None
@@ -486,6 +492,70 @@ def test_trace_api_error_handling(
         assert status_code == 500
 
 
+@pytest.mark.unit_tests
+def test_experiment_traces_excluded_from_trace_endpoint(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that experiment traces are excluded from trace endpoint by default."""
+
+    # Create a regular trace (non-experiment)
+    regular_trace_request, regular_resource_span, regular_scope_span = (
+        _create_base_trace_request(task_id="exp_test_task")
+    )
+    regular_span = _create_span(
+        trace_id=b"regular_trace",
+        span_id=b"regular_span",
+        name="RegularSpan",
+        span_type="LLM",
+        session_id="regular_session",
+    )
+    regular_scope_span.spans.append(regular_span)
+    regular_resource_span.scope_spans.append(regular_scope_span)
+    regular_trace_request.resource_spans.append(regular_resource_span)
+
+    # Create an experiment trace (with session_id starting with AGENT_EXPERIMENT_SESSION_PREFIX)
+    experiment_session_id = f"{AGENT_EXPERIMENT_SESSION_PREFIX}-test-123"
+    experiment_trace_request, experiment_resource_span, experiment_scope_span = (
+        _create_base_trace_request(task_id="exp_test_task")
+    )
+    experiment_span = _create_span(
+        trace_id=b"experiment_trace",
+        span_id=b"experiment_span",
+        name="ExperimentSpan",
+        span_type="LLM",
+        session_id=experiment_session_id,
+    )
+    experiment_scope_span.spans.append(experiment_span)
+    experiment_resource_span.scope_spans.append(experiment_scope_span)
+    experiment_trace_request.resource_spans.append(experiment_resource_span)
+
+    # Send both traces via upload endpoint
+    status_code1, _ = client.trace_api_receive_traces(
+        regular_trace_request.SerializeToString(),
+    )
+    status_code2, _ = client.trace_api_receive_traces(
+        experiment_trace_request.SerializeToString(),
+    )
+
+    assert status_code1 == 200, "Regular trace should be accepted"
+    assert status_code2 == 200, "Experiment trace should be accepted"
+
+    # Query traces - should only return the regular trace (experiment trace excluded by default)
+    status_code, response = client.trace_api_list_traces_metadata(
+        task_ids=["exp_test_task"],
+    )
+    assert status_code == 200
+
+    # Verify only regular trace is returned (trace IDs are stored as hex strings in DB)
+    trace_ids = {trace.trace_id for trace in response.traces}
+    regular_trace_hex = b"regular_trace".hex()
+    experiment_trace_hex = b"experiment_trace".hex()
+    assert regular_trace_hex in trace_ids, "Regular trace should be included"
+    assert (
+        experiment_trace_hex not in trace_ids
+    ), "Experiment trace should be excluded by default"
+
+
 # ============================================================================
 # UNREGISTERED TRACES ENDPOINT TESTS
 # ============================================================================
@@ -650,9 +720,7 @@ def test_get_unregistered_root_spans_grouped(
         total_count = response.total_count
 
     # Verify we have 3 groups
-    assert (
-        len(groups) == 3
-    ), f"Expected 3 groups, got {len(groups)}. Groups: {groups}"
+    assert len(groups) == 3, f"Expected 3 groups, got {len(groups)}. Groups: {groups}"
 
     # Verify each group has the correct structure
     for group in groups:
@@ -660,7 +728,10 @@ def test_get_unregistered_root_spans_grouped(
             assert "span_name" in group, "Group should have 'span_name' key"
             assert "count" in group, "Group should have 'count' key"
         else:
-            assert hasattr(group, "span_name"), "Group should have 'span_name' attribute"
+            assert hasattr(
+                group,
+                "span_name",
+            ), "Group should have 'span_name' attribute"
             assert hasattr(group, "count"), "Group should have 'count' attribute"
 
     # Helper function to get group value
@@ -669,7 +740,8 @@ def test_get_unregistered_root_spans_grouped(
 
     # Find groups by span_name and verify counts
     group_a = next(
-        (g for g in groups if get_group_value(g, "span_name") == "AppA"), None
+        (g for g in groups if get_group_value(g, "span_name") == "AppA"),
+        None,
     )
     assert group_a is not None, "Group 'AppA' not found"
     assert (
@@ -677,7 +749,8 @@ def test_get_unregistered_root_spans_grouped(
     ), f"Expected AppA count=2, got {get_group_value(group_a, 'count')}"
 
     group_b = next(
-        (g for g in groups if get_group_value(g, "span_name") == "AppB"), None
+        (g for g in groups if get_group_value(g, "span_name") == "AppB"),
+        None,
     )
     assert group_b is not None, "Group 'AppB' not found"
     assert (
@@ -685,7 +758,8 @@ def test_get_unregistered_root_spans_grouped(
     ), f"Expected AppB count=2, got {get_group_value(group_b, 'count')}"
 
     group_c = next(
-        (g for g in groups if get_group_value(g, "span_name") == "AppC"), None
+        (g for g in groups if get_group_value(g, "span_name") == "AppC"),
+        None,
     )
     assert group_c is not None, "Group 'AppC' not found"
     assert (
@@ -703,7 +777,8 @@ def test_get_unregistered_root_spans_grouped(
     # So AppA and AppB should come before AppC
     counts = [get_group_value(g, "count") for g in groups]
     assert counts == sorted(
-        counts, reverse=True
+        counts,
+        reverse=True,
     ), f"Groups should be ordered by count descending. Got: {counts}"
 
     # Cleanup: Delete created traces and spans
@@ -744,30 +819,36 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
 
     # Get baseline count before creating test traces
     status_code, baseline_response = client.trace_api_get_unregistered_root_spans(
-        page=0, page_size=1
+        page=0,
+        page_size=1,
     )
     assert status_code == 200
     baseline_total_count = (
-        baseline_response.total_count 
-        if hasattr(baseline_response, "total_count") 
+        baseline_response.total_count
+        if hasattr(baseline_response, "total_count")
         else baseline_response["total_count"]
     )
 
     span_names = [
-        "PaginationAppA", "PaginationAppA", "PaginationAppA",
-        "PaginationAppB", "PaginationAppB", "PaginationAppB",
-        "PaginationAppC", "PaginationAppC",
+        "PaginationAppA",
+        "PaginationAppA",
+        "PaginationAppA",
+        "PaginationAppB",
+        "PaginationAppB",
+        "PaginationAppB",
+        "PaginationAppC",
+        "PaginationAppC",
         "PaginationAppD",
-        "PaginationAppE"
+        "PaginationAppE",
     ]
-    
+
     for i, span_name in enumerate(span_names):
         trace_id = f"pagination_test_trace_{i}"
         span_id = f"pagination_test_span_{i}"
         # Convert to hex strings for database lookup (trace ingestion converts bytes to hex)
         created_trace_ids.append(trace_id.encode().hex())
         created_span_ids.append(span_id.encode().hex())
-        
+
         trace_request, resource_span, scope_span = _create_base_trace_request(
             task_id=None,
         )
@@ -780,7 +861,7 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
         scope_span.spans.append(span)
         resource_span.scope_spans.append(scope_span)
         trace_request.resource_spans.append(resource_span)
-        
+
         status_code, _ = client.trace_api_receive_traces(
             trace_request.SerializeToString(),
         )
@@ -792,44 +873,66 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
 
     # Test 1: First page with page_size=2 (should get top 2 groups)
     status_code, response = client.trace_api_get_unregistered_root_spans(
-        page=0, page_size=2
+        page=0,
+        page_size=2,
     )
     assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
-    
+
     groups = response.groups if hasattr(response, "groups") else response["groups"]
-    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
-    
+    total_count = (
+        response.total_count
+        if hasattr(response, "total_count")
+        else response["total_count"]
+    )
+
     # Should get 2 groups (PaginationAppA and PaginationAppB, both with count=3)
     assert len(groups) == 2, f"Expected 2 groups on first page, got {len(groups)}"
     # total_count should be baseline + 10 (our test traces)
     expected_total_count = baseline_total_count + 10
-    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
-    
+    assert (
+        total_count == expected_total_count
+    ), f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+
     # Verify we got the top groups (ordered by count descending)
     assert get_group_value(groups[0], "count") == 3, "First group should have count=3"
     assert get_group_value(groups[1], "count") == 3, "Second group should have count=3"
     # Verify span names are from our test data
-    assert get_group_value(groups[0], "span_name") in ["PaginationAppA", "PaginationAppB"], "First group should be PaginationAppA or PaginationAppB"
-    assert get_group_value(groups[1], "span_name") in ["PaginationAppA", "PaginationAppB"], "Second group should be PaginationAppA or PaginationAppB"
+    assert get_group_value(groups[0], "span_name") in [
+        "PaginationAppA",
+        "PaginationAppB",
+    ], "First group should be PaginationAppA or PaginationAppB"
+    assert get_group_value(groups[1], "span_name") in [
+        "PaginationAppA",
+        "PaginationAppB",
+    ], "Second group should be PaginationAppA or PaginationAppB"
 
     # Test 2: Second page with page_size=2 (should get next 2 groups)
     status_code, response = client.trace_api_get_unregistered_root_spans(
-        page=1, page_size=2
+        page=1,
+        page_size=2,
     )
     assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
-    
+
     groups = response.groups if hasattr(response, "groups") else response["groups"]
-    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
-    
+    total_count = (
+        response.total_count
+        if hasattr(response, "total_count")
+        else response["total_count"]
+    )
+
     # Should get 2 groups (may include groups from other tests)
     assert len(groups) == 2, f"Expected 2 groups on second page, got {len(groups)}"
     # total_count should be baseline + 10 (our test traces)
     expected_total_count = baseline_total_count + 10
-    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
-    
+    assert (
+        total_count == expected_total_count
+    ), f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+
     # Filter to only our Pagination groups to avoid interference from other tests
-    pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
-    
+    pagination_groups = [
+        g for g in groups if get_group_value(g, "span_name").startswith("Pagination")
+    ]
+
     # Note: Pagination groups may or may not appear on this specific page depending on ordering
     # We'll verify all our Pagination groups exist in a later test
     # Just verify that if Pagination groups are present, they have correct counts
@@ -843,20 +946,29 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
 
     # Test 3: Third page with page_size=2 (should get next groups)
     status_code, response = client.trace_api_get_unregistered_root_spans(
-        page=2, page_size=2
+        page=2,
+        page_size=2,
     )
     assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
-    
+
     groups = response.groups if hasattr(response, "groups") else response["groups"]
-    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
-    
+    total_count = (
+        response.total_count
+        if hasattr(response, "total_count")
+        else response["total_count"]
+    )
+
     # total_count should be baseline + 10 (our test traces)
     expected_total_count = baseline_total_count + 10
-    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
-    
+    assert (
+        total_count == expected_total_count
+    ), f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+
     # Filter to only our Pagination groups
-    pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
-    
+    pagination_groups = [
+        g for g in groups if get_group_value(g, "span_name").startswith("Pagination")
+    ]
+
     # Note: With data from other tests, we may not see count=1 groups on this specific page
     # Instead, we'll verify all our groups exist in the large page_size test below
     # Just verify that if Pagination groups are present, they have correct counts
@@ -870,30 +982,46 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
 
     # Test 4: Page beyond available data (should return empty list but same total_count)
     status_code, response = client.trace_api_get_unregistered_root_spans(
-        page=10, page_size=2
+        page=10,
+        page_size=2,
     )
     assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
-    
+
     groups = response.groups if hasattr(response, "groups") else response["groups"]
-    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
-    
+    total_count = (
+        response.total_count
+        if hasattr(response, "total_count")
+        else response["total_count"]
+    )
+
     assert len(groups) == 0, f"Expected 0 groups on page beyond data, got {len(groups)}"
     # total_count should be baseline + 10 (our test traces)
     expected_total_count = baseline_total_count + 10
-    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10) even on empty page, got {total_count}"
+    assert (
+        total_count == expected_total_count
+    ), f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10) even on empty page, got {total_count}"
 
     # Test 5: Large page_size (should get all groups)
     status_code, response = client.trace_api_get_unregistered_root_spans(
-        page=0, page_size=100
+        page=0,
+        page_size=100,
     )
     assert status_code == 200, f"Expected 200, got {status_code}. Response: {response}"
-    
+
     groups = response.groups if hasattr(response, "groups") else response["groups"]
-    total_count = response.total_count if hasattr(response, "total_count") else response["total_count"]
-    
+    total_count = (
+        response.total_count
+        if hasattr(response, "total_count")
+        else response["total_count"]
+    )
+
     # Should get at least our 5 groups (may be more from other tests)
-    pagination_groups = [g for g in groups if get_group_value(g, "span_name").startswith("Pagination")]
-    assert len(pagination_groups) == 5, f"Expected 5 Pagination groups with large page_size, got {len(pagination_groups)}"
+    pagination_groups = [
+        g for g in groups if get_group_value(g, "span_name").startswith("Pagination")
+    ]
+    assert (
+        len(pagination_groups) == 5
+    ), f"Expected 5 Pagination groups with large page_size, got {len(pagination_groups)}"
     # Verify our test groups are present
     pagination_span_names = [get_group_value(g, "span_name") for g in pagination_groups]
     assert "PaginationAppA" in pagination_span_names, "PaginationAppA should be present"
@@ -903,7 +1031,9 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
     assert "PaginationAppE" in pagination_span_names, "PaginationAppE should be present"
     # total_count should be baseline + 10 (our test traces)
     expected_total_count = baseline_total_count + 10
-    assert total_count == expected_total_count, f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
+    assert (
+        total_count == expected_total_count
+    ), f"Expected total_count={expected_total_count} (baseline {baseline_total_count} + 10), got {total_count}"
 
     # Cleanup: Delete created traces and spans
     try:

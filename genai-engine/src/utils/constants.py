@@ -396,3 +396,8 @@ USER_ID_KEY = SpanAttributes.USER_ID
 MAX_DATASET_ROWS = 250
 
 ##################################################################
+
+# Agent Experiment constants
+AGENT_EXPERIMENT_SESSION_PREFIX = "arthur-exp"
+
+##################################################################

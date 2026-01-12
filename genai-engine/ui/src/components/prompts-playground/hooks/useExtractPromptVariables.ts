@@ -1,10 +1,10 @@
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 
 import { MessageType } from "../types";
 import { convertMessagesToApiFormat, hasTemplateVariables } from "../utils/messageUtils";
 
 import { useApi } from "@/hooks/useApi";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 const DEBOUNCE_TIME = 500;
 
@@ -19,16 +19,7 @@ const DEBOUNCE_TIME = 500;
  */
 export const useExtractPromptVariables = (messages: MessageType[]): UseQueryResult<string[], Error> => {
   const apiClient = useApi();
-  const [debouncedMessages, setDebouncedMessages] = useState<MessageType[]>(messages);
-
-  // Debounce messages to avoid excessive API calls
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedMessages(messages);
-    }, DEBOUNCE_TIME);
-
-    return () => clearTimeout(timer);
-  }, [messages]);
+  const debouncedMessages = useDebouncedValue(messages, DEBOUNCE_TIME);
 
   return useQuery<string[], Error>({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps

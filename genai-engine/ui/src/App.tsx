@@ -1,5 +1,5 @@
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SnackbarProvider } from "notistack";
@@ -7,6 +7,9 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "react-router-dom";
 
 import "./App.css";
+import { AgentExperiments } from "./components/agent-experiments";
+import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";
+import { NewAgentExperiment } from "./components/agent-experiments/new";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ComingSoon } from "./components/ComingSoon";
@@ -25,8 +28,10 @@ import { PromptExperimentsView } from "./components/prompt-experiments/PromptExp
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
+import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
-import { RagRetrievalsPlayground } from "./components/retrievals/RagRetrievalsPlayground";
+import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
 import { TracesView } from "./components/TracesView";
@@ -115,16 +120,40 @@ function App() {
                         }
                       />
 
-                      <Route
-                        path="/tasks/:id/agent-experiments"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <ComingSoon featureName="Agent Experiments" description="Test and optimize agent-based task execution strategies." />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                      <Route path="/tasks/:id/agent-experiments">
+                        <Route
+                          index
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <AgentExperiments />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        <Route
+                          path="new"
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <NewAgentExperiment />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        <Route
+                          path=":experimentId"
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <AgentExperimentDetail />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+                      </Route>
 
                       <Route
                         path="/tasks/:id/datasets"
@@ -294,17 +323,6 @@ function App() {
                       />
 
                       <Route
-                        path="/tasks/:id/playgrounds/retrievals"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <RagRetrievalsPlayground />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
                         path="/tasks/:id/prompt-experiments"
                         element={
                           <ProtectedRoute>
@@ -326,26 +344,48 @@ function App() {
                         }
                       />
 
+                      {/* RAG Experiments - List View */}
                       <Route
                         path="/tasks/:id/rag-experiments"
                         element={
                           <ProtectedRoute>
                             <TaskLayout>
-                              <ComingSoon
-                                featureName="RAG Experiments"
-                                description="Experiment with different retrieval-augmented generation configurations."
-                              />
+                              <RagExperimentsListView />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* RAG Experiments - Detail View */}
+                      <Route
+                        path="/tasks/:id/rag-experiments/:experimentId"
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <RagExperimentDetailView />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* RAG Notebooks routes */}
+                      <Route
+                        path="/tasks/:id/rag-notebooks"
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <RagNotebooks />
                             </TaskLayout>
                           </ProtectedRoute>
                         }
                       />
 
                       <Route
-                        path="/tasks/:id/retrievals"
+                        path="/tasks/:id/rag-notebooks/:notebookId"
                         element={
                           <ProtectedRoute>
                             <TaskLayout>
-                              <ComingSoon featureName="Retrievals" description="Monitor and analyze retrieval operations and their performance." />
+                              <RagExperimentsPage />
                             </TaskLayout>
                           </ProtectedRoute>
                         }

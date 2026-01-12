@@ -1,4 +1,5 @@
 import { PromptType } from "../types";
+
 import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
 
 /**
@@ -42,7 +43,7 @@ export const toExperimentPromptConfig = (
     : undefined;
 
   // Convert model parameters - only include non-null values
-  const config: Record<string, any> = {};
+  const config: Record<string, unknown> = {};
   if (prompt.modelParameters.temperature !== null) config.temperature = prompt.modelParameters.temperature;
   if (prompt.modelParameters.top_p !== null) config.top_p = prompt.modelParameters.top_p;
   if (prompt.modelParameters.timeout !== null) config.timeout = prompt.modelParameters.timeout;

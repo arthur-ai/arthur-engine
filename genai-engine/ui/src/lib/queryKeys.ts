@@ -51,9 +51,42 @@ export const queryKeys = {
     results: (taskId: string) => ["listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet", { taskId }] as const,
   },
   transforms: {
+    list: (taskId: string) => ["listTransformsApiV1TasksTaskIdTracesTransformsGet", { taskId }] as const,
     byId: (transformId: string) => ["getTransformApiV1TracesTransformsTransformIdGet", { transformId }] as const,
   },
   annotations: {
     byId: (annotationId: string) => ["getAnnotationByIdApiV1AnnotationsAnnotationIdGet", { annotationId }] as const,
+  },
+  agentExperiments: {
+    all: (taskId: string) => ["listAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet", { taskId }] as const,
+    byId: (experimentId: string) => ["getAgenticExperimentApiV1AgenticExperimentsExperimentIdGet", { experimentId }] as const,
+    testCases: (experimentId: string) => ["getAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGet", { experimentId }] as const,
+    endpoints: {
+      all: () => ["listAgentExperimentEndpointsApiV1AgentExperimentsEndpointsGet"] as const,
+      byId: (endpointId: string) => ["getAgentExperimentEndpointByIdApiV1AgentExperimentsEndpointsEndpointIdGet", { endpointId }] as const,
+    },
+  },
+  ragNotebooks: {
+    // Prefix matchers for invalidation (no params = matches all queries with this method)
+    listAll: () => ["listRagNotebooksApiV1TasksTaskIdRagNotebooksGet"] as const,
+    detailAll: () => ["getRagNotebookApiV1RagNotebooksNotebookIdGet"] as const,
+    stateAll: () => ["getRagNotebookStateApiV1RagNotebooksNotebookIdStateGet"] as const,
+    historyAll: () => ["getRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGet"] as const,
+    // Specific queries with params
+    list: (taskId: string) => ["listRagNotebooksApiV1TasksTaskIdRagNotebooksGet", { taskId }] as const,
+    detail: (notebookId: string) => ["getRagNotebookApiV1RagNotebooksNotebookIdGet", notebookId] as const,
+    state: (notebookId: string) => ["getRagNotebookStateApiV1RagNotebooksNotebookIdStateGet", notebookId] as const,
+    history: (notebookId: string) => ["getRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGet", notebookId] as const,
+  },
+  ragExperiments: {
+    // Prefix matchers for invalidation
+    listAll: () => ["listRagExperimentsApiV1TasksTaskIdRagExperimentsGet"] as const,
+    detailAll: () => ["getRagExperimentApiV1RagExperimentsExperimentIdGet"] as const,
+    // Specific queries with params
+    list: (taskId: string) => ["listRagExperimentsApiV1TasksTaskIdRagExperimentsGet", { taskId }] as const,
+    detail: (experimentId: string) => ["getRagExperimentApiV1RagExperimentsExperimentIdGet", experimentId] as const,
+  },
+  ragSearchSettings: {
+    load: (configId: string, versionNumber?: number) => ["loadRagConfig", configId, versionNumber] as const,
   },
 } as const;

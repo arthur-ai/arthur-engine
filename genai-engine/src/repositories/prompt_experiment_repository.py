@@ -49,6 +49,7 @@ from schemas.prompt_experiment_schemas import (
     UnsavedPromptConfig,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils.dataset_utils import dataset_row_matches_filter
 
 logger = logging.getLogger(__name__)
 
@@ -528,22 +529,12 @@ class PromptExperimentRepository:
             .all()
         )
 
-        # Helper function to check if a row matches all filter conditions (AND logic)
-        def _row_matches_filter(db_row: DatabaseDatasetVersionRow) -> bool:
-            if not dataset_row_filter:
-                return True  # No filter means all rows match
-
-            # Row must match ALL filter conditions to be included
-            for filter_condition in dataset_row_filter:
-                row_value = db_row.data.get(filter_condition.column_name)
-                # Convert both to strings for comparison since row data can be any JSON type
-                # (int, bool, etc.) but filter values are always strings per the schema
-                if str(row_value) != str(filter_condition.column_value):
-                    return False
-            return True
-
         # Filter rows based on dataset_row_filter if provided
-        filtered_rows = [row for row in dataset_rows if _row_matches_filter(row)]
+        filtered_rows = [
+            row
+            for row in dataset_rows
+            if dataset_row_matches_filter(row, dataset_row_filter)
+        ]
 
         # Create a test case for each filtered row
         for row in filtered_rows:

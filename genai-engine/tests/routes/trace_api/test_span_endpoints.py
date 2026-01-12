@@ -3,6 +3,11 @@ from unittest.mock import patch
 import pytest
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.routes.trace_api.conftest import (
+    _create_base_trace_request,
+    _create_span,
+)
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -396,3 +401,67 @@ def test_span_api_error_handling_and_edge_cases(
     ):
         status_code, _ = client.trace_api_get_span_by_id("api_span1")
         assert status_code == 500
+
+
+@pytest.mark.unit_tests
+def test_experiment_traces_excluded_from_span_endpoint(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that experiment traces are excluded from span endpoint by default."""
+
+    # Create a regular trace (non-experiment)
+    regular_trace_request, regular_resource_span, regular_scope_span = (
+        _create_base_trace_request(task_id="exp_test_task")
+    )
+    regular_span = _create_span(
+        trace_id=b"regular_trace_span",
+        span_id=b"regular_span_span",
+        name="RegularSpan",
+        span_type="LLM",
+        session_id="regular_session",
+    )
+    regular_scope_span.spans.append(regular_span)
+    regular_resource_span.scope_spans.append(regular_scope_span)
+    regular_trace_request.resource_spans.append(regular_resource_span)
+
+    # Create an experiment trace (with session_id starting with AGENT_EXPERIMENT_SESSION_PREFIX)
+    experiment_session_id = f"{AGENT_EXPERIMENT_SESSION_PREFIX}-test-456"
+    experiment_trace_request, experiment_resource_span, experiment_scope_span = (
+        _create_base_trace_request(task_id="exp_test_task")
+    )
+    experiment_span = _create_span(
+        trace_id=b"experiment_trace_span",
+        span_id=b"experiment_span_span",
+        name="ExperimentSpan",
+        span_type="LLM",
+        session_id=experiment_session_id,
+    )
+    experiment_scope_span.spans.append(experiment_span)
+    experiment_resource_span.scope_spans.append(experiment_scope_span)
+    experiment_trace_request.resource_spans.append(experiment_resource_span)
+
+    # Send both traces via upload endpoint
+    status_code1, _ = client.trace_api_receive_traces(
+        regular_trace_request.SerializeToString(),
+    )
+    status_code2, _ = client.trace_api_receive_traces(
+        experiment_trace_request.SerializeToString(),
+    )
+
+    assert status_code1 == 200, "Regular trace should be accepted"
+    assert status_code2 == 200, "Experiment trace should be accepted"
+
+    # Query spans - should only return the regular span (experiment span excluded by default)
+    status_code, response = client.trace_api_list_spans_metadata(
+        task_ids=["exp_test_task"],
+    )
+    assert status_code == 200
+
+    # Verify only regular span is returned (span IDs are stored as hex strings in DB)
+    span_ids = {span.span_id for span in response.spans}
+    regular_span_hex = b"regular_span_span".hex()
+    experiment_span_hex = b"experiment_span_span".hex()
+    assert regular_span_hex in span_ids, "Regular span should be included"
+    assert (
+        experiment_span_hex not in span_ids
+    ), "Experiment span should be excluded by default"

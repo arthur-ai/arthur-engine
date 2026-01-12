@@ -41,6 +41,8 @@ from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
+from routers.v1.agentic_experiment_routes import agentic_experiment_routes
+from routers.v1.agentic_notebook_routes import agentic_notebook_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
 from routers.v1.continuous_eval_routes import continuous_eval_routes
 from routers.v1.legacy_span_routes import span_routes
@@ -353,6 +355,7 @@ def get_base_app(
         "http://localhost:3030",
         "http://localhost:8080",
         "http://localhost:3023",
+        "http://localhost:3001",
         "http://localhost:3000",
     ]
     if ingress_url := get_env_var(
@@ -403,8 +406,10 @@ def get_app_with_routes() -> FastAPI:
             llm_eval_routes,
             notebook_routes,
             rag_notebook_routes,
+            agentic_notebook_routes,
             prompt_experiment_routes,
             rag_experiment_routes,
+            agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
         ],
@@ -440,8 +445,10 @@ def get_test_app() -> FastAPI:
             llm_eval_routes,
             notebook_routes,
             rag_notebook_routes,
+            agentic_notebook_routes,
             prompt_experiment_routes,
             rag_experiment_routes,
+            agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
         ],
@@ -487,8 +494,10 @@ def get_app() -> FastAPI:
             llm_eval_routes,
             notebook_routes,
             rag_notebook_routes,
+            agentic_notebook_routes,
             prompt_experiment_routes,
             rag_experiment_routes,
+            agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
         ],
