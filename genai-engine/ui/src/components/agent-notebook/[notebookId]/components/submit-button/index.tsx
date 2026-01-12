@@ -46,7 +46,14 @@ export const SubmitButton = withForm({
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setShowDialog(false)}>Cancel</Button>
-            <Button variant="contained" color="primary" onClick={() => form.handleSubmit()}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                form.handleSubmit();
+                setShowDialog(false);
+              }}
+            >
               Execute Notebook
             </Button>
           </DialogActions>

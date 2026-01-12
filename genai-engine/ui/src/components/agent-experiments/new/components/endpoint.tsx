@@ -78,7 +78,7 @@ export const EndpointSetup = withFieldGroup({
               <Stack gap={1}>
                 {field.state.value.length > 0 ? (
                   field.state.value.map((header, index) => (
-                    <Stack direction="row" gap={1} alignItems="center">
+                    <Stack key={index} direction="row" gap={1} alignItems="center">
                       <group.AppField
                         name={`endpoint.headers[${index}].name`}
                         validators={{
