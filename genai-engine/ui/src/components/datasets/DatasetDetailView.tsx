@@ -9,6 +9,7 @@ import { DatasetHeader } from "./DatasetHeader";
 import { DatasetLoadingState } from "./DatasetLoadingState";
 import { DatasetTable } from "./DatasetTable";
 import { EditRowModal } from "./EditRowModal";
+import { FillColumnModal } from "./FillColumnModal";
 import { ImportDatasetModal } from "./ImportDatasetModal";
 import { VersionDrawer } from "./VersionDrawer";
 
@@ -21,11 +22,14 @@ import { useDatasetSaveMutation } from "@/hooks/datasets/useDatasetSaveMutation"
 import { useDatasetSearch } from "@/hooks/datasets/useDatasetSearch";
 import { useDatasetSorting } from "@/hooks/datasets/useDatasetSorting";
 import { useDatasetVersionSelection } from "@/hooks/datasets/useDatasetVersionSelection";
+import { useFillColumnMutation } from "@/hooks/datasets/useFillColumnMutation";
+import { useApi } from "@/hooks/useApi";
 import { useDataset } from "@/hooks/useDataset";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
+import { fetchAllDatasetRows } from "@/utils/datasetApi";
 import { exportDatasetToCSV } from "@/utils/datasetExport";
 import { convertFromApiFormat } from "@/utils/datasetRowUtils";
 import { createEmptyRow } from "@/utils/datasetUtils";
@@ -36,8 +40,11 @@ export const DatasetDetailView: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+  const api = useApi();
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<number | null>(null);
+  const [fillingColumn, setFillingColumn] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { dataset, isLoading: datasetLoading, error: datasetError } = useDataset(datasetId);
   const { latestVersion, isLoading: latestVersionLoading } = useDatasetLatestVersion(datasetId);
@@ -75,6 +82,19 @@ export const DatasetDetailView: React.FC = () => {
     },
     (error) => {
       showSnackbar(error.message || "Failed to save changes. Please try again.", "error");
+    }
+  );
+
+  const fillColumn = useFillColumnMutation(
+    datasetId,
+    versionSelection.currentVersion,
+    () => {
+      setFillingColumn(null);
+      versionSelection.resetToLatest();
+      showSnackbar("Column filled successfully!", "success");
+    },
+    (error) => {
+      showSnackbar(error.message || "Failed to fill column. Please try again.", "error");
     }
   );
 
@@ -163,15 +183,20 @@ export const DatasetDetailView: React.FC = () => {
     [localState]
   );
 
-  const handleExport = useCallback(() => {
-    if (!dataset || localState.localRows.length === 0) return;
+  const handleExport = useCallback(async () => {
+    if (!dataset || !api || !datasetId || versionSelection.currentVersion === undefined || totalRows === 0) return;
+
+    setIsExporting(true);
     try {
-      exportDatasetToCSV(dataset.name, localState.localRows);
+      const allRows = await fetchAllDatasetRows(api, datasetId, versionSelection.currentVersion);
+      exportDatasetToCSV(dataset.name, allRows);
       showSnackbar("Dataset exported successfully!", "success");
     } catch {
       showSnackbar("Failed to export dataset. Please try again.", "error");
+    } finally {
+      setIsExporting(false);
     }
-  }, [dataset, localState.localRows, showSnackbar]);
+  }, [dataset, api, datasetId, versionSelection.currentVersion, totalRows, showSnackbar]);
 
   const handleImportData = useCallback(
     (csvColumns: string[], csvRows: Record<string, string>[]) => {
@@ -195,6 +220,33 @@ export const DatasetDetailView: React.FC = () => {
     },
     [localState, modals]
   );
+
+  const handleFillColumn = useCallback(
+    (columnName: string) => {
+      // If there are unsaved changes, warn user that fill will discard them
+      if (localState.hasUnsavedChanges) {
+        showSnackbar("Please save or discard your current changes before filling a column.", "warning");
+        return;
+      }
+      setFillingColumn(columnName);
+    },
+    [localState.hasUnsavedChanges, showSnackbar]
+  );
+
+  const handleFillColumnApply = useCallback(
+    (value: string) => {
+      if (fillingColumn) {
+        fillColumn.fillColumn({ columnName: fillingColumn, value });
+      }
+    },
+    [fillingColumn, fillColumn]
+  );
+
+  const handleFillColumnClose = useCallback(() => {
+    if (!fillColumn.isFilling) {
+      setFillingColumn(null);
+    }
+  }, [fillColumn.isFilling]);
 
   const editRowData = useMemo(() => {
     if (!modals.editingRow) return {};
@@ -254,10 +306,12 @@ export const DatasetDetailView: React.FC = () => {
           description={dataset.description}
           hasUnsavedChanges={localState.hasUnsavedChanges}
           isSaving={save.isSaving}
+          isExporting={isExporting}
           canSave={save.canSave}
           canAddRow={localState.localColumns.length > 0}
           columnCount={localState.localColumns.length}
           rowCount={localState.localRows.length}
+          totalRowCount={totalRows}
           onBack={handleBack}
           onSave={save.saveChanges}
           onConfigureColumns={modals.openConfigureColumns}
@@ -309,6 +363,7 @@ export const DatasetDetailView: React.FC = () => {
             onSort={sorting.handleSort}
             onEditRow={modals.openEditModal}
             onDeleteRow={localState.deleteRow}
+            onFillColumn={handleFillColumn}
             searchQuery={search.searchQuery}
           />
         )}
@@ -380,6 +435,15 @@ export const DatasetDetailView: React.FC = () => {
         onClose={modals.closeImportModal}
         onImport={handleImportData}
         currentRowCount={localState.localRows.length}
+      />
+
+      <FillColumnModal
+        open={fillingColumn !== null}
+        columnName={fillingColumn ?? ""}
+        totalRowCount={totalRows}
+        onClose={handleFillColumnClose}
+        onApply={handleFillColumnApply}
+        isLoading={fillColumn.isFilling}
       />
 
       <Snackbar {...snackbarProps}>
