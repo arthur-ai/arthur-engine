@@ -106,7 +106,7 @@ export const AgentNotebook = () => {
               Agentic Notebooks
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              //
+              Use agentic notebooks to test and optimize agent-based task execution strategies with a reusable configuration.
             </Typography>
           </div>
           <ButtonGroup size="small" variant="contained" disableElevation>
