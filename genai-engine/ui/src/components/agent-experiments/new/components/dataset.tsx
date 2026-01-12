@@ -4,21 +4,21 @@ import { Autocomplete, Button, Divider, IconButton, Paper, Stack, TextField, Typ
 import { useStore } from "@tanstack/react-form";
 import z from "zod";
 
-import { newAgentExperimentFormOpts } from "../form";
+import { NewAgentExperimentFormData } from "../form";
 
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
 import { useTask } from "@/hooks/useTask";
 
-export const DatasetSetup = withForm({
-  ...newAgentExperimentFormOpts,
-  render: function Render({ form }) {
+export const DatasetSetup = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "datasetRef" | "datasetRowFilter">,
+  render: function Render({ group }) {
     const { task } = useTask();
     const { datasets } = useDatasets(task!.id, { page: 0, pageSize: 100, sortOrder: "desc" });
 
-    const id = useStore(form.store, (state) => state.values.datasetRef.id);
+    const id = useStore(group.store, (state) => state.values.datasetRef.id);
 
     const { versions } = useDatasetVersionHistory(id ?? undefined);
 
@@ -34,12 +34,12 @@ export const DatasetSetup = withForm({
         </Stack>
         <Divider sx={{ my: 2 }} />
         <Stack gap={2} direction="row">
-          <form.AppField
+          <group.AppField
             name="datasetRef.id"
             listeners={{
               onChange: ({ value }) => {
                 const dataset = datasets.find((d) => d.id === value) ?? null;
-                form.setFieldValue("datasetRef.version", dataset?.latest_version_number ?? null);
+                group.setFieldValue("datasetRef.version", dataset?.latest_version_number ?? null);
               },
             }}
           >
@@ -60,8 +60,8 @@ export const DatasetSetup = withForm({
                 />
               );
             }}
-          </form.AppField>
-          <form.AppField name="datasetRef.version">
+          </group.AppField>
+          <group.AppField name="datasetRef.version">
             {(field) => {
               const selected = versions.find((v) => v.version_number === field.state.value) ?? null;
 
@@ -77,26 +77,32 @@ export const DatasetSetup = withForm({
                 />
               );
             }}
-          </form.AppField>
+          </group.AppField>
         </Stack>
         <Divider sx={{ my: 2 }} />
-        <DatasetRowFilters form={form} />
+        <DatasetRowFilters
+          form={group}
+          fields={{
+            datasetRowFilter: "datasetRowFilter",
+            datasetRef: "datasetRef",
+          }}
+        />
       </Stack>
     );
   },
 });
 
-const DatasetRowFilters = withForm({
-  ...newAgentExperimentFormOpts,
-  render: function Render({ form }) {
-    const datasetRef = useStore(form.store, (state) => state.values.datasetRef);
+const DatasetRowFilters = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "datasetRowFilter" | "datasetRef">,
+  render: function Render({ group }) {
+    const datasetRef = useStore(group.store, (state) => state.values.datasetRef);
 
     const { version } = useDatasetVersionData(datasetRef.id ?? undefined, datasetRef.version ?? undefined);
 
     if (!version) return null;
 
     return (
-      <form.AppField name="datasetRowFilter" mode="array">
+      <group.AppField name="datasetRowFilter" mode="array">
         {(field) => (
           <>
             <Stack direction="row" gap={2} alignItems="center" justifyContent="space-between">
@@ -117,7 +123,10 @@ const DatasetRowFilters = withForm({
               {field.state.value.length > 0 ? (
                 field.state.value.map((item, index) => (
                   <Stack key={index} direction="row" gap={2} alignItems="center">
-                    <form.AppField name={`datasetRowFilter[${index}].column_name`} validators={{ onChange: z.string().min(1, "Column is required") }}>
+                    <group.AppField
+                      name={`datasetRowFilter[${index}].column_name`}
+                      validators={{ onChange: z.string().min(1, "Column is required") }}
+                    >
                       {(field) => {
                         return (
                           <Autocomplete
@@ -133,8 +142,8 @@ const DatasetRowFilters = withForm({
                           />
                         );
                       }}
-                    </form.AppField>
-                    <form.AppField name={`datasetRowFilter[${index}].column_value`}>
+                    </group.AppField>
+                    <group.AppField name={`datasetRowFilter[${index}].column_value`}>
                       {(field) => {
                         return (
                           <TextField
@@ -146,7 +155,7 @@ const DatasetRowFilters = withForm({
                           />
                         );
                       }}
-                    </form.AppField>
+                    </group.AppField>
                     <IconButton size="small" color="error" onClick={() => field.removeValue(index)}>
                       <DeleteIcon />
                     </IconButton>
@@ -162,7 +171,7 @@ const DatasetRowFilters = withForm({
             </Stack>
           </>
         )}
-      </form.AppField>
+      </group.AppField>
     );
   },
 });
