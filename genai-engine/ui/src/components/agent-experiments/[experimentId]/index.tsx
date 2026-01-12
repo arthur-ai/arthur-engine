@@ -5,10 +5,13 @@ import { Box, Button, Stack, Typography, Link as MuiLink, ButtonGroup } from "@m
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { Link, useParams } from "react-router-dom";
 
-import { useAgentExperiment } from "../hooks/useAgentExperiment";
+import { StatusBadge } from "../components/status-badge";
 import { useDeleteAgentExperiment } from "../hooks/useDeleteAgentExperiment";
 
+import { ExperimentHttpTemplate } from "./components/experiment-http-template";
+import { ExperimentProgressSummary } from "./components/experiment-progress-summary";
 import { columns } from "./data/columns";
+import { usePollAgentExperiment } from "./hooks/usePollAgentExperiment";
 import { usePollExperiment } from "./hooks/usePollExperiment";
 
 import { getContentHeight } from "@/constants/layout";
@@ -22,7 +25,7 @@ export const AgentExperimentDetail = () => {
   const { task } = useTask();
   const { experimentId } = useParams<{ experimentId: string }>();
 
-  const { data: agentExperiment } = useAgentExperiment(experimentId);
+  const { data: agentExperiment } = usePollAgentExperiment(experimentId);
   const { data: testCases } = usePollExperiment(experimentId!);
 
   const deleteAgentExperimentMutation = useDeleteAgentExperiment();
@@ -62,21 +65,24 @@ export const AgentExperimentDetail = () => {
               Back to Experiments
             </Button>
             <Stack mb={1}>
-              <Typography variant="h5" color="text.primary" fontWeight="bold">
-                {agentExperiment?.name}
-              </Typography>
+              <Stack direction="row" gap={2} alignItems="center">
+                <Typography variant="h5" color="text.primary" fontWeight="bold">
+                  {agentExperiment.name}
+                </Typography>
+                <StatusBadge status={agentExperiment.status} />
+              </Stack>
               <Typography variant="body2" color="text.secondary">
-                {agentExperiment?.description}
+                {agentExperiment.description}
               </Typography>
             </Stack>
             <Stack direction="row" gap={2}>
               <Typography variant="body2" color="text.secondary">
-                <span className="font-bold">Created:</span> {formatDate(agentExperiment?.created_at)}
+                <span className="font-bold">Created:</span> {formatDate(agentExperiment.created_at)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                <span className="font-bold">Finished:</span> {formatDate(agentExperiment?.finished_at)}
+                <span className="font-bold">Finished:</span> {formatDate(agentExperiment.finished_at)}
               </Typography>
-              {agentExperiment?.finished_at && (
+              {agentExperiment.finished_at && (
                 <Typography variant="body2" color="text.secondary">
                   <span className="font-bold">Duration:</span> {formatTimestampDuration(agentExperiment.created_at, agentExperiment.finished_at)}
                 </Typography>
@@ -85,9 +91,9 @@ export const AgentExperimentDetail = () => {
                 <span className="font-bold">Dataset:</span>{" "}
                 <MuiLink
                   component={Link}
-                  to={`/tasks/${task?.id}/datasets/${agentExperiment?.dataset_ref.id}?version=${agentExperiment?.dataset_ref.version}`}
+                  to={`/tasks/${task?.id}/datasets/${agentExperiment.dataset_ref.id}?version=${agentExperiment.dataset_ref.version}`}
                 >
-                  {agentExperiment?.dataset_ref.name} (v{agentExperiment?.dataset_ref.version})
+                  {agentExperiment.dataset_ref.name} (v{agentExperiment.dataset_ref.version})
                 </MuiLink>
               </Typography>
             </Stack>
@@ -115,12 +121,19 @@ export const AgentExperimentDetail = () => {
         </Stack>
       </Box>
       <Box overflow="auto">
-        <Stack gap={1} p={2}>
-          <Typography variant="h6" color="text.primary" fontWeight="bold">
-            Test Case Results
-          </Typography>
+        <Stack gap={2} p={2}>
+          <div className="grid grid-cols-2 gap-4 items-start">
+            <ExperimentHttpTemplate experimentId={experimentId!} />
+            <ExperimentProgressSummary experiment={agentExperiment} />
+          </div>
 
-          <MaterialReactTable table={table} />
+          <Stack gap={1}>
+            <Typography variant="h6" color="text.primary" fontWeight="bold">
+              Test Case Results
+            </Typography>
+
+            <MaterialReactTable table={table} />
+          </Stack>
         </Stack>
       </Box>
     </Stack>
