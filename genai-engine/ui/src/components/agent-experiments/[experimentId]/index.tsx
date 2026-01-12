@@ -2,7 +2,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Box, Button, Stack, Typography, Link as MuiLink, ButtonGroup } from "@mui/material";
-import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { Link, useParams } from "react-router-dom";
 
 import { StatusBadge } from "../components/status-badge";
@@ -10,30 +9,20 @@ import { useDeleteAgentExperiment } from "../hooks/useDeleteAgentExperiment";
 
 import { ExperimentHttpTemplate } from "./components/experiment-http-template";
 import { ExperimentProgressSummary } from "./components/experiment-progress-summary";
-import { columns } from "./data/columns";
+import { TestCases } from "./components/test-cases";
 import { usePollAgentExperiment } from "./hooks/usePollAgentExperiment";
-import { usePollExperiment } from "./hooks/usePollExperiment";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
-import type { AgenticTestCase } from "@/lib/api-client/api-client";
 import { formatDate, formatTimestampDuration } from "@/utils/formatters";
-
-const DEFAULT_DATA: AgenticTestCase[] = [];
 
 export const AgentExperimentDetail = () => {
   const { task } = useTask();
   const { experimentId } = useParams<{ experimentId: string }>();
 
   const { data: agentExperiment } = usePollAgentExperiment(experimentId);
-  const { data: testCases } = usePollExperiment(experimentId!);
 
   const deleteAgentExperimentMutation = useDeleteAgentExperiment();
-
-  const table = useMaterialReactTable({
-    columns,
-    data: testCases?.data ?? DEFAULT_DATA,
-  });
 
   if (!agentExperiment) {
     return <div>Experiment not found</div>;
@@ -132,7 +121,7 @@ export const AgentExperimentDetail = () => {
               Test Case Results
             </Typography>
 
-            <MaterialReactTable table={table} />
+            <TestCases experimentId={experimentId!} />
           </Stack>
         </Stack>
       </Box>
