@@ -1,5 +1,6 @@
 import { Autocomplete, Divider, Paper, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
+import { useEffect } from "react";
 import { z } from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
@@ -114,8 +115,13 @@ const EvalItem = withFieldGroup({
                         name={`${key}.source.type`}
                         listeners={{
                           onChange: ({ value }) => {
+                            group.resetField(`${key}.source`);
+                            group.setFieldMeta(`${key}.source`, (prev) => ({ ...prev, errors: [], errorMap: {} }));
                             if (value === "dataset_column") {
-                              group.setFieldValue(`${key}.source`, { type: "dataset_column", dataset_column: { name: "" } });
+                              group.setFieldValue(`${key}.source`, {
+                                type: "dataset_column",
+                                dataset_column: { name: "" },
+                              });
                             } else {
                               group.setFieldValue(`${key}.source`, {
                                 type: "experiment_output",
@@ -190,18 +196,25 @@ const EvaluatorDatasetColumnSelector = withFieldGroup({
 
     const key = `evals[${evalIndex}].variable_mapping[${mappingIndex}]` as const;
 
+    useEffect(() => {
+      return () => {
+        group.deleteField(`${key}.source.dataset_column.name`);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     if (!version) return null;
 
     return (
       <group.AppField
-        name={`${key}.source.dataset_column`}
-        defaultValue={{ name: "" }}
+        name={`${key}.source.dataset_column.name`}
+        defaultValue={""}
         validators={{
-          onChange: z.object({ name: z.string().min(1, "Dataset column is required") }),
+          onChange: z.string().min(1, "Dataset column is required"),
         }}
       >
         {(field) => {
-          const selected = version.column_names.find((c) => c === field.state.value.name) ?? null;
+          const selected = version.column_names.find((c) => c === field.state.value) ?? null;
           return (
             <Autocomplete
               size="small"
@@ -209,7 +222,7 @@ const EvaluatorDatasetColumnSelector = withFieldGroup({
               getOptionLabel={(option) => option}
               value={selected}
               onChange={(_, value) => {
-                field.handleChange({ name: value ?? "" });
+                field.handleChange(value ?? "");
               }}
               renderInput={(params) => (
                 <TextField
@@ -239,8 +252,21 @@ const EvaluatorExperimentOutputSelector = withFieldGroup({
 
     const variables = transform.definition.variables;
 
+    useEffect(() => {
+      return () => {
+        group.deleteField(`${key}.source.experiment_output.transform_variable_name`);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     return (
-      <group.AppField name={`${key}.source.experiment_output.transform_variable_name`}>
+      <group.AppField
+        name={`${key}.source.experiment_output.transform_variable_name`}
+        defaultValue={""}
+        validators={{
+          onChange: z.string().min(1, "Transform variable is required"),
+        }}
+      >
         {(field) => {
           const selected = variables.find((v) => v.variable_name === field.state.value) ?? null;
           return (
@@ -252,7 +278,14 @@ const EvaluatorExperimentOutputSelector = withFieldGroup({
               onChange={(_, value) => {
                 field.handleChange(value?.variable_name ?? "");
               }}
-              renderInput={(params) => <TextField {...params} label="Transform Variable" />}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Transform Variable"
+                  error={field.state.meta.errors.length > 0}
+                  helperText={field.state.meta.errors[0]?.message}
+                />
+              )}
             />
           );
         }}
