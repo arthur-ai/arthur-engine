@@ -1,6 +1,8 @@
+import { Add, Storage } from "@mui/icons-material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import HistoryIcon from "@mui/icons-material/History";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Table from "@mui/material/Table";
@@ -10,9 +12,11 @@ import TableHead from "@mui/material/TableHead";
 import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 
 import { ConfigVersionsDrawer } from "./ConfigVersionsDrawer";
+import { CreateRagConfigurationModal } from "./CreateRagConfigurationModal";
 
 import { useRagSearchSettings } from "@/hooks/rag-search-settings/useRagSearchSettings";
 import { useTask } from "@/hooks/useTask";
@@ -29,9 +33,10 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
   const [pageSize, setPageSize] = useState(10);
   const [versionsDrawerOpen, setVersionsDrawerOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<RagSearchSettingConfigurationResponse | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Fetch with filters
-  const { data, isLoading } = useRagSearchSettings(task?.id, {
+  const { data, isLoading, refetch } = useRagSearchSettings(task?.id, {
     config_name: searchQuery,
     page,
     page_size: pageSize,
@@ -45,10 +50,14 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
     setVersionsDrawerOpen(true);
   };
 
+  const handleCreateSuccess = () => {
+    refetch();
+  };
+
   return (
     <div className="flex-1 px-4 py-4">
       <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b">
+        <div className="p-4 border-b flex gap-3 items-center">
           <TextField
             placeholder="Search configurations..."
             value={searchQuery}
@@ -57,15 +66,31 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
               setPage(0); // Reset to first page on search
             }}
             size="small"
-            fullWidth
+            className="flex-1"
           />
+          <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} sx={{ whiteSpace: "nowrap" }}>
+            Create Configuration
+          </Button>
         </div>
 
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading configurations...</div>
         ) : configs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            {searchQuery ? "No configurations match your search." : "No saved configurations yet. Save a configuration from the RAG Playground."}
+          <div className="py-12 px-8 text-center">
+            <Storage sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              {searchQuery ? "No configurations match your search" : "No RAG Configurations Yet"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" className="mb-4 max-w-md mx-auto">
+              {searchQuery
+                ? "Try adjusting your search terms."
+                : "RAG configurations define how to search your vector database collections. Create your first configuration to get started."}
+            </Typography>
+            {!searchQuery && (
+              <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)}>
+                Create Configuration
+              </Button>
+            )}
           </div>
         ) : (
           <>
@@ -131,6 +156,15 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
             setSelectedConfig(null);
           }}
           config={selectedConfig}
+        />
+      )}
+
+      {task && (
+        <CreateRagConfigurationModal
+          open={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          taskId={task.id}
+          onSuccess={handleCreateSuccess}
         />
       )}
     </div>
