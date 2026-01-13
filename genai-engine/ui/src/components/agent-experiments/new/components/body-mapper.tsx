@@ -39,7 +39,23 @@ export const BodyMapper = withFieldGroup({
                       {() => (
                         <Stack>
                           <Stack direction="row" gap={2}>
-                            <group.AppField name={`templateVariableMapping[${index}].source.type`}>
+                            <group.AppField
+                              name={`templateVariableMapping[${index}].source.type`}
+                              listeners={{
+                                onChange: ({ value }) => {
+                                  if (value === "dataset_column") {
+                                    group.setFieldValue(`templateVariableMapping[${index}].source`, {
+                                      type: "dataset_column",
+                                      dataset_column: { name: "" },
+                                    });
+                                  } else if (value === "generated") {
+                                    group.setFieldValue(`templateVariableMapping[${index}].source`, { type: "generated", generator_type: "uuid" });
+                                  } else if (value === "request_time_parameter") {
+                                    group.setFieldValue(`templateVariableMapping[${index}].source`, { type: "request_time_parameter" });
+                                  }
+                                },
+                              }}
+                            >
                               {(field) => (
                                 <TextField
                                   select
