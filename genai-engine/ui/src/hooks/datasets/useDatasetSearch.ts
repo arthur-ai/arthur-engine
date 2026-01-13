@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { SEARCH_DEBOUNCE_MS } from "@/constants/datasetConstants";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 export interface UseDatasetSearchReturn {
@@ -10,19 +11,9 @@ export interface UseDatasetSearchReturn {
   handleClearSearch: () => void;
 }
 
-export function useDatasetSearch(
-  rows: DatasetVersionRowResponse[]
-): UseDatasetSearchReturn {
+export function useDatasetSearch(rows: DatasetVersionRowResponse[]): UseDatasetSearchReturn {
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
 
   const filteredRows = useMemo(() => {
     if (!debouncedSearchQuery.trim()) {

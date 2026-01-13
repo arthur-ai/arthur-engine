@@ -135,8 +135,8 @@ function processContentForToolCallsOrResults(
   }
   // Handle other types
   else {
-    result[SemanticConventions.MESSAGE_CONTENT] = typeof content === "string" 
-      ? content 
+    result[SemanticConventions.MESSAGE_CONTENT] = typeof content === "string"
+      ? content
       : JSON.stringify(content);
     return result;
   }
@@ -316,8 +316,9 @@ function setMetadataAttributes(
 
   // set sessionId
   if (sessionId) {
+    console.log(`Setting session ID on span: ${sessionId}`);
     otelSpan.setAttributes({
-      [SemanticConventions.SESSION_ID]: sessionId,
+      [SemanticConventions.SESSION_ID]: String(sessionId),
     });
   }
   // set userId

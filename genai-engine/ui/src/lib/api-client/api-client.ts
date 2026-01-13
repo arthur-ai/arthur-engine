@@ -109,6 +109,541 @@ export interface AgenticAnnotationResponse {
 /** AgenticAnnotationType */
 export type AgenticAnnotationType = "human" | "continuous_eval";
 
+/**
+ * AgenticEvalRef
+ * Reference to an evaluation configuration with transform
+ */
+export interface AgenticEvalRefInput {
+  /**
+   * Name
+   * Name of the evaluation
+   */
+  name: string;
+  /**
+   * Transform Id
+   * ID of the transform to apply to the trace before evaluation
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Variable Mapping
+   * Mapping of eval variables to data sources (supports transform variables for agentic experiments)
+   */
+  variable_mapping: AgenticEvalVariableMappingInput[];
+  /**
+   * Version
+   * Version of the evaluation
+   */
+  version: number;
+}
+
+/**
+ * AgenticEvalRef
+ * Reference to an evaluation configuration with transform
+ */
+export interface AgenticEvalRefOutput {
+  /**
+   * Name
+   * Name of the evaluation
+   */
+  name: string;
+  /**
+   * Transform Id
+   * ID of the transform to apply to the trace before evaluation
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Variable Mapping
+   * Mapping of eval variables to data sources (supports transform variables for agentic experiments)
+   */
+  variable_mapping: AgenticEvalVariableMappingOutput[];
+  /**
+   * Version
+   * Version of the evaluation
+   */
+  version: number;
+}
+
+/**
+ * AgenticEvalResultSummaries
+ * Summary of evaluation results for an agentic experiment
+ */
+export interface AgenticEvalResultSummaries {
+  /**
+   * Eval Name
+   * Name of the evaluation
+   */
+  eval_name: string;
+  /**
+   * Eval Results
+   * Results for this evaluation
+   */
+  eval_results: EvalResultSummary[];
+  /**
+   * Eval Version
+   * Version of the evaluation
+   */
+  eval_version: string;
+  /**
+   * Transform Id
+   * ID of the transform used for this evaluation
+   * @format uuid
+   */
+  transform_id: string;
+}
+
+/**
+ * AgenticEvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output).
+ *
+ * For transform variables, use ExperimentOutputVariableSource with transform_variable_name
+ * in the experiment_output field. The transform_id comes from the associated AgenticEvalRef.
+ */
+export interface AgenticEvalVariableMappingInput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & AgenticExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
+}
+
+/**
+ * AgenticEvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output).
+ *
+ * For transform variables, use ExperimentOutputVariableSource with transform_variable_name
+ * in the experiment_output field. The transform_id comes from the associated AgenticEvalRef.
+ */
+export interface AgenticEvalVariableMappingOutput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & AgenticExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
+}
+
+/**
+ * AgenticExperimentDetail
+ * Detailed information about an agentic experiment
+ */
+export interface AgenticExperimentDetail {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /** Reference to the dataset used */
+  dataset_ref: DatasetRef;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters applied to dataset rows. Only rows matching ALL specified column name-value pairs (AND condition) were included in the experiment.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations being run, each with an associated transform
+   */
+  eval_list: AgenticEvalRefOutput[];
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /** HTTP template configuration for the agent endpoint */
+  http_template: HttpTemplate;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /**
+   * Notebook Id
+   * Optional notebook ID this experiment is linked to
+   */
+  notebook_id?: string | null;
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /** Summary of results across all test cases */
+  summary_results: AgenticSummaryResults;
+  /**
+   * Template Variable Mapping
+   * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables)
+   */
+  template_variable_mapping: TemplateVariableMappingOutput[];
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
+/**
+ * AgenticExperimentListResponse
+ * Paginated list of agentic experiments
+ */
+export interface AgenticExperimentListResponse {
+  /**
+   * Data
+   * List of agentic experiment summaries
+   */
+  data: AgenticExperimentSummary[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * AgenticExperimentOutputVariableSource
+ * Variable source from experiment output (agentic experiments only support transform variables)
+ */
+export interface AgenticExperimentOutputVariableSource {
+  /** Experiment output source (only transform variables supported) */
+  experiment_output: TransformVariableExperimentOutputSource;
+  /**
+   * Type
+   * Type of source: 'experiment_output'
+   */
+  type: "experiment_output";
+}
+
+/**
+ * AgenticExperimentSummary
+ * Summary of an agentic experiment
+ */
+export interface AgenticExperimentSummary {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /**
+   * Dataset Id
+   * ID of the dataset used
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Dataset Name
+   * Name of the dataset used
+   */
+  dataset_name: string;
+  /**
+   * Dataset Version
+   * Version of the dataset used
+   */
+  dataset_version: number;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /** HTTP template configuration for the agent endpoint */
+  http_template: HttpTemplate;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
+/**
+ * AgenticNotebookDetail
+ * Detailed agentic notebook information
+ */
+export interface AgenticNotebookDetail {
+  /**
+   * Created At
+   * ISO timestamp when created
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Experiments
+   * History of experiments run from this notebook
+   */
+  experiments: AgenticExperimentSummary[];
+  /**
+   * Id
+   * Notebook ID
+   */
+  id: string;
+  /**
+   * Name
+   * Notebook name
+   */
+  name: string;
+  /** Current draft state */
+  state: AgenticNotebookStateResponse;
+  /**
+   * Task Id
+   * Associated task ID
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * ISO timestamp when last updated
+   */
+  updated_at: string;
+}
+
+/**
+ * AgenticNotebookListResponse
+ * Paginated list of agentic notebooks
+ */
+export interface AgenticNotebookListResponse {
+  /**
+   * Data
+   * List of notebook summaries
+   */
+  data: AgenticNotebookSummary[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * AgenticNotebookState
+ * Draft state of an agentic notebook - mirrors agentic experiment config but all fields optional.
+ * Used for requests (input).
+ */
+export interface AgenticNotebookState {
+  /** Dataset reference (includes name) */
+  dataset_ref?: DatasetRefInput | null;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Eval List
+   * List of evaluations
+   */
+  eval_list?: AgenticEvalRefInput[] | null;
+  /** HTTP template configuration for the agent endpoint */
+  http_template?: HttpTemplate | null;
+  /**
+   * Template Variable Mapping
+   * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
+   */
+  template_variable_mapping?: TemplateVariableMappingInput[] | null;
+}
+
+/**
+ * AgenticNotebookStateResponse
+ * Draft state of an agentic notebook - mirrors agentic experiment config but all fields optional.
+ * Used for responses (output).
+ */
+export interface AgenticNotebookStateResponse {
+  /** Dataset reference (includes name) */
+  dataset_ref?: DatasetRef | null;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Eval List
+   * List of evaluations
+   */
+  eval_list?: AgenticEvalRefOutput[] | null;
+  /** HTTP template configuration for the agent endpoint */
+  http_template?: HttpTemplate | null;
+  /**
+   * Template Variable Mapping
+   * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
+   */
+  template_variable_mapping?: TemplateVariableMappingOutput[] | null;
+}
+
+/**
+ * AgenticNotebookSummary
+ * Summary of an agentic notebook
+ */
+export interface AgenticNotebookSummary {
+  /**
+   * Created At
+   * ISO timestamp when created
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Id
+   * Notebook ID
+   */
+  id: string;
+  /**
+   * Latest Run Id
+   * ID of most recent experiment run
+   */
+  latest_run_id?: string | null;
+  /** Status of most recent experiment */
+  latest_run_status?: ExperimentStatus | null;
+  /**
+   * Name
+   * Notebook name
+   */
+  name: string;
+  /**
+   * Run Count
+   * Number of experiments run from this notebook
+   */
+  run_count: number;
+  /**
+   * Task Id
+   * Associated task ID
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * ISO timestamp when last updated
+   */
+  updated_at: string;
+}
+
+/**
+ * AgenticOutput
+ * Output from an agent HTTP request execution
+ */
+export interface AgenticOutput {
+  /**
+   * Response Body
+   * Response body from the agent endpoint
+   */
+  response_body: Record<string, any>;
+  /**
+   * Status Code
+   * HTTP status code (None if request failed before receiving a response)
+   */
+  status_code?: number | null;
+  /**
+   * Trace Id
+   * Trace ID if available from the response
+   */
+  trace_id?: string | null;
+}
+
 /** AgenticPrompt */
 export interface AgenticPrompt {
   /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
@@ -234,6 +769,105 @@ export interface AgenticPromptVersionResponse {
    * Version number of the llm eval
    */
   version: number;
+}
+
+/**
+ * AgenticResult
+ * Results from an agent execution with evals
+ */
+export interface AgenticResult {
+  /**
+   * Evals
+   * Evaluation results for this execution
+   */
+  evals: EvalExecution[];
+  /** Output from the agent (None if not yet executed) */
+  output?: AgenticOutput | null;
+  /**
+   * Request Body
+   * Request body that was sent (with variables resolved)
+   */
+  request_body: Record<string, any>;
+  /**
+   * Request Headers
+   * Headers that were sent (with variables resolved)
+   */
+  request_headers: Record<string, string>;
+  /**
+   * Request Url
+   * URL that was called
+   */
+  request_url: string;
+}
+
+/**
+ * AgenticSummaryResults
+ * Summary results across all evaluations
+ */
+export interface AgenticSummaryResults {
+  /**
+   * Eval Summaries
+   * Summary for each evaluation run
+   */
+  eval_summaries: AgenticEvalResultSummaries[];
+}
+
+/**
+ * AgenticTestCase
+ * Individual test case result for agentic experiment
+ */
+export interface AgenticTestCase {
+  /** Result from the agent execution */
+  agentic_result: AgenticResult;
+  /**
+   * Dataset Row Id
+   * ID of the dataset row
+   */
+  dataset_row_id: string;
+  /** Status of the test case */
+  status: TestCaseStatus;
+  /**
+   * Template Input Variables
+   * Input variables used in the template (with values resolved)
+   */
+  template_input_variables: InputVariable[];
+  /**
+   * Total Cost
+   * Total cost for this test case
+   */
+  total_cost?: string | null;
+}
+
+/**
+ * AgenticTestCaseListResponse
+ * Paginated list of agentic test cases
+ */
+export interface AgenticTestCaseListResponse {
+  /**
+   * Data
+   * List of test cases
+   */
+  data: AgenticTestCase[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of records
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
 }
 
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotationResponse;
@@ -372,6 +1006,23 @@ export type ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteError = HTTPVa
 export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData = any;
 
 export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError = HTTPValidationError;
+
+export type AttachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatchData = AgenticExperimentSummary;
+
+export type AttachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatchError = HTTPValidationError;
+
+export interface AttachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatchParams {
+  /**
+   * Experiment Id
+   * ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Notebook Id
+   * ID of the notebook to attach
+   */
+  notebook_id: string;
+}
 
 export type AttachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatchData = PromptExperimentSummary;
 
@@ -763,6 +1414,74 @@ export interface ConversationBaseResponse {
    * @format date-time
    */
   updated_at: string;
+}
+
+export type CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostData = AgenticExperimentSummary;
+
+export type CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostError = HTTPValidationError;
+
+/**
+ * CreateAgenticExperimentRequest
+ * Request to create a new agentic experiment
+ */
+export interface CreateAgenticExperimentRequest {
+  /** Reference to the dataset to use */
+  dataset_ref: DatasetRefInput;
+  /**
+   * Dataset Row Filter
+   * Optional list of column name and value filters. Only rows matching ALL specified column name-value pairs (AND condition) will be included in the experiment. If not specified, all rows from the dataset will be used.
+   */
+  dataset_row_filter?: NewDatasetVersionRowColumnItemRequest[] | null;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations to run, each with an associated transform
+   */
+  eval_list: AgenticEvalRefInput[];
+  /** HTTP template configuration for the agent endpoint */
+  http_template: HttpTemplate;
+  /**
+   * Name
+   * Name for the experiment
+   */
+  name: string;
+  /**
+   * Request Time Parameters
+   * List of request-time parameters (e.g., API keys, tokens). These are NOT stored in the database for security reasons - they are passed directly to the execution thread.
+   */
+  request_time_parameters?: RequestTimeParameter[] | null;
+  /**
+   * Template Variable Mapping
+   * Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables like UUIDs)
+   */
+  template_variable_mapping: TemplateVariableMappingInput[];
+}
+
+export type CreateAgenticNotebookApiV1TasksTaskIdAgenticNotebooksPostData = AgenticNotebookDetail;
+
+export type CreateAgenticNotebookApiV1TasksTaskIdAgenticNotebooksPostError = HTTPValidationError;
+
+/**
+ * CreateAgenticNotebookRequest
+ * Request to create a new agentic notebook
+ */
+export interface CreateAgenticNotebookRequest {
+  /**
+   * Description
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the notebook
+   */
+  name: string;
+  /** Initial state */
+  state?: AgenticNotebookState | null;
 }
 
 /** CreateAgenticPromptRequest */
@@ -1270,6 +1989,14 @@ export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = Va
 
 export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
 
+export type DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteData = any;
+
+export type DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteError = HTTPValidationError;
+
+export type DeleteAgenticNotebookApiV1AgenticNotebooksNotebookIdDeleteData = any;
+
+export type DeleteAgenticNotebookApiV1AgenticNotebooksNotebookIdDeleteError = HTTPValidationError;
+
 export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData = any;
 
 export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HTTPValidationError;
@@ -1740,6 +2467,93 @@ export interface FileUploadResult {
   /** Word Count */
   word_count: number;
 }
+
+/**
+ * GeneratedVariableSource
+ * Variable source for generated values (e.g., UUIDs, timestamps)
+ */
+export interface GeneratedVariableSource {
+  /**
+   * Generator Type
+   * Type of generator to use. Currently supports 'uuid' for UUID generation.
+   */
+  generator_type: "uuid";
+  /**
+   * Type
+   * Type of source: 'generated'
+   */
+  type: "generated";
+}
+
+export type GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetData = AgenticExperimentDetail;
+
+export type GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetError = HTTPValidationError;
+
+export type GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetData = AgenticTestCaseListResponse;
+
+export type GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetError = HTTPValidationError;
+
+export interface GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetParams {
+  /**
+   * Experiment ID
+   * The ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetAgenticNotebookApiV1AgenticNotebooksNotebookIdGetData = AgenticNotebookDetail;
+
+export type GetAgenticNotebookApiV1AgenticNotebooksNotebookIdGetError = HTTPValidationError;
+
+export type GetAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGetData = AgenticExperimentListResponse;
+
+export type GetAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGetError = HTTPValidationError;
+
+export interface GetAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGetParams {
+  /**
+   * Notebook Id
+   * Agentic Notebook ID
+   */
+  notebookId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStateGetData = AgenticNotebookStateResponse;
+
+export type GetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStateGetError = HTTPValidationError;
 
 export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
 
@@ -2695,6 +3509,50 @@ export interface HallucinationDetailsResponse {
 }
 
 /**
+ * HttpHeader
+ * HTTP header with support for variable placeholders
+ */
+export interface HttpHeader {
+  /**
+   * Name
+   * Header name (supports {{variable}} placeholders)
+   */
+  name: string;
+  /**
+   * Value
+   * Header value (supports {{variable}} placeholders)
+   */
+  value: string;
+}
+
+/**
+ * HttpTemplate
+ * HTTP template configuration for agent endpoint
+ */
+export interface HttpTemplate {
+  /**
+   * Endpoint Name
+   * Name of the endpoint
+   */
+  endpoint_name: string;
+  /**
+   * Endpoint Url
+   * URL of the endpoint
+   */
+  endpoint_url: string;
+  /**
+   * Headers
+   * HTTP headers (supports {{variable}} placeholders in names and values)
+   */
+  headers?: HttpHeader[];
+  /**
+   * Request Body
+   * Request body as JSON (supports {{variable}} placeholders)
+   */
+  request_body: Record<string, any>;
+}
+
+/**
  * HybridFusion
  * Define how the query's hybrid fusion operation should be performed.
  */
@@ -3425,6 +4283,70 @@ export interface ListAgenticAnnotationsResponse {
   count: number;
 }
 
+export type ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetData = AgenticExperimentListResponse;
+
+export type ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetError = HTTPValidationError;
+
+export interface ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetParams {
+  /** Dataset Id */
+  dataset_id?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /** Search */
+  search?: string | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type ListAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGetData = AgenticNotebookListResponse;
+
+export type ListAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGetError = HTTPValidationError;
+
+export interface ListAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGetParams {
+  /** Name */
+  name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
 export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetData = ListAgenticAnnotationsResponse;
 
 export type ListAnnotationsForTraceApiV1TracesTraceIdAnnotationsGetError = HTTPValidationError;
@@ -3820,6 +4742,12 @@ export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Sessions
+   * Include sessions originating from Arthur experiments. Defaults to false for most uses.
+   * @default false
+   */
+  include_experiment_sessions?: boolean;
   /**
    * Page
    * Page number
@@ -7408,6 +8336,35 @@ export interface RenderedPromptResponse {
   messages: OpenAIMessageOutput[];
 }
 
+/**
+ * RequestTimeParameter
+ * Request-time parameter with name and value (e.g., API keys, tokens)
+ */
+export interface RequestTimeParameter {
+  /**
+   * Name
+   * Name of the request-time parameter (must match variable_name in template_variable_mapping)
+   */
+  name: string;
+  /**
+   * Value
+   * Value of the request-time parameter (not saved, provided at execution time)
+   */
+  value: string;
+}
+
+/**
+ * RequestTimeParameterSource
+ * Variable source from request-time parameters (e.g., tokens, API keys)
+ */
+export interface RequestTimeParameterSource {
+  /**
+   * Type
+   * Type of source: 'request_time_parameter'
+   */
+  type: "request_time_parameter";
+}
+
 export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData = ContinuousEvalRerunResponse;
 
 export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError = HTTPValidationError;
@@ -7918,6 +8875,19 @@ export interface SessionTracesResponse {
   traces: TraceResponse[];
 }
 
+export type SetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStatePutData = AgenticNotebookDetail;
+
+export type SetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStatePutError = HTTPValidationError;
+
+/**
+ * SetAgenticNotebookStateRequest
+ * Request to set the agentic notebook state
+ */
+export interface SetAgenticNotebookStateRequest {
+  /** New state for the notebook */
+  state: AgenticNotebookState;
+}
+
 export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
@@ -8246,6 +9216,58 @@ export interface TaskResponse {
    * Time the task was created in unix milliseconds
    */
   updated_at: number;
+}
+
+/**
+ * TemplateVariableMapping
+ * Mapping of a template variable to its source
+ */
+export interface TemplateVariableMappingInput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "generated";
+      } & GeneratedVariableSource)
+    | ({
+        type: "request_time_parameter";
+      } & RequestTimeParameterSource);
+  /**
+   * Variable Name
+   * Name of the template variable
+   */
+  variable_name: string;
+}
+
+/**
+ * TemplateVariableMapping
+ * Mapping of a template variable to its source
+ */
+export interface TemplateVariableMappingOutput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "generated";
+      } & GeneratedVariableSource)
+    | ({
+        type: "request_time_parameter";
+      } & RequestTimeParameterSource);
+  /**
+   * Variable Name
+   * Name of the template variable
+   */
+  variable_name: string;
 }
 
 /**
@@ -8887,6 +9909,24 @@ export interface TransformExtractionResponseList {
 }
 
 /**
+ * TransformVariableExperimentOutputSource
+ * Reference to experiment output using transform variable extraction (agentic experiments only)
+ */
+export interface TransformVariableExperimentOutputSource {
+  /**
+   * Transform Variable Name
+   * Name of the variable to extract from the transform. The transform_id comes from the eval configuration.
+   */
+  transform_variable_name: string;
+  /**
+   * Type
+   * Type of experiment output source
+   * @default "transform_variable"
+   */
+  type?: "transform_variable";
+}
+
+/**
  * UnregisteredRootSpanGroup
  * Group of root spans with the same span_name for unregistered traces
  */
@@ -9063,6 +10103,27 @@ export interface UnsavedRagConfigResponse {
    * Unique identifier for this unsaved RAG configuration (generated by backend if not provided)
    */
   unsaved_id?: string | null;
+}
+
+export type UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutData = AgenticNotebookDetail;
+
+export type UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutError = HTTPValidationError;
+
+/**
+ * UpdateAgenticNotebookRequest
+ * Request to update an agentic notebook
+ */
+export interface UpdateAgenticNotebookRequest {
+  /**
+   * Description
+   * New description
+   */
+  description?: string | null;
+  /**
+   * Name
+   * New name
+   */
+  name?: string | null;
 }
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
@@ -10222,7 +11283,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.281
+ * @version 2.1.287
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -10377,6 +11438,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Attach an agentic notebook to an existing experiment
+     *
+     * @tags Agentic Experiments
+     * @name AttachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatch
+     * @summary Attach notebook to agentic experiment
+     * @request PATCH:/api/v1/agentic_experiments/{experiment_id}/notebook
+     * @secure
+     */
+    attachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatch: (
+      { experimentId, ...query }: AttachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatchParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        AttachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatchData,
+        AttachNotebookToAgenticExperimentApiV1AgenticExperimentsExperimentIdNotebookPatchError
+      >({
+        path: `/api/v1/agentic_experiments/${experimentId}/notebook`,
+        method: "PATCH",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Attach a notebook to an existing experiment
      *
      * @tags Prompt Experiments
@@ -10500,6 +11586,53 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/${traceId}/metrics`,
         method: "GET",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new agentic experiment and initiate execution
+     *
+     * @tags Agentic Experiments
+     * @name CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPost
+     * @summary Create and run an agentic experiment
+     * @request POST:/api/v1/tasks/{task_id}/agentic_experiments
+     * @secure
+     */
+    createAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPost: (
+      taskId: string,
+      data: CreateAgenticExperimentRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostData,
+        CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/agentic_experiments`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new agentic notebook for organizing experiments within a task
+     *
+     * @tags Agentic Notebooks
+     * @name CreateAgenticNotebookApiV1TasksTaskIdAgenticNotebooksPost
+     * @summary Create an agentic notebook
+     * @request POST:/api/v1/tasks/{task_id}/agentic_notebooks
+     * @secure
+     */
+    createAgenticNotebookApiV1TasksTaskIdAgenticNotebooksPost: (taskId: string, data: CreateAgenticNotebookRequest, params: RequestParams = {}) =>
+      this.request<CreateAgenticNotebookApiV1TasksTaskIdAgenticNotebooksPostData, CreateAgenticNotebookApiV1TasksTaskIdAgenticNotebooksPostError>({
+        path: `/api/v1/tasks/${taskId}/agentic_notebooks`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -10853,6 +11986,43 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
           ...params,
         }
       ),
+
+    /**
+     * @description Delete an agentic experiment and all its associated data
+     *
+     * @tags Agentic Experiments
+     * @name DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDelete
+     * @summary Delete agentic experiment
+     * @request DELETE:/api/v1/agentic_experiments/{experiment_id}
+     * @secure
+     */
+    deleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDelete: (experimentId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteData,
+        DeleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDeleteError
+      >({
+        path: `/api/v1/agentic_experiments/${experimentId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete an agentic notebook (experiments are kept)
+     *
+     * @tags Agentic Notebooks
+     * @name DeleteAgenticNotebookApiV1AgenticNotebooksNotebookIdDelete
+     * @summary Delete agentic notebook
+     * @request DELETE:/api/v1/agentic_notebooks/{notebook_id}
+     * @secure
+     */
+    deleteAgenticNotebookApiV1AgenticNotebooksNotebookIdDelete: (notebookId: string, params: RequestParams = {}) =>
+      this.request<DeleteAgenticNotebookApiV1AgenticNotebooksNotebookIdDeleteData, DeleteAgenticNotebookApiV1AgenticNotebooksNotebookIdDeleteError>({
+        path: `/api/v1/agentic_notebooks/${notebookId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
 
     /**
      * @description Deletes an entire agentic prompt
@@ -11292,6 +12462,113 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/traces/${traceId}/transforms/${transformId}/extractions`,
         method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get detailed information about a specific agentic experiment including summary results
+     *
+     * @tags Agentic Experiments
+     * @name GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGet
+     * @summary Get agentic experiment details
+     * @request GET:/api/v1/agentic_experiments/{experiment_id}
+     * @secure
+     */
+    getAgenticExperimentApiV1AgenticExperimentsExperimentIdGet: (experimentId: string, params: RequestParams = {}) =>
+      this.request<GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetData, GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetError>({
+        path: `/api/v1/agentic_experiments/${experimentId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of test case results for an agentic experiment
+     *
+     * @tags Agentic Experiments
+     * @name GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGet
+     * @summary Get experiment test cases
+     * @request GET:/api/v1/agentic_experiments/{experiment_id}/test_cases
+     * @secure
+     */
+    getAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGet: (
+      { experimentId, ...query }: GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetData,
+        GetAgenticExperimentTestCasesApiV1AgenticExperimentsExperimentIdTestCasesGetError
+      >({
+        path: `/api/v1/agentic_experiments/${experimentId}/test_cases`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get detailed information about an agentic notebook including state and experiment history
+     *
+     * @tags Agentic Notebooks
+     * @name GetAgenticNotebookApiV1AgenticNotebooksNotebookIdGet
+     * @summary Get agentic notebook details
+     * @request GET:/api/v1/agentic_notebooks/{notebook_id}
+     * @secure
+     */
+    getAgenticNotebookApiV1AgenticNotebooksNotebookIdGet: (notebookId: string, params: RequestParams = {}) =>
+      this.request<GetAgenticNotebookApiV1AgenticNotebooksNotebookIdGetData, GetAgenticNotebookApiV1AgenticNotebooksNotebookIdGetError>({
+        path: `/api/v1/agentic_notebooks/${notebookId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of experiments run from this agentic notebook
+     *
+     * @tags Agentic Notebooks
+     * @name GetAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGet
+     * @summary Get agentic notebook history
+     * @request GET:/api/v1/agentic_notebooks/{notebook_id}/history
+     * @secure
+     */
+    getAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGet: (
+      { notebookId, ...query }: GetAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGetData,
+        GetAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGetError
+      >({
+        path: `/api/v1/agentic_notebooks/${notebookId}/history`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the current state (draft configuration) of an agentic notebook
+     *
+     * @tags Agentic Notebooks
+     * @name GetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStateGet
+     * @summary Get agentic notebook state
+     * @request GET:/api/v1/agentic_notebooks/{notebook_id}/state
+     * @secure
+     */
+    getAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStateGet: (notebookId: string, params: RequestParams = {}) =>
+      this.request<
+        GetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStateGetData,
+        GetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStateGetError
+      >({
+        path: `/api/v1/agentic_notebooks/${notebookId}/state`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -12348,6 +13625,52 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description List all agentic experiments for a task with optional filtering and pagination
+     *
+     * @tags Agentic Experiments
+     * @name ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet
+     * @summary List agentic experiments
+     * @request GET:/api/v1/tasks/{task_id}/agentic_experiments
+     * @secure
+     */
+    listAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGet: (
+      { taskId, ...query }: ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetData, ListAgenticExperimentsApiV1TasksTaskIdAgenticExperimentsGetError>(
+        {
+          path: `/api/v1/tasks/${taskId}/agentic_experiments`,
+          method: "GET",
+          query: query,
+          secure: true,
+          format: "json",
+          ...params,
+        }
+      ),
+
+    /**
+     * @description List all agentic notebooks for a task with pagination and optional name search
+     *
+     * @tags Agentic Notebooks
+     * @name ListAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGet
+     * @summary List agentic notebooks
+     * @request GET:/api/v1/tasks/{task_id}/agentic_notebooks
+     * @secure
+     */
+    listAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGet: (
+      { taskId, ...query }: ListAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGetData, ListAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGetError>({
+        path: `/api/v1/tasks/${taskId}/agentic_notebooks`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description List annotations for a trace
      *
      * @tags Traces
@@ -12985,6 +14308,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Set the state (draft configuration) of an agentic notebook
+     *
+     * @tags Agentic Notebooks
+     * @name SetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStatePut
+     * @summary Set agentic notebook state
+     * @request PUT:/api/v1/agentic_notebooks/{notebook_id}/state
+     * @secure
+     */
+    setAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStatePut: (
+      notebookId: string,
+      data: SetAgenticNotebookStateRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStatePutData,
+        SetAgenticNotebookStateApiV1AgenticNotebooksNotebookIdStatePutError
+      >({
+        path: `/api/v1/agentic_notebooks/${notebookId}/state`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Set the configuration for a model provider
      *
      * @tags Model Providers
@@ -13089,6 +14439,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/tasks/${taskId}/rag_providers/test_connection`,
         method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update agentic notebook name or description (not the state)
+     *
+     * @tags Agentic Notebooks
+     * @name UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPut
+     * @summary Update agentic notebook metadata
+     * @request PUT:/api/v1/agentic_notebooks/{notebook_id}
+     * @secure
+     */
+    updateAgenticNotebookApiV1AgenticNotebooksNotebookIdPut: (notebookId: string, data: UpdateAgenticNotebookRequest, params: RequestParams = {}) =>
+      this.request<UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutData, UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutError>({
+        path: `/api/v1/agentic_notebooks/${notebookId}`,
+        method: "PUT",
         body: data,
         secure: true,
         type: ContentType.Json,
