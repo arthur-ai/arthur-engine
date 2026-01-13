@@ -1,7 +1,9 @@
+from langchain_core.prompts import ChatPromptTemplate
+
 from scorer.checks.hallucination.v2_legacy_prompts import get_flagging_prompt
 
 
-def get_structured_output_prompt():
+def get_structured_output_prompt() -> ChatPromptTemplate:
     flagging_examples = [
         {
             "context": "There are two dogs eating my shoes and it hurts",
@@ -88,7 +90,7 @@ def get_structured_output_prompt():
     ]
 
     flagging_instruction = """
-    You are evaluating whether each claim is supported by the given context. 
+    You are evaluating whether each claim is supported by the given context.
     For each claim, return a structured object in this format:
 
     LLMClaimResult(claim_text=(str), is_hallucination=(bool), explanation=(str))
