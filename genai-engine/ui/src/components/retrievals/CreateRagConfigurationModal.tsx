@@ -18,18 +18,14 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { SearchSettings } from "./SearchSettings";
 import type { SearchMethod, SearchSettings as SearchSettingsType } from "./types";
+import { buildApiSearchSettings } from "./utils/ragSettingsUtils";
 
 import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
 import { useRagCollections } from "@/hooks/rag/useRagCollections";
 import { useRagProviders } from "@/hooks/rag/useRagProviders";
 import { useCreateRagConfig } from "@/hooks/rag-search-settings/useCreateRagConfig";
 import useSnackbar from "@/hooks/useSnackbar";
-import type {
-  RagProviderCollectionResponse,
-  WeaviateHybridSearchSettingsConfigurationRequest,
-  WeaviateKeywordSearchSettingsConfigurationRequest,
-  WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
-} from "@/lib/api-client/api-client";
+import type { RagProviderCollectionResponse } from "@/lib/api-client/api-client";
 
 interface CreateRagConfigurationModalProps {
   open: boolean;
@@ -51,39 +47,6 @@ const DEFAULT_FORM_VALUES = {
   description: "",
   tags: [] as string[],
 };
-
-function buildApiSettings(
-  collection: RagProviderCollectionResponse,
-  method: SearchMethod,
-  settings: SearchSettingsType
-):
-  | WeaviateHybridSearchSettingsConfigurationRequest
-  | WeaviateKeywordSearchSettingsConfigurationRequest
-  | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest {
-  const base = {
-    collection_name: collection.identifier,
-    limit: settings.limit,
-    include_vector: settings.includeVector,
-    return_properties: settings.includeMetadata ? undefined : [],
-    return_metadata: ["distance", "certainty", "score", "explain_score"],
-  };
-
-  switch (method) {
-    case "nearText":
-      return {
-        ...base,
-        certainty: 1 - settings.distance,
-      } as WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
-    case "bm25":
-      return base as WeaviateKeywordSearchSettingsConfigurationRequest;
-    case "hybrid":
-      return {
-        ...base,
-        alpha: settings.alpha,
-        certainty: 1 - settings.distance,
-      } as WeaviateHybridSearchSettingsConfigurationRequest;
-  }
-}
 
 export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalProps> = ({ open, onClose, taskId, onSuccess }) => {
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
@@ -137,7 +100,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
         return;
       }
 
-      const apiSettings = buildApiSettings(selectedCollection, searchMethod, searchSettings);
+      const apiSettings = buildApiSearchSettings(selectedCollection.identifier, searchMethod, searchSettings);
 
       try {
         await createConfig.mutateAsync({
