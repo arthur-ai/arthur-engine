@@ -1,6 +1,7 @@
 import { Add, Storage } from "@mui/icons-material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import HistoryIcon from "@mui/icons-material/History";
+import { Stack } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -76,12 +77,12 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading configurations...</div>
         ) : configs.length === 0 ? (
-          <div className="py-12 px-8 text-center">
-            <Storage sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
+          <Stack gap={2} alignItems="center" justifyContent="center" className="py-12 px-8 text-center">
+            <Storage sx={{ fontSize: 48, color: "text.disabled" }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
               {searchQuery ? "No configurations match your search" : "No RAG Configurations Yet"}
             </Typography>
-            <Typography variant="body2" color="text.secondary" className="mb-4 max-w-md mx-auto">
+            <Typography variant="body2" color="text.secondary" className="mb-4 text-center">
               {searchQuery
                 ? "Try adjusting your search terms."
                 : "RAG configurations define how to search your vector database collections. Create your first configuration to get started."}
@@ -91,7 +92,7 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
                 Create Configuration
               </Button>
             )}
-          </div>
+          </Stack>
         ) : (
           <>
             <Table>
