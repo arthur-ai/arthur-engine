@@ -283,6 +283,7 @@ class SpanRepository:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         user_ids: Optional[list[str]] = None,
+        include_experiment_sessions: Optional[bool] = False,
     ) -> tuple[int, list[SessionMetadata]]:
         """Return session aggregation data.
 
@@ -298,6 +299,7 @@ class SpanRepository:
             start_time=start_time,
             end_time=end_time,
             user_ids=user_ids,
+            include_experiment_sessions=include_experiment_sessions,
         )
 
         return count, session_metadata_list

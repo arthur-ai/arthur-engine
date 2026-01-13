@@ -29,6 +29,7 @@ from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,
 )
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -246,6 +247,12 @@ class ContinuousEvalsRepository:
                     DatabaseAgenticAnnotation.id == filter_request.id,
                 )
 
+            if filter_request.continuous_eval_id:
+                base_query = base_query.filter(
+                    DatabaseAgenticAnnotation.continuous_eval_id
+                    == filter_request.continuous_eval_id,
+                )
+
             if filter_request.trace_id:
                 base_query = base_query.filter(
                     DatabaseAgenticAnnotation.trace_id == filter_request.trace_id,
@@ -375,6 +382,12 @@ class ContinuousEvalsRepository:
         seen_trace_ids = set()
         for root_span in root_spans:
             if root_span.parent_span_id is not None:
+                continue
+
+            # if trace comes from an agent experiment, do not run evals
+            if root_span.session_id is not None and root_span.session_id.startswith(
+                AGENT_EXPERIMENT_SESSION_PREFIX,
+            ):
                 continue
 
             if root_span.task_id and root_span.trace_id not in seen_trace_ids:

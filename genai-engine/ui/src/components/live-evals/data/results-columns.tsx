@@ -13,7 +13,7 @@ const colorMap = {
   passed: { color: "success.main", borderColor: "success.main" },
   failed: { color: "error.main", borderColor: "error.main" },
   error: { color: "error.main", borderColor: "error.main" },
-  skipped: { color: "warning.main", borderColor: "warning.main" },
+  skipped: { color: "var(--color-neutral-500)", borderColor: "var(--color-neutral-500)" },
 };
 
 const getStatusChipSx = (status: ContinuousEvalRunStatus) => {

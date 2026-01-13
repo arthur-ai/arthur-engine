@@ -77,6 +77,7 @@ from weaviate.types import INCLUDE_VECTOR
 
 from db_models import (
     DatabaseAgenticAnnotation,
+    DatabaseAgenticNotebook,
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
@@ -122,6 +123,18 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchVersionTag,
 )
 from db_models.transform_models import DatabaseTraceTransform
+from schemas.agentic_experiment_schemas import (
+    AgenticEvalRef,
+    AgenticExperimentSummary,
+    HttpTemplate,
+    TemplateVariableMapping,
+)
+from schemas.agentic_notebook_schemas import (
+    AgenticNotebookDetail,
+    AgenticNotebookStateResponse,
+    AgenticNotebookSummary,
+    CreateAgenticNotebookRequest,
+)
 from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatus
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.enums import (
@@ -2226,6 +2239,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Status codes to filter on. Optional.",
     )
+    include_experiment_traces: bool = Field(
+        default=False,
+        description="Whether to include traces originating from Arthur experiments. Defaults to False.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2264,6 +2281,7 @@ class TraceQuerySchema(BaseModel):
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,
             status_code=request.status_code,
+            include_experiment_traces=request.include_experiment_traces,
         )
 
 
@@ -3841,5 +3859,231 @@ class RagNotebook(BaseModel):
         state.dataset_ref = state_request.dataset_ref
         state.dataset_row_filter = state_request.dataset_row_filter
         state.eval_list = state_request.eval_list
+
+        return state
+
+
+class AgenticNotebook(BaseModel):
+    """
+    Internal representation of an agentic notebook.
+    Handles translation between database models and request/response schemas.
+    """
+
+    id: str
+    task_id: str
+    name: str
+    description: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    http_template: Optional[Dict[str, Any]]
+    template_variable_mapping: Optional[List[Dict[str, Any]]]
+    dataset_id: Optional[uuid.UUID]
+    dataset_name: Optional[str]
+    dataset_version: Optional[int]
+    dataset_row_filter: Optional[List[Dict[str, Any]]]
+    eval_configs: Optional[List[Dict[str, Any]]]
+    experiments: List[AgenticExperimentSummary] = Field(default_factory=list)
+
+    @staticmethod
+    def _from_request_model(
+        task_id: str,
+        notebook_id: str,
+        request: CreateAgenticNotebookRequest,
+    ) -> "AgenticNotebook":
+        """Create internal AgenticNotebook from CreateAgenticNotebookRequest"""
+        # Prepare state JSON
+        http_template = None
+        template_variable_mapping = None
+        dataset_id = None
+        dataset_version = None
+        dataset_row_filter = None
+        eval_configs = None
+
+        if request.state:
+            if request.state.http_template:
+                http_template = request.state.http_template.model_dump(mode="json")
+
+            if request.state.template_variable_mapping:
+                template_variable_mapping = [
+                    mapping.model_dump(mode="json")
+                    for mapping in request.state.template_variable_mapping
+                ]
+
+            if request.state.dataset_ref:
+                dataset_id = request.state.dataset_ref.id
+                dataset_version = request.state.dataset_ref.version
+
+            if request.state.dataset_row_filter:
+                dataset_row_filter = [
+                    filter_item.model_dump(mode="json")
+                    for filter_item in request.state.dataset_row_filter
+                ]
+
+            if request.state.eval_list:
+                eval_configs = [
+                    eval_ref.model_dump(mode="json")
+                    for eval_ref in request.state.eval_list
+                ]
+
+        return AgenticNotebook(
+            id=notebook_id,
+            task_id=task_id,
+            name=request.name,
+            description=request.description,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            http_template=http_template,
+            template_variable_mapping=template_variable_mapping,
+            dataset_id=dataset_id,
+            dataset_name=None,  # Will be populated from database lookup
+            dataset_version=dataset_version,
+            dataset_row_filter=dataset_row_filter,
+            eval_configs=eval_configs,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_notebook: DatabaseAgenticNotebook,
+        experiments: List[AgenticExperimentSummary],
+        dataset_name: Optional[str] = None,
+    ) -> "AgenticNotebook":
+        """Create internal AgenticNotebook from DatabaseAgenticNotebook"""
+        return AgenticNotebook(
+            id=db_notebook.id,
+            task_id=db_notebook.task_id,
+            name=db_notebook.name,
+            description=db_notebook.description,
+            created_at=db_notebook.created_at,
+            updated_at=db_notebook.updated_at,
+            http_template=db_notebook.http_template,
+            template_variable_mapping=db_notebook.template_variable_mapping,
+            dataset_id=db_notebook.dataset_id,
+            dataset_name=dataset_name,
+            dataset_version=db_notebook.dataset_version,
+            dataset_row_filter=db_notebook.dataset_row_filter,
+            eval_configs=db_notebook.eval_configs,
+            experiments=experiments,
+        )
+
+    def _to_database_model(self) -> DatabaseAgenticNotebook:
+        """Convert internal AgenticNotebook to DatabaseAgenticNotebook"""
+        return DatabaseAgenticNotebook(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            http_template=self.http_template,
+            template_variable_mapping=self.template_variable_mapping,
+            dataset_id=self.dataset_id,
+            dataset_version=self.dataset_version,
+            dataset_row_filter=self.dataset_row_filter,
+            eval_configs=self.eval_configs,
+        )
+
+    def _to_summary_response(
+        self,
+        run_count: int,
+        latest_run_id: Optional[str],
+        latest_run_status: Optional[ExperimentStatus],
+    ) -> AgenticNotebookSummary:
+        """Convert internal AgenticNotebook to AgenticNotebookSummary response"""
+        return AgenticNotebookSummary(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at.isoformat() if self.created_at else None,
+            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            run_count=run_count,
+            latest_run_id=latest_run_id,
+            latest_run_status=latest_run_status,
+        )
+
+    def _to_detail_response(self) -> AgenticNotebookDetail:
+        """Convert internal AgenticNotebook to AgenticNotebookDetail response"""
+        # Convert state from JSON to Pydantic models
+        state = AgenticNotebookStateResponse()
+
+        if self.http_template is not None:
+            state.http_template = HttpTemplate.model_validate(self.http_template)
+
+        if self.template_variable_mapping is not None:
+            state.template_variable_mapping = [
+                TemplateVariableMapping.model_validate(mapping)
+                for mapping in self.template_variable_mapping
+            ]
+
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
+            state.dataset_ref = DatasetRef(
+                id=self.dataset_id,
+                name=self.dataset_name,
+                version=self.dataset_version,
+            )
+
+        if self.dataset_row_filter is not None:
+            state.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
+
+        if self.eval_configs is not None:
+            state.eval_list = [
+                AgenticEvalRef.model_validate(eval_config)
+                for eval_config in self.eval_configs
+            ]
+
+        return AgenticNotebookDetail(
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=self.created_at.isoformat() if self.created_at else None,
+            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            state=state,
+            experiments=self.experiments,
+        )
+
+    def _to_state_response(self) -> AgenticNotebookStateResponse:
+        """Convert internal AgenticNotebook to AgenticNotebookStateResponse"""
+        # Convert state from JSON to Pydantic models
+        state = AgenticNotebookStateResponse()
+
+        if self.http_template is not None:
+            state.http_template = HttpTemplate.model_validate(self.http_template)
+
+        if self.template_variable_mapping is not None:
+            state.template_variable_mapping = [
+                TemplateVariableMapping.model_validate(mapping)
+                for mapping in self.template_variable_mapping
+            ]
+
+        if (
+            self.dataset_id is not None
+            and self.dataset_version is not None
+            and self.dataset_name is not None
+        ):
+            state.dataset_ref = DatasetRef(
+                id=self.dataset_id,
+                name=self.dataset_name,
+                version=self.dataset_version,
+            )
+
+        if self.dataset_row_filter is not None:
+            state.dataset_row_filter = [
+                NewDatasetVersionRowColumnItemRequest.model_validate(filter_item)
+                for filter_item in self.dataset_row_filter
+            ]
+
+        if self.eval_configs is not None:
+            state.eval_list = [
+                AgenticEvalRef.model_validate(eval_config)
+                for eval_config in self.eval_configs
+            ]
 
         return state

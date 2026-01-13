@@ -46,7 +46,7 @@ from schemas.internal_schemas import (
     TraceUserMetadata,
 )
 from services.trace.filter_service import FilterService
-from utils.constants import SPAN_KIND_LLM
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, SPAN_KIND_LLM
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -215,6 +215,15 @@ class SpanQueryService:
             conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
         if filters.session_ids:
             conditions.append(DatabaseTraceMetadata.session_id.in_(filters.session_ids))
+        if not filters.include_experiment_traces:
+            conditions.append(
+                or_(
+                    DatabaseTraceMetadata.session_id.is_(None),
+                    ~DatabaseTraceMetadata.session_id.startswith(
+                        AGENT_EXPERIMENT_SESSION_PREFIX,
+                    ),
+                ),
+            )
 
         # Duration filters with optimized calculation
         if filters.trace_duration_filters:
@@ -664,6 +673,17 @@ class SpanQueryService:
         if self._needs_trace_metadata_join(filters):
             query = self._apply_trace_filters_with_join(query, filters)
 
+        # Always apply experiment filter if needed (regardless of other span-level filters)
+        if not filters.include_experiment_traces:
+            query = query.where(
+                or_(
+                    DatabaseSpan.session_id.is_(None),
+                    ~DatabaseSpan.session_id.startswith(
+                        AGENT_EXPERIMENT_SESSION_PREFIX,
+                    ),
+                ),
+            )
+
         # Apply span-level filters
         if self.filter_service.has_span_level_filters(filters):
             query = self._apply_span_level_filters_direct(query, filters)
@@ -985,6 +1005,7 @@ class SpanQueryService:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         user_ids: Optional[list[str]] = None,
+        include_experiment_sessions: Optional[bool] = False,
     ) -> tuple[int, list[SessionMetadata]]:
         """Perform session-level aggregations with filtering."""
         if not task_ids:
@@ -1019,6 +1040,17 @@ class SpanQueryService:
 
         # Apply time range filters
         query = self._apply_trace_metadata_time_filters(query, start_time, end_time)
+
+        # Apply experiment sessions filters
+        if not include_experiment_sessions:
+            query = query.where(
+                or_(
+                    DatabaseTraceMetadata.session_id.is_(None),
+                    ~DatabaseTraceMetadata.session_id.startswith(
+                        AGENT_EXPERIMENT_SESSION_PREFIX,
+                    ),
+                ),
+            )
 
         # Apply user filtering
         if user_ids:
