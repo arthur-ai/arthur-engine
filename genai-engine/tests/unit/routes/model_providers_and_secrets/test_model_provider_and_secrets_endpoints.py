@@ -2,10 +2,10 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
+from arthur_common.models.llm_model_providers import ModelProvider
 from litellm.types.utils import ModelResponse
 
 from clients.llm.llm_client import SUPPORTED_TEXT_MODELS
-from schemas.enums import ModelProvider
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
