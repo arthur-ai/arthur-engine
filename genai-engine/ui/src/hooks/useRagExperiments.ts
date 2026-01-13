@@ -2,7 +2,13 @@ import { useApi } from "./useApi";
 import { useApiMutation } from "./useApiMutation";
 import { useApiQuery } from "./useApiQuery";
 
-import type { CreateRagExperimentRequest, RagExperimentDetail, RagExperimentListResponse, RagExperimentSummary } from "@/lib/api-client/api-client";
+import type {
+  CreateRagExperimentRequest,
+  RagExperimentDetail,
+  RagExperimentListResponse,
+  RagExperimentSummary,
+  RagTestCaseListResponse,
+} from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
 /**
@@ -116,4 +122,44 @@ export function useDeleteRagExperiment() {
       { queryKey: queryKeys.ragNotebooks.listAll() },
     ],
   });
+}
+
+/**
+ * Hook to fetch test cases for a RAG experiment with polling support
+ * Automatically polls every 3 seconds while the experiment is running
+ */
+export function useRagExperimentTestCases(
+  experimentId: string | undefined,
+  page: number = 0,
+  pageSize: number = 20,
+  experimentStatus?: string,
+  pollInterval: number = 3000
+) {
+  const { data, error, isLoading, refetch, isFetching } = useApiQuery<"getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet">({
+    method: "getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet",
+    args: [{ experimentId: experimentId!, page, page_size: pageSize }] as const,
+    enabled: !!experimentId,
+    queryOptions: {
+      staleTime: 1000,
+      refetchOnWindowFocus: true,
+      // Poll when experiment is running or queued
+      refetchInterval: () => {
+        if (!experimentStatus) return false;
+        const isRunning = experimentStatus === "running" || experimentStatus === "queued";
+        return isRunning ? pollInterval : false;
+      },
+    },
+  });
+
+  return {
+    testCases: data?.data ?? [],
+    page: data?.page ?? 0,
+    pageSize: data?.page_size ?? pageSize,
+    totalPages: data?.total_pages ?? 0,
+    totalCount: data?.total_count ?? 0,
+    error,
+    isLoading,
+    isFetching,
+    refetch,
+  };
 }
