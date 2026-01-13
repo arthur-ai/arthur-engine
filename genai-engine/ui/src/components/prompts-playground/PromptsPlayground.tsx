@@ -1258,11 +1258,9 @@ const PromptsPlayground = () => {
                               size="small"
                               variant={saveStatus === "unsaved" ? "contained" : "outlined"}
                               onClick={() => {
-                                if (saveStatus === "unsaved") {
-                                  autoSaveNotebookState("manual");
-                                }
+                                autoSaveNotebookState("manual");
                               }}
-                              disabled={saveStatus !== "unsaved"}
+                              disabled={saveStatus === "saving"}
                               startIcon={saveStatus === "saved" ? <CheckIcon /> : <SaveIcon />}
                               sx={{
                                 minWidth: "auto",
@@ -1272,10 +1270,6 @@ const PromptsPlayground = () => {
                                 textTransform: "none",
                                 color: saveStatus === "saved" ? "success.main" : undefined,
                                 borderColor: saveStatus === "saved" ? "success.main" : undefined,
-                                "&.Mui-disabled": {
-                                  color: saveStatus === "saved" ? "success.main" : undefined,
-                                  borderColor: saveStatus === "saved" ? "success.main" : undefined,
-                                },
                               }}
                             >
                               {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save"}
