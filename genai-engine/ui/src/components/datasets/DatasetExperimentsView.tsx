@@ -30,6 +30,7 @@ import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const DatasetExperimentsView: React.FC = () => {
   const { id: taskId, datasetId } = useParams<{ id: string; datasetId: string }>();
@@ -218,25 +219,6 @@ export const DatasetExperimentsView: React.FC = () => {
   const handleSearchChange = (value: string) => {
     setSearchText(value);
     setPage(0); // Reset to first page when searching
-  };
-
-  const getStatusChipSx = (status: PromptExperiment["status"]) => {
-    const colorMap = {
-      queued: { color: "text.secondary", borderColor: "text.secondary" },
-      running: { color: "primary.main", borderColor: "primary.main" },
-      evaluating: { color: "info.main", borderColor: "info.main" },
-      completed: { color: "success.main", borderColor: "success.main" },
-      failed: { color: "error.main", borderColor: "error.main" },
-    };
-    const colors = colorMap[status] || colorMap.queued;
-    return {
-      backgroundColor: "transparent",
-      color: colors.color,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-      textTransform: "capitalize",
-    };
   };
 
   // Prepare initial data for modal with pre-filled dataset

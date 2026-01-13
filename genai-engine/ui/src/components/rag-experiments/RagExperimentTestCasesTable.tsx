@@ -13,18 +13,16 @@ import {
   LinearProgress,
   CircularProgress,
 } from "@mui/material";
+import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, type ColumnDef, type HeaderGroup } from "@tanstack/react-table";
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 
 import { RagTestCaseDetailModal } from "./RagTestCaseDetailModal";
 import { getRagConfigDisplayName, type RagConfig } from "./utils";
 
 import { useRagExperimentTestCases } from "@/hooks/useRagExperiments";
-import type {
-  RagTestCase,
-  RagEvalResultSummaries,
-  TestCaseStatus,
-} from "@/lib/api-client/api-client";
+import type { RagTestCase, RagEvalResultSummaries } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagExperimentTestCasesTableProps {
   experimentId: string;
@@ -48,172 +46,311 @@ interface EvalGroup {
   ragConfigKeys: string[];
 }
 
-const getStatusColor = (status: TestCaseStatus): "default" | "primary" | "info" | "success" | "error" => {
-  switch (status) {
-    case "queued":
-      return "default";
-    case "running":
-      return "primary";
-    case "evaluating":
-      return "info";
-    case "completed":
-      return "success";
-    case "failed":
-      return "error";
-    default:
-      return "default";
-  }
+const columnHelper = createColumnHelper<RagTestCase>();
+
+// Status column definition
+const createStatusColumn = (): ColumnDef<RagTestCase> =>
+  columnHelper.display({
+    id: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const status = row.original.status;
+      return <Chip label={status} size="small" sx={getStatusChipSx(status)} />;
+    },
+  });
+
+// Cost column definition
+const createCostColumn = (): ColumnDef<RagTestCase> =>
+  columnHelper.display({
+    id: "cost",
+    header: "Cost",
+    cell: ({ row }) => {
+      const cost = row.original.total_cost;
+      return cost ? formatCurrency(parseFloat(cost)) : "-";
+    },
+  });
+
+// Helper to create eval cell for a specific RAG config and eval
+const createEvalCell = (ragConfigKey: string, evalName: string, evalVersion: string) => {
+  return ({ row }: { row: { original: RagTestCase } }) => {
+    const ragResult = row.original.rag_results.find((r) => r.rag_config_key === ragConfigKey);
+    const evalResult = ragResult?.evals.find((e) => e.eval_name === evalName && e.eval_version === evalVersion);
+
+    const score = evalResult?.eval_results?.score;
+    const isPending = !evalResult?.eval_results;
+
+    if (isPending) {
+      return <CircularProgress size={16} sx={{ color: "text.secondary" }} />;
+    }
+
+    return score === 1 ? (
+      <Box
+        sx={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "20px",
+          height: "20px",
+          color: "#6b7280",
+          fontWeight: 600,
+          fontSize: "0.8rem",
+        }}
+      >
+        ✓
+      </Box>
+    ) : (
+      <Box
+        sx={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "20px",
+          height: "20px",
+          color: "#ef4444",
+          fontWeight: 600,
+          fontSize: "0.8rem",
+        }}
+      >
+        ✕
+      </Box>
+    );
+  };
 };
 
-const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
-  const colorMap = {
-    default: { color: "text.secondary", borderColor: "text.secondary" },
-    primary: { color: "primary.main", borderColor: "primary.main" },
-    info: { color: "info.main", borderColor: "info.main" },
-    success: { color: "success.main", borderColor: "success.main" },
-    error: { color: "error.main", borderColor: "error.main" },
-  };
-  return {
-    backgroundColor: "transparent",
-    color: colorMap[color].color,
-    borderColor: colorMap[color].borderColor,
-    borderWidth: 1,
-    borderStyle: "solid",
+// Helper to create total cell for an eval group
+const createTotalCell = (evalGroup: EvalGroup) => {
+  return ({ row }: { row: { original: RagTestCase } }) => {
+    let passCount = 0;
+    let totalCount = 0;
+
+    evalGroup.ragConfigKeys.forEach((ragConfigKey) => {
+      const ragResult = row.original.rag_results.find((r) => r.rag_config_key === ragConfigKey);
+      const evalResult = ragResult?.evals.find((e) => e.eval_name === evalGroup.evalName && e.eval_version === evalGroup.evalVersion);
+
+      if (evalResult?.eval_results) {
+        totalCount++;
+        if (evalResult.eval_results.score === 1) {
+          passCount++;
+        }
+      }
+    });
+
+    return (
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: "0.8rem",
+          fontWeight: 500,
+          color: passCount === 0 && totalCount > 0 ? "#ef4444" : "#6b7280",
+        }}
+      >
+        {passCount}/{totalCount}
+      </Typography>
+    );
   };
 };
 
-interface TestCaseRowProps {
-  testCase: RagTestCase;
-  columns: RagConfigEvalColumn[];
+// Build dynamic columns based on RAG eval summaries
+const buildColumns = (
+  ragEvalSummaries: RagEvalResultSummaries[],
+  ragConfigs: RagConfig[]
+): {
+  columns: ColumnDef<RagTestCase>[];
+  evalColumns: RagConfigEvalColumn[];
+  ragConfigGroups: Map<string, { displayName: string; evalCount: number }>;
   evalGroups: EvalGroup[];
-  onClick: () => void;
+} => {
+  const evalColumns: RagConfigEvalColumn[] = [];
+  const configGroups = new Map<string, { displayName: string; evalCount: number }>();
+  const evalGroupsMap = new Map<string, EvalGroup>();
+
+  // Sort summaries by total passes (best first)
+  const sortedSummaries = [...ragEvalSummaries].sort((a, b) => {
+    const totalPassesA = a.eval_results.reduce((sum, er) => sum + er.pass_count, 0);
+    const totalPassesB = b.eval_results.reduce((sum, er) => sum + er.pass_count, 0);
+    return totalPassesB - totalPassesA;
+  });
+
+  sortedSummaries.forEach((summary) => {
+    const ragConfigKey = summary.rag_config_key || "";
+    const displayName = getRagConfigDisplayName(summary, ragConfigs);
+
+    if (!configGroups.has(ragConfigKey)) {
+      configGroups.set(ragConfigKey, { displayName, evalCount: 0 });
+    }
+
+    summary.eval_results.forEach((evalResult) => {
+      evalColumns.push({
+        ragConfigKey,
+        ragConfigDisplayName: displayName,
+        evalName: evalResult.eval_name,
+        evalVersion: evalResult.eval_version,
+      });
+
+      configGroups.get(ragConfigKey)!.evalCount++;
+
+      // Build eval groups for totals
+      const evalKey = `${evalResult.eval_name}-${evalResult.eval_version}`;
+      if (!evalGroupsMap.has(evalKey)) {
+        evalGroupsMap.set(evalKey, {
+          evalName: evalResult.eval_name,
+          evalVersion: evalResult.eval_version,
+          ragConfigKeys: [],
+        });
+      }
+      const group = evalGroupsMap.get(evalKey)!;
+      if (!group.ragConfigKeys.includes(ragConfigKey)) {
+        group.ragConfigKeys.push(ragConfigKey);
+      }
+    });
+  });
+
+  const evalGroups = Array.from(evalGroupsMap.values());
+
+  // Build TanStack Table column definitions
+  // Create eval columns for each RAG config
+  const dynamicEvalColumns: ColumnDef<RagTestCase>[] = evalColumns.map((col, index) =>
+    columnHelper.display({
+      id: `eval-${col.ragConfigKey}-${col.evalName}-${col.evalVersion}`,
+      header: `${col.evalName} (v${col.evalVersion})`,
+      cell: createEvalCell(col.ragConfigKey, col.evalName, col.evalVersion),
+      meta: {
+        ragConfigKey: col.ragConfigKey,
+        evalName: col.evalName,
+        evalVersion: col.evalVersion,
+        isLastInGroup: index === evalColumns.length - 1 || evalColumns[index + 1].ragConfigKey !== col.ragConfigKey,
+        isLastEvalColumn: index === evalColumns.length - 1,
+      },
+    })
+  );
+
+  // Create totals columns
+  const totalColumns: ColumnDef<RagTestCase>[] = evalGroups.map((evalGroup, index) =>
+    columnHelper.display({
+      id: `total-${evalGroup.evalName}-${evalGroup.evalVersion}`,
+      header: `${evalGroup.evalName} (v${evalGroup.evalVersion})`,
+      cell: createTotalCell(evalGroup),
+      meta: {
+        isTotal: true,
+        isLastTotal: index === evalGroups.length - 1,
+      },
+    })
+  );
+
+  const columns: ColumnDef<RagTestCase>[] = [createStatusColumn(), ...dynamicEvalColumns, ...totalColumns, createCostColumn()];
+
+  return {
+    columns,
+    evalColumns,
+    ragConfigGroups: configGroups,
+    evalGroups,
+  };
+};
+
+// Custom table header component to render grouped headers
+interface TableHeaderProps {
+  headerGroups: HeaderGroup<RagTestCase>[];
+  ragConfigGroups: Map<string, { displayName: string; evalCount: number }>;
+  evalGroups: EvalGroup[];
 }
 
-const TestCaseRow: React.FC<TestCaseRowProps> = ({
-  testCase,
-  columns,
-  evalGroups,
-  onClick,
-}) => {
+const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups, evalGroups }) => {
   return (
-    <TableRow hover onClick={onClick} sx={{ cursor: "pointer" }}>
-      <TableCell>
-        <Chip
-          label={testCase.status.charAt(0).toUpperCase() + testCase.status.slice(1)}
-          size="small"
-          sx={getStatusChipSx(getStatusColor(testCase.status))}
-        />
-      </TableCell>
+    <TableHead>
+      {/* Top header row: Status, RAG configs, Totals, Cost */}
+      <TableRow>
+        <TableCell rowSpan={2} sx={{ backgroundColor: "grey.50", borderRight: 1, borderColor: "divider" }}>
+          <Box component="span" className="font-semibold">
+            Status
+          </Box>
+        </TableCell>
 
-      {columns.map((column, index) => {
-        const ragResult = testCase.rag_results.find((r) => r.rag_config_key === column.ragConfigKey);
-        const evalResult = ragResult?.evals.find(
-          (e) => e.eval_name === column.evalName && e.eval_version === column.evalVersion
-        );
-
-        const score = evalResult?.eval_results?.score;
-        const isPending = !evalResult?.eval_results;
-
-        // Check if this is the last eval in its RAG config group
-        const isLastInGroup =
-          index === columns.length - 1 || columns[index + 1].ragConfigKey !== column.ragConfigKey;
-
-        return (
+        {Array.from(ragConfigGroups.entries()).map(([ragConfigKey, group], index) => (
           <TableCell
-            key={`${column.ragConfigKey}-${column.evalName}-${column.evalVersion}`}
+            key={ragConfigKey}
+            colSpan={group.evalCount}
             align="center"
             sx={{
-              padding: "6px 8px",
-              borderRight: isLastInGroup ? (index === columns.length - 1 ? 3 : 0) : 0,
+              backgroundColor: "grey.50",
+              borderRight: index === ragConfigGroups.size - 1 ? 3 : 1,
               borderColor: "divider",
             }}
           >
-            {isPending ? (
-              <CircularProgress size={16} sx={{ color: "text.secondary" }} />
-            ) : score === 1 ? (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "20px",
-                  height: "20px",
-                  color: "#6b7280",
-                  fontWeight: 600,
-                  fontSize: "0.8rem",
-                }}
-              >
-                ✓
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "20px",
-                  height: "20px",
-                  color: "#ef4444",
-                  fontWeight: 600,
-                  fontSize: "0.8rem",
-                }}
-              >
-                ✕
-              </Box>
-            )}
+            <Box component="span" className="font-semibold text-xs">
+              {group.displayName}
+            </Box>
           </TableCell>
-        );
-      })}
+        ))}
 
-      {/* Eval totals columns */}
-      {evalGroups.map((evalGroup, index) => {
-        let passCount = 0;
-        let totalCount = 0;
+        <TableCell
+          colSpan={evalGroups.length}
+          align="center"
+          sx={{
+            backgroundColor: "grey.50",
+            borderRight: 3,
+            borderColor: "divider",
+          }}
+        >
+          <Box component="span" className="font-semibold">
+            Totals
+          </Box>
+        </TableCell>
 
-        evalGroup.ragConfigKeys.forEach((ragConfigKey) => {
-          const ragResult = testCase.rag_results.find((r) => r.rag_config_key === ragConfigKey);
-          const evalResult = ragResult?.evals.find(
-            (e) => e.eval_name === evalGroup.evalName && e.eval_version === evalGroup.evalVersion
-          );
+        <TableCell rowSpan={2} align="right" sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}>
+          <Box component="span" className="font-semibold">
+            Cost
+          </Box>
+        </TableCell>
+      </TableRow>
 
-          if (evalResult?.eval_results) {
-            totalCount++;
-            if (evalResult.eval_results.score === 1) {
-              passCount++;
-            }
-          }
-        });
+      {/* Bottom header row: Evaluators under each RAG config */}
+      {headerGroups.map((headerGroup) => (
+        <TableRow key={headerGroup.id}>
+          {headerGroup.headers
+            .filter((header) => {
+              // Skip status and cost columns (they have rowSpan=2)
+              return header.id !== "status" && header.id !== "cost";
+            })
+            .map((header) => {
+              const meta = header.column.columnDef.meta as
+                | {
+                    isLastInGroup?: boolean;
+                    isLastEvalColumn?: boolean;
+                    isTotal?: boolean;
+                    isLastTotal?: boolean;
+                  }
+                | undefined;
 
-        return (
-          <TableCell
-            key={`total-${evalGroup.evalName}-${evalGroup.evalVersion}`}
-            align="center"
-            sx={{
-              backgroundColor: "#f9fafb",
-              fontWeight: 500,
-              fontSize: "0.8rem",
-              borderRight: index === evalGroups.length - 1 ? 3 : 0,
-              borderColor: "divider",
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: "0.8rem",
-                fontWeight: 500,
-                color: passCount === 0 && totalCount > 0 ? "#ef4444" : "#6b7280",
-              }}
-            >
-              {passCount}/{totalCount}
-            </Typography>
-          </TableCell>
-        );
-      })}
+              const isEvalColumn = header.id.startsWith("eval-");
+              const isTotalColumn = header.id.startsWith("total-");
 
-      <TableCell align="right">
-        {testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}
-      </TableCell>
-    </TableRow>
+              let borderRight = 0;
+              if (isEvalColumn && meta?.isLastInGroup) {
+                borderRight = meta?.isLastEvalColumn ? 3 : 1;
+              } else if (isTotalColumn && meta?.isLastTotal) {
+                borderRight = 3;
+              }
+
+              return (
+                <TableCell
+                  key={header.id}
+                  align="center"
+                  sx={{
+                    backgroundColor: "grey.50",
+                    borderRight,
+                    borderColor: "divider",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <Box component="span" className="font-medium">
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </Box>
+                </TableCell>
+              );
+            })}
+        </TableRow>
+      ))}
+    </TableHead>
   );
 };
 
@@ -228,8 +365,12 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
   const [page, setPage] = useState(0);
   const pageSize = 20;
 
-  const { testCases, totalPages, totalCount, isLoading, error, isFetching } =
-    useRagExperimentTestCases(experimentId, page, pageSize, experimentStatus);
+  const { testCases, totalPages, totalCount, isLoading, error, isFetching } = useRagExperimentTestCases(
+    experimentId,
+    page,
+    pageSize,
+    experimentStatus
+  );
 
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(-1);
   const [modalOpen, setModalOpen] = useState(false);
@@ -247,59 +388,18 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
     }
   }, [testCases, pendingIndexAfterPageLoad]);
 
-  // Build columns from RAG eval summaries (sorted by performance)
-  const { columns, ragConfigGroups, evalGroups } = useMemo(() => {
-    const cols: RagConfigEvalColumn[] = [];
-    const configGroups = new Map<string, { displayName: string; evalCount: number }>();
-    const evalGroupsMap = new Map<string, EvalGroup>();
+  // Build columns from RAG eval summaries
+  const { columns, evalColumns, ragConfigGroups, evalGroups } = useMemo(
+    () => buildColumns(ragEvalSummaries, ragConfigs),
+    [ragEvalSummaries, ragConfigs]
+  );
 
-    // Sort summaries by total passes (best first)
-    const sortedSummaries = [...ragEvalSummaries].sort((a, b) => {
-      const totalPassesA = a.eval_results.reduce((sum, er) => sum + er.pass_count, 0);
-      const totalPassesB = b.eval_results.reduce((sum, er) => sum + er.pass_count, 0);
-      return totalPassesB - totalPassesA;
-    });
-
-    sortedSummaries.forEach((summary) => {
-      const ragConfigKey = summary.rag_config_key || "";
-      const displayName = getRagConfigDisplayName(summary, ragConfigs);
-
-      if (!configGroups.has(ragConfigKey)) {
-        configGroups.set(ragConfigKey, { displayName, evalCount: 0 });
-      }
-
-      summary.eval_results.forEach((evalResult) => {
-        cols.push({
-          ragConfigKey,
-          ragConfigDisplayName: displayName,
-          evalName: evalResult.eval_name,
-          evalVersion: evalResult.eval_version,
-        });
-
-        configGroups.get(ragConfigKey)!.evalCount++;
-
-        // Build eval groups for totals
-        const evalKey = `${evalResult.eval_name}-${evalResult.eval_version}`;
-        if (!evalGroupsMap.has(evalKey)) {
-          evalGroupsMap.set(evalKey, {
-            evalName: evalResult.eval_name,
-            evalVersion: evalResult.eval_version,
-            ragConfigKeys: [],
-          });
-        }
-        const group = evalGroupsMap.get(evalKey)!;
-        if (!group.ragConfigKeys.includes(ragConfigKey)) {
-          group.ragConfigKeys.push(ragConfigKey);
-        }
-      });
-    });
-
-    return {
-      columns: cols,
-      ragConfigGroups: configGroups,
-      evalGroups: Array.from(evalGroupsMap.values()),
-    };
-  }, [ragEvalSummaries, ragConfigs]);
+  // TanStack Table instance
+  const table = useReactTable({
+    data: testCases,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   const handleRowClick = useCallback((index: number) => {
     setSelectedTestCaseIndex(index);
@@ -311,7 +411,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
     setSelectedTestCaseIndex(-1);
   }, []);
 
-  const handlePrevious = useCallback(async () => {
+  const handlePrevious = useCallback(() => {
     if (selectedTestCaseIndex > 0) {
       setSelectedTestCaseIndex(selectedTestCaseIndex - 1);
     } else if (page > 0) {
@@ -320,7 +420,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
     }
   }, [selectedTestCaseIndex, page]);
 
-  const handleNext = useCallback(async () => {
+  const handleNext = useCallback(() => {
     if (selectedTestCaseIndex < testCases.length - 1) {
       setSelectedTestCaseIndex(selectedTestCaseIndex + 1);
     } else if (page < totalPages - 1) {
@@ -352,142 +452,69 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
       <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }}>
         {(isLoading || isFetching) && <LinearProgress />}
         <Table stickyHeader size="small" aria-label="RAG experiment test cases table">
-          <TableHead>
-            {/* Top header row: RAG configs and Totals */}
-            <TableRow>
-              <TableCell
-                rowSpan={2}
-                sx={{ backgroundColor: "grey.50", borderRight: 1, borderColor: "divider" }}
-              >
-                <Box component="span" className="font-semibold">
-                  Status
-                </Box>
-              </TableCell>
-
-              {Array.from(ragConfigGroups.entries()).map(([ragConfigKey, group], index) => (
-                <TableCell
-                  key={ragConfigKey}
-                  colSpan={group.evalCount}
-                  align="center"
-                  sx={{
-                    backgroundColor: "grey.50",
-                    borderRight: index === ragConfigGroups.size - 1 ? 3 : 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <Box component="span" className="font-semibold text-xs">
-                    {group.displayName}
-                  </Box>
-                </TableCell>
-              ))}
-
-              <TableCell
-                colSpan={evalGroups.length}
-                align="center"
-                sx={{
-                  backgroundColor: "grey.50",
-                  borderRight: 3,
-                  borderColor: "divider",
-                }}
-              >
-                <Box component="span" className="font-semibold">
-                  Totals
-                </Box>
-              </TableCell>
-
-              <TableCell
-                rowSpan={2}
-                align="right"
-                sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}
-              >
-                <Box component="span" className="font-semibold">
-                  Cost
-                </Box>
-              </TableCell>
-            </TableRow>
-
-            {/* Bottom header row: Evaluators */}
-            <TableRow>
-              {columns.map((col, index) => {
-                const isLastInGroup =
-                  index === columns.length - 1 ||
-                  columns[index + 1].ragConfigKey !== col.ragConfigKey;
-
-                return (
-                  <TableCell
-                    key={`${col.ragConfigKey}-${col.evalName}-${col.evalVersion}`}
-                    align="center"
-                    sx={{
-                      backgroundColor: "grey.50",
-                      borderRight: isLastInGroup ? (index === columns.length - 1 ? 3 : 1) : 0,
-                      borderColor: "divider",
-                      fontSize: "0.75rem",
-                    }}
-                  >
-                    <Box component="span" className="font-medium">
-                      {col.evalName} (v{col.evalVersion})
-                    </Box>
-                  </TableCell>
-                );
-              })}
-
-              {/* Totals sub-headers */}
-              {evalGroups.map((evalGroup, index) => (
-                <TableCell
-                  key={`total-header-${evalGroup.evalName}-${evalGroup.evalVersion}`}
-                  align="center"
-                  sx={{
-                    backgroundColor: "grey.50",
-                    borderRight: index === evalGroups.length - 1 ? 3 : 0,
-                    borderColor: "divider",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  <Box component="span" className="font-medium">
-                    {evalGroup.evalName} (v{evalGroup.evalVersion})
-                  </Box>
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
+          <TableHeader headerGroups={table.getHeaderGroups()} ragConfigGroups={ragConfigGroups} evalGroups={evalGroups} />
 
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell
-                  colSpan={2 + columns.length + evalGroups.length}
-                  align="center"
-                >
+                <TableCell colSpan={2 + evalColumns.length + evalGroups.length} align="center">
                   <Typography>Loading test cases...</Typography>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell
-                  colSpan={2 + columns.length + evalGroups.length}
-                  align="center"
-                >
+                <TableCell colSpan={2 + evalColumns.length + evalGroups.length} align="center">
                   <Typography color="error">{error.message}</Typography>
                 </TableCell>
               </TableRow>
             ) : testCases.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={2 + columns.length + evalGroups.length}
-                  align="center"
-                >
+                <TableCell colSpan={2 + evalColumns.length + evalGroups.length} align="center">
                   <Typography className="text-gray-600">No test cases found</Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              testCases.map((testCase, index) => (
-                <TestCaseRow
-                  key={testCase.dataset_row_id || index}
-                  testCase={testCase}
-                  columns={columns}
-                  evalGroups={evalGroups}
-                  onClick={() => handleRowClick(index)}
-                />
+              table.getRowModel().rows.map((row, index) => (
+                <TableRow key={row.id} hover onClick={() => handleRowClick(index)} sx={{ cursor: "pointer" }}>
+                  {row.getVisibleCells().map((cell) => {
+                    const meta = cell.column.columnDef.meta as
+                      | {
+                          isLastInGroup?: boolean;
+                          isLastEvalColumn?: boolean;
+                          isTotal?: boolean;
+                          isLastTotal?: boolean;
+                        }
+                      | undefined;
+
+                    const isEvalColumn = cell.column.id.startsWith("eval-");
+                    const isTotalColumn = cell.column.id.startsWith("total-");
+                    const isCostColumn = cell.column.id === "cost";
+
+                    let borderRight = 0;
+                    if (isEvalColumn && meta?.isLastInGroup) {
+                      borderRight = meta?.isLastEvalColumn ? 3 : 0;
+                    } else if (isTotalColumn && meta?.isLastTotal) {
+                      borderRight = 3;
+                    }
+
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        align={isCostColumn ? "right" : isEvalColumn || isTotalColumn ? "center" : undefined}
+                        sx={{
+                          padding: isEvalColumn ? "6px 8px" : undefined,
+                          borderRight,
+                          borderColor: "divider",
+                          backgroundColor: isTotalColumn ? "#f9fafb" : undefined,
+                          fontWeight: isTotalColumn ? 500 : undefined,
+                          fontSize: isTotalColumn ? "0.8rem" : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
               ))
             )}
           </TableBody>
@@ -496,12 +523,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
 
       {totalPages > 1 && (
         <Box className="flex justify-center mt-4">
-          <Pagination
-            count={totalPages}
-            page={page + 1}
-            onChange={handlePageChange}
-            color="primary"
-          />
+          <Pagination count={totalPages} page={page + 1} onChange={handlePageChange} color="primary" />
         </Box>
       )}
 

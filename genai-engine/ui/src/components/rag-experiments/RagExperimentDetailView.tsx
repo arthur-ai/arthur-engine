@@ -24,10 +24,10 @@ import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { RagExperimentTestCasesTable } from "./RagExperimentTestCasesTable";
 import { formatRagConfigName, getRagConfigDisplayName } from "./utils";
 
-import { getStatusChipSx } from "@/components/retrievals/utils/statusChipStyles";
 import { getContentHeight } from "@/constants/layout";
 import { useRagExperimentWithPolling, useDeleteRagExperiment } from "@/hooks/useRagExperiments";
 import { formatUTCTimestamp, formatTimestampDuration, capitalize } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const RagExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();

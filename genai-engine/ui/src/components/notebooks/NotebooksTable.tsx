@@ -23,15 +23,9 @@ import React, { useState } from "react";
 
 import type { NotebooksTableProps } from "./types";
 
-const NotebooksTable: React.FC<NotebooksTableProps> = ({
-  notebooks,
-  sortColumn,
-  sortDirection,
-  onSort,
-  onRowClick,
-  onLaunchNotebook,
-  onDelete,
-}) => {
+import { getStatusChipSx } from "@/utils/statusChipStyles";
+
+const NotebooksTable: React.FC<NotebooksTableProps> = ({ notebooks, sortColumn, sortDirection, onSort, onRowClick, onLaunchNotebook, onDelete }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notebookToDelete, setNotebookToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -60,28 +54,6 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setNotebookToDelete(null);
-  };
-
-  const getStatusChipSx = (status: string | undefined) => {
-    if (!status) return {};
-
-    const colorMap: Record<string, any> = {
-      queued: { color: "text.secondary", borderColor: "text.secondary" },
-      running: { color: "primary.main", borderColor: "primary.main" },
-      evaluating: { color: "info.main", borderColor: "info.main" },
-      completed: { color: "success.main", borderColor: "success.main" },
-      failed: { color: "error.main", borderColor: "error.main" },
-    };
-
-    const colors = colorMap[status] || colorMap.queued;
-    return {
-      backgroundColor: "transparent",
-      color: colors.color,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-      textTransform: "capitalize",
-    };
   };
 
   return (
@@ -142,12 +114,7 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
           </TableHead>
           <TableBody>
             {notebooks.map((notebook) => (
-              <TableRow
-                key={notebook.id}
-                hover
-                onClick={() => onRowClick(notebook.id)}
-                sx={{ cursor: "pointer" }}
-              >
+              <TableRow key={notebook.id} hover onClick={() => onRowClick(notebook.id)} sx={{ cursor: "pointer" }}>
                 <TableCell>
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
                     {notebook.name}
@@ -163,11 +130,7 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                 </TableCell>
                 <TableCell>
                   {notebook.latest_run_status ? (
-                    <Chip
-                      label={notebook.latest_run_status}
-                      size="small"
-                      sx={getStatusChipSx(notebook.latest_run_status)}
-                    />
+                    <Chip label={notebook.latest_run_status} size="small" sx={getStatusChipSx(notebook.latest_run_status)} />
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       No runs
@@ -195,11 +158,7 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                       </Button>
                     </Tooltip>
                     <Tooltip title="Delete Notebook">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleDeleteClick(notebook, e)}
-                        color="error"
-                      >
+                      <IconButton size="small" onClick={(e) => handleDeleteClick(notebook, e)} color="error">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -246,4 +205,3 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
 };
 
 export default NotebooksTable;
-

@@ -16,18 +16,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Stack,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 
 import { getRagConfigDisplayName, type RagConfig } from "./utils";
 
 import { ResultsDisplay } from "@/components/retrievals/ResultsDisplay";
-import { useApi } from "@/hooks/useApi";
-import type {
-  RagTestCase,
-  DatasetVersionRowResponse,
-  EvalExecution,
-} from "@/lib/api-client/api-client";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import type { RagTestCase, EvalExecution } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 
 interface RagTestCaseDetailModalProps {
@@ -49,42 +46,17 @@ interface DatasetRowSectionProps {
   rowId: string;
 }
 
-const DatasetRowSection: React.FC<DatasetRowSectionProps> = ({
-  datasetId,
-  versionNumber,
-  rowId,
-}) => {
-  const [rowData, setRowData] = useState<DatasetVersionRowResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const api = useApi();
+const DatasetRowSection: React.FC<DatasetRowSectionProps> = ({ datasetId, versionNumber, rowId }) => {
+  const {
+    data: rowData,
+    isPending,
+    error,
+  } = useApiQuery({
+    method: "getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet",
+    args: [datasetId, versionNumber, rowId],
+  });
 
-  useEffect(() => {
-    if (!api) return;
-
-    const fetchRowData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response =
-          await api.api.getDatasetVersionRowApiV2DatasetsDatasetIdVersionsVersionNumberRowsRowIdGet(
-            datasetId,
-            versionNumber,
-            rowId
-          );
-        setRowData(response.data);
-      } catch (err) {
-        console.error("Failed to fetch dataset row:", err);
-        setError(err instanceof Error ? err.message : "Failed to load dataset row");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRowData();
-  }, [api, datasetId, versionNumber, rowId]);
-
-  if (loading) {
+  if (isPending) {
     return (
       <Box className="flex justify-center items-center py-4">
         <CircularProgress size={24} />
@@ -96,7 +68,7 @@ const DatasetRowSection: React.FC<DatasetRowSectionProps> = ({
     return (
       <Box className="p-4 bg-red-50 border border-red-200 rounded">
         <Typography color="error" variant="body2">
-          {error}
+          {error.message}
         </Typography>
       </Box>
     );
@@ -111,10 +83,7 @@ const DatasetRowSection: React.FC<DatasetRowSectionProps> = ({
           <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
             {item.column_name}
           </Typography>
-          <Typography
-            variant="body2"
-            className="text-gray-900 whitespace-pre-wrap break-words"
-          >
+          <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word">
             {item.column_value}
           </Typography>
         </Box>
@@ -129,11 +98,7 @@ interface EvalInputsDialogProps {
   evalExecution: EvalExecution | null;
 }
 
-const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({
-  open,
-  onClose,
-  evalExecution,
-}) => {
+const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClose, evalExecution }) => {
   if (!evalExecution) return null;
 
   return (
@@ -142,21 +107,18 @@ const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({
         Eval Inputs: {evalExecution.eval_name} v{evalExecution.eval_version}
       </DialogTitle>
       <DialogContent>
-        <Box className="space-y-3 mt-2">
+        <Stack gap={2} className="mt-2">
           {evalExecution.eval_input_variables.map((variable, index) => (
             <Box key={index} className="p-3 bg-gray-50 rounded border border-gray-200">
               <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
                 {variable.variable_name}
               </Typography>
-              <Typography
-                variant="body2"
-                className="text-gray-900 whitespace-pre-wrap break-words font-mono text-sm"
-              >
+              <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word font-mono text-sm">
                 {variable.value}
               </Typography>
             </Box>
           ))}
-        </Box>
+        </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
@@ -186,9 +148,7 @@ const getPendingChipSx = () => ({
 
 // Infer search method from RAG output metadata
 // Note: RagSearchOutput.response is RagProviderQueryResponse, which contains response: WeaviateQueryResults
-const inferSearchMethod = (
-  output: RagTestCase["rag_results"][0]["output"]
-): "nearText" | "bm25" | "hybrid" => {
+const inferSearchMethod = (output: RagTestCase["rag_results"][0]["output"]): "nearText" | "bm25" | "hybrid" => {
   if (!output?.response?.response?.objects?.[0]?.metadata) return "nearText";
   const metadata = output.response.response.objects[0].metadata;
 
@@ -256,43 +216,21 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
           {/* Modal Header */}
           <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
             <Box className="flex items-center gap-3">
-              <IconButton
-                onClick={onPrevious}
-                size="small"
-                disabled={currentIndex <= 0}
-                className="hover:bg-gray-100"
-              >
+              <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100">
                 <ArrowBackIcon />
               </IconButton>
               <Typography variant="h6" className="font-semibold text-gray-900">
                 Test Case {currentIndex + 1} of {totalCount}
               </Typography>
-              <IconButton
-                onClick={onNext}
-                size="small"
-                disabled={currentIndex >= totalCount - 1}
-                className="hover:bg-gray-100"
-              >
+              <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1} className="hover:bg-gray-100">
                 <ArrowForwardIcon />
               </IconButton>
               <Chip
                 label={testCase.status.charAt(0).toUpperCase() + testCase.status.slice(1)}
                 size="small"
-                color={
-                  testCase.status === "completed"
-                    ? "success"
-                    : testCase.status === "failed"
-                      ? "error"
-                      : "default"
-                }
+                color={testCase.status === "completed" ? "success" : testCase.status === "failed" ? "error" : "default"}
               />
-              {testCase.total_cost && (
-                <Chip
-                  label={`Cost: ${formatCurrency(parseFloat(testCase.total_cost))}`}
-                  size="small"
-                  variant="outlined"
-                />
-              )}
+              {testCase.total_cost && <Chip label={`Cost: ${formatCurrency(parseFloat(testCase.total_cost))}`} size="small" variant="outlined" />}
             </Box>
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
@@ -303,25 +241,15 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
           <Box className="p-6">
             {/* Dataset Row Section */}
             <Box className="mb-6">
-              <Typography
-                variant="h6"
-                className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900"
-              >
+              <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
                 Dataset Row
               </Typography>
-              <DatasetRowSection
-                datasetId={datasetId}
-                versionNumber={datasetVersion}
-                rowId={testCase.dataset_row_id}
-              />
+              <DatasetRowSection datasetId={datasetId} versionNumber={datasetVersion} rowId={testCase.dataset_row_id} />
             </Box>
 
             {/* RAG Results Section */}
             <Box>
-              <Typography
-                variant="h6"
-                className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900"
-              >
+              <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
                 RAG Results
               </Typography>
               <Box className="space-y-6">
@@ -332,8 +260,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                       rag_config_key: ragResult.rag_config_key,
                       rag_config_type: ragResult.rag_config_type,
                       setting_configuration_id: ragResult.setting_configuration_id || undefined,
-                      setting_configuration_version:
-                        ragResult.setting_configuration_version || undefined,
+                      setting_configuration_version: ragResult.setting_configuration_version || undefined,
                       eval_results: [],
                     },
                     ragConfigs
@@ -350,11 +277,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                             {displayName}
                           </Typography>
                           {ragResult.rag_config_type === "unsaved" && (
-                            <Chip
-                              label="Unsaved"
-                              size="small"
-                              sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }}
-                            />
+                            <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} />
                           )}
                         </Box>
                       </Box>
@@ -366,10 +289,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                             Query Text:
                           </Typography>
                           <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                            <Typography
-                              variant="body2"
-                              className="whitespace-pre-wrap text-gray-900"
-                            >
+                            <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
                               {ragResult.query_text}
                             </Typography>
                           </Box>
@@ -405,10 +325,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                             </Typography>
                             <Box className="space-y-2">
                               {ragResult.evals.map((evalItem, evalIndex) => (
-                                <Box
-                                  key={evalIndex}
-                                  className="p-3 bg-blue-50 border border-blue-200 rounded"
-                                >
+                                <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
                                   <Box className="flex items-center justify-between mb-2">
                                     <Box className="flex items-center gap-2">
                                       <Typography variant="body2" className="font-medium text-gray-900">
@@ -461,11 +378,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
       </Modal>
 
       {/* Eval Inputs Dialog - rendered as sibling to avoid nesting in Modal */}
-      <EvalInputsDialog
-        open={evalInputsDialogOpen}
-        onClose={handleCloseEvalInputsDialog}
-        evalExecution={selectedEvalExecution}
-      />
+      <EvalInputsDialog open={evalInputsDialogOpen} onClose={handleCloseEvalInputsDialog} evalExecution={selectedEvalExecution} />
     </>
   );
 };
