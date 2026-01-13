@@ -9,6 +9,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SaveIcon from "@mui/icons-material/Save";
 import TuneIcon from "@mui/icons-material/Tune";
+import Alert from "@mui/material/Alert";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -22,6 +23,7 @@ import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
+import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
@@ -44,6 +46,7 @@ import VariableInputs from "./VariableInputs";
 import { CreateExperimentModal, type ExperimentFormData } from "@/components/prompt-experiments/CreateExperimentModal";
 import { useApi } from "@/hooks/useApi";
 import { useNotebook, useSetNotebookStateMutation, useUpdateNotebookMutation, useNotebookHistory } from "@/hooks/useNotebooks";
+import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { 
   ModelProvider, 
@@ -55,7 +58,8 @@ import {
   EvalVariableMappingOutput,
   SavedPromptConfig,
   PromptEvalResultSummaries,
-  EvalResultSummary
+  EvalResultSummary,
+  NotebookStateInput
 } from "@/lib/api-client/api-client";
 import { track, EVENT_NAMES } from "@/services/amplitude";
 
@@ -119,6 +123,7 @@ const PromptsPlayground = () => {
   const { notebook } = useNotebook(notebookId || undefined);
   const setNotebookStateMutation = useSetNotebookStateMutation();
   const updateNotebookMutation = useUpdateNotebookMutation(task?.id);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   // Fetch notebook history for experiment mode
   const { experiments: notebookHistory, refetch: refetchNotebookHistory } = useNotebookHistory(
@@ -188,8 +193,17 @@ const PromptsPlayground = () => {
       // Initialize the lastSavedStateRef after loading
       // We'll set it in a setTimeout to ensure state updates have completed
       setTimeout(() => {
-        lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state, experimentConfig));
-        setSaveStatus("saved");
+        try {
+          lastSavedStateRef.current = JSON.stringify(serializePlaygroundState(state, experimentConfig));
+          setSaveStatus("saved");
+        } catch (_error) {
+          // If serialization fails (e.g., incomplete prompts), mark as unsaved
+          // This can happen with old notebooks that have prompts without model providers
+          // Don't log as warning since this is expected behavior for incomplete prompts
+          lastSavedStateRef.current = "";
+          setSaveStatus("unsaved");
+          hasUnsavedChangesRef.current = true;
+        }
       }, 100);
       
       // Track notebook loaded event
@@ -212,17 +226,55 @@ const PromptsPlayground = () => {
       return;
     }
 
-    const serializedState = serializePlaygroundState(state, experimentConfig);
-    const currentStateStr = JSON.stringify(serializedState);
-
-    // Only save if state has actually changed
-    if (currentStateStr === lastSavedStateRef.current) {
-      return;
-    }
-
     try {
       setSaveStatus("saving");
+      
+      // Serialize state - this will throw if any prompts are incomplete
+      // If it throws, nothing will be saved and user will be notified
+      let serializedState: NotebookStateInput;
+      try {
+        serializedState = serializePlaygroundState(state, experimentConfig);
+      } catch (serializationError) {
+        // Serialization failed - nothing will be saved
+        setSaveStatus("unsaved");
+        hasUnsavedChangesRef.current = true;
+        
+        // Extract user-friendly error message
+        let errorMessage: string;
+        if (serializationError instanceof Error) {
+          // Remove "Cannot save notebook: " prefix if present, as we'll add our own message
+          const message = serializationError.message;
+          if (message.startsWith("Cannot save notebook: ")) {
+            errorMessage = message.replace("Cannot save notebook: ", "");
+          } else {
+            errorMessage = message;
+          }
+        } else {
+          errorMessage = "Failed to serialize notebook state";
+        }
+        
+        // Always notify user that nothing was saved (only for manual saves to avoid spam)
+        if (saveTrigger === "manual") {
+          showSnackbar(
+            `Cannot save: ${errorMessage}. Nothing was saved.`,
+            "error"
+          );
+        }
+        return; // Exit early - don't attempt API save
+      }
+      
+      const currentStateStr = JSON.stringify(serializedState);
 
+      // Only save if state has actually changed
+      if (currentStateStr === lastSavedStateRef.current) {
+        setSaveStatus("saved");
+        if (saveTrigger === "manual") {
+          showSnackbar("No changes to save", "info");
+        }
+        return;
+      }
+
+      // Attempt to save via API
       await setNotebookStateMutation.mutateAsync({
         notebookId,
         request: { state: serializedState },
@@ -232,6 +284,11 @@ const PromptsPlayground = () => {
       hasUnsavedChangesRef.current = false;
       setSaveStatus("saved");
       
+      // Show success notification for manual saves
+      if (saveTrigger === "manual") {
+        showSnackbar("Notebook saved successfully", "success");
+      }
+      
       // Track notebook saved event
       track(EVENT_NAMES.NOTEBOOK_SAVED, {
         notebook_id: notebookId,
@@ -239,10 +296,18 @@ const PromptsPlayground = () => {
         save_trigger: saveTrigger,
       });
     } catch (error) {
+      // API save failed - nothing was saved
       console.error("Failed to save notebook state:", error);
       setSaveStatus("unsaved");
+      hasUnsavedChangesRef.current = true;
+      
+      // Always show error notification when save fails
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to save notebook. Nothing was saved. Please try again.";
+      showSnackbar(errorMessage, "error");
     }
-  }, [notebookId, apiClient, state, experimentConfig, setNotebookStateMutation]);
+  }, [notebookId, apiClient, state, experimentConfig, setNotebookStateMutation, showSnackbar]);
 
   // Detect state changes and trigger auto-save with debounce
   useEffect(() => {
@@ -250,22 +315,35 @@ const PromptsPlayground = () => {
       return;
     }
 
-    const currentStateStr = JSON.stringify(serializePlaygroundState(state, experimentConfig));
+    try {
+      const currentStateStr = JSON.stringify(serializePlaygroundState(state, experimentConfig));
 
-    // Check if state has actually changed
-    if (currentStateStr !== lastSavedStateRef.current) {
+      // Check if state has actually changed
+      if (currentStateStr !== lastSavedStateRef.current) {
+        hasUnsavedChangesRef.current = true;
+        setSaveStatus("unsaved");
+
+        // Clear existing timeout
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+
+        // Set new timeout for auto-save (5 seconds after last change)
+        autoSaveTimeoutRef.current = setTimeout(() => {
+          autoSaveNotebookState();
+        }, 5000);
+      }
+    } catch (_error) {
+      // If serialization fails (e.g., incomplete prompts), mark as unsaved
+      // Don't trigger auto-save since we can't save incomplete prompts
       hasUnsavedChangesRef.current = true;
       setSaveStatus("unsaved");
-
-      // Clear existing timeout
+      
+      // Clear any pending auto-save timeout
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
       }
-
-      // Set new timeout for auto-save (5 seconds after last change)
-      autoSaveTimeoutRef.current = setTimeout(() => {
-        autoSaveNotebookState();
-      }, 5000);
     }
 
     // Cleanup timeout on unmount
@@ -719,7 +797,16 @@ const PromptsPlayground = () => {
       setIsRunningExperiment(true);
 
       // Convert all playground prompts to experiment prompt configs
-      const promptConfigs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
+      // Filter out any null results (incomplete prompts)
+      const promptConfigs = state.prompts
+        .map((prompt) => toExperimentPromptConfig(prompt))
+        .filter((config): config is NonNullable<ReturnType<typeof toExperimentPromptConfig>> => config !== null);
+      
+      if (promptConfigs.length === 0) {
+        console.error("No valid prompts to run experiment with");
+        setIsRunningExperiment(false);
+        return;
+      }
 
       // Create experiment request using the same config as the original
       // Use the original prompt_variable_mapping from experimentConfig
@@ -810,6 +897,12 @@ const PromptsPlayground = () => {
 
       // Convert the single prompt to experiment prompt config
       const promptConfig = toExperimentPromptConfig(prompt);
+      
+      if (!promptConfig) {
+        console.error("Prompt is missing required configuration (model provider)");
+        setIsRunningExperiment(false);
+        return;
+      }
 
       // Create experiment request with just this prompt
       // Convert DatasetRef to DatasetRefInput (remove name field)
@@ -1258,9 +1351,11 @@ const PromptsPlayground = () => {
                               size="small"
                               variant={saveStatus === "unsaved" ? "contained" : "outlined"}
                               onClick={() => {
-                                autoSaveNotebookState("manual");
+                                if (saveStatus === "unsaved") {
+                                  autoSaveNotebookState("manual");
+                                }
                               }}
-                              disabled={saveStatus === "saving"}
+                              disabled={saveStatus !== "unsaved"}
                               startIcon={saveStatus === "saved" ? <CheckIcon /> : <SaveIcon />}
                               sx={{
                                 minWidth: "auto",
@@ -1270,6 +1365,10 @@ const PromptsPlayground = () => {
                                 textTransform: "none",
                                 color: saveStatus === "saved" ? "success.main" : undefined,
                                 borderColor: saveStatus === "saved" ? "success.main" : undefined,
+                                "&.Mui-disabled": {
+                                  color: saveStatus === "saved" ? "success.main" : undefined,
+                                  borderColor: saveStatus === "saved" ? "success.main" : undefined,
+                                },
                               }}
                             >
                               {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save"}
@@ -1801,6 +1900,11 @@ const PromptsPlayground = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for save notifications */}
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
+        </Snackbar>
       </Box>
     </PromptProvider>
   );

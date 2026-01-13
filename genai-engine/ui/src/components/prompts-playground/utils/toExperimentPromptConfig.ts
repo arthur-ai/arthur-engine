@@ -5,10 +5,11 @@ import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-cli
 /**
  * Converts a playground prompt to an experiment prompt config
  * Returns either a SavedPromptConfig or UnsavedPromptConfig based on whether the prompt is saved
+ * Returns null if the prompt is incomplete (unsaved prompt without model provider)
  */
 export const toExperimentPromptConfig = (
   prompt: PromptType
-): ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig) => {
+): ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig) | null => {
   // If prompt has a name and version AND is not dirty, it's a saved prompt
   // isDirty means the prompt has been modified from its saved version
   if (prompt.name && prompt.version !== null && prompt.version !== undefined && !prompt.isDirty) {
@@ -76,9 +77,11 @@ export const toExperimentPromptConfig = (
   // Note: Don't add "unsaved_" prefix since the type and prompt key already indicate it's unsaved
   const auto_name = prompt.name || prompt.id;
 
-  // Validate modelProvider is not empty string
-  if (!prompt.modelProvider) {
-    throw new Error("Model provider is required for unsaved prompts");
+  // Validate both modelProvider and modelName are not empty
+  // Return null instead of throwing to allow callers to handle incomplete prompts gracefully
+  if (!prompt.modelProvider || (prompt.modelProvider as string) === "" ||
+      !prompt.modelName || prompt.modelName === "") {
+    return null;
   }
 
   return {
