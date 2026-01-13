@@ -7,6 +7,7 @@ import { annotationQueryOptions } from "./useAnnotation";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import { pollWhileInProgress, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
 
 type Opts = {
@@ -14,8 +15,6 @@ type Opts = {
   annotationId: string;
   rerunOnMount?: boolean;
 };
-
-const REFRESH_INTERVAL = 2_000;
 
 export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount = false }: Opts) => {
   const api = useApi()!;
@@ -34,10 +33,7 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
       annotationId,
     }),
     enabled: !!annotationId && running,
-    refetchInterval: (query) => {
-      if (query.state.data?.data.run_status === "pending") return REFRESH_INTERVAL;
-      return false;
-    },
+    refetchInterval: pollWhileInProgress((data) => data?.data.run_status, POLL_INTERVAL.FAST),
   });
 
   const handleDone = useEffectEvent(() => {

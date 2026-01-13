@@ -2,13 +2,8 @@ import { useApi } from "./useApi";
 import { useApiMutation } from "./useApiMutation";
 import { useApiQuery } from "./useApiQuery";
 
-import type {
-  CreateRagExperimentRequest,
-  RagExperimentDetail,
-  RagExperimentListResponse,
-  RagExperimentSummary,
-  RagTestCaseListResponse,
-} from "@/lib/api-client/api-client";
+import type { CreateRagExperimentRequest, RagExperimentDetail, RagExperimentSummary } from "@/lib/api-client/api-client";
+import { pollWhileAnyInProgress, pollWhileInProgress, isInProgressStatus, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
 
 /**
@@ -20,8 +15,7 @@ export function useRagExperimentsWithPolling(
   page: number = 0,
   pageSize: number = 100,
   search?: string,
-  datasetId?: string,
-  pollInterval: number = 3000
+  datasetId?: string
 ) {
   const { data, error, isLoading, refetch } = useApiQuery<"listRagExperimentsApiV1TasksTaskIdRagExperimentsGet">({
     method: "listRagExperimentsApiV1TasksTaskIdRagExperimentsGet",
@@ -30,13 +24,11 @@ export function useRagExperimentsWithPolling(
     queryOptions: {
       staleTime: 1000,
       refetchOnWindowFocus: true,
-      // Poll when any experiment is running or queued
-      refetchInterval: (query) => {
-        const response = query.state.data as RagExperimentListResponse | undefined;
-        if (!response?.data) return false;
-        const hasRunningExperiments = response.data.some((exp) => exp.status === "running" || exp.status === "queued");
-        return hasRunningExperiments ? pollInterval : false;
-      },
+      refetchInterval: pollWhileAnyInProgress(
+        (data) => data?.data,
+        (exp) => exp.status,
+        POLL_INTERVAL.DEFAULT
+      ),
     },
   });
 
@@ -54,9 +46,9 @@ export function useRagExperimentsWithPolling(
 
 /**
  * Hook to fetch a single RAG experiment with polling for running experiments
- * Automatically polls every 3 seconds while the experiment is running
+ * Automatically polls while the experiment is in progress
  */
-export function useRagExperimentWithPolling(experimentId: string | undefined, enabled: boolean = true, pollInterval: number = 3000) {
+export function useRagExperimentWithPolling(experimentId: string | undefined, enabled: boolean = true) {
   const { data, error, isLoading, refetch } = useApiQuery<"getRagExperimentApiV1RagExperimentsExperimentIdGet">({
     method: "getRagExperimentApiV1RagExperimentsExperimentIdGet",
     args: [experimentId!] as const,
@@ -64,13 +56,7 @@ export function useRagExperimentWithPolling(experimentId: string | undefined, en
     queryOptions: {
       staleTime: 1000,
       refetchOnWindowFocus: true,
-      // Only poll if experiment is in a running state
-      refetchInterval: (query) => {
-        const experiment = query.state.data as RagExperimentDetail | undefined;
-        if (!experiment) return false;
-        const isRunning = experiment.status === "running" || experiment.status === "queued";
-        return isRunning ? pollInterval : false;
-      },
+      refetchInterval: pollWhileInProgress((data) => data?.status, POLL_INTERVAL.DEFAULT),
     },
   });
 
@@ -126,15 +112,9 @@ export function useDeleteRagExperiment() {
 
 /**
  * Hook to fetch test cases for a RAG experiment with polling support
- * Automatically polls every 3 seconds while the experiment is running
+ * Automatically polls while the experiment is in progress
  */
-export function useRagExperimentTestCases(
-  experimentId: string | undefined,
-  page: number = 0,
-  pageSize: number = 20,
-  experimentStatus?: string,
-  pollInterval: number = 3000
-) {
+export function useRagExperimentTestCases(experimentId: string | undefined, page: number = 0, pageSize: number = 20, experimentStatus?: string) {
   const { data, error, isLoading, refetch, isFetching } = useApiQuery<"getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet">({
     method: "getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet",
     args: [{ experimentId: experimentId!, page, page_size: pageSize }] as const,
@@ -142,11 +122,8 @@ export function useRagExperimentTestCases(
     queryOptions: {
       staleTime: 1000,
       refetchOnWindowFocus: true,
-      // Poll when experiment is running or queued
       refetchInterval: () => {
-        if (!experimentStatus) return false;
-        const isRunning = experimentStatus === "running" || experimentStatus === "queued";
-        return isRunning ? pollInterval : false;
+        return isInProgressStatus(experimentStatus) ? POLL_INTERVAL.DEFAULT : false;
       },
     },
   });
