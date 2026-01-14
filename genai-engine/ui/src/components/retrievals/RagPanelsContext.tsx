@@ -99,7 +99,7 @@ export const RagPanelsProvider: React.FC<RagPanelsProviderProps> = ({ children, 
   }, [notebookId]);
 
   const markDirty = useCallback(() => {
-    if (notebookId && syncStatus.state === "synced") {
+    if (notebookId && (syncStatus.state === "synced" || syncStatus.state === "idle")) {
       setSyncStatus({ state: "dirty" });
     }
   }, [notebookId, syncStatus.state]);
