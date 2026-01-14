@@ -1,6 +1,8 @@
 import { Typography } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
+import { StatusBadge } from "../components/status-badge";
+
 import { CopyableChip } from "@/components/common";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
@@ -13,6 +15,10 @@ export const createColumns = () => [
   }),
   columnHelper.accessor("dataset_name", {
     header: "Dataset Name",
+  }),
+  columnHelper.accessor("status", {
+    header: "Status",
+    Cell: ({ cell }) => <StatusBadge status={cell.getValue()} />,
   }),
   columnHelper.accessor("http_template.endpoint_name", {
     header: "Endpoint Name",
