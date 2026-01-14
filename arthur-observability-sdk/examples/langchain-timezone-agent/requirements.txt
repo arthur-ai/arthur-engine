@@ -1,0 +1,9 @@
+# Core dependencies for OpenInference tracing tutorial with Arthur Observability SDK
+langchain-openai==0.3.7
+langchain==0.3.20
+python-dotenv>=1.1.0
+arthur-observability-sdk==0.0.1
+
+# Arthur Observability SDK (installed from GitHub - see README for installation instructions)
+# Install with: pip install "arthur-observability-sdk[langchain] @ git+https://github.com/arthur-ai/arthur-engine.git#subdirectory=arthur-sdk"
+# The SDK includes all necessary OpenTelemetry dependencies 
