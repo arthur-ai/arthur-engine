@@ -73,7 +73,12 @@ export const AgentNotebook = () => {
     enableRowActions: true,
     positionActionsColumn: "last",
     renderRowActionMenuItems: ({ row }) => [
-      <MenuItem key="view_run" component={Link} to={`/tasks/${row.original.task_id}/agent-experiments/${row.original.latest_run_id}`}>
+      <MenuItem
+        disabled={!row.original.latest_run_id}
+        key="view_run"
+        component={Link}
+        to={`/tasks/${row.original.task_id}/agent-experiments/${row.original.latest_run_id}`}
+      >
         View Latest Run
       </MenuItem>,
       <Divider />,
