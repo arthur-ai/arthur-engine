@@ -30,6 +30,8 @@ export const EVENT_NAMES = {
   // Agent Experiments events
   AGENT_EXPERIMENT_INTENT_CREATE: "agent_experiment/intent_create",
   AGENT_EXPERIMENT_CREATED: "agent_experiment/created",
+  AGENT_EXPERIMENT_DELETED: "agent_experiment/deleted",
+  AGENT_EXPERIMENT_COPIED: "agent_experiment/copied",
 
   // Agent Notebooks events
   AGENT_NOTEBOOK_INTENT_CREATE: "agent_notebook/intent_create",
@@ -39,6 +41,7 @@ export const EVENT_NAMES = {
   AGENT_NOTEBOOK_LOAD_EXPERIMENT_CONFIG: "agent_notebook/load_experiment_config",
   AGENT_NOTEBOOK_SAVE: "agent_notebook/save",
   AGENT_NOTEBOOK_HISTORY_VIEW: "agent_notebook/history_view",
+  AGENT_NOTEBOOK_DELETED: "agent_notebook/deleted",
 } as const;
 
 /**
