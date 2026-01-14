@@ -315,21 +315,22 @@ arthur = ArthurClient(
 )
 instrument_openai()
 
-# Fetch a prompt from Arthur (automatically creates a span)
-# Use the task_id from the client (it was auto-resolved from task_name)
-prompt = arthur.client.prompts.render_saved_agentic_prompt(
-    task_id=UUID(arthur.task_id),
-    prompt_name="customer_email_template",
-    prompt_version="latest",  # or specific version, tag, datetime
-    variables={
-        "customer_name": "Alice",
-        "order_id": "12345",
-        "issue": "delayed shipment"
-    }
-)
-
-# Use the rendered prompt with OpenAI
+# Fetch prompt and make LLM call inside context for proper session tracking
 with context(session_id="support-email-001", user_id="alice@example.com"):
+    # Fetch a prompt from Arthur (automatically creates a span)
+    # Use the task_id from the client (it was auto-resolved from task_name)
+    prompt = arthur.client.prompts.render_saved_agentic_prompt(
+        task_id=UUID(arthur.task_id),
+        prompt_name="customer_email_template",
+        prompt_version="latest",  # or specific version, tag, datetime
+        variables={
+            "customer_name": "Alice",
+            "order_id": "12345",
+            "issue": "delayed shipment"
+        }
+    )
+
+    # Use the rendered prompt with OpenAI
     response = openai.chat.completions.create(
         model=prompt.model_name,  # Model specified in the prompt
         messages=prompt.messages,  # Pre-rendered messages with variables
