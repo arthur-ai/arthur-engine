@@ -1,6 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -28,11 +27,9 @@ interface ConfigVersionsDrawerProps {
   open: boolean;
   onClose: () => void;
   config: RagSearchSettingConfigurationResponse;
-  currentVersion?: number | null;
-  onVersionLoad: (version: number) => void;
 }
 
-export const ConfigVersionsDrawer: React.FC<ConfigVersionsDrawerProps> = ({ open, onClose, config, currentVersion, onVersionLoad }) => {
+export const ConfigVersionsDrawer: React.FC<ConfigVersionsDrawerProps> = ({ open, onClose, config }) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
@@ -65,11 +62,6 @@ export const ConfigVersionsDrawer: React.FC<ConfigVersionsDrawerProps> = ({ open
         showSnackbar(`Failed to delete version: ${errorMessage}`, "error");
       }
     }
-  };
-
-  const handleVersionLoad = (versionNumber: number) => {
-    onVersionLoad(versionNumber);
-    onClose();
   };
 
   return (
@@ -105,12 +97,7 @@ export const ConfigVersionsDrawer: React.FC<ConfigVersionsDrawerProps> = ({ open
                 </TableHead>
                 <TableBody>
                   {versions.map((version) => (
-                    <TableRow
-                      key={version.version_number}
-                      sx={{
-                        backgroundColor: version.version_number === currentVersion ? "action.selected" : "inherit",
-                      }}
-                    >
+                    <TableRow key={version.version_number}>
                       <TableCell>
                         <Typography variant="body2">v{version.version_number}</Typography>
                       </TableCell>
@@ -125,9 +112,6 @@ export const ConfigVersionsDrawer: React.FC<ConfigVersionsDrawerProps> = ({ open
                         <Typography variant="body2">{new Date(version.created_at).toLocaleDateString()}</Typography>
                       </TableCell>
                       <TableCell>
-                        <IconButton size="small" onClick={() => handleVersionLoad(version.version_number)} title="Load version">
-                          <PlayArrowIcon fontSize="small" />
-                        </IconButton>
                         <IconButton size="small" onClick={() => handleEditTags(version.version_number, version.tags || [])} title="Edit tags">
                           <EditIcon fontSize="small" />
                         </IconButton>

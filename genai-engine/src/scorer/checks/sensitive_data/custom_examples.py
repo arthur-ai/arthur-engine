@@ -1,7 +1,12 @@
-from arthur_common.models.enums import RuleResultEnum
-from langchain.schema import HumanMessage
-from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
+import json
 
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.enums import RuleResultEnum
+from langchain.schema import AIMessage, HumanMessage
+from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
+
+from custom_types import FunctionT
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
@@ -37,10 +42,18 @@ def sensitive_data_with_examples_template() -> FewShotPromptTemplate:
 
 
 class SensitiveDataCustomExamples(RuleScorer):
-    def __init__(self):
+    grader_llm: AzureChatOpenAI | ChatOpenAI
+
+    def __init__(self) -> None:
         """Initializes the dynamic prompt template for sensitive data scoring"""
         self.dynamic_prompt = sensitive_data_with_examples_template()
-        self.grader_llm = get_llm_executor().get_gpt_model()
+        grader_llm = get_llm_executor().get_gpt_model()
+        if grader_llm is None:
+            raise RuntimeError(
+                "Failed to initialize LLM model for SensitiveDataCustomExamples. "
+                "Check your LLM configuration.",
+            )
+        self.grader_llm = grader_llm
 
     def score(self, request: ScoreRequest) -> RuleScore:
         """Scores for sensitive data with custom examples"""
@@ -93,7 +106,13 @@ class SensitiveDataCustomExamples(RuleScorer):
         except Exception as e:
             return handle_llm_exception(e)
 
-        if "yes" in llm_response.content.lower():
+        if isinstance(llm_response.content, str):
+            content = llm_response.content
+        elif isinstance(llm_response.content, dict):
+            content = json.dumps(llm_response.content)
+        elif isinstance(llm_response.content, list):
+            content = " ".join(str(item) for item in llm_response.content)
+        if "yes" in content.lower():
             return RuleScore(
                 result=RuleResultEnum.FAIL,
                 prompt_tokens=token_consumption.prompt_tokens,
@@ -106,5 +125,10 @@ class SensitiveDataCustomExamples(RuleScorer):
         )
 
     @staticmethod
-    def prompt_llm(f, operation_name: str):
-        return get_llm_executor().execute(f, operation_name)
+    def prompt_llm(
+        f: FunctionT,
+        operation_name: str,
+    ) -> tuple[AIMessage, LLMTokenConsumption]:
+        result: AIMessage
+        result, token_consumption = get_llm_executor().execute(f, operation_name)
+        return result, token_consumption

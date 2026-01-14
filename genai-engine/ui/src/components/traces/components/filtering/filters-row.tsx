@@ -16,8 +16,6 @@ import { sharedFormOptions, validators } from "./shared";
 import { EnumOperators, Operator, Operators } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
-import { NumberField } from "@/components/common/form/NumberField";
-
 const ROW_SCROLL_OFFSET = 100;
 
 type InferDynamicEnumArg<Field extends DynamicEnumField<unknown>> = Field extends DynamicEnumField<infer Arg> ? Arg : never;
@@ -373,18 +371,18 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
             if (fieldConfig.type === "numeric") {
               return (
                 <field.NumberField
+                  onValueChange={(value) => {
+                    field.handleChange(value?.toString() ?? "");
+                  }}
                   onBlur={() => {
                     field.handleBlur();
                     onClose();
                   }}
+                  value={field.state.value ? Number(field.state.value) : null}
                   min={fieldConfig.min}
                   max={fieldConfig.max}
-                  className=" overflow-hidden"
-                >
-                  <NumberField.Group className="flex h-full">
-                    <NumberField.Input className="h-full" render={<TextField variant="filled" label="Value" size="small" />} />
-                  </NumberField.Group>
-                </field.NumberField>
+                  className="overflow-hidden"
+                />
               );
             }
 

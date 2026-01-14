@@ -18,6 +18,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { OutputFieldProps } from "../types";
 
+import { track, EVENT_NAMES } from "@/services/amplitude";
+
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   {
     type: "json_schema",
@@ -105,6 +107,26 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
       type: "updateResponseFormat",
       payload: { promptId, responseFormat: copiedFormat },
     });
+    // Track output field changed event
+    try {
+      if (copiedFormat) {
+        const parsedFormat = JSON.parse(copiedFormat);
+        track(EVENT_NAMES.OUTPUT_FIELD_CHANGED, {
+          prompt_id: promptId,
+          has_schema: !!parsedFormat?.json_schema,
+        });
+      } else {
+        track(EVENT_NAMES.OUTPUT_FIELD_CHANGED, {
+          prompt_id: promptId,
+          has_schema: false,
+        });
+      }
+    } catch {
+      track(EVENT_NAMES.OUTPUT_FIELD_CHANGED, {
+        prompt_id: promptId,
+        has_schema: false,
+      });
+    }
   };
 
   useEffect(() => {

@@ -1166,6 +1166,18 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         },
     )
 
+    # Save a second continuous eval
+    status_code, continuous_eval_2 = client.save_continuous_eval(
+        task_id=task_id,
+        continuous_eval_data={
+            "name": "test_continuous_eval_2",
+            "description": "Test continuous eval description",
+            "llm_eval_name": llm_eval.name,
+            "llm_eval_version": llm_eval.version,
+            "transform_id": str(transform.id),
+        },
+    )
+
     # create mock annotations
     annotation_1 = create_mock_annotation(
         trace_id=trace_id,
@@ -1186,7 +1198,14 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         annotation_type=AgenticAnnotationType.HUMAN,
         annotation_score=1,
     )
-    annotations = [annotation_1, annotation_2, annotation_3]
+    annotation_4 = create_mock_annotation(
+        trace_id=trace_id,
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        annotation_score=0,
+        continuous_eval_id=continuous_eval_2.id,
+        run_status=ContinuousEvalRunStatus.FAILED,
+    )
+    annotations = [annotation_1, annotation_2, annotation_3, annotation_4]
 
     try:
         # Test filtering by annotation id
@@ -1204,8 +1223,8 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
             search_url=f"trace_id={trace_id}",
         )
         assert status_code == 200
-        assert len(received_run_results.annotations) == 2
-        assert received_run_results.count == 2
+        assert len(received_run_results.annotations) == 3
+        assert received_run_results.count == 3
 
         # Test filtering by continuous eval id
         status_code, received_run_results = client.list_continuous_eval_run_results(
@@ -1215,6 +1234,14 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         assert status_code == 200
         assert len(received_run_results.annotations) == 2
         assert received_run_results.count == 2
+
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"continuous_eval_id={continuous_eval_2.id}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 1
+        assert received_run_results.count == 1
 
         # Test filtering by annotation score
         status_code, received_run_results = client.list_continuous_eval_run_results(
@@ -1240,10 +1267,10 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
             search_url=f"run_status=failed",
         )
         assert status_code == 200
-        assert len(received_run_results.annotations) == 1
-        assert received_run_results.count == 1
+        assert len(received_run_results.annotations) == 2
+        assert received_run_results.count == 2
 
-        continuous_eval_annotations = [annotation_1, annotation_2]
+        continuous_eval_annotations = [annotation_1, annotation_2, annotation_4]
         continuous_eval_annotations = sorted(
             continuous_eval_annotations,
             key=lambda x: x.created_at,
@@ -1260,7 +1287,7 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         # Test filtering by created before
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"created_before={continuous_eval_annotations[-1].created_at.isoformat()}",
+            search_url=f"created_before={continuous_eval_annotations[1].created_at.isoformat()}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
@@ -1269,8 +1296,37 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         client.delete_transform(transform.id)
         client.delete_llm_eval(task_id, llm_eval.name)
         client.delete_continuous_eval(continuous_eval.id)
+        client.delete_continuous_eval(continuous_eval_2.id)
         for annotation in annotations:
             delete_mock_annotation(annotation.id)
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+def test_list_continuous_eval_run_results_value_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test listing continuous eval run results returns 400 for ValueError"""
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+
+    try:
+        status_code, error = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="id=invalid_uuid",
+        )
+        assert status_code == 400
+        assert error is not None
+        assert "invalid uuid format for parameter 'id': invalid_uuid" in error.get("detail", "").lower()
+
+        status_code, error = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url="continuous_eval_id=invalid_uuid",
+        )
+        assert status_code == 400
+        assert error is not None
+        assert "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid" in error.get("detail", "").lower()
+    finally:
         cleanup_test_data(test_data)
 
 

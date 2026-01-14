@@ -36,10 +36,8 @@ import type {
   AgenticPromptVersionResponse,
   DatasetResponse,
   DatasetVersionMetadataResponse,
-  LLMEvalsVersionListResponse,
   LLMVersionResponse,
-  AgenticPrompt,
-  LLMEval,
+  NewDatasetVersionRowColumnItemRequest,
   PromptExperimentDetail,
 } from "@/lib/api-client/api-client";
 
@@ -87,10 +85,7 @@ export interface EvalVariableMappings {
   };
 }
 
-export interface DatasetRowFilter {
-  column_name: string;
-  column_value: string;
-}
+export type DatasetRowFilter = NewDatasetVersionRowColumnItemRequest;
 
 export interface ExperimentFormData {
   name: string;
@@ -167,7 +162,6 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   // Evaluators state
   const [evaluators, setEvaluators] = useState<LLMGetAllMetadataResponse[]>([]);
   const [evaluatorVersions, setEvaluatorVersions] = useState<Record<string, LLMVersionResponse[]>>({});
-  const [loadingEvaluators, setLoadingEvaluators] = useState(false);
   const [currentEvaluatorName, setCurrentEvaluatorName] = useState<string>("");
   const [currentEvaluatorVersion, setCurrentEvaluatorVersion] = useState<number | "">("");
 
@@ -211,21 +205,23 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         const isFullExperiment = initialData.prompt_configs && initialData.eval_list;
 
         // Transform the initial data to form data format
-        const promptVersions: PromptVersionSelection[] = isFullExperiment && initialData.prompt_configs
-          ? initialData.prompt_configs
-              .filter((pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved")
-              .map((pc) => ({
-                promptName: pc.name,
-                version: pc.version,
-              }))
-          : [];
+        const promptVersions: PromptVersionSelection[] =
+          isFullExperiment && initialData.prompt_configs
+            ? initialData.prompt_configs
+                .filter((pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved")
+                .map((pc) => ({
+                  promptName: pc.name,
+                  version: pc.version,
+                }))
+            : [];
 
-        const evaluators: EvaluatorSelection[] = isFullExperiment && initialData.eval_list
-          ? initialData.eval_list.map((e) => ({
-              name: e.name,
-              version: e.version,
-            }))
-          : [];
+        const evaluators: EvaluatorSelection[] =
+          isFullExperiment && initialData.eval_list
+            ? initialData.eval_list.map((e) => ({
+                name: e.name,
+                version: e.version,
+              }))
+            : [];
 
         // Transform prompt variable mappings
         const promptVariableMappings: PromptVariableMappings = {};
@@ -238,29 +234,30 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         }
 
         // Transform eval variable mappings
-        const evalVariableMappings: EvalVariableMappings[] = isFullExperiment && initialData.eval_list
-          ? initialData.eval_list.map((evalConfig) => {
-              const mappings: EvalVariableMappings["mappings"] = {};
-              evalConfig.variable_mapping.forEach((mapping) => {
-                if (mapping.source.type === "dataset_column") {
-                  mappings[mapping.variable_name] = {
-                    sourceType: "dataset_column",
-                    datasetColumn: mapping.source.dataset_column.name,
-                  };
-                } else if (mapping.source.type === "experiment_output") {
-                  mappings[mapping.variable_name] = {
-                    sourceType: "experiment_output",
-                    jsonPath: mapping.source.experiment_output.json_path || "",
-                  };
-                }
-              });
-              return {
-                evalName: evalConfig.name,
-                evalVersion: evalConfig.version,
-                mappings,
-              };
-            })
-          : [];
+        const evalVariableMappings: EvalVariableMappings[] =
+          isFullExperiment && initialData.eval_list
+            ? initialData.eval_list.map((evalConfig) => {
+                const mappings: EvalVariableMappings["mappings"] = {};
+                evalConfig.variable_mapping.forEach((mapping) => {
+                  if (mapping.source.type === "dataset_column") {
+                    mappings[mapping.variable_name] = {
+                      sourceType: "dataset_column",
+                      datasetColumn: mapping.source.dataset_column.name,
+                    };
+                  } else if (mapping.source.type === "experiment_output") {
+                    mappings[mapping.variable_name] = {
+                      sourceType: "experiment_output",
+                      jsonPath: mapping.source.experiment_output.json_path || "",
+                    };
+                  }
+                });
+                return {
+                  evalName: evalConfig.name,
+                  evalVersion: evalConfig.version,
+                  mappings,
+                };
+              })
+            : [];
 
         // Set the selected prompt name first (from first saved prompt config)
         const firstSavedPrompt = initialData.prompt_configs?.find(
@@ -272,9 +269,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
         // Load all necessary data in parallel
         // Pass the desired version to preserve the original dataset version
-        const loadTasks = [
-          loadDatasetVersions(initialData.dataset_ref!.id, initialData.dataset_ref!.version),
-        ];
+        const loadTasks = [loadDatasetVersions(initialData.dataset_ref!.id, initialData.dataset_ref!.version)];
 
         if (isFullExperiment && firstSavedPrompt) {
           loadTasks.push(loadPromptVersions(firstSavedPrompt.name));
@@ -284,14 +279,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         await Promise.all(loadTasks);
 
         // Transform dataset row filter from initial data
-        const datasetRowFilter: DatasetRowFilter[] = isFullExperiment && initialData.dataset_row_filter
-          ? initialData.dataset_row_filter
-          : [];
+        const datasetRowFilter: DatasetRowFilter[] = isFullExperiment && initialData.dataset_row_filter ? initialData.dataset_row_filter : [];
 
         // Now set the form data after all dropdowns are populated
         setFormData({
           name: isFullExperiment && initialData.name ? `${initialData.name} (Copy)` : "",
-          description: isFullExperiment ? (initialData.description || "") : "",
+          description: isFullExperiment ? initialData.description || "" : "",
           promptVersions,
           datasetId: initialData.dataset_ref!.id,
           datasetName: initialData.dataset_ref!.name,
@@ -402,7 +395,6 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const loadEvaluators = async () => {
     if (!taskId || !api) return;
     try {
-      setLoadingEvaluators(true);
       const response = await api.api.getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet({
         taskId,
         page_size: 100,
@@ -410,8 +402,6 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setEvaluators(response.data.llm_metadata);
     } catch (error) {
       console.error("Failed to load evaluators:", error);
-    } finally {
-      setLoadingEvaluators(false);
     }
   };
 
@@ -436,27 +426,6 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       }
     } catch (error) {
       console.error("Failed to load evaluator versions:", error);
-    }
-  };
-
-  const loadPromptVariables = async () => {
-    if (!taskId || !api || !selectedPromptName || formData.promptVersions.length === 0) return;
-    try {
-      setLoadingPromptDetails(true);
-      // Fetch details for the first selected version to get variables
-      const firstVersion = formData.promptVersions[0];
-      const response = await api.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-        firstVersion.promptName,
-        String(firstVersion.version),
-        taskId
-      );
-      if (response.data.variables) {
-        setPromptVariables(response.data.variables);
-      }
-    } catch (error) {
-      console.error("Failed to load prompt variables:", error);
-    } finally {
-      setLoadingPromptDetails(false);
     }
   };
 

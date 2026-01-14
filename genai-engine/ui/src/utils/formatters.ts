@@ -59,6 +59,10 @@ export function formatDuration(duration: number) {
     .replace(/\b0[hmst]\b/g, "");
 }
 
+export function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 /**
  * Formats the duration between two timestamps in a human-readable format.
  *
@@ -66,6 +70,7 @@ export function formatDuration(duration: number) {
  * @param endTime - End timestamp (UTC string or Date)
  * @returns Formatted duration string (e.g., "2h 34m", "5m 42s", "23s") or null if invalid
  */
+
 export function formatTimestampDuration(startTime: string | Date, endTime: string | null | undefined): string | null {
   if (!endTime) return null;
 

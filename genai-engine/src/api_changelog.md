@@ -2,6 +2,30 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/06/2026
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  endpoint added
+
+# 01/06/2026
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
+
+# 01/05/2026
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional 'query' request parameter 'include_experiment_sessions'
+
+# 01/05/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_id'
+
 # 12/18/2025
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  endpoint added

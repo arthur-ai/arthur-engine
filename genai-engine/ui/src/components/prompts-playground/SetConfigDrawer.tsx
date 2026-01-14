@@ -14,15 +14,15 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
 
-import { usePromptExperiments } from "@/hooks/usePromptExperiments";
 import { useApi } from "@/hooks/useApi";
-import type { PromptExperimentSummary } from "@/lib/api-client/api-client";
+import { usePromptExperiments } from "@/hooks/usePromptExperiments";
+import type { PromptExperimentDetail, PromptExperimentSummary } from "@/lib/api-client/api-client";
 
 interface SetConfigDrawerProps {
   open: boolean;
   onClose: () => void;
   taskId: string | undefined;
-  onLoadConfig: (config: any, overwritePrompts: boolean) => void;
+  onLoadConfig: (config: Partial<PromptExperimentDetail>, overwritePrompts: boolean) => void;
   onCreateNewConfig: () => void;
   hasExistingPrompts: boolean;
 }
@@ -38,7 +38,7 @@ const SetConfigDrawer = ({
   const [selectedExperimentId, setSelectedExperimentId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
-  const [pendingConfig, setPendingConfig] = useState<any>(null);
+  const [pendingConfig, setPendingConfig] = useState<Partial<PromptExperimentDetail> | null>(null);
 
   const apiClient = useApi();
   const { experiments, isLoading: experimentsLoading } = usePromptExperiments(taskId, 0, 100);

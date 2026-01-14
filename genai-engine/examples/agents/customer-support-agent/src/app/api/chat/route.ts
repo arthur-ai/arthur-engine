@@ -34,7 +34,8 @@ const ReviewOutputSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const { message } = await req.json();
+    const body = await req.json();
+    const { message, session_id } = body;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -43,7 +44,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Extract session ID from request body or headers
+    const sessionId = session_id || req.headers.get("X-Session-Id") || req.headers.get("x-session-id");
+
     console.log("Processing customer support request:", message);
+    if (sessionId) {
+      console.log("Session ID extracted:", sessionId);
+    } else {
+      console.log("No session ID found in request");
+    }
 
     // Get the AI tracing instance from the global registry
     const aiTracing = getAITracing("arthur");
@@ -52,12 +61,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Create root span for the entire customer support conversation
+    // Include sessionId in metadata if provided (will be set on trace via attribute-utils)
     const rootSpan = aiTracing.startSpan({
       type: AISpanType.AGENT_RUN,
       name: "customer-support-conversation",
       input: { userQuestion: message },
       metadata: {
         conversationType: "customer_support",
+        ...(sessionId ? { sessionId: String(sessionId) } : {}),
       },
     });
 
