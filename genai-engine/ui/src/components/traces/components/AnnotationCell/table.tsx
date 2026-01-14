@@ -1,4 +1,4 @@
-import { Menu } from "@base-ui-components/react/menu";
+import { Menu } from "@base-ui/react/menu";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LaunchIcon from "@mui/icons-material/Launch";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
