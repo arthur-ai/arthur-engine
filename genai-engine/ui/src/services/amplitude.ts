@@ -26,6 +26,19 @@ export const EVENT_NAMES = {
   NOTEBOOK_LOADED: "Notebook Loaded",
   NOTEBOOK_SAVED: "Notebook Saved",
   NOTEBOOK_RENAMED: "Notebook Renamed",
+
+  // Agent Experiments events
+  AGENT_EXPERIMENT_INTENT_CREATE: "agent_experiment/intent_create",
+  AGENT_EXPERIMENT_CREATED: "agent_experiment/created",
+
+  // Agent Notebooks events
+  AGENT_NOTEBOOK_INTENT_CREATE: "agent_notebook/intent_create",
+  AGENT_NOTEBOOK_INTENT_CANCEL: "agent_notebook/intent_cancel",
+  AGENT_NOTEBOOK_CREATED: "agent_notebook/created",
+  AGENT_NOTEBOOK_EXPERIMENT_RUN: "agent_notebook/experiment_run",
+  AGENT_NOTEBOOK_LOAD_EXPERIMENT_CONFIG: "agent_notebook/load_experiment_config",
+  AGENT_NOTEBOOK_SAVE: "agent_notebook/save",
+  AGENT_NOTEBOOK_HISTORY_VIEW: "agent_notebook/history_view",
 } as const;
 
 /**
@@ -79,6 +92,7 @@ export function initAmplitude(): void {
  */
 export function track(eventName: string, eventProperties?: Record<string, unknown>): void {
   if (!isInitialized) {
+    devLog("Amplitude Track", `Amplitude is not initialized. Tried to track event ${eventName}.`, { eventName, eventProperties });
     return;
   }
 

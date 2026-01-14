@@ -18,7 +18,7 @@ export const useDeleteAgentExperiment = () => {
       await api.deleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDelete(experimentId);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.agentExperiments.all(task!.id) });
+      await queryClient.invalidateQueries({ queryKey: [queryKeys.agentExperiments.all(task!.id)] });
       enqueueSnackbar("Experiment deleted successfully", { variant: "success" });
       navigate(`/tasks/${task!.id}/agent-experiments`);
     },

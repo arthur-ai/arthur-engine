@@ -21,7 +21,7 @@ export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.agentExperiments.all(task!.id) });
+      queryClient.invalidateQueries({ queryKey: [queryKeys.agentExperiments.all(task!.id)] });
       onSuccess?.(data);
     },
   });
