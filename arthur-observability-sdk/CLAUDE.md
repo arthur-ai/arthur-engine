@@ -80,7 +80,8 @@ The SDK includes auto-generated API bindings from the GenAI Engine's OpenAPI spe
 **ArthurClient** (`arthur_client.py`)
 - Main entry point for SDK users
 - Initializes API client and telemetry in a single call
-- Can accept either `task_id` OR `task_name` (automatically fetches/creates tasks)
+- **Recommended**: Use `task_name` parameter (automatically creates task if it doesn't exist)
+- Alternative: Use `task_id` if you already have an existing task ID
 - Provides `arthur.client.*` for API access and `arthur.telemetry` for tracing control
 
 **TelemetryHandler** (`telemetry.py`)
@@ -115,11 +116,16 @@ The SDK includes auto-generated API bindings from the GenAI Engine's OpenAPI spe
 ### Key Design Patterns
 
 **Unified Initialization Flow:**
-1. User creates `ArthurClient(task_id=..., api_key=...)`
+1. User creates `ArthurClient(task_name="my-app", api_key=...)` (recommended) or `ArthurClient(task_id=..., api_key=...)`
 2. SDK initializes API client first (needed for task resolution)
-3. If `task_name` provided instead of `task_id`, SDK calls `get_or_create_task()` API
+3. If `task_name` provided (recommended approach), SDK calls `get_or_create_task()` API to auto-create or fetch the task
 4. With resolved `task_id`, SDK initializes telemetry with proper resource attributes
 5. Returns ready-to-use client with both API access and tracing
+
+**Task Name vs Task ID:**
+- **Preferred**: Use `task_name` - SDK will automatically create the task if it doesn't exist
+- **Alternative**: Use `task_id` if you have an existing task UUID
+- Both support environment variables: `ARTHUR_TASK_NAME` or `ARTHUR_TASK_ID`
 
 **Automatic Span Creation:**
 - API methods that fetch/render prompts automatically create spans
@@ -232,10 +238,10 @@ Only `src/arthur_observability_sdk/` is packaged for PyPI. Tests, examples, and 
 
 The SDK supports these environment variables for convenience:
 
-- `ARTHUR_TASK_ID`: Task ID (alternative to passing `task_id` param)
-- `ARTHUR_TASK_NAME`: Task name for auto-creation (alternative to `task_id`)
+- `ARTHUR_TASK_NAME`: Task name (recommended) - auto-creates task if it doesn't exist
+- `ARTHUR_TASK_ID`: Task ID (alternative to `task_name`)
 - `ARTHUR_API_KEY`: API key (required if not passed as param)
-- `ARTHUR_BASE_URL`: Base URL (defaults to `https://app.arthur.ai`)
+- `ARTHUR_BASE_URL`: GenAI Engine URL (defaults to `http://localhost:3030`)
 
 ## Important Notes
 

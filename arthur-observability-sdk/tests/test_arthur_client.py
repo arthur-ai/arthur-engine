@@ -38,6 +38,10 @@ class TestArthurClient:
         """Test initialization with explicit parameters."""
         with patch('arthur_observability_sdk.arthur_client.TelemetryHandler.init') as mock_telemetry_init:
             with patch('arthur_observability_sdk.arthur_client.InstrumentedArthurClient') as mock_api_client:
+                # Mock the client instance to check that telemetry is enabled later
+                mock_client_instance = Mock()
+                mock_api_client.return_value = mock_client_instance
+
                 client = ArthurClient(
                     task_id="my-task-id",
                     api_key="my-api-key",
@@ -56,12 +60,15 @@ class TestArthurClient:
                     resource_attributes=None
                 )
 
-                # Verify API client was initialized
+                # Verify API client was initialized (initially with telemetry_enabled=False)
                 mock_api_client.assert_called_once_with(
                     api_key="my-api-key",
                     base_url="https://app.arthur.ai",
-                    telemetry_enabled=True
+                    telemetry_enabled=False  # Initially disabled, then enabled after telemetry init
                 )
+
+                # Verify telemetry was enabled on the client after initialization
+                assert mock_client_instance._telemetry_enabled is True
 
                 assert client.task_id == "my-task-id"
 
@@ -79,15 +86,77 @@ class TestArthurClient:
                 assert call_args.kwargs["api_key"] == "test-api-key"
                 assert call_args.kwargs["base_url"] == "https://test.arthur.ai"
 
-    def test_init_missing_task_id(self):
-        """Test that missing task_id raises ValueError."""
-        with pytest.raises(ValueError, match="task_id is required"):
+    def test_init_missing_task_id_and_task_name(self):
+        """Test that missing both task_id and task_name raises ValueError."""
+        with pytest.raises(ValueError, match="Either task_id or task_name is required"):
             ArthurClient(api_key="test-api-key")
+
+    def test_init_both_task_id_and_task_name(self):
+        """Test that providing both task_id and task_name raises ValueError."""
+        with pytest.raises(ValueError, match="Cannot provide both task_id and task_name"):
+            ArthurClient(
+                task_id="test-task-id",
+                task_name="test-task-name",
+                api_key="test-api-key"
+            )
 
     def test_init_missing_api_key(self):
         """Test that missing api_key raises ValueError."""
         with pytest.raises(ValueError, match="api_key is required"):
             ArthurClient(task_id="test-task-id")
+
+    def test_init_with_task_name(self):
+        """Test initialization with task_name (auto-creates task)."""
+        with patch('arthur_observability_sdk.arthur_client.TelemetryHandler.init') as mock_telemetry_init:
+            with patch('arthur_observability_sdk.arthur_client.InstrumentedArthurClient') as mock_api_client:
+                # Mock the get_or_create_task method
+                mock_client_instance = Mock()
+                mock_tasks_api = Mock()
+                mock_tasks_api.get_or_create_task.return_value = "resolved-task-id-123"
+                mock_client_instance.tasks = mock_tasks_api
+                mock_api_client.return_value = mock_client_instance
+
+                client = ArthurClient(
+                    task_name="my-test-task",
+                    api_key="test-api-key",
+                    base_url="http://localhost:3030"
+                )
+
+                # Verify get_or_create_task was called with task_name
+                mock_tasks_api.get_or_create_task.assert_called_once_with(
+                    task_name="my-test-task",
+                    is_agentic=True
+                )
+
+                # Verify resolved task_id is stored
+                assert client.task_id == "resolved-task-id-123"
+
+                # Verify telemetry was initialized with resolved task_id
+                mock_telemetry_init.assert_called_once()
+                call_args = mock_telemetry_init.call_args
+                assert call_args.kwargs["task_id"] == "resolved-task-id-123"
+
+    def test_init_with_task_name_env_var(self, monkeypatch):
+        """Test initialization using ARTHUR_TASK_NAME environment variable."""
+        monkeypatch.setenv("ARTHUR_TASK_NAME", "env-task-name")
+        monkeypatch.setenv("ARTHUR_API_KEY", "test-api-key")
+
+        with patch('arthur_observability_sdk.arthur_client.TelemetryHandler.init'):
+            with patch('arthur_observability_sdk.arthur_client.InstrumentedArthurClient') as mock_api_client:
+                mock_client_instance = Mock()
+                mock_tasks_api = Mock()
+                mock_tasks_api.get_or_create_task.return_value = "env-resolved-task-id"
+                mock_client_instance.tasks = mock_tasks_api
+                mock_api_client.return_value = mock_client_instance
+
+                client = ArthurClient()
+
+                # Verify task was resolved from env var
+                mock_tasks_api.get_or_create_task.assert_called_once_with(
+                    task_name="env-task-name",
+                    is_agentic=True
+                )
+                assert client.task_id == "env-resolved-task-id"
 
     def test_init_with_telemetry_disabled(self):
         """Test initialization with telemetry disabled."""
@@ -106,6 +175,25 @@ class TestArthurClient:
                 mock_api_client.assert_called_once()
                 call_args = mock_api_client.call_args
                 assert call_args.kwargs["telemetry_enabled"] is False
+
+    def test_default_base_url(self):
+        """Test that default base_url is localhost:3030."""
+        with patch('arthur_observability_sdk.arthur_client.TelemetryHandler.init') as mock_telemetry_init:
+            with patch('arthur_observability_sdk.arthur_client.InstrumentedArthurClient') as mock_api_client:
+                client = ArthurClient(
+                    task_id="test-task-id",
+                    api_key="test-api-key"
+                    # Not providing base_url
+                )
+
+                # Verify default base_url was used
+                mock_api_client.assert_called_once()
+                call_args = mock_api_client.call_args
+                assert call_args.kwargs["base_url"] == "http://localhost:3030"
+
+                mock_telemetry_init.assert_called_once()
+                telemetry_args = mock_telemetry_init.call_args
+                assert telemetry_args.kwargs["base_url"] == "http://localhost:3030"
 
     def test_telemetry_property(self, arthur_client):
         """Test that telemetry property returns TelemetryHandler class."""

@@ -143,3 +143,9 @@ htmlcov/
 
 # Build artifacts
 *.whl
+
+# Examples - Exclude environment files but keep .env.example
+examples/**/.env
+examples/**/env
+examples/**/venv
+examples/**/__pycache__

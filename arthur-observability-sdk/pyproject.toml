@@ -1,16 +1,39 @@
 [project]
 name = "arthur-observability-sdk"
-version = "0.0.1"
-description = "Simplified OpenInference tracing for Arthur observability"
-authors = ["Arthur <engineering@arthur.ai>"]
+version = "0.1.0"
+description = "Official Python SDK for Arthur platform APIs and OpenInference tracing"
+authors = [{name = "Arthur", email = "engineering@arthur.ai"}]
 readme = "README.md"
 requires-python = ">=3.8"
+license = {text = "Apache-2.0"}
+keywords = ["arthur", "observability", "tracing", "opentelemetry", "openinference", "llm", "monitoring"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Monitoring",
+]
+
 dependencies = [
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
     "opentelemetry-exporter-otlp-proto-http>=1.20.0",
     "openinference-instrumentation>=0.1.0",
 ]
+
+[project.urls]
+Homepage = "https://arthur.ai"
+Documentation = "https://docs.arthur.ai"
+Repository = "https://github.com/arthur-ai/arthur-engine"
+"Bug Tracker" = "https://github.com/arthur-ai/arthur-engine/issues"
+Discord = "https://discord.gg/tdfUAtaVHz"
 
 [project.optional-dependencies]
 # Individual framework support

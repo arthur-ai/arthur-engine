@@ -1,6 +1,9 @@
 # Arthur Observability SDK
 
-> ⚠️ **Alpha Release**: This SDK is currently in alpha. PyPI packages will be released soon. For now, please install directly from the monorepo.
+[![PyPI version](https://badge.fury.io/py/arthur-observability-sdk.svg)](https://badge.fury.io/py/arthur-observability-sdk)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+> 🔵 **Beta Release**: This SDK is currently in beta and available on PyPI.
 
 The official Python SDK for Arthur platform APIs and [OpenInference](https://github.com/Arize-ai/openinference) tracing. This SDK provides a unified interface for both Arthur's REST API and comprehensive observability, enabling you to manage prompts, run experiments, and monitor your LLM-powered applications in production.
 
@@ -21,59 +24,42 @@ This SDK is part of the [Arthur Engine](https://github.com/arthur-ai/arthur-engi
 ### Prerequisites
 
 - Python 3.8 or higher
-- Git
 
-### Install from Monorepo
+### Install from PyPI (Recommended)
 
-Since this SDK is currently in alpha and not yet published to PyPI, you need to install it directly from the Arthur Engine monorepo:
+The SDK is now available on PyPI and can be installed with pip:
 
-#### Core SDK (required)
+```bash
+# Core SDK only
+pip install arthur-observability-sdk
+
+# With specific framework support
+pip install arthur-observability-sdk[openai]
+pip install arthur-observability-sdk[langchain]
+pip install arthur-observability-sdk[anthropic]
+pip install arthur-observability-sdk[llama-index]
+
+# With multiple frameworks
+pip install arthur-observability-sdk[openai,langchain]
+
+# With all supported frameworks
+pip install arthur-observability-sdk[all]
+```
+
+### Install from Source (Development)
+
+For development or to use the latest features:
 
 ```bash
 # Clone the monorepo
 git clone https://github.com/arthur-ai/arthur-engine.git
-cd arthur-engine/arthur-sdk
+cd arthur-engine/arthur-observability-sdk
 
-# Install the core SDK
+# Install in editable mode
 pip install -e .
-```
 
-#### With Framework Support
-
-Install with optional dependencies for the frameworks you use:
-
-```bash
-# After navigating to arthur-engine/arthur-sdk, install with extras
-
-# OpenAI
-pip install -e ".[openai]"
-
-# LangChain
-pip install -e ".[langchain]"
-
-# Anthropic
-pip install -e ".[anthropic]"
-
-# LlamaIndex
-pip install -e ".[llama-index]"
-
-# Multiple frameworks
-pip install -e ".[openai,langchain]"
-
-# All supported frameworks
+# Or with framework support
 pip install -e ".[all]"
-```
-
-#### Alternative: Install directly via pip from GitHub
-
-You can also install directly from GitHub without cloning:
-
-```bash
-# Core SDK
-pip install "git+https://github.com/arthur-ai/arthur-engine.git#subdirectory=arthur-sdk"
-
-# With framework support
-pip install "arthur-observability-sdk[langchain] @ git+https://github.com/arthur-ai/arthur-engine.git#subdirectory=arthur-sdk"
 ```
 
 ### Supported Frameworks
@@ -87,172 +73,288 @@ pip install "arthur-observability-sdk[langchain] @ git+https://github.com/arthur
 - MistralAI (`[mistralai]`)
 - Groq (`[groq]`)
 
-## Quick Start
+## Getting Started
 
-Here's a complete example using the unified ArthurClient:
+### Step 1: Get Your API Token
+
+To use the Arthur Observability SDK, you'll need an API token from the **Arthur GenAI Engine**.
+
+**[→ GenAI Engine Installation Guide](https://github.com/arthur-ai/arthur-engine/tree/main/deployment/docker-compose/genai-engine)**
+
+Once the GenAI Engine is running (default: `http://localhost:3030`), you can:
+1. Navigate to `http://localhost:3030/docs` for API documentation
+2. Generate an API key from the GenAI Engine UI or API
+3. Use the key with this SDK
+
+
+### Step 2: Initialize ArthurClient
+
+The `ArthurClient` is your main entry point for both API access and automatic telemetry.
+
+#### Recommended: Use task_name (Auto-creates if needed)
 
 ```python
 import os
-from uuid import UUID
-from arthur_observability_sdk import ArthurClient, context, instrument_openai
+from arthur_observability_sdk import ArthurClient
 
-# 1. Initialize Arthur client (handles both API and telemetry)
+# Initialize with a task name - will create the task if it doesn't exist
 arthur = ArthurClient(
-    task_id=os.getenv("ARTHUR_TASK_ID"),
+    task_name="my-llm-app",  # Task name - will auto-create if needed
+    api_key=os.getenv("ARTHUR_API_KEY"),  # Your API key
+    base_url=os.getenv("ARTHUR_BASE_URL", "http://localhost:3030"),
+    service_name="my-llm-app"  # Name for your service in traces
+)
+
+# The client is now ready - task was automatically created/retrieved
+print(f"✓ Connected to Arthur with task ID: {arthur.task_id}")
+```
+
+#### Alternative: Use task_id directly
+
+If you already have a task ID, you can provide it directly:
+
+```python
+arthur = ArthurClient(
+    task_id="550e8400-e29b-41d4-a716-446655440000",  # Existing task ID
     api_key=os.getenv("ARTHUR_API_KEY"),
-    base_url=os.getenv("ARTHUR_BASE_URL", "https://app.arthur.ai"),
-    service_name="my-recommendation-service"
+    base_url=os.getenv("ARTHUR_BASE_URL", "http://localhost:3030")
+)
+```
+
+**Environment Variables**: You can also configure via environment:
+```bash
+export ARTHUR_TASK_NAME="my-llm-app"  # Recommended - auto-creates task
+# OR
+export ARTHUR_TASK_ID="your-task-id"  # If you have an existing task ID
+
+export ARTHUR_API_KEY="your-api-key"
+export ARTHUR_BASE_URL="http://localhost:3030"  # GenAI Engine URL
+```
+
+### Step 3: Instrument OpenAI
+
+Auto-instrument OpenAI to capture all LLM calls:
+
+```python
+from arthur_observability_sdk import instrument_openai
+import openai
+
+# Initialize Arthur with task name
+arthur = ArthurClient(
+    task_name="my-llm-app",
+    api_key=os.getenv("ARTHUR_API_KEY")
 )
 
-# 2. Fetch and render a prompt (automatically creates a span)
-prompt = arthur.client.prompts.render_saved_agentic_prompt(
-    task_id=UUID(os.getenv("ARTHUR_TASK_ID")),
-    prompt_name="customer_email_template",
-    prompt_version="latest",
-    variables={
-        "customer_name": "Alice",
-        "order_id": "12345"
-    }
-)
-
-print(f"Rendered prompt: {prompt}")
-
-# 3. Auto-instrument your framework (optional)
+# Instrument OpenAI - all calls are now traced
 instrument_openai()
 
-# 4. Add context for session/user tracking
-with context(session_id="session-123", user_id="user-456"):
-    # Your application code here
-    import openai
-    response = openai.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": "Hello!"}]
-    )
+# Make OpenAI calls - automatically traced to Arthur
+response = openai.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello, how are you?"}]
+)
 
-# 5. Cleanup when done
+print(response.choices[0].message.content)
+
+# Cleanup
 arthur.shutdown()
 ```
 
-## Core Concepts
+**What gets traced:**
+- Model name and parameters
+- Input messages
+- Output responses
+- Token counts and latency
+- All metadata following OpenInference conventions
 
-### ArthurClient
+### Step 4: Instrument LangChain
 
-The `ArthurClient` is the main entry point for the SDK. It provides:
-- Access to Arthur platform APIs via `arthur.client.*`
-- Automatic telemetry/tracing configuration
-- Unified credential management
-
-```python
-from arthur_observability_sdk import ArthurClient
-
-arthur = ArthurClient(
-    task_id="your-task-id",
-    api_key="your-api-key",
-    base_url="https://app.arthur.ai",  # optional
-    service_name="my-service",  # optional, auto-derived if not provided
-    enable_telemetry=True,  # optional, default True
-    use_simple_processor=False  # optional, for testing/debugging
-)
-```
-
-### API Access
-
-All Arthur platform APIs are accessible through `arthur.client`:
-
-#### Prompts API
-
-```python
-from uuid import UUID
-
-# Render a prompt with variables (creates a span automatically)
-prompt = arthur.client.prompts.render_saved_agentic_prompt(
-    task_id=UUID("your-task-id"),
-    prompt_name="my_prompt",
-    prompt_version="latest",  # or version number, tag, datetime
-    variables={"var1": "value1", "var2": "value2"}
-)
-
-# Access other generated API endpoints via arthur.client.base_client
-# (All endpoints are available, more high-level wrappers coming soon)
-```
-
-The `render_saved_agentic_prompt` method automatically creates an OpenInference span with:
-- **Span name**: `"template prompt: {prompt_name}"`
-- **Input**: JSON of variables and metadata
-- **Output**: Rendered prompt messages
-- **Metadata**: `{"type": "prompt_templating", "source": "arthur"}`
-
-### Telemetry Configuration
-
-Access the telemetry handler for advanced configuration:
-
-```python
-# Check if telemetry is active
-if arthur.telemetry.is_initialized():
-    print("Telemetry is running")
-
-# Manually shutdown telemetry
-arthur.telemetry.shutdown()
-```
-
-### Context Manager
-
-Use the `context` function to add session, user, and metadata to all spans within a scope:
-
-```python
-from arthur_observability_sdk import context
-
-with context(
-    session_id="conversation-123",
-    user_id="user-456",
-    metadata={"environment": "production"},
-    tags=["important", "customer-facing"]
-):
-    # All spans created here will inherit these attributes
-    result = your_application_logic()
-```
-
-Available context attributes:
-- `session_id`: Track conversation threads
-- `user_id`: Associate actions with users
-- `metadata`: Dict of custom metadata
-- `tags`: List of tags for filtering
-- Any additional `**kwargs` are added as custom attributes
-
-## Framework Instrumentation
-
-Auto-instrument your AI/LLM frameworks to capture detailed traces:
-
-### OpenAI
-
-```python
-from arthur_observability_sdk import ArthurClient, instrument_openai
-import openai
-
-arthur = ArthurClient(...)
-instrument_openai()
-
-# All OpenAI calls are now automatically traced
-response = openai.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-```
-
-### LangChain
+Auto-instrument LangChain for agent and chain tracing:
 
 ```python
 from arthur_observability_sdk import ArthurClient, instrument_langchain
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
-arthur = ArthurClient(...)
+# Initialize Arthur with task name
+arthur = ArthurClient(
+    task_name="my-llm-app",
+    api_key=os.getenv("ARTHUR_API_KEY")
+)
+
+# Instrument LangChain
 instrument_langchain()
 
-# All LangChain operations are now automatically traced
+# Create and use LangChain components - automatically traced
 model = ChatOpenAI(model="gpt-4")
-response = model.invoke([HumanMessage(content="Hello!")])
+response = model.invoke([HumanMessage(content="What is the capital of France?")])
+
+print(f"Response: {response.content}")
+
+arthur.shutdown()
 ```
+
+**What gets traced:**
+- Chain execution steps
+- LLM calls within chains
+- Tool invocations
+- Agent reasoning steps
+- Complete execution hierarchy
+
+### Step 5: Advanced Telemetry Configuration
+
+Configure span processors, custom metadata, and resource attributes:
+
+#### Using SimpleSpanProcessor for Immediate Export
+
+Useful for debugging or testing:
+
+```python
+arthur = ArthurClient(
+    task_name="my-llm-app",
+    api_key=os.getenv("ARTHUR_API_KEY"),
+    use_simple_processor=True  # Spans export immediately, not batched
+)
+```
+
+**When to use:**
+- **SimpleSpanProcessor**: Debugging, testing, or low-throughput applications
+- **BatchSpanProcessor (default)**: Production environments with high throughput
+
+#### Adding Custom Resource Attributes
+
+Enrich traces with custom metadata about your service:
+
+```python
+arthur = ArthurClient(
+    task_name="recommendation-service",
+    api_key=os.getenv("ARTHUR_API_KEY"),
+    service_name="recommendation-service",
+    resource_attributes={
+        "environment": "production",
+        "version": "2.1.0",
+        "datacenter": "us-west-2",
+        "team": "ml-platform"
+    }
+)
+```
+
+These attributes will be attached to all spans as resource-level metadata.
+
+#### Verifying Telemetry is Active
+
+```python
+# Check if telemetry initialized correctly
+if arthur.telemetry.is_initialized():
+    print("✓ Telemetry is active and sending traces")
+else:
+    print("✗ Telemetry is not active")
+```
+
+### Step 6: Session and User Tracking
+
+Use the `context` manager to add session and user metadata:
+
+```python
+from arthur_observability_sdk import ArthurClient, context, instrument_openai
+import openai
+
+arthur = ArthurClient(
+    task_name="customer-support-bot",
+    api_key=os.getenv("ARTHUR_API_KEY")
+)
+instrument_openai()
+
+# Track a conversation session
+session_id = "conversation-abc-123"
+user_id = "user-456"
+
+with context(
+    session_id=session_id,
+    user_id=user_id,
+    metadata={"environment": "production", "experiment": "new-prompt-v2"},
+    tags=["customer-support", "priority-high"]
+):
+    # All spans in this block inherit the context
+    response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "I need help with my order"}]
+    )
+    print(response.choices[0].message.content)
+
+arthur.shutdown()
+```
+
+**Context Attributes:**
+- `session_id`: Track conversation threads across multiple interactions
+- `user_id`: Associate spans with specific users
+- `metadata`: Dictionary of custom key-value pairs
+- `tags`: List of tags for filtering in the Arthur dashboard
+- `**kwargs`: Any additional attributes you want to track
+
+**Use cases:**
+- Track multi-turn conversations
+- A/B testing with experiment metadata
+- User segmentation and analysis
+- Environment-specific tracking (dev/staging/prod)
+
+### Step 7: Fetching and Using Prompts
+
+Fetch managed prompts from Arthur and use them with automatic tracing:
+
+```python
+import os
+from uuid import UUID
+from arthur_observability_sdk import ArthurClient, context, instrument_openai
+import openai
+
+# Initialize with task name
+arthur = ArthurClient(
+    task_name="customer-support-bot",
+    api_key=os.getenv("ARTHUR_API_KEY")
+)
+instrument_openai()
+
+# Fetch a prompt from Arthur (automatically creates a span)
+# Use the task_id from the client (it was auto-resolved from task_name)
+prompt = arthur.client.prompts.render_saved_agentic_prompt(
+    task_id=UUID(arthur.task_id),
+    prompt_name="customer_email_template",
+    prompt_version="latest",  # or specific version, tag, datetime
+    variables={
+        "customer_name": "Alice",
+        "order_id": "12345",
+        "issue": "delayed shipment"
+    }
+)
+
+# Use the rendered prompt with OpenAI
+with context(session_id="support-email-001", user_id="alice@example.com"):
+    response = openai.chat.completions.create(
+        model=prompt.model_name,  # Model specified in the prompt
+        messages=prompt.messages,  # Pre-rendered messages with variables
+        temperature=prompt.temperature  # Settings from the prompt
+    )
+    print(response.choices[0].message.content)
+
+arthur.shutdown()
+```
+
+**Prompt fetching automatically:**
+- Creates an OpenInference span with type `prompt_templating`
+- Tracks input variables and rendered output
+- Records prompt name and version
+- Links to subsequent LLM calls in the trace
+
+**Benefits of managed prompts:**
+- Version control for prompts
+- A/B testing different prompt versions
+- Centralized prompt management
+- Automatic tracking of prompt changes impact
+
+## Additional Framework Support
+
+Beyond OpenAI and LangChain, the SDK supports many other LLM frameworks:
 
 ### Anthropic
 
@@ -260,10 +362,12 @@ response = model.invoke([HumanMessage(content="Hello!")])
 from arthur_observability_sdk import ArthurClient, instrument_anthropic
 import anthropic
 
-arthur = ArthurClient(...)
+arthur = ArthurClient(
+    task_name="my-llm-app",
+    api_key=os.getenv("ARTHUR_API_KEY")
+)
 instrument_anthropic()
 
-# All Anthropic calls are now automatically traced
 client = anthropic.Anthropic()
 response = client.messages.create(
     model="claude-3-sonnet-20240229",
@@ -277,46 +381,48 @@ response = client.messages.create(
 from arthur_observability_sdk import ArthurClient, instrument_llama_index
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
 
-arthur = ArthurClient(...)
+arthur = ArthurClient(
+    task_name="my-rag-app",
+    api_key=os.getenv("ARTHUR_API_KEY")
+)
 instrument_llama_index()
 
-# All LlamaIndex operations are now automatically traced
 documents = SimpleDirectoryReader("./data").load_data()
 index = VectorStoreIndex.from_documents(documents)
 query_engine = index.as_query_engine()
 response = query_engine.query("What is the meaning of life?")
 ```
 
-### Multiple Frameworks
+### Instrumenting All Frameworks
 
 ```python
 from arthur_observability_sdk import ArthurClient, instrument_all
 
-arthur = ArthurClient(...)
+arthur = ArthurClient(
+    task_name="my-multi-framework-app",
+    api_key=os.getenv("ARTHUR_API_KEY")
+)
 
-# Auto-instrument all installed frameworks at once
+# Automatically instruments all installed frameworks
 instrument_all()
 ```
 
-Or selectively:
-
-```python
-from arthur_observability_sdk import (
-    ArthurClient,
-    instrument_openai,
-    instrument_langchain,
-    instrument_anthropic
-)
-
-arthur = ArthurClient(...)
-instrument_openai()
-instrument_langchain()
-instrument_anthropic()
-```
+Available instrumentors:
+- `instrument_openai()` - OpenAI
+- `instrument_langchain()` - LangChain
+- `instrument_anthropic()` - Anthropic
+- `instrument_llama_index()` - LlamaIndex
+- `instrument_bedrock()` - AWS Bedrock
+- `instrument_vertexai()` - Google VertexAI
+- `instrument_mistralai()` - MistralAI
+- `instrument_groq()` - Groq
+- `instrument_all()` - All of the above
 
 ## Complete Examples
 
-### LangChain Agent with Session Tracking
+### Multi-Turn Conversation with LangChain
+
+Track a complete conversation session across multiple turns:
 
 ```python
 import os
@@ -324,30 +430,32 @@ from arthur_observability_sdk import ArthurClient, context, instrument_langchain
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
 
-# Initialize
+# Initialize with task name
 arthur = ArthurClient(
-    task_id=os.getenv("ARTHUR_TASK_ID"),
+    task_name="customer-support-bot",
     api_key=os.getenv("ARTHUR_API_KEY"),
-    service_name="langchain-agent"
+    service_name="customer-support-bot"
 )
-
 instrument_langchain()
 
-# Create agent
-model = ChatOpenAI(model="gpt-4")
-
-# Simulate a conversation with session tracking
+# Simulate a multi-turn conversation
 session_id = "conversation-abc-123"
 user_id = "user-456"
+model = ChatOpenAI(model="gpt-4")
 
-with context(session_id=session_id, user_id=user_id, tags=["production"]):
+with context(
+    session_id=session_id,
+    user_id=user_id,
+    metadata={"channel": "web", "department": "support"},
+    tags=["production", "customer-facing"]
+):
     # First turn
     response1 = model.invoke([
         HumanMessage(content="What's the capital of France?")
     ])
     print(f"AI: {response1.content}")
 
-    # Second turn (same session)
+    # Second turn (builds on first)
     response2 = model.invoke([
         HumanMessage(content="What's the capital of France?"),
         AIMessage(content=response1.content),
@@ -358,103 +466,122 @@ with context(session_id=session_id, user_id=user_id, tags=["production"]):
 arthur.shutdown()
 ```
 
-### Prompt Fetching + OpenAI
+### Using Context Manager for Automatic Cleanup
+
+The SDK supports Python context managers for automatic resource cleanup:
 
 ```python
-import os
-from uuid import UUID
-from arthur_observability_sdk import ArthurClient, context, instrument_openai
+from arthur_observability_sdk import ArthurClient, instrument_openai
 import openai
 
-# Initialize
-arthur = ArthurClient(
-    task_id=os.getenv("ARTHUR_TASK_ID"),
-    api_key=os.getenv("ARTHUR_API_KEY"),
-)
+# Context manager automatically calls shutdown()
+with ArthurClient(
+    task_name="my-llm-app",
+    api_key=os.getenv("ARTHUR_API_KEY")
+) as arthur:
+    instrument_openai()
 
-instrument_openai()
-
-# Fetch and render a prompt
-task_id = UUID(os.getenv("ARTHUR_TASK_ID"))
-prompt = arthur.client.prompts.render_saved_agentic_prompt(
-    task_id=task_id,
-    prompt_name="customer_greeting",
-    prompt_version="latest",
-    variables={"customer_name": "Alice", "product": "Widget Pro"}
-)
-
-# Use the rendered prompt with OpenAI
-with context(session_id="greeting-flow", user_id="alice@example.com"):
     response = openai.chat.completions.create(
-        model=prompt.model_name,
-        messages=prompt.messages
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
     )
     print(response.choices[0].message.content)
 
-arthur.shutdown()
+# arthur.shutdown() called automatically when exiting
 ```
 
-### Disabling Telemetry (API-only mode)
+### API-Only Mode (Disabling Telemetry)
+
+Use Arthur APIs without tracing:
 
 ```python
 from arthur_observability_sdk import ArthurClient
 from uuid import UUID
 
-# Initialize without telemetry
+# Disable telemetry for API-only access
 arthur = ArthurClient(
-    task_id="your-task-id",
-    api_key="your-api-key",
-    enable_telemetry=False  # No spans will be created
+    task_name="my-api-project",
+    api_key=os.getenv("ARTHUR_API_KEY"),
+    enable_telemetry=False  # No tracing
 )
 
-# API calls work normally, but no tracing occurs
+# API calls work normally without creating spans
 prompt = arthur.client.prompts.render_saved_agentic_prompt(
-    task_id=UUID("your-task-id"),
+    task_id=UUID(arthur.task_id),  # Use the auto-resolved task_id
     prompt_name="my_prompt",
     prompt_version="latest",
     variables={"key": "value"}
 )
 ```
 
-### Context Manager for Automatic Cleanup
+## Examples
 
-```python
-from arthur_observability_sdk import ArthurClient, instrument_openai
-import openai
+Check out the [`examples/`](examples/) directory for complete, runnable examples:
 
-with ArthurClient(
-    task_id="your-task-id",
-    api_key="your-api-key"
-) as arthur:
-    instrument_openai()
+### [LangChain Timezone Agent](examples/langchain-timezone-agent/)
 
-    # Your application code
-    response = openai.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": "Hello!"}]
-    )
+A comprehensive tutorial demonstrating:
+- Setting up ArthurClient with automatic task creation
+- Auto-instrumenting LangChain agents
+- Building custom tools
+- Session and user tracking with context
+- Full conversation tracing
 
-# arthur.shutdown() called automatically when exiting context
-```
+Each example includes its own README, dependencies, and configuration guide.
 
-## Environment Variables
+## Configuration Reference
 
-The SDK supports configuration via environment variables for convenience:
+### Environment Variables
+
+The SDK supports configuration via environment variables:
 
 ```bash
-export ARTHUR_TASK_ID="your-task-id"
+# Required - Choose ONE of:
+export ARTHUR_TASK_NAME="my-llm-app"  # Recommended - auto-creates task
+# OR
+export ARTHUR_TASK_ID="your-task-id"  # If you have an existing task ID
+
+# Required
 export ARTHUR_API_KEY="your-api-key"
-export ARTHUR_BASE_URL="https://app.arthur.ai"  # optional
+
+# Optional
+export ARTHUR_BASE_URL="http://localhost:3030"  # Default if not set
 ```
 
-Then initialize without parameters:
+Then initialize without explicit parameters:
 
 ```python
 from arthur_observability_sdk import ArthurClient
 
-# Credentials loaded from environment
+# Credentials loaded from environment (uses ARTHUR_TASK_NAME or ARTHUR_TASK_ID)
 arthur = ArthurClient()
+print(f"✓ Using task ID: {arthur.task_id}")
 ```
+
+### ArthurClient Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `task_name` | str | Yes* | `ARTHUR_TASK_NAME` env | Task name (recommended) - auto-creates if doesn't exist |
+| `task_id` | str | Yes* | `ARTHUR_TASK_ID` env | Task ID (alternative to task_name) |
+| `api_key` | str | Yes | `ARTHUR_API_KEY` env | Your Arthur API key |
+| `base_url` | str | No | `http://localhost:3030` | GenAI Engine URL |
+| `service_name` | str | No | Auto-derived | Name for your service in traces |
+| `enable_telemetry` | bool | No | `True` | Enable/disable OpenTelemetry tracing |
+| `use_simple_processor` | bool | No | `False` | Use SimpleSpanProcessor (immediate export) |
+| `resource_attributes` | dict | No | `{}` | Custom resource attributes for traces |
+
+*Either `task_name` (recommended) or `task_id` is required
+
+### Context Manager Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `session_id` | str | Track conversation threads |
+| `user_id` | str | Associate spans with users |
+| `metadata` | dict | Custom metadata key-value pairs |
+| `tags` | list[str] | Tags for filtering |
+| `**kwargs` | any | Additional custom attributes |
 
 ## Troubleshooting
 
@@ -493,9 +620,10 @@ arthur.telemetry.shutdown()
 ### ArthurClient
 
 **Parameters:**
-- `task_id` (str, optional): Arthur task ID. Falls back to `ARTHUR_TASK_ID` env var.
+- `task_name` (str, optional): Arthur task name (recommended). Auto-creates task if it doesn't exist. Falls back to `ARTHUR_TASK_NAME` env var. Either `task_name` or `task_id` is required.
+- `task_id` (str, optional): Arthur task ID. Falls back to `ARTHUR_TASK_ID` env var. Use if you already have a task ID.
 - `api_key` (str, optional): Arthur API key. Falls back to `ARTHUR_API_KEY` env var.
-- `base_url` (str, optional): Arthur base URL. Falls back to `ARTHUR_BASE_URL` env var. Default: `"https://app.arthur.ai"`.
+- `base_url` (str, optional): GenAI Engine base URL. Falls back to `ARTHUR_BASE_URL` env var. Default: `"http://localhost:3030"`.
 - `service_name` (str, optional): Service name for traces. Auto-derived from script name if not provided.
 - `enable_telemetry` (bool, optional): Whether to enable tracing. Default: `True`.
 - `use_simple_processor` (bool, optional): Use SimpleSpanProcessor for immediate export. Default: `False`.
@@ -576,10 +704,15 @@ For questions, issues, or feature requests:
 
 ## Changelog
 
-### v0.1.0 (Alpha)
-- Initial alpha release
+### v0.1.0 (Beta) - Current
+
+**🎉 Now available on PyPI!**
+
+- Published to PyPI as `arthur-observability-sdk`
 - Unified ArthurClient for API and telemetry
 - Prompt management API with automatic instrumentation
-- Multi-framework support for OpenAI, LangChain, Anthropic, LlamaIndex, and more
+- Multi-framework support for OpenAI, LangChain, Anthropic, LlamaIndex, AWS Bedrock, VertexAI, MistralAI, and Groq
 - Session and user tracking via context manager
 - OpenTelemetry-based tracing with OTLP export
+- Automatic task creation from task names
+- Configurable span processors (batch and simple modes)

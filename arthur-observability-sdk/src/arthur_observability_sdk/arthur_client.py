@@ -63,17 +63,19 @@ class ArthurClient:
         """
         Initialize the Arthur client with API and telemetry configuration.
 
-        You can specify either task_id or task_name. If task_name is provided,
-        the client will automatically fetch or create the task.
+        You must specify either task_id OR task_name (not both). task_name is recommended
+        as it will automatically create the task if it doesn't exist.
 
         Args:
             task_id: Arthur task ID. Falls back to ARTHUR_TASK_ID env var.
-                    If not provided, task_name must be specified.
-            task_name: Arthur task name. If provided, will automatically fetch
-                      or create a task with this name. Falls back to ARTHUR_TASK_NAME env var.
+                    Use if you already have an existing task UUID.
+                    Cannot be used together with task_name.
+            task_name: Arthur task name (recommended). Falls back to ARTHUR_TASK_NAME env var.
+                      Will automatically fetch or create a task with this name.
+                      Cannot be used together with task_id.
             api_key: Arthur API key. Falls back to ARTHUR_API_KEY env var.
-            base_url: Arthur base URL. Falls back to ARTHUR_BASE_URL env var.
-                      Defaults to "https://app.arthur.ai" if not provided.
+            base_url: GenAI Engine base URL. Falls back to ARTHUR_BASE_URL env var.
+                      Defaults to "http://localhost:3030" if not provided.
             service_name: Service name for traces. If not provided, automatically
                          derives the name from the calling script.
             enable_telemetry: Whether to enable OpenTelemetry tracing. Defaults to True.
@@ -84,22 +86,23 @@ class ArthurClient:
             **kwargs: Additional configuration options passed to HTTP client.
 
         Raises:
-            ValueError: If required parameters (task_id/task_name, api_key) are missing.
+            ValueError: If required parameters are missing (api_key, task_id/task_name).
+            ValueError: If both task_id and task_name are provided.
+
+        Example (with task_name - recommended):
+            >>> arthur = ArthurClient(
+            ...     task_name="my-timezone-agent",
+            ...     api_key="my-api-key",
+            ...     base_url="http://localhost:3030",
+            ...     service_name="my-service",
+            ...     enable_telemetry=True
+            ... )
 
         Example (with task_id):
             >>> arthur = ArthurClient(
             ...     task_id="550e8400-e29b-41d4-a716-446655440000",
             ...     api_key="my-api-key",
-            ...     base_url="https://app.arthur.ai",
-            ...     service_name="my-service",
-            ...     enable_telemetry=True
-            ... )
-
-        Example (with task_name - automatically creates/fetches task):
-            >>> arthur = ArthurClient(
-            ...     task_name="my-timezone-agent",
-            ...     api_key="my-api-key",
-            ...     base_url="https://app.arthur.ai",
+            ...     base_url="http://localhost:3030",
             ...     service_name="my-service",
             ...     enable_telemetry=True
             ... )
@@ -108,13 +111,18 @@ class ArthurClient:
         task_id = task_id or os.getenv("ARTHUR_TASK_ID")
         task_name = task_name or os.getenv("ARTHUR_TASK_NAME")
         api_key = api_key or os.getenv("ARTHUR_API_KEY")
-        base_url = base_url or os.getenv("ARTHUR_BASE_URL", "https://app.arthur.ai")
+        base_url = base_url or os.getenv("ARTHUR_BASE_URL", "http://localhost:3030")
 
-        # Validate that we have either task_id or task_name
+        # Validate that we have either task_id or task_name (but not both)
         if not task_id and not task_name:
             raise ValueError(
                 "Either task_id or task_name is required. "
                 "Provide as a parameter or set ARTHUR_TASK_ID/ARTHUR_TASK_NAME environment variable."
+            )
+        if task_id and task_name:
+            raise ValueError(
+                "Cannot provide both task_id and task_name. Please provide only one. "
+                "task_name is recommended as it will auto-create the task if it doesn't exist."
             )
         if not api_key:
             raise ValueError(
