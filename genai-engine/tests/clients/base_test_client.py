@@ -4022,6 +4022,113 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code
 
+    def create_prompt_experiment(
+        self,
+        task_id: str,
+        experiment_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new prompt experiment."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/prompt_experiments",
+            json=experiment_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_prompt_experiment(
+        self,
+        experiment_id: str,
+    ) -> tuple[int, dict]:
+        """Get prompt experiment details."""
+        resp = self.base_client.get(
+            f"/api/v1/prompt_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_prompt_experiment_test_cases(
+        self,
+        experiment_id: str,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, dict]:
+        """Get paginated list of test case results for a prompt experiment."""
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = f"/api/v1/prompt_experiments/{experiment_id}/test_cases"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_prompt_experiments(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        search: str = None,
+        dataset_id: str = None,
+    ) -> tuple[int, dict]:
+        """List prompt experiments for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if search is not None:
+            params["search"] = search
+        if dataset_id is not None:
+            params["dataset_id"] = dataset_id
+
+        url = f"/api/v1/tasks/{task_id}/prompt_experiments"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def delete_prompt_experiment(self, experiment_id: str) -> int:
+        """Delete a prompt experiment."""
+        resp = self.base_client.delete(
+            f"/api/v1/prompt_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
     def create_rag_notebook(
         self,
         task_id: str,

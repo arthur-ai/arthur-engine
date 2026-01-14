@@ -2,12 +2,12 @@ import logging
 import os
 import threading
 from itertools import repeat
-from typing import List, Tuple
 
 import torch
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import RuleResultEnum
 from langchain_core.messages.ai import AIMessage
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from more_itertools import chunked
 from opentelemetry import trace
 from pydantic import BaseModel
@@ -40,6 +40,7 @@ logger = logging.getLogger()
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
+CLAIM_CLASSIFIER_EMBEDDING_MODEL: SentenceTransformer | None
 CLAIM_CLASSIFIER_CLASSIFIER_PATH = (
     "claim_classifier/354ec0a465a14726b825b3bd5b97137b.pth"
 )
@@ -76,6 +77,9 @@ def get_claim_classifier(
     )
     classifier.load_state_dict(state_dict)
     classifier.eval()  # Set classifier to evaluation mode
+    if not sentence_transformer:
+        logger.error("Sentence transformer is not available.")
+        return None
     return Classifier(
         transformer_model=sentence_transformer,
         classifier=classifier,
@@ -113,22 +117,30 @@ class LLMClaimResult(BaseModel):
 
 
 class ReturnClaimFlags(BaseModel):
-    results: List[LLMClaimResult]
+    results: list[LLMClaimResult]
 
 
 ########################################################
 
 
 class HallucinationClaimsV2(RuleScorer):
-    def __init__(self, sentence_transformer: SentenceTransformer | None):
+    model: AzureChatOpenAI | ChatOpenAI
+
+    def __init__(self, sentence_transformer: SentenceTransformer | None) -> None:
         self.claim_classifier = get_claim_classifier(sentence_transformer)
-        self.model = get_llm_executor().get_gpt_model()
+        model = get_llm_executor().get_gpt_model()
+        if model is None:
+            raise RuntimeError(
+                "Failed to initialize LLM model for HallucinationClaimsV2. "
+                "Check your LLM configuration.",
+            )
+        self.model = model
         self.claim_parser = ClaimParser()
         self.flag_text_batch_template = get_claim_flagging_prompt()
         self.explanation_template = get_flagged_claim_explanation_prompt()
         self.structured_output_prompt = get_structured_output_prompt()
 
-    def _download_sentence_transformer(self):
+    def _download_sentence_transformer(self) -> None:
         global CLAIM_CLASSIFIER_EMBEDDING_MODEL
         if CLAIM_CLASSIFIER_EMBEDDING_MODEL is None:
             CLAIM_CLASSIFIER_EMBEDDING_MODEL = get_claim_classifier_embedding_model()
@@ -136,7 +148,7 @@ class HallucinationClaimsV2(RuleScorer):
         logger.info("Sentence transformer downloaded and classifier initialized.")
 
     @tracer.start_as_current_span("hallucination v2 score")
-    def score(self, request: ScoreRequest, claims_batch_size=3) -> RuleScore:
+    def score(self, request: ScoreRequest, claims_batch_size: int = 3) -> RuleScore:
         """runs hallucination v2 check that gives reasons for each claim being valid or not"""
 
         """
@@ -159,7 +171,6 @@ class HallucinationClaimsV2(RuleScorer):
             )
             return RuleScore(
                 result=RuleResultEnum.MODEL_NOT_AVAILABLE,
-                user_input_tokens=0,
                 prompt_tokens=0,
                 completion_tokens=0,
             )
@@ -179,7 +190,7 @@ class HallucinationClaimsV2(RuleScorer):
         Of the actual claims, evaluate them in batches for hallucinations
         """
         batch_validations_and_rule_results: list[
-            Tuple[ClaimBatchValidation, RuleResultEnum]
+            tuple[ClaimBatchValidation, RuleResultEnum]
         ] = []
         if claims:
             batched_claims = chunked(claims, claims_batch_size)
@@ -278,7 +289,7 @@ class HallucinationClaimsV2(RuleScorer):
         self,
         context: str,
         claim_batch: list[OrderedClaim],
-    ) -> Tuple[ClaimBatchValidation, RuleResultEnum]:
+    ) -> tuple[ClaimBatchValidation, RuleResultEnum]:
         if get_llm_executor().supports_structured_outputs():
             return self.validate_claim_batch_structured_output(context, claim_batch)
         else:
@@ -288,7 +299,7 @@ class HallucinationClaimsV2(RuleScorer):
         self,
         context: str,
         claim_batch: list[OrderedClaim],
-    ) -> Tuple[ClaimBatchValidation, RuleResultEnum]:
+    ) -> tuple[ClaimBatchValidation, RuleResultEnum]:
         flag_text_batch_chain = (
             self.structured_output_prompt
             | self.model.with_structured_output(ReturnClaimFlags)
@@ -311,7 +322,7 @@ class HallucinationClaimsV2(RuleScorer):
             },
         )
 
-        return_claim_flags: AIMessage
+        return_claim_flags: ReturnClaimFlags
         token_consumption: LLMTokenConsumption
         return_claim_flags, token_consumption = get_llm_executor().execute(
             call,
@@ -378,7 +389,7 @@ class HallucinationClaimsV2(RuleScorer):
         self,
         context: str,
         claim_batch: list[OrderedClaim],
-    ) -> Tuple[ClaimBatchValidation, RuleResultEnum]:
+    ) -> tuple[ClaimBatchValidation, RuleResultEnum]:
         flag_text_batch_chain = self.flag_text_batch_template | self.model
 
         text_value = [claim.text for claim in claim_batch]
@@ -408,7 +419,10 @@ class HallucinationClaimsV2(RuleScorer):
         net_token_consumption.add(token_consumption)
 
         # remove anything that might come after a newline
-        output_content = output.content.split("\n")[0]
+        if isinstance(output.content, str):
+            output_content = output.content.split("\n")[0]
+        else:
+            output_content = "".join([str(x) for x in output.content]).split("\n")[0]
 
         # get the list of labels
         if "," not in output_content:
@@ -505,12 +519,16 @@ class HallucinationClaimsV2(RuleScorer):
 
         # in the call to the explainer, we gave the option to undo the flagging
         hallucination = True
+        if isinstance(reason.content, str):
+            reason_content = reason.content
+        else:
+            reason_content = "".join([str(x) for x in reason.content])
         if not any(
-            x in reason.content.lower()
+            x in reason_content.lower()
             for x in constants.HALLUCINATION_EXPLANATION_TRUE_POSITIVE_SIGNALS
         ):
             if any(
-                y in reason.content.lower()
+                y in reason_content.lower()
                 for y in constants.HALLUCINATION_EXPLANATION_FALSE_POSITIVE_SIGNALS
             ):
                 hallucination = False
@@ -520,6 +538,6 @@ class HallucinationClaimsV2(RuleScorer):
             claim=labelled_claim.claim,
             order_number=labelled_claim.order_number,
             hallucination=hallucination,
-            reason=evaluated_reason if not hallucination else reason.content,
+            reason=evaluated_reason if not hallucination else reason_content,
             token_consumption=explanation_tokens,
         )

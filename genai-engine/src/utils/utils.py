@@ -19,7 +19,7 @@ from fastapi import HTTPException, Query
 from langchain_community.callbacks import OpenAICallbackHandler
 from opentelemetry import context as otel_context
 from opentelemetry import trace
-from opentelemetry.sdk.trace import Tracer
+from opentelemetry.trace import Tracer
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
