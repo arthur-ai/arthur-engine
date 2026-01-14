@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { Box, Button, ButtonGroup, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
+import { Box, Button, ButtonGroup, Chip, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
 import { Link } from "react-router-dom";
 
@@ -15,13 +16,14 @@ import { formatDate } from "@/utils/formatters";
 type Props = {
   notebook: AgenticNotebookDetail;
   onLoadConfig: () => void;
+  onSave: () => void;
   isSaving: boolean;
 };
 
 export const Header = withForm({
   ...agentNotebookStateFormOpts,
   props: {} as Props,
-  render: function Render({ form, notebook, onLoadConfig, isSaving }) {
+  render: function Render({ form, notebook, onLoadConfig, onSave, isSaving }) {
     const edited = useMetaStore((state) => state.edited);
 
     return (
@@ -49,10 +51,10 @@ export const Header = withForm({
               Back to Notebooks
             </Button>
             <Stack mb={1}>
-              <Typography variant="h5" color="text.primary" fontWeight="bold">
-                {notebook.name}
-              </Typography>
               <Stack direction="row" alignItems="center" gap={1}>
+                <Typography variant="h5" color="text.primary" fontWeight="bold">
+                  {notebook.name}
+                </Typography>
                 {edited && (
                   <Chip
                     label={
@@ -65,10 +67,11 @@ export const Header = withForm({
                     size="small"
                   />
                 )}
-                <Typography variant="body2" color="text.secondary">
-                  {notebook.description}
-                </Typography>
               </Stack>
+
+              <Typography variant="body2" color="text.secondary">
+                {notebook.description}
+              </Typography>
               <Stack direction="row" gap={2}>
                 <Typography variant="body2" color="text.secondary">
                   <span className="font-bold">Created:</span> {formatDate(notebook?.created_at)}
@@ -86,12 +89,29 @@ export const Header = withForm({
             </Stack>
           </Stack>
 
-          <ButtonGroup size="small" disabled={isSaving}>
-            <SubmitButton form={form} />
-            <Button onClick={onLoadConfig} startIcon={<FileDownloadIcon />}>
-              Load Config
-            </Button>
-          </ButtonGroup>
+          <Stack direction="row" gap={1} alignItems="center">
+            <Tooltip title={edited ? "Save unsaved changes" : "No unsaved changes"}>
+              <span>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disableElevation
+                  onClick={onSave}
+                  disabled={isSaving || !edited}
+                  startIcon={<SaveIcon />}
+                  loading={isSaving}
+                >
+                  Save State
+                </Button>
+              </span>
+            </Tooltip>
+            <ButtonGroup size="small" disabled={isSaving}>
+              <SubmitButton form={form} />
+              <Button onClick={onLoadConfig} startIcon={<FileDownloadIcon />}>
+                Load Config
+              </Button>
+            </ButtonGroup>
+          </Stack>
         </Stack>
       </Box>
     );

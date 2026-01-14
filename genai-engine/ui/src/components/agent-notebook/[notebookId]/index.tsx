@@ -18,6 +18,7 @@ import { mapFormToCreateAgenticExperimentRequest, mapTemplateToForm } from "./ut
 import { BodyMapper } from "@/components/agent-experiments/new/components/body-mapper";
 import { DatasetSetup } from "@/components/agent-experiments/new/components/dataset";
 import { EndpointSetup } from "@/components/agent-experiments/new/components/endpoint";
+import { EvaluatorMapper } from "@/components/agent-experiments/new/components/evaluator-mapper";
 import { EvaluatorsSelector } from "@/components/agent-experiments/new/components/evaluator-selector";
 import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
 import { getContentHeight } from "@/constants/layout";
@@ -46,7 +47,7 @@ export const AgentNotebookDetail = () => {
 const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
   const [showExperimentConfigSelector, setShowExperimentConfigSelector] = useState(false);
 
-  const { cancel, save, isSaving } = useAutosaveAgenticNotebook(notebook.id);
+  const { cancel, save, forceSave, isSaving } = useAutosaveAgenticNotebook(notebook.id);
   const { execute } = useExecuteAgenticNotebook(notebook.id);
 
   const baseline = useMetaStore((state) => state.baselineHash);
@@ -93,7 +94,7 @@ const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
         }}
         sx={{ height: getContentHeight() }}
       >
-        <Header form={form} notebook={notebook} onLoadConfig={() => setShowExperimentConfigSelector(true)} isSaving={isSaving} />
+        <Header form={form} notebook={notebook} onLoadConfig={() => setShowExperimentConfigSelector(true)} onSave={forceSave} isSaving={isSaving} />
         <div className="flex flex-1 overflow-hidden">
           <Stack p={2} gap={2} className="flex-1 overflow-auto">
             <EndpointSetup
@@ -117,6 +118,8 @@ const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
                 datasetRef: "datasetRef",
               }}
             />
+
+            <EvaluatorMapper form={form} fields={{ datasetRef: "datasetRef", evals: "evals" }} />
 
             <BodyVariableExtractor form={form} />
           </Stack>
