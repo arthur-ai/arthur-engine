@@ -1,23 +1,13 @@
-import { Tabs as BaseTabs } from "@base-ui-components/react/tabs";
+import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 
 import { cn } from "@/utils/cn";
 
 const Root = ({ className, ...props }: BaseTabs.Root.Props) => {
-  return (
-    <BaseTabs.Root
-      {...props}
-      className={cn("bg-gray-50 rounded-xs", className)}
-    />
-  );
+  return <BaseTabs.Root {...props} className={cn("bg-gray-50 rounded-xs", className)} />;
 };
 
 const List = ({ className, ...props }: BaseTabs.List.Props) => {
-  return (
-    <BaseTabs.List
-      {...props}
-      className={cn("relative z-0 flex gap-2 p-1 w-fit rounded-xs", className)}
-    />
-  );
+  return <BaseTabs.List {...props} className={cn("relative z-0 flex gap-2 p-1 w-fit rounded-xs", className)} />;
 };
 
 const Tab = ({ className, ...props }: BaseTabs.Tab.Props) => {

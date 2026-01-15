@@ -3,18 +3,19 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { z } from "zod";
 
-import { newAgentExperimentFormOpts } from "../form";
+import { NewAgentExperimentFormData } from "../form";
 
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { jsonString } from "@/utils/zod";
 
-export const EndpointSetup = withForm({
-  ...newAgentExperimentFormOpts,
-  render: function Render({ form }) {
+export const EndpointSetup = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "endpoint">,
+  render: function Render({ group }) {
     return (
       <Stack gap={2}>
         <Stack gap={2}>
-          <form.AppField
+          <group.AppField
             name="endpoint.name"
             validators={{
               onChange: z.string().min(1, "Name is required"),
@@ -31,8 +32,8 @@ export const EndpointSetup = withForm({
                 helperText={field.state.meta.errors[0]?.message}
               />
             )}
-          </form.AppField>
-          <form.AppField
+          </group.AppField>
+          <group.AppField
             name="endpoint.url"
             validators={{
               onChange: z.url("Invalid URL").min(1, "URL is required"),
@@ -49,9 +50,9 @@ export const EndpointSetup = withForm({
                 helperText={field.state.meta.errors[0]?.message}
               />
             )}
-          </form.AppField>
+          </group.AppField>
         </Stack>
-        <form.AppField name="endpoint.headers" mode="array">
+        <group.AppField name="endpoint.headers" mode="array">
           {(field) => (
             <Stack component={Paper} variant="outlined" p={2}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -78,8 +79,8 @@ export const EndpointSetup = withForm({
               <Stack gap={1}>
                 {field.state.value.length > 0 ? (
                   field.state.value.map((header, index) => (
-                    <Stack direction="row" gap={1} alignItems="center">
-                      <form.AppField
+                    <Stack key={index} direction="row" gap={1} alignItems="center">
+                      <group.AppField
                         name={`endpoint.headers[${index}].name`}
                         validators={{
                           onChange: z.string().min(1, "Header name is required"),
@@ -97,11 +98,11 @@ export const EndpointSetup = withForm({
                             fullWidth
                           />
                         )}
-                      </form.AppField>
+                      </group.AppField>
                       <Typography variant="body2" color="text.secondary" mb={3}>
                         :
                       </Typography>
-                      <form.AppField
+                      <group.AppField
                         name={`endpoint.headers[${index}].value`}
                         validators={{
                           onChange: z.string().min(1, "Header value is required"),
@@ -119,7 +120,7 @@ export const EndpointSetup = withForm({
                             fullWidth
                           />
                         )}
-                      </form.AppField>
+                      </group.AppField>
                       <IconButton color="error" onClick={() => field.removeValue(index)} sx={{ mb: 3 }}>
                         <DeleteIcon />
                       </IconButton>
@@ -135,34 +136,45 @@ export const EndpointSetup = withForm({
               </Stack>
             </Stack>
           )}
-        </form.AppField>
-        <form.AppField
+        </group.AppField>
+        <group.AppField
           name="endpoint.body"
           validators={{
-            onChange: z.string(),
+            onChange: jsonString,
           }}
         >
-          {(field) => (
-            <Stack component={Paper} variant="outlined" p={2}>
-              <Stack>
-                <Typography variant="body2" fontWeight="bold">
-                  Request Body (JSON)
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Define the JSON payload. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> placeholders
-                  for dataset values.
-                </Typography>
+          {(field) => {
+            const hasErrors = field.state.meta.errors.length > 0;
+            const error = field.state.meta.errors[0]?.message;
+
+            return (
+              <Stack component={Paper} variant="outlined" p={2} sx={{ borderColor: hasErrors ? "error.main" : "divider" }}>
+                <Stack>
+                  <Typography variant="body2" fontWeight="bold">
+                    Request Body (JSON)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Define the JSON payload. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> placeholders
+                    for dataset values.
+                  </Typography>
+                </Stack>
+                <Divider sx={{ my: 2 }} />
+                <NunjucksHighlightedTextField
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Enter request body..."
+                  size="small"
+                  hideTokens={hasErrors}
+                />
+                {hasErrors && (
+                  <Typography variant="caption" color="error" mt={1}>
+                    {error}
+                  </Typography>
+                )}
               </Stack>
-              <Divider sx={{ my: 2 }} />
-              <NunjucksHighlightedTextField
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="Enter request body..."
-                size="small"
-              />
-            </Stack>
-          )}
-        </form.AppField>
+            );
+          }}
+        </group.AppField>
       </Stack>
     );
   },

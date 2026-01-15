@@ -2,20 +2,20 @@ import { Autocomplete, Divider, Paper, Stack, TextField, ToggleButton, ToggleBut
 import { useStore } from "@tanstack/react-form";
 import { z } from "zod";
 
-import { newAgentExperimentFormOpts } from "../form";
+import { NewAgentExperimentFormData } from "../form";
 
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { TraceTransformResponse } from "@/lib/api-client/api-client";
 
-export const EvaluatorMapper = withForm({
-  ...newAgentExperimentFormOpts,
-  render: function Render({ form }) {
+export const EvaluatorMapper = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "evals" | "datasetRef">,
+  render: function Render({ group }) {
     const { data: transforms } = useTransforms();
 
-    const ready = useStore(form.store, (state) => state.values.datasetRef.version && state.values.evals.length > 0);
+    const ready = useStore(group.store, (state) => state.values.datasetRef.version && state.values.evals.length > 0);
 
     return (
       <Stack component={Paper} variant="outlined" p={2} sx={{ opacity: ready ? 1 : 0.5, pointerEvents: ready ? "auto" : "none" }}>
@@ -29,7 +29,7 @@ export const EvaluatorMapper = withForm({
         </Stack>
         <Divider sx={{ my: 2 }} />
         {ready ? (
-          <form.AppField name="evals" mode="array">
+          <group.AppField name="evals" mode="array">
             {(field) => (
               <Stack gap={2}>
                 {field.state.value.map((evaluator, eIndex) => (
@@ -45,7 +45,7 @@ export const EvaluatorMapper = withForm({
                     <Typography variant="body2" color="text.primary" fontWeight="bold">
                       {evaluator.name} v{evaluator.version}
                     </Typography>
-                    <form.AppField name={`evals[${eIndex}].transform_id`}>
+                    <group.AppField name={`evals[${eIndex}].transform_id`}>
                       {(field) => {
                         const selected = transforms?.find((t) => t.id === field.state.value) ?? null;
                         return (
@@ -61,13 +61,20 @@ export const EvaluatorMapper = withForm({
                           />
                         );
                       }}
-                    </form.AppField>
-                    <EvalItem form={form} evalIndex={eIndex} />
+                    </group.AppField>
+                    <EvalItem
+                      form={group}
+                      fields={{
+                        datasetRef: "datasetRef",
+                        evals: "evals",
+                      }}
+                      evalIndex={eIndex}
+                    />
                   </Stack>
                 ))}
               </Stack>
             )}
-          </form.AppField>
+          </group.AppField>
         ) : (
           <Typography variant="body2" color="text.secondary">
             No evaluators or no dataset version selected
@@ -78,13 +85,13 @@ export const EvaluatorMapper = withForm({
   },
 });
 
-const EvalItem = withForm({
-  ...newAgentExperimentFormOpts,
+const EvalItem = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "evals" | "datasetRef">,
   props: {} as {
     evalIndex: number;
   },
-  render: function Render({ form, evalIndex }) {
-    const transformId = useStore(form.store, (state) => state.values.evals[evalIndex].transform_id);
+  render: function Render({ group, evalIndex }) {
+    const transformId = useStore(group.store, (state) => state.values.evals[evalIndex].transform_id);
 
     const { data: transform } = useTransform(transformId);
 
@@ -92,7 +99,7 @@ const EvalItem = withForm({
 
     return (
       <Stack gap={2}>
-        <form.AppField name={`evals[${evalIndex}].variable_mapping`} mode="array">
+        <group.AppField name={`evals[${evalIndex}].variable_mapping`} mode="array">
           {(field) => (
             <Stack gap={3}>
               {field.state.value.map((mapping, mIndex) => {
@@ -103,14 +110,18 @@ const EvalItem = withForm({
                       <Typography variant="body2" color="text.primary">
                         {mapping.variable_name}
                       </Typography>
-                      <form.AppField
+                      <group.AppField
                         name={`${key}.source.type`}
                         listeners={{
                           onChange: ({ value }) => {
+                            group.deleteField(`${key}.source`);
                             if (value === "dataset_column") {
-                              form.setFieldValue(`${key}.source`, { type: "dataset_column", dataset_column: { name: "" } });
+                              group.setFieldValue(`${key}.source`, {
+                                type: "dataset_column",
+                                dataset_column: { name: "" },
+                              });
                             } else {
-                              form.setFieldValue(`${key}.source`, {
+                              group.setFieldValue(`${key}.source`, {
                                 type: "experiment_output",
                                 experiment_output: { transform_variable_name: "" },
                               });
@@ -133,36 +144,51 @@ const EvalItem = withForm({
                             </ToggleButtonGroup>
                           </>
                         )}
-                      </form.AppField>
+                      </group.AppField>
                     </Stack>
-                    <form.AppField name={`${key}.source`}>
-                      {(field) => {
-                        if (field.state.value.type === "dataset_column") {
-                          return <EvaluatorDatasetColumnSelector form={form} evalIndex={evalIndex} mappingIndex={mIndex} />;
+                    <group.Subscribe selector={(state) => state.values.evals[evalIndex].variable_mapping[mIndex].source.type}>
+                      {(type) => {
+                        if (type === "dataset_column") {
+                          return (
+                            <EvaluatorDatasetColumnSelector
+                              form={group}
+                              fields={{ datasetRef: "datasetRef", evals: "evals" }}
+                              evalIndex={evalIndex}
+                              mappingIndex={mIndex}
+                            />
+                          );
                         }
 
-                        return <EvaluatorExperimentOutputSelector form={form} evalIndex={evalIndex} mappingIndex={mIndex} transform={transform} />;
+                        return (
+                          <EvaluatorExperimentOutputSelector
+                            form={group}
+                            fields={{ evals: "evals" }}
+                            evalIndex={evalIndex}
+                            mappingIndex={mIndex}
+                            transform={transform}
+                          />
+                        );
                       }}
-                    </form.AppField>
+                    </group.Subscribe>
                   </Stack>
                 );
               })}
             </Stack>
           )}
-        </form.AppField>
+        </group.AppField>
       </Stack>
     );
   },
 });
 
-const EvaluatorDatasetColumnSelector = withForm({
-  ...newAgentExperimentFormOpts,
+const EvaluatorDatasetColumnSelector = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "datasetRef" | "evals">,
   props: {} as {
     evalIndex: number;
     mappingIndex: number;
   },
-  render: function Render({ form, evalIndex, mappingIndex }) {
-    const datasetRef = useStore(form.store, (state) => state.values.datasetRef);
+  render: function Render({ group, evalIndex, mappingIndex }) {
+    const datasetRef = useStore(group.store, (state) => state.values.datasetRef);
 
     const { version } = useDatasetVersionData(datasetRef.id ?? undefined, datasetRef.version ?? undefined);
 
@@ -171,15 +197,14 @@ const EvaluatorDatasetColumnSelector = withForm({
     if (!version) return null;
 
     return (
-      <form.AppField
-        name={`${key}.source.dataset_column`}
-        defaultValue={{ name: "" }}
+      <group.AppField
+        name={`${key}.source.dataset_column.name`}
         validators={{
-          onChange: z.object({ name: z.string().min(1, "Dataset column is required") }),
+          onChange: z.string().min(1, "Dataset column is required"),
         }}
       >
         {(field) => {
-          const selected = version.column_names.find((c) => c === field.state.value.name) ?? null;
+          const selected = version.column_names.find((c) => c === field.state.value) ?? null;
           return (
             <Autocomplete
               size="small"
@@ -187,7 +212,7 @@ const EvaluatorDatasetColumnSelector = withForm({
               getOptionLabel={(option) => option}
               value={selected}
               onChange={(_, value) => {
-                field.handleChange({ name: value ?? "" });
+                field.handleChange(value ?? "");
               }}
               renderInput={(params) => (
                 <TextField
@@ -200,25 +225,30 @@ const EvaluatorDatasetColumnSelector = withForm({
             />
           );
         }}
-      </form.AppField>
+      </group.AppField>
     );
   },
 });
 
-const EvaluatorExperimentOutputSelector = withForm({
-  ...newAgentExperimentFormOpts,
+const EvaluatorExperimentOutputSelector = withFieldGroup({
+  defaultValues: {} as Pick<NewAgentExperimentFormData, "evals">,
   props: {} as {
     evalIndex: number;
     mappingIndex: number;
     transform: TraceTransformResponse;
   },
-  render: function Render({ form, evalIndex, mappingIndex, transform }) {
+  render: function Render({ group, evalIndex, mappingIndex, transform }) {
     const key = `evals[${evalIndex}].variable_mapping[${mappingIndex}]` as const;
 
     const variables = transform.definition.variables;
 
     return (
-      <form.AppField name={`${key}.source.experiment_output.transform_variable_name`}>
+      <group.AppField
+        name={`${key}.source.experiment_output.transform_variable_name`}
+        validators={{
+          onChange: z.string().min(1, "Transform variable is required"),
+        }}
+      >
         {(field) => {
           const selected = variables.find((v) => v.variable_name === field.state.value) ?? null;
           return (
@@ -230,11 +260,18 @@ const EvaluatorExperimentOutputSelector = withForm({
               onChange={(_, value) => {
                 field.handleChange(value?.variable_name ?? "");
               }}
-              renderInput={(params) => <TextField {...params} label="Transform Variable" />}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Transform Variable"
+                  error={field.state.meta.errors.length > 0}
+                  helperText={field.state.meta.errors[0]?.message}
+                />
+              )}
             />
           );
         }}
-      </form.AppField>
+      </group.AppField>
     );
   },
 });

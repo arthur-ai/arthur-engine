@@ -1,16 +1,18 @@
-import { useMutation } from "@tanstack/react-query";
-import { useSnackbar } from "notistack";
-import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { CreateAgenticExperimentRequest } from "@/lib/api-client/api-client";
+import { AgenticExperimentSummary, CreateAgenticExperimentRequest } from "@/lib/api-client/api-client";
+import { queryKeys } from "@/lib/queryKeys";
 
-export const useCreateNewExperiment = () => {
+type Opts = {
+  onSuccess?: (data: AgenticExperimentSummary) => void;
+};
+
+export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
+  const queryClient = useQueryClient();
   const { task } = useTask();
   const { api } = useApi()!;
-  const { enqueueSnackbar } = useSnackbar();
-  const navigate = useNavigate();
 
   return useMutation({
     mutationFn: async (data: CreateAgenticExperimentRequest) => {
@@ -19,8 +21,8 @@ export const useCreateNewExperiment = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      enqueueSnackbar(`Experiment with id "${data.id}" created successfully!`, { variant: "success" });
-      navigate(`/tasks/${task!.id}/agent-experiments/${data.id}`, { replace: true });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agentExperiments.all(task!.id) });
+      onSuccess?.(data);
     },
   });
 };

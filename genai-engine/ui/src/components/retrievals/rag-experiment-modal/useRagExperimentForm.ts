@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { z } from "zod";
 
 import type { RagPanel } from "../ragPanelsReducer";
+import { buildApiSearchSettingsWithKind } from "../utils/ragSettingsUtils";
 
 import type { RagConfigSelection, EvaluatorSelection, FormValues, EvalVariableMappings } from "./types";
 
@@ -19,9 +20,6 @@ import type {
   DatasetColumnVariableSource,
   EvalRefInput,
   RagSearchSettingConfigurationVersionResponse,
-  WeaviateHybridSearchSettingsConfigurationRequest,
-  WeaviateKeywordSearchSettingsConfigurationRequest,
-  WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
 } from "@/lib/api-client/api-client";
 
 const ragConfigSchema = z.object({
@@ -62,33 +60,7 @@ const INITIAL_FORM_VALUES: FormValues = {
 };
 
 function buildUnsavedSettings(panel: RagPanel): UnsavedRagConfig["settings"] {
-  const baseSettings = {
-    collection_name: panel.collection?.identifier || "",
-    limit: panel.settings.limit,
-    include_vector: panel.settings.includeVector,
-    return_properties: panel.settings.includeMetadata ? undefined : [],
-    return_metadata: ["distance", "certainty", "score", "explain_score"] as ("distance" | "certainty" | "score" | "explain_score")[],
-  };
-
-  if (panel.method === "nearText") {
-    return {
-      search_kind: "vector_similarity_text_search",
-      ...baseSettings,
-      certainty: 1 - panel.settings.distance,
-    } as WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
-  } else if (panel.method === "bm25") {
-    return {
-      search_kind: "keyword_search",
-      ...baseSettings,
-    } as WeaviateKeywordSearchSettingsConfigurationRequest;
-  } else {
-    return {
-      search_kind: "hybrid_search",
-      ...baseSettings,
-      alpha: panel.settings.alpha,
-      max_vector_distance: panel.settings.distance,
-    } as WeaviateHybridSearchSettingsConfigurationRequest;
-  }
+  return buildApiSearchSettingsWithKind(panel.collection?.identifier ?? "", panel.method, panel.settings);
 }
 
 export function useRagExperimentForm(taskId: string | undefined, panels: RagPanel[] = [], open: boolean) {

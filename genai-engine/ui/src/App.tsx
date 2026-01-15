@@ -10,6 +10,7 @@ import "./App.css";
 import { AgentExperiments } from "./components/agent-experiments";
 import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";
 import { NewAgentExperiment } from "./components/agent-experiments/new";
+import { AgentNotebook } from "./components/agent-notebook";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { ComingSoon } from "./components/ComingSoon";
@@ -38,6 +39,7 @@ import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
+import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 
 const TaskRedirect = () => {
   const { id } = useParams<{ id: string }>();
@@ -149,6 +151,30 @@ function App() {
                             <ProtectedRoute>
                               <TaskLayout>
                                 <AgentExperimentDetail />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+                      </Route>
+
+                      <Route path="/tasks/:id/agentic-notebooks">
+                        <Route
+                          index
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <AgentNotebook />
+                              </TaskLayout>
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        <Route
+                          path=":notebookId"
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout>
+                                <AgentNotebookDetail />
                               </TaskLayout>
                             </ProtectedRoute>
                           }

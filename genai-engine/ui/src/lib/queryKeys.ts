@@ -66,6 +66,11 @@ export const queryKeys = {
       byId: (endpointId: string) => ["getAgentExperimentEndpointByIdApiV1AgentExperimentsEndpointsEndpointIdGet", { endpointId }] as const,
     },
   },
+  agentNotebooks: {
+    all: (taskId: string) => ["listAgenticNotebooksApiV1TasksTaskIdAgenticNotebooksGet", { taskId }] as const,
+    byId: (notebookId: string) => ["getAgenticNotebookApiV1AgenticNotebooksNotebookIdGet", { notebookId }] as const,
+    history: (notebookId: string) => ["getAgenticNotebookHistoryApiV1AgenticNotebooksNotebookIdHistoryGet", { notebookId }] as const,
+  },
   ragNotebooks: {
     // Prefix matchers for invalidation (no params = matches all queries with this method)
     listAll: () => ["listRagNotebooksApiV1TasksTaskIdRagNotebooksGet"] as const,
@@ -82,9 +87,12 @@ export const queryKeys = {
     // Prefix matchers for invalidation
     listAll: () => ["listRagExperimentsApiV1TasksTaskIdRagExperimentsGet"] as const,
     detailAll: () => ["getRagExperimentApiV1RagExperimentsExperimentIdGet"] as const,
+    testCasesAll: () => ["getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet"] as const,
     // Specific queries with params
     list: (taskId: string) => ["listRagExperimentsApiV1TasksTaskIdRagExperimentsGet", { taskId }] as const,
     detail: (experimentId: string) => ["getRagExperimentApiV1RagExperimentsExperimentIdGet", experimentId] as const,
+    testCases: (experimentId: string, page: number, pageSize: number) =>
+      ["getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet", { experimentId, page, pageSize }] as const,
   },
   ragSearchSettings: {
     load: (configId: string, versionNumber?: number) => ["loadRagConfig", configId, versionNumber] as const,

@@ -22,6 +22,7 @@ import { usePromptContext } from "../PromptsPlaygroundContext";
 
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface ResultsTableProps {
   promptId: string;
@@ -31,7 +32,6 @@ interface Message {
   role: "system" | "user" | "assistant";
   content: string;
 }
-
 
 const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
   const roleColors: Record<string, string> = {
@@ -63,9 +63,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
   if (!testCase) return null;
 
   // Get the prompt result for this specific prompt using the prompt key
-  const promptResult = promptKey
-    ? testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey)
-    : testCase.prompt_results?.[0];
+  const promptResult = promptKey ? testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey) : testCase.prompt_results?.[0];
 
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
@@ -111,10 +109,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
         }}
       >
         {/* Modal Header */}
-        <Box
-          className="flex items-center justify-between p-4 border-b"
-          sx={{ backgroundColor: "#f9fafb" }}
-        >
+        <Box className="flex items-center justify-between p-4 border-b" sx={{ backgroundColor: "#f9fafb" }}>
           <Typography variant="h6" className="font-semibold text-gray-900">
             Test Case {testCaseIndex + 1}
           </Typography>
@@ -140,9 +135,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                         (() => {
                           try {
                             const messages = JSON.parse(promptResult.rendered_prompt) as Message[];
-                            return messages.map((message, msgIndex) => (
-                              <MessageDisplay key={msgIndex} message={message} />
-                            ));
+                            return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                           } catch {
                             // If not JSON, display as plain text
                             return (
@@ -201,11 +194,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                                 </Typography>
                                 {evalResult?.score !== undefined ? (
                                   <>
-                                    <Chip
-                                      label={evalResult.score === 1 ? "Pass" : "Fail"}
-                                      size="small"
-                                      sx={getEvalChipSx(evalResult.score === 1)}
-                                    />
+                                    <Chip label={evalResult.score === 1 ? "Pass" : "Fail"} size="small" sx={getEvalChipSx(evalResult.score === 1)} />
                                   </>
                                 ) : (
                                   <Chip label="Pending" size="small" sx={getPendingChipSx()} />
@@ -291,44 +280,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
     setSelectedTestCase(null);
   };
 
-  const getStatusColor = (
-    status: TestCase["status"]
-  ): "default" | "primary" | "info" | "success" | "error" => {
-    switch (status) {
-      case "queued":
-        return "default";
-      case "running":
-        return "primary";
-      case "completed":
-        return "success";
-      case "failed":
-        return "error";
-      default:
-        return "default";
-    }
-  };
-
-  const getStatusLabel = (status: string): string => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
-  const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
-    const colorMap = {
-      default: { color: "text.secondary", borderColor: "text.secondary" },
-      primary: { color: "primary.main", borderColor: "primary.main" },
-      info: { color: "info.main", borderColor: "info.main" },
-      success: { color: "success.main", borderColor: "success.main" },
-      error: { color: "error.main", borderColor: "error.main" },
-    };
-    return {
-      backgroundColor: "transparent",
-      color: colorMap[color].color,
-      borderColor: colorMap[color].borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-    };
-  };
-
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 1 }}>
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
@@ -364,8 +315,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             {runningExperimentId
               ? "Experiment is running. Results will appear here..."
               : experimentIdToShow
-              ? "No test cases found for this experiment."
-              : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
+                ? "No test cases found for this experiment."
+                : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
           </Typography>
         </Box>
       ) : (
@@ -438,17 +389,11 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
-                    <Chip
-                      label={getStatusLabel(testCase.status)}
-                      size="small"
-                      sx={getStatusChipSx(getStatusColor(testCase.status as "completed" | "running" | "failed" | "queued"))}
-                    />
+                    <Chip label={testCase.status} size="small" sx={getStatusChipSx(testCase.status)} />
                   </TableCell>
                   {evals.map((evalRef: EvalRefOutput) => {
                     // Find the result for THIS specific prompt using the prompt key
-                    const promptResult = testCase.prompt_results?.find(
-                      (pr: PromptResult) => pr.prompt_key === promptKey
-                    );
+                    const promptResult = testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey);
                     // Compare eval version as strings since API returns them as strings
                     const evalResult = promptResult?.evals?.find(
                       (e: EvalExecution) => e.eval_name === evalRef.name && String(e.eval_version) === String(evalRef.version)
@@ -494,7 +439,13 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
         </TableContainer>
       )}
 
-      <TestCaseDetailModal testCase={selectedTestCase} testCaseIndex={selectedTestCaseIndex} open={modalOpen} onClose={handleCloseModal} promptKey={promptKey} />
+      <TestCaseDetailModal
+        testCase={selectedTestCase}
+        testCaseIndex={selectedTestCaseIndex}
+        open={modalOpen}
+        onClose={handleCloseModal}
+        promptKey={promptKey}
+      />
     </Box>
   );
 };

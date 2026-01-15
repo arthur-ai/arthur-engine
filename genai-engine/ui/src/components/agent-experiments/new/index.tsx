@@ -1,6 +1,7 @@
 import { Box, Button, CircularProgress, Divider, Stack, TextField, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { extractVariablesFromText } from "../hooks/useExtractVariables";
 
@@ -40,6 +41,8 @@ export const NewAgentExperiment = () => {
   const lastSignature = useRef<string | null>(null);
   const { data: template, isLoading: isLoadingTemplate } = useCopyFromTemplate();
 
+  const navigate = useNavigate();
+
   const { enqueueSnackbar } = useSnackbar();
   const form = useAppForm({
     defaultValues: mapTemplateToRequest(template),
@@ -76,7 +79,12 @@ export const NewAgentExperiment = () => {
     },
   });
 
-  const newExperimentMutation = useCreateNewExperiment();
+  const newExperimentMutation = useCreateNewExperiment({
+    onSuccess: (data) => {
+      enqueueSnackbar(`Experiment with id "${data.id}" created successfully!`, { variant: "success" });
+      navigate(`../${data.id}`, { replace: true });
+    },
+  });
 
   if (isLoadingTemplate) {
     return <CircularProgress className="mx-auto" />;
@@ -120,7 +128,7 @@ export const NewAgentExperiment = () => {
             Configure the API endpoint that will be called during the experiment.
           </Typography>
           <Divider sx={{ my: 2 }} />
-          <EndpointSetup form={form} />
+          <EndpointSetup form={form} fields={{ endpoint: "endpoint" }} />
         </Stack>
         <Stack>
           <Typography variant="h6" color="text.primary" fontWeight="bold">
@@ -178,11 +186,23 @@ export const ExperimentSetup = withForm({
               )}
             </form.AppField>
           </Stack>
-          <DatasetSetup form={form} />
-          <EvaluatorsSelector form={form} />
-          <BodyMapper form={form} />
+          <DatasetSetup
+            form={form}
+            fields={{
+              datasetRef: "datasetRef",
+              datasetRowFilter: "datasetRowFilter",
+            }}
+          />
+          <EvaluatorsSelector form={form} fields={{ evals: "evals" }} />
+          <BodyMapper
+            form={form}
+            fields={{
+              templateVariableMapping: "templateVariableMapping",
+              datasetRef: "datasetRef",
+            }}
+          />
           <RequestTimeMapper form={form} />
-          <EvaluatorMapper form={form} />
+          <EvaluatorMapper form={form} fields={{ evals: "evals", datasetRef: "datasetRef" }} />
         </Box>
       </Stack>
     );

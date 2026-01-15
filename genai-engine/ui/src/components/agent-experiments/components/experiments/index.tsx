@@ -28,6 +28,9 @@ export const Experiments = () => {
       elevation: 1,
       sx: {
         borderRadius: 0,
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
       },
     },
     onPaginationChange: setPagination,
@@ -43,6 +46,12 @@ export const Experiments = () => {
         cursor: "pointer",
       },
     }),
+    muiTableContainerProps: {
+      sx: {
+        flex: 1,
+      },
+    },
+    enableStickyHeader: true,
   });
 
   return <MaterialReactTable table={table} />;

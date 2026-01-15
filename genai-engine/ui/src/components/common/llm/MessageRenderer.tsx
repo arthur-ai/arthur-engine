@@ -1,4 +1,4 @@
-import { Collapsible } from "@base-ui-components/react/collapsible";
+import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, Button, ButtonGroup, Paper, Stack, Typography } from "@mui/material";
@@ -128,18 +128,10 @@ const KeyValueList = ({ data }: { data: Record<string, any> }) => (
 const ViewToggle = ({ view, setView }: { view: "formatted" | "raw"; setView: (view: "formatted" | "raw") => void }) => (
   <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
     <ButtonGroup size="small" variant="outlined">
-      <Button
-        onClick={() => setView("formatted")}
-        variant={view === "formatted" ? "contained" : "outlined"}
-        sx={{ fontSize: 10, py: 0.5, px: 1 }}
-      >
+      <Button onClick={() => setView("formatted")} variant={view === "formatted" ? "contained" : "outlined"} sx={{ fontSize: 10, py: 0.5, px: 1 }}>
         Formatted
       </Button>
-      <Button
-        onClick={() => setView("raw")}
-        variant={view === "raw" ? "contained" : "outlined"}
-        sx={{ fontSize: 10, py: 0.5, px: 1 }}
-      >
+      <Button onClick={() => setView("raw")} variant={view === "raw" ? "contained" : "outlined"} sx={{ fontSize: 10, py: 0.5, px: 1 }}>
         Raw
       </Button>
     </ButtonGroup>
@@ -221,9 +213,7 @@ const ToolContentRenderer = ({ content }: { content: string }) => {
  * Renders a single tool call with its arguments
  */
 const ToolCallItem = ({ toolCall }: { toolCall: ToolCall }) => {
-  const parsedArgs = toolCall.tool_call.function.arguments
-    ? parseJson(toolCall.tool_call.function.arguments)
-    : null;
+  const parsedArgs = toolCall.tool_call.function.arguments ? parseJson(toolCall.tool_call.function.arguments) : null;
 
   return (
     <Box>
@@ -337,11 +327,7 @@ const StringMessageContent = ({ role, content }: { role: Message["role"]; conten
 
   return (
     <ContentBox label="Content">
-      {isJson ? (
-        <Highlight code={tryFormatJson(content)} language="json" unwrapped />
-      ) : (
-        <TextMessageRenderer text={content} unwrapped />
-      )}
+      {isJson ? <Highlight code={tryFormatJson(content)} language="json" unwrapped /> : <TextMessageRenderer text={content} unwrapped />}
     </ContentBox>
   );
 };
@@ -405,10 +391,7 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
           }}
           className="group-data-panel-open:border-b group-disabled:opacity-25"
         >
-          <KeyboardArrowRightIcon
-            fontSize="small"
-            className="group-data-panel-open:rotate-90 transition-transform duration-75"
-          />
+          <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
           <Typography color="text.primary" fontWeight={600} fontSize={12}>
             {getRoleLabel(role)}
           </Typography>

@@ -2,7 +2,9 @@ import { v4 as uuidv4 } from "uuid";
 
 import type { RagPanel, RagPanelsState } from "../ragPanelsReducer";
 import { createPanel } from "../ragPanelsReducer";
-import type { SearchMethod, SearchSettings } from "../types";
+import type { SearchSettings } from "../types";
+
+import { buildApiSearchSettingsWithKind, getMethodFromApiKind } from "./ragSettingsUtils";
 
 import { DEFAULT_SEARCH_SETTINGS } from "@/constants/search";
 import type {
@@ -41,51 +43,12 @@ export interface RagExperimentConfig {
   }[];
 }
 
-const SEARCH_KIND_TO_METHOD: Record<string, SearchMethod> = {
-  vector_similarity_text_search: "nearText",
-  keyword_search: "bm25",
-  hybrid_search: "hybrid",
-};
-
-function getSearchMethodFromKind(searchKind: string): SearchMethod {
-  return SEARCH_KIND_TO_METHOD[searchKind] || "nearText";
-}
-
 function panelToRagConfig(
   panel: RagPanel,
   queryColumn: string = "query"
 ): ({ type: "saved" } & SavedRagConfigInput) | ({ type: "unsaved" } & UnsavedRagConfig) | null {
   if (panel.providerId && panel.collection) {
-    const baseSettings = {
-      collection_name: panel.collection.identifier,
-      limit: panel.settings.limit,
-      include_vector: panel.settings.includeVector,
-      return_properties: panel.settings.includeMetadata ? undefined : [],
-      return_metadata: ["distance", "certainty", "score", "explain_score"] as ("distance" | "certainty" | "score" | "explain_score")[],
-    };
-
-    let settings: UnsavedRagConfig["settings"];
-
-    if (panel.method === "nearText") {
-      settings = {
-        search_kind: "vector_similarity_text_search",
-        ...baseSettings,
-        certainty: 1 - panel.settings.distance,
-      };
-    } else if (panel.method === "bm25") {
-      settings = {
-        search_kind: "keyword_search",
-        ...baseSettings,
-      };
-    } else {
-      // hybrid
-      settings = {
-        search_kind: "hybrid_search",
-        ...baseSettings,
-        alpha: panel.settings.alpha,
-        max_vector_distance: panel.settings.distance,
-      };
-    }
+    const settings = buildApiSearchSettingsWithKind(panel.collection.identifier, panel.method, panel.settings);
 
     return {
       type: "unsaved",
@@ -156,7 +119,7 @@ async function savedConfigToPanel(config: SavedRagConfigOutput, apiClient: Api<u
     const settings = versionData.settings;
 
     const searchKind = settings?.search_kind || "vector_similarity_text_search";
-    const method = getSearchMethodFromKind(searchKind);
+    const method = getMethodFromApiKind(searchKind);
 
     const panelSettings: SearchSettings = {
       limit: settings?.limit ?? DEFAULT_SEARCH_SETTINGS.limit,
@@ -203,7 +166,7 @@ async function savedConfigToPanel(config: SavedRagConfigOutput, apiClient: Api<u
 function unsavedConfigToPanel(config: UnsavedRagConfigResponse): RagPanel {
   const settings = config.settings;
   const searchKind = settings?.search_kind || "vector_similarity_text_search";
-  const method = getSearchMethodFromKind(searchKind);
+  const method = getMethodFromApiKind(searchKind);
 
   const panelSettings: SearchSettings = {
     limit: settings?.limit ?? DEFAULT_SEARCH_SETTINGS.limit,

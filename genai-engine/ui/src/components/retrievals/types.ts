@@ -1,7 +1,10 @@
 import type {
+  WeaviateHybridSearchSettingsConfigurationRequest,
   WeaviateHybridSearchSettingsConfigurationResponse,
-  WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
+  WeaviateKeywordSearchSettingsConfigurationRequest,
   WeaviateKeywordSearchSettingsConfigurationResponse,
+  WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+  WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
 } from "@/lib/api-client/api-client";
 
 export interface SearchSettings {
@@ -14,11 +17,19 @@ export interface SearchSettings {
 
 export type SearchMethod = "nearText" | "bm25" | "hybrid";
 
-export const SEARCH_METHOD_TO_API_KIND = {
+export type ApiSearchKind = "vector_similarity_text_search" | "keyword_search" | "hybrid_search";
+
+export const SEARCH_METHOD_TO_API_KIND: Record<SearchMethod, ApiSearchKind> = {
   nearText: "vector_similarity_text_search",
   bm25: "keyword_search",
   hybrid: "hybrid_search",
-} as const satisfies Record<SearchMethod, string>;
+} as const;
+
+export const API_KIND_TO_SEARCH_METHOD: Record<ApiSearchKind, SearchMethod> = {
+  vector_similarity_text_search: "nearText",
+  keyword_search: "bm25",
+  hybrid_search: "hybrid",
+} as const;
 
 /**
  * Union type for all API search settings response types
@@ -27,6 +38,14 @@ export type ApiSearchSettings =
   | WeaviateHybridSearchSettingsConfigurationResponse
   | WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
   | WeaviateKeywordSearchSettingsConfigurationResponse;
+
+/**
+ * Union type for all API search settings request types
+ */
+export type ApiSearchSettingsRequest =
+  | WeaviateHybridSearchSettingsConfigurationRequest
+  | WeaviateKeywordSearchSettingsConfigurationRequest
+  | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
 
 /**
  * Type guard to check if settings are hybrid search settings
