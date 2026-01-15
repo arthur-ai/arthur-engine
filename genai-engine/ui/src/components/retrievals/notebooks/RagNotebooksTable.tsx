@@ -23,8 +23,8 @@ import React, { useState } from "react";
 
 import type { RagNotebooksTableProps } from "./types";
 
-import { getStatusChipSx } from "@/components/retrievals/utils/statusChipStyles";
 import type { RagNotebookSummary } from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
   notebooks,

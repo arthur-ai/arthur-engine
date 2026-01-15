@@ -1,4 +1,4 @@
-import { Collapsible } from "@base-ui-components/react/collapsible";
+import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, Chip, DialogContent, Paper, Stack, Typography } from "@mui/material";
 

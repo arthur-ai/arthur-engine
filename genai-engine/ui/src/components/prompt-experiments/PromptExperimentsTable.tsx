@@ -13,7 +13,9 @@ import {
   CircularProgress,
 } from "@mui/material";
 import React from "react";
+
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export interface SavedPromptConfig {
   type: "saved";
@@ -78,53 +80,12 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   onRowsPerPageChange,
   loading = false,
 }) => {
-
   const formatPromptName = (config: PromptConfig): string => {
     if (config.type === "saved") {
       return `${config.name} (v${config.version})`;
     } else {
       return config.auto_name || "Unsaved Prompt";
     }
-  };
-
-  const getStatusColor = (
-    status: PromptExperiment["status"]
-  ): "default" | "primary" | "info" | "success" | "error" => {
-    switch (status) {
-      case "queued":
-        return "default";
-      case "running":
-        return "primary";
-      case "evaluating":
-        return "info";
-      case "completed":
-        return "success";
-      case "failed":
-        return "error";
-      default:
-        return "default";
-    }
-  };
-
-  const getStatusLabel = (status: PromptExperiment["status"]): string => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
-  const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
-    const colorMap = {
-      default: { color: "text.secondary", borderColor: "text.secondary" },
-      primary: { color: "primary.main", borderColor: "primary.main" },
-      info: { color: "info.main", borderColor: "info.main" },
-      success: { color: "success.main", borderColor: "success.main" },
-      error: { color: "error.main", borderColor: "error.main" },
-    };
-    return {
-      backgroundColor: "transparent",
-      color: colorMap[color].color,
-      borderColor: colorMap[color].borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-    };
   };
 
   return (
@@ -188,22 +149,15 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
           </TableHead>
           <TableBody>
             {experiments.map((experiment) => (
-              <TableRow
-                key={experiment.id}
-                hover
-                onClick={() => onRowClick(experiment)}
-                sx={{ cursor: "pointer" }}
-              >
+              <TableRow key={experiment.id} hover onClick={() => onRowClick(experiment)} sx={{ cursor: "pointer" }}>
                 <TableCell component="th" scope="row">
                   <Box className="font-medium">{experiment.name}</Box>
                 </TableCell>
                 <TableCell>
-                  <Box className="text-sm text-gray-600">
-                    {experiment.description || "-"}
-                  </Box>
+                  <Box className="text-sm text-gray-600">{experiment.description || "-"}</Box>
                 </TableCell>
                 <TableCell>
-                    <Box className="flex flex-wrap gap-1">
+                  <Box className="flex flex-wrap gap-1">
                     {experiment.prompt_configs.map((config, idx) => (
                       <Chip
                         key={idx}
@@ -218,28 +172,20 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                     ))}
                   </Box>
                 </TableCell>
-                <TableCell>{experiment.dataset_name} (v{experiment.dataset_version})</TableCell>
+                <TableCell>
+                  {experiment.dataset_name} (v{experiment.dataset_version})
+                </TableCell>
                 <TableCell>{experiment.total_rows}</TableCell>
                 <TableCell>
                   <Box className="flex items-center gap-2">
-                    <Chip
-                      label={getStatusLabel(experiment.status)}
-                      size="small"
-                      sx={getStatusChipSx(getStatusColor(experiment.status))}
-                    />
-                    {(experiment.status === "running" || experiment.status === "queued") && (
-                      <CircularProgress size={16} />
-                    )}
+                    <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
+                    {(experiment.status === "running" || experiment.status === "queued") && <CircularProgress size={16} />}
                   </Box>
                 </TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
-                <TableCell>
-                  {experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}
-                </TableCell>
-                <TableCell>
-                  {experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost)) : "-"}
-                </TableCell>
+                <TableCell>{experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}</TableCell>
+                <TableCell>{experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost)) : "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

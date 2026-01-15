@@ -1,11 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
-import { TestCaseStatus } from "@/lib/api-client/api-client";
+import { pollWhileAnyInProgress, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
 import { DEFAULT_PAGINATION_PARAMS, PaginationParams } from "@/types/common";
-
-const POLL_STATUSES: Set<TestCaseStatus> = new Set(["queued", "running", "evaluating"] satisfies readonly TestCaseStatus[]);
 
 export const usePollExperiment = (experimentId?: string, pagination: PaginationParams = DEFAULT_PAGINATION_PARAMS) => {
   const { api } = useApi()!;
@@ -22,8 +20,10 @@ export const usePollExperiment = (experimentId?: string, pagination: PaginationP
       }),
     select: (data) => data.data,
     placeholderData: keepPreviousData,
-    refetchInterval: (query) => {
-      return query.state.data?.data.data.some((testCase) => POLL_STATUSES.has(testCase.status)) ? 1000 : false;
-    },
+    refetchInterval: pollWhileAnyInProgress(
+      (data) => data?.data.data,
+      (testCase) => testCase.status,
+      POLL_INTERVAL.FAST
+    ),
   });
 };

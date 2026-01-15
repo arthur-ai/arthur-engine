@@ -21,12 +21,13 @@ import {
 import React, { useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
+import { RagExperimentTestCasesTable } from "./RagExperimentTestCasesTable";
 import { formatRagConfigName, getRagConfigDisplayName } from "./utils";
 
-import { getStatusChipSx } from "@/components/retrievals/utils/statusChipStyles";
 import { getContentHeight } from "@/constants/layout";
 import { useRagExperimentWithPolling, useDeleteRagExperiment } from "@/hooks/useRagExperiments";
 import { formatUTCTimestamp, formatTimestampDuration, capitalize } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const RagExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
@@ -354,6 +355,37 @@ export const RagExperimentDetailView: React.FC = () => {
             </Box>
           </Box>
         )}
+
+        <Box className="mb-6">
+          <Box className="flex items-center gap-2 mb-4">
+            <Typography variant="h5" className="font-semibold text-gray-900">
+              Test Case Results
+            </Typography>
+            <Tooltip
+              title="This table shows individual test case results. Each row represents one test case from your dataset, showing pass/fail for each RAG configuration and evaluator combination. Click a row to see detailed results including retrieved documents and evaluation explanations."
+              arrow
+              placement="right"
+            >
+              <InfoOutlinedIcon
+                sx={{
+                  fontSize: 20,
+                  color: "text.secondary",
+                  cursor: "help",
+                }}
+              />
+            </Tooltip>
+          </Box>
+          {experimentId && (
+            <RagExperimentTestCasesTable
+              experimentId={experimentId}
+              experimentStatus={experiment.status}
+              ragConfigs={experiment.rag_configs}
+              ragEvalSummaries={experiment.summary_results.rag_eval_summaries}
+              datasetId={experiment.dataset_ref.id}
+              datasetVersion={experiment.dataset_ref.version}
+            />
+          )}
+        </Box>
       </Box>
 
       <Dialog open={isDeleteDialogOpen} onClose={handleDeleteCancel}>

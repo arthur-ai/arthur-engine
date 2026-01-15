@@ -19,8 +19,8 @@ import Typography from "@mui/material/Typography";
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getStatusChipSx } from "@/components/retrievals/utils/statusChipStyles";
 import { useRagNotebook, useRagNotebookHistoryWithPolling } from "@/hooks/useRagNotebooks";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagNotebookDetailModalProps {
   open: boolean;
