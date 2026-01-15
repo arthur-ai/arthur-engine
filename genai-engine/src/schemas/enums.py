@@ -167,12 +167,12 @@ class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GEMINI = "gemini"
+    VERTEX_AI = "vertex_ai"
 
     # not supporting for v0
     # AZURE = "azure"
     # BEDROCK = "bedrock"
     # SAGEMAKER = "sagemaker"
-    # VERTEX_AI = "vertex_ai"
     # MISTRAL = "mistral"
     # META_LLAMA = "meta_llama"
     # GROQ = "groq"

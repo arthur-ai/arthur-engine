@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import time
 from typing import Any, List, Optional, Type, Union
@@ -12,6 +13,23 @@ from pydantic import BaseModel, ConfigDict, Field
 from schemas.enums import ModelProvider
 
 logger = logging.getLogger(__name__)
+
+# LiteLLM debug logging configuration
+# Enable debug logging when LITELLM_LOG=DEBUG environment variable is set
+# This uses litellm._turn_on_debug() as recommended by LiteLLM for detailed error debugging
+if os.getenv("LITELLM_LOG") == "DEBUG":
+    try:
+        # Use the recommended method for detailed debugging
+        litellm._turn_on_debug()
+        logger.info(
+            "LiteLLM debug logging enabled via LITELLM_LOG=DEBUG (using _turn_on_debug())",
+        )
+    except (AttributeError, TypeError):
+        # Fallback to set_verbose if _turn_on_debug is not available
+        litellm.set_verbose = True
+        logger.info(
+            "LiteLLM debug logging enabled via LITELLM_LOG=DEBUG (using set_verbose=True)",
+        )
 
 
 class LLMModelResponse(BaseModel):
@@ -69,9 +87,59 @@ refresh_thread.start()
 
 
 class LLMClient:
-    def __init__(self, provider: ModelProvider, api_key: str):
+    def __init__(
+        self,
+        provider: ModelProvider,
+        api_key: str = "",
+        project_id: str | None = None,
+        region: str | None = None,
+    ):
         self.provider = provider
         self.api_key = api_key
+        self.project_id = project_id
+        self.region = region
+
+    def _get_litellm_kwargs(self, **kwargs: Any) -> dict[str, Any]:
+        """Get the appropriate kwargs for litellm based on provider type"""
+        litellm_kwargs = kwargs.copy()
+
+        if self.provider == ModelProvider.VERTEX_AI:
+            # For Vertex AI, pass vertex_project and vertex_location instead of api_key
+            if self.project_id:
+                litellm_kwargs["vertex_project"] = self.project_id
+            if self.region:
+                litellm_kwargs["vertex_location"] = self.region
+            # Don't pass api_key for Vertex AI (uses ADC)
+
+            # Enable JSON schema validation for Vertex AI when using structured outputs
+            # Vertex AI models claim to support schema validation but don't actually validate it
+            # so litellm needs to handle the validation
+            if "response_format" in kwargs:
+                litellm_kwargs["enable_json_schema_validation"] = True
+
+            # Log Vertex AI configuration for debugging (when debug is enabled)
+            if os.getenv("LITELLM_LOG") == "DEBUG":
+                logger.debug(
+                    f"Vertex AI configuration: project={self.project_id}, region={self.region}, "
+                    f"vertex_project={litellm_kwargs.get('vertex_project')}, "
+                    f"vertex_location={litellm_kwargs.get('vertex_location')}",
+                )
+        elif self.provider == ModelProvider.GEMINI:
+            # For Gemini, pass api_key - LiteLLM will use it for gemini/* models
+            # Alternatively, LiteLLM can use GEMINI_API_KEY environment variable
+            if self.api_key:
+                litellm_kwargs["api_key"] = self.api_key
+            # Log Gemini configuration for debugging
+            if os.getenv("LITELLM_LOG") == "DEBUG":
+                logger.debug(
+                    f"Gemini configuration: api_key={'***' + self.api_key[-4:] if len(self.api_key) > 4 else '***' if self.api_key else 'NOT SET'}",
+                )
+        else:
+            # For other providers (Anthropic, OpenAI), use api_key
+            if self.api_key:
+                litellm_kwargs["api_key"] = self.api_key
+
+        return litellm_kwargs
 
     def completion(
         self,
@@ -79,7 +147,8 @@ class LLMClient:
         **kwargs: Any,
     ) -> LLMModelResponse:
         # Delegate to the top-level function
-        response = litellm.completion(*args, api_key=self.api_key, **kwargs)
+        litellm_kwargs = self._get_litellm_kwargs(**kwargs)
+        response = litellm.completion(*args, **litellm_kwargs)
         cost_float = completion_cost(response)
         cost = f"{cost_float:.6f}" if cost_float is not None else None
 
@@ -103,10 +172,10 @@ class LLMClient:
         **kwargs: Any,
     ) -> ModelResponse | CustomStreamWrapper:
         # Delegate to the top-level function
+        litellm_kwargs = self._get_litellm_kwargs(**kwargs)
         response: ModelResponse | CustomStreamWrapper = await litellm.acompletion(
             *args,
-            api_key=self.api_key,
-            **kwargs,
+            **litellm_kwargs,
         )
         return response
 
@@ -118,8 +187,17 @@ class LLMClient:
         # fallback to fetching from provider's API
         # this may return models the provider supports that are not text models
         # currently, there is no way to filter
-        return litellm.get_valid_models(
-            api_key=self.api_key,
-            check_provider_endpoint=True,
-            custom_llm_provider=self.provider,
-        )
+        if self.provider == ModelProvider.VERTEX_AI:
+            # For Vertex AI, pass project and location
+            return litellm.get_valid_models(
+                check_provider_endpoint=True,
+                custom_llm_provider=self.provider,
+                vertex_project=self.project_id,
+                vertex_location=self.region,
+            )
+        else:
+            return litellm.get_valid_models(
+                api_key=self.api_key,
+                check_provider_endpoint=True,
+                custom_llm_provider=self.provider,
+            )

@@ -47,6 +47,8 @@ export const ModelProviders: React.FC = () => {
     provider: ModelProviderResponse | null;
   }>({ isOpen: false, provider: null });
   const [apiKey, setApiKey] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [region, setRegion] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -82,6 +84,7 @@ export const ModelProviders: React.FC = () => {
       anthropic: "Anthropic",
       openai: "OpenAI",
       gemini: "Google Gemini",
+      vertex_ai: "Vertex AI",
     };
     return (
       displayNames[provider] ||
@@ -179,17 +182,38 @@ export const ModelProviders: React.FC = () => {
 
   const handleEditClick = (provider: ModelProviderResponse) => {
     setEditModal({ isOpen: true, provider });
-    setApiKey(""); // Clear the API key field when opening
+    setApiKey(""); // Clear the fields when opening
+    setProjectId("");
+    setRegion("");
   };
 
   const handleEditSave = async () => {
-    if (!editModal.provider || !api || !apiKey.trim()) return;
+    if (!editModal.provider || !api) return;
+
+    const isVertexAI = editModal.provider.provider === "vertex_ai";
+
+    // Validate inputs
+    if (isVertexAI) {
+      if (!projectId.trim() || !region.trim()) return;
+    } else {
+      if (!apiKey.trim()) return;
+    }
 
     try {
       setIsSaving(true);
+
+      const requestBody = isVertexAI
+        ? {
+            project_id: projectId.trim(),
+            region: region.trim(),
+          }
+        : {
+            api_key: apiKey.trim(),
+          };
+
       await api.api.setModelProviderApiV1ModelProvidersProviderPut(
         editModal.provider.provider,
-        { api_key: apiKey.trim() }
+        requestBody
       );
 
       // Refresh the providers list
@@ -199,6 +223,8 @@ export const ModelProviders: React.FC = () => {
       // Close modal and clear form
       setEditModal({ isOpen: false, provider: null });
       setApiKey("");
+      setProjectId("");
+      setRegion("");
     } catch (err) {
       console.error("Failed to save model provider:", err);
       setError(
@@ -212,6 +238,8 @@ export const ModelProviders: React.FC = () => {
   const handleEditCancel = () => {
     setEditModal({ isOpen: false, provider: null });
     setApiKey("");
+    setProjectId("");
+    setRegion("");
   };
 
   if (isLoading) {
@@ -457,22 +485,55 @@ export const ModelProviders: React.FC = () => {
           Configure {getProviderDisplayName(editModal.provider?.provider || "")}
         </DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            id="apiKey"
-            label="API Key"
-            type="password"
-            fullWidth
-            variant="outlined"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your API key..."
-            disabled={isSaving}
-            helperText={`Your API key will be securely stored and used to authenticate with ${getProviderDisplayName(
-              editModal.provider?.provider || ""
-            )}.`}
-          />
+          {editModal.provider?.provider === "vertex_ai" ? (
+            <>
+              <TextField
+                autoFocus
+                margin="dense"
+                id="projectId"
+                label="Project ID"
+                type="text"
+                fullWidth
+                variant="outlined"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                placeholder="Enter your GCP project ID..."
+                disabled={isSaving}
+                helperText="Your GCP project ID where Vertex AI is enabled."
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                margin="dense"
+                id="region"
+                label="Region"
+                type="text"
+                fullWidth
+                variant="outlined"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                placeholder="Enter your GCP region (e.g., us-central1)..."
+                disabled={isSaving}
+                helperText="The GCP region where your Vertex AI models are located. Authentication uses Application Default Credentials (ADC)."
+              />
+            </>
+          ) : (
+            <TextField
+              autoFocus
+              margin="dense"
+              id="apiKey"
+              label="API Key"
+              type="password"
+              fullWidth
+              variant="outlined"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter your API key..."
+              disabled={isSaving}
+              helperText={`Your API key will be securely stored and used to authenticate with ${getProviderDisplayName(
+                editModal.provider?.provider || ""
+              )}.`}
+            />
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button
@@ -484,7 +545,12 @@ export const ModelProviders: React.FC = () => {
           </Button>
           <Button
             onClick={handleEditSave}
-            disabled={isSaving || !apiKey.trim()}
+            disabled={
+              isSaving ||
+              (editModal.provider?.provider === "vertex_ai"
+                ? !projectId.trim() || !region.trim()
+                : !apiKey.trim())
+            }
             variant="contained"
             startIcon={isSaving ? <CircularProgress size={16} /> : null}
           >

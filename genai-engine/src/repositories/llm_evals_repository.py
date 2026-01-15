@@ -136,9 +136,9 @@ class LLMEvalsRepository(BaseLLMRepository):
             provider=llm_eval.model_provider,
         )
 
-        # NOTE: We currently don't set litellm.enable_json_schema_validation=True, which has litellm validate schemas for models that support structured outputs
-        # Some vertex ai models return true for the function below, but don't do any schema validations: https://docs.litellm.ai/docs/completion/json_mode?#validate-json-schema
-        # If we choose to support vertex ai in the future, we should set the above flag to True to have litellm validate the schema
+        # NOTE: For Vertex AI models, we enable litellm.enable_json_schema_validation=True in LLMClient
+        # because Vertex AI models claim to support schema validation but don't actually validate it.
+        # Litellm handles the validation for us. See: https://docs.litellm.ai/docs/completion/json_mode?#validate-json-schema
         if not supports_response_schema(
             model=llm_eval.model_name,
             custom_llm_provider=llm_eval.model_provider,

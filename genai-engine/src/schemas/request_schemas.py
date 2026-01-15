@@ -178,7 +178,45 @@ class TraceTransformUpdateRequest(BaseModel):
 
 
 class PutModelProviderCredentials(BaseModel):
-    api_key: SecretStr = Field(description="The API key for the provider.")
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="The API key for the provider (required for non-Vertex AI providers).",
+    )
+    project_id: Optional[str] = Field(
+        default=None,
+        description="The GCP project ID for Vertex AI (required for Vertex AI provider).",
+    )
+    region: Optional[str] = Field(
+        default=None,
+        description="The GCP region for Vertex AI (required for Vertex AI provider).",
+    )
+
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        """Validate that the correct credentials are provided based on provider type"""
+        # This validation will be done in the route handler where we have access to the provider
+        # For now, we just ensure at least one credential type is provided
+        has_api_key = self.api_key is not None
+        has_vertex_config = self.project_id is not None and self.region is not None
+
+        if not has_api_key and not has_vertex_config:
+            raise ValueError(
+                "Either api_key (for API key providers) or both project_id and region (for Vertex AI) must be provided",
+            )
+
+        if has_api_key and has_vertex_config:
+            raise ValueError(
+                "Cannot provide both api_key and Vertex AI configuration (project_id/region). Use one or the other.",
+            )
+
+        if (self.project_id is not None and self.region is None) or (
+            self.project_id is None and self.region is not None
+        ):
+            raise ValueError(
+                "Both project_id and region must be provided together for Vertex AI configuration",
+            )
+
+        return self
 
 
 class ApiKeyRagAuthenticationConfigRequest(BaseModel):

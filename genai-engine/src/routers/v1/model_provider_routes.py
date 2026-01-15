@@ -45,9 +45,39 @@ def set_model_provider(
     """Set the configuration for a model provider"""
     try:
         repo = ModelProviderRepository(db_session)
+
+        # Validate provider-specific requirements
+        if provider == ModelProvider.VERTEX_AI:
+            if not provider_credentials.project_id or not provider_credentials.region:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id and region are required for Vertex AI provider",
+                )
+            if provider_credentials.api_key is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="api_key should not be provided for Vertex AI provider. Use project_id and region instead.",
+                )
+        else:
+            if provider_credentials.api_key is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="api_key is required for this provider",
+                )
+            if (
+                provider_credentials.project_id is not None
+                or provider_credentials.region is not None
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="project_id and region should not be provided for non-Vertex AI providers. Use api_key instead.",
+                )
+
         repo.set_model_provider_credentials(
             provider=provider,
             api_key=provider_credentials.api_key,
+            project_id=provider_credentials.project_id,
+            region=provider_credentials.region,
         )
         return Response(status_code=HTTP_201_CREATED)
     finally:
