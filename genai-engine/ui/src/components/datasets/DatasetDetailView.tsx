@@ -15,6 +15,7 @@ import { VersionDrawer } from "./VersionDrawer";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
+import { useApplyDefaultsMutation } from "@/hooks/datasets/useApplyDefaultsMutation";
 import { useDatasetLocalState } from "@/hooks/datasets/useDatasetLocalState";
 import { useDatasetModalState } from "@/hooks/datasets/useDatasetModalState";
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
@@ -23,12 +24,14 @@ import { useDatasetSearch } from "@/hooks/datasets/useDatasetSearch";
 import { useDatasetSorting } from "@/hooks/datasets/useDatasetSorting";
 import { useDatasetVersionSelection } from "@/hooks/datasets/useDatasetVersionSelection";
 import { useFillColumnMutation } from "@/hooks/datasets/useFillColumnMutation";
+import { useUpdateDatasetMutation } from "@/hooks/datasets/useUpdateDatasetMutation";
 import { useApi } from "@/hooks/useApi";
 import { useDataset } from "@/hooks/useDataset";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
+import type { ColumnDefaults } from "@/types/dataset";
 import { fetchAllDatasetRows } from "@/utils/datasetApi";
 import { exportDatasetToCSV } from "@/utils/datasetExport";
 import { convertFromApiFormat } from "@/utils/datasetRowUtils";
@@ -46,8 +49,12 @@ export const DatasetDetailView: React.FC = () => {
   const [fillingColumn, setFillingColumn] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  const { dataset, isLoading: datasetLoading, error: datasetError } = useDataset(datasetId);
+  const { dataset, isLoading: datasetLoading, error: datasetError, refetch: refetchDataset } = useDataset(datasetId);
   const { latestVersion, isLoading: latestVersionLoading } = useDatasetLatestVersion(datasetId);
+
+  const columnDefaults = useMemo<ColumnDefaults>(() => {
+    return (dataset?.metadata as { columnDefaults?: ColumnDefaults } | null)?.columnDefaults ?? {};
+  }, [dataset?.metadata]);
 
   const pagination = useDatasetPagination();
 
@@ -97,6 +104,22 @@ export const DatasetDetailView: React.FC = () => {
       showSnackbar(error.message || "Failed to fill column. Please try again.", "error");
     }
   );
+
+  const applyDefaults = useApplyDefaultsMutation(
+    datasetId,
+    versionSelection.currentVersion,
+    () => {
+      versionSelection.resetToLatest();
+      showSnackbar("Defaults applied to existing rows successfully!", "success");
+    },
+    (error) => {
+      showSnackbar(error.message || "Failed to apply defaults. Please try again.", "error");
+    }
+  );
+
+  const updateDataset = useUpdateDatasetMutation(() => {
+    refetchDataset();
+  });
 
   const isLoading = datasetLoading || latestVersionLoading;
   const hasError = datasetError || !dataset;
@@ -177,10 +200,30 @@ export const DatasetDetailView: React.FC = () => {
   );
 
   const handleConfigureColumns = useCallback(
-    (columns: string[]) => {
+    async (columns: string[], newColumnDefaults: ColumnDefaults, applyToExisting: boolean) => {
+      // Update columns in local state
       localState.setColumns(columns);
+
+      // Save column defaults to dataset metadata
+      if (dataset && datasetId) {
+        const existingMetadata = (dataset.metadata as Record<string, unknown>) ?? {};
+        await updateDataset.mutateAsync({
+          id: datasetId,
+          name: dataset.name,
+          description: dataset.description ?? undefined,
+          metadata: {
+            ...existingMetadata,
+            columnDefaults: newColumnDefaults,
+          },
+        });
+
+        // If user opted to apply defaults to existing rows
+        if (applyToExisting && totalRows > 0) {
+          applyDefaults.applyDefaults({ columnDefaults: newColumnDefaults });
+        }
+      }
     },
-    [localState]
+    [localState, dataset, datasetId, updateDataset, totalRows, applyDefaults]
   );
 
   const handleExport = useCallback(async () => {
@@ -258,8 +301,8 @@ export const DatasetDetailView: React.FC = () => {
   }, [modals.editingRow, localState.localColumns]);
 
   const addRowData = useMemo(() => {
-    return createEmptyRow(localState.localColumns);
-  }, [localState.localColumns]);
+    return createEmptyRow(localState.localColumns, columnDefaults);
+  }, [localState.localColumns, columnDefaults]);
 
   if (isLoading) {
     return <DatasetLoadingState type="full" />;
@@ -428,6 +471,8 @@ export const DatasetDetailView: React.FC = () => {
         onClose={modals.closeConfigureColumns}
         onSave={handleConfigureColumns}
         currentColumns={localState.localColumns}
+        currentColumnDefaults={columnDefaults}
+        existingRowCount={totalRows}
       />
 
       <ImportDatasetModal
