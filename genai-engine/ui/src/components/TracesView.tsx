@@ -3,7 +3,7 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import React from "react";
+import React, { Activity } from "react";
 import { useParams } from "react-router-dom";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
@@ -66,26 +66,26 @@ export const TracesView: React.FC = () => {
         )}
 
         <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {level === "trace" && (
+          <Activity mode={level === "trace" ? "visible" : "hidden"}>
             <FilterStoreProvider timeRange={timeRange}>
               <TraceLevel welcomeDismissed={welcomeDismissed} />
             </FilterStoreProvider>
-          )}
-          {level === "span" && (
+          </Activity>
+          <Activity mode={level === "span" ? "visible" : "hidden"}>
             <FilterStoreProvider timeRange={timeRange}>
               <SpanLevel welcomeDismissed={welcomeDismissed} />
             </FilterStoreProvider>
-          )}
-          {level === "session" && (
+          </Activity>
+          <Activity mode={level === "session" ? "visible" : "hidden"}>
             <FilterStoreProvider timeRange={timeRange}>
               <SessionLevel welcomeDismissed={welcomeDismissed} />
             </FilterStoreProvider>
-          )}
-          {level === "user" && (
+          </Activity>
+          <Activity mode={level === "user" ? "visible" : "hidden"}>
             <FilterStoreProvider timeRange={timeRange}>
               <UserLevel welcomeDismissed={welcomeDismissed} />
             </FilterStoreProvider>
-          )}
+          </Activity>
         </Box>
       </Box>
 
