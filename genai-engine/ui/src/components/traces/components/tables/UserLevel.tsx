@@ -1,4 +1,4 @@
-import { Alert, Box } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
@@ -70,10 +70,10 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const hasData = Boolean(data?.users?.length);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+    <Stack gap={2} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={false} dataType="users">
         {hasData && <MaterialReactTable table={table} />}
       </DataContentGate>
-    </Box>
+    </Stack>
   );
 };

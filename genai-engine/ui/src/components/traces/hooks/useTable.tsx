@@ -14,11 +14,10 @@ export const useTable = <TTable extends MRT_RowData>({ data, columns, pagination
   return useMaterialReactTable({
     data,
     columns,
-    // layoutMode: "grid",
+    layoutMode: "grid",
     enableStickyHeader: true,
     manualPagination: true,
-    // enableRowVirtualization: true,
-    // enableColumnVirtualization: true,
+    enableColumnVirtualization: true,
     state: {
       ...state,
       pagination: pagination.state,

@@ -1,4 +1,4 @@
-import { Alert, Box } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
@@ -84,7 +84,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const hasData = Boolean(data?.sessions?.length);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+    <Stack gap={2} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
         {/* Only show FiltersRow if we have sessions or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
@@ -95,6 +95,6 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
           </>
         )}
       </DataContentGate>
-    </Box>
+    </Stack>
   );
 };

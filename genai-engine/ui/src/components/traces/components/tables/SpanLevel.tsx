@@ -1,4 +1,4 @@
-import { Alert, Box } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
@@ -113,7 +113,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const hasData = Boolean(data?.spans?.length);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+    <Stack gap={2}>
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
         {/* Only show FiltersRow if we have spans or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
@@ -126,6 +126,6 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
           </>
         )}
       </DataContentGate>
-    </Box>
+    </Stack>
   );
 };
