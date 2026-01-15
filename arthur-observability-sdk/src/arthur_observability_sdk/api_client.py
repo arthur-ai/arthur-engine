@@ -6,32 +6,24 @@ OpenAPI client and adds custom instrumentation for specific endpoints.
 """
 
 import json
-from typing import Optional, Any, TYPE_CHECKING
+from typing import Optional, Any
 from uuid import UUID
 
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
-from ._generated.client import AuthenticatedClient
-from ._generated.api.prompts import (
-    render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post as render_prompt_module
-)
-from ._generated.api.tasks import (
-    search_tasks_api_v2_tasks_search_post as search_tasks_module,
-    create_task_api_v2_tasks_post as create_task_module
-)
-from ._generated.models.saved_prompt_rendering_request import SavedPromptRenderingRequest
-from ._generated.models.variable_rendering_request import VariableRenderingRequest
-from ._generated.models.variable_template_value import VariableTemplateValue
-from ._generated.models.search_tasks_request import SearchTasksRequest
-from ._generated.models.new_task_request import NewTaskRequest
-from ._generated.types import UNSET, Unset
-
-if TYPE_CHECKING:
-    from ._generated import models
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.api_client import ApiClient
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.configuration import Configuration
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.api.prompts_api import PromptsApi
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.api.tasks_api import TasksApi
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.models.saved_prompt_rendering_request import SavedPromptRenderingRequest
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.models.variable_rendering_request import VariableRenderingRequest
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.models.variable_template_value import VariableTemplateValue
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.models.search_tasks_request import SearchTasksRequest
+from arthur_observability_sdk._generated.arthur_observability_sdk._generated.models.new_task_request import NewTaskRequest
 
 
-class PromptsAPI:
+class InstrumentedPromptsAPI:
     """
     Instrumented API for prompt-related endpoints.
 
@@ -39,15 +31,15 @@ class PromptsAPI:
     span creation for specific methods like render_saved_agentic_prompt.
     """
 
-    def __init__(self, client: AuthenticatedClient, telemetry_enabled: bool = True):
+    def __init__(self, prompts_api: PromptsApi, telemetry_enabled: bool = True):
         """
-        Initialize the PromptsAPI.
+        Initialize the InstrumentedPromptsAPI.
 
         Args:
-            client: The authenticated API client.
+            prompts_api: The generated PromptsApi instance.
             telemetry_enabled: Whether telemetry/tracing is enabled.
         """
-        self._client = client
+        self._api = prompts_api
         self._telemetry_enabled = telemetry_enabled
 
     def render_saved_agentic_prompt(
@@ -73,8 +65,7 @@ class PromptsAPI:
             The rendered prompt object (AgenticPrompt).
 
         Raises:
-            httpx.HTTPStatusError: If the API returns an error status code.
-            httpx.TimeoutException: If the request times out.
+            ApiException: If the API returns an error status code.
 
         Example:
             >>> client = ArthurClient(...)
@@ -102,12 +93,11 @@ class PromptsAPI:
 
         # If telemetry is disabled, call the API directly without instrumentation
         if not self._telemetry_enabled:
-            return render_prompt_module.sync_detailed(
-                task_id=task_id,
+            return self._api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post(
+                task_id=str(task_id),
                 prompt_name=prompt_name,
                 prompt_version=prompt_version,
-                client=self._client,
-                body=body
+                saved_prompt_rendering_request=body
             )
 
         # Create span for prompt templating
@@ -140,33 +130,22 @@ class PromptsAPI:
                 span.set_attribute("arthur.task.id", str(task_id))
 
                 # Call the underlying generated API method
-                response = render_prompt_module.sync_detailed(
-                    task_id=task_id,
+                response = self._api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post(
+                    task_id=str(task_id),
                     prompt_name=prompt_name,
                     prompt_version=prompt_version,
-                    client=self._client,
-                    body=body
+                    saved_prompt_rendering_request=body
                 )
 
-                # Check if the response was successful
-                if response.status_code == 200 and response.parsed:
-                    # Set output attribute with rendered messages
-                    # Note: The response may not have a .parsed attribute if generation had warnings
-                    # In that case, we'll use the raw content
-                    try:
-                        output_data = response.content.decode('utf-8') if response.content else "{}"
-                        span.set_attribute("output", output_data)
-                    except Exception:
-                        # If we can't decode the output, skip it
-                        pass
+                # Set output attribute with rendered response
+                try:
+                    output_data = response.to_json() if hasattr(response, 'to_json') else str(response)
+                    span.set_attribute("output", output_data)
+                except Exception:
+                    # If we can't serialize the output, skip it
+                    pass
 
-                    span.set_status(Status(StatusCode.OK))
-                else:
-                    # Set error status if request failed
-                    span.set_status(
-                        Status(StatusCode.ERROR, f"HTTP {response.status_code}")
-                    )
-
+                span.set_status(Status(StatusCode.OK))
                 return response
 
             except Exception as e:
@@ -176,7 +155,7 @@ class PromptsAPI:
                 raise
 
 
-class TasksAPI:
+class InstrumentedTasksAPI:
     """
     Instrumented API for task-related endpoints.
 
@@ -184,14 +163,14 @@ class TasksAPI:
     high-level convenience methods like get_or_create_task.
     """
 
-    def __init__(self, client: AuthenticatedClient):
+    def __init__(self, tasks_api: TasksApi):
         """
-        Initialize the TasksAPI.
+        Initialize the InstrumentedTasksAPI.
 
         Args:
-            client: The authenticated API client.
+            tasks_api: The generated TasksApi instance.
         """
-        self._client = client
+        self._api = tasks_api
 
     def get_or_create_task(
         self,
@@ -214,8 +193,7 @@ class TasksAPI:
             The task ID (UUID string) of the found or newly created task.
 
         Raises:
-            httpx.HTTPStatusError: If the API returns an error status code.
-            httpx.TimeoutException: If the request times out.
+            ApiException: If the API returns an error status code.
             RuntimeError: If task creation/retrieval fails unexpectedly.
 
         Example:
@@ -232,18 +210,19 @@ class TasksAPI:
             is_agentic=is_agentic
         )
 
-        search_response = search_tasks_module.sync_detailed(
-            client=self._client,
-            body=search_request,
-            page_size=1
-        )
+        try:
+            search_response = self._api.search_tasks_api_v2_tasks_search_post(
+                search_tasks_request=search_request,
+                page_size=1
+            )
 
-        # Check if we found an existing task
-        if search_response.status_code == 200 and search_response.parsed:
-            tasks = search_response.parsed.tasks
-            if tasks and len(tasks) > 0:
+            # Check if we found an existing task
+            if search_response and hasattr(search_response, 'tasks') and search_response.tasks:
                 # Return the ID of the first matching task
-                return tasks[0].id
+                return search_response.tasks[0].id
+        except Exception:
+            # If search fails, we'll try to create instead
+            pass
 
         # No existing task found, create a new one
         create_request = NewTaskRequest(
@@ -251,18 +230,16 @@ class TasksAPI:
             is_agentic=is_agentic
         )
 
-        create_response = create_task_module.sync_detailed(
-            client=self._client,
-            body=create_request
+        create_response = self._api.create_task_api_v2_tasks_post(
+            new_task_request=create_request
         )
 
-        if create_response.status_code == 200 and create_response.parsed:
-            return create_response.parsed.id
+        if create_response and hasattr(create_response, 'id'):
+            return create_response.id
         else:
             raise RuntimeError(
                 f"Failed to create task '{task_name}'. "
-                f"Status: {create_response.status_code}, "
-                f"Response: {create_response.content}"
+                f"Response: {create_response}"
             )
 
 
@@ -288,25 +265,31 @@ class InstrumentedArthurClient:
             api_key: Arthur API key for authentication.
             base_url: Base URL for the Arthur API.
             telemetry_enabled: Whether to enable telemetry/tracing for instrumented methods.
-            **kwargs: Additional arguments passed to the underlying httpx client.
+            **kwargs: Additional arguments passed to the underlying HTTP client.
         """
-        # Initialize the generated authenticated client
-        self._base_client = AuthenticatedClient(
-            base_url=base_url,
-            token=api_key,
-            **kwargs
-        )
+        # Create configuration
+        config = Configuration(host=base_url)
+        config.access_token = api_key
+
+        # Initialize the API client
+        self._api_client = ApiClient(configuration=config)
         self._telemetry_enabled = telemetry_enabled
 
+        # Initialize generated API classes
+        self._prompts_api = PromptsApi(api_client=self._api_client)
+        self._tasks_api = TasksApi(api_client=self._api_client)
+
         # Initialize instrumented API wrappers
-        self.prompts = PromptsAPI(self._base_client, telemetry_enabled)
-        self.tasks = TasksAPI(self._base_client)
+        self.prompts = InstrumentedPromptsAPI(self._prompts_api, telemetry_enabled)
+        self.tasks = InstrumentedTasksAPI(self._tasks_api)
 
     @property
-    def base_client(self) -> AuthenticatedClient:
-        """Access the underlying generated client for direct API calls."""
-        return self._base_client
+    def api_client(self) -> ApiClient:
+        """Access the underlying generated API client for direct API calls."""
+        return self._api_client
 
     def shutdown(self) -> None:
         """Shutdown the HTTP client and clean up resources."""
-        self._base_client.get_httpx_client().close()
+        # The openapi-generator client doesn't have an explicit close method
+        # but we can access the rest client if needed
+        pass

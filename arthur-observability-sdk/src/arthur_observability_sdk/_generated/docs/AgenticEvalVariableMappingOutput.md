@@ -1,0 +1,31 @@
+# AgenticEvalVariableMappingOutput
+
+Mapping of an eval variable to its source (dataset column or experiment output).  For transform variables, use ExperimentOutputVariableSource with transform_variable_name in the experiment_output field. The transform_id comes from the associated AgenticEvalRef.
+
+## Properties
+
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**variable_name** | **str** | Name of the eval variable | 
+**source** | [**Source**](Source.md) |  | 
+
+## Example
+
+```python
+from arthur_observability_sdk._generated.models.agentic_eval_variable_mapping_output import AgenticEvalVariableMappingOutput
+
+# TODO update the JSON string below
+json = "{}"
+# create an instance of AgenticEvalVariableMappingOutput from a JSON string
+agentic_eval_variable_mapping_output_instance = AgenticEvalVariableMappingOutput.from_json(json)
+# print the JSON string representation of the object
+print(AgenticEvalVariableMappingOutput.to_json())
+
+# convert the object into a dict
+agentic_eval_variable_mapping_output_dict = agentic_eval_variable_mapping_output_instance.to_dict()
+# create an instance of AgenticEvalVariableMappingOutput from a dict
+agentic_eval_variable_mapping_output_from_dict = AgenticEvalVariableMappingOutput.from_dict(agentic_eval_variable_mapping_output_dict)
+```
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+

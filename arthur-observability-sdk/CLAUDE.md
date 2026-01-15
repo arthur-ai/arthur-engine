@@ -67,11 +67,30 @@ The SDK includes auto-generated API bindings from the GenAI Engine's OpenAPI spe
 
 **What this does:**
 - Reads `../genai-engine/staging.openapi.json`
-- Uses `openapi-python-client` to generate Python bindings
+- Uses `openapi-generator-cli` (Java-based) to generate Python bindings
 - Outputs to `src/arthur_observability_sdk/_generated/`
-- Configuration in `scripts/openapi-generator-config.yaml`
+- Runs `scripts/post_generate.py` to:
+  - Fix nested package import paths (258 files)
+  - Create necessary `__init__.py` files for proper module structure
+
+**Requirements:**
+- Node.js and npm (for `openapi-generator-cli`)
+- The generator is installed automatically if not present
+
+**Why openapi-generator instead of openapi-python-client:**
+- Handles schema names with hyphens (e.g., `OpenAIMessage-Output`) correctly
+- Successfully parses complex schemas with circular references
+- Generates all endpoints without warnings about missing schema references
+- More robust for large, complex OpenAPI specifications
 
 **When to regenerate**: After any Arthur GenAI Engine API changes.
+
+**Post-generation script** (`scripts/post_generate.py`):
+- Standalone Python script that can be run independently
+- Fixes import paths in all generated files
+- Creates the two required `__init__.py` files
+- Can be customized if additional post-processing is needed
+- Automatically called by `generate_client.sh`
 
 ## Architecture
 
@@ -108,10 +127,14 @@ The SDK includes auto-generated API bindings from the GenAI Engine's OpenAPI spe
 ### Generated Code
 
 **`_generated/` directory**
-- Auto-generated from Arthur GenAI Engine OpenAPI spec
-- Contains `Client` class and all model classes
-- **Never manually edit files in this directory**
+- Auto-generated from Arthur GenAI Engine OpenAPI spec using `openapi-generator`
+- Creates nested package structure: `_generated/arthur_observability_sdk/_generated/`
+- Contains `ApiClient`, `Configuration`, and all API/model classes
+- **Never manually edit files in this directory** except:
+  - `_generated/__init__.py` - Created manually to expose `models` and `api` modules
+  - `_generated/arthur_observability_sdk/__init__.py` - Created manually for package structure
 - Regenerate when API changes using `./scripts/generate_client.sh`
+- Script automatically fixes import paths and creates necessary init files
 
 ### Key Design Patterns
 

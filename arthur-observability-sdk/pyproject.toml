@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Official Python SDK for Arthur platform APIs and OpenInference tracing"
 authors = [{name = "Arthur", email = "engineering@arthur.ai"}]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12,<=3.13"
 license = {text = "Apache-2.0"}
 keywords = ["arthur", "observability", "tracing", "opentelemetry", "openinference", "llm", "monitoring"]
 classifiers = [
@@ -65,7 +65,7 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
-    "openapi-python-client>=0.21.0",
+    "openapi-python-client>=0.28.0",
 ]
 
 [tool.poetry]
