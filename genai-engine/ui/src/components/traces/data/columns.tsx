@@ -4,8 +4,9 @@ import { createMRTColumnHelper } from "material-react-table";
 import { CopyableChip } from "../../common";
 import { AnnotationCell } from "../components/AnnotationCell";
 import { DurationCell } from "../components/DurationCell";
+import { TraceContentCell } from "../components/TraceContentCell";
 
-import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
+import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
@@ -39,24 +40,20 @@ export const columns = [
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
-    Cell: ({ cell }) => {
-      const value = cell.getValue()?.substring(0, 100);
-
-      if (!value) return "-";
-
-      return <TruncatedText text={value} />;
-    },
+    Cell: ({ cell, row }) => (
+      <span className="w-full">
+        <TraceContentCell value={cell.getValue()} title="Trace Input Content" traceId={row.original.trace_id ?? undefined} />
+      </span>
+    ),
     size: 200,
   }),
   columnHelper.accessor("output_content", {
     header: "Output Content",
-    Cell: ({ cell }) => {
-      const value = cell.getValue()?.substring(0, 100);
-
-      if (!value) return "-";
-
-      return <TruncatedText text={value} />;
-    },
+    Cell: ({ cell, row }) => (
+      <span className="w-full">
+        <TraceContentCell value={cell.getValue()} title="Trace Output Content" traceId={row.original.trace_id ?? undefined} />
+      </span>
+    ),
     size: 200,
   }),
   columnHelper.display({

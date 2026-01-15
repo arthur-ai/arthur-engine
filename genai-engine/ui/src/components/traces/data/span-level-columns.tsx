@@ -3,10 +3,11 @@ import { Tooltip } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
 import { DurationCell } from "../components/DurationCell";
+import { TraceContentCell } from "../components/TraceContentCell";
 import { SpanStatusBadge } from "../components/span-status-badge";
 import { isValidStatusCode } from "../components/StatusCode";
 
-import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
+import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { TypeChip } from "@/components/common/span/TypeChip";
@@ -35,20 +36,30 @@ export const spanLevelColumns = [
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
-    Cell: ({ cell }) => {
-      const value = cell.getValue()?.substring(0, 100);
-      if (!value) return "-";
-      return <TruncatedText text={value} />;
-    },
+    Cell: ({ cell, row }) => (
+      <span className="w-full">
+        <TraceContentCell
+          value={cell.getValue()}
+          title="Span Input Content"
+          traceId={row.original.trace_id ?? undefined}
+          spanId={row.original.span_id ?? undefined}
+        />
+      </span>
+    ),
     size: 200,
   }),
   columnHelper.accessor("output_content", {
     header: "Output Content",
-    Cell: ({ cell }) => {
-      const value = cell.getValue()?.substring(0, 100);
-      if (!value) return "-";
-      return <TruncatedText text={value} />;
-    },
+    Cell: ({ cell, row }) => (
+      <span className="w-full">
+        <TraceContentCell
+          value={cell.getValue()}
+          title="Span Output Content"
+          traceId={row.original.trace_id ?? undefined}
+          spanId={row.original.span_id ?? undefined}
+        />
+      </span>
+    ),
     size: 200,
   }),
   columnHelper.display({
