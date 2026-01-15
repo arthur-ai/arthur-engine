@@ -1,4 +1,4 @@
-import { ScrollArea } from "@base-ui-components/react/scroll-area";
+import { ScrollArea } from "@base-ui/react/scroll-area";
 import { Close, Search } from "@mui/icons-material";
 import { Button, Chip, Paper, Stack, SxProps, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
