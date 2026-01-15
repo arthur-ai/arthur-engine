@@ -27,6 +27,7 @@ import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
 import { getContentHeight } from "@/constants/layout";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const PromptExperimentsView: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();
@@ -205,25 +206,6 @@ export const PromptExperimentsView: React.FC = () => {
   const handleSearchChange = (value: string) => {
     setSearchText(value);
     setPage(0); // Reset to first page when searching
-  };
-
-  const getStatusChipSx = (status: PromptExperiment["status"]) => {
-    const colorMap = {
-      queued: { color: "text.secondary", borderColor: "text.secondary" },
-      running: { color: "primary.main", borderColor: "primary.main" },
-      evaluating: { color: "info.main", borderColor: "info.main" },
-      completed: { color: "success.main", borderColor: "success.main" },
-      failed: { color: "error.main", borderColor: "error.main" },
-    };
-    const colors = colorMap[status] || colorMap.queued;
-    return {
-      backgroundColor: "transparent",
-      color: colors.color,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-      textTransform: "capitalize",
-    };
   };
 
   return (

@@ -2,9 +2,25 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import LaunchIcon from "@mui/icons-material/Launch";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, IconButton, Link } from "@mui/material";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import {
+  Box,
+  Typography,
+  Chip,
+  LinearProgress,
+  Card,
+  CardContent,
+  Tooltip,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  IconButton,
+  Link,
+} from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
@@ -13,10 +29,11 @@ import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
-import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
+import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface PromptVersionDetails {
   prompt_key?: string | null; // Format: "saved:name:version" or "unsaved:auto_name"
@@ -98,9 +115,7 @@ export const ExperimentDetailView: React.FC = () => {
                 }
               : null,
             eval_list: experiment.eval_list || null,
-            dataset_row_filter: experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0
-              ? experiment.dataset_row_filter
-              : null,
+            dataset_row_filter: experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 ? experiment.dataset_row_filter : null,
           },
         },
       });
@@ -111,7 +126,6 @@ export const ExperimentDetailView: React.FC = () => {
       console.error("Failed to open in notebook:", error);
     }
   };
-
 
   // Refetch data when window gains focus (but not if we're deleting)
   useEffect(() => {
@@ -149,25 +163,6 @@ export const ExperimentDetailView: React.FC = () => {
       clearInterval(intervalId);
     };
   }, [experiment?.status, refetch, isDeleting]);
-
-  const getStatusColor = (status: PromptExperimentDetail["status"]): "default" | "primary" | "info" | "success" | "error" => {
-    switch (status) {
-      case "queued":
-        return "default";
-      case "running":
-        return "primary";
-      case "completed":
-        return "success";
-      case "failed":
-        return "error";
-      default:
-        return "default";
-    }
-  };
-
-  const getStatusLabel = (status: PromptExperimentDetail["status"]): string => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
 
   const handleCreateFromExisting = () => {
     setIsModalOpen(true);
@@ -263,7 +258,7 @@ export const ExperimentDetailView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_configs: data.promptVersions.map(pv => ({
+        prompt_configs: data.promptVersions.map((pv) => ({
           type: "saved" as const,
           name: pv.promptName,
           version: pv.version,
@@ -278,23 +273,6 @@ export const ExperimentDetailView: React.FC = () => {
       console.error("Failed to create experiment:", err);
       throw err;
     }
-  };
-
-  const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
-    const colorMap = {
-      default: { color: "text.secondary", borderColor: "text.secondary" },
-      primary: { color: "primary.main", borderColor: "primary.main" },
-      info: { color: "info.main", borderColor: "info.main" },
-      success: { color: "success.main", borderColor: "success.main" },
-      error: { color: "error.main", borderColor: "error.main" },
-    };
-    return {
-      backgroundColor: "transparent",
-      color: colorMap[color].color,
-      borderColor: colorMap[color].borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-    };
   };
 
   if (isLoading) {
@@ -336,7 +314,7 @@ export const ExperimentDetailView: React.FC = () => {
               <Typography variant="h4" className="font-semibold text-gray-900">
                 {experiment.name}
               </Typography>
-              <Chip label={getStatusLabel(experiment.status)} size="small" sx={getStatusChipSx(getStatusColor(experiment.status))} />
+              <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
             </Box>
             <Box className="flex items-center gap-2">
               <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCreateFromExisting}>
@@ -369,7 +347,7 @@ export const ExperimentDetailView: React.FC = () => {
                 ) : null;
               })()}
             <Box>
-              <span className="font-medium">Prompts:</span> {experiment.prompt_configs.length} prompt{experiment.prompt_configs.length > 1 ? 's' : ''}
+              <span className="font-medium">Prompts:</span> {experiment.prompt_configs.length} prompt{experiment.prompt_configs.length > 1 ? "s" : ""}
             </Box>
             <Box>
               <span className="font-medium">Dataset:</span>{" "}
@@ -396,11 +374,7 @@ export const ExperimentDetailView: React.FC = () => {
                 <Typography variant="body2" className="font-medium text-gray-900">
                   Dataset Row Filter Applied
                 </Typography>
-                <Tooltip
-                  title="This experiment only includes dataset rows that match ALL of the following conditions."
-                  arrow
-                  placement="right"
-                >
+                <Tooltip title="This experiment only includes dataset rows that match ALL of the following conditions." arrow placement="right">
                   <InfoOutlinedIcon
                     sx={{
                       fontSize: 16,
@@ -484,9 +458,10 @@ export const ExperimentDetailView: React.FC = () => {
                   const isBestPerforming = totalPasses === maxTotalPasses;
 
                   // Get display name for prompt
-                  const promptDisplayName = (promptSummary.prompt_type === "saved" || !promptSummary.prompt_type)
-                    ? `${promptSummary.prompt_name} (v${promptSummary.prompt_version})`
-                    : promptSummary.prompt_name || "Unsaved Prompt";
+                  const promptDisplayName =
+                    promptSummary.prompt_type === "saved" || !promptSummary.prompt_type
+                      ? `${promptSummary.prompt_name} (v${promptSummary.prompt_version})`
+                      : promptSummary.prompt_name || "Unsaved Prompt";
 
                   return (
                     <Card
@@ -501,7 +476,12 @@ export const ExperimentDetailView: React.FC = () => {
                             Prompt: {promptDisplayName}
                           </Typography>
                           {promptSummary.prompt_type === "unsaved" && (
-                            <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} className="shrink-0" />
+                            <Chip
+                              label="Unsaved"
+                              size="small"
+                              sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }}
+                              className="shrink-0"
+                            />
                           )}
                           {isBestPerforming && <Chip label="Best" size="small" color="success" sx={{ fontWeight: 600 }} className="shrink-0" />}
                         </Box>
@@ -540,26 +520,28 @@ export const ExperimentDetailView: React.FC = () => {
                         </Box>
 
                         {/* Open in Notebook button in lower left corner - only for saved prompts */}
-                        {(promptSummary.prompt_type === "saved" || !promptSummary.prompt_type) && promptSummary.prompt_name && promptSummary.prompt_version && (
-                          <Button
-                            size="small"
-                            startIcon={<LaunchIcon />}
-                            onClick={(e) => handleOpenInNotebook(promptSummary.prompt_name!, promptSummary.prompt_version!, e)}
-                            sx={{
-                              position: "absolute",
-                              bottom: 8,
-                              left: 8,
-                              textTransform: 'none',
-                              fontSize: '0.75rem',
-                              color: 'text.secondary',
-                              '&:hover': {
-                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                              },
-                            }}
-                          >
-                            Open in Notebook
-                          </Button>
-                        )}
+                        {(promptSummary.prompt_type === "saved" || !promptSummary.prompt_type) &&
+                          promptSummary.prompt_name &&
+                          promptSummary.prompt_version && (
+                            <Button
+                              size="small"
+                              startIcon={<LaunchIcon />}
+                              onClick={(e) => handleOpenInNotebook(promptSummary.prompt_name!, promptSummary.prompt_version!, e)}
+                              sx={{
+                                position: "absolute",
+                                bottom: 8,
+                                left: 8,
+                                textTransform: "none",
+                                fontSize: "0.75rem",
+                                color: "text.secondary",
+                                "&:hover": {
+                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                },
+                              }}
+                            >
+                              Open in Notebook
+                            </Button>
+                          )}
 
                         {/* Expand icon in lower right corner */}
                         <Box
@@ -645,9 +627,7 @@ export const ExperimentDetailView: React.FC = () => {
       <Dialog open={isDeleteDialogOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Delete Experiment</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete the experiment "{experiment?.name}"? This action cannot be undone.
-          </DialogContentText>
+          <DialogContentText>Are you sure you want to delete the experiment "{experiment?.name}"? This action cannot be undone.</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDeleteCancel} disabled={deleteExperiment.isPending}>

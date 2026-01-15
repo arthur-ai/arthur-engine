@@ -21,6 +21,7 @@ import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useNotebook, useNotebookHistory } from "@/hooks/useNotebooks";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface NotebookDetailModalProps {
   open: boolean;
@@ -28,39 +29,11 @@ interface NotebookDetailModalProps {
   onClose: () => void;
 }
 
-const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
-  open,
-  notebookId,
-  onClose,
-}) => {
+const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, notebookId, onClose }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { notebook, isLoading, error } = useNotebook(notebookId || undefined);
-  const { experiments, isLoading: isLoadingHistory } = useNotebookHistory(
-    notebookId || undefined,
-    0,
-    10
-  );
-
-  const getStatusChipSx = (status: string) => {
-    const colorMap: Record<string, any> = {
-      queued: { color: "text.secondary", borderColor: "text.secondary" },
-      running: { color: "primary.main", borderColor: "primary.main" },
-      evaluating: { color: "info.main", borderColor: "info.main" },
-      completed: { color: "success.main", borderColor: "success.main" },
-      failed: { color: "error.main", borderColor: "error.main" },
-    };
-
-    const colors = colorMap[status] || colorMap.queued;
-    return {
-      backgroundColor: "transparent",
-      color: colors.color,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-      textTransform: "capitalize",
-    };
-  };
+  const { experiments, isLoading: isLoadingHistory } = useNotebookHistory(notebookId || undefined, 0, 10);
 
   const handleExperimentClick = (experimentId: string) => {
     navigate(`/tasks/${taskId}/prompt-experiments/${experimentId}`);
@@ -117,17 +90,13 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       Created
                     </Typography>
-                    <Typography variant="body2">
-                      {new Date(notebook.created_at).toLocaleString()}
-                    </Typography>
+                    <Typography variant="body2">{new Date(notebook.created_at).toLocaleString()}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       Updated
                     </Typography>
-                    <Typography variant="body2">
-                      {new Date(notebook.updated_at).toLocaleString()}
-                    </Typography>
+                    <Typography variant="body2">{new Date(notebook.updated_at).toLocaleString()}</Typography>
                   </Box>
                 </Box>
               </Stack>
@@ -157,11 +126,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                         {notebook.state.prompt_configs.map((config: any, idx: number) => (
                           <Chip
                             key={idx}
-                            label={
-                              config.type === "saved"
-                                ? `${config.name} (v${config.version})`
-                                : config.auto_name || "Unsaved Prompt"
-                            }
+                            label={config.type === "saved" ? `${config.name} (v${config.version})` : config.auto_name || "Unsaved Prompt"}
                             size="small"
                             sx={{
                               backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
@@ -323,23 +288,12 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                     </TableHead>
                     <TableBody>
                       {experiments.map((experiment: any) => (
-                        <TableRow
-                          key={experiment.id}
-                          hover
-                          sx={{ cursor: "pointer" }}
-                          onClick={() => handleExperimentClick(experiment.id)}
-                        >
+                        <TableRow key={experiment.id} hover sx={{ cursor: "pointer" }} onClick={() => handleExperimentClick(experiment.id)}>
                           <TableCell>
-                            <Typography variant="body2">
-                              {new Date(experiment.created_at).toLocaleString()}
-                            </Typography>
+                            <Typography variant="body2">{new Date(experiment.created_at).toLocaleString()}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Chip
-                              label={experiment.status}
-                              size="small"
-                              sx={getStatusChipSx(experiment.status)}
-                            />
+                            <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2">
@@ -347,9 +301,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2">
-                              {experiment.total_cost ? `$${experiment.total_cost}` : "—"}
-                            </Typography>
+                            <Typography variant="body2">{experiment.total_cost ? `$${experiment.total_cost}` : "—"}</Typography>
                           </TableCell>
                           <TableCell align="right">
                             <IconButton

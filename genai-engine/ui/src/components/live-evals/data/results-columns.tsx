@@ -2,29 +2,11 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Chip, IconButton } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 
-import { AgenticAnnotationResponse, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
+import { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const columnHelper = createColumnHelper<AgenticAnnotationResponse>();
-
-const colorMap = {
-  pending: { color: "text.secondary", borderColor: "text.secondary" },
-  running: { color: "primary.main", borderColor: "primary.main" },
-  passed: { color: "success.main", borderColor: "success.main" },
-  failed: { color: "error.main", borderColor: "error.main" },
-  error: { color: "error.main", borderColor: "error.main" },
-  skipped: { color: "var(--color-neutral-500)", borderColor: "var(--color-neutral-500)" },
-};
-
-const getStatusChipSx = (status: ContinuousEvalRunStatus) => {
-  const colors = colorMap[status] || { color: "text.secondary", borderColor: "text.secondary" };
-  return {
-    ...colors,
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderStyle: "solid",
-  };
-};
 
 export const createColumns = ({ onView }: { onView: (annotationId: string) => void }) => [
   columnHelper.accessor("continuous_eval_name", {
