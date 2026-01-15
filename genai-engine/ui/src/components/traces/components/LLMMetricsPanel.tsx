@@ -1,13 +1,10 @@
-import { Collapsible } from "@base-ui-components/react/collapsible";
+import { Collapsible } from "@base-ui/react/collapsible";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
 import { z } from "zod";
 
-import type {
-  MetricResultResponse,
-  NestedSpanWithMetricsResponse,
-} from "@/lib/api-client/api-client";
+import type { MetricResultResponse, NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
 
 const RelevanceBlock = z.object({
   bert_f_score: z.number().nullable().optional(),
@@ -79,11 +76,7 @@ function formatNumber(value: number | null | undefined, fractionDigits = 3) {
 function KV({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <Stack direction="row" alignItems="baseline" spacing={1}>
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ minWidth: 160 }}
-      >
+      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 160 }}>
         {label}
       </Typography>
       <Typography variant="body2" color="text.primary">
@@ -93,26 +86,14 @@ function KV({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function renderRelevance(
-  details:
-    | MetricDetails["query_relevance"]
-    | MetricDetails["response_relevance"]
-) {
+function renderRelevance(details: MetricDetails["query_relevance"] | MetricDetails["response_relevance"]) {
   return (
     <Stack direction="column" spacing={1}>
-      <KV
-        label="LLM relevance score"
-        value={formatNumber(details?.llm_relevance_score)}
-      />
-      <KV
-        label="Reranker relevance score"
-        value={formatNumber(details?.reranker_relevance_score)}
-      />
+      <KV label="LLM relevance score" value={formatNumber(details?.llm_relevance_score)} />
+      <KV label="Reranker relevance score" value={formatNumber(details?.reranker_relevance_score)} />
       <KV label="BERT F-score" value={formatNumber(details?.bert_f_score)} />
       {details?.reason ? <KV label="Reason" value={details.reason} /> : null}
-      {details?.refinement ? (
-        <KV label="Refinement" value={details.refinement} />
-      ) : null}
+      {details?.refinement ? <KV label="Refinement" value={details.refinement} /> : null}
     </Stack>
   );
 }
@@ -122,13 +103,9 @@ function renderToolSelection(details: MetricDetails) {
   return (
     <Stack direction="column" spacing={1}>
       <KV label="Tool selection" value={formatNumber(d?.tool_selection, 2)} />
-      {d?.tool_selection_reason ? (
-        <KV label="Tool selection reason" value={d.tool_selection_reason} />
-      ) : null}
+      {d?.tool_selection_reason ? <KV label="Tool selection reason" value={d.tool_selection_reason} /> : null}
       <KV label="Tool usage" value={formatNumber(d?.tool_usage, 2)} />
-      {d?.tool_usage_reason ? (
-        <KV label="Tool usage reason" value={d.tool_usage_reason} />
-      ) : null}
+      {d?.tool_usage_reason ? <KV label="Tool usage reason" value={d.tool_usage_reason} /> : null}
     </Stack>
   );
 }
@@ -147,15 +124,7 @@ function MetricCard({ result }: { result: MetricResultResponse }) {
   }
 
   return (
-    <Collapsible.Root
-      defaultOpen
-      render={
-        <Paper
-          variant="outlined"
-          sx={{ display: "flex", flexDirection: "column", fontSize: "12px" }}
-        />
-      }
-    >
+    <Collapsible.Root defaultOpen render={<Paper variant="outlined" sx={{ display: "flex", flexDirection: "column", fontSize: "12px" }} />}>
       <Collapsible.Trigger className="group w-full flex flex-row">
         <Stack
           direction="row"
@@ -165,17 +134,9 @@ function MetricCard({ result }: { result: MetricResultResponse }) {
           sx={{ borderColor: "divider" }}
           className="group-data-panel-open:border-b w-full flex-1"
         >
-          <KeyboardArrowRightIcon
-            fontSize="small"
-            className="group-data-panel-open:rotate-90 transition-transform duration-75"
-          />
+          <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
           <Chip size="small" label={result.metric_type} variant="outlined" />
-          <Stack
-            direction="row"
-            gap={1.5}
-            alignItems="center"
-            className="ml-auto"
-          >
+          <Stack direction="row" gap={1.5} alignItems="center" className="ml-auto">
             <Stack direction="row" spacing={0.5} alignItems="center">
               <AccessTimeIcon fontSize="inherit" sx={{ fontSize: 16 }} />
               <Typography variant="caption" color="text.secondary">
@@ -190,11 +151,7 @@ function MetricCard({ result }: { result: MetricResultResponse }) {
         </Stack>
       </Collapsible.Trigger>
       <Collapsible.Panel>
-        <Box p={1}>
-          {content ?? (
-            <Typography variant="body2">No details available</Typography>
-          )}
-        </Box>
+        <Box p={1}>{content ?? <Typography variant="body2">No details available</Typography>}</Box>
       </Collapsible.Panel>
     </Collapsible.Root>
   );

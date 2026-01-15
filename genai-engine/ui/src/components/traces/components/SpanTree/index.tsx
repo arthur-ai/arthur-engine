@@ -1,5 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { Accordion } from "@base-ui-components/react/accordion";
+import { Accordion } from "@base-ui/react/accordion";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
