@@ -2,7 +2,7 @@ import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
@@ -33,13 +33,16 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const [, setDrawerTarget] = useDrawerTarget();
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.pageIndex,
-    pageSize: pagination.pageSize,
-    filters,
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters,
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+  );
 
   const { data, isLoading, isFetching, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -50,6 +53,11 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
+  const handleRowClick = useCallback(
+    (row: { session_id: string }) => setDrawerTarget({ target: "session", id: row.session_id }),
+    [setDrawerTarget]
+  );
+
   const table = useTable({
     data: data?.sessions ?? [],
     columns: sessionLevelColumns,
@@ -59,7 +67,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
       isLoading,
       showProgressBars: isFetching,
     },
-    onRowClick: (row) => setDrawerTarget({ target: "session", id: row.session_id }),
+    onRowClick: handleRowClick,
   });
 
   const { FiltersRow } = useMemo(
@@ -71,7 +79,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   );
 
   // Check if any filters are active
-  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+  const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
   if (error) {
     return (

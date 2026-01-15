@@ -2,7 +2,7 @@ import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { userLevelColumns } from "../../data/user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
@@ -30,13 +30,16 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.pageIndex,
-    pageSize: pagination.pageSize,
-    filters: [],
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters: [],
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, timeRange]
+  );
 
   const { data, isLoading, isFetching, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -47,6 +50,8 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const [sorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
 
+  const handleRowClick = useCallback((row: { user_id: string }) => setDrawerTarget({ target: "user", id: row.user_id }), [setDrawerTarget]);
+
   const table = useTable({
     data: data?.users ?? [],
     columns: userLevelColumns,
@@ -56,7 +61,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
       isLoading,
       showProgressBars: isFetching,
     },
-    onRowClick: (row) => setDrawerTarget({ target: "user", id: row.user_id }),
+    onRowClick: handleRowClick,
   });
 
   if (error) {

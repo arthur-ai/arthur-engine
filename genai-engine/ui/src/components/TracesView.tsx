@@ -3,7 +3,7 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import React, { Activity } from "react";
+import React, { Activity, memo } from "react";
 import { useParams } from "react-router-dom";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
@@ -17,6 +17,35 @@ import { FilterStoreProvider } from "./traces/stores/filter.store";
 import { useWelcomeStore } from "./traces/stores/welcome.store";
 
 const TIME_RANGE_VALUES = Object.values(TIME_RANGES);
+
+type LevelPaneProps = {
+  timeRange: (typeof TIME_RANGE_VALUES)[number];
+  welcomeDismissed: boolean;
+};
+
+const TraceLevelPane = memo(({ timeRange, welcomeDismissed }: LevelPaneProps) => (
+  <FilterStoreProvider timeRange={timeRange}>
+    <TraceLevel welcomeDismissed={welcomeDismissed} />
+  </FilterStoreProvider>
+));
+
+const SpanLevelPane = memo(({ timeRange, welcomeDismissed }: LevelPaneProps) => (
+  <FilterStoreProvider timeRange={timeRange}>
+    <SpanLevel welcomeDismissed={welcomeDismissed} />
+  </FilterStoreProvider>
+));
+
+const SessionLevelPane = memo(({ timeRange, welcomeDismissed }: LevelPaneProps) => (
+  <FilterStoreProvider timeRange={timeRange}>
+    <SessionLevel welcomeDismissed={welcomeDismissed} />
+  </FilterStoreProvider>
+));
+
+const UserLevelPane = memo(({ timeRange, welcomeDismissed }: LevelPaneProps) => (
+  <FilterStoreProvider timeRange={timeRange}>
+    <UserLevel welcomeDismissed={welcomeDismissed} />
+  </FilterStoreProvider>
+));
 
 export const TracesView: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();
@@ -67,24 +96,16 @@ export const TracesView: React.FC = () => {
 
         <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <Activity mode={level === "trace" ? "visible" : "hidden"}>
-            <FilterStoreProvider timeRange={timeRange}>
-              <TraceLevel welcomeDismissed={welcomeDismissed} />
-            </FilterStoreProvider>
+            <TraceLevelPane timeRange={timeRange} welcomeDismissed={welcomeDismissed} />
           </Activity>
           <Activity mode={level === "span" ? "visible" : "hidden"}>
-            <FilterStoreProvider timeRange={timeRange}>
-              <SpanLevel welcomeDismissed={welcomeDismissed} />
-            </FilterStoreProvider>
+            <SpanLevelPane timeRange={timeRange} welcomeDismissed={welcomeDismissed} />
           </Activity>
           <Activity mode={level === "session" ? "visible" : "hidden"}>
-            <FilterStoreProvider timeRange={timeRange}>
-              <SessionLevel welcomeDismissed={welcomeDismissed} />
-            </FilterStoreProvider>
+            <SessionLevelPane timeRange={timeRange} welcomeDismissed={welcomeDismissed} />
           </Activity>
           <Activity mode={level === "user" ? "visible" : "hidden"}>
-            <FilterStoreProvider timeRange={timeRange}>
-              <UserLevel welcomeDismissed={welcomeDismissed} />
-            </FilterStoreProvider>
+            <UserLevelPane timeRange={timeRange} welcomeDismissed={welcomeDismissed} />
           </Activity>
         </Box>
       </Box>

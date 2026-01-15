@@ -2,7 +2,7 @@ import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
@@ -46,13 +46,16 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
 
   const api = useApi()!;
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.pageIndex,
-    pageSize: pagination.pageSize,
-    filters,
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters,
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+  );
 
   const { data, isFetching, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -63,14 +66,17 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
 
   const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
-  const handleRowClick = (row: TraceMetadataResponse) => {
-    setContext({
-      type: "trace",
-      ids: data?.traces.map((trace) => trace.trace_id) ?? [],
-    });
+  const handleRowClick = useCallback(
+    (row: TraceMetadataResponse) => {
+      setContext({
+        type: "trace",
+        ids: data?.traces.map((trace) => trace.trace_id) ?? [],
+      });
 
-    setDrawerTarget({ target: "trace", id: row.trace_id });
-  };
+      setDrawerTarget({ target: "trace", id: row.trace_id });
+    },
+    [data?.traces, setContext, setDrawerTarget]
+  );
 
   const table = useTable({
     data: data?.traces ?? DEFAULT_DATA,
@@ -98,7 +104,7 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
   // Check if any filters are active
-  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+  const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
   if (error) {
     return (

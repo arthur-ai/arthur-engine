@@ -2,7 +2,7 @@ import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { spanLevelColumns } from "../../data/span-level-columns";
@@ -44,13 +44,16 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
 
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.pageIndex,
-    pageSize: pagination.pageSize,
-    filters,
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters,
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+  );
 
   const { data, isLoading, isFetching, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -61,14 +64,17 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
 
   const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
-  const handleRowClick = (row: SpanMetadataResponse) => {
-    setContext({
-      type: "span",
-      ids: data?.spans.map((span) => span.span_id) ?? [],
-    });
+  const handleRowClick = useCallback(
+    (row: SpanMetadataResponse) => {
+      setContext({
+        type: "span",
+        ids: data?.spans.map((span) => span.span_id) ?? [],
+      });
 
-    setDrawerTarget({ target: "span", id: row.span_id });
-  };
+      setDrawerTarget({ target: "span", id: row.span_id });
+    },
+    [data?.spans, setContext, setDrawerTarget]
+  );
 
   const table = useTable({
     data: data?.spans ?? DEFAULT_DATA,
@@ -100,7 +106,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
   // Check if any filters are active
-  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+  const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
   if (error) {
     return (
