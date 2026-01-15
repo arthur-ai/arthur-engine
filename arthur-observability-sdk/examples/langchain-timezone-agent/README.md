@@ -20,10 +20,14 @@ A simple tutorial demonstrating how to set up OpenInference tracing with the Art
 
 ### 1. Install Arthur Observability SDK
 
-First, install the Arthur Observability SDK with LangChain support from GitHub:
+First, install the Arthur Observability SDK with LangChain support:
 
 ```bash
-pip install "arthur-observability-sdk[langchain] @ git+https://github.com/arthur-ai/arthur-engine.git#subdirectory=arthur-sdk"
+# From PyPI (recommended)
+pip install "arthur-observability-sdk[langchain]"
+
+# Or from the monorepo (for development)
+pip install -e "../../arthur-observability-sdk[langchain]"
 ```
 
 ### 2. Install Tutorial Dependencies
@@ -371,7 +375,8 @@ arthur.shutdown()  # Flushes pending spans
 
 ## Resources
 
-- [Arthur Observability SDK Repository](https://github.com/arthur-ai/arthur-observability-sdk)
+- [Arthur Engine Repository](https://github.com/arthur-ai/arthur-engine)
+- [Arthur Observability SDK (PyPI)](https://pypi.org/project/arthur-observability-sdk/)
 - [OpenInference Documentation](https://openinference.io/)
 - [Arthur Documentation](https://docs.arthur.ai/)
 - [LangChain Documentation](https://python.langchain.com/)
