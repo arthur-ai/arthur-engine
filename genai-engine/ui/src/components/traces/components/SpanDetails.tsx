@@ -12,6 +12,8 @@ import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-str
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
+import { SpanStatusBadge } from "./span-status-badge";
+
 import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
@@ -72,18 +74,21 @@ export const SpanDetailsHeader = () => {
   return (
     <Stack direction="column" spacing={1} justifyContent="center">
       <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
-        <Stack
-          component="button"
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          color="primary.main"
-          className="group cursor-pointer"
-          onClick={onOpenSpanDrawer}
-        >
-          <Typography variant="h6" fontWeight={700} className="group-hover:underline">
-            {span.span_name}
-          </Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            component="button"
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            color="primary.main"
+            className="group cursor-pointer"
+            onClick={onOpenSpanDrawer}
+          >
+            <Typography variant="h6" fontWeight={700} className="group-hover:underline">
+              {span.span_name}
+            </Typography>
+          </Stack>
+          <SpanStatusBadge status={span.status_code ?? "Unset"} />
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           {isLLM && (
