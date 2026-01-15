@@ -16,9 +16,9 @@ import React from "react";
 
 import { formatRagConfigName } from "./utils";
 
-import { getStatusChipSx } from "@/components/retrievals/utils/statusChipStyles";
 import type { RagExperimentSummary } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, capitalize } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagExperimentsTableProps {
   experiments: RagExperimentSummary[];
