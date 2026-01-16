@@ -15,6 +15,7 @@ import { SESSION_FIELDS } from "../filtering/sessions-fields";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
+import { SessionMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSessions } from "@/services/tracing";
@@ -22,6 +23,8 @@ import { getFilteredSessions } from "@/services/tracing";
 interface SessionLevelProps {
   welcomeDismissed: boolean;
 }
+
+const DEFAULT_DATA: SessionMetadataResponse[] = [];
 
 export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const api = useApi()!;
@@ -56,7 +59,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const handleRowClick = useCallback((row: { session_id: string }) => setDrawerTarget({ target: "session", id: row.session_id }), [setDrawerTarget]);
 
   const table = useTable({
-    data: data?.sessions ?? [],
+    data: data?.sessions ?? DEFAULT_DATA,
     columns: sessionLevelColumns,
     pagination: { state: pagination, onChange: props.onPaginationChange },
     state: {

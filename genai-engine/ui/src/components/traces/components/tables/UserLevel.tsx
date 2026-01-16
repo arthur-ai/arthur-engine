@@ -13,6 +13,7 @@ import { DataContentGate } from "../DataContentGate";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
+import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getUsers } from "@/services/tracing";
@@ -20,6 +21,8 @@ import { getUsers } from "@/services/tracing";
 interface UserLevelProps {
   welcomeDismissed: boolean;
 }
+
+const DEFAULT_DATA: TraceUserMetadataResponse[] = [];
 
 export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const api = useApi()!;
@@ -53,7 +56,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const handleRowClick = useCallback((row: { user_id: string }) => setDrawerTarget({ target: "user", id: row.user_id }), [setDrawerTarget]);
 
   const table = useTable({
-    data: data?.users ?? [],
+    data: data?.users ?? DEFAULT_DATA,
     columns: userLevelColumns,
     pagination: { state: pagination, onChange: props.onPaginationChange },
     state: {

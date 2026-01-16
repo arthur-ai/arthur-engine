@@ -70,7 +70,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     (row: TraceMetadataResponse) => {
       setContext({
         type: "trace",
-        ids: data?.traces.map((trace) => trace.trace_id) ?? [],
+        ids: data?.traces?.map((trace) => trace.trace_id) ?? [],
       });
 
       setDrawerTarget({ target: "trace", id: row.trace_id });
@@ -100,7 +100,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     [task?.id, api]
   );
 
-  const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
+  const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces?.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);

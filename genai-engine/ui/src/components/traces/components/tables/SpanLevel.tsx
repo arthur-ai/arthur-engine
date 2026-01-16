@@ -68,7 +68,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     (row: SpanMetadataResponse) => {
       setContext({
         type: "span",
-        ids: data?.spans.map((span) => span.span_id) ?? [],
+        ids: data?.spans?.map((span) => span.span_id) ?? [],
       });
 
       setDrawerTarget({ target: "span", id: row.span_id });
@@ -102,7 +102,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     [task?.id, api]
   );
 
-  const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans.map((span) => span.duration_ms) ?? []), [data?.spans]);
+  const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans?.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
