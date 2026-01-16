@@ -12,14 +12,7 @@ interface SearchBarProps {
   size?: "small" | "medium";
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({
-  value,
-  onChange,
-  onClear,
-  placeholder = "Search...",
-  fullWidth = true,
-  size = "small",
-}) => {
+export const SearchBar: React.FC<SearchBarProps> = ({ value, onChange, onClear, placeholder = "Search...", fullWidth = true, size = "small" }) => {
   return (
     <TextField
       fullWidth={fullWidth}
@@ -30,12 +23,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       size={size}
       slotProps={{
         input: {
-          startAdornment: (
-            <SearchIcon
-              fontSize="small"
-              sx={{ mr: 1, color: "action.active" }}
-            />
-          ),
+          startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: "action.active" }} />,
           endAdornment: value && onClear && (
             <IconButton size="small" onClick={onClear} edge="end">
               <ClearIcon fontSize="small" />

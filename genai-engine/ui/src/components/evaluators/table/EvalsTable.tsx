@@ -44,14 +44,11 @@ const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, onExpandToFullSc
     [onExpandToFullScreen]
   );
 
-  const handleDeleteClick = useCallback(
-    (e: React.MouseEvent, evalName: string) => {
-      e.stopPropagation();
-      setEvalToDelete(evalName);
-      setDeleteDialogOpen(true);
-    },
-    []
-  );
+  const handleDeleteClick = useCallback((e: React.MouseEvent, evalName: string) => {
+    e.stopPropagation();
+    setEvalToDelete(evalName);
+    setDeleteDialogOpen(true);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!evalToDelete || !onDelete) return;
@@ -205,22 +202,14 @@ const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, onExpandToFullSc
         </Table>
       </TableContainer>
 
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-        aria-labelledby="delete-dialog-title"
-        aria-describedby="delete-dialog-description"
-      >
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
         <DialogTitle id="delete-dialog-title">Delete Evaluator?</DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-dialog-description">
             Are you sure you want to delete <strong>{evalToDelete}</strong>?
           </DialogContentText>
-          <Box
-            sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}
-          >
-            <strong>Warning:</strong> This will permanently delete the evaluator
-            and its entire version history. This action cannot be undone.
+          <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
+            <strong>Warning:</strong> This will permanently delete the evaluator and its entire version history. This action cannot be undone.
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

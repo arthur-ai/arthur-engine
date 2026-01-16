@@ -58,7 +58,7 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
   };
 
   // Check if any panel is ready to search
-  const hasReadyPanels = state.panels.some((panel) => panel.providerId);
+  const hasReadyPanels = state.panels.some((panel) => panel.providerId && panel.collection);
   const isDisabled = !state.sharedQuery.trim() || !hasReadyPanels || state.isRunningAll;
 
   // Count panels with active searches

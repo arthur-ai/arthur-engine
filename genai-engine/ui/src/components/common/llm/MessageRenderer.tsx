@@ -1,4 +1,4 @@
-import { Collapsible } from "@base-ui-components/react/collapsible";
+import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, Button, ButtonGroup, Paper, Stack, Typography } from "@mui/material";
@@ -69,20 +69,20 @@ const CollapsibleList = ({
   </Box>
 );
 
-const renderValue = (value: any): React.ReactNode => {
+const renderValue = (value: unknown): React.ReactNode => {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   if (Array.isArray(value)) {
     return <ArrayValue array={value} />;
   }
   if (typeof value === "object") {
-    return <ObjectValue obj={value} />;
+    return <ObjectValue obj={value as Record<string, unknown>} />;
   }
   if (typeof value === "string") return `"${value}"`;
   return String(value);
 };
 
-const ArrayValue = ({ array }: { array: any[] }) => {
+const ArrayValue = ({ array }: { array: unknown[] }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   if (array.length === 0) return <>[]</>;
@@ -98,7 +98,7 @@ const ArrayValue = ({ array }: { array: any[] }) => {
   );
 };
 
-const ObjectValue = ({ obj }: { obj: Record<string, any> }) => {
+const ObjectValue = ({ obj }: { obj: Record<string, unknown> }) => {
   const [isOpen, setIsOpen] = useState(false);
   const keys = Object.keys(obj);
 
@@ -113,7 +113,7 @@ const ObjectValue = ({ obj }: { obj: Record<string, any> }) => {
   );
 };
 
-const KeyValueList = ({ data }: { data: Record<string, any> }) => (
+const KeyValueList = ({ data }: { data: Record<string, unknown> }) => (
   <Box component="ul" sx={{ m: 0, p: 0, pl: 2, listStyle: "none" }}>
     {Object.entries(data).map(([key, value]) => (
       <KeyValueItem key={key} label={key} value={renderValue(value)} />
@@ -128,18 +128,10 @@ const KeyValueList = ({ data }: { data: Record<string, any> }) => (
 const ViewToggle = ({ view, setView }: { view: "formatted" | "raw"; setView: (view: "formatted" | "raw") => void }) => (
   <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
     <ButtonGroup size="small" variant="outlined">
-      <Button
-        onClick={() => setView("formatted")}
-        variant={view === "formatted" ? "contained" : "outlined"}
-        sx={{ fontSize: 10, py: 0.5, px: 1 }}
-      >
+      <Button onClick={() => setView("formatted")} variant={view === "formatted" ? "contained" : "outlined"} sx={{ fontSize: 10, py: 0.5, px: 1 }}>
         Formatted
       </Button>
-      <Button
-        onClick={() => setView("raw")}
-        variant={view === "raw" ? "contained" : "outlined"}
-        sx={{ fontSize: 10, py: 0.5, px: 1 }}
-      >
+      <Button onClick={() => setView("raw")} variant={view === "raw" ? "contained" : "outlined"} sx={{ fontSize: 10, py: 0.5, px: 1 }}>
         Raw
       </Button>
     </ButtonGroup>
@@ -164,7 +156,7 @@ const ContentBox = ({ label, children }: { label: string; children: React.ReactN
 /**
  * Parses a string as JSON, returning null if parsing fails
  */
-const parseJson = (content: string): any | null => {
+const parseJson = (content: string): unknown => {
   try {
     return JSON.parse(content);
   } catch {
@@ -175,7 +167,7 @@ const parseJson = (content: string): any | null => {
 /**
  * Renders formatted JSON content (handles both objects and arrays)
  */
-const FormattedJsonContent = ({ data }: { data: any }) => {
+const FormattedJsonContent = ({ data }: { data: unknown }) => {
   if (Array.isArray(data)) {
     return (
       <Box component="ul" sx={{ m: 0, p: 0, pl: 0, listStyle: "none" }}>
@@ -188,7 +180,7 @@ const FormattedJsonContent = ({ data }: { data: any }) => {
     );
   }
 
-  return <KeyValueList data={data} />;
+  return <KeyValueList data={data as Record<string, unknown>} />;
 };
 
 /**
@@ -221,9 +213,7 @@ const ToolContentRenderer = ({ content }: { content: string }) => {
  * Renders a single tool call with its arguments
  */
 const ToolCallItem = ({ toolCall }: { toolCall: ToolCall }) => {
-  const parsedArgs = toolCall.tool_call.function.arguments
-    ? parseJson(toolCall.tool_call.function.arguments)
-    : null;
+  const parsedArgs = toolCall.tool_call.function.arguments ? parseJson(toolCall.tool_call.function.arguments) : null;
 
   return (
     <Box>
@@ -310,12 +300,13 @@ const AssistantMessageContent = ({ message }: { message: Extract<Message, { role
 /**
  * Renders array content (multimodal messages)
  */
-const ArrayMessageContent = ({ content }: { content: any[] }) => (
+const ArrayMessageContent = ({ content }: { content: unknown[] }) => (
   <ContentBox label="Contents">
     {content.map((item, index) => {
-      switch (item.type) {
+      const typedItem = item as { type?: string; text?: string };
+      switch (typedItem.type) {
         case "text":
-          return <TextMessageRenderer key={index} text={item.text} unwrapped />;
+          return <TextMessageRenderer key={index} text={typedItem.text ?? ""} unwrapped />;
         default:
           return <Highlight key={index} code={tryFormatJson(item)} language="json" unwrapped />;
       }
@@ -337,11 +328,7 @@ const StringMessageContent = ({ role, content }: { role: Message["role"]; conten
 
   return (
     <ContentBox label="Content">
-      {isJson ? (
-        <Highlight code={tryFormatJson(content)} language="json" unwrapped />
-      ) : (
-        <TextMessageRenderer text={content} unwrapped />
-      )}
+      {isJson ? <Highlight code={tryFormatJson(content)} language="json" unwrapped /> : <TextMessageRenderer text={content} unwrapped />}
     </ContentBox>
   );
 };
@@ -405,10 +392,7 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
           }}
           className="group-data-panel-open:border-b group-disabled:opacity-25"
         >
-          <KeyboardArrowRightIcon
-            fontSize="small"
-            className="group-data-panel-open:rotate-90 transition-transform duration-75"
-          />
+          <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
           <Typography color="text.primary" fontWeight={600} fontSize={12}>
             {getRoleLabel(role)}
           </Typography>

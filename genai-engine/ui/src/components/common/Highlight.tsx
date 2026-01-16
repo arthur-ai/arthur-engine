@@ -15,7 +15,11 @@ export const Highlight = ({ code, language, unwrapped = false }: { code: string;
         ));
 
         if (unwrapped) {
-          return <Box component="pre" sx={{ fontSize: "12px", textWrap: "wrap", m: 0 }}>{content}</Box>;
+          return (
+            <Box component="pre" sx={{ fontSize: "12px", textWrap: "wrap", m: 0 }}>
+              {content}
+            </Box>
+          );
         }
 
         return (

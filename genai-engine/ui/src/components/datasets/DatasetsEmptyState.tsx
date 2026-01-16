@@ -9,10 +9,7 @@ interface DatasetsEmptyStateProps {
   onCreateDataset?: () => void;
 }
 
-export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({
-  type,
-  onCreateDataset,
-}) => {
+export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({ type, onCreateDataset }) => {
   if (type === "no-datasets") {
     return (
       <Box
@@ -27,23 +24,13 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({
         }}
       >
         <FolderOpenIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{ fontWeight: 500, color: "text.primary" }}
-        >
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
           No datasets yet
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Get started by creating your first dataset
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={onCreateDataset}
-          size="large"
-        >
+        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={onCreateDataset} size="large">
           Create Dataset
         </Button>
       </Box>

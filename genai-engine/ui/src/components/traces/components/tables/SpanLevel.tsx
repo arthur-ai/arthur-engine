@@ -10,10 +10,10 @@ import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
+import { DataContentGate } from "../DataContentGate";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { TracesTable } from "../TracesTable";
-import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -108,12 +108,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
 
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      <DataContentGate
-        welcomeDismissed={welcomeDismissed}
-        hasData={hasData}
-        hasActiveFilters={hasActiveFilters}
-        dataType="spans"
-      >
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
         {/* Only show FiltersRow if we have spans or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
 
