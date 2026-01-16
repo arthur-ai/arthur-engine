@@ -21,6 +21,13 @@ import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useNotebook, useNotebookHistory } from "@/hooks/useNotebooks";
+import {
+  EvalRefOutput,
+  PromptExperimentSummary,
+  PromptVariableMappingOutput,
+  SavedPromptConfig,
+  UnsavedPromptConfig,
+} from "@/lib/api-client/api-client";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface NotebookDetailModalProps {
@@ -123,34 +130,36 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                         Prompts ({notebook.state.prompt_configs.length})
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {notebook.state.prompt_configs.map((config: any, idx: number) => (
-                          <Chip
-                            key={idx}
-                            label={config.type === "saved" ? `${config.name} (v${config.version})` : config.auto_name || "Unsaved Prompt"}
-                            size="small"
-                            sx={{
-                              backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
-                              borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
-                            }}
-                            onClick={
-                              config.type === "saved"
-                                ? () => {
-                                    navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
-                                    onClose();
-                                  }
-                                : undefined
-                            }
-                            onDelete={
-                              config.type === "saved"
-                                ? () => {
-                                    navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
-                                    onClose();
-                                  }
-                                : undefined
-                            }
-                            deleteIcon={config.type === "saved" ? <OpenInNewIcon fontSize="small" /> : undefined}
-                          />
-                        ))}
+                        {notebook.state.prompt_configs.map(
+                          (config: ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig), idx: number) => (
+                            <Chip
+                              key={idx}
+                              label={config.type === "saved" ? `${config.name} (v${config.version})` : config.auto_name || "Unsaved Prompt"}
+                              size="small"
+                              sx={{
+                                backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
+                                borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
+                              }}
+                              onClick={
+                                config.type === "saved"
+                                  ? () => {
+                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      onClose();
+                                    }
+                                  : undefined
+                              }
+                              onDelete={
+                                config.type === "saved"
+                                  ? () => {
+                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      onClose();
+                                    }
+                                  : undefined
+                              }
+                              deleteIcon={config.type === "saved" ? <OpenInNewIcon fontSize="small" /> : undefined}
+                            />
+                          )
+                        )}
                       </Stack>
                     </Box>
                   )}
@@ -200,7 +209,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                         Evaluators ({notebook.state.eval_list.length})
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {notebook.state.eval_list.map((evalRef: any, idx: number) => (
+                        {notebook.state.eval_list.map((evalRef: EvalRefOutput, idx: number) => (
                           <Chip
                             key={idx}
                             label={`${evalRef.name} (v${evalRef.version})`}
@@ -231,7 +240,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                         Variable Mappings ({notebook.state.prompt_variable_mapping.length})
                       </Typography>
                       <Stack spacing={0.5}>
-                        {notebook.state.prompt_variable_mapping.map((mapping: any, idx: number) => (
+                        {notebook.state.prompt_variable_mapping.map((mapping: PromptVariableMappingOutput, idx: number) => (
                           <Typography key={idx} variant="body2" sx={{ fontSize: "0.813rem" }}>
                             <Box component="span" sx={{ fontWeight: 600, fontFamily: "monospace" }}>
                               {mapping.variable_name}
@@ -287,7 +296,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {experiments.map((experiment: any) => (
+                      {experiments.map((experiment: PromptExperimentSummary) => (
                         <TableRow key={experiment.id} hover sx={{ cursor: "pointer" }} onClick={() => handleExperimentClick(experiment.id)}>
                           <TableCell>
                             <Typography variant="body2">{new Date(experiment.created_at).toLocaleString()}</Typography>

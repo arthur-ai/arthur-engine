@@ -38,6 +38,7 @@ const Evaluators: React.FC = () => {
     } else if (!urlEvaluatorName && fullScreenEval) {
       setFullScreenEval(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlEvaluatorName]);
 
   const filters = useMemo(

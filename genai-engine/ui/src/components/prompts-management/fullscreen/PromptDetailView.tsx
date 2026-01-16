@@ -177,7 +177,7 @@ const PromptDetailView = ({
     } catch (err) {
       console.error("Failed to open notebook:", err);
     }
-  }, [taskId, promptName, version, apiClient, createNotebookMutation]);
+  }, [taskId, promptName, version, apiClient, createNotebookMutation, navigate]);
 
   if (isLoading) {
     return (

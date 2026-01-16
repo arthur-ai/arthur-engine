@@ -32,6 +32,7 @@ import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailM
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
+import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp } from "@/utils/formatters";
 
 interface EvalResult {
@@ -60,11 +61,11 @@ interface PromptVersionDrawerProps {
     name?: string;
     version?: number;
     auto_name?: string | null;
-    messages?: any[] | null;
+    messages?: Record<string, unknown>[] | OpenAIMessageInput[] | null;
     model_name?: string;
     model_provider?: string;
-    tools?: any[] | null;
-    config?: any;
+    tools?: Record<string, unknown>[] | LLMToolInput[] | null;
+    config?: Record<string, unknown> | null;
     variables?: string[] | null;
   }>;
 }
@@ -84,7 +85,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const [selectedResultIndex, setSelectedResultIndex] = useState<number>(-1);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
-  const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
 
   // Find unsaved prompt config if this is an unsaved prompt
   const unsavedPromptConfig = useMemo(() => {
@@ -170,7 +171,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
     setSelectedResultIndex(-1);
   };
 
-  const handleViewEvalInputs = (evalExecution: any) => {
+  const handleViewEvalInputs = (evalExecution: EvalExecution) => {
     setSelectedEvalExecution(evalExecution);
     setEvalInputsDialogOpen(true);
   };
@@ -563,7 +564,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                         Temperature
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 font-mono">
-                        {prompt.config.temperature}
+                        {String(prompt.config.temperature)}
                       </Typography>
                     </Box>
                   )}
@@ -573,7 +574,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                         Max Tokens
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 font-mono">
-                        {prompt.config.max_tokens}
+                        {String(prompt.config.max_tokens)}
                       </Typography>
                     </Box>
                   )}

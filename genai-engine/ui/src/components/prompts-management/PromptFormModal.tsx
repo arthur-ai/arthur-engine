@@ -208,7 +208,8 @@ const PromptFormModal = ({ open, onClose, onSubmit, isLoading = false }: PromptF
         // API signature: (promptName, promptVersion, taskId)
         const promptResponse = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
           promptName,
-          "latest" as any, // The API accepts "latest" as a special version string
+          // API accepts "latest" as special version string per OpenAPI spec
+          "latest" as string,
           task.id
         );
 

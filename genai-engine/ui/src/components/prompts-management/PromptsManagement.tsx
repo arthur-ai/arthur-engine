@@ -27,13 +27,14 @@ const PromptsManagement: React.FC = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
-  // Sync fullScreenPrompt with URL parameter
+  // Sync fullScreenPrompt with URL parameter (one-way: URL -> state only)
   useEffect(() => {
     if (urlPromptName) {
       setFullScreenPrompt(urlPromptName);
     } else if (!urlPromptName && fullScreenPrompt) {
       setFullScreenPrompt(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlPromptName]);
 
   const filters = useMemo(
