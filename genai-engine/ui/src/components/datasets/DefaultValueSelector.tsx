@@ -1,12 +1,4 @@
-import {
-  Box,
-  FormControl,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, FormControl, MenuItem, Select, SelectChangeEvent, TextField, Typography } from "@mui/material";
 import React, { useState } from "react";
 
 import type { ColumnDefaultConfig, ColumnDefaultType } from "@/types/dataset";
@@ -17,14 +9,8 @@ interface DefaultValueSelectorProps {
   disabled?: boolean;
 }
 
-export const DefaultValueSelector: React.FC<DefaultValueSelectorProps> = ({
-  value,
-  onChange,
-  disabled = false,
-}) => {
-  const [showStaticInput, setShowStaticInput] = useState(
-    value.type === "static"
-  );
+export const DefaultValueSelector: React.FC<DefaultValueSelectorProps> = ({ value, onChange, disabled = false }) => {
+  const [showStaticInput, setShowStaticInput] = useState(value.type === "static");
 
   const handleTypeChange = (event: SelectChangeEvent<ColumnDefaultType>) => {
     const newType = event.target.value as ColumnDefaultType;
@@ -38,22 +24,14 @@ export const DefaultValueSelector: React.FC<DefaultValueSelectorProps> = ({
     }
   };
 
-  const handleStaticValueChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleStaticValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onChange({ type: "static", value: event.target.value });
   };
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
       <FormControl size="small" sx={{ minWidth: 130 }}>
-        <Select
-          value={value.type}
-          onChange={handleTypeChange}
-          disabled={disabled}
-          size="small"
-          sx={{ fontSize: "0.875rem" }}
-        >
+        <Select value={value.type} onChange={handleTypeChange} disabled={disabled} size="small" sx={{ fontSize: "0.875rem" }}>
           <MenuItem value="none">
             <Typography variant="body2">None</Typography>
           </MenuItem>
