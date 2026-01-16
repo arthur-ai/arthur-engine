@@ -102,34 +102,6 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
     return String(content);
   };
 
-  // Convert context messages to prompt messages
-  // Handles both formats: direct { role, content } and nested { message: { role, content } }
-  const convertContextToMessages = (context: Record<string, unknown>[] | null | undefined) => {
-    if (!context || !Array.isArray(context)) {
-      return [];
-    }
-
-    return context.map((msg: Record<string, unknown>) => {
-      // Handle nested message format: { message: { role, content } }
-      let messageData = msg;
-      if (msg.message && typeof msg.message === "object" && msg.message !== null) {
-        messageData = msg.message as Record<string, unknown>;
-      }
-
-      const role = (messageData.role as MessageRole) || "user";
-      const content = normalizeContent(messageData.content);
-
-      return {
-        id: generateId("msg"),
-        role,
-        content,
-        disabled: false,
-        tool_calls: (messageData.tool_calls as ToolCall[]) || null,
-        tool_call_id: (messageData.tool_call_id as string) || null,
-      };
-    });
-  };
-
   // Extract tools from messages and LiteLLM attributes
   const extractTools = (
     messages: Array<{

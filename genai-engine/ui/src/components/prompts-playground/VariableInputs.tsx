@@ -31,12 +31,12 @@ const VariableInputs = () => {
   const variables = Array.from(state.keywords.keys());
 
   // Create a map of variable names to their source mappings (dataset column)
-  const variableMappings = new Map<string, { type: 'dataset'; value: string }>();
+  const variableMappings = new Map<string, { type: "dataset"; value: string }>();
   if (experimentConfig?.prompt_variable_mapping) {
     experimentConfig.prompt_variable_mapping.forEach((mapping: PromptVariableMappingOutput) => {
-      if (mapping.source?.type === 'dataset_column' && mapping.source.type === 'dataset_column') {
+      if (mapping.source?.type === "dataset_column" && mapping.source.type === "dataset_column") {
         variableMappings.set(mapping.variable_name, {
-          type: 'dataset',
+          type: "dataset",
           value: mapping.source.dataset_column.name,
         });
       }
@@ -138,7 +138,7 @@ const VariableInputs = () => {
 
               // Construct helper text based on mapping type
               let helperText: string | undefined = undefined;
-              if (isMapped && mapping.type === 'dataset') {
+              if (isMapped && mapping.type === "dataset") {
                 helperText = `Mapped to dataset column: ${mapping.value}`;
               }
 

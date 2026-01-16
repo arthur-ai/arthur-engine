@@ -528,20 +528,21 @@ src/
 
 ---
 
-## Commands
+## Commands (Required Before Committing)
+
+Always run `yarn check` after making changes - this runs type-check, lint, and format:check.
+CI will block PRs that fail these checks.
 
 ```bash
-# Development
-yarn dev
+# Run ALL checks (REQUIRED before committing)
+yarn check
 
-# Type checking
-yarn type-check
-
-# Linting
-yarn lint
-
-# Format
-yarn format
+# Individual commands
+yarn dev           # Development server
+yarn type-check    # TypeScript checking
+yarn lint          # ESLint
+yarn format        # Prettier (auto-fix)
+yarn format:check  # Prettier (check only)
 
 # Regenerate API client
 yarn generate-api

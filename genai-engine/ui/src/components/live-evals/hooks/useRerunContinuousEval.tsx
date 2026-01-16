@@ -48,6 +48,7 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
     if (!status || status === "pending") return;
 
     handleDone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annotationQuery.data]);
 
   const mutation = useMutation({
@@ -81,6 +82,7 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
     hasAutoTriggeredRef.current = true;
 
     runFromAutoTrigger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rerunOnMount, annotationId]);
 
   return {

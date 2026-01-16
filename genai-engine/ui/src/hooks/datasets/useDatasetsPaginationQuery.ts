@@ -10,13 +10,10 @@ export const useDatasetsPaginationQuery = () => {
     setPage(newPage);
   }, []);
 
-  const handlePageSizeChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setPageSize(parseInt(event.target.value, 10));
-      setPage(0);
-    },
-    []
-  );
+  const handlePageSizeChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setPageSize(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
 
   const resetPage = useCallback(() => {
     setPage(0);

@@ -10,9 +10,7 @@ export interface UseDatasetSortingReturn {
   handleSort: (column: string) => void;
 }
 
-export function useDatasetSorting(
-  rows: DatasetVersionRowResponse[]
-): UseDatasetSortingReturn {
+export function useDatasetSorting(rows: DatasetVersionRowResponse[]): UseDatasetSortingReturn {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 

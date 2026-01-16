@@ -38,7 +38,7 @@ export const Results = () => {
 
   const table = useReactTable({
     data: data.annotations,
-    columns: useMemo(() => createColumns({ onView: (annotationId) => setAnnotationId(annotationId) }), []),
+    columns: useMemo(() => createColumns({ onView: (annotationId) => setAnnotationId(annotationId) }), [setAnnotationId]),
     getCoreRowModel: getCoreRowModel(),
   });
 

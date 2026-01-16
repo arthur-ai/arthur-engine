@@ -13,4 +13,3 @@ export const formatRelativeTime = (dateStr: string): string => {
   if (diffHours < 24) return `${diffHours}h ago`;
   return formatDate(dateStr);
 };
-
