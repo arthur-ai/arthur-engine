@@ -4,10 +4,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import {
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   List,
   ListItem,
@@ -18,13 +20,18 @@ import { useForm } from "@tanstack/react-form";
 import React, { useState } from "react";
 import { z } from "zod";
 
+import { DefaultValueSelector } from "./DefaultValueSelector";
+
 import { columnNameSchema } from "@/schemas/datasetSchemas";
+import type { ColumnDefaultConfig, ColumnDefaults } from "@/types/dataset";
 
 interface ConfigureColumnsModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (columns: string[]) => void;
+  onSave: (columns: string[], columnDefaults: ColumnDefaults, applyToExisting: boolean) => void;
   currentColumns: string[];
+  currentColumnDefaults?: ColumnDefaults;
+  existingRowCount?: number;
 }
 
 export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
@@ -32,28 +39,39 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
   onClose,
   onSave,
   currentColumns,
+  currentColumnDefaults = {},
+  existingRowCount = 0,
 }) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [columnDefaults, setColumnDefaults] = useState<ColumnDefaults>(currentColumnDefaults);
+  const [applyToExisting, setApplyToExisting] = useState(false);
 
   const form = useForm({
     defaultValues: {
       columns: currentColumns,
     },
     onSubmit: async ({ value }) => {
-      onSave(value.columns);
+      onSave(value.columns, columnDefaults, applyToExisting);
       onClose();
       setEditingIndex(null);
       setNewColumnName("");
       setError(null);
+      setApplyToExisting(false);
     },
   });
 
-  const validateColumnName = (
-    name: string,
-    excludeIndex?: number
-  ): string | null => {
+  const handleDefaultChange = (columnName: string, config: ColumnDefaultConfig) => {
+    setColumnDefaults((prev) => ({
+      ...prev,
+      [columnName]: config,
+    }));
+  };
+
+  const hasDefaultsConfigured = Object.values(columnDefaults).some((config) => config.type !== "none");
+
+  const validateColumnName = (name: string, excludeIndex?: number): string | null => {
     const columns = form.getFieldValue("columns");
 
     try {
@@ -64,9 +82,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       }
     }
 
-    const isDuplicate = columns.some(
-      (col: string, idx: number) => col === name.trim() && idx !== excludeIndex
-    );
+    const isDuplicate = columns.some((col: string, idx: number) => col === name.trim() && idx !== excludeIndex);
 
     if (isDuplicate) {
       return "Column name already exists";
@@ -96,20 +112,41 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
     }
 
     const columns = form.getFieldValue("columns");
-    const updated = columns.map((col: string, idx: number) =>
-      idx === index ? newValue.trim() : col
-    );
+    const oldColumnName = columns[index];
+    const newColumnName = newValue.trim();
+
+    const updated = columns.map((col: string, idx: number) => (idx === index ? newColumnName : col));
     form.setFieldValue("columns", updated);
+
+    // Transfer defaults from old column name to new column name
+    if (oldColumnName !== newColumnName && columnDefaults[oldColumnName]) {
+      setColumnDefaults((prev) => {
+        const updated = { ...prev };
+        updated[newColumnName] = updated[oldColumnName];
+        delete updated[oldColumnName];
+        return updated;
+      });
+    }
+
     setEditingIndex(null);
     setError(null);
   };
 
   const handleDeleteColumn = (index: number) => {
     const columns = form.getFieldValue("columns");
+    const deletedColumn = columns[index];
     form.setFieldValue(
       "columns",
       columns.filter((_: string, idx: number) => idx !== index)
     );
+    // Clean up the default config for the deleted column
+    if (deletedColumn && columnDefaults[deletedColumn]) {
+      setColumnDefaults((prev) => {
+        const updated = { ...prev };
+        delete updated[deletedColumn];
+        return updated;
+      });
+    }
     setError(null);
   };
 
@@ -117,6 +154,8 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
     setEditingIndex(null);
     setNewColumnName("");
     setError(null);
+    setColumnDefaults(currentColumnDefaults);
+    setApplyToExisting(false);
     onClose();
   };
 
@@ -156,9 +195,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
           minHeight: 0,
         }}
       >
-        <DialogTitle id="configure-columns-dialog-title">
-          Configure Columns
-        </DialogTitle>
+        <DialogTitle id="configure-columns-dialog-title">Configure Columns</DialogTitle>
         <DialogContent
           sx={{
             overflow: "auto",
@@ -180,11 +217,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
                   }}
                 >
                   {columns.length === 0 ? (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ py: 2, textAlign: "center" }}
-                    >
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
                       No columns yet. Add your first column below.
                     </Typography>
                   ) : (
@@ -213,6 +246,8 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
                           ) : (
                             <DisplayColumnRow
                               column={column}
+                              defaultConfig={columnDefaults[column] ?? { type: "none" }}
+                              onDefaultChange={(config) => handleDefaultChange(column, config)}
                               onEdit={() => {
                                 setEditingIndex(index);
                                 setError(null);
@@ -276,16 +311,24 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
             </Button>
           </Box>
 
+          {existingRowCount > 0 && hasDefaultsConfigured && (
+            <FormControlLabel
+              control={<Checkbox checked={applyToExisting} onChange={(e) => setApplyToExisting(e.target.checked)} size="small" />}
+              label={
+                <Typography variant="body2" color="text.secondary">
+                  Apply defaults to existing rows ({existingRowCount} row
+                  {existingRowCount !== 1 ? "s" : ""})
+                </Typography>
+              }
+              sx={{ ml: 0 }}
+            />
+          )}
+
           <DialogActions>
             <Button onClick={handleClose} color="inherit">
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              disabled={editingIndex !== null}
-            >
+            <Button type="submit" variant="contained" color="primary" disabled={editingIndex !== null}>
               Save Changes
             </Button>
           </DialogActions>
@@ -303,13 +346,7 @@ interface EditingColumnRowProps {
   onErrorClear: () => void;
 }
 
-const EditingColumnRow: React.FC<EditingColumnRowProps> = ({
-  column,
-  onSave,
-  onCancel,
-  error,
-  onErrorClear,
-}) => {
+const EditingColumnRow: React.FC<EditingColumnRowProps> = ({ column, onSave, onCancel, error, onErrorClear }) => {
   const [value, setValue] = useState(column);
 
   return (
@@ -347,27 +384,35 @@ const EditingColumnRow: React.FC<EditingColumnRowProps> = ({
 
 interface DisplayColumnRowProps {
   column: string;
+  defaultConfig: ColumnDefaultConfig;
+  onDefaultChange: (config: ColumnDefaultConfig) => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-const DisplayColumnRow: React.FC<DisplayColumnRowProps> = ({
-  column,
-  onEdit,
-  onDelete,
-}) => (
-  <>
-    <Typography sx={{ flexGrow: 1 }}>{column}</Typography>
-    <IconButton size="small" onClick={onEdit} aria-label="edit column">
-      <EditIcon fontSize="small" />
-    </IconButton>
-    <IconButton
-      size="small"
-      onClick={onDelete}
-      color="error"
-      aria-label="delete column"
-    >
-      <DeleteIcon fontSize="small" />
-    </IconButton>
-  </>
+const DisplayColumnRow: React.FC<DisplayColumnRowProps> = ({ column, defaultConfig, onDefaultChange, onEdit, onDelete }) => (
+  <Box
+    sx={{
+      display: "flex",
+      flexDirection: "column",
+      width: "100%",
+      gap: 1,
+    }}
+  >
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Typography sx={{ flexGrow: 1 }}>{column}</Typography>
+      <IconButton size="small" onClick={onEdit} aria-label="edit column">
+        <EditIcon fontSize="small" />
+      </IconButton>
+      <IconButton size="small" onClick={onDelete} color="error" aria-label="delete column">
+        <DeleteIcon fontSize="small" />
+      </IconButton>
+    </Box>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, pl: 1 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>
+        Default:
+      </Typography>
+      <DefaultValueSelector value={defaultConfig} onChange={onDefaultChange} />
+    </Box>
+  </Box>
 );

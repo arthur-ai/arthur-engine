@@ -137,7 +137,11 @@ class ChatCompletionService:
         prompt: AgenticPrompt,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> Tuple[str, Dict[str, Any]]:
-        model = prompt.model_provider + "/" + prompt.model_name
+        model = (
+            prompt.model_name
+            if prompt.model_name.startswith(prompt.model_provider + "/")
+            else prompt.model_provider + "/" + prompt.model_name
+        )
 
         completion_params: dict[str, Any] = {
             "messages": [

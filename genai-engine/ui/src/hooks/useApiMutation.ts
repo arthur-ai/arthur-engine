@@ -1,20 +1,11 @@
-import {
-  useMutation,
-  UseMutationOptions,
-  UseMutationResult,
-  useQueryClient,
-  InvalidateQueryFilters,
-} from "@tanstack/react-query";
+import { useMutation, UseMutationOptions, UseMutationResult, useQueryClient, InvalidateQueryFilters } from "@tanstack/react-query";
 
 interface UseApiMutationOptions<TData, TVariables> {
   mutationFn: (variables: TVariables) => Promise<TData>;
   onSuccess?: (data: TData, variables: TVariables) => void | Promise<void>;
   onError?: (error: Error, variables: TVariables) => void;
   invalidateQueries?: InvalidateQueryFilters[];
-  mutationOptions?: Omit<
-    UseMutationOptions<TData, Error, TVariables>,
-    "mutationFn" | "onSuccess" | "onError"
-  >;
+  mutationOptions?: Omit<UseMutationOptions<TData, Error, TVariables>, "mutationFn" | "onSuccess" | "onError">;
 }
 
 export function useApiMutation<TData = unknown, TVariables = unknown>(
@@ -26,11 +17,7 @@ export function useApiMutation<TData = unknown, TVariables = unknown>(
     mutationFn: options.mutationFn,
     onSuccess: async (data, variables) => {
       if (options.invalidateQueries) {
-        await Promise.all(
-          options.invalidateQueries.map((filter) =>
-            queryClient.invalidateQueries(filter)
-          )
-        );
+        await Promise.all(options.invalidateQueries.map((filter) => queryClient.invalidateQueries(filter)));
       }
 
       if (options.onSuccess) {

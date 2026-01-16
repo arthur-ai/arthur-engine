@@ -9,18 +9,6 @@ interface DatasetSearchBarProps {
   placeholder?: string;
 }
 
-export const DatasetSearchBar: React.FC<DatasetSearchBarProps> = ({
-  value,
-  onChange,
-  onClear,
-  placeholder = "Search across all columns...",
-}) => {
-  return (
-    <SearchBar
-      value={value}
-      onChange={onChange}
-      onClear={onClear}
-      placeholder={placeholder}
-    />
-  );
+export const DatasetSearchBar: React.FC<DatasetSearchBarProps> = ({ value, onChange, onClear, placeholder = "Search across all columns..." }) => {
+  return <SearchBar value={value} onChange={onChange} onClear={onClear} placeholder={placeholder} />;
 };

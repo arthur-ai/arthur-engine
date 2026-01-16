@@ -6,17 +6,17 @@ __metadata:
   cacheKey: 10c0
 
 "@amplitude/analytics-browser@npm:^2.31.1":
-  version: 2.33.2
-  resolution: "@amplitude/analytics-browser@npm:2.33.2"
+  version: 2.33.4
+  resolution: "@amplitude/analytics-browser@npm:2.33.4"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.35.1"
-    "@amplitude/plugin-autocapture-browser": "npm:1.18.4"
-    "@amplitude/plugin-network-capture-browser": "npm:1.7.4"
-    "@amplitude/plugin-page-url-enrichment-browser": "npm:0.5.10"
-    "@amplitude/plugin-page-view-tracking-browser": "npm:2.6.7"
-    "@amplitude/plugin-web-vitals-browser": "npm:1.1.5"
+    "@amplitude/analytics-core": "npm:2.36.0"
+    "@amplitude/plugin-autocapture-browser": "npm:1.18.6"
+    "@amplitude/plugin-network-capture-browser": "npm:1.7.6"
+    "@amplitude/plugin-page-url-enrichment-browser": "npm:0.5.12"
+    "@amplitude/plugin-page-view-tracking-browser": "npm:2.6.9"
+    "@amplitude/plugin-web-vitals-browser": "npm:1.1.7"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/23e1f4f5d12c186c57d337ff71d67d42a9e12728aa117004497ad638ffcabd0924501136760c89bcea9965a9a6bd472b9a9fa08f96342fd540d604256e294eb6
+  checksum: 10c0/c01014f2dda678979df139020702a9dec7fe5193dc756b2e5639aa83790fbb8cbd549b308ded84c66557d12a17510f1df3cefb46b6bf9ef9f6defb41da08785f
   languageName: node
   linkType: hard
 
@@ -27,65 +27,65 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-core@npm:2.35.1":
-  version: 2.35.1
-  resolution: "@amplitude/analytics-core@npm:2.35.1"
+"@amplitude/analytics-core@npm:2.36.0":
+  version: 2.36.0
+  resolution: "@amplitude/analytics-core@npm:2.36.0"
   dependencies:
     "@amplitude/analytics-connector": "npm:^1.6.4"
     tslib: "npm:^2.4.1"
     zen-observable-ts: "npm:^1.1.0"
-  checksum: 10c0/ebbcfeac1a29bb8b62776b00718c295dcf71397e71de0727b6d313acc8db0122182a7dea42f5e32751d22e706e981b0202b644e2f40bd59cdbdc018a0ec9ce3e
+  checksum: 10c0/78e6b2058342ac83b26f3959b865a75d116b992edf89fe168701d841a8a9557bc687dc2b13aec523d999b3cd1e42aa4ca2fb80565927650acb226934553b0ab0
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-autocapture-browser@npm:1.18.4":
-  version: 1.18.4
-  resolution: "@amplitude/plugin-autocapture-browser@npm:1.18.4"
+"@amplitude/plugin-autocapture-browser@npm:1.18.6":
+  version: 1.18.6
+  resolution: "@amplitude/plugin-autocapture-browser@npm:1.18.6"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.35.1"
+    "@amplitude/analytics-core": "npm:2.36.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/d430b524b1c8917ee2349a98879b09438bacc88f068806f2b732a8851e9f7746e2b35f6347d44f54d291deae4a0e033f270d09ca9926cb1bc200810f1fb106d7
+  checksum: 10c0/c2a0a3e62866a62dbe42b0b1d9babec0d6e9970237bdb22d4968798bcb3effb438ffab6c2b36ba59a59d4e7354c316379b06d1f01fbfb0a252a26e6cddcb3df9
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-network-capture-browser@npm:1.7.4":
-  version: 1.7.4
-  resolution: "@amplitude/plugin-network-capture-browser@npm:1.7.4"
+"@amplitude/plugin-network-capture-browser@npm:1.7.6":
+  version: 1.7.6
+  resolution: "@amplitude/plugin-network-capture-browser@npm:1.7.6"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.35.1"
+    "@amplitude/analytics-core": "npm:2.36.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/ecb848ba6946894e3bdd8f61b9eb2b643572f4f52e132f12d95e62c9d5fea1c4c4d1a77ba8e6e3119fe89c28c5b46edc9831a0cf2ec9962234386563b92f0436
+  checksum: 10c0/d5b38bd9239599e4a21a82d98c45f492faaf29ac9d6ae622f0003b9cd758c1e3e416e18b87858e0f16980e74b01a0bb56b81388bc83dad869e9e091bca29b5c8
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-page-url-enrichment-browser@npm:0.5.10":
-  version: 0.5.10
-  resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.5.10"
+"@amplitude/plugin-page-url-enrichment-browser@npm:0.5.12":
+  version: 0.5.12
+  resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.5.12"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.35.1"
+    "@amplitude/analytics-core": "npm:2.36.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/c222fb7c5684e1eb49eaa370cae0f8fcc5300a6230f3ce0b048bc05bf075f3b3400f6ccb7a1e280f42357185bf6b57cf6bd1e80beed3c027c8a6b6e0b24290ab
+  checksum: 10c0/2e39ba8865de741173402fb38cd318aa0a62e8ac4e5ff6e79fd9a1e7e99aa0f05c5848a25bd28132103087fdd049ed4db37e2b94bccf4b2d4d179d4cd21a4391
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-page-view-tracking-browser@npm:2.6.7":
-  version: 2.6.7
-  resolution: "@amplitude/plugin-page-view-tracking-browser@npm:2.6.7"
+"@amplitude/plugin-page-view-tracking-browser@npm:2.6.9":
+  version: 2.6.9
+  resolution: "@amplitude/plugin-page-view-tracking-browser@npm:2.6.9"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.35.1"
+    "@amplitude/analytics-core": "npm:2.36.0"
     tslib: "npm:^2.4.1"
-  checksum: 10c0/ad3155d7de1bed985ec9a0ca675406c7e06f62f562b79328603a0fddd78ea970e20d2a2dde974cccc3f17ba6f9bb397887447c909c4161f9a32cdecf3006366f
+  checksum: 10c0/dfd7cddd3d31e23779069072729b83a0b465a347efeaecf4965749c4810a229b2b0f3bcadbde6a814174450a7d3f9f6dabd4b6364cb37d1cfa0520d9be36178d
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-web-vitals-browser@npm:1.1.5":
-  version: 1.1.5
-  resolution: "@amplitude/plugin-web-vitals-browser@npm:1.1.5"
+"@amplitude/plugin-web-vitals-browser@npm:1.1.7":
+  version: 1.1.7
+  resolution: "@amplitude/plugin-web-vitals-browser@npm:1.1.7"
   dependencies:
-    "@amplitude/analytics-core": "npm:2.35.1"
+    "@amplitude/analytics-core": "npm:2.36.0"
     tslib: "npm:^2.4.1"
     web-vitals: "npm:5.1.0"
-  checksum: 10c0/b35cd50c7d3549980255f6cf1c4d9c3477ad0a85f87deb05119951bcecabf3ec6ac8bc955c074ea7d5c7f12f687f39c62190d55c42eb1cdbe0041aea0378e058
+  checksum: 10c0/3686a0adf2946dfecc91f3bdc2bfd49a357ed198ea3996e1fa81000f70f1251958933a52138be79ccab88a48316230ce62844620f92a0407f6087c55e7578bce
   languageName: node
   linkType: hard
 
@@ -307,12 +307,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@base-ui-components/react@npm:^1.0.0-beta.6":
-  version: 1.0.0-rc.0
-  resolution: "@base-ui-components/react@npm:1.0.0-rc.0"
+"@base-ui/react@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@base-ui/react@npm:1.0.0"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
-    "@base-ui-components/utils": "npm:0.2.2"
+    "@base-ui/utils": "npm:0.2.3"
     "@floating-ui/react-dom": "npm:^2.1.6"
     "@floating-ui/utils": "npm:^0.2.10"
     reselect: "npm:^5.1.1"
@@ -325,13 +325,13 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/eb4dffd6da0372faeea2ebbf2bca892e65db9e1967c6edba51c15d4c0c82d127c0ed70ad0e4d07ddcac921f82122197b5163fa5676e97a3e5ac9ee10095d1f22
+  checksum: 10c0/64f51cb1138fc2236de22d7190fe111ce1141666c6eb1722ec06419ebb368927b29741d3c919fb6dbd1f5776e2635cc24201441d08016d7b0319e40732b88532
   languageName: node
   linkType: hard
 
-"@base-ui-components/utils@npm:0.2.2":
-  version: 0.2.2
-  resolution: "@base-ui-components/utils@npm:0.2.2"
+"@base-ui/utils@npm:0.2.3":
+  version: 0.2.3
+  resolution: "@base-ui/utils@npm:0.2.3"
   dependencies:
     "@babel/runtime": "npm:^7.28.4"
     "@floating-ui/utils": "npm:^0.2.10"
@@ -344,7 +344,7 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/16ca5f0226879969501549d5e875ed8eadf484fd76e39a451083fe21f5da87842bdf1f512ee3319d0dacdf717ff4ad990e133713673eb69ce48490d644754f6d
+  checksum: 10c0/5a75102851e8096402a4185d7b4182a7579069869f3f6f09ec46ce6b5318192f5e8e07ada67af370cf85a055fb0e9693bcaa224dffc51c9d432cf57e05b58144
   languageName: node
   linkType: hard
 
@@ -1832,20 +1832,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/pacer@npm:0.17.1":
-  version: 0.17.1
-  resolution: "@tanstack/pacer@npm:0.17.1"
+"@tanstack/pacer@npm:0.17.3":
+  version: 0.17.3
+  resolution: "@tanstack/pacer@npm:0.17.3"
   dependencies:
     "@tanstack/devtools-event-client": "npm:^0.4.0"
     "@tanstack/store": "npm:^0.8.0"
-  checksum: 10c0/f3408c8fd9f4f449d154d894d9b5ef1c17803083e2c7ee408b6d4568ec77213249c8a5b19ccf63d227075f05250d512edeb6333ebd108d9b356d314ccfbefc5c
+  checksum: 10c0/0c1d40901b7b30124e5df8a37ebb087b44e8dfb6834145c00dbb1f384233c501df546cd6675fcfcf2da6eb4d3323d40c0c96169e36db380531998f95783efd5e
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.90.16":
-  version: 5.90.16
-  resolution: "@tanstack/query-core@npm:5.90.16"
-  checksum: 10c0/f6a4827feeed2b4118323056bbda8d5099823202d1f29b538204ae2591be4e80f2946f3311eed30fefe866643f431c04b560457f03415d40caf2f353ba1efac0
+"@tanstack/query-core@npm:5.90.17":
+  version: 5.90.17
+  resolution: "@tanstack/query-core@npm:5.90.17"
+  checksum: 10c0/f10ba6d82d21fab5a3ad5df028090255f0da5368dad2a78cdb57426519bdb3608d284fbfe733ece139382f60ae17deb5eef14249fbff854b3791795effd8f06f
   languageName: node
   linkType: hard
 
@@ -1872,15 +1872,15 @@ __metadata:
   linkType: hard
 
 "@tanstack/react-pacer@npm:^0.19.0":
-  version: 0.19.1
-  resolution: "@tanstack/react-pacer@npm:0.19.1"
+  version: 0.19.3
+  resolution: "@tanstack/react-pacer@npm:0.19.3"
   dependencies:
-    "@tanstack/pacer": "npm:0.17.1"
+    "@tanstack/pacer": "npm:0.17.3"
     "@tanstack/react-store": "npm:^0.8.0"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 10c0/0471cfeed8f18f3ef736b6ba5f03d293b159ff09647dd61ecc400efdd5a16d5aee757c0fddb9a10f669efd6fd665f61d31ecc07adcf5a8273338f0532b423c8b
+  checksum: 10c0/aa625abf2ba83eaf9785ee3ffecc875ce6ed4587158f1bb7a62f14dfc667254056aca976242f64cfcd18437c8567a28196b42ab6c178fad03f7af04911340980
   languageName: node
   linkType: hard
 
@@ -1897,13 +1897,13 @@ __metadata:
   linkType: hard
 
 "@tanstack/react-query@npm:^5.90.5":
-  version: 5.90.16
-  resolution: "@tanstack/react-query@npm:5.90.16"
+  version: 5.90.17
+  resolution: "@tanstack/react-query@npm:5.90.17"
   dependencies:
-    "@tanstack/query-core": "npm:5.90.16"
+    "@tanstack/query-core": "npm:5.90.17"
   peerDependencies:
     react: ^18 || ^19
-  checksum: 10c0/03bd2aa23187003b45dc3d4b465a68f19806369283487a004acd6dd2ad8ba1fa0ec343da616cb1c43c342609202d0776fee68867246caa5ad6915f090539c168
+  checksum: 10c0/af722dbfbdfaa85d298963a175945d5089c714d83721320d24c3bd96ca5b74120ffff27866dfc6a45195ac6ec7ffe7e55cefd521fc03de55021bf997735d21cd
   languageName: node
   linkType: hard
 
@@ -2129,20 +2129,20 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:*, @types/node@npm:>=13.7.0":
-  version: 25.0.6
-  resolution: "@types/node@npm:25.0.6"
+  version: 25.0.9
+  resolution: "@types/node@npm:25.0.9"
   dependencies:
     undici-types: "npm:~7.16.0"
-  checksum: 10c0/4ee3b6b606bc28f6840c04d58769e1e75dd8085149908956c874c85f8f8c890990701bcbe783fc2d14017817861dc07fcf23de6fc2805fe491f84eae717b5705
+  checksum: 10c0/a757efafe303d9c8833eb53c2e9a0981cd5ac725cdc04c5612a71db86468c938778d4fa328be4231b68fffc68258638764df7b9c69e86cf55f0bb67105eb056f
   languageName: node
   linkType: hard
 
 "@types/node@npm:^24.5.2":
-  version: 24.10.7
-  resolution: "@types/node@npm:24.10.7"
+  version: 24.10.9
+  resolution: "@types/node@npm:24.10.9"
   dependencies:
     undici-types: "npm:~7.16.0"
-  checksum: 10c0/dcc1b8caf16c7b54dfccbe5c23cf4156e924cebcd9ab0a00147c841279f8151a10888c76fd82dda76e0a849aaf5a57097ee2b156308a355959900c1e647d7e61
+  checksum: 10c0/e9e436fcd2136bddb1bbe3271a89f4653910bcf6ee8047c4117f544c7905a106c039e2720ee48f28505ef2560e22fb9ead719f28bf5e075fdde0c1120e38e3b2
   languageName: node
   linkType: hard
 
@@ -7812,7 +7812,7 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@base-ui-components/react": "npm:^1.0.0-beta.6"
+    "@base-ui/react": "npm:^1.0.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"

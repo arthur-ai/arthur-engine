@@ -1,4 +1,4 @@
-import { Accordion } from "@base-ui-components/react/accordion";
+import { Accordion } from "@base-ui/react/accordion";
 import HistoryIcon from "@mui/icons-material/History";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Drawer, List, ListItemText, Skeleton, Stack, Typography, ListItemButton, LinearProgress, Button, TablePagination } from "@mui/material";
@@ -10,7 +10,7 @@ import { useSuspensePollAgenticNotebookHistory } from "../../hooks/useSuspensePo
 
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
 import { formatRelativeTime } from "@/components/live-evals/[evalId]/utils";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
 
@@ -54,7 +54,7 @@ export const History = ({ notebookId }: Props) => {
 };
 
 const HistoryContent = ({ notebookId }: { notebookId: string }) => {
-  const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange } = useDatasetPagination(10);
+  const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange } = usePagination(10);
 
   const { data } = useSuspensePollAgenticNotebookHistory(notebookId, { page, page_size: rowsPerPage });
 

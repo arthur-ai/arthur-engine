@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode } from "react";
 
-import { LoginPage } from './LoginPage';
+import { LoginPage } from "./LoginPage";
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -30,4 +30,3 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
 
   return <>{children}</>;
 };
-

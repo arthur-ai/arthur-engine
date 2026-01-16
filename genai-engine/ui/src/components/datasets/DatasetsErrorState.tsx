@@ -6,10 +6,7 @@ interface DatasetsErrorStateProps {
   onRetry: () => void;
 }
 
-export const DatasetsErrorState: React.FC<DatasetsErrorStateProps> = ({
-  error,
-  onRetry,
-}) => {
+export const DatasetsErrorState: React.FC<DatasetsErrorStateProps> = ({ error, onRetry }) => {
   return (
     <Box sx={{ p: 3 }}>
       <Alert

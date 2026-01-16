@@ -1,6 +1,6 @@
-import { Alert, Box, Button, Snackbar, TablePagination } from "@mui/material";
+import { Alert, Box, Button, TablePagination } from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { ConfirmationModal } from "../common/ConfirmationModal";
 
@@ -13,124 +13,84 @@ import { FillColumnModal } from "./FillColumnModal";
 import { ImportDatasetModal } from "./ImportDatasetModal";
 import { VersionDrawer } from "./VersionDrawer";
 
-import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
-import { useDatasetLocalState } from "@/hooks/datasets/useDatasetLocalState";
-import { useDatasetModalState } from "@/hooks/datasets/useDatasetModalState";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
-import { useDatasetSaveMutation } from "@/hooks/datasets/useDatasetSaveMutation";
-import { useDatasetSearch } from "@/hooks/datasets/useDatasetSearch";
-import { useDatasetSorting } from "@/hooks/datasets/useDatasetSorting";
-import { useDatasetVersionSelection } from "@/hooks/datasets/useDatasetVersionSelection";
-import { useFillColumnMutation } from "@/hooks/datasets/useFillColumnMutation";
+import {
+  DatasetContextProvider,
+  selectAddRowData,
+  selectEditRowData,
+  selectFilteredRows,
+  selectHasUnsavedChanges,
+  useDatasetContext,
+} from "@/contexts/dataset";
 import { useApi } from "@/hooks/useApi";
-import { useDataset } from "@/hooks/useDataset";
-import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
-import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
-import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
+import type { ColumnDefaults } from "@/types/dataset";
 import { fetchAllDatasetRows } from "@/utils/datasetApi";
 import { exportDatasetToCSV } from "@/utils/datasetExport";
-import { convertFromApiFormat } from "@/utils/datasetRowUtils";
-import { createEmptyRow } from "@/utils/datasetUtils";
 
 export const DatasetDetailView: React.FC = () => {
   const { datasetId } = useParams<{ datasetId: string }>();
+
+  if (!datasetId) {
+    return <Navigate to="/datasets" replace />;
+  }
+
+  return (
+    <DatasetContextProvider datasetId={datasetId}>
+      <DatasetDetailViewContent datasetId={datasetId} />
+    </DatasetContextProvider>
+  );
+};
+
+interface DatasetDetailViewContentProps {
+  datasetId: string;
+}
+
+const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ datasetId }) => {
+  const { state, dispatch, queries, mutations, showSnackbar } = useDatasetContext();
   const { task } = useTask();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
   const api = useApi();
-  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
-  const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<number | null>(null);
-  const [fillingColumn, setFillingColumn] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
 
-  const { dataset, isLoading: datasetLoading, error: datasetError } = useDataset(datasetId);
-  const { latestVersion, isLoading: latestVersionLoading } = useDatasetLatestVersion(datasetId);
+  const filteredRows = useMemo(() => selectFilteredRows(state), [state]);
+  const hasUnsavedChanges = selectHasUnsavedChanges(state);
+  const addRowData = useMemo(() => selectAddRowData(state), [state]);
+  const editRowData = useMemo(() => selectEditRowData(state), [state]);
 
-  const pagination = useDatasetPagination();
-
-  // Get version from URL query param
   const versionFromUrl = searchParams.get("version");
-  const initialVersion = versionFromUrl ? parseInt(versionFromUrl, 10) : undefined;
 
-  const versionSelection = useDatasetVersionSelection(latestVersion?.version_number, () => {
-    pagination.resetPage();
-  });
-
-  const {
-    version: versionData,
-    isLoading: versionLoading,
-    error: versionError,
-  } = useDatasetVersionData(datasetId, versionSelection.currentVersion, pagination.page, pagination.rowsPerPage);
-
-  const localState = useDatasetLocalState(versionData);
-
-  const sorting = useDatasetSorting(localState.localRows);
-  const search = useDatasetSearch(sorting.sortedRows);
-  const modals = useDatasetModalState();
-
-  const save = useDatasetSaveMutation(
-    datasetId,
-    localState.pendingChanges,
-    localState.hasUnsavedChanges,
-    () => {
-      localState.clearChanges();
-      versionSelection.resetToLatest();
-      showSnackbar("Changes saved successfully!", "success");
-    },
-    (error) => {
-      showSnackbar(error.message || "Failed to save changes. Please try again.", "error");
-    }
-  );
-
-  const fillColumn = useFillColumnMutation(
-    datasetId,
-    versionSelection.currentVersion,
-    () => {
-      setFillingColumn(null);
-      versionSelection.resetToLatest();
-      showSnackbar("Column filled successfully!", "success");
-    },
-    (error) => {
-      showSnackbar(error.message || "Failed to fill column. Please try again.", "error");
-    }
-  );
-
-  const isLoading = datasetLoading || latestVersionLoading;
-  const hasError = datasetError || !dataset;
-  const totalRows = versionData?.total_count ?? localState.localRows.length;
-
-  // Initialize version from URL on mount
   useEffect(() => {
-    if (initialVersion && !isNaN(initialVersion)) {
-      versionSelection.handleVersionSwitch(initialVersion);
+    if (versionFromUrl) {
+      const version = parseInt(versionFromUrl, 10);
+      if (!isNaN(version)) {
+        dispatch({ type: "VERSION/SELECT", payload: version });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, []);
 
-  // Update URL when version selection changes
   useEffect(() => {
-    if (versionSelection.selectedVersion !== undefined) {
-      setSearchParams({ version: versionSelection.selectedVersion.toString() }, { replace: true });
+    if (state.selectedVersion !== undefined) {
+      setSearchParams({ version: state.selectedVersion.toString() }, { replace: true });
     } else {
-      // Remove version param when showing latest version
       setSearchParams({}, { replace: true });
     }
-  }, [versionSelection.selectedVersion, setSearchParams]);
+  }, [state.selectedVersion, setSearchParams]);
 
   const handleBack = useCallback(() => {
-    if (localState.hasUnsavedChanges) {
-      setShowUnsavedChangesModal(true);
+    if (hasUnsavedChanges) {
+      dispatch({ type: "UI/SHOW_CONFIRMATION", payload: { type: "unsavedNavigation" } });
     } else {
       navigate(`/tasks/${task?.id}/datasets`);
     }
-  }, [localState.hasUnsavedChanges, navigate, task?.id]);
+  }, [hasUnsavedChanges, navigate, task?.id, dispatch]);
 
   const handleConfirmNavigation = useCallback(() => {
+    dispatch({ type: "UI/HIDE_CONFIRMATION" });
     navigate(`/tasks/${task?.id}/datasets`);
-  }, [navigate, task?.id]);
+  }, [navigate, task?.id, dispatch]);
 
   const handleViewExperiments = useCallback(() => {
     navigate(`/tasks/${task?.id}/datasets/${datasetId}/experiments`);
@@ -138,134 +98,136 @@ export const DatasetDetailView: React.FC = () => {
 
   const handleVersionSwitch = useCallback(
     (versionNumber: number) => {
-      if (localState.hasUnsavedChanges) {
+      if (hasUnsavedChanges) {
+        dispatch({
+          type: "UI/SHOW_CONFIRMATION",
+          payload: { type: "unsavedVersionSwitch", targetVersion: versionNumber },
+        });
         return;
       }
-      versionSelection.handleVersionSwitch(versionNumber);
-      setSelectedVersionForSwitch(null);
+      dispatch({ type: "VERSION/SELECT", payload: versionNumber });
     },
-    [localState.hasUnsavedChanges, versionSelection]
+    [hasUnsavedChanges, dispatch]
   );
 
   const handleConfirmVersionSwitch = useCallback(() => {
-    if (selectedVersionForSwitch !== null) {
-      versionSelection.handleVersionSwitch(selectedVersionForSwitch);
-      localState.clearChanges();
-      setSelectedVersionForSwitch(null);
+    if (state.confirmation.targetVersion !== null) {
+      dispatch({ type: "VERSION/SELECT", payload: state.confirmation.targetVersion });
+      dispatch({ type: "DATA/CLEAR_CHANGES" });
     }
-  }, [selectedVersionForSwitch, versionSelection, localState]);
+    dispatch({ type: "UI/HIDE_CONFIRMATION" });
+  }, [state.confirmation.targetVersion, dispatch]);
+
+  const handleAddRow = useCallback(
+    async (rowData: Record<string, unknown>) => {
+      dispatch({ type: "DATA/ADD_ROW", payload: rowData });
+      dispatch({ type: "UI/TOGGLE_ADD_MODAL", payload: false });
+    },
+    [dispatch]
+  );
 
   const handleUpdateRow = useCallback(
     async (rowData: Record<string, unknown>) => {
-      if (!modals.editingRow) return;
-      localState.updateRow(modals.editingRow.id, rowData);
-      modals.closeEditModal();
+      if (!state.modals.edit.row) return;
+      dispatch({ type: "DATA/UPDATE_ROW", payload: { id: state.modals.edit.row.id, data: rowData } });
+      dispatch({ type: "UI/CLOSE_EDIT_MODAL" });
     },
-    [modals, localState]
+    [state.modals.edit.row, dispatch]
   );
 
-  const handleAddRowSubmit = useCallback(
-    async (rowData: Record<string, unknown>) => {
-      try {
-        localState.addRow(rowData);
-        modals.closeAddModal();
-      } catch {
-        showSnackbar(`Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`, "error");
-      }
+  const handleDeleteRow = useCallback(
+    (id: string) => {
+      dispatch({ type: "DATA/DELETE_ROW", payload: id });
     },
-    [localState, modals, showSnackbar]
+    [dispatch]
   );
 
   const handleConfigureColumns = useCallback(
-    (columns: string[]) => {
-      localState.setColumns(columns);
+    async (columns: string[], newColumnDefaults: ColumnDefaults, applyToExisting: boolean) => {
+      dispatch({ type: "DATA/SET_COLUMNS", payload: columns });
+
+      if (queries.dataset && datasetId) {
+        const existingMetadata = (queries.dataset.metadata as Record<string, unknown>) ?? {};
+        await mutations.updateDataset.mutateAsync({
+          name: queries.dataset.name,
+          description: queries.dataset.description ?? undefined,
+          metadata: {
+            ...existingMetadata,
+            columnDefaults: newColumnDefaults,
+          },
+        });
+
+        if (applyToExisting && queries.totalRowCount > 0) {
+          mutations.applyDefaults.mutate({ columnDefaults: newColumnDefaults });
+        }
+      }
+
+      dispatch({ type: "UI/TOGGLE_CONFIGURE_MODAL", payload: false });
     },
-    [localState]
+    [dispatch, queries.dataset, queries.totalRowCount, datasetId, mutations]
+  );
+
+  const handleImportData = useCallback(
+    (csvColumns: string[], csvRows: Record<string, string>[]) => {
+      dispatch({ type: "DATA/IMPORT_ROWS", payload: { columns: csvColumns, rows: csvRows } });
+      dispatch({ type: "UI/TOGGLE_IMPORT_MODAL", payload: false });
+    },
+    [dispatch]
+  );
+
+  const handleFillColumn = useCallback(
+    (columnName: string) => {
+      if (hasUnsavedChanges) {
+        dispatch({
+          type: "UI/SHOW_CONFIRMATION",
+          payload: { type: "unsavedFillColumn", targetColumn: columnName },
+        });
+        return;
+      }
+      dispatch({ type: "UI/OPEN_FILL_MODAL", payload: columnName });
+    },
+    [hasUnsavedChanges, dispatch]
+  );
+
+  const handleConfirmFillColumn = useCallback(() => {
+    if (state.confirmation.targetColumn) {
+      dispatch({ type: "DATA/CLEAR_CHANGES" });
+      dispatch({ type: "UI/OPEN_FILL_MODAL", payload: state.confirmation.targetColumn });
+    }
+    dispatch({ type: "UI/HIDE_CONFIRMATION" });
+  }, [state.confirmation.targetColumn, dispatch]);
+
+  const handleFillColumnApply = useCallback(
+    (value: string) => {
+      if (state.modals.fill.columnName) {
+        mutations.fillColumn.mutate({ columnName: state.modals.fill.columnName, value });
+      }
+    },
+    [state.modals.fill.columnName, mutations.fillColumn]
   );
 
   const handleExport = useCallback(async () => {
-    if (!dataset || !api || !datasetId || versionSelection.currentVersion === undefined || totalRows === 0) return;
+    if (!queries.dataset || !api || !datasetId || queries.currentVersion === undefined || queries.totalRowCount === 0) {
+      return;
+    }
 
     setIsExporting(true);
     try {
-      const allRows = await fetchAllDatasetRows(api, datasetId, versionSelection.currentVersion);
-      exportDatasetToCSV(dataset.name, allRows);
+      const allRows = await fetchAllDatasetRows(api, datasetId, queries.currentVersion);
+      exportDatasetToCSV(queries.dataset.name, allRows);
       showSnackbar("Dataset exported successfully!", "success");
     } catch {
       showSnackbar("Failed to export dataset. Please try again.", "error");
     } finally {
       setIsExporting(false);
     }
-  }, [dataset, api, datasetId, versionSelection.currentVersion, totalRows, showSnackbar]);
+  }, [queries.dataset, api, datasetId, queries.currentVersion, queries.totalRowCount, showSnackbar]);
 
-  const handleImportData = useCallback(
-    (csvColumns: string[], csvRows: Record<string, string>[]) => {
-      const existingColumnsSet = new Set(localState.localColumns);
-      const newColumns = csvColumns.filter((col) => !existingColumnsSet.has(col));
-      const mergedColumns = [...localState.localColumns, ...newColumns];
-
-      if (newColumns.length > 0) {
-        localState.setColumns(mergedColumns);
-      }
-
-      csvRows.forEach((rowData) => {
-        const completeRowData: Record<string, unknown> = {};
-        mergedColumns.forEach((col) => {
-          completeRowData[col] = rowData[col] ?? "";
-        });
-        localState.addRow(completeRowData);
-      });
-
-      modals.closeImportModal();
-    },
-    [localState, modals]
-  );
-
-  const handleFillColumn = useCallback(
-    (columnName: string) => {
-      // If there are unsaved changes, warn user that fill will discard them
-      if (localState.hasUnsavedChanges) {
-        showSnackbar("Please save or discard your current changes before filling a column.", "warning");
-        return;
-      }
-      setFillingColumn(columnName);
-    },
-    [localState.hasUnsavedChanges, showSnackbar]
-  );
-
-  const handleFillColumnApply = useCallback(
-    (value: string) => {
-      if (fillingColumn) {
-        fillColumn.fillColumn({ columnName: fillingColumn, value });
-      }
-    },
-    [fillingColumn, fillColumn]
-  );
-
-  const handleFillColumnClose = useCallback(() => {
-    if (!fillColumn.isFilling) {
-      setFillingColumn(null);
-    }
-  }, [fillColumn.isFilling]);
-
-  const editRowData = useMemo(() => {
-    if (!modals.editingRow) return {};
-
-    const existingData = convertFromApiFormat(modals.editingRow);
-    const allColumnsData = createEmptyRow(localState.localColumns);
-
-    return { ...allColumnsData, ...existingData };
-  }, [modals.editingRow, localState.localColumns]);
-
-  const addRowData = useMemo(() => {
-    return createEmptyRow(localState.localColumns);
-  }, [localState.localColumns]);
-
-  if (isLoading) {
+  if (queries.isLoading && !queries.dataset) {
     return <DatasetLoadingState type="full" />;
   }
 
-  if (hasError) {
+  if (!queries.dataset) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert
@@ -276,7 +238,7 @@ export const DatasetDetailView: React.FC = () => {
             </Button>
           }
         >
-          {datasetError?.message || "Dataset not found"}
+          {queries.datasetError?.message || "Dataset not found"}
         </Alert>
       </Box>
     );
@@ -293,7 +255,7 @@ export const DatasetDetailView: React.FC = () => {
     >
       <Box
         sx={{
-          flex: modals.isVersionDrawerOpen ? "1 1 auto" : "1 1 100%",
+          flex: state.versionDrawerOpen ? "1 1 auto" : "1 1 100%",
           transition: "flex 0.3s ease",
           display: "grid",
           gridTemplateRows: "auto 1fr auto",
@@ -302,30 +264,30 @@ export const DatasetDetailView: React.FC = () => {
         }}
       >
         <DatasetHeader
-          datasetName={dataset.name}
-          description={dataset.description}
-          hasUnsavedChanges={localState.hasUnsavedChanges}
-          isSaving={save.isSaving}
+          datasetName={queries.dataset.name}
+          description={queries.dataset.description}
+          hasUnsavedChanges={hasUnsavedChanges}
+          isSaving={mutations.save.isPending}
           isExporting={isExporting}
-          canSave={save.canSave}
-          canAddRow={localState.localColumns.length > 0}
-          columnCount={localState.localColumns.length}
-          rowCount={localState.localRows.length}
-          totalRowCount={totalRows}
+          canSave={hasUnsavedChanges && !mutations.save.isPending}
+          canAddRow={state.columns.length > 0}
+          columnCount={state.columns.length}
+          rowCount={state.rows.length}
+          totalRowCount={queries.totalRowCount}
           onBack={handleBack}
-          onSave={save.saveChanges}
-          onConfigureColumns={modals.openConfigureColumns}
-          onAddRow={modals.openAddModal}
+          onSave={() => mutations.save.mutate()}
+          onConfigureColumns={() => dispatch({ type: "UI/TOGGLE_CONFIGURE_MODAL", payload: true })}
+          onAddRow={() => dispatch({ type: "UI/TOGGLE_ADD_MODAL", payload: true })}
           onExport={handleExport}
-          onImport={modals.openImportModal}
-          onOpenVersions={modals.openVersionDrawer}
+          onImport={() => dispatch({ type: "UI/TOGGLE_IMPORT_MODAL", payload: true })}
+          onOpenVersions={() => dispatch({ type: "UI/TOGGLE_VERSION_DRAWER", payload: true })}
           onViewExperiments={handleViewExperiments}
-          searchValue={search.searchQuery}
-          onSearchChange={search.setSearchQuery}
-          onSearchClear={search.handleClearSearch}
+          searchValue={state.searchQuery}
+          onSearchChange={(q) => dispatch({ type: "VIEW/SET_SEARCH", payload: q })}
+          onSearchClear={() => dispatch({ type: "VIEW/SET_SEARCH", payload: "" })}
         />
 
-        {localState.localColumns.length === 0 ? (
+        {state.columns.length === 0 ? (
           <Box
             sx={{
               display: "flex",
@@ -354,21 +316,21 @@ export const DatasetDetailView: React.FC = () => {
           </Box>
         ) : (
           <DatasetTable
-            columns={localState.localColumns}
-            rows={search.filteredRows}
-            isLoading={versionLoading}
-            error={versionError}
-            sortColumn={sorting.sortColumn}
-            sortDirection={sorting.sortDirection}
-            onSort={sorting.handleSort}
-            onEditRow={modals.openEditModal}
-            onDeleteRow={localState.deleteRow}
+            columns={state.columns}
+            rows={filteredRows}
+            isLoading={queries.versionLoading}
+            error={queries.versionError}
+            sortColumn={state.sorting.column}
+            sortDirection={state.sorting.direction}
+            onSort={(col) => dispatch({ type: "VIEW/TOGGLE_SORT", payload: col })}
+            onEditRow={(row) => dispatch({ type: "UI/OPEN_EDIT_MODAL", payload: row })}
+            onDeleteRow={handleDeleteRow}
             onFillColumn={handleFillColumn}
-            searchQuery={search.searchQuery}
+            searchQuery={state.searchQuery}
           />
         )}
 
-        {localState.localRows.length > 0 && (
+        {state.rows.length > 0 && (
           <Box
             sx={{
               borderTop: 1,
@@ -378,81 +340,79 @@ export const DatasetDetailView: React.FC = () => {
           >
             <TablePagination
               component="div"
-              count={totalRows}
-              page={pagination.page}
-              onPageChange={pagination.handlePageChange}
-              rowsPerPage={pagination.rowsPerPage}
-              onRowsPerPageChange={pagination.handleRowsPerPageChange}
+              count={queries.totalRowCount}
+              page={state.pagination.page}
+              onPageChange={(_, p) => dispatch({ type: "VIEW/SET_PAGE", payload: p })}
+              rowsPerPage={state.pagination.rowsPerPage}
+              onRowsPerPageChange={(e) => dispatch({ type: "VIEW/SET_ROWS_PER_PAGE", payload: parseInt(e.target.value, 10) })}
               rowsPerPageOptions={[10, 25, 50, 100]}
             />
           </Box>
         )}
       </Box>
 
-      {modals.isVersionDrawerOpen && task && datasetId && dataset && (
+      {state.versionDrawerOpen && task && datasetId && queries.dataset && (
         <VersionDrawer
           taskId={task.id}
           datasetId={datasetId}
-          datasetName={dataset.name}
-          currentVersionNumber={versionSelection.currentVersion}
-          latestVersionNumber={latestVersion?.version_number}
-          selectedVersionNumber={selectedVersionForSwitch}
-          onVersionClick={setSelectedVersionForSwitch}
-          onClose={modals.closeVersionDrawer}
+          datasetName={queries.dataset.name}
+          currentVersionNumber={queries.currentVersion}
+          latestVersionNumber={queries.latestVersion}
+          selectedVersionNumber={state.confirmation.targetVersion}
+          onVersionClick={(v) => dispatch({ type: "UI/SHOW_CONFIRMATION", payload: { type: "unsavedVersionSwitch", targetVersion: v } })}
+          onClose={() => dispatch({ type: "UI/TOGGLE_VERSION_DRAWER", payload: false })}
           onVersionSelect={handleVersionSwitch}
         />
       )}
 
-      {modals.editingRow && (
+      {state.modals.edit.row && (
         <EditRowModal
-          open={modals.isEditModalOpen}
-          onClose={modals.closeEditModal}
+          open={state.modals.edit.open}
+          onClose={() => dispatch({ type: "UI/CLOSE_EDIT_MODAL" })}
           onSubmit={handleUpdateRow}
           rowData={editRowData}
-          rowId={modals.editingRow.id}
+          rowId={state.modals.edit.row.id}
           isLoading={false}
         />
       )}
 
       <EditRowModal
-        open={modals.isAddModalOpen}
-        onClose={modals.closeAddModal}
-        onSubmit={handleAddRowSubmit}
+        open={state.modals.add}
+        onClose={() => dispatch({ type: "UI/TOGGLE_ADD_MODAL", payload: false })}
+        onSubmit={handleAddRow}
         rowData={addRowData}
         rowId="new"
         isLoading={false}
       />
 
       <ConfigureColumnsModal
-        open={modals.isConfigureColumnsOpen}
-        onClose={modals.closeConfigureColumns}
+        open={state.modals.configure}
+        onClose={() => dispatch({ type: "UI/TOGGLE_CONFIGURE_MODAL", payload: false })}
         onSave={handleConfigureColumns}
-        currentColumns={localState.localColumns}
+        currentColumns={state.columns}
+        currentColumnDefaults={state.columnDefaults}
+        existingRowCount={queries.totalRowCount}
       />
 
       <ImportDatasetModal
-        open={modals.isImportModalOpen}
-        onClose={modals.closeImportModal}
+        open={state.modals.import}
+        onClose={() => dispatch({ type: "UI/TOGGLE_IMPORT_MODAL", payload: false })}
         onImport={handleImportData}
-        currentRowCount={localState.localRows.length}
+        currentRowCount={state.rows.length}
       />
 
       <FillColumnModal
-        open={fillingColumn !== null}
-        columnName={fillingColumn ?? ""}
-        totalRowCount={totalRows}
-        onClose={handleFillColumnClose}
+        open={state.modals.fill.open}
+        columnName={state.modals.fill.columnName ?? ""}
+        totalRowCount={queries.totalRowCount}
+        onClose={() => dispatch({ type: "UI/CLOSE_FILL_MODAL" })}
         onApply={handleFillColumnApply}
-        isLoading={fillColumn.isFilling}
+        isLoading={mutations.fillColumn.isPending}
       />
 
-      <Snackbar {...snackbarProps}>
-        <Alert {...alertProps} />
-      </Snackbar>
-
       <ConfirmationModal
-        open={showUnsavedChangesModal}
-        onClose={() => setShowUnsavedChangesModal(false)}
+        open={state.confirmation.type === "unsavedNavigation"}
+        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
         onConfirm={handleConfirmNavigation}
         title="Unsaved Changes"
         message="You have unsaved changes. If you leave now, your changes will be lost. Are you sure you want to continue?"
@@ -461,12 +421,22 @@ export const DatasetDetailView: React.FC = () => {
       />
 
       <ConfirmationModal
-        open={selectedVersionForSwitch !== null && localState.hasUnsavedChanges}
-        onClose={() => setSelectedVersionForSwitch(null)}
+        open={state.confirmation.type === "unsavedVersionSwitch" && hasUnsavedChanges}
+        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
         onConfirm={handleConfirmVersionSwitch}
         title="Unsaved Changes"
         message="You have unsaved changes in the current version. If you switch versions now, your changes will be lost. Are you sure you want to continue?"
         confirmText="Switch Version"
+        cancelText="Cancel"
+      />
+
+      <ConfirmationModal
+        open={state.confirmation.type === "unsavedFillColumn" && hasUnsavedChanges}
+        onClose={() => dispatch({ type: "UI/HIDE_CONFIRMATION" })}
+        onConfirm={handleConfirmFillColumn}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Filling a column will discard your changes and update all rows on the server. Are you sure you want to continue?"
+        confirmText="Discard & Fill Column"
         cancelText="Cancel"
       />
     </Box>

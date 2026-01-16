@@ -6,11 +6,11 @@ import { useState } from "react";
 import { userLevelColumns } from "../../data/user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
-import { TracesTable } from "../TracesTable";
 import { DataContentGate } from "../DataContentGate";
+import { TracesTable } from "../TracesTable";
 
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
@@ -27,7 +27,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const pagination = usePagination(FETCH_SIZE);
 
   const params = {
     taskId: task?.id ?? "",
@@ -71,12 +71,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      <DataContentGate
-        welcomeDismissed={welcomeDismissed}
-        hasData={hasData}
-        hasActiveFilters={false}
-        dataType="users"
-      >
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={false} dataType="users">
         {hasData && (
           <>
             <TracesTable

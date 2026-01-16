@@ -13,8 +13,8 @@ import { Details } from "./components/details";
 import { createFilterRow } from "@/components/traces/components/filtering/filters-row";
 import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 
 export const Results = () => {
@@ -25,7 +25,7 @@ export const Results = () => {
   const [action, setAction] = useQueryState("action", parseAsStringEnum(["rerun"]));
 
   const filters = useFilterStore((state) => state.filters);
-  const pagination = useDatasetPagination();
+  const pagination = usePagination();
 
   const { data } = useSuspenseQuery(
     continuousEvalsResultsQueryOptions({
@@ -38,7 +38,7 @@ export const Results = () => {
 
   const table = useReactTable({
     data: data.annotations,
-    columns: useMemo(() => createColumns({ onView: (annotationId) => setAnnotationId(annotationId) }), []),
+    columns: useMemo(() => createColumns({ onView: (annotationId) => setAnnotationId(annotationId) }), [setAnnotationId]),
     getCoreRowModel: getCoreRowModel(),
   });
 
