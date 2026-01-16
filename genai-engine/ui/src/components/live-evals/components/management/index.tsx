@@ -13,8 +13,8 @@ import { EditFormDialog } from "../edit-form";
 import { createFilterRow } from "@/components/traces/components/filtering/filters-row";
 import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 
 export const Management = () => {
@@ -26,7 +26,7 @@ export const Management = () => {
   const [continuousEvalId, setContinuousEvalId] = useState<string>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "created_at", desc: true }]);
 
-  const pagination = useDatasetPagination();
+  const pagination = usePagination();
 
   const { data } = useSuspenseQuery(
     continuousEvalsQueryOptions({
