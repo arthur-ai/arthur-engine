@@ -33,6 +33,7 @@ export const SessionDrawerContent = ({ id }: Props) => {
 
   useEffect(() => {
     initOnTraces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.traces]);
 
   const { token, cost } = getSessionTotals(session);

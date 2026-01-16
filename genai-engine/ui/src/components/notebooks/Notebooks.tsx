@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { CreateNotebookModal } from "./CreateNotebookModal";
@@ -12,9 +12,8 @@ import NotebooksHeader from "./NotebooksHeader";
 import NotebooksTable from "./NotebooksTable";
 
 import { getContentHeight } from "@/constants/layout";
-import { useTask } from "@/hooks/useTask";
 import { useNotebooks, useDeleteNotebookMutation, useCreateNotebookMutation } from "@/hooks/useNotebooks";
-
+import { useTask } from "@/hooks/useTask";
 import type { CreateNotebookRequest } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -179,9 +178,7 @@ const Notebooks: React.FC = () => {
               >
                 No notebooks found
               </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>
-                Create your first notebook to start experimenting with prompts.
-              </Box>
+              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first notebook to start experimenting with prompts.</Box>
               <Button variant="contained" onClick={handleCreateNotebook} sx={{ mt: 1 }}>
                 Create Notebook
               </Button>
@@ -222,11 +219,7 @@ const Notebooks: React.FC = () => {
         </Box>
       )}
 
-      <NotebookDetailModal
-        open={isDetailModalOpen}
-        notebookId={selectedNotebookId}
-        onClose={handleCloseDetailModal}
-      />
+      <NotebookDetailModal open={isDetailModalOpen} notebookId={selectedNotebookId} onClose={handleCloseDetailModal} />
 
       <CreateNotebookModal
         open={isCreateModalOpen}
@@ -239,4 +232,3 @@ const Notebooks: React.FC = () => {
 };
 
 export default Notebooks;
-

@@ -16,13 +16,7 @@ import {
 } from "@mui/material";
 import React from "react";
 
-import {
-  CSV_IMPORT_MESSAGES,
-  DELIMITER_OPTIONS,
-  ENCODING_OPTIONS,
-  MAX_DATASET_ROWS,
-  type CsvParseConfig,
-} from "./csvImportConstants";
+import { CSV_IMPORT_MESSAGES, DELIMITER_OPTIONS, ENCODING_OPTIONS, MAX_DATASET_ROWS, type CsvParseConfig } from "./csvImportConstants";
 
 interface ImportConfigurationStepProps {
   selectedFile: File | null;
@@ -34,9 +28,7 @@ interface ImportConfigurationStepProps {
   onConfigChange: (config: CsvParseConfig) => void;
 }
 
-export const ImportConfigurationStep: React.FC<
-  ImportConfigurationStepProps
-> = ({
+export const ImportConfigurationStep: React.FC<ImportConfigurationStepProps> = ({
   selectedFile,
   config,
   isAutoDetecting,
@@ -62,21 +54,9 @@ export const ImportConfigurationStep: React.FC<
           backgroundColor: "background.default",
         }}
       >
-        <input
-          type="file"
-          accept=".csv,.txt"
-          onChange={onFileChange}
-          style={{ display: "none" }}
-          id="csv-upload-input"
-          disabled={isAutoDetecting}
-        />
+        <input type="file" accept=".csv,.txt" onChange={onFileChange} style={{ display: "none" }} id="csv-upload-input" disabled={isAutoDetecting} />
         <label htmlFor="csv-upload-input">
-          <Button
-            variant="outlined"
-            component="span"
-            startIcon={<UploadFileIcon />}
-            disabled={isAutoDetecting}
-          >
+          <Button variant="outlined" component="span" startIcon={<UploadFileIcon />} disabled={isAutoDetecting}>
             {CSV_IMPORT_MESSAGES.labels.chooseFile}
           </Button>
         </label>
@@ -84,8 +64,7 @@ export const ImportConfigurationStep: React.FC<
         {selectedFile && (
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2">
-              Selected: {selectedFile.name} (
-              {(selectedFile.size / 1024).toFixed(1)} KB)
+              Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
             </Typography>
             {autoDetected && (
               <Chip
@@ -125,9 +104,7 @@ export const ImportConfigurationStep: React.FC<
             <Select
               value={config.delimiter}
               label={CSV_IMPORT_MESSAGES.labels.delimiter}
-              onChange={(e) =>
-                onConfigChange({ ...config, delimiter: e.target.value })
-              }
+              onChange={(e) => onConfigChange({ ...config, delimiter: e.target.value })}
             >
               {DELIMITER_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -141,9 +118,7 @@ export const ImportConfigurationStep: React.FC<
             <TextField
               label={CSV_IMPORT_MESSAGES.labels.quoteChar}
               value={config.quoteChar}
-              onChange={(e) =>
-                onConfigChange({ ...config, quoteChar: e.target.value })
-              }
+              onChange={(e) => onConfigChange({ ...config, quoteChar: e.target.value })}
               size="small"
               fullWidth
               inputProps={{ maxLength: 1 }}
@@ -151,9 +126,7 @@ export const ImportConfigurationStep: React.FC<
             <TextField
               label={CSV_IMPORT_MESSAGES.labels.escapeChar}
               value={config.escapeChar}
-              onChange={(e) =>
-                onConfigChange({ ...config, escapeChar: e.target.value })
-              }
+              onChange={(e) => onConfigChange({ ...config, escapeChar: e.target.value })}
               size="small"
               fullWidth
               inputProps={{ maxLength: 1 }}
@@ -165,9 +138,7 @@ export const ImportConfigurationStep: React.FC<
             <Select
               value={config.encoding}
               label={CSV_IMPORT_MESSAGES.labels.encoding}
-              onChange={(e) =>
-                onConfigChange({ ...config, encoding: e.target.value })
-              }
+              onChange={(e) => onConfigChange({ ...config, encoding: e.target.value })}
             >
               {ENCODING_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -179,14 +150,7 @@ export const ImportConfigurationStep: React.FC<
 
           <Box>
             <FormControlLabel
-              control={
-                <Checkbox
-                  checked={config.header}
-                  onChange={(e) =>
-                    onConfigChange({ ...config, header: e.target.checked })
-                  }
-                />
-              }
+              control={<Checkbox checked={config.header} onChange={(e) => onConfigChange({ ...config, header: e.target.checked })} />}
               label={CSV_IMPORT_MESSAGES.labels.firstRowHeaders}
             />
             <FormControlLabel

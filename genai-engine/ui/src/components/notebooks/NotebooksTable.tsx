@@ -23,14 +23,15 @@ import React, { useState } from "react";
 
 import type { NotebooksTableProps } from "./types";
 
+import { NotebookSummary } from "@/lib/api-client/api-client";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const NotebooksTable: React.FC<NotebooksTableProps> = ({ notebooks, sortColumn, sortDirection, onSort, onRowClick, onLaunchNotebook, onDelete }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [notebookToDelete, setNotebookToDelete] = useState<any>(null);
+  const [notebookToDelete, setNotebookToDelete] = useState<NotebookSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteClick = (notebook: any, event: React.MouseEvent) => {
+  const handleDeleteClick = (notebook: NotebookSummary, event: React.MouseEvent) => {
     event.stopPropagation();
     setNotebookToDelete(notebook);
     setDeleteDialogOpen(true);

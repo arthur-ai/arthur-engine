@@ -1,4 +1,4 @@
-import { Delete, Warning, VpnKey, Add, Error } from "@mui/icons-material";
+import { Delete, VpnKey, Add, Error as ErrorIcon } from "@mui/icons-material";
 import {
   Box,
   Button,
@@ -26,10 +26,25 @@ import {
   InputLabel,
   FormHelperText,
 } from "@mui/material";
-import React, { useState, useEffect } from "react";
+import { isAxiosError } from "axios";
+import React, { useState, useEffect, useCallback } from "react";
 
 import { useApi } from "@/hooks/useApi";
 import { ApiKeyResponse, APIKeysRolesEnum } from "@/lib/api-client/api-client";
+
+function getErrorInfo(err: unknown): { status?: number; message: string } {
+  if (isAxiosError(err)) {
+    const data = err.response?.data as { detail?: string } | undefined;
+    return {
+      status: err.response?.status,
+      message: data?.detail || err.message,
+    };
+  }
+  if (err instanceof Error) {
+    return { message: err.message };
+  }
+  return { message: "Unknown error" };
+}
 
 export const ApiKeysManagement: React.FC = () => {
   const api = useApi();
@@ -52,7 +67,7 @@ export const ApiKeysManagement: React.FC = () => {
   const [showCreatedKeyModal, setShowCreatedKeyModal] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const fetchApiKeys = async () => {
+  const fetchApiKeys = useCallback(async () => {
     if (!api) return;
 
     try {
@@ -62,11 +77,10 @@ export const ApiKeysManagement: React.FC = () => {
 
       const response = await api.auth.getAllActiveApiKeysAuthApiKeysGet();
       setApiKeys(response.data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch API keys:", err);
 
-      const status = err?.response?.status;
-      const errorMessage = err?.response?.data?.detail || err?.message || "Unknown error";
+      const { status, message: errorMessage } = getErrorInfo(err);
 
       // Check if it's a permission error (403 or 401)
       if (status === 403 || status === 401) {
@@ -79,13 +93,13 @@ export const ApiKeysManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api]);
 
   useEffect(() => {
     if (api) {
       fetchApiKeys();
     }
-  }, [api]);
+  }, [api, fetchApiKeys]);
 
   const getRoleDisplayName = (role: string): string => {
     const displayNames: Record<string, string> = {
@@ -127,11 +141,10 @@ export const ApiKeysManagement: React.FC = () => {
 
       // Close modal
       setDeleteModal({ isOpen: false, apiKey: null });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to delete API key:", err);
 
-      const status = err?.response?.status;
-      const errorMessage = err?.response?.data?.detail || err?.message || "Unknown error";
+      const { status, message: errorMessage } = getErrorInfo(err);
 
       // Check if it's a permission error
       if (status === 403 || status === 401) {
@@ -178,11 +191,10 @@ export const ApiKeysManagement: React.FC = () => {
       setShowCreatedKeyModal(true);
       setSelectedRole("VALIDATION-USER");
       setDescription("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to create API key:", err);
 
-      const status = err?.response?.status;
-      const errorMessage = err?.response?.data?.detail || err?.message || "Unknown error";
+      const { status, message: errorMessage } = getErrorInfo(err);
 
       // Check if it's a permission error
       if (status === 403 || status === 401) {
@@ -465,7 +477,7 @@ export const ApiKeysManagement: React.FC = () => {
       {/* Delete Confirmation Modal */}
       <Dialog open={deleteModal.isOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          <Error sx={{ color: "error.main" }} />
+          <ErrorIcon sx={{ color: "error.main" }} />
           Delete API Key
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>

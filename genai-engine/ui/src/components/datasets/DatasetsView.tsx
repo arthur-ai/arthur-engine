@@ -21,10 +21,7 @@ import { useDeleteDatasetMutation } from "@/hooks/datasets/useDeleteDatasetMutat
 import { useUpdateDatasetMutation } from "@/hooks/datasets/useUpdateDatasetMutation";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useTask } from "@/hooks/useTask";
-import type {
-  DatasetResponse,
-  NewDatasetRequest,
-} from "@/lib/api-client/api-client";
+import type { DatasetResponse, NewDatasetRequest } from "@/lib/api-client/api-client";
 
 export const DatasetsView: React.FC = () => {
   const { task } = useTask();
@@ -42,18 +39,10 @@ export const DatasetsView: React.FC = () => {
       page: pagination.page,
       pageSize: pagination.pageSize,
     }),
-    [
-      search.debouncedSearchQuery,
-      sorting.sortOrder,
-      pagination.page,
-      pagination.pageSize,
-    ]
+    [search.debouncedSearchQuery, sorting.sortOrder, pagination.page, pagination.pageSize]
   );
 
-  const { datasets, count, error, isLoading, refetch } = useDatasets(
-    task?.id,
-    filters
-  );
+  const { datasets, count, error, isLoading, refetch } = useDatasets(task?.id, filters);
 
   const createMutation = useCreateDatasetMutation(task?.id, (newDataset) => {
     modals.closeCreateModal();
@@ -120,10 +109,7 @@ export const DatasetsView: React.FC = () => {
         }}
       >
         <DatasetsViewHeader onCreateDataset={modals.openCreateModal} />
-        <DatasetsSearchBar
-          value={search.searchQuery}
-          onChange={search.setSearchQuery}
-        />
+        <DatasetsSearchBar value={search.searchQuery} onChange={search.setSearchQuery} />
       </Box>
 
       {error && datasets.length > 0 && (
@@ -141,9 +127,7 @@ export const DatasetsView: React.FC = () => {
         {!isLoading && datasets.length === 0 ? (
           <DatasetsEmptyState
             type={search.debouncedSearchQuery ? "no-results" : "no-datasets"}
-            onCreateDataset={
-              !search.debouncedSearchQuery ? modals.openCreateModal : undefined
-            }
+            onCreateDataset={!search.debouncedSearchQuery ? modals.openCreateModal : undefined}
           />
         ) : (
           <DatasetsTable

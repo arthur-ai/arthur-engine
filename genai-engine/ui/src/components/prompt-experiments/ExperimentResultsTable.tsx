@@ -30,7 +30,7 @@ import { EvalInputsDialog } from "./PromptResultDetailModal";
 
 import { useApi } from "@/hooks/useApi";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import type { TestCase, DatasetVersionRowResponse } from "@/lib/api-client/api-client";
+import type { TestCase, DatasetVersionRowResponse, EvalExecution } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -40,7 +40,6 @@ interface Message {
 }
 
 interface ExperimentResultsTableProps {
-  taskId: string;
   experimentId: string;
   promptSummaries?: Array<{
     prompt_key?: string | null;
@@ -67,7 +66,7 @@ interface TestCaseDetailModalProps {
   totalCount: number;
   onPrevious: () => void;
   onNext: () => void;
-  onViewEvalInputs?: (evalExecution: any) => void;
+  onViewEvalInputs?: (evalExecution: EvalExecution) => void;
 }
 
 const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
@@ -497,7 +496,7 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
                     <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
                       {item.column_name}
                     </Typography>
-                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap break-words">
+                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word">
                       {item.column_value}
                     </Typography>
                   </Box>
@@ -512,7 +511,6 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
 };
 
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
-  taskId,
   experimentId,
   promptSummaries = [],
   refreshTrigger,
@@ -526,7 +524,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
-  const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
   const [datasetRowModalOpen, setDatasetRowModalOpen] = useState(false);
   const [selectedDatasetRow, setSelectedDatasetRow] = useState<{ datasetId: string; versionNumber: number; rowId: string } | null>(null);
 
@@ -559,7 +557,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     setSelectedTestCaseIndex(-1);
   };
 
-  const handleViewEvalInputs = (evalExecution: any) => {
+  const handleViewEvalInputs = (evalExecution: EvalExecution) => {
     setSelectedEvalExecution(evalExecution);
     setEvalInputsDialogOpen(true);
   };

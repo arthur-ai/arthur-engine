@@ -18,12 +18,7 @@ interface CreateTaskFormProps {
   embedded?: boolean;
 }
 
-export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
-  onTaskCreated,
-  onCancel,
-  open = true,
-  embedded = false,
-}) => {
+export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({ onTaskCreated, onCancel, open = true, embedded = false }) => {
   const api = useApi();
   const [taskName, setTaskName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,8 +98,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
 
       <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
         <p className="text-sm text-blue-900">
-          <span className="font-medium">Note:</span> This will create an agentic
-          task that can be used for AI agent experiments and evaluations.
+          <span className="font-medium">Note:</span> This will create an agentic task that can be used for AI agent experiments and evaluations.
         </p>
       </div>
     </div>
@@ -113,9 +107,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   if (embedded) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
-        <h3 className="text-lg font-medium text-black mb-4">
-          Create New Agent Task
-        </h3>
+        <h3 className="text-lg font-medium text-black mb-4">Create New Agent Task</h3>
         <form onSubmit={handleSubmit}>
           {formContent}
           <div className="flex space-x-3 mt-4">
@@ -124,12 +116,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                 Cancel
               </Button>
             )}
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={isSubmitting || !taskName.trim()}
-              fullWidth
-            >
+            <Button type="submit" variant="contained" disabled={isSubmitting || !taskName.trim()} fullWidth>
               {isSubmitting ? "Creating..." : "Create Task"}
             </Button>
           </div>
@@ -149,12 +136,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
               Cancel
             </Button>
           )}
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={isSubmitting || !taskName.trim()}
-            sx={{ minWidth: 120 }}
-          >
+          <Button type="submit" variant="contained" disabled={isSubmitting || !taskName.trim()} sx={{ minWidth: 120 }}>
             {isSubmitting ? "Creating..." : "Create Task"}
           </Button>
         </DialogActions>

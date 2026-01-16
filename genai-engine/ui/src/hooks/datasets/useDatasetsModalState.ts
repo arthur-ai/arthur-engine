@@ -4,9 +4,7 @@ import type { DatasetResponse } from "@/lib/api-client/api-client";
 
 export const useDatasetsModalState = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingDataset, setEditingDataset] = useState<DatasetResponse | null>(
-    null
-  );
+  const [editingDataset, setEditingDataset] = useState<DatasetResponse | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const openCreateModal = () => setIsCreateModalOpen(true);

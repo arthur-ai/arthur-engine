@@ -2,11 +2,13 @@ import { ReactNode, createContext, useContext } from "react";
 
 import { PromptPlaygroundState, PromptAction } from "./types";
 
+import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
+
 interface PromptProviderProps {
   children: ReactNode;
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
-  experimentConfig?: any;
+  experimentConfig?: Partial<PromptExperimentDetail> | null;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
   isRunningExperiment?: boolean;
   runningExperimentId?: string | null;
@@ -16,7 +18,7 @@ interface PromptProviderProps {
 const PromptContext = createContext<{
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
-  experimentConfig?: any;
+  experimentConfig?: Partial<PromptExperimentDetail> | null;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
   isRunningExperiment?: boolean;
   runningExperimentId?: string | null;

@@ -5,6 +5,7 @@ This library provides a centralized way to create and configure API clients for 
 ## Overview
 
 The API client library consists of:
+
 - **Centralized API client creation** (`/src/lib/api.ts`)
 - **React hooks for easy integration** (`/src/hooks/useApi.ts`)
 - **Type-safe API calls** with full TypeScript support
@@ -14,10 +15,10 @@ The API client library consists of:
 ### Using the API Client Directly
 
 ```typescript
-import { createAuthenticatedApiClient } from '@/lib/api';
+import { createAuthenticatedApiClient } from "@/lib/api";
 
 // Create an authenticated client
-const api = createAuthenticatedApiClient('your-token-here');
+const api = createAuthenticatedApiClient("your-token-here");
 
 // Make API calls
 const tasks = await api.api.searchTasksApiV2TasksSearchPost({}, { page_size: 10 });
@@ -47,38 +48,40 @@ function MyComponent() {
 ### Core Functions
 
 #### `createApiClient(config)`
+
 Creates a configured API client with custom options.
 
 ```typescript
 const api = createApiClient({
-  baseURL: 'https://custom-api.com',
-  token: 'custom-token'
+  baseURL: "https://custom-api.com",
+  token: "custom-token",
 });
 ```
 
 #### `createAuthenticatedApiClient(token, baseURL?)`
+
 Creates an API client with a specific authentication token.
 
 ```typescript
-const api = createAuthenticatedApiClient('your-token');
+const api = createAuthenticatedApiClient("your-token");
 ```
-
 
 ### React Hooks
 
 #### `useApi()`
+
 Returns an authenticated API client using the current user's token from the auth context.
 
 ```typescript
 const api = useApi(); // Returns Api<any> | null
 ```
 
-
 #### `useApiWithToken(token)`
+
 Returns an API client with a specific token.
 
 ```typescript
-const api = useApiWithToken('specific-token'); // Returns Api<any>
+const api = useApiWithToken("specific-token"); // Returns Api<any>
 ```
 
 ## Configuration
@@ -201,17 +204,12 @@ function MyComponent() {
 The library exports all necessary types from the generated API client:
 
 ```typescript
-import { 
-  TaskResponse, 
-  SearchTasksRequest, 
-  NewTaskRequest,
-  RuleResponse 
-} from '@/lib/api';
+import { TaskResponse, SearchTasksRequest, NewTaskRequest, RuleResponse } from "@/lib/api";
 
 // Use types for better TypeScript support
 const task: TaskResponse = {
-  id: 'task-1',
-  name: 'My Task',
+  id: "task-1",
+  name: "My Task",
   // ... other properties
 };
 ```
@@ -229,18 +227,20 @@ const task: TaskResponse = {
 ### From Direct API Client Usage
 
 **Before:**
+
 ```typescript
-import { Api } from '@/lib/api-client/api-client';
+import { Api } from "@/lib/api-client/api-client";
 
 const api = new Api({
-  baseURL: 'http://localhost:8000',
-  securityWorker: (token) => token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+  baseURL: "http://localhost:8000",
+  securityWorker: (token) => (token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
 });
 ```
 
 **After:**
+
 ```typescript
-import { useApi } from '@/hooks/useApi';
+import { useApi } from "@/hooks/useApi";
 
 const api = useApi(); // Automatically configured
 ```
@@ -248,12 +248,14 @@ const api = useApi(); // Automatically configured
 ### From AuthService API Client
 
 **Before:**
+
 ```typescript
 const authService = AuthService.getInstance();
 const apiClient = authService.getApiClient();
 ```
 
 **After:**
+
 ```typescript
 const api = useApi(); // Cleaner and more React-friendly
 ```

@@ -1,22 +1,17 @@
-import { Box, Button, Collapse, Paper, Stack, Typography } from "@mui/material";
-import { FallbackProps } from "react-error-boundary";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import { Box, Button, Collapse, Paper, Stack, Typography } from "@mui/material";
 import { useState } from "react";
+import { FallbackProps } from "react-error-boundary";
 
 interface ErrorFallbackProps extends FallbackProps {
   title?: string;
   description?: string;
 }
 
-export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
-  error,
-  resetErrorBoundary,
-  title = "Something went wrong",
-  description,
-}) => {
+export const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetErrorBoundary, title = "Something went wrong", description }) => {
   const [showDetails, setShowDetails] = useState(false);
 
   const errorMessage = error?.message || "Unknown error occurred";
@@ -88,12 +83,7 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           )}
 
           {resetErrorBoundary && (
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={resetErrorBoundary}
-              sx={{ alignSelf: "flex-start" }}
-            >
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={resetErrorBoundary} sx={{ alignSelf: "flex-start" }}>
               Try again
             </Button>
           )}

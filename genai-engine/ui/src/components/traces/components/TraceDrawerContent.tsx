@@ -86,6 +86,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
     }
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(onOpenDrawer, []);
 
   const thresholds = useMemo(() => buildThresholdsFromSample(flatSpans.map((span) => getSpanDuration(span) ?? 0)), [flatSpans]);
