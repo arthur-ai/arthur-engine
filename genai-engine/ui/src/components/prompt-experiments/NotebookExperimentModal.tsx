@@ -36,10 +36,7 @@ import type {
   AgenticPromptVersionResponse,
   DatasetResponse,
   DatasetVersionMetadataResponse,
-  LLMEvalsVersionListResponse,
   LLMVersionResponse,
-  AgenticPrompt,
-  LLMEval,
   PromptExperimentDetail,
 } from "@/lib/api-client/api-client";
 
@@ -158,7 +155,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
   // Evaluators state
   const [evaluators, setEvaluators] = useState<LLMGetAllMetadataResponse[]>([]);
   const [evaluatorVersions, setEvaluatorVersions] = useState<Record<string, LLMVersionResponse[]>>({});
-  const [loadingEvaluators, setLoadingEvaluators] = useState(false);
+  const [_loadingEvaluators, setLoadingEvaluators] = useState(false);
   const [currentEvaluatorName, setCurrentEvaluatorName] = useState<string>("");
   const [currentEvaluatorVersion, setCurrentEvaluatorVersion] = useState<number | "">("");
 
@@ -411,27 +408,6 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
       }
     } catch (error) {
       console.error("Failed to load evaluator versions:", error);
-    }
-  };
-
-  const loadPromptVariables = async () => {
-    if (!taskId || !api || !selectedPromptName || formData.promptVersions.length === 0) return;
-    try {
-      setLoadingPromptDetails(true);
-      // Fetch details for the first selected version to get variables
-      const firstVersion = formData.promptVersions[0];
-      const response = await api.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-        firstVersion.promptName,
-        String(firstVersion.version),
-        taskId
-      );
-      if (response.data.variables) {
-        setPromptVariables(response.data.variables);
-      }
-    } catch (error) {
-      console.error("Failed to load prompt variables:", error);
-    } finally {
-      setLoadingPromptDetails(false);
     }
   };
 

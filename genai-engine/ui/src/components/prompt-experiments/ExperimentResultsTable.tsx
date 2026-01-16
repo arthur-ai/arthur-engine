@@ -40,7 +40,6 @@ interface Message {
 }
 
 interface ExperimentResultsTableProps {
-  taskId: string;
   experimentId: string;
   promptSummaries?: Array<{
     prompt_key?: string | null;
@@ -497,7 +496,7 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
                     <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
                       {item.column_name}
                     </Typography>
-                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap break-words">
+                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word">
                       {item.column_value}
                     </Typography>
                   </Box>
@@ -512,7 +511,6 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
 };
 
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
-  taskId,
   experimentId,
   promptSummaries = [],
   refreshTrigger,

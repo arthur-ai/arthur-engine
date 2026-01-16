@@ -14,7 +14,6 @@ import { AgentNotebook } from "./components/agent-notebook";
 import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
-import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";

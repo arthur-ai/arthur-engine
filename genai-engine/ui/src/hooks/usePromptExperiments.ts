@@ -2,14 +2,7 @@ import { useApi } from "./useApi";
 import { useApiMutation } from "./useApiMutation";
 import { useApiQuery } from "./useApiQuery";
 
-import type {
-  PromptExperimentListResponse,
-  PromptExperimentDetail,
-  TestCaseListResponse,
-  PromptVersionResultListResponse,
-  CreatePromptExperimentRequest,
-  PromptExperimentSummary,
-} from "@/lib/api-client/api-client";
+import type { PromptExperimentDetail, CreatePromptExperimentRequest, PromptExperimentSummary } from "@/lib/api-client/api-client";
 
 /**
  * Hook to fetch all prompt experiments for a task

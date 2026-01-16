@@ -3,9 +3,7 @@ import { useApiMutation } from "./useApiMutation";
 import { useApiQuery } from "./useApiQuery";
 
 import type {
-  NotebookListResponse,
   NotebookDetail,
-  NotebookSummary,
   CreateNotebookRequest,
   UpdateNotebookRequest,
   SetNotebookStateRequest,

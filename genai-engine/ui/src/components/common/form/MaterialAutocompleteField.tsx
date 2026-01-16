@@ -8,13 +8,13 @@ export const MaterialAutocompleteField = <
   DisableClearable extends boolean = false,
   FreeSolo extends boolean = false,
 >({
-  value,
+  value: _value,
   onBlur,
   onChange,
   multiple = false as Multiple,
   ...props
 }: AutocompleteProps<Value, Multiple, DisableClearable, FreeSolo>) => {
-  const field = useFieldContext<typeof value>();
+  const field = useFieldContext<typeof _value>();
 
   return (
     <Autocomplete

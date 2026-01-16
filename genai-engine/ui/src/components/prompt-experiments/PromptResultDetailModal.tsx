@@ -3,7 +3,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Box, IconButton, Typography, Chip, Modal, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import React, { useState } from "react";
+import React from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 
