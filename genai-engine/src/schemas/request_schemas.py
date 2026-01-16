@@ -1242,3 +1242,76 @@ class AgenticAnnotationListFilterRequest(BaseModel):
                 datetime.fromisoformat(created_before) if created_before else None
             ),
         )
+
+
+# ============================================================================
+# Synthetic Data Generation Schemas
+# ============================================================================
+
+
+class SyntheticDataColumnDescription(BaseModel):
+    """Description of a column for synthetic data generation."""
+
+    column_name: str = Field(
+        description="Name of the column to generate data for.",
+    )
+    description: str = Field(
+        description="Description of what this column contains and how to generate realistic values.",
+    )
+
+
+class SyntheticDataGenerationRequest(BaseModel):
+    """Request for initial synthetic data generation."""
+
+    dataset_purpose: str = Field(
+        description="Description of the dataset's purpose and what the data represents.",
+    )
+    column_descriptions: List[SyntheticDataColumnDescription] = Field(
+        description="Descriptions for each column to guide generation.",
+    )
+    num_rows: int = Field(
+        default=10,
+        ge=1,
+        le=25,
+        description="Number of rows to generate (1-25).",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model to use for generation.",
+    )
+    model_name: str = Field(
+        description="Name of the LLM model to use for generation.",
+    )
+    config: Optional[LLMRequestConfigSettings] = Field(
+        default=None,
+        description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
+    )
+
+
+class SyntheticDataConversationRequest(BaseModel):
+    """Request for continuing a synthetic data generation conversation."""
+
+    message: str = Field(
+        description="User's message/instruction for refining the generated data.",
+    )
+    current_rows: List[NewDatasetVersionRowRequest] = Field(
+        description="Current state of generated rows (including any manual edits).",
+    )
+    conversation_history: List[OpenAIMessage] = Field(
+        description="Previous conversation messages for context.",
+    )
+    dataset_purpose: str = Field(
+        description="Original dataset purpose for context.",
+    )
+    column_descriptions: List[SyntheticDataColumnDescription] = Field(
+        description="Original column descriptions for context.",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model to use for generation.",
+    )
+    model_name: str = Field(
+        description="Name of the LLM model to use for generation.",
+    )
+    config: Optional[LLMRequestConfigSettings] = Field(
+        default=None,
+        description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
+    )

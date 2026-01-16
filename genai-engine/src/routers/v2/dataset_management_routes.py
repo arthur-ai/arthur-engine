@@ -2,13 +2,14 @@ from typing import Annotated, List, Optional
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import get_db_session, get_validated_task
 from repositories.datasets_repository import DatasetRepository
+from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
@@ -17,6 +18,8 @@ from schemas.request_schemas import (
     DatasetUpdateRequest,
     NewDatasetRequest,
     NewDatasetVersionRequest,
+    SyntheticDataConversationRequest,
+    SyntheticDataGenerationRequest,
 )
 from schemas.response_schemas import (
     DatasetResponse,
@@ -24,7 +27,9 @@ from schemas.response_schemas import (
     DatasetVersionRowResponse,
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
+    SyntheticDataGenerationResponse,
 )
+from services.synthetic_data_service import SyntheticDataService
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -283,6 +288,135 @@ def get_dataset_version_row(
             id=db_row.id,
             data=row_data,
             created_at=int(db_row.created_at.timestamp() * 1000),
+        )
+    finally:
+        db_session.close()
+
+
+###########################################
+#### Synthetic Data Generation Routes ####
+###########################################
+
+
+@dataset_management_routes.post(
+    "/datasets/{dataset_id}/versions/{version_number}/generate-synthetic",
+    description="Generate synthetic data rows based on existing dataset patterns.",
+    tags=[datasets_router_tag],
+    response_model=SyntheticDataGenerationResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def generate_synthetic_data(
+    request: SyntheticDataGenerationRequest,
+    dataset_id: UUID = Path(description="ID of the dataset."),
+    version_number: int = Path(description="Version number of the dataset."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> SyntheticDataGenerationResponse:
+    """
+    Generate initial synthetic data rows based on the dataset configuration.
+
+    The dataset must have at least 1 existing row to provide reference
+    examples for the LLM.
+    """
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        model_provider_repo = ModelProviderRepository(db_session)
+
+        # Get the dataset version with pagination to get rows
+        pagination = PaginationParameters(page=0, page_size=10)
+        dataset_version = dataset_repo.get_dataset_version(
+            dataset_id,
+            version_number,
+            pagination,
+        )
+
+        # Check that dataset has at least 1 row
+        if dataset_version.total_count == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Dataset must have at least 1 row to generate synthetic data. "
+                "Add some example rows first to provide reference patterns.",
+            )
+
+        # Get column names from the dataset version
+        column_names = dataset_version.column_names
+
+        # Convert existing rows to dict format for the service
+        existing_rows = [
+            {
+                "data": [
+                    {"column_name": col.column_name, "column_value": col.column_value}
+                    for col in row.data
+                ]
+            }
+            for row in dataset_version.rows
+        ]
+
+        # Create the synthetic data service and generate data
+        synthetic_service = SyntheticDataService(model_provider_repo)
+        return synthetic_service.generate_initial(
+            request=request,
+            existing_rows=existing_rows,
+            column_names=column_names,
+        )
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.post(
+    "/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message",
+    description="Send a message to refine synthetic data generation.",
+    tags=[datasets_router_tag],
+    response_model=SyntheticDataGenerationResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def send_synthetic_data_message(
+    request: SyntheticDataConversationRequest,
+    dataset_id: UUID = Path(description="ID of the dataset."),
+    version_number: int = Path(description="Version number of the dataset."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> SyntheticDataGenerationResponse:
+    """
+    Send a message to refine the synthetic data generation.
+
+    This endpoint continues a conversation with the LLM to modify,
+    add, or remove generated rows based on user instructions.
+    The current state of the generated data (including any manual edits)
+    is sent with each message.
+    """
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        model_provider_repo = ModelProviderRepository(db_session)
+
+        # Get the dataset version with pagination to get sample rows
+        pagination = PaginationParameters(page=0, page_size=10)
+        dataset_version = dataset_repo.get_dataset_version(
+            dataset_id,
+            version_number,
+            pagination,
+        )
+
+        # Get column names from the dataset version
+        column_names = dataset_version.column_names
+
+        # Convert existing rows to dict format for the service
+        existing_rows = [
+            {
+                "data": [
+                    {"column_name": col.column_name, "column_value": col.column_value}
+                    for col in row.data
+                ]
+            }
+            for row in dataset_version.rows
+        ]
+
+        # Create the synthetic data service and continue conversation
+        synthetic_service = SyntheticDataService(model_provider_repo)
+        return synthetic_service.continue_conversation(
+            request=request,
+            existing_rows=existing_rows,
+            column_names=column_names,
         )
     finally:
         db_session.close()
