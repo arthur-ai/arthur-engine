@@ -56,11 +56,14 @@ const PromptsManagement: React.FC = () => {
     window.location.href = `/tasks/${task?.id}/playgrounds/prompts`;
   }, [task?.id]);
 
-  const handleExpandToFullScreen = useCallback((promptName: string) => {
-    setFullScreenPrompt(promptName);
-    // Update URL to reflect the selected prompt
-    navigate(`/tasks/${taskId}/prompts/${promptName}`);
-  }, [taskId, navigate]);
+  const handleExpandToFullScreen = useCallback(
+    (promptName: string) => {
+      setFullScreenPrompt(promptName);
+      // Update URL to reflect the selected prompt
+      navigate(`/tasks/${taskId}/prompts/${promptName}`);
+    },
+    [taskId, navigate]
+  );
 
   const handleCloseFullScreen = useCallback(() => {
     setFullScreenPrompt(null);

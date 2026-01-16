@@ -11,12 +11,7 @@ interface ErrorFallbackProps extends FallbackProps {
   description?: string;
 }
 
-export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
-  error,
-  resetErrorBoundary,
-  title = "Something went wrong",
-  description,
-}) => {
+export const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetErrorBoundary, title = "Something went wrong", description }) => {
   const [showDetails, setShowDetails] = useState(false);
 
   const errorMessage = error?.message || "Unknown error occurred";
@@ -88,12 +83,7 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           )}
 
           {resetErrorBoundary && (
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={resetErrorBoundary}
-              sx={{ alignSelf: "flex-start" }}
-            >
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={resetErrorBoundary} sx={{ alignSelf: "flex-start" }}>
               Try again
             </Button>
           )}

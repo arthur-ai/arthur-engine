@@ -69,11 +69,14 @@ const Evaluators: React.FC = () => {
     [createMutation]
   );
 
-  const handleExpandToFullScreen = useCallback((evalName: string) => {
-    setFullScreenEval(evalName);
-    // Update URL to reflect the selected evaluator
-    navigate(`/tasks/${taskId}/evaluators/${evalName}`);
-  }, [taskId, navigate]);
+  const handleExpandToFullScreen = useCallback(
+    (evalName: string) => {
+      setFullScreenEval(evalName);
+      // Update URL to reflect the selected evaluator
+      navigate(`/tasks/${taskId}/evaluators/${evalName}`);
+    },
+    [taskId, navigate]
+  );
 
   const handleCloseFullScreen = useCallback(() => {
     setFullScreenEval(null);

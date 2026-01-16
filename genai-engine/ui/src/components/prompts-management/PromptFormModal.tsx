@@ -294,9 +294,7 @@ const PromptFormModal = ({ open, onClose, onSubmit, isLoading = false }: PromptF
                   if (!state.inputValue) {
                     return options;
                   }
-                  const filtered = options.filter((option) =>
-                    option.toLowerCase().includes(state.inputValue.toLowerCase())
-                  );
+                  const filtered = options.filter((option) => option.toLowerCase().includes(state.inputValue.toLowerCase()));
                   // Add a placeholder message when no matches
                   if (filtered.length === 0) {
                     return ["__NO_OPTIONS__"];
@@ -313,13 +311,7 @@ const PromptFormModal = ({ open, onClose, onSubmit, isLoading = false }: PromptF
                   );
                 }}
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Enter prompt name or select existing..."
-                    required
-                    size="small"
-                    autoFocus
-                  />
+                  <TextField {...params} placeholder="Enter prompt name or select existing..." required size="small" autoFocus />
                 )}
               />
             </FormControl>

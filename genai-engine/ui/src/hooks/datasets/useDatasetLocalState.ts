@@ -27,11 +27,7 @@ type DatasetAction =
   | { type: "DELETE_ROW"; payload: string }
   | { type: "CLEAR_CHANGES" };
 
-function createRowFromData(
-  columns: string[],
-  rowData: Record<string, unknown>,
-  rowId?: string
-): DatasetVersionRowResponse {
+function createRowFromData(columns: string[], rowData: Record<string, unknown>, rowId?: string): DatasetVersionRowResponse {
   return {
     id: rowId || generateTempRowId(),
     created_at: Date.now(),
@@ -42,15 +38,9 @@ function createRowFromData(
   };
 }
 
-function transformRowsForNewColumns(
-  rows: DatasetVersionRowResponse[],
-  oldColumns: string[],
-  newColumns: string[]
-): DatasetVersionRowResponse[] {
+function transformRowsForNewColumns(rows: DatasetVersionRowResponse[], oldColumns: string[], newColumns: string[]): DatasetVersionRowResponse[] {
   return rows.map((row) => {
-    const existingMap = Object.fromEntries(
-      row.data.map((d) => [d.column_name, d.column_value])
-    );
+    const existingMap = Object.fromEntries(row.data.map((d) => [d.column_name, d.column_value]));
 
     const result = newColumns.map((newColName, idx) => {
       const oldColName = oldColumns[idx];
@@ -58,7 +48,7 @@ function transformRowsForNewColumns(
       const value =
         existingMap[newColName] ?? // unchanged column
         existingMap[oldColName] ?? // renamed column
-        ""                         // brand-new column
+        ""; // brand-new column
 
       return {
         column_name: newColName,
@@ -74,10 +64,7 @@ function transformRowsForNewColumns(
   });
 }
 
-function datasetReducer(
-  state: DatasetState,
-  action: DatasetAction
-): DatasetState {
+function datasetReducer(state: DatasetState, action: DatasetAction): DatasetState {
   switch (action.type) {
     case "LOAD_VERSION": {
       return {
@@ -94,39 +81,23 @@ function datasetReducer(
       const oldColumnsSet = new Set(oldColumns);
       const newColumnsSet = new Set(newColumns);
 
-      const columnsAdded =
-        newColumns.filter((col) => !oldColumnsSet.has(col)).length > 0;
-      const columnsRemoved =
-        oldColumns.filter((col) => !newColumnsSet.has(col)).length > 0;
-      const columnsRenamed = newColumns.some(
-        (col, idx) => oldColumns[idx] && oldColumns[idx] !== col
-      );
+      const columnsAdded = newColumns.filter((col) => !oldColumnsSet.has(col)).length > 0;
+      const columnsRemoved = oldColumns.filter((col) => !newColumnsSet.has(col)).length > 0;
+      const columnsRenamed = newColumns.some((col, idx) => oldColumns[idx] && oldColumns[idx] !== col);
 
-      if (
-        !columnsRemoved &&
-        !columnsRenamed &&
-        (!columnsAdded || state.rows.length === 0)
-      ) {
+      if (!columnsRemoved && !columnsRenamed && (!columnsAdded || state.rows.length === 0)) {
         return {
           ...state,
           columns: newColumns,
         };
       }
 
-      const transformedRows = transformRowsForNewColumns(
-        state.rows,
-        oldColumns,
-        newColumns
-      );
+      const transformedRows = transformRowsForNewColumns(state.rows, oldColumns, newColumns);
 
-      const updatedRowIds = new Set(
-        state.pendingChanges.updated.map((r) => r.id)
-      );
+      const updatedRowIds = new Set(state.pendingChanges.updated.map((r) => r.id));
       const addedRowIds = new Set(state.pendingChanges.added.map((r) => r.id));
 
-      const rowsToUpdate = transformedRows.filter(
-        (row) => !updatedRowIds.has(row.id) && !addedRowIds.has(row.id)
-      );
+      const rowsToUpdate = transformedRows.filter((row) => !updatedRowIds.has(row.id) && !addedRowIds.has(row.id));
 
       return {
         ...state,
@@ -164,16 +135,12 @@ function datasetReducer(
           rows: state.rows.map((row) => (row.id === id ? updatedRow : row)),
           pendingChanges: {
             ...state.pendingChanges,
-            added: state.pendingChanges.added.map((r) =>
-              r.id === id ? updatedRow : r
-            ),
+            added: state.pendingChanges.added.map((r) => (r.id === id ? updatedRow : r)),
           },
         };
       }
 
-      const alreadyTracked = state.pendingChanges.updated.some(
-        (r) => r.id === id
-      );
+      const alreadyTracked = state.pendingChanges.updated.some((r) => r.id === id);
 
       return {
         ...state,
@@ -181,9 +148,7 @@ function datasetReducer(
         pendingChanges: {
           ...state.pendingChanges,
           updated: alreadyTracked
-            ? state.pendingChanges.updated.map((r) =>
-                r.id === id ? updatedRow : r
-              )
+            ? state.pendingChanges.updated.map((r) => (r.id === id ? updatedRow : r))
             : [...state.pendingChanges.updated, updatedRow],
         },
       };
@@ -246,9 +211,7 @@ export interface UseDatasetLocalStateReturn {
   clearChanges: () => void;
 }
 
-export function useDatasetLocalState(
-  versionData: DatasetVersionResponse | undefined
-): UseDatasetLocalStateReturn {
+export function useDatasetLocalState(versionData: DatasetVersionResponse | undefined): UseDatasetLocalStateReturn {
   const [state, dispatch] = useReducer(datasetReducer, initialState);
 
   useEffect(() => {
@@ -258,11 +221,7 @@ export function useDatasetLocalState(
   }, [versionData]);
 
   const hasUnsavedChanges = useMemo(() => {
-    return (
-      state.pendingChanges.added.length > 0 ||
-      state.pendingChanges.updated.length > 0 ||
-      state.pendingChanges.deleted.length > 0
-    );
+    return state.pendingChanges.added.length > 0 || state.pendingChanges.updated.length > 0 || state.pendingChanges.deleted.length > 0;
   }, [state.pendingChanges]);
 
   return {
@@ -270,12 +229,9 @@ export function useDatasetLocalState(
     localRows: state.rows,
     pendingChanges: state.pendingChanges,
     hasUnsavedChanges,
-    setColumns: (columns: string[]) =>
-      dispatch({ type: "SET_COLUMNS", payload: columns }),
-    addRow: (rowData: Record<string, unknown>) =>
-      dispatch({ type: "ADD_ROW", payload: rowData }),
-    updateRow: (id: string, rowData: Record<string, unknown>) =>
-      dispatch({ type: "UPDATE_ROW", payload: { id, rowData } }),
+    setColumns: (columns: string[]) => dispatch({ type: "SET_COLUMNS", payload: columns }),
+    addRow: (rowData: Record<string, unknown>) => dispatch({ type: "ADD_ROW", payload: rowData }),
+    updateRow: (id: string, rowData: Record<string, unknown>) => dispatch({ type: "UPDATE_ROW", payload: { id, rowData } }),
     deleteRow: (id: string) => dispatch({ type: "DELETE_ROW", payload: id }),
     clearChanges: () => dispatch({ type: "CLEAR_CHANGES" }),
   };

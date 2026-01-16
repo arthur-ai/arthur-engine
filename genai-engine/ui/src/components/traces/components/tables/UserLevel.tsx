@@ -71,12 +71,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      <DataContentGate
-        welcomeDismissed={welcomeDismissed}
-        hasData={hasData}
-        hasActiveFilters={false}
-        dataType="users"
-      >
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={false} dataType="users">
         {hasData && (
           <>
             <TracesTable

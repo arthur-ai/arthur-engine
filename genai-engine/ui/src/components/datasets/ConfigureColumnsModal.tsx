@@ -1,19 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  List,
-  ListItem,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, TextField, Typography } from "@mui/material";
 import { useForm } from "@tanstack/react-form";
 import React, { useState } from "react";
 import { z } from "zod";
@@ -27,12 +15,7 @@ interface ConfigureColumnsModalProps {
   currentColumns: string[];
 }
 
-export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
-  open,
-  onClose,
-  onSave,
-  currentColumns,
-}) => {
+export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({ open, onClose, onSave, currentColumns }) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +33,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
     },
   });
 
-  const validateColumnName = (
-    name: string,
-    excludeIndex?: number
-  ): string | null => {
+  const validateColumnName = (name: string, excludeIndex?: number): string | null => {
     const columns = form.getFieldValue("columns");
 
     try {
@@ -64,9 +44,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       }
     }
 
-    const isDuplicate = columns.some(
-      (col: string, idx: number) => col === name.trim() && idx !== excludeIndex
-    );
+    const isDuplicate = columns.some((col: string, idx: number) => col === name.trim() && idx !== excludeIndex);
 
     if (isDuplicate) {
       return "Column name already exists";
@@ -96,9 +74,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
     }
 
     const columns = form.getFieldValue("columns");
-    const updated = columns.map((col: string, idx: number) =>
-      idx === index ? newValue.trim() : col
-    );
+    const updated = columns.map((col: string, idx: number) => (idx === index ? newValue.trim() : col));
     form.setFieldValue("columns", updated);
     setEditingIndex(null);
     setError(null);
@@ -156,9 +132,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
           minHeight: 0,
         }}
       >
-        <DialogTitle id="configure-columns-dialog-title">
-          Configure Columns
-        </DialogTitle>
+        <DialogTitle id="configure-columns-dialog-title">Configure Columns</DialogTitle>
         <DialogContent
           sx={{
             overflow: "auto",
@@ -180,11 +154,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
                   }}
                 >
                   {columns.length === 0 ? (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ py: 2, textAlign: "center" }}
-                    >
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
                       No columns yet. Add your first column below.
                     </Typography>
                   ) : (
@@ -280,12 +250,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
             <Button onClick={handleClose} color="inherit">
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              disabled={editingIndex !== null}
-            >
+            <Button type="submit" variant="contained" color="primary" disabled={editingIndex !== null}>
               Save Changes
             </Button>
           </DialogActions>
@@ -303,13 +268,7 @@ interface EditingColumnRowProps {
   onErrorClear: () => void;
 }
 
-const EditingColumnRow: React.FC<EditingColumnRowProps> = ({
-  column,
-  onSave,
-  onCancel,
-  error,
-  onErrorClear,
-}) => {
+const EditingColumnRow: React.FC<EditingColumnRowProps> = ({ column, onSave, onCancel, error, onErrorClear }) => {
   const [value, setValue] = useState(column);
 
   return (
@@ -351,22 +310,13 @@ interface DisplayColumnRowProps {
   onDelete: () => void;
 }
 
-const DisplayColumnRow: React.FC<DisplayColumnRowProps> = ({
-  column,
-  onEdit,
-  onDelete,
-}) => (
+const DisplayColumnRow: React.FC<DisplayColumnRowProps> = ({ column, onEdit, onDelete }) => (
   <>
     <Typography sx={{ flexGrow: 1 }}>{column}</Typography>
     <IconButton size="small" onClick={onEdit} aria-label="edit column">
       <EditIcon fontSize="small" />
     </IconButton>
-    <IconButton
-      size="small"
-      onClick={onDelete}
-      color="error"
-      aria-label="delete column"
-    >
+    <IconButton size="small" onClick={onDelete} color="error" aria-label="delete column">
       <DeleteIcon fontSize="small" />
     </IconButton>
   </>

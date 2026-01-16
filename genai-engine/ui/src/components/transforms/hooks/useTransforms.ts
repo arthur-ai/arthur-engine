@@ -17,7 +17,7 @@ export function useTransforms(taskId: string | undefined) {
         const response = await api.api.listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet({ taskId });
         return (response.data.transforms || []) as TraceTransform[];
       } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'response' in error) {
+        if (error && typeof error === "object" && "response" in error) {
           const apiError = error as { response?: { status?: number } };
           if (apiError.response?.status === 404) return [];
         }

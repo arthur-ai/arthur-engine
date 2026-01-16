@@ -5,7 +5,7 @@ export const MaterialAutocompleteField = <
   const Value,
   Multiple extends boolean,
   DisableClearable extends boolean = false,
-  FreeSolo extends boolean = false
+  FreeSolo extends boolean = false,
 >({
   value,
   onBlur,

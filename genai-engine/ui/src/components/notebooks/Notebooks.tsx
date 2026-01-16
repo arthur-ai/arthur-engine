@@ -179,9 +179,7 @@ const Notebooks: React.FC = () => {
               >
                 No notebooks found
               </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>
-                Create your first notebook to start experimenting with prompts.
-              </Box>
+              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first notebook to start experimenting with prompts.</Box>
               <Button variant="contained" onClick={handleCreateNotebook} sx={{ mt: 1 }}>
                 Create Notebook
               </Button>
@@ -222,11 +220,7 @@ const Notebooks: React.FC = () => {
         </Box>
       )}
 
-      <NotebookDetailModal
-        open={isDetailModalOpen}
-        notebookId={selectedNotebookId}
-        onClose={handleCloseDetailModal}
-      />
+      <NotebookDetailModal open={isDetailModalOpen} notebookId={selectedNotebookId} onClose={handleCloseDetailModal} />
 
       <CreateNotebookModal
         open={isCreateModalOpen}
@@ -239,4 +233,3 @@ const Notebooks: React.FC = () => {
 };
 
 export default Notebooks;
-

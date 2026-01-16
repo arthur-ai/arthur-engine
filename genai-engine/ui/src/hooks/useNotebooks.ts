@@ -22,10 +22,7 @@ interface NotebooksFilters {
 /**
  * Hook to fetch all notebooks for a task
  */
-export function useNotebooks(
-  taskId: string | undefined,
-  filters: NotebooksFilters
-) {
+export function useNotebooks(taskId: string | undefined, filters: NotebooksFilters) {
   const { data, error, isLoading, refetch } = useApiQuery<"listNotebooksApiV1TasksTaskIdNotebooksGet">({
     method: "listNotebooksApiV1TasksTaskIdNotebooksGet",
     args: [{ taskId: taskId!, page: filters.page, page_size: filters.pageSize }] as const,
@@ -91,11 +88,7 @@ export function useNotebookState(notebookId: string | undefined) {
 /**
  * Hook to fetch notebook experiment history
  */
-export function useNotebookHistory(
-  notebookId: string | undefined,
-  page: number = 0,
-  pageSize: number = 25
-) {
+export function useNotebookHistory(notebookId: string | undefined, page: number = 0, pageSize: number = 25) {
   const { data, error, isLoading, refetch } = useApiQuery<"getNotebookHistoryApiV1NotebooksNotebookIdHistoryGet">({
     method: "getNotebookHistoryApiV1NotebooksNotebookIdHistoryGet",
     args: [{ notebookId: notebookId!, page, page_size: pageSize }] as const,
@@ -121,53 +114,36 @@ export function useNotebookHistory(
 /**
  * Hook to create a new notebook
  */
-export function useCreateNotebookMutation(
-  taskId: string | undefined,
-  onSuccess?: (notebook: NotebookDetail) => void
-) {
+export function useCreateNotebookMutation(taskId: string | undefined, onSuccess?: (notebook: NotebookDetail) => void) {
   const api = useApi();
 
   return useApiMutation<NotebookDetail, CreateNotebookRequest>({
     mutationFn: async (request: CreateNotebookRequest) => {
       if (!api || !taskId) throw new Error("API client or taskId not available");
 
-      const response = await api.api.createNotebookApiV1TasksTaskIdNotebooksPost(
-        taskId,
-        request
-      );
+      const response = await api.api.createNotebookApiV1TasksTaskIdNotebooksPost(taskId, request);
       return response.data;
     },
     onSuccess,
-    invalidateQueries: [
-      { queryKey: ["listNotebooksApiV1TasksTaskIdNotebooksGet"] },
-    ],
+    invalidateQueries: [{ queryKey: ["listNotebooksApiV1TasksTaskIdNotebooksGet"] }],
   });
 }
 
 /**
  * Hook to update notebook metadata
  */
-export function useUpdateNotebookMutation(
-  taskId: string | undefined,
-  onSuccess?: () => void
-) {
+export function useUpdateNotebookMutation(taskId: string | undefined, onSuccess?: () => void) {
   const api = useApi();
 
   return useApiMutation<NotebookDetail, { notebookId: string; request: UpdateNotebookRequest }>({
     mutationFn: async ({ notebookId, request }) => {
       if (!api) throw new Error("API client not available");
 
-      const response = await api.api.updateNotebookApiV1NotebooksNotebookIdPut(
-        notebookId,
-        request
-      );
+      const response = await api.api.updateNotebookApiV1NotebooksNotebookIdPut(notebookId, request);
       return response.data;
     },
     onSuccess,
-    invalidateQueries: [
-      { queryKey: ["listNotebooksApiV1TasksTaskIdNotebooksGet"] },
-      { queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] },
-    ],
+    invalidateQueries: [{ queryKey: ["listNotebooksApiV1TasksTaskIdNotebooksGet"] }, { queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] }],
   });
 }
 
@@ -181,27 +157,18 @@ export function useSetNotebookStateMutation(onSuccess?: () => void) {
     mutationFn: async ({ notebookId, request }) => {
       if (!api) throw new Error("API client not available");
 
-      const response = await api.api.setNotebookStateApiV1NotebooksNotebookIdStatePut(
-        notebookId,
-        request
-      );
+      const response = await api.api.setNotebookStateApiV1NotebooksNotebookIdStatePut(notebookId, request);
       return response.data;
     },
     onSuccess,
-    invalidateQueries: [
-      { queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] },
-      { queryKey: ["getNotebookStateApiV1NotebooksNotebookIdStateGet"] },
-    ],
+    invalidateQueries: [{ queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] }, { queryKey: ["getNotebookStateApiV1NotebooksNotebookIdStateGet"] }],
   });
 }
 
 /**
  * Hook to delete a notebook
  */
-export function useDeleteNotebookMutation(
-  taskId: string | undefined,
-  onSuccess?: () => void
-) {
+export function useDeleteNotebookMutation(taskId: string | undefined, onSuccess?: () => void) {
   const api = useApi();
 
   return useApiMutation<void, string>({
@@ -211,19 +178,14 @@ export function useDeleteNotebookMutation(
       await api.api.deleteNotebookApiV1NotebooksNotebookIdDelete(notebookId);
     },
     onSuccess,
-    invalidateQueries: [
-      { queryKey: ["listNotebooksApiV1TasksTaskIdNotebooksGet"] },
-      { queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] },
-    ],
+    invalidateQueries: [{ queryKey: ["listNotebooksApiV1TasksTaskIdNotebooksGet"] }, { queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] }],
   });
 }
 
 /**
  * Hook to attach an experiment to a notebook
  */
-export function useAttachExperimentToNotebookMutation(
-  onSuccess?: () => void
-) {
+export function useAttachExperimentToNotebookMutation(onSuccess?: () => void) {
   const api = useApi();
 
   return useApiMutation<PromptExperimentListResponse["data"][0], { experimentId: string; notebookId: string }>({
@@ -231,9 +193,10 @@ export function useAttachExperimentToNotebookMutation(
       if (!api) throw new Error("API client not available");
 
       // The generated API client expects experimentId and notebook_id in the params object
-      const response = await api.api.attachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatch(
-        { experimentId, notebook_id: notebookId }
-      );
+      const response = await api.api.attachNotebookToExperimentApiV1PromptExperimentsExperimentIdNotebookPatch({
+        experimentId,
+        notebook_id: notebookId,
+      });
       return response.data;
     },
     onSuccess,
@@ -243,4 +206,3 @@ export function useAttachExperimentToNotebookMutation(
     ],
   });
 }
-

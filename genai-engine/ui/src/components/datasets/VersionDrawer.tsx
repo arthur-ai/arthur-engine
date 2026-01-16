@@ -1,13 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
-import {
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  IconButton,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Chip, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import React, { useCallback } from "react";
 
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
@@ -35,8 +27,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
   onClose,
   onVersionSelect,
 }) => {
-  const { versions, totalCount, isLoading, error } =
-    useDatasetVersionHistory(datasetId);
+  const { versions, totalCount, isLoading, error } = useDatasetVersionHistory(datasetId);
 
   const handleVersionClick = useCallback(
     (version: DatasetVersionMetadataResponse) => {
@@ -88,16 +79,9 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
           flexShrink: 0,
         }}
       >
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
-            <Typography
-              variant="h6"
-              sx={{ fontWeight: 600, mb: 0.5, color: "text.primary" }}
-            >
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: "text.primary" }}>
               Version History
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -147,8 +131,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
         {!isLoading && !error && versions.length > 0 && (
           <Stack spacing={1.5}>
             {versions.map((version) => {
-              const isSelected =
-                selectedVersionNumber === version.version_number;
+              const isSelected = selectedVersionNumber === version.version_number;
               const isViewing = currentVersionNumber === version.version_number;
               const isLatest = version.version_number === latestVersionNumber;
 
@@ -161,9 +144,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                     border: 1,
                     borderColor: isSelected ? "primary.main" : "divider",
                     borderRadius: 1,
-                    backgroundColor: isSelected
-                      ? "action.selected"
-                      : "background.paper",
+                    backgroundColor: isSelected ? "action.selected" : "background.paper",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
                     "&:hover": {
@@ -173,13 +154,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                   }}
                 >
                   <Stack spacing={1.5}>
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      flexWrap="wrap"
-                      gap={0.5}
-                    >
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={0.5}>
                       <Typography
                         variant="subtitle2"
                         sx={{
@@ -190,22 +165,8 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                         Version {version.version_number}
                       </Typography>
                       <Box sx={{ display: "flex", gap: 0.5 }}>
-                        {isLatest && (
-                          <Chip
-                            label="Latest"
-                            size="small"
-                            color="primary"
-                            sx={{ height: 20, fontSize: "0.7rem" }}
-                          />
-                        )}
-                        {isViewing && (
-                          <Chip
-                            label="Viewing"
-                            size="small"
-                            color="success"
-                            sx={{ height: 20, fontSize: "0.7rem" }}
-                          />
-                        )}
+                        {isLatest && <Chip label="Latest" size="small" color="primary" sx={{ height: 20, fontSize: "0.7rem" }} />}
+                        {isViewing && <Chip label="Viewing" size="small" color="success" sx={{ height: 20, fontSize: "0.7rem" }} />}
                       </Box>
                     </Stack>
 

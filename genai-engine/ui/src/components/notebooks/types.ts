@@ -11,4 +11,3 @@ export interface NotebooksTableProps {
   onLaunchNotebook: (notebookId: string) => void;
   onDelete: (notebookId: string) => Promise<void>;
 }
-

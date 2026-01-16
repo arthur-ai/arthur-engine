@@ -96,7 +96,9 @@ const ModelParamsDialog = ({
     });
 
     // Track model parameters changed event
-    const paramCount = Object.keys(processedParams).filter((key) => processedParams[key as keyof ModelParametersType] !== null && processedParams[key as keyof ModelParametersType] !== undefined).length;
+    const paramCount = Object.keys(processedParams).filter(
+      (key) => processedParams[key as keyof ModelParametersType] !== null && processedParams[key as keyof ModelParametersType] !== undefined
+    ).length;
     track(EVENT_NAMES.MODEL_PARAMS_CHANGED, {
       model_provider: name ? name.split(":")[0] : undefined,
       model_name: name ? name.split(":")[1] : undefined,

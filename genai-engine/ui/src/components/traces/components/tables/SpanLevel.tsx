@@ -108,12 +108,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
 
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      <DataContentGate
-        welcomeDismissed={welcomeDismissed}
-        hasData={hasData}
-        hasActiveFilters={hasActiveFilters}
-        dataType="spans"
-      >
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
         {/* Only show FiltersRow if we have spans or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
 

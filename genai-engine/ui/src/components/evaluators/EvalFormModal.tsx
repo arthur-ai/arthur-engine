@@ -347,9 +347,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   if (!state.inputValue) {
                     return options;
                   }
-                  const filtered = options.filter((option) =>
-                    option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-                  );
+                  const filtered = options.filter((option) => option.name.toLowerCase().includes(state.inputValue.toLowerCase()));
                   return filtered;
                 }}
                 renderOption={(props, option) => {
@@ -369,7 +367,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                                 fontSize: "0.75rem",
                                 fontWeight: 400,
                                 fontStyle: "italic",
-                                display: "inline"
+                                display: "inline",
                               }}
                             >
                               {option.attribution}
@@ -393,13 +391,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   );
                 }}
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Enter eval name or select template/existing..."
-                    required
-                    size="small"
-                    autoFocus
-                  />
+                  <TextField {...params} placeholder="Enter eval name or select template/existing..." required size="small" autoFocus />
                 )}
               />
             </FormControl>

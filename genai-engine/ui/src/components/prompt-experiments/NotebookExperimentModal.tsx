@@ -200,9 +200,8 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
       try {
         // Transform the initial data to form data format
         // Get saved prompt configs
-        const savedPromptConfigs = initialData.prompt_configs?.filter(
-          (pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved"
-        ) || [];
+        const savedPromptConfigs =
+          initialData.prompt_configs?.filter((pc): pc is { type: "saved" } & { name: string; version: number } => pc.type === "saved") || [];
 
         // Filter to only the selected prompt version if specified
         const filteredConfigs = selectedPromptVersion
@@ -258,9 +257,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
 
         // Load all necessary data in parallel
         // Pass the desired version to preserve the original dataset version
-        const loadTasks = [
-          loadDatasetVersions(initialData.dataset_ref.id, initialData.dataset_ref.version),
-        ];
+        const loadTasks = [loadDatasetVersions(initialData.dataset_ref.id, initialData.dataset_ref.version)];
         if (firstSavedPrompt) {
           loadTasks.push(loadPromptVersions(firstSavedPrompt.name));
         }
