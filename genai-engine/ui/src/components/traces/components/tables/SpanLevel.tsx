@@ -2,7 +2,7 @@ import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { spanLevelColumns } from "../../data/span-level-columns";
@@ -30,7 +30,7 @@ interface SpanLevelProps {
   welcomeDismissed: boolean;
 }
 
-export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
+export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
@@ -55,7 +55,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
     [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
   );
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.spans.listPaginated(params),
     placeholderData: keepPreviousData,
@@ -88,7 +88,6 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
     state: {
       sorting,
       isLoading,
-      showProgressBars: isFetching,
     },
   });
 
@@ -119,7 +118,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const hasData = Boolean(data?.spans?.length);
 
   return (
-    <Stack gap={2}>
+    <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
         {/* Only show FiltersRow if we have spans or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
@@ -134,4 +133,4 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
       </DataContentGate>
     </Stack>
   );
-};
+});

@@ -41,7 +41,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     [task?.id, pagination.pageIndex, pagination.pageSize, timeRange]
   );
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.users.listPaginated(params),
     placeholderData: keepPreviousData,
@@ -59,7 +59,6 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     state: {
       sorting,
       isLoading,
-      showProgressBars: isFetching,
     },
     onRowClick: handleRowClick,
   });
@@ -75,7 +74,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const hasData = Boolean(data?.users?.length);
 
   return (
-    <Stack gap={2} overflow="hidden">
+    <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={false} dataType="users">
         {hasData && <MaterialReactTable table={table} />}
       </DataContentGate>

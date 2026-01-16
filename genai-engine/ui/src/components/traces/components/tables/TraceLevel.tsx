@@ -2,7 +2,7 @@ import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { MaterialReactTable } from "material-react-table";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
@@ -30,7 +30,7 @@ interface TraceLevelProps {
   welcomeDismissed: boolean;
 }
 
-export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
+export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
@@ -57,7 +57,7 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
     [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
   );
 
-  const { data, isFetching, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.listPaginated(params),
     placeholderData: keepPreviousData,
@@ -86,7 +86,6 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
     state: {
       sorting,
       isLoading,
-      showProgressBars: isFetching,
     },
   });
 
@@ -132,4 +131,4 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
       </DataContentGate>
     </Stack>
   );
-}
+});

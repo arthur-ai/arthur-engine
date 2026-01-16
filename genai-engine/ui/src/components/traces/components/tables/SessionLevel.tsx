@@ -44,7 +44,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
   );
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.listPaginated(params),
     placeholderData: keepPreviousData,
@@ -53,10 +53,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
-  const handleRowClick = useCallback(
-    (row: { session_id: string }) => setDrawerTarget({ target: "session", id: row.session_id }),
-    [setDrawerTarget]
-  );
+  const handleRowClick = useCallback((row: { session_id: string }) => setDrawerTarget({ target: "session", id: row.session_id }), [setDrawerTarget]);
 
   const table = useTable({
     data: data?.sessions ?? [],
@@ -65,7 +62,6 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     state: {
       sorting,
       isLoading,
-      showProgressBars: isFetching,
     },
     onRowClick: handleRowClick,
   });
@@ -92,7 +88,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const hasData = Boolean(data?.sessions?.length);
 
   return (
-    <Stack gap={2} overflow="hidden">
+    <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
         {/* Only show FiltersRow if we have sessions or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}

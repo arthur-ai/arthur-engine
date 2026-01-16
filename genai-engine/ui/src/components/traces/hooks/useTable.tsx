@@ -18,11 +18,11 @@ export const useTable = <TTable extends MRT_RowData>({ data, columns, pagination
     enableStickyHeader: true,
     manualPagination: true,
     enableColumnVirtualization: true,
+    enableRowVirtualization: true,
+    rowVirtualizerOptions: { estimateSize: () => 55 },
     state: {
       ...state,
       pagination: pagination.state,
-    },
-    initialState: {
       density: "compact",
     },
     rowCount: pagination.rowCount,
