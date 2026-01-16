@@ -1,4 +1,4 @@
-import { Popover } from "@base-ui-components/react/popover";
+import { Popover } from "@base-ui/react/popover";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";

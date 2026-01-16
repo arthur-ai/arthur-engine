@@ -77,7 +77,6 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
     return null;
   }
 
-  const versionLabel = currentVersion ? `${currentVersion}${isDirty ? "*" : ""}` : "";
   const tooltipText = isDirty && currentVersion ? `Modified from version ${currentVersion} - unsaved changes` : "";
 
   return (

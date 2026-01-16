@@ -11,9 +11,9 @@ import { AgentExperiments } from "./components/agent-experiments";
 import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";
 import { NewAgentExperiment } from "./components/agent-experiments/new";
 import { AgentNotebook } from "./components/agent-notebook";
+import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
-import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
@@ -39,7 +39,6 @@ import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
-import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 
 const TaskRedirect = () => {
   const { id } = useParams<{ id: string }>();

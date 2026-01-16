@@ -1,4 +1,4 @@
-import { Accordion } from "@base-ui-components/react/accordion";
+import { Accordion } from "@base-ui/react/accordion";
 import HistoryIcon from "@mui/icons-material/History";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Drawer, List, ListItemText, Skeleton, Stack, Typography, ListItemButton, LinearProgress, Button, TablePagination } from "@mui/material";

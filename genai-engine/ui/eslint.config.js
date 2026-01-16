@@ -13,13 +13,7 @@ export default defineConfig([
   ...pluginQuery.configs["flat/recommended"],
   {
     files: ["**/*.{ts,tsx}"],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-      reactHooks.configs["recommended-latest"],
-      reactRefresh.configs.vite,
-      prettier,
-    ],
+    extends: [js.configs.recommended, tseslint.configs.recommended, reactHooks.configs["recommended-latest"], reactRefresh.configs.vite, prettier],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

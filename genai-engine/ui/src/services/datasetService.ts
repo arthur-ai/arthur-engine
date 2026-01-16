@@ -1,8 +1,4 @@
-import {
-  Api,
-  DatasetResponse,
-  NewDatasetRequest,
-} from "@/lib/api-client/api-client";
+import { Api, DatasetResponse, NewDatasetRequest } from "@/lib/api-client/api-client";
 
 export interface FetchDatasetsParams {
   taskId: string;
@@ -12,27 +8,17 @@ export interface FetchDatasetsParams {
   sort: "asc" | "desc";
 }
 
-export async function createDataset(
-  api: Api<unknown>,
-  taskId: string,
-  formData: NewDatasetRequest
-): Promise<DatasetResponse> {
-  const response = await api.api.createDatasetApiV2TasksTaskIdDatasetsPost(
-    taskId,
-    {
-      name: formData.name,
-      description: formData.description ?? null,
-      metadata: formData.metadata,
-    }
-  );
+export async function createDataset(api: Api<unknown>, taskId: string, formData: NewDatasetRequest): Promise<DatasetResponse> {
+  const response = await api.api.createDatasetApiV2TasksTaskIdDatasetsPost(taskId, {
+    name: formData.name,
+    description: formData.description ?? null,
+    metadata: formData.metadata,
+  });
 
   return response.data;
 }
 
-export async function deleteDataset(
-  api: Api<unknown>,
-  datasetId: string
-): Promise<void> {
+export async function deleteDataset(api: Api<unknown>, datasetId: string): Promise<void> {
   await api.api.deleteDatasetApiV2DatasetsDatasetIdDelete(datasetId);
 }
 

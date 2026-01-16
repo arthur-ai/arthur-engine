@@ -188,13 +188,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {!evalData.deleted_at && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<EditIcon />}
-              onClick={handleEditClick}
-              sx={{ minWidth: 80 }}
-            >
+            <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={handleEditClick} sx={{ minWidth: 80 }}>
               Edit
             </Button>
           )}

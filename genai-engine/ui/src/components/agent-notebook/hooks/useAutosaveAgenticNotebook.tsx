@@ -27,7 +27,7 @@ export const useAutosaveAgenticNotebook = (notebookId: string) => {
     async (state: AgentNotebookStateFormData) => {
       await saveAgenticNotebookStateMutation.mutateAsync(mapFormToRequest(state));
     },
-    { wait: 2000 },
+    { wait: 5000 },
     (state) => state.isExecuting
   );
 
@@ -37,6 +37,7 @@ export const useAutosaveAgenticNotebook = (notebookId: string) => {
       autosave.abort();
       autosave.cancel();
     },
+    forceSave: autosave.flush,
     isSaving: autosave.state,
   };
 };

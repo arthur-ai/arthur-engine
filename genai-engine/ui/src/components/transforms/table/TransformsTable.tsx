@@ -1,29 +1,10 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Box,
-  Tooltip,
-  TableSortLabel,
-} from "@mui/material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Box, Tooltip, TableSortLabel } from "@mui/material";
 
 import { TransformsTableProps } from "../types";
 
-export const TransformsTable: React.FC<TransformsTableProps> = ({
-  transforms,
-  sortColumn,
-  sortDirection,
-  onSort,
-  onView,
-  onEdit,
-  onDelete,
-}) => {
+export const TransformsTable: React.FC<TransformsTableProps> = ({ transforms, sortColumn, sortDirection, onSort, onView, onEdit, onDelete }) => {
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
   };
@@ -97,11 +78,7 @@ export const TransformsTable: React.FC<TransformsTableProps> = ({
               <TableCell>{formatDate(transform.created_at)}</TableCell>
               <TableCell>{formatDate(transform.updated_at)}</TableCell>
               <TableCell align="center">
-                <Box
-                  className="action-buttons"
-                  sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <Box className="action-buttons" sx={{ display: "flex", gap: 0.5, justifyContent: "center" }} onClick={(e) => e.stopPropagation()}>
                   <Tooltip title="Edit">
                     <IconButton size="small" onClick={() => onEdit(transform)}>
                       <EditIcon fontSize="small" />

@@ -87,9 +87,12 @@ export const queryKeys = {
     // Prefix matchers for invalidation
     listAll: () => ["listRagExperimentsApiV1TasksTaskIdRagExperimentsGet"] as const,
     detailAll: () => ["getRagExperimentApiV1RagExperimentsExperimentIdGet"] as const,
+    testCasesAll: () => ["getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet"] as const,
     // Specific queries with params
     list: (taskId: string) => ["listRagExperimentsApiV1TasksTaskIdRagExperimentsGet", { taskId }] as const,
     detail: (experimentId: string) => ["getRagExperimentApiV1RagExperimentsExperimentIdGet", experimentId] as const,
+    testCases: (experimentId: string, page: number, pageSize: number) =>
+      ["getRagExperimentTestCasesApiV1RagExperimentsExperimentIdTestCasesGet", { experimentId, page, pageSize }] as const,
   },
   ragSearchSettings: {
     load: (configId: string, versionNumber?: number) => ["loadRagConfig", configId, versionNumber] as const,

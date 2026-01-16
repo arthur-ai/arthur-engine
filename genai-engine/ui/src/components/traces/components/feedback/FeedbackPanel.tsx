@@ -1,4 +1,4 @@
-import { Popover } from "@base-ui-components/react/popover";
+import { Popover } from "@base-ui/react/popover";
 import ClearIcon from "@mui/icons-material/Clear";
 import SendIcon from "@mui/icons-material/Send";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";

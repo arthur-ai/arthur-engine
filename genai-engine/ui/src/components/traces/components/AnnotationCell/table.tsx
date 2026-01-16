@@ -1,4 +1,4 @@
-import { Menu } from "@base-ui-components/react/menu";
+import { Menu } from "@base-ui/react/menu";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LaunchIcon from "@mui/icons-material/Launch";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -26,6 +26,7 @@ import { Annotation, isContinuousEvalAnnotation } from "./schema";
 
 import { useTask } from "@/hooks/useTask";
 import { formatCurrency } from "@/utils/formatters";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 type Props = {
   annotations: Annotation[];
@@ -79,25 +80,6 @@ export const AnnotationsTable = ({ annotations }: Props) => {
 };
 
 const columnHelper = createColumnHelper<Annotation>();
-
-const getStatusChipSx = (status: string) => {
-  const colorMap: Record<string, { color: string; borderColor: string }> = {
-    pending: { color: "text.secondary", borderColor: "text.secondary" },
-    running: { color: "primary.main", borderColor: "primary.main" },
-    passed: { color: "success.main", borderColor: "success.main" },
-    failed: { color: "error.main", borderColor: "error.main" },
-    error: { color: "error.main", borderColor: "error.main" },
-    skipped: { color: "var(--color-neutral-500)", borderColor: "var(--color-neutral-500)" },
-  };
-
-  const colors = colorMap[status.toLowerCase()] || { color: "text.secondary", borderColor: "text.secondary" };
-  return {
-    ...colors,
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderStyle: "solid",
-  };
-};
 
 const createColumns = ({ taskId, container }: { taskId: string; container: React.RefObject<HTMLDivElement | null> }) => [
   columnHelper.accessor("annotation_type", {
