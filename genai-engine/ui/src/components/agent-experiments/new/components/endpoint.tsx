@@ -153,8 +153,8 @@ export const EndpointSetup = withFieldGroup({
                     Request Body
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Define the request body as a string. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> placeholders
-                    for dataset values. The body will be sent as-is after variable substitution.
+                    Define the request body as a string. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code>{" "}
+                    placeholders for dataset values. The body will be sent as-is after variable substitution.
                   </Typography>
                 </Stack>
                 <Divider sx={{ my: 2 }} />
