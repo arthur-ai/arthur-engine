@@ -47,7 +47,7 @@ interface DatasetDetailViewContentProps {
 }
 
 const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ datasetId }) => {
-  const { state, dispatch, queries, mutations } = useDatasetContext();
+  const { state, dispatch, queries, mutations, showSnackbar } = useDatasetContext();
   const { task } = useTask();
   const navigate = useNavigate();
   const api = useApi();
@@ -215,10 +215,13 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     try {
       const allRows = await fetchAllDatasetRows(api, datasetId, queries.currentVersion);
       exportDatasetToCSV(queries.dataset.name, allRows);
+      showSnackbar("Dataset exported successfully!", "success");
+    } catch {
+      showSnackbar("Failed to export dataset. Please try again.", "error");
     } finally {
       setIsExporting(false);
     }
-  }, [queries.dataset, api, datasetId, queries.currentVersion, queries.totalRowCount]);
+  }, [queries.dataset, api, datasetId, queries.currentVersion, queries.totalRowCount, showSnackbar]);
 
   if (queries.isLoading && !queries.dataset) {
     return <DatasetLoadingState type="full" />;

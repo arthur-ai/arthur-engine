@@ -108,6 +108,7 @@ export interface DatasetContextValue {
   dispatch: React.Dispatch<DatasetAction>;
   queries: UseDatasetQueriesReturn;
   mutations: UseDatasetMutationsReturn;
+  showSnackbar: (message: string, severity: "success" | "error" | "warning" | "info") => void;
 }
 
 export const initialDatasetState: DatasetState = {

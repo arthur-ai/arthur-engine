@@ -57,6 +57,7 @@ export function DatasetContextProvider({ datasetId, children }: DatasetContextPr
     dispatch,
     queries,
     mutations,
+    showSnackbar,
   };
 
   return (
