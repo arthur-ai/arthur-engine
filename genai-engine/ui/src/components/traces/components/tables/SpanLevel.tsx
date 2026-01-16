@@ -15,8 +15,8 @@ import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { TracesTable } from "../TracesTable";
 
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
@@ -33,7 +33,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const pagination = usePagination(FETCH_SIZE);
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);

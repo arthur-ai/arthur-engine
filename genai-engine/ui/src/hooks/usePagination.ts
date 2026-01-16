@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 
-import { DEFAULT_PAGE_SIZE } from "@/constants/datasetConstants";
+const DEFAULT_PAGE_SIZE = 25;
 
-export interface UseDatasetPaginationReturn {
+export interface UsePaginationReturn {
   page: number;
   rowsPerPage: number;
   handlePageChange: (event: unknown, newPage: number) => void;
@@ -10,7 +10,7 @@ export interface UseDatasetPaginationReturn {
   resetPage: () => void;
 }
 
-export function useDatasetPagination(initialPageSize: number = DEFAULT_PAGE_SIZE): UseDatasetPaginationReturn {
+export function usePagination(initialPageSize: number = DEFAULT_PAGE_SIZE): UsePaginationReturn {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(initialPageSize);
 

@@ -15,8 +15,8 @@ import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { TracesTable } from "../TracesTable";
 
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
@@ -31,7 +31,7 @@ interface TraceLevelProps {
 
 export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
   const { task } = useTask();
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const pagination = usePagination(FETCH_SIZE);
 
   const [, setDrawerTarget] = useDrawerTarget();
 
