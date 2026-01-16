@@ -12,6 +12,7 @@ import FormLabel from "@mui/material/FormLabel";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { isAxiosError } from "axios";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
@@ -175,16 +176,16 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to create eval:", err);
 
       // Extract error message from API response
       let errorMessage = "Failed to create eval. Please try again.";
 
-      if (err?.response?.data?.detail) {
+      if (isAxiosError(err) && err.response?.data?.detail) {
         // FastAPI HTTPException detail
         errorMessage = err.response.data.detail;
-      } else if (err?.message) {
+      } else if (err instanceof Error) {
         errorMessage = err.message;
       } else if (typeof err === "string") {
         errorMessage = err;
@@ -225,7 +226,8 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         // API signature: (evalName, evalVersion, taskId)
         const evalResponse = await apiClient.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
           evalName,
-          "latest" as any, // The API accepts "latest" as a special version string
+          // API accepts "latest" as special version string per OpenAPI spec
+          "latest" as string,
           task.id
         );
 
@@ -347,9 +349,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   if (!state.inputValue) {
                     return options;
                   }
-                  const filtered = options.filter((option) =>
-                    option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-                  );
+                  const filtered = options.filter((option) => option.name.toLowerCase().includes(state.inputValue.toLowerCase()));
                   return filtered;
                 }}
                 renderOption={(props, option) => {
@@ -369,7 +369,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                                 fontSize: "0.75rem",
                                 fontWeight: 400,
                                 fontStyle: "italic",
-                                display: "inline"
+                                display: "inline",
                               }}
                             >
                               {option.attribution}
@@ -393,13 +393,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   );
                 }}
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Enter eval name or select template/existing..."
-                    required
-                    size="small"
-                    autoFocus
-                  />
+                  <TextField {...params} placeholder="Enter eval name or select template/existing..." required size="small" autoFocus />
                 )}
               />
             </FormControl>

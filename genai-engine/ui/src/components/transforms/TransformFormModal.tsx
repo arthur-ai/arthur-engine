@@ -25,7 +25,6 @@ import { TransformFormModalProps } from "./types";
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
 
-
 interface VariableMapping {
   variable_name: string;
   span_name: string;
@@ -33,19 +32,10 @@ interface VariableMapping {
   fallback: string;
 }
 
-export const TransformFormModal: React.FC<TransformFormModalProps> = ({
-  open,
-  onClose,
-  onSubmit,
-  isLoading,
-  taskId,
-  initialTransform,
-}) => {
+export const TransformFormModal: React.FC<TransformFormModalProps> = ({ open, onClose, onSubmit, isLoading, taskId, initialTransform }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [variables, setVariables] = useState<VariableMapping[]>([
-    { variable_name: "", span_name: "", attribute_path: "", fallback: "" },
-  ]);
+  const [variables, setVariables] = useState<VariableMapping[]>([{ variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
   const [errors, setErrors] = useState<string[]>([]);
 
   // State for copying from existing transform

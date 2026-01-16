@@ -1,5 +1,5 @@
-import { mergeProps } from "@base-ui-components/react/merge-props";
-import { useRender } from "@base-ui-components/react/use-render";
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
 import Button from "@mui/material/Button";
 import BaseDrawer, { DrawerProps } from "@mui/material/Drawer";
 import { useControlled } from "@mui/material/utils";

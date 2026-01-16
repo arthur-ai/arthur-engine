@@ -6,10 +6,7 @@ interface DatasetLoadingStateProps {
   message?: string;
 }
 
-export const DatasetLoadingState: React.FC<DatasetLoadingStateProps> = ({
-  type,
-  message,
-}) => {
+export const DatasetLoadingState: React.FC<DatasetLoadingStateProps> = ({ type, message }) => {
   if (type === "full") {
     return (
       <Box

@@ -1,23 +1,7 @@
-import {
-  Alert,
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-} from "@mui/material";
+import { Alert, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import React from "react";
 
-import {
-  CSV_IMPORT_MESSAGES,
-  MAX_DATASET_ROWS,
-  type ParsedPreviewData,
-  type ValidationResult,
-} from "./csvImportConstants";
+import { CSV_IMPORT_MESSAGES, MAX_DATASET_ROWS, type ParsedPreviewData, type ValidationResult } from "./csvImportConstants";
 
 interface ImportPreviewStepProps {
   previewData: ParsedPreviewData;
@@ -26,16 +10,8 @@ interface ImportPreviewStepProps {
   error: string | null;
 }
 
-export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
-  previewData,
-  validation,
-  currentRowCount,
-  error,
-}) => {
-  const rowsToImport = Math.min(
-    previewData.totalRows,
-    MAX_DATASET_ROWS - currentRowCount
-  );
+export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({ previewData, validation, currentRowCount, error }) => {
+  const rowsToImport = Math.min(previewData.totalRows, MAX_DATASET_ROWS - currentRowCount);
 
   return (
     <>
@@ -77,20 +53,10 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
           {CSV_IMPORT_MESSAGES.labels.dataPreview}
         </Typography>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ mb: 1, display: "block" }}
-        >
-          {CSV_IMPORT_MESSAGES.info.previewDescription(
-            previewData.rows.length,
-            previewData.totalRows
-          )}
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+          {CSV_IMPORT_MESSAGES.info.previewDescription(previewData.rows.length, previewData.totalRows)}
         </Typography>
-        <TableContainer
-          component={Paper}
-          sx={{ maxHeight: 300, overflow: "auto" }}
-        >
+        <TableContainer component={Paper} sx={{ maxHeight: 300, overflow: "auto" }}>
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>

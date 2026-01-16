@@ -34,17 +34,9 @@ interface DatasetsTableProps {
   onDelete?: (datasetId: string) => Promise<void>;
 }
 
-export const DatasetsTable: React.FC<DatasetsTableProps> = ({
-  datasets,
-  sortOrder,
-  onSort,
-  onRowClick,
-  onEdit,
-  onDelete,
-}) => {
+export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrder, onSort, onRowClick, onEdit, onDelete }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [datasetToDelete, setDatasetToDelete] =
-    useState<DatasetResponse | null>(null);
+  const [datasetToDelete, setDatasetToDelete] = useState<DatasetResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const formatDate = useCallback((timestamp: number): string => {
@@ -63,14 +55,11 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
     }
   }, []);
 
-  const handleDeleteClick = useCallback(
-    (e: React.MouseEvent, dataset: DatasetResponse) => {
-      e.stopPropagation();
-      setDatasetToDelete(dataset);
-      setDeleteDialogOpen(true);
-    },
-    []
-  );
+  const handleDeleteClick = useCallback((e: React.MouseEvent, dataset: DatasetResponse) => {
+    e.stopPropagation();
+    setDatasetToDelete(dataset);
+    setDeleteDialogOpen(true);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!datasetToDelete || !onDelete) return;
@@ -111,11 +100,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                 </Box>
               </TableCell>
               <TableCell>
-                <TableSortLabel
-                  active={true}
-                  direction={sortOrder}
-                  onClick={onSort}
-                >
+                <TableSortLabel active={true} direction={sortOrder} onClick={onSort}>
                   <Box component="span" sx={{ fontWeight: 600 }}>
                     Last Modified
                   </Box>
@@ -162,10 +147,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                     )}
                   </Box>
                   {dataset.description && (
-                    <Box
-                      component="span"
-                      sx={{ fontSize: "0.875rem", color: "text.secondary" }}
-                    >
+                    <Box component="span" sx={{ fontSize: "0.875rem", color: "text.secondary" }}>
                       {dataset.description}
                     </Box>
                   )}
@@ -173,9 +155,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                 <TableCell>{formatDate(dataset.updated_at)}</TableCell>
                 <TableCell>{formatDate(dataset.created_at)}</TableCell>
                 <TableCell align="center">
-                  <Box
-                    sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}
-                  >
+                  <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
                     {onEdit && (
                       <IconButton
                         size="small"
@@ -189,12 +169,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                         <EditIcon fontSize="small" />
                       </IconButton>
                     )}
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleDeleteClick(e, dataset)}
-                      sx={{ color: "error.main" }}
-                      aria-label="Delete dataset"
-                    >
+                    <IconButton size="small" onClick={(e) => handleDeleteClick(e, dataset)} sx={{ color: "error.main" }} aria-label="Delete dataset">
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
@@ -205,23 +180,14 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
         </Table>
       </TableContainer>
 
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-        aria-labelledby="delete-dialog-title"
-        aria-describedby="delete-dialog-description"
-      >
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
         <DialogTitle id="delete-dialog-title">Delete Dataset?</DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-dialog-description">
-            Are you sure you want to delete{" "}
-            <strong>{datasetToDelete?.name}</strong>?
+            Are you sure you want to delete <strong>{datasetToDelete?.name}</strong>?
           </DialogContentText>
-          <Box
-            sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}
-          >
-            <strong>Warning:</strong> This will permanently delete the dataset
-            and its entire version history. This action cannot be undone.
+          <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
+            <strong>Warning:</strong> This will permanently delete the dataset and its entire version history. This action cannot be undone.
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

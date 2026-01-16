@@ -1,10 +1,6 @@
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
-export function sortRows(
-  rows: DatasetVersionRowResponse[],
-  sortColumn: string | null,
-  sortDirection: "asc" | "desc"
-): DatasetVersionRowResponse[] {
+export function sortRows(rows: DatasetVersionRowResponse[], sortColumn: string | null, sortDirection: "asc" | "desc"): DatasetVersionRowResponse[] {
   if (!sortColumn) return rows;
 
   return [...rows].sort((a, b) => {

@@ -1,16 +1,6 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import {
-  Box,
-  IconButton,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Tooltip,
-} from "@mui/material";
+import { Box, IconButton, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, Tooltip } from "@mui/material";
 import React, { useState } from "react";
 
 interface Message {
@@ -94,7 +84,7 @@ export const VariableTile: React.FC<VariableTileProps> = ({ variableName, value 
         sx={{
           cursor: isTruncated ? "pointer" : "default",
           minWidth: 0,
-          overflow: "hidden"
+          overflow: "hidden",
         }}
       >
         <Typography variant="caption" className="font-medium text-gray-700">
@@ -107,7 +97,7 @@ export const VariableTile: React.FC<VariableTileProps> = ({ variableName, value 
             sx={{
               wordBreak: "break-word",
               overflowWrap: "break-word",
-              minWidth: 0
+              minWidth: 0,
             }}
           >
             {displayValue}
@@ -134,13 +124,7 @@ export const VariableTile: React.FC<VariableTileProps> = ({ variableName, value 
         </Box>
       </Box>
 
-      <Dialog
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        maxWidth="md"
-        fullWidth
-        onClick={(e) => e.stopPropagation()}
-      >
+      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="md" fullWidth onClick={(e) => e.stopPropagation()}>
         <DialogTitle>
           <Box className="flex justify-between items-start gap-2">
             <Box className="flex-1">

@@ -82,7 +82,7 @@ export const NewAgentExperiment = () => {
   const newExperimentMutation = useCreateNewExperiment({
     onSuccess: (data) => {
       enqueueSnackbar(`Experiment with id "${data.id}" created successfully!`, { variant: "success" });
-      navigate(`./${data.id}`, { replace: true });
+      navigate(`../${data.id}`, { replace: true });
     },
   });
 

@@ -13,18 +13,14 @@ import { useForm, useStore } from "@tanstack/react-form";
 import React, { useEffect, useState } from "react";
 
 import type { SearchMethod, SearchSettings } from "./types";
+import { buildApiSearchSettings } from "./utils/ragSettingsUtils";
 
 import { useCreateRagConfig } from "@/hooks/rag-search-settings/useCreateRagConfig";
 import { useCreateRagVersion } from "@/hooks/rag-search-settings/useCreateRagVersion";
 import { useRagSearchSettings } from "@/hooks/rag-search-settings/useRagSearchSettings";
 import { useUpdateRagConfig } from "@/hooks/rag-search-settings/useUpdateRagConfig";
 import useSnackbar from "@/hooks/useSnackbar";
-import type {
-  RagProviderCollectionResponse,
-  WeaviateHybridSearchSettingsConfigurationRequest,
-  WeaviateKeywordSearchSettingsConfigurationRequest,
-  WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
-} from "@/lib/api-client/api-client";
+import type { RagProviderCollectionResponse } from "@/lib/api-client/api-client";
 
 interface SaveRagConfigDialogProps {
   open: boolean;
@@ -42,39 +38,6 @@ interface SaveRagConfigFormValues {
   name: string;
   description: string;
   tags: string[];
-}
-
-function buildApiSettings(
-  collection: RagProviderCollectionResponse,
-  method: SearchMethod,
-  settings: SearchSettings
-):
-  | WeaviateHybridSearchSettingsConfigurationRequest
-  | WeaviateKeywordSearchSettingsConfigurationRequest
-  | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest {
-  const base = {
-    collection_name: collection.identifier,
-    limit: settings.limit,
-    include_vector: settings.includeVector,
-    return_properties: settings.includeMetadata ? undefined : [],
-    return_metadata: ["distance", "certainty", "score", "explain_score"],
-  };
-
-  if (method === "nearText") {
-    return {
-      ...base,
-      certainty: 1 - settings.distance,
-    } as WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
-  } else if (method === "bm25") {
-    return base as WeaviateKeywordSearchSettingsConfigurationRequest;
-  } else {
-    // hybrid
-    return {
-      ...base,
-      alpha: settings.alpha,
-      certainty: 1 - settings.distance,
-    } as WeaviateHybridSearchSettingsConfigurationRequest;
-  }
 }
 
 const blankValues: SaveRagConfigFormValues = {
@@ -114,7 +77,7 @@ export const SaveRagConfigDialog: React.FC<SaveRagConfigDialogProps> = ({
         return;
       }
 
-      const apiSettings = buildApiSettings(selectedCollection, searchMethod, settings);
+      const apiSettings = buildApiSearchSettings(selectedCollection.identifier, searchMethod, settings);
       const matchedConfig = existingConfigs.find((c) => c.name === trimmedName);
 
       try {

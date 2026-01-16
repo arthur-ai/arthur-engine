@@ -1,4 +1,4 @@
-import { NumberField as BaseNumberField } from "@base-ui-components/react/number-field";
+import { NumberField as BaseNumberField } from "@base-ui/react/number-field";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import FilledInput from "@mui/material/FilledInput";

@@ -21,10 +21,9 @@ import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getStatusChipSx } from "./utils/statusChipStyles";
-
 import { useRagNotebookHistoryWithPolling } from "@/hooks/useRagNotebooks";
 import type { RagExperimentSummary } from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagExperimentHistorySidebarProps {
   open: boolean;

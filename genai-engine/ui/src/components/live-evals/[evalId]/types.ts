@@ -45,4 +45,3 @@ export interface LiveEvalDetail {
   };
   evaluatedTraces: EvaluatedTrace[];
 }
-

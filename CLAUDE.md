@@ -13,6 +13,7 @@ Arthur Engine is a Python-based AI/ML monitoring and governance platform with th
 ## Technologies
 
 **Backend:**
+
 - Python 3.12 (GenAI Engine), Python 3.13 (ML Engine)
 - FastAPI, SQLAlchemy, PostgreSQL with pgVector
 - OpenAI/Azure LLMs, LangChain, LiteLLM
@@ -21,11 +22,13 @@ Arthur Engine is a Python-based AI/ML monitoring and governance platform with th
 - Alembic for database migrations
 
 **Frontend:**
+
 - React 19, TypeScript, Vite
 - Tailwind CSS, TanStack Query/Table
 - Zustand for state management
 
 **Infrastructure:**
+
 - Docker, Docker Compose, Helm, AWS ECS
 - OpenTelemetry, NewRelic
 - Pytest, Coverage, Locust
@@ -113,8 +116,12 @@ yarn dev              # Development at localhost:5173
 yarn build           # Production build
 yarn type-check      # TypeScript checking
 yarn lint            # ESLint
-yarn format          # Prettier
+yarn format          # Prettier (auto-fix)
+yarn format:check    # Prettier (check only)
 yarn generate-api    # Generate API client from OpenAPI spec
+
+# Before committing (REQUIRED - CI enforced)
+yarn check           # Runs type-check, lint, and format:check
 ```
 
 ### Docker Compose (Full Stack)
@@ -289,23 +296,26 @@ yarn dev
 # After OpenAPI spec changes
 yarn generate-api
 
-# Before committing
-yarn type-check && yarn lint
+# Before committing (REQUIRED - CI enforced)
+yarn check  # Runs type-check, lint, and format:check
 ```
 
 ## Testing
 
 **GenAI Engine:**
+
 - Unit tests: `poetry run pytest -m "unit_tests"`
 - Coverage requirement: >= 79%
 - Integration tests: `./tests/test_remote.sh`
 - Performance tests: Locust-based (see [locust/README.md](genai-engine/locust/README.md))
 
 **ML Engine:**
+
 - Unit tests: `poetry run pytest tests/unit`
 - Type checking: `poetry run mypy src/ml_engine`
 
 **Pre-commit Hooks:**
+
 - Trailing whitespace & end-of-file fixes
 - YAML validation
 - isort (import sorting)
@@ -317,6 +327,7 @@ yarn type-check && yarn lint
 ## Key Configuration
 
 **Environment Variables (GenAI Engine):**
+
 ```bash
 # Database
 POSTGRES_USER=postgres
@@ -339,6 +350,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=<endpoint>
 ```
 
 **Environment Variables (ML Engine):**
+
 ```bash
 ARTHUR_API_HOST=https://platform.arthur.ai
 ARTHUR_CLIENT_ID=<client-id>

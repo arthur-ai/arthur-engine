@@ -1,7 +1,6 @@
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -21,6 +20,14 @@ import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useNotebook, useNotebookHistory } from "@/hooks/useNotebooks";
+import {
+  EvalRefOutput,
+  PromptExperimentSummary,
+  PromptVariableMappingOutput,
+  SavedPromptConfig,
+  UnsavedPromptConfig,
+} from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface NotebookDetailModalProps {
   open: boolean;
@@ -28,39 +35,11 @@ interface NotebookDetailModalProps {
   onClose: () => void;
 }
 
-const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
-  open,
-  notebookId,
-  onClose,
-}) => {
+const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, notebookId, onClose }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { notebook, isLoading, error } = useNotebook(notebookId || undefined);
-  const { experiments, isLoading: isLoadingHistory } = useNotebookHistory(
-    notebookId || undefined,
-    0,
-    10
-  );
-
-  const getStatusChipSx = (status: string) => {
-    const colorMap: Record<string, any> = {
-      queued: { color: "text.secondary", borderColor: "text.secondary" },
-      running: { color: "primary.main", borderColor: "primary.main" },
-      evaluating: { color: "info.main", borderColor: "info.main" },
-      completed: { color: "success.main", borderColor: "success.main" },
-      failed: { color: "error.main", borderColor: "error.main" },
-    };
-
-    const colors = colorMap[status] || colorMap.queued;
-    return {
-      backgroundColor: "transparent",
-      color: colors.color,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-      textTransform: "capitalize",
-    };
-  };
+  const { experiments, isLoading: isLoadingHistory } = useNotebookHistory(notebookId || undefined, 0, 10);
 
   const handleExperimentClick = (experimentId: string) => {
     navigate(`/tasks/${taskId}/prompt-experiments/${experimentId}`);
@@ -117,17 +96,13 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       Created
                     </Typography>
-                    <Typography variant="body2">
-                      {new Date(notebook.created_at).toLocaleString()}
-                    </Typography>
+                    <Typography variant="body2">{new Date(notebook.created_at).toLocaleString()}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       Updated
                     </Typography>
-                    <Typography variant="body2">
-                      {new Date(notebook.updated_at).toLocaleString()}
-                    </Typography>
+                    <Typography variant="body2">{new Date(notebook.updated_at).toLocaleString()}</Typography>
                   </Box>
                 </Box>
               </Stack>
@@ -154,38 +129,36 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                         Prompts ({notebook.state.prompt_configs.length})
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {notebook.state.prompt_configs.map((config: any, idx: number) => (
-                          <Chip
-                            key={idx}
-                            label={
-                              config.type === "saved"
-                                ? `${config.name} (v${config.version})`
-                                : config.auto_name || "Unsaved Prompt"
-                            }
-                            size="small"
-                            sx={{
-                              backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
-                              borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
-                            }}
-                            onClick={
-                              config.type === "saved"
-                                ? () => {
-                                    navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
-                                    onClose();
-                                  }
-                                : undefined
-                            }
-                            onDelete={
-                              config.type === "saved"
-                                ? () => {
-                                    navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
-                                    onClose();
-                                  }
-                                : undefined
-                            }
-                            deleteIcon={config.type === "saved" ? <OpenInNewIcon fontSize="small" /> : undefined}
-                          />
-                        ))}
+                        {notebook.state.prompt_configs.map(
+                          (config: ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig), idx: number) => (
+                            <Chip
+                              key={idx}
+                              label={config.type === "saved" ? `${config.name} (v${config.version})` : config.auto_name || "Unsaved Prompt"}
+                              size="small"
+                              sx={{
+                                backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
+                                borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
+                              }}
+                              onClick={
+                                config.type === "saved"
+                                  ? () => {
+                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      onClose();
+                                    }
+                                  : undefined
+                              }
+                              onDelete={
+                                config.type === "saved"
+                                  ? () => {
+                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      onClose();
+                                    }
+                                  : undefined
+                              }
+                              deleteIcon={config.type === "saved" ? <OpenInNewIcon fontSize="small" /> : undefined}
+                            />
+                          )
+                        )}
                       </Stack>
                     </Box>
                   )}
@@ -235,7 +208,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                         Evaluators ({notebook.state.eval_list.length})
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {notebook.state.eval_list.map((evalRef: any, idx: number) => (
+                        {notebook.state.eval_list.map((evalRef: EvalRefOutput, idx: number) => (
                           <Chip
                             key={idx}
                             label={`${evalRef.name} (v${evalRef.version})`}
@@ -266,7 +239,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                         Variable Mappings ({notebook.state.prompt_variable_mapping.length})
                       </Typography>
                       <Stack spacing={0.5}>
-                        {notebook.state.prompt_variable_mapping.map((mapping: any, idx: number) => (
+                        {notebook.state.prompt_variable_mapping.map((mapping: PromptVariableMappingOutput, idx: number) => (
                           <Typography key={idx} variant="body2" sx={{ fontSize: "0.813rem" }}>
                             <Box component="span" sx={{ fontWeight: 600, fontFamily: "monospace" }}>
                               {mapping.variable_name}
@@ -322,24 +295,13 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {experiments.map((experiment: any) => (
-                        <TableRow
-                          key={experiment.id}
-                          hover
-                          sx={{ cursor: "pointer" }}
-                          onClick={() => handleExperimentClick(experiment.id)}
-                        >
+                      {experiments.map((experiment: PromptExperimentSummary) => (
+                        <TableRow key={experiment.id} hover sx={{ cursor: "pointer" }} onClick={() => handleExperimentClick(experiment.id)}>
                           <TableCell>
-                            <Typography variant="body2">
-                              {new Date(experiment.created_at).toLocaleString()}
-                            </Typography>
+                            <Typography variant="body2">{new Date(experiment.created_at).toLocaleString()}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Chip
-                              label={experiment.status}
-                              size="small"
-                              sx={getStatusChipSx(experiment.status)}
-                            />
+                            <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2">
@@ -347,9 +309,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2">
-                              {experiment.total_cost ? `$${experiment.total_cost}` : "—"}
-                            </Typography>
+                            <Typography variant="body2">{experiment.total_cost ? `$${experiment.total_cost}` : "—"}</Typography>
                           </TableCell>
                           <TableCell align="right">
                             <IconButton

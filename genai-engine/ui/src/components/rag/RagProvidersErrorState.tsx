@@ -7,10 +7,7 @@ interface RagProvidersErrorStateProps {
   onRetry: () => void;
 }
 
-export const RagProvidersErrorState: React.FC<RagProvidersErrorStateProps> = ({
-  error,
-  onRetry,
-}) => {
+export const RagProvidersErrorState: React.FC<RagProvidersErrorStateProps> = ({ error, onRetry }) => {
   return (
     <Box
       sx={{
@@ -36,4 +33,3 @@ export const RagProvidersErrorState: React.FC<RagProvidersErrorStateProps> = ({
     </Box>
   );
 };
-

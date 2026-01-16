@@ -10,6 +10,7 @@ import { useSelection } from "../hooks/useSelection";
 import { isSpanOfType } from "../utils/spans";
 
 import { DrawerPagination } from "./DrawerPagination";
+import { SpanStatusBadge } from "./span-status-badge";
 import { SpanDetails, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
 
 import { CopyableChip } from "@/components/common";
@@ -74,14 +75,16 @@ export const SpanDrawerContent = ({ id }: Props) => {
           borderColor: "divider",
         }}
       >
-        <Stack direction="column" spacing={0}>
+        <Stack direction="column" width="100%">
           <Typography variant="body2" color="text.secondary">
             Span Details
           </Typography>
-          <Stack direction="row" gap={2}>
+          <Stack direction="row" gap={2} alignItems="center">
             <Typography variant="h6" color="text.primary" fontWeight={700}>
               {span.span_name}
             </Typography>
+            <SpanStatusBadge status={span.status_code ?? "Unset"} />
+            <div className="flex-1" />
             <CopyableChip
               label={id!}
               sx={{

@@ -106,6 +106,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
   );
 
   const isExecuting = panel.isLoading;
+  const isReady = Boolean(panel.providerId && panel.collection);
 
   return (
     <Paper
@@ -129,6 +130,17 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Tooltip title={isReady ? "Ready to run" : "Not configured"}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: isReady ? "#22c55e" : "#9ca3af",
+                flexShrink: 0,
+              }}
+            />
+          </Tooltip>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
             Panel {panelIndex + 1}
           </Typography>

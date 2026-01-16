@@ -2,11 +2,7 @@ import axios from "axios";
 
 import { Api } from "./api-client/api-client";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== "undefined"
-    ? window.location.origin
-    : "http://localhost:8000");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 
 // Configure axios to serialize array parameters without brackets
 axios.defaults.paramsSerializer = {
@@ -42,9 +38,7 @@ export function createApiClient(config: ApiClientConfig = {}): Api<unknown> {
     baseURL,
     securityWorker: (securityToken) => {
       const authToken = token || securityToken;
-      return authToken
-        ? { headers: { Authorization: `Bearer ${authToken}` } }
-        : {};
+      return authToken ? { headers: { Authorization: `Bearer ${authToken}` } } : {};
     },
   });
 }
@@ -55,10 +49,7 @@ export function createApiClient(config: ApiClientConfig = {}): Api<unknown> {
  * @param baseURL Optional base URL override
  * @returns Configured Api instance with the provided token
  */
-export function createAuthenticatedApiClient(
-  token: string,
-  baseURL?: string
-): Api<unknown> {
+export function createAuthenticatedApiClient(token: string, baseURL?: string): Api<unknown> {
   return createApiClient({ baseURL, token });
 }
 

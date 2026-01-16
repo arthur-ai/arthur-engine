@@ -14,6 +14,7 @@ import type {
   RagNotebookStateResponse,
   RagExperimentSummary,
 } from "@/lib/api-client/api-client";
+import { pollWhileAnyInProgress, isInProgressStatus, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
 
 interface RagNotebooksFilters {
@@ -105,13 +106,9 @@ export function useRagNotebookState(notebookId: string | undefined) {
 
 /**
  * Hook to fetch RAG notebook experiment history with polling
+ * Polls while any experiment is in progress
  */
-export function useRagNotebookHistoryWithPolling(
-  notebookId: string | undefined,
-  page: number = 0,
-  pageSize: number = 25,
-  pollInterval: number = 5000
-) {
+export function useRagNotebookHistoryWithPolling(notebookId: string | undefined, page: number = 0, pageSize: number = 25) {
   const { data, error, isLoading, refetch } = useApiQuery<"getRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGet">({
     method: "getRagNotebookHistoryApiV1RagNotebooksNotebookIdHistoryGet",
     args: [{ notebookId: notebookId!, page, page_size: pageSize }] as const,
@@ -119,13 +116,17 @@ export function useRagNotebookHistoryWithPolling(
     queryOptions: {
       staleTime: 2000,
       refetchOnWindowFocus: true,
-      refetchInterval: pollInterval,
+      refetchInterval: pollWhileAnyInProgress(
+        (data) => data?.data,
+        (exp) => exp.status,
+        POLL_INTERVAL.SLOW
+      ),
     },
   });
 
   // Check if any experiments are still running
   const hasRunningExperiments = useMemo(() => {
-    return data?.data?.some((exp: RagExperimentSummary) => exp.status === "queued" || exp.status === "running") ?? false;
+    return data?.data?.some((exp: RagExperimentSummary) => isInProgressStatus(exp.status)) ?? false;
   }, [data]);
 
   return {
