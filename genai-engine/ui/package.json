@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc -b --noEmit",
-    "check": "yarn type-check && yarn lint",
+    "check": "yarn type-check && yarn lint && yarn format:check",
     "preview": "vite preview",
     "generate-api": "yarn dlx swagger-typescript-api@13.0.16 -p ../staging.openapi.json -o src/lib/api-client --name api-client.ts --axios --clean-output --extract-request-params --extract-request-body --extract-response-body --extract-response-error --extract-enums --union-enums --add-readonly --sort-routes --sort-types",
     "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
