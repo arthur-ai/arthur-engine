@@ -9,8 +9,8 @@ import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
 import { TracesTable } from "../TracesTable";
 
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
@@ -27,7 +27,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const pagination = usePagination(FETCH_SIZE);
 
   const params = {
     taskId: task?.id ?? "",
