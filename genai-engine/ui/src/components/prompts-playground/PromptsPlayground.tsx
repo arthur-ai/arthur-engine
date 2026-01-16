@@ -1382,13 +1382,13 @@ const PromptsPlayground = () => {
               {state.prompts.map((prompt) => {
                 // Highlight cost if multiple prompts visible and this prompt has a cost
                 const promptHasCost = !!(
-                  prompt.runResponse?.cost && 
-                  prompt.runResponse.cost !== "-" && 
-                  prompt.runResponse.cost !== "0.000000" && 
+                  prompt.runResponse?.cost &&
+                  prompt.runResponse.cost !== "-" &&
+                  prompt.runResponse.cost !== "0.000000" &&
                   parseFloat(prompt.runResponse.cost) > 0
                 );
                 const highlightThisPrompt = shouldHighlightCosts && promptHasCost;
-                
+
                 return (
                   <Box
                     key={prompt.id}
@@ -1397,11 +1397,7 @@ const PromptsPlayground = () => {
                       minWidth: 400,
                     }}
                   >
-                    <PromptComponent 
-                      prompt={prompt} 
-                      useIconOnlyMode={useIconOnlyMode}
-                      highlightCost={highlightThisPrompt}
-                    />
+                    <PromptComponent prompt={prompt} useIconOnlyMode={useIconOnlyMode} highlightCost={highlightThisPrompt} />
                   </Box>
                 );
               })}
