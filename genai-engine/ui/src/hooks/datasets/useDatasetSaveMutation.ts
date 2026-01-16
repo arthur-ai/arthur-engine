@@ -21,8 +21,7 @@ export function useDatasetSaveMutation(
 
   const { mutate: saveChanges, isPending: isSaving } = useApiMutation({
     mutationFn: async () => {
-      if (!api || !datasetId)
-        throw new Error("API or dataset ID not available");
+      if (!api || !datasetId) throw new Error("API or dataset ID not available");
 
       if (hasUnsavedChanges) {
         const request = {
@@ -36,10 +35,7 @@ export function useDatasetSaveMutation(
           rows_to_delete: pendingChanges.deleted,
         };
 
-        return api.api.createDatasetVersionApiV2DatasetsDatasetIdVersionsPost(
-          datasetId,
-          request
-        );
+        return api.api.createDatasetVersionApiV2DatasetsDatasetIdVersionsPost(datasetId, request);
       }
 
       return null;

@@ -6,10 +6,10 @@ import { useMemo, useState } from "react";
 import { sessionLevelColumns } from "../../data/session-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
+import { DataContentGate } from "../DataContentGate";
 import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
 import { TracesTable } from "../TracesTable";
-import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -85,12 +85,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   return (
     <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      <DataContentGate
-        welcomeDismissed={welcomeDismissed}
-        hasData={hasData}
-        hasActiveFilters={hasActiveFilters}
-        dataType="sessions"
-      >
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
         {/* Only show FiltersRow if we have sessions or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
 

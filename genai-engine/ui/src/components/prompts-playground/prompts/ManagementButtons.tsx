@@ -108,10 +108,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   const hasModelConfig = prompt.modelProvider !== "" && prompt.modelName !== "";
 
   // In config mode, disable if experiment is running. In normal mode, disable if prompt is running
-  const runDisabled =
-    !hasModelConfig ||
-    hasUnsetVariables ||
-    (experimentConfig ? isRunningExperiment : prompt.running);
+  const runDisabled = !hasModelConfig || hasUnsetVariables || (experimentConfig ? isRunningExperiment : prompt.running);
   const previewDisabled = !hasModelConfig || hasUnsetVariables;
   const isDirty = prompt.isDirty;
   const saveTooltip = isDirty ? "Save changes as new version" : "Save Prompt";

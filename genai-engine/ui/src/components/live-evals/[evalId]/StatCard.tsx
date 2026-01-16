@@ -22,11 +22,7 @@ export const StatCard = ({ icon, label, value, subValue, color = "default" }: St
       <Stack direction="row" spacing={1.5} alignItems="flex-start">
         <Box sx={{ color: colorMap[color], mt: 0.5 }}>{icon}</Box>
         <Stack spacing={0.5}>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ textTransform: "uppercase", letterSpacing: 0.5, fontSize: "0.65rem" }}
-          >
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, fontSize: "0.65rem" }}>
             {label}
           </Typography>
           <Typography variant="h5" fontWeight={600} color={colorMap[color]}>
@@ -42,4 +38,3 @@ export const StatCard = ({ icon, label, value, subValue, color = "default" }: St
     </Paper>
   );
 };
-

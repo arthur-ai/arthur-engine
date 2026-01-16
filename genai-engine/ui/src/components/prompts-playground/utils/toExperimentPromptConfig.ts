@@ -31,17 +31,18 @@ export const toExperimentPromptConfig = (
     }));
 
   // Convert tools to the format expected by the backend
-  const tools = prompt.tools.length > 0
-    ? prompt.tools.map((tool) => ({
-        type: tool.type,
-        function: {
-          name: tool.function.name,
-          description: tool.function.description,
-          parameters: tool.function.parameters,
-        },
-        ...(tool.strict !== undefined ? { strict: tool.strict } : {}),
-      }))
-    : undefined;
+  const tools =
+    prompt.tools.length > 0
+      ? prompt.tools.map((tool) => ({
+          type: tool.type,
+          function: {
+            name: tool.function.name,
+            description: tool.function.description,
+            parameters: tool.function.parameters,
+          },
+          ...(tool.strict !== undefined ? { strict: tool.strict } : {}),
+        }))
+      : undefined;
 
   // Convert model parameters - only include non-null values
   const config: Record<string, unknown> = {};

@@ -20,4 +20,3 @@ export const RagProvidersLoadingState: React.FC = () => {
     </Box>
   );
 };
-

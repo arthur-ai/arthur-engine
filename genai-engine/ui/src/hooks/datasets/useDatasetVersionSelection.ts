@@ -7,13 +7,8 @@ export interface UseDatasetVersionSelectionReturn {
   resetToLatest: () => void;
 }
 
-export function useDatasetVersionSelection(
-  latestVersion: number | undefined,
-  onVersionSwitch?: () => void
-): UseDatasetVersionSelectionReturn {
-  const [selectedVersion, setSelectedVersion] = useState<number | undefined>(
-    undefined
-  );
+export function useDatasetVersionSelection(latestVersion: number | undefined, onVersionSwitch?: () => void): UseDatasetVersionSelectionReturn {
+  const [selectedVersion, setSelectedVersion] = useState<number | undefined>(undefined);
 
   const currentVersion = useMemo(() => {
     return selectedVersion !== undefined ? selectedVersion : latestVersion;

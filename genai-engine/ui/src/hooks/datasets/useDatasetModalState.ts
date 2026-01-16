@@ -27,8 +27,7 @@ export interface UseDatasetModalStateReturn {
 
 export function useDatasetModalState(): UseDatasetModalStateReturn {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingRow, setEditingRow] =
-    useState<DatasetVersionRowResponse | null>(null);
+  const [editingRow, setEditingRow] = useState<DatasetVersionRowResponse | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isConfigureColumnsOpen, setIsConfigureColumnsOpen] = useState(false);
   const [isVersionDrawerOpen, setIsVersionDrawerOpen] = useState(false);

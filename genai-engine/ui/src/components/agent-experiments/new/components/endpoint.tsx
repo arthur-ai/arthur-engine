@@ -7,6 +7,7 @@ import { NewAgentExperimentFormData } from "../form";
 
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { jsonString } from "@/utils/zod";
 
 export const EndpointSetup = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "endpoint">,
@@ -139,29 +140,40 @@ export const EndpointSetup = withFieldGroup({
         <group.AppField
           name="endpoint.body"
           validators={{
-            onChange: z.string(),
+            onChange: jsonString,
           }}
         >
-          {(field) => (
-            <Stack component={Paper} variant="outlined" p={2}>
-              <Stack>
-                <Typography variant="body2" fontWeight="bold">
-                  Request Body (JSON)
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Define the JSON payload. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> placeholders
-                  for dataset values.
-                </Typography>
+          {(field) => {
+            const hasErrors = field.state.meta.errors.length > 0;
+            const error = field.state.meta.errors[0]?.message;
+
+            return (
+              <Stack component={Paper} variant="outlined" p={2} sx={{ borderColor: hasErrors ? "error.main" : "divider" }}>
+                <Stack>
+                  <Typography variant="body2" fontWeight="bold">
+                    Request Body (JSON)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Define the JSON payload. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> placeholders
+                    for dataset values.
+                  </Typography>
+                </Stack>
+                <Divider sx={{ my: 2 }} />
+                <NunjucksHighlightedTextField
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Enter request body..."
+                  size="small"
+                  hideTokens={hasErrors}
+                />
+                {hasErrors && (
+                  <Typography variant="caption" color="error" mt={1}>
+                    {error}
+                  </Typography>
+                )}
               </Stack>
-              <Divider sx={{ my: 2 }} />
-              <NunjucksHighlightedTextField
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="Enter request body..."
-                size="small"
-              />
-            </Stack>
-          )}
+            );
+          }}
         </group.AppField>
       </Stack>
     );
