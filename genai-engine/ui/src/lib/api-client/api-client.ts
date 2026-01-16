@@ -781,7 +781,7 @@ export interface AgenticResult {
    * Request Body
    * Request body that was sent (with variables resolved)
    */
-  request_body: Record<string, any>;
+  request_body: string;
   /**
    * Request Headers
    * Headers that were sent (with variables resolved)
@@ -3541,9 +3541,9 @@ export interface HttpTemplate {
   headers?: HttpHeader[];
   /**
    * Request Body
-   * Request body as JSON (supports {{variable}} placeholders)
+   * Request body as a string (supports {{variable}} placeholders)
    */
-  request_body: Record<string, any>;
+  request_body: string;
 }
 
 /**
@@ -11277,7 +11277,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.287
+ * @version 2.1.303
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

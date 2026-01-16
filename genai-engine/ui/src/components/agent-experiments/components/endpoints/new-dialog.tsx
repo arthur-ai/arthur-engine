@@ -133,10 +133,10 @@ export const NewEndpointDialogContent = () => {
           </Stack>
           <Stack gap={1}>
             <Typography variant="body2" fontWeight="bold">
-              Request Body (JSON)
+              Request Body
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Use <code>{"{{variable}}"}</code> placeholders in request body for dynamic dataset values.
+              Define the request body as a string. Use <code>{"{{variable}}"}</code> placeholders for dynamic dataset values. The body will be sent as-is after variable substitution.
             </Typography>
             <form.Field name="body">
               {(field) => (

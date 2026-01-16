@@ -9,7 +9,7 @@ export const mapFormToRequest = (form: AgentNotebookStateFormData): SetAgenticNo
         endpoint_name: form.endpoint.name,
         endpoint_url: form.endpoint.url,
         headers: form.endpoint.headers,
-        request_body: JSON.parse(form.endpoint.body),
+        request_body: form.endpoint.body,
       },
       dataset_ref: {
         id: form.datasetRef.id!,
@@ -32,7 +32,7 @@ export const mapTemplateToForm = (template?: AgenticNotebookStateResponse): Agen
       name: template.http_template?.endpoint_name ?? "",
       url: template.http_template?.endpoint_url ?? "",
       headers: template.http_template?.headers ?? [],
-      body: JSON.stringify(template.http_template?.request_body ?? {}),
+      body: template.http_template?.request_body ?? "",
     },
     datasetRef: {
       id: template.dataset_ref?.id ?? "",
@@ -55,7 +55,7 @@ export const mapFormToCreateAgenticExperimentRequest = (form: AgentNotebookState
       endpoint_name: form.endpoint.name,
       endpoint_url: form.endpoint.url,
       headers: form.endpoint.headers,
-      request_body: JSON.parse(form.endpoint.body),
+      request_body: form.endpoint.body,
     },
     template_variable_mapping: form.templateVariableMapping,
   } as CreateAgenticExperimentRequest;
