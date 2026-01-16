@@ -31,7 +31,8 @@
       "Bash(poetry run black:*)",
       "Bash(cd:*)",
       "Bash(poetry run isort:*)",
-      "Bash(PGPASSWORD=changeme_pg_password psql:*)"
+      "Bash(PGPASSWORD=changeme_pg_password psql:*)",
+      "Bash(gh api:*)"
     ]
   }
 }

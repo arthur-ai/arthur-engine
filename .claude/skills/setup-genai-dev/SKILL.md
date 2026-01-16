@@ -54,7 +54,7 @@ export POSTGRES_USE_SSL=false
 export PYTHONPATH="src:$PYTHONPATH"
 export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
 export GENAI_ENGINE_ENVIRONMENT=local
-export GENAI_ENGINE_ADMIN_KEY=test-admin-key
+export GENAI_ENGINE_ADMIN_KEY=changeme123
 export GENAI_ENGINE_INGRESS_URI=http://localhost:3030
 export GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
 export ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
@@ -79,10 +79,17 @@ poetry run alembic current
 
 ## Output
 
-Report success/failure for each step. If OpenAI/Azure credentials are needed for LLM features, ask the user to provide them:
+Report success/failure for each step.
 
-- For OpenAI: `OPENAI_API_KEY`
-- For Azure: `GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS`
+### LLM Configuration
+
+Check for `OPENAI_API_KEY` in the `.env` file in the `./genai-engine` directory. If present, load it:
+```bash
+source ./genai-engine/.env
+export OPENAI_API_KEY
+```
+
+If not present, inform the user they need to add their OpenAI API key to the `.env` file for LLM features to work.
 
 ## Troubleshooting
 

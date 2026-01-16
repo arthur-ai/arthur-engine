@@ -1,6 +1,6 @@
 ---
 name: start-genai-backend
-description: Start the GenAI Engine backend server. Use when you need to launch the API server at localhost:3030. Optionally starts the frontend UI at localhost:3000.
+description: Start the GenAI Engine backend server and frontend UI. Use when you need to launch the API server at localhost:3030 and the frontend at localhost:3000.
 allowed-tools: Bash, Read
 ---
 
@@ -38,7 +38,7 @@ export POSTGRES_USE_SSL=false
 export PYTHONPATH="src:$PYTHONPATH"
 export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
 export GENAI_ENGINE_ENVIRONMENT=local
-export GENAI_ENGINE_ADMIN_KEY=test-admin-key
+export GENAI_ENGINE_ADMIN_KEY=changeme123
 export GENAI_ENGINE_INGRESS_URI=http://localhost:3030
 export GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
 export ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
@@ -46,20 +46,15 @@ export ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
 
 ## LLM Provider Configuration
 
-Ask the user which LLM provider they want to use, then set the appropriate variables:
-
-### For OpenAI (direct):
+Load LLM configuration from the `.env` file:
 ```bash
-export GENAI_ENGINE_OPENAI_PROVIDER=OpenAI
-export OPENAI_API_KEY=<user-provided-key>
+source ./genai-engine/.env
+export OPENAI_API_KEY
+export GENAI_ENGINE_OPENAI_PROVIDER
+export GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS
 ```
 
-### For Azure OpenAI:
-```bash
-export GENAI_ENGINE_OPENAI_PROVIDER=Azure
-export OPENAI_API_VERSION=2023-07-01-preview
-export GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=<deployment>::<endpoint>::<key>
-```
+If `OPENAI_API_KEY` is not set in `.env`, inform the user they need to add it for LLM features to work.
 
 ## Start Backend Server
 
@@ -74,9 +69,7 @@ Server will be available at:
 - **Swagger Docs**: `http://localhost:3030/docs`
 - **Health Check**: `http://localhost:3030/health`
 
-## Optional: Start Frontend
-
-If the user wants the frontend UI too:
+## Start Frontend
 ```bash
 cd ./genai-engine/ui
 yarn install
@@ -89,14 +82,14 @@ Frontend will be available at: `http://localhost:3000`
 
 To make API requests, use the admin key as a Bearer token:
 ```
-Authorization: Bearer test-admin-key
+Authorization: Bearer changeme123
 ```
 
 ## Verification
 
 After starting, verify the server is running:
 ```bash
-curl -s -H "Authorization: Bearer test-admin-key" http://localhost:3030/health
+curl -s -H "Authorization: Bearer changeme123" http://localhost:3030/health
 ```
 
 If successful, report the server is ready. If it fails, check the server logs for errors.
