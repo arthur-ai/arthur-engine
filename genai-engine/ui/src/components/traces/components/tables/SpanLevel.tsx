@@ -10,10 +10,10 @@ import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
+import { DataContentGate } from "../DataContentGate";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { TracesTable } from "../TracesTable";
-import { DataContentGate } from "../DataContentGate";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";

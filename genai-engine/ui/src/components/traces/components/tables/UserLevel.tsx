@@ -6,8 +6,8 @@ import { useState } from "react";
 import { userLevelColumns } from "../../data/user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
-import { TracesTable } from "../TracesTable";
 import { DataContentGate } from "../DataContentGate";
+import { TracesTable } from "../TracesTable";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";

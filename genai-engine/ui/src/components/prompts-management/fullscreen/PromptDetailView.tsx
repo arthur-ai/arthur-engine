@@ -25,8 +25,8 @@ import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFrom
 import type { PromptDetailViewProps } from "../types";
 
 import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { useCreateNotebookMutation } from "@/hooks/useNotebooks";
 import { useApi } from "@/hooks/useApi";
+import { useCreateNotebookMutation } from "@/hooks/useNotebooks";
 import { formatDate } from "@/utils/formatters";
 
 const PromptDetailView = ({
