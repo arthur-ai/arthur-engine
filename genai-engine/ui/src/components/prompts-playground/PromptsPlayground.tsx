@@ -218,7 +218,22 @@ const PromptsPlayground = () => {
         return;
       }
 
-      const serializedState = serializePlaygroundState(state, experimentConfig);
+      let serializedState;
+      try {
+        serializedState = serializePlaygroundState(state, experimentConfig);
+      } catch (error) {
+        // Catch serialization errors (e.g., incomplete prompts)
+        const errorMessage = error instanceof Error ? error.message : "Cannot save notebook: prompts are missing required configuration.";
+        console.error("Failed to serialize notebook state:", error);
+        setSaveStatus("unsaved");
+        
+        // Only show snackbar for manual saves (when user clicks save button)
+        if (saveTrigger === "manual") {
+          showSnackbar(errorMessage, "error");
+        }
+        return;
+      }
+
       const currentStateStr = JSON.stringify(serializedState);
 
       // Only save if state has actually changed
@@ -247,9 +262,13 @@ const PromptsPlayground = () => {
       } catch (error) {
         console.error("Failed to save notebook state:", error);
         setSaveStatus("unsaved");
+        
+        // Show snackbar for save failures (both auto and manual)
+        const errorMessage = error instanceof Error ? error.message : "Failed to save notebook state.";
+        showSnackbar(errorMessage, "error");
       }
     },
-    [notebookId, apiClient, state, experimentConfig, setNotebookStateMutation]
+    [notebookId, apiClient, state, experimentConfig, setNotebookStateMutation, showSnackbar]
   );
 
   // Detect state changes and trigger auto-save with debounce
