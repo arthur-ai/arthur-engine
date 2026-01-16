@@ -11,8 +11,8 @@ import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
 import { TracesTable } from "../TracesTable";
 
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
@@ -28,7 +28,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
 
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const pagination = usePagination(FETCH_SIZE);
 
   const [, setDrawerTarget] = useDrawerTarget();
 
