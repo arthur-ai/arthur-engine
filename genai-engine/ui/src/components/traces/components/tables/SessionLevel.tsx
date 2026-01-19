@@ -73,7 +73,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const table = useTable({
     data: data?.sessions ?? DEFAULT_DATA,
     columns: sessionLevelColumns,
-    pagination: { state: pagination, onChange: props.onPaginationChange },
+    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: data?.count ?? 0 },
     state: {
       sorting,
       isLoading,

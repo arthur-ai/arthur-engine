@@ -88,7 +88,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const table = useTable({
     data: data?.traces ?? DEFAULT_DATA,
     columns,
-    pagination: { state: pagination, onChange: props.onPaginationChange },
+    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: data?.count ?? 0 },
     onRowClick: handleRowClick,
     state: {
       sorting,
