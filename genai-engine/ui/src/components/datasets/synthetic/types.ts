@@ -7,10 +7,12 @@ export interface GenerationConfig {
   modelProvider: ModelProvider;
   modelName: string;
   temperature?: number;
+  editExisting?: boolean;
 }
 
 export interface SyntheticRow {
   id: string;
   data: Record<string, string>;
   status: "generated" | "modified" | "added";
+  locked?: boolean;
 }

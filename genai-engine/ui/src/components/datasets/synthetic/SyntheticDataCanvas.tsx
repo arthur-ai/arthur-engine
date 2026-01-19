@@ -18,6 +18,7 @@ interface SyntheticDataCanvasProps {
   onUpdateRow: (id: string, data: Record<string, string>) => void;
   onAddRow: (data: Record<string, string>) => void;
   onDeleteRows: (ids: string[]) => void;
+  onToggleLock: (id: string) => void;
   onBack: () => void;
   onAccept: () => void;
 }
@@ -32,6 +33,7 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
   onUpdateRow,
   onAddRow,
   onDeleteRows,
+  onToggleLock,
   onBack,
   onAccept,
 }) => {
@@ -91,6 +93,7 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
             onUpdateRow={onUpdateRow}
             onAddRow={onAddRow}
             onDeleteRows={onDeleteRows}
+            onToggleLock={onToggleLock}
           />
         </Box>
       </Box>

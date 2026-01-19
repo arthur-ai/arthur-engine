@@ -1,8 +1,9 @@
-import { Add, Delete } from "@mui/icons-material";
+import { Add, Delete, Lock, LockOpen } from "@mui/icons-material";
 import {
   Box,
   Button,
   Checkbox,
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -23,6 +24,7 @@ interface SyntheticDataTableProps {
   onUpdateRow: (id: string, data: Record<string, string>) => void;
   onAddRow: (data: Record<string, string>) => void;
   onDeleteRows: (ids: string[]) => void;
+  onToggleLock: (id: string) => void;
 }
 
 export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
@@ -31,6 +33,7 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
   onUpdateRow,
   onAddRow,
   onDeleteRows,
+  onToggleLock,
 }) => {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{
@@ -42,7 +45,8 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
   const handleSelectAll = useCallback(
     (checked: boolean) => {
       if (checked) {
-        setSelectedRows(new Set(rows.map((r) => r.id)));
+        // Only select unlocked rows
+        setSelectedRows(new Set(rows.filter((r) => !r.locked).map((r) => r.id)));
       } else {
         setSelectedRows(new Set());
       }
@@ -68,7 +72,10 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
   }, [selectedRows, onDeleteRows]);
 
   const handleCellClick = useCallback(
-    (rowId: string, column: string, currentValue: string) => {
+    (rowId: string, column: string, currentValue: string, isLocked: boolean) => {
+      // Prevent editing locked rows
+      if (isLocked) return;
+
       setEditingCell({ rowId, column });
       setEditValue(currentValue);
     },
@@ -108,8 +115,9 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
     onAddRow(emptyRow);
   }, [columns, onAddRow]);
 
-  const allSelected = rows.length > 0 && selectedRows.size === rows.length;
-  const someSelected = selectedRows.size > 0 && selectedRows.size < rows.length;
+  const unlockedRows = rows.filter((r) => !r.locked);
+  const allSelected = unlockedRows.length > 0 && selectedRows.size === unlockedRows.length;
+  const someSelected = selectedRows.size > 0 && selectedRows.size < unlockedRows.length;
 
   return (
     <Box
@@ -178,6 +186,15 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                     onChange={(e) => handleSelectAll(e.target.checked)}
                   />
                 </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: "bold",
+                    bgcolor: "grey.100",
+                    width: 60,
+                  }}
+                >
+                  Lock
+                </TableCell>
                 {columns.map((column) => (
                   <TableCell
                     key={column}
@@ -200,18 +217,33 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                   selected={selectedRows.has(row.id)}
                   sx={{
                     bgcolor:
-                      row.status === "added"
-                        ? "success.50"
-                        : row.status === "modified"
-                          ? "warning.50"
-                          : "inherit",
+                      row.locked
+                        ? "grey.100"
+                        : row.status === "added"
+                          ? "success.50"
+                          : row.status === "modified"
+                            ? "warning.50"
+                            : "inherit",
+                    opacity: row.locked ? 0.7 : 1,
                   }}
                 >
                   <TableCell padding="checkbox">
                     <Checkbox
                       checked={selectedRows.has(row.id)}
                       onChange={(e) => handleSelectRow(row.id, e.target.checked)}
+                      disabled={row.locked}
                     />
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title={row.locked ? "Unlock row" : "Lock row"}>
+                      <IconButton
+                        size="small"
+                        onClick={() => onToggleLock(row.id)}
+                        color={row.locked ? "primary" : "default"}
+                      >
+                        {row.locked ? <Lock fontSize="small" /> : <LockOpen fontSize="small" />}
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                   {columns.map((column) => {
                     const isEditing =
@@ -241,19 +273,25 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                           />
                         ) : (
                           <Tooltip
-                            title={value.length > 100 ? value : ""}
+                            title={
+                              row.locked
+                                ? "Unlock row to edit"
+                                : value.length > 100
+                                  ? value
+                                  : ""
+                            }
                             placement="top"
                           >
                             <Box
                               onClick={() =>
-                                handleCellClick(row.id, column, value)
+                                handleCellClick(row.id, column, value, !!row.locked)
                               }
                               sx={{
-                                cursor: "pointer",
+                                cursor: row.locked ? "not-allowed" : "pointer",
                                 p: 0.5,
                                 borderRadius: 1,
                                 "&:hover": {
-                                  bgcolor: "action.hover",
+                                  bgcolor: row.locked ? "transparent" : "action.hover",
                                 },
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",

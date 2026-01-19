@@ -6,6 +6,7 @@ import type {
   OpenAIMessageInput,
   SyntheticDataRowResponse,
   NewDatasetVersionRowColumnItemRequest,
+  DatasetVersionRowResponse,
 } from "@/lib/api-client/api-client";
 import { generateTempRowId } from "@/utils/datasetRowUtils";
 
@@ -19,7 +20,7 @@ export interface UseSyntheticDataSessionReturn {
   error: Error | null;
 
   // Initial generation
-  startGeneration: (config: GenerationConfig) => Promise<void>;
+  startGeneration: (config: GenerationConfig, existingRowsSample?: DatasetVersionRowResponse[]) => Promise<void>;
 
   // Conversation
   sendMessage: (message: string, config: GenerationConfig) => Promise<void>;
@@ -28,9 +29,27 @@ export interface UseSyntheticDataSessionReturn {
   updateRow: (id: string, data: Record<string, string>) => void;
   addRow: (data: Record<string, string>) => void;
   deleteRows: (ids: string[]) => void;
+  toggleLock: (id: string) => void;
 
   // Session management
   reset: () => void;
+}
+
+function datasetVersionRowsToSyntheticRows(
+  datasetRows: DatasetVersionRowResponse[]
+): SyntheticRow[] {
+  return datasetRows.map((datasetRow) => {
+    const data: Record<string, string> = {};
+    datasetRow.data.forEach((col) => {
+      data[col.column_name] = col.column_value;
+    });
+
+    return {
+      id: datasetRow.id,
+      data,
+      status: "generated" as const,
+    };
+  });
 }
 
 function apiRowsToSyntheticRows(
@@ -44,6 +63,12 @@ function apiRowsToSyntheticRows(
   const existingRowMap = new Map(existingRows.map((r) => [r.id, r]));
 
   return apiRows.map((apiRow) => {
+    // If this row exists and is locked, keep it unchanged
+    const existingRow = existingRowMap.get(apiRow.id);
+    if (existingRow?.locked) {
+      return existingRow;
+    }
+
     const data: Record<string, string> = {};
     apiRow.data.forEach((col) => {
       data[col.column_name] = col.column_value;
@@ -56,9 +81,8 @@ function apiRowsToSyntheticRows(
       status = "modified";
     } else {
       // Keep existing status if row wasn't changed
-      const existing = existingRowMap.get(apiRow.id);
-      if (existing) {
-        status = existing.status;
+      if (existingRow) {
+        status = existingRow.status;
       }
     }
 
@@ -66,6 +90,7 @@ function apiRowsToSyntheticRows(
       id: apiRow.id,
       data,
       status,
+      locked: existingRow?.locked,
     };
   });
 }
@@ -94,7 +119,7 @@ export function useSyntheticDataSession(
   const [error, setError] = useState<Error | null>(null);
 
   const startGeneration = useCallback(
-    async (config: GenerationConfig) => {
+    async (config: GenerationConfig, existingRowsSample?: DatasetVersionRowResponse[]) => {
       if (!api) {
         setError(new Error("API client not available"));
         return;
@@ -104,40 +129,55 @@ export function useSyntheticDataSession(
       setError(null);
 
       try {
-        const response =
-          await api.api.generateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost(
-            datasetId,
-            versionNumber,
+        // If editExisting is enabled and we have existing rows, load them into the canvas first
+        if (config.editExisting && existingRowsSample && existingRowsSample.length > 0) {
+          const existingRows = datasetVersionRowsToSyntheticRows(existingRowsSample);
+          setRows(existingRows);
+
+          // Initialize conversation without calling the API - just show the existing data
+          setConversation([
             {
-              dataset_purpose: config.datasetPurpose,
-              column_descriptions: config.columnDescriptions.map((col) => ({
-                column_name: col.columnName,
-                description: col.description,
-              })),
-              num_rows: config.numRows,
-              model_provider: config.modelProvider,
-              model_name: config.modelName,
-              config: config.temperature
-                ? { temperature: config.temperature }
-                : undefined,
-            }
+              role: "assistant",
+              content: `I've loaded ${existingRows.length} existing row${existingRows.length !== 1 ? 's' : ''} from your dataset. You can now edit them directly in the table, or ask me to modify or generate additional data.`,
+            },
+          ]);
+        } else {
+          // Generate new data
+          const response =
+            await api.api.generateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost(
+              datasetId,
+              versionNumber,
+              {
+                dataset_purpose: config.datasetPurpose,
+                column_descriptions: config.columnDescriptions.map((col) => ({
+                  column_name: col.columnName,
+                  description: col.description,
+                })),
+                num_rows: config.numRows,
+                model_provider: config.modelProvider,
+                model_name: config.modelName,
+                config: config.temperature
+                  ? { temperature: config.temperature }
+                  : undefined,
+              }
+            );
+
+          const newRows = apiRowsToSyntheticRows(
+            response.data.rows,
+            response.data.rows_added ?? [],
+            response.data.rows_modified ?? [],
+            []
           );
+          setRows(newRows);
 
-        const newRows = apiRowsToSyntheticRows(
-          response.data.rows,
-          response.data.rows_added ?? [],
-          response.data.rows_modified ?? [],
-          []
-        );
-        setRows(newRows);
-
-        // Initialize conversation with the assistant's response
-        setConversation([
-          {
-            role: "assistant",
-            content: response.data.assistant_message.content as string,
-          },
-        ]);
+          // Initialize conversation with the assistant's response
+          setConversation([
+            {
+              role: "assistant",
+              content: response.data.assistant_message.content as string,
+            },
+          ]);
+        }
       } catch (err) {
         console.error("Failed to generate synthetic data:", err);
         setError(err as Error);
@@ -243,6 +283,14 @@ export function useSyntheticDataSession(
     setRows((prevRows) => prevRows.filter((row) => !idsSet.has(row.id)));
   }, []);
 
+  const toggleLock = useCallback((id: string) => {
+    setRows((prevRows) =>
+      prevRows.map((row) =>
+        row.id === id ? { ...row, locked: !row.locked } : row
+      )
+    );
+  }, []);
+
   const reset = useCallback(() => {
     setRows([]);
     setConversation([]);
@@ -259,6 +307,7 @@ export function useSyntheticDataSession(
     updateRow,
     addRow,
     deleteRows,
+    toggleLock,
     reset,
   };
 }

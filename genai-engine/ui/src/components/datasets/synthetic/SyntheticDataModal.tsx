@@ -45,10 +45,10 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
   const handleStartGeneration = useCallback(
     async (generationConfig: GenerationConfig) => {
       setConfig(generationConfig);
-      await session.startGeneration(generationConfig);
+      await session.startGeneration(generationConfig, existingRowsSample);
       setPhase("canvas");
     },
-    [session]
+    [session, existingRowsSample]
   );
 
   const handleSendMessage = useCallback(
@@ -145,6 +145,7 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
             onUpdateRow={session.updateRow}
             onAddRow={session.addRow}
             onDeleteRows={session.deleteRows}
+            onToggleLock={session.toggleLock}
             onBack={handleBack}
             onAccept={handleAcceptRows}
           />

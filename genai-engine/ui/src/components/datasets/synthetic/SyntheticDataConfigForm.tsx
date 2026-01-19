@@ -3,10 +3,12 @@ import {
   Button,
   CircularProgress,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
   Slider,
+  Switch,
   TextField,
   Typography,
   Autocomplete,
@@ -53,7 +55,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
   const [numRows, setNumRows] = useState(10);
   const [modelProvider, setModelProvider] = useState<ModelProvider | null>(null);
   const [modelName, setModelName] = useState<string | null>(null);
-  const [temperature, setTemperature] = useState(0.7);
+  const [editExisting, setEditExisting] = useState(false);
 
   // Provider/model loading state
   const [providers, setProviders] = useState<ModelProviderResponse[]>([]);
@@ -137,7 +139,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
       numRows,
       modelProvider,
       modelName,
-      temperature,
+      editExisting,
     });
   }, [
     datasetPurpose,
@@ -145,7 +147,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
     numRows,
     modelProvider,
     modelName,
-    temperature,
+    editExisting,
     onSubmit,
   ]);
 
@@ -287,27 +289,22 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
         />
       </Box>
 
-      {/* Temperature */}
+      {/* Edit Existing Data Toggle */}
       <Box>
-        <Typography variant="subtitle2" gutterBottom>
-          Temperature: {temperature.toFixed(1)}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Higher values produce more varied/creative data
-        </Typography>
-        <Slider
-          value={temperature}
-          onChange={(_, value) => setTemperature(value as number)}
-          min={0}
-          max={1}
-          step={0.1}
-          marks={[
-            { value: 0, label: "0" },
-            { value: 0.5, label: "0.5" },
-            { value: 1, label: "1" },
-          ]}
-          valueLabelDisplay="auto"
+        <FormControlLabel
+          control={
+            <Switch
+              checked={editExisting}
+              onChange={(e) => setEditExisting(e.target.checked)}
+            />
+          }
+          label="Edit existing data"
         />
+        <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+          {editExisting
+            ? "Existing dataset rows will be loaded into the canvas for editing and synthetic generation will update them"
+            : "Only new rows will be generated without modifying existing data"}
+        </Typography>
       </Box>
 
       {/* Actions */}
