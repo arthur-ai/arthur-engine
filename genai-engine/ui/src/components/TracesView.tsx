@@ -16,6 +16,8 @@ import { Level, LEVELS, TIME_RANGES } from "./traces/constants";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
 import { useWelcomeStore } from "./traces/stores/welcome.store";
 
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
 const TIME_RANGE_VALUES = Object.values(TIME_RANGES);
 
 type LevelPaneProps = {
@@ -57,7 +59,27 @@ export const TracesView: React.FC = () => {
   const welcomeDismissed = welcomeStore((state) => state.dismissed);
 
   const handleLevelChange = (newValue: Level) => {
+    if (newValue !== level) {
+      track(EVENT_NAMES.TRACING_LEVEL_CHANGED, {
+        task_id: taskId ?? "",
+        from_level: level,
+        to_level: newValue,
+        time_range: timeRange,
+      });
+    }
     setLevel(newValue);
+  };
+
+  const handleTimeRangeChange = (newValue: (typeof TIME_RANGE_VALUES)[number]) => {
+    if (newValue !== timeRange) {
+      track(EVENT_NAMES.TRACING_TIME_RANGE_CHANGED, {
+        task_id: taskId ?? "",
+        level,
+        from_time_range: timeRange,
+        to_time_range: newValue,
+      });
+    }
+    setTimeRange(newValue);
   };
 
   return (
@@ -90,7 +112,7 @@ export const TracesView: React.FC = () => {
               <Tab value="user" label="Users" />
             </Tabs>
 
-            <TimeRangeSelect value={timeRange} onValueChange={setTimeRange} />
+            <TimeRangeSelect value={timeRange} onValueChange={handleTimeRangeChange} />
           </Stack>
         )}
 

@@ -4,6 +4,8 @@ import React, { useMemo, useState } from "react";
 
 import { TraceContentModal } from "./TraceContentModal";
 
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
 interface TraceContentCellProps {
   value: unknown;
   title: string;
@@ -34,6 +36,13 @@ export const TraceContentCell: React.FC<TraceContentCellProps> = ({ value, title
   const handleOpenModal = (event: React.MouseEvent) => {
     event.stopPropagation();
     if (isTruncated) {
+      track(EVENT_NAMES.TRACING_CONTENT_MODAL_OPENED, {
+        level: spanId ? "span" : "trace",
+        trace_id: traceId,
+        span_id: spanId,
+        title,
+        content_length: fullValue.length,
+      });
       setIsModalOpen(true);
     }
   };

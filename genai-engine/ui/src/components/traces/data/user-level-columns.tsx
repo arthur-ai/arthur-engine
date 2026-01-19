@@ -5,6 +5,7 @@ import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<TraceUserMetadataResponse>();
@@ -17,7 +18,17 @@ export const userLevelColumns = [
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip label={label} />
+            <CopyableChip
+              label={label}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "user",
+                  id_type: "user",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );

@@ -16,6 +16,7 @@ import { useTask } from "@/hooks/useTask";
 import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getUsers } from "@/services/tracing";
 
 interface UserLevelProps {
@@ -53,7 +54,18 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const [sorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
 
-  const handleRowClick = useCallback((row: { user_id: string }) => setDrawerTarget({ target: "user", id: row.user_id }), [setDrawerTarget]);
+  const handleRowClick = useCallback(
+    (row: { user_id: string }) => {
+      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+        task_id: task?.id ?? "",
+        level: "user",
+        user_id: row.user_id,
+        source: "table",
+      });
+      setDrawerTarget({ target: "user", id: row.user_id });
+    },
+    [setDrawerTarget, task?.id]
+  );
 
   const table = useTable({
     data: data?.users ?? DEFAULT_DATA,

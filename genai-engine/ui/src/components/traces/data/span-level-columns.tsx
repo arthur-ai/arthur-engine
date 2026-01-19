@@ -12,6 +12,7 @@ import { TokenCostTooltip, TokenCountTooltip } from "./common";
 import { CopyableChip } from "@/components/common";
 import { TypeChip } from "@/components/common/span/TypeChip";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<SpanMetadataResponse>();
@@ -91,7 +92,18 @@ export const spanLevelColumns = [
       return (
         <Tooltip title={label}>
           <span className="w-full">
-            <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "span",
+                  id_type: "span",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );
@@ -113,7 +125,18 @@ export const spanLevelColumns = [
       return (
         <Tooltip title={label}>
           <span className="w-full">
-            <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "span",
+                  id_type: "trace",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );
@@ -129,7 +152,18 @@ export const spanLevelColumns = [
       return (
         <Tooltip title={label}>
           <span className="w-full">
-            <CopyableChip label={label ?? ""} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label ?? ""}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "span",
+                  id_type: "session",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );
@@ -145,7 +179,18 @@ export const spanLevelColumns = [
       return (
         <Tooltip title={label}>
           <span className="w-full">
-            <CopyableChip label={label ?? ""} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label ?? ""}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "span",
+                  id_type: "user",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );

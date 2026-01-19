@@ -22,6 +22,7 @@ import { useTask } from "@/hooks/useTask";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredSpans } from "@/services/tracing";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
@@ -66,6 +67,13 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
   const handleRowClick = useCallback(
     (row: SpanMetadataResponse) => {
+      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+        task_id: task?.id ?? "",
+        level: "span",
+        span_id: row.span_id,
+        trace_id: row.trace_id,
+        source: "table",
+      });
       setContext({
         type: "span",
         ids: data?.spans?.map((span) => span.span_id) ?? [],
@@ -73,7 +81,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
       setDrawerTarget({ target: "span", id: row.span_id });
     },
-    [data?.spans, setContext, setDrawerTarget]
+    [data?.spans, setContext, setDrawerTarget, task?.id]
   );
 
   const table = useTable({
