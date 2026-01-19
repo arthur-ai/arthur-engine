@@ -1,17 +1,19 @@
-import { Alert, Box, TablePagination } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
-import { useState } from "react";
+import { SortingState } from "@tanstack/react-table";
+import { MaterialReactTable } from "material-react-table";
+import { useCallback, useMemo, useState } from "react";
 
 import { userLevelColumns } from "../../data/user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
+import { useTable } from "../../hooks/useTable";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
-import { TracesTable } from "../TracesTable";
 
 import { useApi } from "@/hooks/useApi";
-import { usePagination } from "@/hooks/usePagination";
+import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
+import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getUsers } from "@/services/tracing";
@@ -20,6 +22,8 @@ interface UserLevelProps {
   welcomeDismissed: boolean;
 }
 
+const DEFAULT_DATA: TraceUserMetadataResponse[] = [];
+
 export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
@@ -27,36 +31,39 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
-  const pagination = usePagination(FETCH_SIZE);
+  const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.page,
-    pageSize: pagination.rowsPerPage,
-    filters: [],
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters: [],
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, timeRange]
+  );
 
-  const { data, isFetching, isPlaceholderData, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.users.listPaginated(params),
     placeholderData: keepPreviousData,
     queryFn: () => getUsers(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
+  const [sorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
 
-  const table = useReactTable({
-    data: data?.users ?? [],
+  const handleRowClick = useCallback((row: { user_id: string }) => setDrawerTarget({ target: "user", id: row.user_id }), [setDrawerTarget]);
+
+  const table = useTable({
+    data: data?.users ?? DEFAULT_DATA,
     columns: userLevelColumns,
-    getCoreRowModel: getCoreRowModel(),
+    pagination: { state: pagination, onChange: props.onPaginationChange },
     state: {
       sorting,
+      isLoading,
     },
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    manualPagination: true,
-    rowCount: data?.count ?? 0,
+    onRowClick: handleRowClick,
   });
 
   if (error) {
@@ -70,33 +77,10 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const hasData = Boolean(data?.users?.length);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+    <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={false} dataType="users">
-        {hasData && (
-          <>
-            <TracesTable
-              table={table}
-              loading={isFetching}
-              onRowClick={(row) => {
-                setDrawerTarget({ target: "user", id: row.original.user_id });
-              }}
-            />
-            <TablePagination
-              component="div"
-              count={data?.count ?? 0}
-              onPageChange={pagination.handlePageChange}
-              page={pagination.page}
-              rowsPerPage={pagination.rowsPerPage}
-              onRowsPerPageChange={pagination.handleRowsPerPageChange}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              disabled={isPlaceholderData}
-              sx={{
-                overflow: "visible",
-              }}
-            />
-          </>
-        )}
+        {hasData && <MaterialReactTable table={table} />}
       </DataContentGate>
-    </Box>
+    </Stack>
   );
 };
