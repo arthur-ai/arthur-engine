@@ -1,22 +1,23 @@
-import { Alert, Box, TablePagination } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { SortingState } from "@tanstack/react-table";
+import { MaterialReactTable } from "material-react-table";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { spanLevelColumns } from "../../data/span-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
+import { useTable } from "../../hooks/useTable";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
-import { TracesTable } from "../TracesTable";
 
 import { useApi } from "@/hooks/useApi";
-import { usePagination } from "@/hooks/usePagination";
+import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
@@ -29,11 +30,11 @@ interface SpanLevelProps {
   welcomeDismissed: boolean;
 }
 
-export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
+export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
-  const pagination = usePagination(FETCH_SIZE);
+  const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -43,32 +44,51 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
 
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.page,
-    pageSize: pagination.rowsPerPage,
-    filters,
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters,
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+  );
 
-  const { data, isFetching, isPlaceholderData, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.spans.listPaginated(params),
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredSpans(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
-  const table = useReactTable({
+  const handleRowClick = useCallback(
+    (row: SpanMetadataResponse) => {
+      setContext({
+        type: "span",
+        ids: data?.spans?.map((span) => span.span_id) ?? [],
+      });
+
+      setDrawerTarget({ target: "span", id: row.span_id });
+    },
+    [data?.spans, setContext, setDrawerTarget]
+  );
+
+  const table = useTable({
     data: data?.spans ?? DEFAULT_DATA,
     columns: spanLevelColumns,
-    getCoreRowModel: getCoreRowModel(),
+    pagination: {
+      state: pagination,
+      onChange: props.onPaginationChange,
+      rowCount: data?.count ?? 0,
+    },
+    onRowClick: handleRowClick,
     state: {
       sorting,
+      isLoading,
     },
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
   });
 
   const { FiltersRow } = useMemo(
@@ -82,19 +102,10 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
     [task?.id, api]
   );
 
-  const handleRowClick = (row: SpanMetadataResponse) => {
-    setContext({
-      type: "span",
-      ids: data?.spans.map((span) => span.span_id) ?? [],
-    });
-
-    setDrawerTarget({ target: "span", id: row.span_id });
-  };
-
-  const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans.map((span) => span.duration_ms) ?? []), [data?.spans]);
+  const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans?.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
   // Check if any filters are active
-  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+  const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
   if (error) {
     return (
@@ -107,7 +118,7 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
   const hasData = Boolean(data?.spans?.length);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+    <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
         {/* Only show FiltersRow if we have spans or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
@@ -115,31 +126,11 @@ export const SpanLevel = ({ welcomeDismissed }: SpanLevelProps) => {
         {hasData && (
           <>
             <BucketProvider thresholds={thresholds}>
-              <TracesTable
-                table={table}
-                loading={isFetching}
-                onRowClick={(row) => {
-                  handleRowClick(row.original);
-                }}
-              />
+              <MaterialReactTable table={table} />
             </BucketProvider>
-
-            <TablePagination
-              component="div"
-              count={data?.count ?? 0}
-              onPageChange={pagination.handlePageChange}
-              page={pagination.page}
-              rowsPerPage={pagination.rowsPerPage}
-              onRowsPerPageChange={pagination.handleRowsPerPageChange}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              disabled={isPlaceholderData}
-              sx={{
-                overflow: "visible",
-              }}
-            />
           </>
         )}
       </DataContentGate>
-    </Box>
+    </Stack>
   );
-};
+});

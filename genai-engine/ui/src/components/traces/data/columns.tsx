@@ -1,26 +1,27 @@
 import Tooltip from "@mui/material/Tooltip";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createMRTColumnHelper } from "material-react-table";
 
 import { CopyableChip } from "../../common";
 import { AnnotationCell } from "../components/AnnotationCell";
 import { DurationCell } from "../components/DurationCell";
+import { TraceContentCell } from "../components/TraceContentCell";
 
-import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
+import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
 
-const columnHelper = createColumnHelper<TraceMetadataResponse>();
+const columnHelper = createMRTColumnHelper<TraceMetadataResponse>();
 
 export const columns = [
   columnHelper.accessor("trace_id", {
     header: "Trace ID",
-    size: 100,
-    cell: ({ getValue }) => {
-      const label = getValue();
+    size: 200,
+    Cell: ({ cell }) => {
+      const label = cell.getValue();
       return (
         <Tooltip title={label}>
-          <span>
+          <span className="w-full">
             <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
           </span>
         </Tooltip>
@@ -29,42 +30,37 @@ export const columns = [
   }),
   columnHelper.accessor("annotations", {
     header: "Annotations",
-    cell: ({ getValue, row }) => {
-      const annotations = getValue();
+    Cell: ({ cell, row }) => {
+      const annotations = cell.getValue();
 
       if (!annotations) return;
 
-      return <AnnotationCell annotations={annotations} traceId={row.original.trace_id} />;
+      return <AnnotationCell annotations={annotations} traceId={row.original.trace_id ?? ""} />;
     },
-    size: 100,
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
-    cell: ({ getValue }) => {
-      const value = getValue()?.substring(0, 100);
-
-      if (!value) return "-";
-
-      return <TruncatedText text={value} />;
-    },
+    Cell: ({ cell, row }) => (
+      <span className="w-full">
+        <TraceContentCell value={cell.getValue()} title="Trace Input Content" traceId={row.original.trace_id ?? undefined} />
+      </span>
+    ),
     size: 200,
   }),
   columnHelper.accessor("output_content", {
     header: "Output Content",
-    cell: ({ getValue }) => {
-      const value = getValue()?.substring(0, 100);
-
-      if (!value) return "-";
-
-      return <TruncatedText text={value} />;
-    },
+    Cell: ({ cell, row }) => (
+      <span className="w-full">
+        <TraceContentCell value={cell.getValue()} title="Trace Output Content" traceId={row.original.trace_id ?? undefined} />
+      </span>
+    ),
     size: 200,
   }),
   columnHelper.display({
     id: "token-count",
     header: "Token Count",
-    cell: ({ row }) => {
-      const { total_token_count = 0, prompt_token_count = 0, completion_token_count = 0 } = row.original;
+    Cell: ({ cell }) => {
+      const { total_token_count = 0, prompt_token_count = 0, completion_token_count = 0 } = cell.row.original;
 
       if (!total_token_count) return "-";
 
@@ -74,8 +70,8 @@ export const columns = [
   columnHelper.display({
     id: "token-cost",
     header: "Token Cost",
-    cell: ({ row }) => {
-      const { total_token_cost = 0, prompt_token_cost = 0, completion_token_cost = 0 } = row.original;
+    Cell: ({ cell }) => {
+      const { total_token_cost = 0, prompt_token_cost = 0, completion_token_cost = 0 } = cell.row.original;
 
       if (!total_token_cost) return "-";
 
@@ -84,21 +80,21 @@ export const columns = [
   }),
   columnHelper.accessor("span_count", {
     header: "Span Count",
-    cell: ({ getValue }) => `${getValue()} spans`,
+    Cell: ({ cell }) => `${cell.getValue()} spans`,
   }),
   columnHelper.accessor("start_time", {
     header: "Timestamp",
-    cell: ({ getValue }) => formatDate(getValue()),
+    Cell: ({ cell }) => formatDate(cell.getValue()),
     sortingFn: "datetime",
   }),
   columnHelper.accessor("duration_ms", {
     header: "Latency",
-    cell: ({ getValue }) => <DurationCell duration={getValue()} />,
+    Cell: ({ cell }) => <DurationCell duration={cell.getValue()} />,
   }),
   columnHelper.accessor("session_id", {
     header: "Session ID",
-    cell: ({ getValue }) => {
-      const label = getValue();
+    Cell: ({ cell }) => {
+      const label = cell.getValue();
 
       if (!label) return "-";
 
@@ -113,8 +109,8 @@ export const columns = [
   }),
   columnHelper.accessor("user_id", {
     header: "User ID",
-    cell: ({ getValue }) => {
-      const label = getValue();
+    Cell: ({ cell }) => {
+      const label = cell.getValue();
 
       if (!label) return "-";
 
