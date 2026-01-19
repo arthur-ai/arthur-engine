@@ -3,9 +3,9 @@ import { Tooltip } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
 import { DurationCell } from "../components/DurationCell";
-import { TraceContentCell } from "../components/TraceContentCell";
 import { SpanStatusBadge } from "../components/span-status-badge";
 import { isValidStatusCode } from "../components/StatusCode";
+import { TraceContentCell } from "../components/TraceContentCell";
 
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 

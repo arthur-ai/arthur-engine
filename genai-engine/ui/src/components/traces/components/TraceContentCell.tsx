@@ -25,13 +25,7 @@ const getCellValue = (value: unknown) => {
   }
 };
 
-export const TraceContentCell: React.FC<TraceContentCellProps> = ({
-  value,
-  title,
-  traceId,
-  spanId,
-  maxLength = DEFAULT_TRUNCATION_LENGTH,
-}) => {
+export const TraceContentCell: React.FC<TraceContentCellProps> = ({ value, title, traceId, spanId, maxLength = DEFAULT_TRUNCATION_LENGTH }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const fullValue = useMemo(() => getCellValue(value), [value]);
   const isTruncated = fullValue.length > maxLength;
@@ -81,14 +75,7 @@ export const TraceContentCell: React.FC<TraceContentCellProps> = ({
         )}
       </Box>
 
-      <TraceContentModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={title}
-        value={fullValue}
-        traceId={traceId}
-        spanId={spanId}
-      />
+      <TraceContentModal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={title} value={fullValue} traceId={traceId} spanId={spanId} />
     </>
   );
 };
