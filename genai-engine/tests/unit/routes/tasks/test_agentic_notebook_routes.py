@@ -32,7 +32,6 @@ from schemas.agentic_experiment_schemas import (
     AgenticExperimentListResponse,
     AgenticExperimentOutputVariableSource,
     CreateAgenticExperimentRequest,
-    GeneratedVariableSource,
     HttpHeader,
     HttpTemplate,
     TemplateVariableMapping,
@@ -367,10 +366,7 @@ def test_agentic_notebook_routes_happy_path(
                 HttpHeader(name="Content-Type", value="application/json"),
                 HttpHeader(name="X-API-Key", value="{{api_key}}"),
             ],
-            request_body={
-                "message": "{{user_message}}",
-                "session_id": "{{session_id}}",
-            },
+            request_body='{"message": "{{user_message}}"}',
         ),
         template_variable_mapping=[
             TemplateVariableMapping(
@@ -378,13 +374,6 @@ def test_agentic_notebook_routes_happy_path(
                 source=DatasetColumnVariableSource(
                     type="dataset_column",
                     dataset_column=DatasetColumnSource(name="user_message"),
-                ),
-            ),
-            TemplateVariableMapping(
-                variable_name="session_id",
-                source=GeneratedVariableSource(
-                    type="generated",
-                    generator_type="uuid",
                 ),
             ),
         ],
@@ -440,7 +429,7 @@ def test_agentic_notebook_routes_happy_path(
     assert "state" in notebook_detail
     assert notebook_detail["state"]["http_template"] is not None
     assert notebook_detail["state"]["template_variable_mapping"] is not None
-    assert len(notebook_detail["state"]["template_variable_mapping"]) == 2
+    assert len(notebook_detail["state"]["template_variable_mapping"]) == 1
     assert notebook_detail["state"]["dataset_ref"] is not None
     assert notebook_detail["state"]["dataset_ref"]["id"] == str(dataset_id)
     assert notebook_detail["state"]["eval_list"] is not None
@@ -458,7 +447,7 @@ def test_agentic_notebook_routes_happy_path(
     assert notebook.task_id == task_id
     assert notebook.state.http_template is not None
     assert notebook.state.template_variable_mapping is not None
-    assert len(notebook.state.template_variable_mapping) == 2
+    assert len(notebook.state.template_variable_mapping) == 1
     assert notebook.state.dataset_ref is not None
     assert notebook.state.dataset_ref.id == dataset_id
     assert notebook.experiments == []  # No experiments yet
@@ -542,9 +531,7 @@ def test_agentic_notebook_routes_happy_path(
             headers=[
                 HttpHeader(name="Content-Type", value="application/json"),
             ],
-            request_body={
-                "message": "{{user_message}}",
-            },
+            request_body='{"message": "{{user_message}}"}',
         ),
         template_variable_mapping=[
             TemplateVariableMapping(
@@ -611,14 +598,9 @@ def test_agentic_notebook_routes_happy_path(
 
     def mock_post_with_trace_creation(*args, **kwargs):
         """Mock HTTP POST response and create trace with session_id."""
-        # Extract session_id from body (preferred) or headers
-        body = kwargs.get("json", {})
+        # Extract session_id from headers (always sent in headers, not body)
         headers = kwargs.get("headers", {})
-        session_id = (
-            body.get("session_id")
-            or headers.get("X-Session-Id")
-            or headers.get("x-session-id")
-        )
+        session_id = headers.get("X-Session-Id") or headers.get("x-session-id")
 
         if session_id:
             # Create trace with this session_id so the executor can find it
@@ -670,9 +652,7 @@ def test_agentic_notebook_routes_happy_path(
             headers=[
                 HttpHeader(name="Content-Type", value="application/json"),
             ],
-            request_body={
-                "message": "{{user_message}}",
-            },
+            request_body='{"message": "{{user_message}}"}',
         ),
         template_variable_mapping=[
             TemplateVariableMapping(

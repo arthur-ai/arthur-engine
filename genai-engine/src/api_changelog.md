@@ -2,6 +2,26 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/16/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases  the 'data/items/agentic_result/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history  the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'http_template/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/anyOf[subschema #1: AgenticNotebookState]/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
+
 # 01/07/2026
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'input_tokens' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'output_tokens' to the response with the '200' status
@@ -9,6 +29,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'input_tokens' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'output_tokens' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'total_tokens' to the response with the '200' status
+
 # 01/06/2026
 - **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  endpoint added
 
