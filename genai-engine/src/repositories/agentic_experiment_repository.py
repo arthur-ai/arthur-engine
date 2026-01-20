@@ -468,7 +468,7 @@ class AgenticExperimentRepository:
                 test_case_id=test_case.id,
                 request_url="...waiting to run...",  # Will be filled when experiment runs
                 request_headers={},  # Will be filled when experiment runs
-                request_body={},  # Will be filled when experiment runs
+                request_body="",  # Will be filled when experiment runs
                 response_output={},  # Will be filled when experiment runs
             )
             self.db_session.add(agentic_result)

@@ -14,6 +14,7 @@ import { usePollAgentExperiment } from "./hooks/usePollAgentExperiment";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { formatDate, formatTimestampDuration } from "@/utils/formatters";
 
 export const AgentExperimentDetail = () => {
@@ -94,6 +95,7 @@ export const AgentExperimentDetail = () => {
               variant="outlined"
               color="primary"
               startIcon={<ContentCopyIcon />}
+              onClick={() => track(EVENT_NAMES.AGENT_EXPERIMENT_COPIED, { experiment_id: experimentId })}
             >
               Copy to new experiment
             </Button>

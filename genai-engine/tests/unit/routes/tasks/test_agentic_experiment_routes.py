@@ -12,6 +12,7 @@ All tests mock external dependencies (HTTP requests, traces, transforms, and LLM
 and clean up test state after execution.
 """
 
+import json
 import random
 import time
 from unittest.mock import MagicMock, patch
@@ -408,23 +409,34 @@ def test_agentic_experiment_routes_happy_path(
 
     def mock_post_with_trace_creation(*args, **kwargs):
         """Mock HTTP POST response and create trace with session_id."""
-        # Extract session_id from body (preferred) or headers
-        body = kwargs.get("json", {})
+        # Extract session_id from headers (always sent in headers, not body)
         headers = kwargs.get("headers", {})
-        session_id = (
-            body.get("session_id")
-            or headers.get("X-Session-Id")
-            or headers.get("x-session-id")
-        )
+        session_id = headers.get("X-Session-Id") or headers.get("x-session-id")
 
         # Capture the actual request to validate request-time parameters are included
-        # requests.post(url, headers=..., json=...) - first arg is URL
+        # requests.post(url, headers=..., data=...) - first arg is URL
         request_url = args[0] if args else kwargs.get("url", "")
+        body_data = kwargs.get("data", "")
+
+        # Parse body for logging if it's JSON
+        body_dict = {}
+        try:
+            if body_data:
+                body_dict = (
+                    json.loads(body_data) if isinstance(body_data, str) else body_data
+                )
+        except (json.JSONDecodeError, ValueError, TypeError):
+            body_dict = {"raw": str(body_data)}
+
         actual_agent_requests.append(
             {
                 "url": request_url,
                 "headers": dict(headers) if headers else {},
-                "body": dict(body) if body else {},
+                "body": (
+                    body_dict
+                    if isinstance(body_dict, dict)
+                    else {"raw": str(body_data)}
+                ),
             },
         )
 
@@ -479,9 +491,7 @@ def test_agentic_experiment_routes_happy_path(
                     value="{{request_id}}",
                 ),
             ],
-            request_body={
-                "message": "{{user_message}}",
-            },
+            request_body='{"message": "{{user_message}}"}',
         ),
         template_variable_mapping=[
             TemplateVariableMapping(
@@ -576,9 +586,10 @@ def test_agentic_experiment_routes_happy_path(
     assert (
         experiment_summary["http_template"]["headers"][1]["value"] == "{{request_id}}"
     )
-    assert experiment_summary["http_template"]["request_body"] == {
-        "message": "{{user_message}}",
-    }
+    assert (
+        experiment_summary["http_template"]["request_body"]
+        == '{"message": "{{user_message}}"}'
+    )
 
     # Validate that request_time_parameters are NOT in the response
     assert "request_time_parameters" not in experiment_summary
@@ -624,9 +635,10 @@ def test_agentic_experiment_routes_happy_path(
     assert experiment_detail.http_template.headers[0].value == "Bearer {{api_key}}"
     assert experiment_detail.http_template.headers[1].name == "X-Request-ID"
     assert experiment_detail.http_template.headers[1].value == "{{request_id}}"
-    assert experiment_detail.http_template.request_body == {
-        "message": "{{user_message}}",
-    }
+    assert (
+        experiment_detail.http_template.request_body
+        == '{"message": "{{user_message}}"}'
+    )
 
     # Validate template_variable_mapping - should include request-time parameter mappings
     # (the mapping structure is persisted, but not the values)
@@ -839,20 +851,21 @@ def test_agentic_experiment_routes_happy_path(
     assert isinstance(request_id_header, str)
     assert len(request_id_header) > 0
     assert test_case.agentic_result.request_body is not None
-    assert isinstance(test_case.agentic_result.request_body, dict)
-    assert "message" in test_case.agentic_result.request_body
-    assert (
-        test_case.agentic_result.request_body["message"] == "What is machine learning?"
-    )
-    # Validate session_id is in the request body (added by executor)
-    assert "session_id" in test_case.agentic_result.request_body
-    assert isinstance(test_case.agentic_result.request_body["session_id"], str)
-    assert len(test_case.agentic_result.request_body["session_id"]) > 0
+    assert isinstance(test_case.agentic_result.request_body, str)
+    assert len(test_case.agentic_result.request_body) > 0
+    # Parse the body as JSON to validate structure
+    body_dict = json.loads(test_case.agentic_result.request_body)
+    assert "message" in body_dict
+    assert body_dict["message"] == "What is machine learning?"
+    # Validate session_id is in the request headers (added by executor)
+    assert "X-Session-Id" in test_case.agentic_result.request_headers
+    assert isinstance(test_case.agentic_result.request_headers["X-Session-Id"], str)
+    assert len(test_case.agentic_result.request_headers["X-Session-Id"]) > 0
 
     # Validate that request headers and body do NOT contain the request-time parameter value
     # (they should contain the placeholder or be rendered without the sensitive value)
     headers_str = str(test_case.agentic_result.request_headers)
-    body_str = str(test_case.agentic_result.request_body)
+    body_str = test_case.agentic_result.request_body  # Already a string
     assert (
         request_time_api_key not in headers_str
     ), "Request-time parameter value found in request_headers"
@@ -926,9 +939,7 @@ def test_agentic_experiment_routes_happy_path(
                     value="{{request_id}}",
                 ),
             ],
-            request_body={
-                "message": "{{user_message}}",
-            },
+            request_body='{"message": "{{user_message}}"}',
         ),
         template_variable_mapping=[
             TemplateVariableMapping(

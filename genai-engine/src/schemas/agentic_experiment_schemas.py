@@ -41,8 +41,8 @@ class HttpTemplate(BaseModel):
         default_factory=list,
         description="HTTP headers (supports {{variable}} placeholders in names and values)",
     )
-    request_body: Dict = Field(
-        description="Request body as JSON (supports {{variable}} placeholders)",
+    request_body: str = Field(
+        description="Request body as a string (supports {{variable}} placeholders)",
     )
 
 
@@ -259,7 +259,7 @@ class AgenticResult(BaseResult):
     request_headers: Dict[str, str] = Field(
         description="Headers that were sent (with variables resolved)",
     )
-    request_body: Dict = Field(
+    request_body: str = Field(
         description="Request body that was sent (with variables resolved)",
     )
     output: Optional[AgenticOutput] = Field(
@@ -295,7 +295,7 @@ class AgenticConfigResult(BaseConfigResult):
     request_headers: Dict[str, str] = Field(
         description="Headers that were sent (with variables resolved)",
     )
-    request_body: Dict = Field(
+    request_body: str = Field(
         description="Request body that was sent (with variables resolved)",
     )
     output: Optional[AgenticOutput] = Field(

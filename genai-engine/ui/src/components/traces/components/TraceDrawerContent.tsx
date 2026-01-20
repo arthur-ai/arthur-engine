@@ -28,6 +28,7 @@ import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
 
@@ -57,8 +58,30 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
       return data;
     },
+    onMutate: () => {
+      track(EVENT_NAMES.TRACING_REFRESH_METRICS_CLICKED, {
+        level: "trace",
+        trace_id: id,
+        task_id: task?.id ?? "",
+      });
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(["trace", id], data);
+      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+        level: "trace",
+        trace_id: id,
+        task_id: task?.id ?? "",
+        success: true,
+      });
+    },
+    onError: (error) => {
+      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+        level: "trace",
+        trace_id: id,
+        task_id: task?.id ?? "",
+        success: false,
+        error_message: error instanceof Error ? error.message : "Failed to refresh metrics",
+      });
     },
   });
 
@@ -140,12 +163,39 @@ export const TraceDrawerContent = ({ id }: Props) => {
                       <RefreshIcon sx={{ mr: 1, fontSize: 16 }} />
                       <ListItemText primary="Refresh Metrics" />
                     </Menu.Item>
-                    <Menu.Item render={<ListItemButton onClick={() => setAddToDatasetOpen(true)} />}>
+                    <Menu.Item
+                      render={
+                        <ListItemButton
+                          onClick={() => {
+                            track(EVENT_NAMES.DATASET_ADD_TO_DATASET_STARTED, {
+                              task_id: task?.id ?? "",
+                              trace_id: id,
+                              source: "trace_actions",
+                            });
+                            setAddToDatasetOpen(true);
+                          }}
+                        />
+                      }
+                    >
                       <AddIcon sx={{ mr: 1, fontSize: 16 }} />
                       <ListItemText primary="Add to Dataset" secondary="Add this trace to a dataset" />
                     </Menu.Item>
                     <Menu.Separator />
-                    <Menu.Item render={<ListItemButton to={`/tasks/${task!.id}/continuous-evals/new?traceId=${id}`} component={Link} />}>
+                    <Menu.Item
+                      render={
+                        <ListItemButton
+                          to={`/tasks/${task!.id}/continuous-evals/new?traceId=${id}`}
+                          component={Link}
+                          onClick={() =>
+                            track(EVENT_NAMES.CONTINUOUS_EVALS_NEW_FROM_TRACE, {
+                              task_id: task?.id ?? "",
+                              trace_id: id,
+                              source: "trace_actions",
+                            })
+                          }
+                        />
+                      }
+                    >
                       <TroubleshootIcon sx={{ mr: 1, fontSize: 16 }} />
                       <ListItemText primary="Evaluate Traces Like This" secondary="Evaluate traces that are similar to this one" />
                     </Menu.Item>
