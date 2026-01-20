@@ -18,6 +18,7 @@ import { useTask } from "@/hooks/useTask";
 import { SessionMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredSessions } from "@/services/tracing";
 
 interface SessionLevelProps {
@@ -56,12 +57,23 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
-  const handleRowClick = useCallback((row: { session_id: string }) => setDrawerTarget({ target: "session", id: row.session_id }), [setDrawerTarget]);
+  const handleRowClick = useCallback(
+    (row: { session_id: string }) => {
+      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+        task_id: task?.id ?? "",
+        level: "session",
+        session_id: row.session_id,
+        source: "table",
+      });
+      setDrawerTarget({ target: "session", id: row.session_id });
+    },
+    [setDrawerTarget, task?.id]
+  );
 
   const table = useTable({
     data: data?.sessions ?? DEFAULT_DATA,
     columns: sessionLevelColumns,
-    pagination: { state: pagination, onChange: props.onPaginationChange },
+    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: data?.count ?? 0 },
     state: {
       sorting,
       isLoading,
