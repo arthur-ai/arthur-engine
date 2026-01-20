@@ -11,6 +11,7 @@ import { TraceContentSkeleton } from "./TraceDrawerContent";
 
 import { Drawer } from "@/components/common/Drawer";
 import { ErrorFallback } from "@/components/common/ErrorFallback";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { createTitle } from "@/utils/title";
 
 const CONTENT_MAP = {
@@ -41,6 +42,12 @@ export const CommonDrawer = () => {
   const [current, setDrawerTarget] = useDrawerTarget();
 
   const handleClose = () => {
+    if (current?.id) {
+      track(EVENT_NAMES.TRACING_DRAWER_CLOSED, {
+        level: current.target,
+        id: current.id,
+      });
+    }
     setDrawerTarget({ id: null });
     select(null, { history: "replace" });
   };

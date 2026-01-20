@@ -1,9 +1,11 @@
+import { MenuItem } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { createColumns } from "../../data/experiments-columns";
 import { useAgentExperiments } from "../../hooks/useAgentExperiments";
+import { useDeleteAgentExperiment } from "../../hooks/useDeleteAgentExperiment";
 
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
 
@@ -14,6 +16,8 @@ export const Experiments = () => {
     pageIndex: 0,
     pageSize: 25,
   });
+
+  const deleteAgentExperiment = useDeleteAgentExperiment();
 
   const navigate = useNavigate();
 
@@ -52,6 +56,15 @@ export const Experiments = () => {
       },
     },
     enableStickyHeader: true,
+    enableColumnPinning: true,
+    initialState: { columnPinning: { right: ["mrt-row-actions"] } },
+    enableRowActions: true,
+    positionActionsColumn: "last",
+    renderRowActionMenuItems: ({ row }) => [
+      <MenuItem key="delete" onClick={() => deleteAgentExperiment.mutate(row.original.id)} disabled={deleteAgentExperiment.isPending}>
+        Delete Experiment
+      </MenuItem>,
+    ],
   });
 
   return <MaterialReactTable table={table} />;

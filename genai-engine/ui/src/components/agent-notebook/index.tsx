@@ -26,11 +26,14 @@ import { useCreateAgenticNotebook } from "./hooks/useCreateAgenticNotebook";
 import { useDeleteAgenticNotebook } from "./hooks/useDeleteAgenticNotebook";
 
 import { getContentHeight } from "@/constants/layout";
+import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { AgenticNotebookSummary } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 const DEFAULT_DATA: AgenticNotebookSummary[] = [];
 
 export const AgentNotebook = () => {
+  const { pagination, props } = useMRTPagination();
   const navigate = useNavigate();
 
   const form = useAppForm({
@@ -43,23 +46,50 @@ export const AgentNotebook = () => {
     },
   });
   const [newDialogOpen, setNewDialogOpen] = useState(false);
-  const { data, isLoading, isRefetching } = useAgentNotebooks();
+  const { data, isLoading, isRefetching } = useAgentNotebooks({ page: pagination.pageIndex, page_size: pagination.pageSize });
 
   const createAgenticNotebook = useCreateAgenticNotebook({
     onSuccess: (data) => {
       setNewDialogOpen(false);
+      track(EVENT_NAMES.AGENT_NOTEBOOK_CREATED, { notebook_id: data.id });
       navigate(`./${data.id}`);
     },
   });
 
   const deleteAgenticNotebook = useDeleteAgenticNotebook();
 
+  const handleCreateNotebook = () => {
+    track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CREATE);
+    setNewDialogOpen(true);
+  };
+
+  const handleCloseCreateNotebook = () => {
+    track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CANCEL);
+    setNewDialogOpen(false);
+  };
+
   const table = useMaterialReactTable({
     columns,
     data: data?.data ?? DEFAULT_DATA,
-    state: { isLoading, showProgressBars: isRefetching },
+    state: { pagination, isLoading, showProgressBars: isRefetching },
     rowCount: data?.total_count ?? 0,
     pageCount: data?.total_pages ?? 0,
+    ...props,
+    enableStickyHeader: true,
+    muiTablePaperProps: {
+      elevation: 1,
+      sx: {
+        borderRadius: 0,
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+      },
+    },
+    muiTableContainerProps: {
+      sx: {
+        flex: 1,
+      },
+    },
     muiTableBodyRowProps: ({ row }) => ({
       onClick: () => {
         navigate(`./${row.original.id}`);
@@ -115,7 +145,7 @@ export const AgentNotebook = () => {
             </Typography>
           </div>
           <ButtonGroup size="small" variant="contained" disableElevation>
-            <Button startIcon={<AddIcon />} onClick={() => setNewDialogOpen(true)}>
+            <Button startIcon={<AddIcon />} onClick={handleCreateNotebook}>
               New Notebook
             </Button>
           </ButtonGroup>
@@ -123,7 +153,7 @@ export const AgentNotebook = () => {
         <MaterialReactTable table={table} />
       </Stack>
 
-      <Dialog open={newDialogOpen} onClose={() => setNewDialogOpen(false)} fullWidth>
+      <Dialog open={newDialogOpen} onClose={handleCloseCreateNotebook} fullWidth>
         <DialogTitle>New Notebook</DialogTitle>
         <form
           className="contents"
@@ -157,7 +187,7 @@ export const AgentNotebook = () => {
             <Button
               onClick={() => {
                 form.reset();
-                setNewDialogOpen(false);
+                handleCloseCreateNotebook();
               }}
             >
               Cancel

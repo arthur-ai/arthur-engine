@@ -12,7 +12,9 @@ import { StatusBadge } from "@/components/agent-experiments/components/status-ba
 import { formatRelativeTime } from "@/components/live-evals/[evalId]/utils";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
+import { useTrackOnMount } from "@/hooks/useTrackOnMount";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
+import { EVENT_NAMES } from "@/services/amplitude";
 
 const DRAWER_WIDTH = 400;
 
@@ -57,6 +59,8 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
   const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange } = usePagination(10);
 
   const { data } = useSuspensePollAgenticNotebookHistory(notebookId, { page, page_size: rowsPerPage });
+
+  useTrackOnMount({ eventName: EVENT_NAMES.AGENT_NOTEBOOK_HISTORY_VIEW, eventProperties: { notebook_id: notebookId } });
 
   return (
     <>
