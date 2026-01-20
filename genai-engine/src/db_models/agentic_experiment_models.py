@@ -36,7 +36,7 @@ class DatabaseAgenticExperiment(DatabaseBaseExperiment):
     )
 
     # HTTP template configuration stored as JSON
-    # Structure: {"endpoint_name": str, "endpoint_url": str, "headers": [...], "request_body": {...}}
+    # Structure: {"endpoint_name": str, "endpoint_url": str, "headers": [...], "request_body": str}
     http_template: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
 
     # Template variable mappings stored as JSON
@@ -127,7 +127,7 @@ class DatabaseAgenticExperimentTestCaseAgenticResult(Base):
     # Request details (with variables resolved)
     request_url: Mapped[str] = mapped_column(Text, nullable=False)
     request_headers: Mapped[Dict[str, str]] = mapped_column(JSON, nullable=False)
-    request_body: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    request_body: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Response details stored as JSON
     # Structure: {"response_body": {...}, "status_code": int | None, "trace_id": str | None}

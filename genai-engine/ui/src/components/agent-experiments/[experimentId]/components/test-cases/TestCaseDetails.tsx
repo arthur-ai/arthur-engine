@@ -93,7 +93,7 @@ const VariableTile = ({ name, value }: { name: string; value: string }) => (
   </Paper>
 );
 
-const RequestSection = ({ url, headers, body }: { url: string; headers: Record<string, string>; body: Record<string, unknown> }) => (
+const RequestSection = ({ url, headers, body }: { url: string; headers: Record<string, string>; body: string }) => (
   <Stack direction="column" gap={2}>
     <SectionTitle>Request</SectionTitle>
 
