@@ -3,8 +3,8 @@ from typing import List, Type, cast
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from starlette.responses import StreamingResponse
 
-from db_models import Base
 from db_models.agentic_prompt_models import (
     DatabaseAgenticPrompt,
     DatabaseAgenticPromptVersionTag,
@@ -27,15 +27,18 @@ from services.prompt.chat_completion_service import ChatCompletionService
 
 
 class AgenticPromptRepository(BaseLLMRepository):
-    db_model: Type[Base] = DatabaseAgenticPrompt
-    tag_db_model: Type[Base] = DatabaseAgenticPromptVersionTag
+    db_model: Type[DatabaseAgenticPrompt] = DatabaseAgenticPrompt
+    tag_db_model: Type[DatabaseAgenticPromptVersionTag] = (
+        DatabaseAgenticPromptVersionTag
+    )
     version_list_response_model: Type[BaseModel] = AgenticPromptVersionListResponse
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
         self.model_provider_repo = ModelProviderRepository(db_session)
 
-    def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:
+    def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:  # type: ignore[override]
+        # Added the type override to avoid type error when overriding the method from the base class
         tags = self._get_all_tags_for_item_version(db_prompt)
 
         return AgenticPrompt(
@@ -54,7 +57,7 @@ class AgenticPromptRepository(BaseLLMRepository):
 
     def _extract_variables_from_item(
         self,
-        item: CreateAgenticPromptRequest,
+        item: CreateAgenticPromptRequest,  # type: ignore[override]
     ) -> List[str]:
         return list(
             self.chat_completion_service.find_missing_variables_in_messages(
@@ -63,7 +66,10 @@ class AgenticPromptRepository(BaseLLMRepository):
             ),
         )
 
-    def _to_versions_reponse_item(self, db_item: Base) -> AgenticPromptVersionResponse:
+    def _to_versions_reponse_item(
+        self,
+        db_item: DatabaseAgenticPrompt,  # type: ignore[override]
+    ) -> AgenticPromptVersionResponse:
         num_messages = len(db_item.messages or [])
         num_tools = len(db_item.tools or [])
         tags = self._get_all_tags_for_item_version(db_item)
@@ -79,7 +85,7 @@ class AgenticPromptRepository(BaseLLMRepository):
             tags=tags or [],
         )
 
-    def _clear_db_item_data(self, db_item: Base) -> None:
+    def _clear_db_item_data(self, db_item: DatabaseAgenticPrompt) -> None:  # type: ignore[override]
         db_item.model_name = ""
         db_item.messages = []
         db_item.tools = None
@@ -89,14 +95,17 @@ class AgenticPromptRepository(BaseLLMRepository):
         self,
         task_id: str,
         item_name: str,
-        item: CreateAgenticPromptRequest,
+        item: CreateAgenticPromptRequest,  # type: ignore[override]
     ) -> AgenticPrompt:
-        return super().save_llm_item(task_id, item_name, item)
+        return cast(
+            AgenticPrompt,
+            super().save_llm_item(task_id, item_name, item),
+        )
 
     async def run_unsaved_prompt(
         self,
         unsaved_prompt: CompletionRequest,
-    ) -> AgenticPromptRunResponse:
+    ) -> AgenticPromptRunResponse | StreamingResponse:
         llm_client = self.model_provider_repo.get_model_provider_client(
             provider=unsaved_prompt.model_provider,
         )
@@ -115,7 +124,7 @@ class AgenticPromptRepository(BaseLLMRepository):
         prompt_name: str,
         prompt_version: str,
         completion_request: PromptCompletionRequest,
-    ) -> AgenticPromptRunResponse:
+    ) -> AgenticPromptRunResponse | StreamingResponse:
         prompt = self.get_llm_item(
             task_id,
             prompt_name,

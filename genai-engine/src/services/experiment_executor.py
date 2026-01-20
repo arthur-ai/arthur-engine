@@ -206,6 +206,12 @@ class BaseExperimentExecutor(ABC):
         try:
             # Mark experiment as running
             experiment = self._get_database_experiment(experiment_id, db_session)
+
+            # TODO: Ask Alex about None handling
+            if experiment is None:
+                logger.error(f"Experiment {experiment_id} not found")
+                return None
+
             self._update_experiment_status(
                 experiment,
                 ExperimentStatus.RUNNING,
@@ -269,6 +275,10 @@ class BaseExperimentExecutor(ABC):
 
             # fetch refreshed experiment object
             experiment = self._get_database_experiment(experiment_id, db_session)
+
+            if experiment is None:
+                logger.error(f"Experiment {experiment_id} not found")
+                return
 
             # Calculate total cost across all test cases
             total_experiment_cost = self._calculate_total_cost(test_cases)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from arthur_common.models.llm_model_providers import ModelProvider
 from sqlalchemy import (
@@ -16,6 +16,8 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, SoftDeletedModel
+from schemas.enums import ModelProvider
+from schemas.llm_schemas import LLMConfigSettings, LLMTool, OpenAIMessage
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
@@ -47,8 +49,8 @@ class DatabaseAgenticPrompt(SoftDeletedModel, Base):
     model_provider: Mapped[ModelProvider] = mapped_column(String, nullable=False)
 
     # Prompt Content - stored as JSON for flexibility
-    messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
-    tools: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON, nullable=True)
+    messages: Mapped[List[OpenAIMessage]] = mapped_column(JSON, nullable=False)
+    tools: Mapped[Optional[List[LLMTool]]] = mapped_column(JSON, nullable=True)
     variables: Mapped[List[str]] = mapped_column(
         JSON,
         nullable=False,
@@ -57,7 +59,7 @@ class DatabaseAgenticPrompt(SoftDeletedModel, Base):
     )
 
     # prompt configurations
-    config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    config: Mapped[Optional[LLMConfigSettings]] = mapped_column(JSON, nullable=True)
 
     @property
     def tags(self) -> List[str]:

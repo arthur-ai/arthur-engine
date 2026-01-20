@@ -23,6 +23,7 @@ logger = logging.getLogger()
 
 
 load_dotenv()
+# TODO: Should we set up defaults for these or raise error?
 MAX_SENSITIVE_DATA_TOKEN_LIMIT = int(
     get_env_var(constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),
 )
@@ -45,7 +46,7 @@ class RuleEngine:
         self.token_counter = TokenCounter()
         self.hallucination_token_limit = self.set_hallucination_token_limit()
 
-    def set_hallucination_token_limit(self):
+    def set_hallucination_token_limit(self) -> int:
         token_limit = get_llm_executor().get_gpt_model_token_limit()
 
         if token_limit == -1:
@@ -70,12 +71,14 @@ class RuleEngine:
         rules: List[Rule],
     ) -> List[RuleEngineResult]:
         # Values: (Rule, run_rule_thread)
-        thread_futures: list[tuple[Rule, concurrent.futures.Future]] = []
+        thread_futures: list[
+            tuple[Rule, concurrent.futures.Future[RuleEngineResult]]
+        ] = []
         num_threads = int(
             get_env_var(
                 constants.GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR,
-                default=str(constants.DEFAULT_THREAD_POOL_MAX_WORKERS),
-            ),
+            )
+            or constants.DEFAULT_THREAD_POOL_MAX_WORKERS,
         )
         with TracedThreadPoolExecutor(tracer, max_workers=num_threads) as executor:
             for rule in rules:
@@ -108,8 +111,8 @@ class RuleEngine:
                 rule_results.append(future.result())
         return rule_results
 
-    def run_rule(self, request: ValidationRequest, rule: Rule):
-        score: RuleScore = None
+    def run_rule(self, request: ValidationRequest, rule: Rule) -> RuleEngineResult:
+        score: RuleScore | None = None
         start_time = time.time()
         match rule.type:
             case RuleType.REGEX:
@@ -236,7 +239,7 @@ class RuleEngine:
         with tracer.start_as_current_span(f"run {rule_type} rule"):
             # check hallucination token limit
             total_tokens = self.token_counter.count(
-                request.response + " " + (request.context or ""),
+                (request.response or "") + " " + (request.context or ""),
             )
             if total_tokens > self.hallucination_token_limit:
                 return RuleScore(

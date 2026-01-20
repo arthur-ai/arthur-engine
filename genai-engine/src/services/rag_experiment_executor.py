@@ -9,7 +9,7 @@ This module handles the execution of RAG experiments by:
 
 import json
 import logging
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union, cast
 
 from pydantic import TypeAdapter
 
@@ -39,10 +39,12 @@ from schemas.rag_experiment_schemas import (
     RagConfig,
     RagEvalResultSummaries,
     RagSummaryResults,
+    UnsavedRagConfig,
 )
 from schemas.request_schemas import (
     RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
+    RagSearchSettingConfigurationRequestTypes,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import RagProviderQueryResponse
@@ -54,7 +56,7 @@ logger = logging.getLogger(__name__)
 # TypeAdapter for RagConfig: RagConfig is a type alias (Annotated[Union[...], Discriminator(...)])
 # not a BaseModel, so it doesn't have model_validate(). TypeAdapter allows us to validate
 # discriminated union types that aren't Pydantic models.
-RagConfigAdapter = TypeAdapter(RagConfig)
+RagConfigAdapter: TypeAdapter[RagConfig] = TypeAdapter(RagConfig)
 
 
 class RagExperimentExecutor(BaseExperimentExecutor):
@@ -75,7 +77,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
             logger.error(f"Rag experiment with ID {experiment_id} not found.")
             return None
 
-    def _get_db_test_cases(
+    def _get_db_test_cases(  # type: ignore[override]
         self,
         experiment_id: str,
         db_session: Session,
@@ -84,7 +86,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
         rag_experiment_repo = RagExperimentRepository(db_session)
         return rag_experiment_repo._get_db_test_cases(experiment_id, status_filter)
 
-    def _get_db_test_case(
+    def _get_db_test_case(  # type: ignore[override]
         self,
         test_case_id: str,
         db_session: Session,
@@ -95,7 +97,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
     def _execute_experiment_outputs(
         self,
         db_session: Session,
-        test_case: DatabaseRagExperimentTestCase,
+        test_case: DatabaseRagExperimentTestCase,  # type: ignore[override]
         request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
@@ -121,7 +123,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
 
     def _calculate_total_test_case_cost(
         self,
-        test_case: DatabaseRagExperimentTestCase,
+        test_case: DatabaseRagExperimentTestCase,  # type: ignore[override]
     ) -> float:
         """
         Calculate the total cost for a RAG test case.
@@ -136,6 +138,9 @@ class RagExperimentExecutor(BaseExperimentExecutor):
         total_cost = 0.0
         for rag_result in test_case.rag_results:
             # Add eval costs
+            # TODO: In method we are expecting a list of DatabaseBaseEvalScore, but we are passing
+            # a list of DatabaseRagExperimentTestCaseRagResultEvalScore
+            # Question to Alex
             total_cost += self._calculate_total_cost_eval_scores(rag_result.eval_scores)
         return total_cost
 
@@ -146,7 +151,8 @@ class RagExperimentExecutor(BaseExperimentExecutor):
         rag_providers_repo: RagProvidersRepository,
     ) -> Optional[
         Tuple[
-            "RagSearchSettingConfigurationTypes",
+            "RagSearchSettingConfigurationTypes"
+            | RagSearchSettingConfigurationRequestTypes,
             UUID,
             RagConfig,
         ]
@@ -168,7 +174,10 @@ class RagExperimentExecutor(BaseExperimentExecutor):
             Tuple of (settings_config, rag_provider_id, rag_config)
             if all components are successfully resolved, None otherwise
         """
-        settings_config = None
+        settings_config: (
+            "RagSearchSettingConfigurationTypes"
+            | RagSearchSettingConfigurationRequestTypes
+        )
         rag_provider_id = None
         rag_config = None
 
@@ -177,8 +186,8 @@ class RagExperimentExecutor(BaseExperimentExecutor):
             try:
                 setting_version = (
                     rag_providers_repo.get_rag_setting_configuration_version(
-                        rag_result.setting_configuration_id,
-                        rag_result.setting_configuration_version,
+                        config_id=rag_result.setting_configuration_id,
+                        version_number=rag_result.setting_configuration_version,
                         include_deleted_versions=False,
                     )
                 )
@@ -188,8 +197,9 @@ class RagExperimentExecutor(BaseExperimentExecutor):
                 )
                 return None
 
-            settings_config = setting_version.settings
-            if not settings_config:
+            if setting_version.settings is not None:
+                settings_config = setting_version.settings
+            else:
                 # happens when settings config was soft deleted - should never be reached but
                 # keeping the fallback
                 logger.error(
@@ -199,6 +209,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
 
             # Get setting configuration so we have the RAG provider ID available
             try:
+                # TODO: Ask Alex about None handling
                 setting_config_obj = rag_providers_repo.get_rag_setting_configuration(
                     rag_result.setting_configuration_id,
                 )
@@ -244,6 +255,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
                     and str(config_dict.get("unsaved_id")) == unsaved_id_str
                 ):
                     rag_config = RagConfigAdapter.validate_python(config_dict)
+                    rag_config = cast(UnsavedRagConfig, rag_config)
                     settings_config = rag_config.settings
                     rag_provider_id = rag_config.rag_provider_id
                     break
@@ -442,7 +454,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
     def _execute_evaluations(
         self,
         db_session: Session,
-        test_case: DatabaseRagExperimentTestCase,
+        test_case: DatabaseRagExperimentTestCase,  # type: ignore[override]
     ) -> bool:
         """
         Execute all evaluations for a RAG test case.
@@ -546,7 +558,7 @@ class RagExperimentExecutor(BaseExperimentExecutor):
     def _set_summary_results(
         self,
         db_session: Session,
-        experiment: DatabaseRagExperiment,
+        experiment: DatabaseRagExperiment,  # type: ignore[override]
     ) -> None:
         """
         Calculate summary results for an experiment based on completed test cases.

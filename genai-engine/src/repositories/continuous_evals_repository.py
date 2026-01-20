@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import (
@@ -42,10 +42,10 @@ class ContinuousEvalsRepository:
 
     def _apply_sorting_and_pagination(
         self,
-        query: Query,
+        query: Query[Any],
         pagination_parameters: PaginationParameters,
-        sort_column: str,
-    ) -> Query:
+        sort_column: Any,
+    ) -> Query[Any]:
         """
         Apply sorting and pagination to a query and return the total count.
 
@@ -74,7 +74,7 @@ class ContinuousEvalsRepository:
     def _get_db_continuous_eval_by_id(
         self,
         eval_id: uuid.UUID,
-    ) -> DatabaseContinuousEval:
+    ) -> DatabaseContinuousEval | None:
         db_eval_transform = (
             self.db_session.query(DatabaseContinuousEval)
             .filter(DatabaseContinuousEval.id == eval_id)
@@ -191,9 +191,9 @@ class ContinuousEvalsRepository:
         if update_continuous_eval.llm_eval_name:
             db_continuous_eval.llm_eval_name = update_continuous_eval.llm_eval_name
             has_changes = True
-        if update_continuous_eval.llm_eval_version:
-            db_continuous_eval.llm_eval_version = (
-                update_continuous_eval.llm_eval_version
+        if update_continuous_eval.llm_eval_version is not None:
+            db_continuous_eval.llm_eval_version = int(
+                update_continuous_eval.llm_eval_version,
             )
             has_changes = True
         if update_continuous_eval.transform_id:
@@ -236,7 +236,7 @@ class ContinuousEvalsRepository:
     def list_continuous_evals(
         self,
         task_id: str,
-        pagination_parameters: PaginationParameters = None,
+        pagination_parameters: Optional[PaginationParameters] = None,
         filter_request: Optional[ContinuousEvalListFilterRequest] = None,
     ) -> List[ContinuousEval]:
         base_query = self.db_session.query(DatabaseContinuousEval).filter(
@@ -290,7 +290,7 @@ class ContinuousEvalsRepository:
     def list_continuous_eval_run_results(
         self,
         task_id: str,
-        pagination_parameters: PaginationParameters = None,
+        pagination_parameters: Optional[PaginationParameters] = None,
         filter_request: Optional[ContinuousEvalRunResultsListFilterRequest] = None,
     ) -> List[AgenticAnnotation]:
         base_query = (
@@ -499,6 +499,11 @@ class ContinuousEvalsRepository:
                 detail="Cannot rerun a non-failed continuous eval.",
             )
 
+        if annotation.continuous_eval_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Annotation is missing continuous_eval_id.",
+            )
         continuous_eval = self.get_continuous_eval_by_id(annotation.continuous_eval_id)
 
         if continuous_eval.enabled is False:
@@ -522,6 +527,12 @@ class ContinuousEvalsRepository:
         annotation.cost = None
         annotation.updated_at = datetime.now()
         self.db_session.commit()
+
+        if annotation.trace_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Annotation is missing trace_id.",
+            )
 
         # Re-queue the job with no delay
         job = ContinuousEvalJob(

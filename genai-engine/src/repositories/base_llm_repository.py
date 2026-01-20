@@ -1,3 +1,8 @@
+# There's a lot of lines where we are ignoring the attr-defined error.
+# This is because the attributes are defined in the db_models.py file,
+# and we are using the SQLAlchemy model to define the attributes.
+# We wanted to achieve the generic class that would work for any LLM item.
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import List, Optional, Tuple, Type
@@ -8,9 +13,10 @@ from arthur_common.models.enums import PaginationSortMethod
 from pydantic import BaseModel
 from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import or_
 
+from custom_types import QueryT
 from db_models import Base
 from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
 from schemas.response_schemas import (
@@ -23,9 +29,9 @@ from services.prompt.chat_completion_service import ChatCompletionService
 
 class BaseLLMRepository(ABC):
     # subclasses must set these parameters
-    db_model: Type[Base] = None
-    tag_db_model: Type[Base] = None
-    version_list_response_model: Type[BaseModel] = None
+    db_model: Type[Base] = Base
+    tag_db_model: Type[Base] = Base
+    version_list_response_model: Type[BaseModel] = BaseModel
 
     def __init__(self, db_session: Session):
         if self.db_model is None:
@@ -42,25 +48,25 @@ class BaseLLMRepository(ABC):
 
     def _get_all_tags_for_item_version(self, db_item: Base) -> List[str]:
         tags = (
-            self.db_session.query(self.tag_db_model.tag)
+            self.db_session.query(self.tag_db_model.tag)  # type: ignore[attr-defined]
             .filter(
-                self.tag_db_model.task_id == db_item.task_id,
-                self.tag_db_model.name == db_item.name,
-                self.tag_db_model.version == db_item.version,
+                self.tag_db_model.task_id == db_item.task_id,  # type: ignore[attr-defined]
+                self.tag_db_model.name == db_item.name,  # type: ignore[attr-defined]
+                self.tag_db_model.version == db_item.version,  # type: ignore[attr-defined]
             )
-            .order_by(self.tag_db_model.tag.asc())
+            .order_by(self.tag_db_model.tag.asc())  # type: ignore[attr-defined]
             .all()
         )
         return [t for (t,) in tags]
 
     def _get_all_tags_for_item(self, task_id: str, item_name: str) -> List[str]:
         tags = (
-            self.db_session.query(self.tag_db_model.tag)
+            self.db_session.query(self.tag_db_model.tag)  # type: ignore[attr-defined]
             .filter(
-                self.tag_db_model.task_id == task_id,
-                self.tag_db_model.name == item_name,
+                self.tag_db_model.task_id == task_id,  # type: ignore[attr-defined]
+                self.tag_db_model.name == item_name,  # type: ignore[attr-defined]
             )
-            .order_by(self.tag_db_model.tag.asc())
+            .order_by(self.tag_db_model.tag.asc())  # type: ignore[attr-defined]
             .all()
         )
         return [t for (t,) in tags]
@@ -81,38 +87,39 @@ class BaseLLMRepository(ABC):
     def _extract_variables_from_item(self, item: BaseModel) -> List[str]:
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def _get_latest_db_item(self, base_query: Query) -> Base:
+    def _get_latest_db_item(self, base_query: QueryT) -> Base | None:
         return (
-            base_query.filter(self.db_model.deleted_at.is_(None))
-            .order_by(self.db_model.version.desc())
+            base_query.filter(self.db_model.deleted_at.is_(None))  # type: ignore[attr-defined]
+            .order_by(self.db_model.version.desc())  # type: ignore[attr-defined]
             .first()
         )
 
     def _get_db_item_by_version_number(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
-    ) -> Base:
+    ) -> Base | None:
         return base_query.filter(
-            self.db_model.version == int(item_version),
+            self.db_model.version == int(item_version),  # type: ignore[attr-defined]
         ).first()
 
     def _get_db_item_by_datetime(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
-    ) -> Base:
+    ) -> Base | None:
         try:
             target_dt = datetime.fromisoformat(item_version)
+            start_epoch = sa.func.extract("epoch", self.db_model.created_at)  # type: ignore[attr-defined]
+            end_epoch = sa.func.extract("epoch", target_dt)  # type: ignore[arg-type]
             return (
                 base_query.filter(
                     sa.func.abs(
-                        sa.func.extract("epoch", self.db_model.created_at)
-                        - sa.func.extract("epoch", target_dt),
+                        start_epoch - end_epoch,
                     )
                     < 1,
                 )
-                .order_by(self.db_model.created_at.desc())
+                .order_by(self.db_model.created_at.desc())  # type: ignore[attr-defined]
                 .first()
             )
         except ValueError:
@@ -120,7 +127,7 @@ class BaseLLMRepository(ABC):
 
     def _get_db_item_by_tag(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
     ) -> Optional[Base]:
         """
@@ -137,13 +144,13 @@ class BaseLLMRepository(ABC):
         # We need to join with the tag table to find the version
         return (
             base_query.join(self.tag_db_model)
-            .filter(self.tag_db_model.tag == item_version)
+            .filter(self.tag_db_model.tag == item_version)  # type: ignore[attr-defined]
             .one_or_none()
         )
 
     def _get_db_item_by_version(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
         err_message: str = "Version not found",
     ) -> Base:
@@ -171,10 +178,10 @@ class BaseLLMRepository(ABC):
 
     def _apply_sorting_pagination_and_count(
         self,
-        query: Query,
+        query: QueryT,
         pagination_parameters: PaginationParameters,
         sort_column: str,
-    ) -> Tuple[Query, int]:
+    ) -> Tuple[QueryT, int]:
         """
         Apply sorting and pagination to a query and return the total count.
 
@@ -205,9 +212,9 @@ class BaseLLMRepository(ABC):
 
     def _apply_versions_filters_to_query(
         self,
-        query: Query,
+        query: QueryT,
         filter_request: LLMGetVersionsFilterRequest,
-    ) -> Query:
+    ) -> QueryT:
         """
         Apply filters to a query based on the filter request.
 
@@ -220,50 +227,50 @@ class BaseLLMRepository(ABC):
         # Filter by model provider
         if filter_request.model_provider:
             query = query.filter(
-                self.db_model.model_provider == filter_request.model_provider,
+                self.db_model.model_provider == filter_request.model_provider,  # type: ignore[attr-defined]
             )
 
         # Filter by model name using LIKE for partial matching
         if filter_request.model_name:
             query = query.filter(
-                self.db_model.model_name.like(f"%{filter_request.model_name}%"),
+                self.db_model.model_name.like(f"%{filter_request.model_name}%"),  # type: ignore[attr-defined]
             )
 
         # Filter by start time (inclusive)
         if filter_request.created_after:
             query = query.filter(
-                self.db_model.created_at >= filter_request.created_after,
+                self.db_model.created_at >= filter_request.created_after,  # type: ignore[attr-defined]
             )
 
         # Filter by end time (exclusive)
         if filter_request.created_before:
             query = query.filter(
-                self.db_model.created_at < filter_request.created_before,
+                self.db_model.created_at < filter_request.created_before,  # type: ignore[attr-defined]
             )
 
         # Filter by deleted status
         if filter_request.exclude_deleted == True:
-            query = query.filter(self.db_model.deleted_at.is_(None))
+            query = query.filter(self.db_model.deleted_at.is_(None))  # type: ignore[attr-defined]
 
         # Filter by min version
         if filter_request.min_version is not None:
             query = query.filter(
-                self.db_model.version >= filter_request.min_version,
+                self.db_model.version >= filter_request.min_version,  # type: ignore[attr-defined]
             )
 
         # Filter by max version
         if filter_request.max_version is not None:
             query = query.filter(
-                self.db_model.version <= filter_request.max_version,
+                self.db_model.version <= filter_request.max_version,  # type: ignore[attr-defined]
             )
 
         return query
 
     def _apply_get_all_filters_to_query(
         self,
-        query: Query,
+        query: QueryT,
         filter_request: LLMGetAllFilterRequest,
-    ) -> Query:
+    ) -> QueryT:
         """
         Apply filters to a query based on the filter request.
 
@@ -276,7 +283,7 @@ class BaseLLMRepository(ABC):
         # Filter by llm asset names using LIKE for partial matching
         if filter_request.llm_asset_names:
             name_conditions = [
-                self.db_model.name.like(f"%{name}%")
+                self.db_model.name.like(f"%{name}%")  # type: ignore[attr-defined]
                 for name in filter_request.llm_asset_names
             ]
             query = query.filter(or_(*name_conditions))
@@ -284,25 +291,25 @@ class BaseLLMRepository(ABC):
         # Filter by model provider
         if filter_request.model_provider:
             query = query.filter(
-                self.db_model.model_provider == filter_request.model_provider,
+                self.db_model.model_provider == filter_request.model_provider,  # type: ignore[attr-defined]
             )
 
         # Filter by model name using LIKE for partial matching
         if filter_request.model_name:
             query = query.filter(
-                self.db_model.model_name.like(f"%{filter_request.model_name}%"),
+                self.db_model.model_name.like(f"%{filter_request.model_name}%"),  # type: ignore[attr-defined]
             )
 
         # Filter by start time (inclusive)
         if filter_request.created_after:
             query = query.filter(
-                self.db_model.created_at >= filter_request.created_after,
+                self.db_model.created_at >= filter_request.created_after,  # type: ignore[attr-defined]
             )
 
         # Filter by end time (exclusive)
         if filter_request.created_before:
             query = query.filter(
-                self.db_model.created_at < filter_request.created_before,
+                self.db_model.created_at < filter_request.created_before,  # type: ignore[attr-defined]
             )
 
         return query
@@ -331,8 +338,8 @@ class BaseLLMRepository(ABC):
             BaseModel - the llm item object
         """
         base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
+            self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+            self.db_model.name == item_name,  # type: ignore[attr-defined]
         )
 
         # Version resolution
@@ -369,8 +376,8 @@ class BaseLLMRepository(ABC):
 
         # Build base query with task_id and name filters
         base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
+            self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+            self.db_model.name == item_name,  # type: ignore[attr-defined]
         )
 
         # Use the helper function to get by tag
@@ -403,8 +410,8 @@ class BaseLLMRepository(ABC):
         """
         # Build base query
         base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
+            self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+            self.db_model.name == item_name,  # type: ignore[attr-defined]
         )
 
         # Apply filters
@@ -418,7 +425,7 @@ class BaseLLMRepository(ABC):
         base_query, total_count = self._apply_sorting_pagination_and_count(
             base_query,
             pagination_parameters,
-            self.db_model.version,
+            self.db_model.version,  # type: ignore[attr-defined]
         )
 
         db_items = base_query.all()
@@ -456,13 +463,15 @@ class BaseLLMRepository(ABC):
         """
         # Start with aggregated query
         base_query = self.db_session.query(
-            self.db_model.name.label("name"),
-            sa.func.count(self.db_model.version).label("versions"),
-            sa.func.min(self.db_model.created_at).label("created_at"),
-            sa.func.max(self.db_model.created_at).label(
+            self.db_model.name.label("name"),  # type: ignore[attr-defined]
+            sa.func.count(self.db_model.version).label("versions"),  # type: ignore[attr-defined]
+            sa.func.min(self.db_model.created_at).label("created_at"),  # type: ignore[attr-defined]
+            sa.func.max(self.db_model.created_at).label(  # type: ignore[attr-defined]
                 "latest_version_created_at",
             ),
-        ).filter(self.db_model.task_id == task_id)
+        ).filter(
+            self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+        )
 
         # Apply filters BEFORE grouping
         if filter_request is not None:
@@ -472,13 +481,13 @@ class BaseLLMRepository(ABC):
             )
 
         # Apply grouping
-        base_query = base_query.group_by(self.db_model.name)
+        base_query = base_query.group_by(self.db_model.name)  # type: ignore[attr-defined]
 
         # Apply sorting, pagination, and get count
         base_query, total_count = self._apply_sorting_pagination_and_count(
             base_query,
             pagination_parameters,
-            self.db_model.name,
+            self.db_model.name,  # type: ignore[attr-defined]
         )
 
         results = base_query.all()
@@ -493,13 +502,13 @@ class BaseLLMRepository(ABC):
         for row in results:
             # get the deleted versions
             deleted_versions = (
-                self.db_session.query(self.db_model.version)
+                self.db_session.query(self.db_model.version)  # type: ignore[attr-defined]
                 .filter(
-                    self.db_model.task_id == task_id,
-                    self.db_model.name == row.name,
-                    self.db_model.deleted_at.isnot(None),
+                    self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+                    self.db_model.name == row.name,  # type: ignore[attr-defined]
+                    self.db_model.deleted_at.isnot(None),  # type: ignore[attr-defined]
                 )
-                .order_by(self.db_model.version.asc())
+                .order_by(self.db_model.version.asc())  # type: ignore[attr-defined]
                 .all()
             )
             deleted_versions = [v for (v,) in deleted_versions]
@@ -534,15 +543,15 @@ class BaseLLMRepository(ABC):
         If a llm item with the same name exists, increment version.
         Otherwise, start at version 1.
         """
-        if item.model_name == "":
+        if item.model_name == "":  # type: ignore[attr-defined]
             raise ValueError("Model name cannot be empty.")
 
         # Check for existing versions of this item
         latest_version = (
-            self.db_session.query(sa.func.max(self.db_model.version))
+            self.db_session.query(sa.func.max(self.db_model.version))  # type: ignore[attr-defined]
             .filter(
-                self.db_model.task_id == task_id,
-                self.db_model.name == item_name,
+                self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+                self.db_model.name == item_name,  # type: ignore[attr-defined]
             )
             .scalar()
         )
@@ -577,7 +586,7 @@ class BaseLLMRepository(ABC):
         item_name: str,
         item_version: str,
         tag: str,
-    ) -> None:
+    ) -> BaseModel:
         """
         Add a tag to a specific version of an llm item.
         If the tag exists on a different version, remove it from that version
@@ -590,8 +599,8 @@ class BaseLLMRepository(ABC):
 
         # Get the llm item by version
         base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
+            self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+            self.db_model.name == item_name,  # type: ignore[attr-defined]
         )
 
         retrieved_db_item = self._get_db_item_by_version(
@@ -600,25 +609,25 @@ class BaseLLMRepository(ABC):
             err_message=f"'{item_name}' (version '{item_version}') not found for task '{task_id}'",
         )
 
-        if retrieved_db_item.deleted_at is not None:
+        if retrieved_db_item.deleted_at is not None:  # type: ignore[attr-defined]
             raise ValueError(f"Cannot add tag to a deleted version of '{item_name}'")
 
         # Check if this tag already exists on any version for this (task_id, name) combo
         existing_tag_row = self.db_session.execute(
             select(self.tag_db_model).where(
-                self.tag_db_model.task_id == task_id,
-                self.tag_db_model.name == item_name,
-                self.tag_db_model.tag == tag,
+                self.tag_db_model.task_id == task_id,  # type: ignore[attr-defined]
+                self.tag_db_model.name == item_name,  # type: ignore[attr-defined]
+                self.tag_db_model.tag == tag,  # type: ignore[attr-defined]
             ),
         ).scalar_one_or_none()
 
         # Case 1: Tag exists on the SAME version → do nothing
-        if existing_tag_row and existing_tag_row.version == retrieved_db_item.version:
+        if existing_tag_row and existing_tag_row.version == retrieved_db_item.version:  # type: ignore[attr-defined]
             self.db_session.refresh(retrieved_db_item)
             return self.from_db_model(retrieved_db_item)
 
         # Case 2: Tag exists on a DIFFERENT version → delete old row
-        if existing_tag_row and existing_tag_row.version != retrieved_db_item.version:
+        if existing_tag_row and existing_tag_row.version != retrieved_db_item.version:  # type: ignore[attr-defined]
             self.db_session.delete(existing_tag_row)
             self.db_session.commit()
 
@@ -626,7 +635,7 @@ class BaseLLMRepository(ABC):
         new_tag = self.tag_db_model(
             task_id=task_id,
             name=item_name,
-            version=retrieved_db_item.version,
+            version=retrieved_db_item.version,  # type: ignore[attr-defined]
             tag=tag,
         )
         self.db_session.add(new_tag)
@@ -658,8 +667,8 @@ class BaseLLMRepository(ABC):
             - item_version=<datetime> (YYYY-MM-DDTHH:MM:SS, checks to the second) -> marks version created at that time
         """
         base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
+            self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+            self.db_model.name == item_name,  # type: ignore[attr-defined]
         )
 
         err_msg = f"No matching version of '{item_name}' found for task '{task_id}'"
@@ -669,20 +678,20 @@ class BaseLLMRepository(ABC):
             err_message=err_msg,
         )
 
-        if db_item.deleted_at is not None:
+        if db_item.deleted_at is not None:  # type: ignore[attr-defined]
             raise ValueError(
-                f"'{item_name}' (version {db_item.version}) has already been deleted.",
+                f"'{item_name}' (version {db_item.version}) has already been deleted.",  # type: ignore[attr-defined]
             )
 
-        db_item.deleted_at = datetime.now()
+        db_item.deleted_at = datetime.now()  # type: ignore[attr-defined]
         self._clear_db_item_data(db_item)
 
         # Delete all tags for this (task_id, name, version)
         self.db_session.execute(
             delete(self.tag_db_model).where(
-                self.tag_db_model.task_id == task_id,
-                self.tag_db_model.name == item_name,
-                self.tag_db_model.version == db_item.version,
+                self.tag_db_model.task_id == task_id,  # type: ignore[attr-defined]
+                self.tag_db_model.name == item_name,  # type: ignore[attr-defined]
+                self.tag_db_model.version == db_item.version,  # type: ignore[attr-defined]
             ),
         )
 
@@ -699,8 +708,8 @@ class BaseLLMRepository(ABC):
         db_items = (
             self.db_session.query(self.db_model)
             .filter(
-                self.db_model.task_id == task_id,
-                self.db_model.name == item_name,
+                self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+                self.db_model.name == item_name,  # type: ignore[attr-defined]
             )
             .all()
         )
@@ -736,8 +745,8 @@ class BaseLLMRepository(ABC):
         """
         # Base query used for version lookup
         base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
+            self.db_model.task_id == task_id,  # type: ignore[attr-defined]
+            self.db_model.name == item_name,  # type: ignore[attr-defined]
         )
 
         # Resolve version using the same helper used everywhere else
@@ -752,10 +761,10 @@ class BaseLLMRepository(ABC):
         # Now delete the specific tag for the resolved version
         existing_tag_row = self.db_session.execute(
             select(self.tag_db_model).where(
-                self.tag_db_model.task_id == task_id,
-                self.tag_db_model.name == item_name,
-                self.tag_db_model.version == db_item.version,
-                self.tag_db_model.tag == tag,
+                self.tag_db_model.task_id == task_id,  # type: ignore[attr-defined]
+                self.tag_db_model.name == item_name,  # type: ignore[attr-defined]
+                self.tag_db_model.version == db_item.version,  # type: ignore[attr-defined]
+                self.tag_db_model.tag == tag,  # type: ignore[attr-defined]
             ),
         ).scalar_one_or_none()
 

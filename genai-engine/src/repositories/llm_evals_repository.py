@@ -14,7 +14,9 @@ from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.llm_eval_schemas import ReasonedScore
+from schemas.enums import MessageRole, ModelProvider
+from schemas.llm_eval_schemas import LLMEval, ReasonedScore
+from schemas.llm_schemas import LLMConfigSettings, LLMResponseFormat, OpenAIMessage
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
@@ -38,25 +40,25 @@ class LLMEvalsRepository(BaseLLMRepository):
         self.model_provider_repo = ModelProviderRepository(db_session)
         self.chat_completion_service = ChatCompletionService()
 
-    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:  # type: ignore[override]
         tags = self._get_all_tags_for_item_version(db_eval)
 
         return LLMEval(
             name=db_eval.name,
             model_name=db_eval.model_name,
-            model_provider=db_eval.model_provider,
+            model_provider=ModelProvider(db_eval.model_provider),
             instructions=db_eval.instructions,
             variables=db_eval.variables,
             tags=tags,
-            config=db_eval.config,
+            config=db_eval.config if db_eval.config else None,
             created_at=db_eval.created_at,
             deleted_at=db_eval.deleted_at,
             version=db_eval.version,
         )
 
-    def _to_versions_reponse_item(
+    def _to_versions_reponse_item(  # type: ignore[override]
         self,
-        db_item: Base,
+        db_item: DatabaseLLMEval,
         tags: Optional[List[str]] = None,
     ) -> LLMVersionResponse:
         tags = self._get_all_tags_for_item_version(db_item)
@@ -65,17 +67,17 @@ class LLMEvalsRepository(BaseLLMRepository):
             version=db_item.version,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
-            model_provider=db_item.model_provider,
+            model_provider=ModelProvider(db_item.model_provider),
             model_name=db_item.model_name,
             tags=tags,
         )
 
-    def _clear_db_item_data(self, db_item: Base) -> None:
+    def _clear_db_item_data(self, db_item: DatabaseLLMEval) -> None:  # type: ignore[override]
         db_item.model_name = ""
         db_item.instructions = ""
         db_item.config = None
 
-    def _extract_variables_from_item(self, item: CreateEvalRequest) -> List[str]:
+    def _extract_variables_from_item(self, item: CreateEvalRequest) -> List[str]:  # type: ignore[override]
         return list(
             self.chat_completion_service.find_undeclared_variables_in_text(
                 item.instructions,
@@ -88,7 +90,7 @@ class LLMEvalsRepository(BaseLLMRepository):
         response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
     ) -> AgenticPrompt:
         messages = [
-            {"role": "system", "content": llm_eval.instructions},
+            OpenAIMessage(role=MessageRole.SYSTEM, content=llm_eval.instructions),
         ]
 
         config_dict = {}
@@ -107,15 +109,16 @@ class LLMEvalsRepository(BaseLLMRepository):
             created_at=llm_eval.created_at,
             deleted_at=llm_eval.deleted_at,
             config=LLMConfigSettings(**config_dict),
+            tools=None,
         )
 
     def save_llm_item(
         self,
         task_id: str,
         item_name: str,
-        item: CreateEvalRequest,
+        item: CreateEvalRequest,  # type: ignore[override]
     ) -> LLMEval:
-        return super().save_llm_item(task_id, item_name, item)
+        return cast(LLMEval, super().save_llm_item(task_id, item_name, item))
 
     def run_llm_eval(
         self,
@@ -190,7 +193,7 @@ class LLMEvalsRepository(BaseLLMRepository):
         return LLMEvalRunResponse(
             reason=llm_model_response.structured_output_response.reason,
             score=llm_model_response.structured_output_response.score,
-            cost=llm_model_response.cost,
+            cost=llm_model_response.cost or "",
         )
 
     def get_llm_item(

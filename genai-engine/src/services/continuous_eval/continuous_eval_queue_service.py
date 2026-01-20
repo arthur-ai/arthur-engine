@@ -120,6 +120,12 @@ class ContinuousEvalQueueService:
             wait_time = job.execute_at
 
         wait_time = max(0, wait_time - time.time())
+        # TODO: Ask Tal what to do if there is no executor?
+        if not self.executor:
+            logger.error(
+                f"Cannot submit job for trace {job.trace_id}: executor is not initialized",
+            )
+            return
         self.executor.submit(self._submit_job, job, wait_time)
 
     def _background_loop(self) -> None:
@@ -351,6 +357,9 @@ class ContinuousEvalQueueService:
                 if llm_eval_run_result.score == 1
                 else ContinuousEvalRunStatus.FAILED.value
             )
+            llm_eval_run_result_cost = (
+                float(llm_eval_run_result.cost) if llm_eval_run_result.cost else None
+            )
             self._update_annotation_status(
                 db_session,
                 job.annotation_id,
@@ -358,7 +367,7 @@ class ContinuousEvalQueueService:
                 input_variables=completion_request_variables,
                 annotation_score=llm_eval_run_result.score,
                 annotation_description=llm_eval_run_result.reason,
-                cost=llm_eval_run_result.cost,
+                cost=llm_eval_run_result_cost,
             )
 
         except Exception as e:

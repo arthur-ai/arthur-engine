@@ -29,6 +29,7 @@ from schemas.base_experiment_schemas import (
     EvalResultSummary,
     TestCaseStatus,
 )
+from schemas.enums import ModelProvider
 from schemas.prompt_experiment_schemas import (
     PromptEvalResultSummaries,
     SummaryResults,
@@ -59,7 +60,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
             logger.error(f"Prompt experiment with ID {experiment_id} not found.")
             return None
 
-    def _get_db_test_cases(
+    def _get_db_test_cases(  # type: ignore[override]
         self,
         experiment_id: str,
         db_session: Session,
@@ -67,7 +68,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
         prompt_experiment_repo = PromptExperimentRepository(db_session)
         return prompt_experiment_repo._get_db_test_cases(experiment_id)
 
-    def _get_db_test_case(
+    def _get_db_test_case(  # type: ignore[override]
         self,
         test_case_id: str,
         db_session: Session,
@@ -78,7 +79,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
     def _execute_experiment_outputs(
         self,
         db_session: Session,
-        test_case: DatabasePromptExperimentTestCase,
+        test_case: DatabasePromptExperimentTestCase,  # type: ignore[override]
         request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
@@ -104,7 +105,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
 
     def _calculate_total_test_case_cost(
         self,
-        test_case: DatabasePromptExperimentTestCase,
+        test_case: DatabasePromptExperimentTestCase,  # type: ignore[override]
     ) -> float:
         """
         Calculate the total cost for a prompt test case.
@@ -129,6 +130,9 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
 
             # Add eval costs
             total_cost += self._calculate_total_cost_eval_scores(
+                # TODO: In method we are expecting a list of DatabaseBaseEvalScore, but we are passing
+                # a list of DatabasePromptExperimentTestCasePromptResultEvalScore
+                # Question to Alex
                 prompt_result.eval_scores,
             )
         return total_cost
@@ -136,7 +140,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
     def _set_summary_results(
         self,
         db_session: Session,
-        experiment: DatabasePromptExperiment,
+        experiment: DatabasePromptExperiment,  # type: ignore[override]
     ) -> None:
         """
         Calculate summary results for an experiment based on completed test cases.
@@ -283,8 +287,8 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                 try:
                     prompt = prompt_repo.get_llm_item(
                         task_id=experiment.task_id,
-                        item_name=prompt_result.name,
-                        item_version=str(prompt_result.version),
+                        item_name=str(prompt_result.name or ""),
+                        item_version=str(prompt_result.version or ""),
                     )
                 except ValueError as e:
                     logger.error(
@@ -317,8 +321,8 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                 prompt = AgenticPrompt(
                     name=unsaved_config.get("auto_name", "unsaved_prompt"),
                     messages=unsaved_config.get("messages", []),
-                    model_name=unsaved_config.get("model_name"),
-                    model_provider=unsaved_config.get("model_provider"),
+                    model_name=str(unsaved_config.get("model_name", "")),
+                    model_provider=ModelProvider(unsaved_config.get("model_provider")),
                     version=1,  # Unsaved prompts don't have versions
                     tools=unsaved_config.get("tools"),
                     variables=unsaved_config.get("variables", []),
@@ -401,7 +405,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
     def _execute_evaluations(
         self,
         db_session: Session,
-        test_case: DatabasePromptExperimentTestCase,
+        test_case: DatabasePromptExperimentTestCase,  # type: ignore[override]
     ) -> bool:
         """
         Execute all evaluations for a prompt test case.

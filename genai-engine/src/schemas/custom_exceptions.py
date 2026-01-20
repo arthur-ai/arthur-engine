@@ -48,7 +48,7 @@ class GenaiEngineLLMException(Exception):
         super().__init__(message)
 
     def get_message(self) -> str:
-        return self.args[0]
+        return str(self.args[0])
 
 
 class LLMTokensPerPeriodRateLimitException(GenaiEngineLLMException):
