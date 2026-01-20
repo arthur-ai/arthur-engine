@@ -9,6 +9,7 @@ from arthur_common.models.enums import (
     ContinuousEvalRunStatus,
     PaginationSortMethod,
 )
+from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import HTTPException
 from sqlalchemy import asc, desc
 from sqlalchemy.exc import IntegrityError
@@ -18,7 +19,6 @@ from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval, TraceTransform
-from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,

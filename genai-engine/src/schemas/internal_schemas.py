@@ -65,6 +65,7 @@ from arthur_common.models.response_schemas import (
 )
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
+    ContinuousEvalTransformVariableMappingResponse,
     TraceTransformDefinition,
     TraceTransformResponse,
 )

@@ -16957,18 +16957,6 @@
                         "title": "Transform Id",
                         "description": "ID of the transform."
                     },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Timestamp representing the time the transform was added to the llm eval."
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Updated At",
-                        "description": "Timestamp representing the time the continuous eval was last updated."
-                    },
                     "transform_variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/ContinuousEvalTransformVariableMappingResponse"
@@ -16981,6 +16969,18 @@
                         "type": "boolean",
                         "title": "Enabled",
                         "description": "Whether the continuous eval is enabled."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time the transform was added to the llm eval."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Timestamp representing the time the continuous eval was last updated."
                     }
                 },
                 "type": "object",
@@ -16991,10 +16991,9 @@
                     "llm_eval_name",
                     "llm_eval_version",
                     "transform_id",
+                    "enabled",
                     "created_at",
-                    "updated_at",
-                    "transform_variable_mapping",
-                    "enabled"
+                    "updated_at"
                 ],
                 "title": "ContinuousEvalResponse"
             },
@@ -17034,11 +17033,13 @@
                 "properties": {
                     "transform_variable": {
                         "type": "string",
-                        "title": "Transform Variable"
+                        "title": "Transform Variable",
+                        "description": "Name of the transform variable."
                     },
                     "eval_variable": {
                         "type": "string",
-                        "title": "Eval Variable"
+                        "title": "Eval Variable",
+                        "description": "Name of the eval variable."
                     }
                 },
                 "type": "object",
@@ -20201,7 +20202,9 @@
                     "type": {
                         "$ref": "#/components/schemas/LLMResponseFormatEnum",
                         "description": "Response format type: 'text', 'json_object', or 'json_schema'",
-                        "example": "json_schema"
+                        "examples": [
+                            "json_schema"
+                        ]
                     },
                     "json_schema": {
                         "anyOf": [
@@ -20227,7 +20230,9 @@
                     "type": {
                         "$ref": "#/components/schemas/LLMResponseFormatEnum",
                         "description": "Response format type: 'text', 'json_object', or 'json_schema'",
-                        "example": "json_schema"
+                        "examples": [
+                            "json_schema"
+                        ]
                     },
                     "json_schema": {
                         "anyOf": [
