@@ -47,12 +47,12 @@ export const ExperimentHttpTemplate = ({ experimentId }: Props) => {
             </Stack>
           </Stack>
         )}
-        {experiment.http_template.request_body && Object.keys(experiment.http_template.request_body).length > 0 && (
+        {experiment.http_template.request_body && experiment.http_template.request_body.length > 0 && (
           <Stack gap={0.5}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">
               Request Body:
             </Typography>
-            <Highlight code={JSON.stringify(experiment.http_template.request_body, null, 2)} language="json" />
+            <Highlight code={experiment.http_template.request_body} language="json" />
           </Stack>
         )}
       </Stack>

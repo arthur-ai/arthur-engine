@@ -7,7 +7,6 @@ import { NewAgentExperimentFormData } from "../form";
 
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
-import { jsonString } from "@/utils/zod";
 
 export const EndpointSetup = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "endpoint">,
@@ -140,7 +139,7 @@ export const EndpointSetup = withFieldGroup({
         <group.AppField
           name="endpoint.body"
           validators={{
-            onChange: jsonString,
+            onChange: z.string().min(1, "Request body is required"),
           }}
         >
           {(field) => {
@@ -151,11 +150,11 @@ export const EndpointSetup = withFieldGroup({
               <Stack component={Paper} variant="outlined" p={2} sx={{ borderColor: hasErrors ? "error.main" : "divider" }}>
                 <Stack>
                   <Typography variant="body2" fontWeight="bold">
-                    Request Body (JSON)
+                    Request Body
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Define the JSON payload. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> placeholders
-                    for dataset values.
+                    Define the request body as a string. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code>{" "}
+                    placeholders for dataset values. The body will be sent as-is after variable substitution.
                   </Typography>
                 </Stack>
                 <Divider sx={{ my: 2 }} />

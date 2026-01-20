@@ -1,26 +1,28 @@
-import { Alert, Box, TablePagination } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { SortingState } from "@tanstack/react-table";
+import { MaterialReactTable } from "material-react-table";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
+import { useTable } from "../../hooks/useTable";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
 import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
-import { TracesTable } from "../TracesTable";
 
 import { useApi } from "@/hooks/useApi";
-import { usePagination } from "@/hooks/usePagination";
+import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredTraces } from "@/services/tracing";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
@@ -29,9 +31,9 @@ interface TraceLevelProps {
   welcomeDismissed: boolean;
 }
 
-export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
+export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
-  const pagination = usePagination(FETCH_SIZE);
+  const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
 
@@ -45,32 +47,53 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
 
   const api = useApi()!;
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.page,
-    pageSize: pagination.rowsPerPage,
-    filters,
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters,
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+  );
 
-  const { data, isFetching, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.listPaginated(params),
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredTraces(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
-  const table = useReactTable({
+  const handleRowClick = useCallback(
+    (row: TraceMetadataResponse) => {
+      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+        task_id: task?.id ?? "",
+        level: "trace",
+        trace_id: row.trace_id,
+        source: "table",
+      });
+      setContext({
+        type: "trace",
+        ids: data?.traces?.map((trace) => trace.trace_id) ?? [],
+      });
+
+      setDrawerTarget({ target: "trace", id: row.trace_id });
+    },
+    [data?.traces, setContext, setDrawerTarget, task?.id]
+  );
+
+  const table = useTable({
     data: data?.traces ?? DEFAULT_DATA,
     columns,
-    getCoreRowModel: getCoreRowModel(),
+    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: data?.count ?? 0 },
+    onRowClick: handleRowClick,
     state: {
       sorting,
+      isLoading,
     },
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
   });
 
   const { FiltersRow } = useMemo(
@@ -84,19 +107,10 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
     [task?.id, api]
   );
 
-  const handleRowClick = (row: TraceMetadataResponse) => {
-    setContext({
-      type: "trace",
-      ids: data?.traces.map((trace) => trace.trace_id) ?? [],
-    });
-
-    setDrawerTarget({ target: "trace", id: row.trace_id });
-  };
-
-  const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
+  const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces?.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
   // Check if any filters are active
-  const hasActiveFilters = filters && Object.keys(filters).length > 0;
+  const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
   if (error) {
     return (
@@ -109,7 +123,7 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
   const hasData = Boolean(data?.traces?.length);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
+    <Stack gap={1} height="100%" overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
         {/* Only show FiltersRow if we have traces or if filters are active */}
         {(hasData || hasActiveFilters) && <FiltersRow />}
@@ -117,29 +131,11 @@ export function TraceLevel({ welcomeDismissed }: TraceLevelProps) {
         {hasData && (
           <>
             <BucketProvider thresholds={thresholds}>
-              <TracesTable
-                table={table}
-                loading={isFetching}
-                onRowClick={(row) => {
-                  handleRowClick(row.original);
-                }}
-              />
+              <MaterialReactTable table={table} />
             </BucketProvider>
-            <TablePagination
-              component="div"
-              count={data?.count ?? 0}
-              onPageChange={pagination.handlePageChange}
-              onRowsPerPageChange={pagination.handleRowsPerPageChange}
-              page={pagination.page}
-              rowsPerPage={pagination.rowsPerPage}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              sx={{
-                overflow: "visible",
-              }}
-            />
           </>
         )}
       </DataContentGate>
-    </Box>
+    </Stack>
   );
-}
+});

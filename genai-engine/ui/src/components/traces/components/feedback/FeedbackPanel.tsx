@@ -13,6 +13,7 @@ import z from "zod";
 import { useApi } from "@/hooks/useApi";
 import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -63,10 +64,21 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     },
     onSuccess: () => {
       enqueueSnackbar("Feedback submitted", { variant: "success" });
+      track(EVENT_NAMES.FEEDBACK_SUBMITTED, {
+        trace_id: traceId,
+        feedback_type: form.state.values.feedback,
+        details_length: form.state.values.details?.length ?? 0,
+        success: true,
+      });
     },
     onError: (error, data, context) => {
       queryClient.setQueryData(queryKeys.traces.byId(traceId), context?.previousData);
       enqueueSnackbar("Failed to submit feedback", { variant: "error" });
+      track(EVENT_NAMES.FEEDBACK_ERROR, {
+        trace_id: traceId,
+        feedback_type: data.feedback,
+        error_message: error instanceof Error ? error.message : "Failed to submit feedback",
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
@@ -92,10 +104,17 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     },
     onSuccess: () => {
       enqueueSnackbar("Feedback cleared", { variant: "success" });
+      track(EVENT_NAMES.FEEDBACK_CLEARED, {
+        trace_id: traceId,
+      });
     },
     onError: (error, data, context) => {
       queryClient.setQueryData(queryKeys.traces.byId(traceId), context?.previousData);
       enqueueSnackbar("Failed to clear feedback", { variant: "error" });
+      track(EVENT_NAMES.FEEDBACK_ERROR, {
+        trace_id: traceId,
+        error_message: error instanceof Error ? error.message : "Failed to clear feedback",
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.traces.byId(traceId) });
@@ -139,6 +158,12 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                 color={feedback === "positive" ? "success" : undefined}
                 variant={feedback === "positive" ? "contained" : "outlined"}
                 startIcon={<ThumbUpOutlinedIcon sx={{ fontSize: 16 }} />}
+                onClick={() =>
+                  track(EVENT_NAMES.FEEDBACK_OPENED, {
+                    trace_id: traceId,
+                    feedback_type: "positive",
+                  })
+                }
               />
             }
             payload={{ feedback: "positive" }}
@@ -155,6 +180,12 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                 variant={feedback === "negative" ? "contained" : "outlined"}
                 color={feedback === "negative" ? "error" : undefined}
                 startIcon={<ThumbDownOutlinedIcon sx={{ fontSize: 16 }} />}
+                onClick={() =>
+                  track(EVENT_NAMES.FEEDBACK_OPENED, {
+                    trace_id: traceId,
+                    feedback_type: "negative",
+                  })
+                }
               />
             }
             payload={{ feedback: "negative" }}

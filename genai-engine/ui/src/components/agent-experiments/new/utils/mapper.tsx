@@ -16,7 +16,7 @@ export const mapFormToRequest = (form: FormData): CreateAgenticExperimentRequest
       endpoint_name: form.endpoint.name,
       endpoint_url: form.endpoint.url,
       headers: form.endpoint.headers,
-      request_body: JSON.parse(form.endpoint.body),
+      request_body: form.endpoint.body,
     },
     eval_list: form.evals.map((e) => ({
       name: e.name,
@@ -41,7 +41,7 @@ export const mapTemplateToRequest = (template?: AgenticExperimentDetail): NewAge
       name: template.http_template.endpoint_name,
       url: template.http_template.endpoint_url,
       headers: template.http_template.headers ?? [],
-      body: JSON.stringify(template.http_template.request_body),
+      body: template.http_template.request_body,
     },
     datasetRef: {
       id: template.dataset_ref.id,

@@ -617,6 +617,8 @@ export const ExperimentDetailView: React.FC = () => {
           taskId={taskId}
           experimentId={experimentId}
           experimentPromptConfigs={experiment.prompt_configs}
+          datasetId={experiment.dataset_ref.id}
+          datasetVersion={experiment.dataset_ref.version}
         />
       )}
 
