@@ -52,6 +52,13 @@ from arthur_common.models.response_schemas import (
     UserResponse,
     ValidationResult,
 )
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse,
+    ListContinuousEvalsResponse,
+    ListTraceTransformsResponse,
+    LLMEval,
+    TraceTransformResponse,
+)
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
@@ -64,7 +71,6 @@ from schemas.enums import (
     RagProviderEnum,
 )
 from schemas.internal_schemas import AgenticAnnotation
-from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
@@ -99,15 +105,12 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
-    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
-    ListContinuousEvalsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
-    ListTraceTransformsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -119,7 +122,6 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
-    TraceTransformResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
     TransformExtractionResponseList,

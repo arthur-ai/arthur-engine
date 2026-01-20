@@ -1,5 +1,6 @@
 import logging
 
+from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
@@ -8,7 +9,7 @@ from dependencies import get_db_session
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.enums import ModelProvider, PermissionLevelsEnum
+from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from schemas.request_schemas import PutModelProviderCredentials
 from schemas.response_schemas import (
