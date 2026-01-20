@@ -5,6 +5,8 @@ import { z } from "zod";
 import type { IncomingFilter } from "../components/filtering/mapper";
 import { useFilterStore } from "../stores/filter.store";
 
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
 /**
  * Zod schema for validating filter objects from URL
  */
@@ -32,6 +34,10 @@ export function useSyncFiltersToUrl() {
   useEffect(() => {
     if (!hasInitializedFromUrl.current && urlFilters.length > 0) {
       setStoreFilters(urlFilters as IncomingFilter[]);
+      track(EVENT_NAMES.TRACING_FILTERS_FROM_URL_LOADED, {
+        filter_count: urlFilters.length,
+        source: "url",
+      });
       hasInitializedFromUrl.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

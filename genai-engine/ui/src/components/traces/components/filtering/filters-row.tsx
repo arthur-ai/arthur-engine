@@ -16,6 +16,8 @@ import { sharedFormOptions, validators } from "./shared";
 import { EnumOperators, Operator, Operators } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
 const ROW_SCROLL_OFFSET = 100;
 
 type InferDynamicEnumArg<Field extends DynamicEnumField<unknown>> = Field extends DynamicEnumField<infer Arg> ? Arg : never;
@@ -67,8 +69,22 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
       onSubmit: async ({ value }) => {
         // Filter out incomplete filters before mapping and setting them
         const completeFilters = value.config.filter(isFilterComplete);
-
-        setFilters(completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[]);
+        const hadFilters = storeFilters.length > 0;
+        const nextFilters = completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[];
+        if (nextFilters.length > 0) {
+          track(EVENT_NAMES.TRACING_FILTERS_APPLIED, {
+            filter_count: nextFilters.length,
+            filter_fields: nextFilters.map((filter) => filter.name),
+            filter_operators: nextFilters.map((filter) => filter.operator),
+            source: "filters_row",
+          });
+        } else if (hadFilters) {
+          track(EVENT_NAMES.TRACING_FILTERS_CLEARED, {
+            previous_filter_count: storeFilters.length,
+            source: "filters_row",
+          });
+        }
+        setFilters(nextFilters);
       },
     });
 

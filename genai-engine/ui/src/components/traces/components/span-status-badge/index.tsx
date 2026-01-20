@@ -2,6 +2,7 @@ import DoneAllIcon from "@mui/icons-material/DoneAll";
 import ErrorIcon from "@mui/icons-material/Error";
 import PendingOutlinedIcon from "@mui/icons-material/PendingOutlined";
 import { capitalize, Stack, Tooltip, Typography } from "@mui/material";
+import { memo } from "react";
 
 import { cn } from "@/utils/cn";
 
@@ -11,7 +12,7 @@ type Props = {
   className?: string;
 };
 
-export const SpanStatusBadge = ({ status, disableLabel = false, className }: Props) => {
+export const SpanStatusBadge = memo(({ status, disableLabel = false, className }: Props) => {
   const color = STATUS_COLORS[status] ?? STATUS_COLORS.Unset;
   const Icon = STATUS_ICONS[status] ?? STATUS_ICONS.Unset;
 
@@ -38,7 +39,7 @@ export const SpanStatusBadge = ({ status, disableLabel = false, className }: Pro
       </Stack>
     </Tooltip>
   );
-};
+});
 
 const STATUS_COLORS = {
   Ok: "var(--color-green-600)",

@@ -2,11 +2,14 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Box, IconButton, Typography, Chip, Modal, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import React from "react";
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
+import { Alert, Box, IconButton, Snackbar, Typography, Chip, Modal, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import React, { useState } from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 
+import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import useSnackbar from "@/hooks/useSnackbar";
 import type { InputVariable, EvalExecution, PromptOutput } from "@/lib/api-client/api-client";
 
 interface Message {
@@ -28,6 +31,10 @@ interface PromptResultDetailModalProps {
   onPrevious?: () => void;
   onNext?: () => void;
   onViewEvalInputs?: (evalExecution: EvalExecution) => void;
+  // Dataset update props (optional - only show button when all are provided)
+  datasetId?: string;
+  datasetVersion?: number;
+  datasetRowId?: string;
 }
 
 export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = ({
@@ -44,7 +51,19 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
   onPrevious,
   onNext,
   onViewEvalInputs,
+  datasetId,
+  datasetVersion,
+  datasetRowId,
 }) => {
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
+  const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && datasetRowId && output?.content);
+
+  const handleUpdateSuccess = () => {
+    showSnackbar("Dataset updated successfully. New version created.", "success");
+  };
+
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
     return {
@@ -64,7 +83,6 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
     borderStyle: "solid",
   });
 
-  // Add keyboard navigation
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return;
@@ -141,7 +159,6 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                       const messages = JSON.parse(renderedPrompt) as Message[];
                       return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                     } catch {
-                      // If not JSON, display as plain text
                       return (
                         <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
                           <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
@@ -156,9 +173,22 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
 
               {/* Output */}
               <Box>
-                <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
-                  Output Message:
-                </Typography>
+                <Box className="flex items-center justify-between mb-2">
+                  <Typography variant="subtitle2" className="font-medium text-gray-700">
+                    Output Message:
+                  </Typography>
+                  {canUpdateDataset && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<SaveAltIcon />}
+                      onClick={() => setUpdateModalOpen(true)}
+                      title="Update dataset row with this output"
+                    >
+                      Update Dataset
+                    </Button>
+                  )}
+                </Box>
                 <Box className="max-h-96 overflow-auto">
                   {output ? (
                     <>
@@ -227,6 +257,22 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
             </Box>
           )}
         </Box>
+
+        {canUpdateDataset && (
+          <UpdateDatasetRowModal
+            open={updateModalOpen}
+            onClose={() => setUpdateModalOpen(false)}
+            datasetId={datasetId!}
+            datasetVersion={datasetVersion!}
+            rowId={datasetRowId!}
+            outputValue={output!.content}
+            onSuccess={handleUpdateSuccess}
+          />
+        )}
+
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
+        </Snackbar>
       </Box>
     </Modal>
   );

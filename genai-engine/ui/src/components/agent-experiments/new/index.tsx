@@ -18,7 +18,8 @@ import { mapFormToRequest, mapTemplateToRequest } from "./utils/mapper";
 
 import { useAppForm, withForm } from "@/components/traces/components/filtering/hooks/form";
 import { getContentHeight } from "@/constants/layout";
-import { HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
+import { AgenticExperimentDetail, HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 function computeVars(endpoint: { body: string; headers: HttpHeader[] }): string[] {
   const bodyVars = extractVariablesFromText(endpoint.body);
@@ -38,8 +39,17 @@ function rebuildMapping(vars: string[], prev: TemplateVariableMappingInput[] | u
 }
 
 export const NewAgentExperiment = () => {
-  const lastSignature = useRef<string | null>(null);
   const { data: template, isLoading: isLoadingTemplate } = useCopyFromTemplate();
+
+  if (isLoadingTemplate) {
+    return <CircularProgress className="mx-auto" />;
+  }
+
+  return <Internal template={template} />;
+};
+
+const Internal = ({ template }: { template?: AgenticExperimentDetail }) => {
+  const lastSignature = useRef<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -47,6 +57,9 @@ export const NewAgentExperiment = () => {
   const form = useAppForm({
     defaultValues: mapTemplateToRequest(template),
     listeners: {
+      onMount: () => {
+        track(EVENT_NAMES.AGENT_EXPERIMENT_INTENT_CREATE, { template_id: template?.id });
+      },
       onChange: ({ fieldApi, formApi }) => {
         const name = fieldApi.name as string;
 
@@ -85,10 +98,6 @@ export const NewAgentExperiment = () => {
       navigate(`../${data.id}`, { replace: true });
     },
   });
-
-  if (isLoadingTemplate) {
-    return <CircularProgress className="mx-auto" />;
-  }
 
   return (
     <Stack
