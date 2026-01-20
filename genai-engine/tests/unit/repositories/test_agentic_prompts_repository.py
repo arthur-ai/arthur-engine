@@ -9,6 +9,17 @@ from arthur_common.models.common_schemas import (
     VariableTemplateValue,
 )
 from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.llm_model_providers import (
+    JsonSchema,
+    LLMConfigSettings,
+    LLMResponseFormat,
+    LLMResponseSchema,
+    MessageRole,
+    ModelProvider,
+    OpenAIMessage,
+    ToolChoice,
+    ToolChoiceFunction,
+)
 from litellm.types.utils import ChatCompletionMessageToolCall, Function, ModelResponse
 from pydantic import Field, create_model
 from sqlalchemy.exc import IntegrityError
@@ -20,16 +31,6 @@ from db_models.agentic_prompt_models import (
 )
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.common_schemas import JsonSchema
-from schemas.enums import MessageRole, ModelProvider
-from schemas.llm_schemas import (
-    LLMConfigSettings,
-    LLMResponseFormat,
-    LLMResponseSchema,
-    OpenAIMessage,
-    ToolChoice,
-    ToolChoiceFunction,
-)
 from schemas.request_schemas import (
     CompletionRequest,
     CreateAgenticPromptRequest,

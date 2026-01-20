@@ -13,8 +13,8 @@ from arthur_common.models.response_schemas import (
     NestedSpanWithMetricsResponse,
     TraceResponse,
 )
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 
-from schemas.request_schemas import TraceTransformDefinition
 from schemas.response_schemas import (
     TransformExtractionResponseList,
 )

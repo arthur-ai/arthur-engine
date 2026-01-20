@@ -4,12 +4,11 @@ import time
 from typing import Any, List, Optional, Type, Union
 
 import litellm
+from arthur_common.models.llm_model_providers import ModelProvider
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel, ConfigDict, Field
-
-from schemas.enums import ModelProvider
 
 logger = logging.getLogger(__name__)
 

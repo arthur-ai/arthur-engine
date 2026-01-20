@@ -63,6 +63,11 @@ from arthur_common.models.response_schemas import (
     ToxicityDetailsResponse,
     UserResponse,
 )
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse,
+    TraceTransformDefinition,
+    TraceTransformResponse,
+)
 from fastapi import HTTPException
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
@@ -176,7 +181,6 @@ from schemas.request_schemas import (
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
     RagVectorSimilarityTextSearchSettingRequest,
-    TraceTransformDefinition,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
@@ -187,7 +191,6 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
-    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
@@ -201,7 +204,6 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
-    TraceTransformResponse,
     TraceUserMetadataResponse,
     WeaviateHybridSearchSettingsConfigurationResponse,
     WeaviateKeywordSearchSettingsConfigurationResponse,
