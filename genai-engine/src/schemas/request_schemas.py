@@ -157,7 +157,18 @@ class TraceTransformUpdateRequest(BaseModel):
 
 
 class PutModelProviderCredentials(BaseModel):
-    api_key: SecretStr = Field(description="The API key for the provider.")
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="The API key for the provider.",
+    )
+    project_id: Optional[str] = Field(
+        default=None,
+        description="The vertex AI project ID. Will override the project ID in the key file if provided.",
+    )
+    region: Optional[str] = Field(
+        default=None,
+        description="The vertex AI region to use",
+    )
 
 
 class ApiKeyRagAuthenticationConfigRequest(BaseModel):

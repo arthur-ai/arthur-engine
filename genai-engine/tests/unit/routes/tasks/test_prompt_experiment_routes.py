@@ -164,7 +164,7 @@ def test_prompt_experiment_routes_happy_path(
     # Setup: Configure model provider (required for LLM evals and prompts)
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert (
@@ -705,7 +705,7 @@ def test_prompt_experiment_none_value_conversion(
     # Setup: Configure model provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert (
@@ -996,7 +996,7 @@ def test_prompt_experiment_unsaved_prompt(
     # Setup: Configure model provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert (

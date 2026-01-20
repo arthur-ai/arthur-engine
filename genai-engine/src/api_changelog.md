@@ -5,6 +5,103 @@ The intention of this changelog is to document API changes as they happen to eff
 # 01/22/2026
 - **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'missing_spans' to the response with the '200' status
 
+# 01/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  removed the media type 'application/json' from the request body
+- **CHANGE** for **URL**: /api/v1/model_providers  added the new 'bedrock' enum value to the 'providers/items/provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/model_providers
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new 'vertex_ai' enum value to the 'provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'bedrock' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  added the new 'bedrock' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}/history
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the 'prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}/state
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}/state
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new 'vertex_ai' enum value to the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PATCH /api/v1/prompt_experiments/{experiment_id}/notebook
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/notebooks
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/notebooks
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'vertex_ai' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompt_experiments
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for Component/Schema:  removed the schema 'PutModelProviderCredentials'
+- **CHANGE** for **URL**: /api/v1/completions  added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/completions  added the new 'vertex_ai' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  request body became optional
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the media type 'multipart/form-data' to the request body
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the non-success response with the status '400'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'bedrock' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'vertex_ai' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'bedrock' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'vertex_ai' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'bedrock' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'vertex_ai' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'vertex_ai' enum value to the request property 'model_provider'
+
 # 01/16/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'

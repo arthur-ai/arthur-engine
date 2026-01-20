@@ -264,7 +264,7 @@ def test_agentic_notebook_routes_happy_path(
     # Setup: Configure model provider (required for LLM evals)
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert (

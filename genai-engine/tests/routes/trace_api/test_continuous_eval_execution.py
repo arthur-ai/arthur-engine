@@ -304,7 +304,7 @@ def test_continuous_eval_execution(
     # Configure model provider
     response = client.base_client.put(
         "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -424,7 +424,7 @@ def test_continuous_eval_execution_response_fail(
     # Configure model provider
     response = client.base_client.put(
         "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -543,7 +543,7 @@ def test_continuous_eval_execution_annotation_eval_errors(
     # Configure model provider
     response = client.base_client.put(
         "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -857,7 +857,7 @@ def test_continuous_eval_execution_transform_errors(
     # Configure model provider
     response = client.base_client.put(
         "/api/v1/model_providers/openai",
-        json={"api_key": "test-key"},
+        data={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
