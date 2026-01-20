@@ -80,8 +80,7 @@ export const toExperimentPromptConfig = (
 
   // Validate both modelProvider and modelName are not empty
   // Return null instead of throwing to allow callers to handle incomplete prompts gracefully
-  if (!prompt.modelProvider || (prompt.modelProvider as string) === "" ||
-      !prompt.modelName || prompt.modelName === "") {
+  if (!prompt.modelProvider || (prompt.modelProvider as string) === "" || !prompt.modelName || prompt.modelName === "") {
     return null;
   }
 

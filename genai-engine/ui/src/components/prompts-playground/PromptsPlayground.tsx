@@ -226,7 +226,7 @@ const PromptsPlayground = () => {
         const errorMessage = error instanceof Error ? error.message : "Cannot save notebook: prompts are missing required configuration.";
         console.error("Failed to serialize notebook state:", error);
         setSaveStatus("unsaved");
-        
+
         // Only show snackbar for manual saves (when user clicks save button)
         if (saveTrigger === "manual") {
           showSnackbar(errorMessage, "error");
@@ -262,7 +262,7 @@ const PromptsPlayground = () => {
       } catch (error) {
         console.error("Failed to save notebook state:", error);
         setSaveStatus("unsaved");
-        
+
         // Show snackbar for save failures (both auto and manual)
         const errorMessage = error instanceof Error ? error.message : "Failed to save notebook state.";
         showSnackbar(errorMessage, "error");
@@ -300,7 +300,7 @@ const PromptsPlayground = () => {
       // Don't trigger auto-save since we can't save incomplete prompts
       hasUnsavedChangesRef.current = true;
       setSaveStatus("unsaved");
-      
+
       // Clear any pending auto-save timeout
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
@@ -759,7 +759,7 @@ const PromptsPlayground = () => {
       const promptConfigs = state.prompts
         .map((prompt) => toExperimentPromptConfig(prompt))
         .filter((config): config is NonNullable<ReturnType<typeof toExperimentPromptConfig>> => config !== null);
-      
+
       if (promptConfigs.length === 0) {
         console.error("No valid prompts to run experiment with");
         setIsRunningExperiment(false);

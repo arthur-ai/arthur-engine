@@ -25,45 +25,41 @@ export const serializePlaygroundState = (
   // Check for incomplete prompts - prompts that are NOT saved and missing model configuration
   // A prompt is "saved" (and doesn't need model config) only if:
   // - It has a non-empty name
-  // - It has a version (not null, not undefined)  
+  // - It has a version (not null, not undefined)
   // - It's not dirty (isDirty is false or undefined)
   const incompletePrompts = state.prompts.filter((prompt) => {
     // Check if prompt is truly saved
-    const isSaved = prompt.name && 
-                    prompt.name !== "" &&
-                    prompt.version !== null && 
-                    prompt.version !== undefined && 
-                    prompt.isDirty !== true; // Explicitly not dirty (false or undefined is OK)
-    
+    const isSaved = prompt.name && prompt.name !== "" && prompt.version !== null && prompt.version !== undefined && prompt.isDirty !== true; // Explicitly not dirty (false or undefined is OK)
+
     // If not saved, it needs both model provider AND model name
     if (!isSaved) {
       const hasModelConfig = prompt.modelProvider !== "" && prompt.modelName !== "";
       return !hasModelConfig; // Return true if missing model config
     }
-    
+
     // Saved prompts don't need model configuration
     return false;
   });
-  
+
   if (incompletePrompts.length > 0) {
     throw new Error(
       `Cannot save notebook: ${incompletePrompts.length} prompt(s) are missing model configuration. ` +
-      `Please configure both a model provider and model name for all prompts before saving.`
+        `Please configure both a model provider and model name for all prompts before saving.`
     );
   }
-  
+
   // Convert prompts to experiment prompt configs
   const prompt_configs = state.prompts
     .map((prompt) => toExperimentPromptConfig(prompt))
     .filter((config): config is NonNullable<ReturnType<typeof toExperimentPromptConfig>> => config !== null);
-  
+
   // Double-check: if any prompts were filtered out (returned null), that's an error
   // This should never happen if validation above worked, but it's a safety net
   if (prompt_configs.length < state.prompts.length) {
     const filteredCount = state.prompts.length - prompt_configs.length;
     throw new Error(
       `Cannot save notebook: ${filteredCount} prompt(s) could not be converted (missing required configuration). ` +
-      `Please ensure all prompts have model providers configured.`
+        `Please ensure all prompts have model providers configured.`
     );
   }
 
