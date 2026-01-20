@@ -142,17 +142,17 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               onClick={
                                 config.type === "saved"
                                   ? () => {
-                                    navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
-                                    onClose();
-                                  }
+                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      onClose();
+                                    }
                                   : undefined
                               }
                               onDelete={
                                 config.type === "saved"
                                   ? () => {
-                                    navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
-                                    onClose();
-                                  }
+                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      onClose();
+                                    }
                                   : undefined
                               }
                               deleteIcon={config.type === "saved" ? <OpenInNewIcon fontSize="small" /> : undefined}
@@ -183,17 +183,17 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                         onClick={
                           notebook.state.dataset_ref.id
                             ? () => {
-                              navigate(`/tasks/${taskId}/datasets/${notebook.state!.dataset_ref!.id}`);
-                              onClose();
-                            }
+                                navigate(`/tasks/${taskId}/datasets/${notebook.state!.dataset_ref!.id}`);
+                                onClose();
+                              }
                             : undefined
                         }
                         onDelete={
                           notebook.state.dataset_ref.id
                             ? () => {
-                              navigate(`/tasks/${taskId}/datasets/${notebook.state!.dataset_ref!.id}`);
-                              onClose();
-                            }
+                                navigate(`/tasks/${taskId}/datasets/${notebook.state!.dataset_ref!.id}`);
+                                onClose();
+                              }
                             : undefined
                         }
                         deleteIcon={notebook.state.dataset_ref.id ? <OpenInNewIcon fontSize="small" /> : undefined}
