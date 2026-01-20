@@ -16,6 +16,7 @@ import { SpanDetails, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetail
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { computeSpanMetrics, getSpan } from "@/services/tracing";
 import { wait } from "@/utils";
 
@@ -43,8 +44,33 @@ export const SpanDrawerContent = ({ id }: Props) => {
 
       return data;
     },
+    onMutate: () => {
+      track(EVENT_NAMES.TRACING_REFRESH_METRICS_CLICKED, {
+        level: "span",
+        span_id: id,
+        trace_id: span.trace_id,
+        task_id: span.task_id ?? "",
+      });
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.spans.byId(id), data);
+      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+        level: "span",
+        span_id: id,
+        trace_id: span.trace_id,
+        task_id: span.task_id ?? "",
+        success: true,
+      });
+    },
+    onError: (error) => {
+      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+        level: "span",
+        span_id: id,
+        trace_id: span.trace_id,
+        task_id: span.task_id ?? "",
+        success: false,
+        error_message: error instanceof Error ? error.message : "Failed to refresh metrics",
+      });
     },
   });
 
@@ -52,11 +78,24 @@ export const SpanDrawerContent = ({ id }: Props) => {
 
   const onOpenTraceDrawer = () => {
     select(span.span_id);
+    track(EVENT_NAMES.TRACING_DRAWER_SWITCH, {
+      from_level: "span",
+      to_level: "trace",
+      span_id: span.span_id,
+      trace_id: span.trace_id,
+      task_id: span.task_id ?? "",
+    });
     setDrawerTarget({ target: "trace", id: span.trace_id });
   };
 
   const handleOpenInPlayground = () => {
     if (span.task_id) {
+      track(EVENT_NAMES.PLAYGROUND_OPEN_FROM_SPAN, {
+        task_id: span.task_id,
+        span_id: span.span_id,
+        trace_id: span.trace_id,
+        source: "span_drawer",
+      });
       navigate(`/tasks/${span.task_id}/playgrounds/prompts?spanId=${span.span_id}`);
     }
   };

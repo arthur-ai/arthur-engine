@@ -22,6 +22,7 @@ import { useTask } from "@/hooks/useTask";
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredTraces } from "@/services/tracing";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
@@ -68,6 +69,12 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   const handleRowClick = useCallback(
     (row: TraceMetadataResponse) => {
+      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+        task_id: task?.id ?? "",
+        level: "trace",
+        trace_id: row.trace_id,
+        source: "table",
+      });
       setContext({
         type: "trace",
         ids: data?.traces?.map((trace) => trace.trace_id) ?? [],
@@ -75,13 +82,13 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
       setDrawerTarget({ target: "trace", id: row.trace_id });
     },
-    [data?.traces, setContext, setDrawerTarget]
+    [data?.traces, setContext, setDrawerTarget, task?.id]
   );
 
   const table = useTable({
     data: data?.traces ?? DEFAULT_DATA,
     columns,
-    pagination: { state: pagination, onChange: props.onPaginationChange },
+    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: data?.count ?? 0 },
     onRowClick: handleRowClick,
     state: {
       sorting,

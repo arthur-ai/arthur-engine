@@ -5,6 +5,7 @@ import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { SessionMetadataResponse } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<SessionMetadataResponse>();
@@ -17,7 +18,18 @@ export const sessionLevelColumns = [
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "session",
+                  id_type: "session",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );
@@ -68,7 +80,18 @@ export const sessionLevelColumns = [
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip label={label ?? ""} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label ?? ""}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "session",
+                  id_type: "user",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );
