@@ -68,6 +68,9 @@ interface PromptVersionDrawerProps {
     config?: Record<string, unknown> | null;
     variables?: string[] | null;
   }>;
+  // Dataset info for update functionality
+  datasetId?: string;
+  datasetVersion?: number;
 }
 
 export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
@@ -77,6 +80,8 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   taskId,
   experimentId,
   experimentPromptConfigs,
+  datasetId,
+  datasetVersion,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -628,6 +633,9 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
           onPrevious={handlePrevious}
           onNext={handleNext}
           onViewEvalInputs={handleViewEvalInputs}
+          datasetId={datasetId}
+          datasetVersion={datasetVersion}
+          datasetRowId={results[selectedResultIndex].dataset_row_id}
         />
       )}
 
