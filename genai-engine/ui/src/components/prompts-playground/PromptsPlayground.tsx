@@ -1001,31 +1001,31 @@ const PromptsPlayground = () => {
             (mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version
           )?.mappings
             ? Object.entries(
-                formData.evalVariableMappings.find((mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version)!
-                  .mappings
-              ).map(([variableName, mapping]) => ({
-                variable_name: variableName,
-                source:
-                  mapping.sourceType === "dataset_column"
-                    ? {
-                        type: "dataset_column" as const,
-                        dataset_column: { name: mapping.datasetColumn! },
-                      }
-                    : {
-                        type: "experiment_output" as const,
-                        experiment_output: { json_path: mapping.jsonPath! },
-                      },
-              }))
+              formData.evalVariableMappings.find((mapping) => mapping.evalName === evalRef.name && mapping.evalVersion === evalRef.version)!
+                .mappings
+            ).map(([variableName, mapping]) => ({
+              variable_name: variableName,
+              source:
+                mapping.sourceType === "dataset_column"
+                  ? {
+                    type: "dataset_column" as const,
+                    dataset_column: { name: mapping.datasetColumn! },
+                  }
+                  : {
+                    type: "experiment_output" as const,
+                    experiment_output: { json_path: mapping.jsonPath! },
+                  },
+            }))
             : [],
         })),
         prompt_variable_mapping: formData.promptVariableMappings
           ? Object.entries(formData.promptVariableMappings).map(([variableName, datasetColumn]) => ({
-              variable_name: variableName,
-              source: {
-                type: "dataset_column" as const,
-                dataset_column: { name: datasetColumn },
-              },
-            }))
+            variable_name: variableName,
+            source: {
+              type: "dataset_column" as const,
+              dataset_column: { name: datasetColumn },
+            },
+          }))
           : [],
         dataset_row_filter: formData.datasetRowFilter || [],
         // Include prompt configs for loading into notebook
