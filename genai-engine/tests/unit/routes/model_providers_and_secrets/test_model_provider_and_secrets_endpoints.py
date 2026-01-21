@@ -31,7 +31,7 @@ def test_model_provider_lifecycle(
     # enable the openai provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -72,7 +72,7 @@ def test_model_provider_lifecycle(
     # enable the anthropic provider
     response = client.base_client.put(
         f"/api/v1/model_providers/anthropic",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -95,7 +95,7 @@ def test_model_provider_lifecycle(
     # overwrite the openai provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        data={"api_key": "test-key2"},
+        json={"api_key": "test-key2"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -135,7 +135,7 @@ def test_secret_rotation(mock_completion_cost, client: GenaiEngineTestClientBase
         # enable the openai provider
         response = client.base_client.put(
             f"/api/v1/model_providers/openai",
-            data={"api_key": "openaiKey"},
+            json={"api_key": "openaiKey"},
             headers=client.authorized_user_api_key_headers,
         )
         assert response.status_code == 201
@@ -232,7 +232,7 @@ def test_put_model_provider_validations(client: GenaiEngineTestClientBase):
     # verify attempting to add an api key for vertex ai fails
     response = client.base_client.put(
         f"/api/v1/model_providers/vertex_ai",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -240,7 +240,7 @@ def test_put_model_provider_validations(client: GenaiEngineTestClientBase):
     # verify attempting to add an aws access key without a secret access key fails for bedrock
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
-        data={"aws_access_key_id": "test-key"},
+        json={"aws_access_key_id": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -248,7 +248,7 @@ def test_put_model_provider_validations(client: GenaiEngineTestClientBase):
     # verify attempting to add an aws secret access key without an aws access key fails for bedrock
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
-        data={"aws_secret_access_key": "test-key"},
+        json={"aws_secret_access_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -256,7 +256,7 @@ def test_put_model_provider_validations(client: GenaiEngineTestClientBase):
     # verify other providers outside of bedrock fail if no api key is provided
     response = client.base_client.put(
         f"/api/v1/model_providers/anthropic",
-        data={},
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -264,7 +264,7 @@ def test_put_model_provider_validations(client: GenaiEngineTestClientBase):
     # verify credentials file with non-JSON content type fails
     response = client.base_client.put(
         f"/api/v1/model_providers/vertex_ai",
-        data={},
+        json={},
         files={
             "credentials_file": ("credentials.txt", b'{"test": "data"}', "text/plain"),
         },
@@ -317,7 +317,7 @@ def test_setting_bedrock_provider_credentials(client: GenaiEngineTestClientBase)
     # Enabling bedrock with an api key
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -325,7 +325,7 @@ def test_setting_bedrock_provider_credentials(client: GenaiEngineTestClientBase)
     # Enabling bedrock with access key, secret access key and optional region
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
-        data={
+        json={
             "aws_access_key_id": "test-key",
             "aws_secret_access_key": "test-key",
             "region": "us-east-1",
@@ -337,7 +337,7 @@ def test_setting_bedrock_provider_credentials(client: GenaiEngineTestClientBase)
     # Enabling bedrock with endpoint
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
-        data={"aws_bedrock_runtime_endpoint": "test-endpoint"},
+        json={"aws_bedrock_runtime_endpoint": "test-endpoint"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -345,7 +345,7 @@ def test_setting_bedrock_provider_credentials(client: GenaiEngineTestClientBase)
     # Enabling bedrock with role and session name
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
-        data={"aws_role_name": "test-role", "aws_session_name": "test-session"},
+        json={"aws_role_name": "test-role", "aws_session_name": "test-session"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201

@@ -7427,7 +7427,7 @@
                     "Model Providers"
                 ],
                 "summary": "Set the configuration for a model provider.",
-                "description": "Set the configuration for a model provider. Optionally upload a GCP service account JSON credentials file or bedrock credentials",
+                "description": "Set the configuration for a model provider. Optionally upload GCP service account JSON credentials or bedrock credentials",
                 "operationId": "set_model_provider_api_v1_model_providers__provider__put",
                 "security": [
                     {
@@ -7445,10 +7445,11 @@
                     }
                 ],
                 "requestBody": {
+                    "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/Body_set_model_provider_api_v1_model_providers__provider__put"
+                                "$ref": "#/components/schemas/PutModelProviderCredentials"
                             }
                         }
                     }
@@ -7461,9 +7462,6 @@
                                 "schema": {}
                             }
                         }
-                    },
-                    "400": {
-                        "description": "Invalid JSON file or missing required fields"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -16563,113 +16561,6 @@
                 ],
                 "title": "Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put"
             },
-            "Body_set_model_provider_api_v1_model_providers__provider__put": {
-                "properties": {
-                    "project_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Project Id"
-                    },
-                    "region": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Region"
-                    },
-                    "api_key": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Api Key"
-                    },
-                    "aws_access_key_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Aws Access Key Id"
-                    },
-                    "aws_secret_access_key": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Aws Secret Access Key"
-                    },
-                    "aws_bedrock_runtime_endpoint": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Aws Bedrock Runtime Endpoint"
-                    },
-                    "aws_role_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Aws Role Name"
-                    },
-                    "aws_session_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Aws Session Name"
-                    },
-                    "credentials_file": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "binary"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Credentials File",
-                        "description": "Optional JSON file containing GCP service account credentials"
-                    }
-                },
-                "type": "object",
-                "title": "Body_set_model_provider_api_v1_model_providers__provider__put"
-            },
             "Body_upload_embeddings_file_api_chat_files_post": {
                 "properties": {
                     "file": {
@@ -18838,6 +18729,91 @@
                     "success"
                 ],
                 "title": "FileUploadResult"
+            },
+            "GCPServiceAccountCredentialsRequest": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Type",
+                        "writeOnly": true
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Project Id",
+                        "writeOnly": true
+                    },
+                    "private_key_id": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Private Key Id",
+                        "writeOnly": true
+                    },
+                    "private_key": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Private Key",
+                        "writeOnly": true
+                    },
+                    "client_email": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Client Email",
+                        "writeOnly": true
+                    },
+                    "client_id": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Client Id",
+                        "writeOnly": true
+                    },
+                    "auth_uri": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Auth Uri",
+                        "writeOnly": true
+                    },
+                    "token_uri": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Token Uri",
+                        "writeOnly": true
+                    },
+                    "auth_provider_x509_cert_url": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Auth Provider X509 Cert Url",
+                        "writeOnly": true
+                    },
+                    "client_x509_cert_url": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Client X509 Cert Url",
+                        "writeOnly": true
+                    },
+                    "universe_domain": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Universe Domain",
+                        "writeOnly": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type",
+                    "project_id",
+                    "private_key_id",
+                    "private_key",
+                    "client_email",
+                    "client_id",
+                    "auth_uri",
+                    "token_uri",
+                    "auth_provider_x509_cert_url",
+                    "client_x509_cert_url",
+                    "universe_domain"
+                ],
+                "title": "GCPServiceAccountCredentialsRequest"
             },
             "GeneratedVariableSource": {
                 "properties": {
@@ -23269,6 +23245,131 @@
                 ],
                 "title": "PromptVersionResultListResponse",
                 "description": "Paginated list of results for a specific prompt version"
+            },
+            "PutModelProviderCredentials": {
+                "properties": {
+                    "api_key": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Key",
+                        "description": "The API key for the provider."
+                    },
+                    "project_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Project Id",
+                        "description": "The vertex AI project ID. Will override the project ID in the key file if provided."
+                    },
+                    "region": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Region",
+                        "description": "The vertex AI region to use"
+                    },
+                    "aws_access_key_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Access Key Id",
+                        "description": "The AWS access key ID."
+                    },
+                    "aws_secret_access_key": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Secret Access Key",
+                        "description": "The AWS secret access key."
+                    },
+                    "aws_bedrock_runtime_endpoint": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Bedrock Runtime Endpoint",
+                        "description": "The AWS Bedrock runtime endpoint."
+                    },
+                    "aws_role_name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Role Name",
+                        "description": "The AWS role name."
+                    },
+                    "aws_session_name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Session Name",
+                        "description": "The AWS session name."
+                    },
+                    "credentials_file": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPServiceAccountCredentialsRequest"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Optional GCP service account credentials JSON"
+                    }
+                },
+                "type": "object",
+                "title": "PutModelProviderCredentials"
             },
             "QueryFeedbackResponse": {
                 "properties": {

@@ -185,7 +185,7 @@ def test_run_agentic_prompt_success(
     # configure a provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -238,7 +238,7 @@ def test_run_saved_agentic_prompt_success(
     # configure a provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -542,7 +542,7 @@ def test_streaming_agentic_prompt(
     # configure a provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -621,7 +621,7 @@ async def test_run_agentic_prompt_stream_badrequest_returns_error_event(
     # configure a provider
     response = client.base_client.put(
         f"/api/v1/model_providers/openai",
-        data={"api_key": "test-key"},
+        json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -2259,6 +2259,7 @@ def test_run_unsaved_prompt_cloud_providers_success(
     # configure with bedrock using default credentials
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -2287,6 +2288,7 @@ def test_run_unsaved_prompt_cloud_providers_success(
     # configure with vertex ai using default credentials
     response = client.base_client.put(
         f"/api/v1/model_providers/vertex_ai",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201

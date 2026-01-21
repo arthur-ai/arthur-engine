@@ -106,10 +106,13 @@ class ModelProviderRepository:
         self,
         provider: ModelProvider,
         provider_credentials: PutModelProviderCredentials,
-        has_aws_access_key_id: bool,
-        has_aws_secret_access_key: bool,
-        has_credentials_file: bool,
     ) -> None:
+        has_aws_access_key_id = provider_credentials.aws_access_key_id is not None
+        has_aws_secret_access_key = (
+            provider_credentials.aws_secret_access_key is not None
+        )
+        has_credentials_file = provider_credentials.credentials_file is not None
+
         if provider == ModelProvider.VERTEX_AI:
             if provider_credentials.api_key is not None:
                 raise HTTPException(

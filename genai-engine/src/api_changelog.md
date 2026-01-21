@@ -5,8 +5,8 @@ The intention of this changelog is to document API changes as they happen to eff
 # 01/22/2026
 - **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'missing_spans' to the response with the '200' status
 
-# 01/20/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  removed the media type 'application/json' from the request body
+# 01/21/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'password' to ''/''
 - **CHANGE** for **URL**: /api/v1/model_providers  added the new 'bedrock' enum value to the 'providers/items/provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/model_providers
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
@@ -79,16 +79,23 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** in API PUT /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
 - **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for Component/Schema:  removed the schema 'PutModelProviderCredentials'
 - **CHANGE** for **URL**: /api/v1/completions  added the new 'bedrock' enum value to the request property 'model_provider'
 - **CHANGE** for **URL**: /api/v1/completions  added the new 'vertex_ai' enum value to the request property 'model_provider'
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  request body became optional
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the media type 'multipart/form-data' to the request body
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_access_key_id'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_bedrock_runtime_endpoint'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_role_name'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_secret_access_key'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_session_name'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'credentials_file'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'project_id'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'region'
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the non-success response with the status '400'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added 'subschema #1, subschema #2' to the 'api_key' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request property 'api_key' became optional
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request required property 'api_key' became not write-only
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
 - **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'bedrock' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'

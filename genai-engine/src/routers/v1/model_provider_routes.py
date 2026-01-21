@@ -2,10 +2,9 @@ import json
 import logging
 
 from arthur_common.models.llm_model_providers import ModelProvider
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
-from pydantic import SecretStr
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from dependencies import get_db_session
 from repositories.model_provider_repository import ModelProviderRepository
@@ -35,82 +34,39 @@ model_provider_routes = APIRouter(
 @model_provider_routes.put(
     "/model_providers/{provider}",
     summary="Set the configuration for a model provider.",
-    description="Set the configuration for a model provider. Optionally upload a GCP service account JSON credentials file or bedrock credentials",
+    description="Set the configuration for a model provider. Optionally upload GCP service account JSON credentials or bedrock credentials",
     status_code=HTTP_201_CREATED,
     responses={
         HTTP_201_CREATED: {"description": "Configuration set"},
-        HTTP_400_BAD_REQUEST: {
-            "description": "Invalid JSON file or missing required fields",
-        },
     },
     tags=["Model Providers"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
 async def set_model_provider(
     provider: ModelProvider,
-    project_id: str | None = Form(None),
-    region: str | None = Form(None),
-    api_key: str | None = Form(None),
-    aws_access_key_id: str | None = Form(None),
-    aws_secret_access_key: str | None = Form(None),
-    aws_bedrock_runtime_endpoint: str | None = Form(None),
-    aws_role_name: str | None = Form(None),
-    aws_session_name: str | None = Form(None),
-    credentials_file: UploadFile | None = File(
-        None,
-        description="Optional JSON file containing GCP service account credentials",
-    ),
+    provider_credentials: PutModelProviderCredentials,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
     """Set the configuration for a model provider"""
-    provider_credentials = PutModelProviderCredentials(
-        project_id=project_id,
-        region=region,
-        api_key=api_key,
-    )
-
     try:
         repo = ModelProviderRepository(db_session)
         repo.validate_model_provider_credentials(
             provider=provider,
             provider_credentials=provider_credentials,
-            has_aws_access_key_id=aws_access_key_id is not None,
-            has_aws_secret_access_key=aws_secret_access_key is not None,
-            has_credentials_file=credentials_file is not None,
         )
 
         # Extract vertex credentials if provided
         vertex_credentials = None
-        if credentials_file is not None:
-            # Validate file type
-            if credentials_file.content_type != "application/json":
-                raise HTTPException(
-                    status_code=HTTP_400_BAD_REQUEST,
-                    detail=f"File: {credentials_file.content_type} must be a JSON file",
-                )
-
-            # Read and parse the uploaded JSON file
-            content = await credentials_file.read()
-            credentials_data = json.loads(content)
-            vertex_credentials = GCPServiceAccountCredentials.model_validate(
-                credentials_data,
+        if provider_credentials.credentials_file is not None:
+            vertex_credentials = GCPServiceAccountCredentials.from_request_model(
+                provider_credentials.credentials_file,
             )
 
-        aws_bedrock_credentials = AwsBedrockCredentials(
-            aws_access_key_id=(
-                SecretStr(aws_access_key_id) if aws_access_key_id else None
-            ),
-            aws_secret_access_key=(
-                SecretStr(aws_secret_access_key) if aws_secret_access_key else None
-            ),
-            aws_bedrock_runtime_endpoint=(
-                SecretStr(aws_bedrock_runtime_endpoint)
-                if aws_bedrock_runtime_endpoint
-                else None
-            ),
-            aws_role_name=SecretStr(aws_role_name) if aws_role_name else None,
-            aws_session_name=SecretStr(aws_session_name) if aws_session_name else None,
+        aws_bedrock_credentials = (
+            AwsBedrockCredentials.from_put_model_provider_credentials(
+                provider_credentials,
+            )
         )
 
         repo.set_model_provider_credentials(
