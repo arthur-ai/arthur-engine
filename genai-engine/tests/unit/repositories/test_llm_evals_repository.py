@@ -136,12 +136,7 @@ def test_save_llm_eval_with_llm_eval_object(
     assert result.model_name == sample_llm_eval.model_name
     assert result.model_provider == sample_llm_eval.model_provider
     assert result.instructions == sample_llm_eval.instructions
-    # TODO: Question to Tal. We are comparing here 2 different types of objects.
-    # One is LLMConfigSettings and the other is LLMBaseConfigSettings. They are not the same type.
-    # Should we compare the models_dump() of the objects where we exclude the none?
-    assert result.config.model_dump_json(
-        exclude_none=True,
-    ) == sample_llm_eval.config.model_dump_json(exclude_none=True)
+    assert result.config == sample_llm_eval.config
     assert result.version == sample_llm_eval.version
     assert result.deleted_at is None
 
@@ -159,12 +154,7 @@ def test_llm_eval_repo_from_db_model(llm_evals_repo, sample_db_llm_eval):
     assert llm_eval.model_name == sample_db_llm_eval.model_name
     assert llm_eval.model_provider == sample_db_llm_eval.model_provider
     assert llm_eval.instructions == sample_db_llm_eval.instructions
-    # TODO: Question to Tal. We are comparing here 2 different types of objects.
-    # One is LLMConfigSettings and the other is LLMBaseConfigSettings. They are not the same type.
-    # Should we compare the models_dump() of the objects where we exclude the none?
-    assert llm_eval.config.model_dump(
-        exclude_none=True,
-    ) == sample_db_llm_eval.config.model_dump(exclude_none=True)
+    assert llm_eval.config == sample_db_llm_eval.config
     assert llm_eval.version == sample_db_llm_eval.version
     assert llm_eval.created_at == sample_db_llm_eval.created_at
     assert llm_eval.deleted_at is None
@@ -337,12 +327,7 @@ def test_get_eval_success(
     assert result.model_name == sample_db_llm_eval.model_name
     assert result.model_provider == sample_db_llm_eval.model_provider
     assert result.instructions == sample_db_llm_eval.instructions
-    # TODO: Question to Tal. We are comparing here 2 different types of objects.
-    # One is LLMConfigSettings and the other is LLMBaseConfigSettings. They are not the same type.
-    # Should we compare the models_dump() of the objects where we exclude the none?
-    assert result.config.model_dump(
-        exclude_none=True,
-    ) == sample_db_llm_eval.config.model_dump(exclude_none=True)
+    assert result.config == sample_db_llm_eval.config
     assert result.version == sample_db_llm_eval.version
     assert result.deleted_at is None
 
@@ -395,12 +380,7 @@ def test_get_eval_different_version_types_success(
         assert result.model_name == sample_db_llm_eval.model_name
         assert result.model_provider == sample_db_llm_eval.model_provider
         assert result.instructions == sample_db_llm_eval.instructions
-        # TODO: Question to Tal. We are comparing here 2 different types of objects.
-        # One is LLMConfigSettings and the other is LLMBaseConfigSettings. They are not the same type.
-        # Should we compare the models_dump() of the objects where we exclude the none?
-        assert result.config.model_dump(
-            exclude_none=True,
-        ) == sample_db_llm_eval.config.model_dump(exclude_none=True)
+        assert result.config == sample_db_llm_eval.config
         assert result.version == sample_db_llm_eval.version
         assert result.created_at == created_at_timestamp
         assert result.deleted_at is None

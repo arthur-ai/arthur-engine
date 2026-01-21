@@ -237,7 +237,7 @@ class AgenticExperimentRepository:
             or AgenticResult(
                 request_url="",
                 request_headers={},
-                request_body={},
+                request_body="",
                 evals=[],
             ),
             total_cost=db_test_case.total_cost,

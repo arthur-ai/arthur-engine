@@ -120,12 +120,13 @@ class ContinuousEvalQueueService:
             wait_time = job.execute_at
 
         wait_time = max(0, wait_time - time.time())
-        # TODO: Ask Tal what to do if there is no executor?
         if not self.executor:
             logger.error(
-                f"Cannot submit job for trace {job.trace_id}: executor is not initialized",
+                f"Cannot submit job for trace {job.trace_id}: executor is not initialized. Start the continuous eval queue service first.",
             )
-            return
+            raise ValueError(
+                "Continuous eval queue service is not initialized. Start the continuous eval queue service first.",
+            )
         self.executor.submit(self._submit_job, job, wait_time)
 
     def _background_loop(self) -> None:

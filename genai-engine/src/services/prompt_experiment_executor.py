@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from arthur_common.models.common_schemas import VariableTemplateValue
+from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -29,7 +30,6 @@ from schemas.base_experiment_schemas import (
     EvalResultSummary,
     TestCaseStatus,
 )
-from schemas.enums import ModelProvider
 from schemas.prompt_experiment_schemas import (
     PromptEvalResultSummaries,
     SummaryResults,

@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
+from arthur_common.models.llm_model_providers import LLMBaseConfigSettings
 from sqlalchemy import (
     TIMESTAMP,
     UUID,
@@ -16,7 +17,6 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
-from schemas.llm_schemas import LLMBaseConfigSettings
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask

@@ -3,6 +3,9 @@ from typing import List, Optional, Type, Union, cast
 from arthur_common.models.llm_model_providers import (
     LLMConfigSettings,
     LLMResponseFormat,
+    MessageRole,
+    ModelProvider,
+    OpenAIMessage,
 )
 from arthur_common.models.task_eval_schemas import LLMEval
 from litellm import supports_response_schema
@@ -14,9 +17,7 @@ from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.enums import MessageRole, ModelProvider
-from schemas.llm_eval_schemas import LLMEval, ReasonedScore
-from schemas.llm_schemas import LLMConfigSettings, LLMResponseFormat, OpenAIMessage
+from schemas.llm_eval_schemas import ReasonedScore
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,

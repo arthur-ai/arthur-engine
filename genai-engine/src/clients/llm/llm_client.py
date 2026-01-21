@@ -23,7 +23,6 @@ class LLMModelResponse(BaseModel):
         ...,
         description="The raw response from litellm",
     )
-    # TODO: Question to Tal. Here we are expecting a type[BaseModel], but we are passing a BaseModel. Is this correct?
     structured_output_response: Optional[BaseModel] = Field(
         None,
         description="The structured output base model response from the model",

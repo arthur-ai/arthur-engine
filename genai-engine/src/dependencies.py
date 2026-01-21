@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Any, Generator, Optional
 from uuid import UUID
 
+from arthur_common.models.llm_model_providers import ModelProvider
+
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -36,7 +38,7 @@ from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.enums import DocumentStorageEnvironment, ModelProvider
+from schemas.enums import DocumentStorageEnvironment
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,
