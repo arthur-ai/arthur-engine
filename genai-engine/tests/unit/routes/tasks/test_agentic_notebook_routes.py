@@ -20,6 +20,10 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
+from arthur_common.models.task_eval_schemas import (
+    TraceTransformDefinition,
+    TraceTransformVariableDefinition,
+)
 from litellm.types.utils import ModelResponse
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
@@ -58,8 +62,6 @@ from schemas.common_schemas import (
 )
 from schemas.request_schemas import (
     NewTraceTransformRequest,
-    TraceTransformDefinition,
-    TraceTransformVariableDefinition,
 )
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.routes.trace_api.conftest import (

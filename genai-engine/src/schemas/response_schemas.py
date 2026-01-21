@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
+from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
     ExternalInference,
@@ -23,14 +24,11 @@ from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
-    ModelProvider,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
 )
-from schemas.llm_schemas import OpenAIMessage
-from schemas.request_schemas import TraceTransformDefinition
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -145,31 +143,6 @@ class ListDatasetVersionsResponse(BaseModel):
     total_pages: int = Field(description="The total number of pages.")
     total_count: int = Field(
         description="The total number of rows in the dataset version.",
-    )
-
-
-class TraceTransformResponse(BaseModel):
-    id: UUID = Field(description="ID of the transform.")
-    task_id: str = Field(description="ID of the parent task.")
-    name: str = Field(description="Name of the transform.")
-    description: Optional[str] = Field(
-        default=None,
-        description="Description of the transform.",
-    )
-    definition: TraceTransformDefinition = Field(
-        description="Transform definition specifying extraction rules.",
-    )
-    created_at: datetime = Field(
-        description="Timestamp representing the time of transform creation",
-    )
-    updated_at: datetime = Field(
-        description="Timestamp representing the time of the last transform update",
-    )
-
-
-class ListTraceTransformsResponse(BaseModel):
-    transforms: List[TraceTransformResponse] = Field(
-        description="List of transforms for the task.",
     )
 
 
@@ -766,32 +739,6 @@ class TransformExtractionResponseList(BaseModel):
     variables: list[VariableTemplateValue] = Field(
         description="List of extracted variables.",
     )
-
-
-class ContinuousEvalResponse(BaseModel):
-    id: UUID = Field(description="ID of the transform.")
-    name: str = Field(description="Name of the continuous eval.")
-    description: Optional[str] = Field(
-        default=None,
-        description="Description of the continuous eval.",
-    )
-    task_id: str = Field(description="ID of the parent task.")
-    llm_eval_name: str = Field(description="Name of the llm eval.")
-    llm_eval_version: int = Field(description="Version of the llm eval.")
-    transform_id: UUID = Field(description="ID of the transform.")
-    created_at: datetime = Field(
-        description="Timestamp representing the time the transform was added to the llm eval.",
-    )
-    updated_at: datetime = Field(
-        description="Timestamp representing the time the continuous eval was last updated.",
-    )
-
-
-class ListContinuousEvalsResponse(BaseModel):
-    evals: List[ContinuousEvalResponse] = Field(
-        description="List of continuous evals.",
-    )
-    count: int = Field(description="Total number of evals")
 
 
 class ContinuousEvalRerunResponse(BaseModel):

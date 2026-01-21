@@ -7,15 +7,17 @@ from arthur_common.models.common_schemas import (
     PaginationParameters,
     PaginationSortMethod,
 )
+from arthur_common.models.llm_model_providers import (
+    LLMBaseConfigSettings,
+    ModelProvider,
+)
+from arthur_common.models.task_eval_schemas import LLMEval
 from litellm.types.utils import ModelResponse
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.llm_evals_repository import LLMEvalsRepository
-from schemas.enums import ModelProvider
-from schemas.llm_eval_schemas import LLMEval
-from schemas.llm_schemas import LLMBaseConfigSettings
 from schemas.request_schemas import (
     CreateEvalRequest,
     LLMGetAllFilterRequest,
