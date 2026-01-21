@@ -1,10 +1,10 @@
 [project]
 name = "arthur-observability-sdk"
-version = "0.1.1"
+version = "0.1.2"
 description = "Official Python SDK for Arthur platform APIs and OpenInference tracing"
 authors = [{name = "Arthur", email = "engineering@arthur.ai"}]
 readme = "README.md"
-requires-python = ">=3.12,<=3.13"
+requires-python = ">=3.12,<3.14"
 license = {text = "Apache-2.0"}
 keywords = ["arthur", "observability", "tracing", "opentelemetry", "openinference", "llm", "monitoring"]
 classifiers = [
