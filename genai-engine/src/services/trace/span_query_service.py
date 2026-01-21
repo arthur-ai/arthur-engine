@@ -838,6 +838,10 @@ class SpanQueryService:
         if filters.status_code:
             query = query.where(DatabaseSpan.status_code.in_(filters.status_code))
 
+        # Apply span_ids filter even when no span_types are detected
+        if filters.span_ids:
+            query = query.where(DatabaseSpan.span_id.in_(filters.span_ids))
+
         if not span_types:
             return query
 
