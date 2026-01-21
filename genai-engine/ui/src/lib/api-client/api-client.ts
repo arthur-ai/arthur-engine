@@ -705,8 +705,14 @@ export interface AgenticPromptRunResponse {
   content?: string | null;
   /** Cost */
   cost: string;
+  /** Input Tokens */
+  input_tokens?: number | null;
+  /** Output Tokens */
+  output_tokens?: number | null;
   /** Tool Calls */
   tool_calls?: ChatCompletionMessageToolCall[] | null;
+  /** Total Tokens */
+  total_tokens?: number | null;
 }
 
 /** AgenticPromptVersionListResponse */
