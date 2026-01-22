@@ -138,9 +138,6 @@ class RagExperimentExecutor(BaseExperimentExecutor):
         total_cost = 0.0
         for rag_result in test_case.rag_results:
             # Add eval costs
-            # TODO: In method we are expecting a list of DatabaseBaseEvalScore, but we are passing
-            # a list of DatabaseRagExperimentTestCaseRagResultEvalScore
-            # Question to Alex
             total_cost += self._calculate_total_cost_eval_scores(rag_result.eval_scores)
         return total_cost
 
@@ -209,7 +206,11 @@ class RagExperimentExecutor(BaseExperimentExecutor):
 
             # Get setting configuration so we have the RAG provider ID available
             try:
-                # TODO: Ask Alex about None handling
+                if rag_result.setting_configuration_id is None:
+                    logger.error(
+                        f"RAG setting configuration ID is None",
+                    )
+                    return None
                 setting_config_obj = rag_providers_repo.get_rag_setting_configuration(
                     rag_result.setting_configuration_id,
                 )

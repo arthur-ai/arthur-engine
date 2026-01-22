@@ -130,9 +130,6 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
 
             # Add eval costs
             total_cost += self._calculate_total_cost_eval_scores(
-                # TODO: In method we are expecting a list of DatabaseBaseEvalScore, but we are passing
-                # a list of DatabasePromptExperimentTestCasePromptResultEvalScore
-                # Question to Alex
                 prompt_result.eval_scores,
             )
         return total_cost

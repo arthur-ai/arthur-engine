@@ -550,9 +550,6 @@ class WeaviateHybridSearchSettingsConfigurationRequest(
                 max_vector_distance=self.max_vector_distance,
                 minimum_match_or_operator=self.minimum_match_or_operator,
                 and_operator=self.and_operator,
-                # TODO: Ask Alex if we should add certainty and distance to model?
-                # certainty=self.certainty,
-                # distance=self.distance,
                 target_vector=self.target_vector,
                 include_vector=self.include_vector,
                 offset=self.offset,

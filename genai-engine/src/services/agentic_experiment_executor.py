@@ -160,9 +160,6 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         total_cost = 0.0
         if test_case.agentic_result:
             # Add eval costs
-            # TODO: In method we are expecting a list of DatabaseBaseEvalScore, but we are passing
-            # a list of DatabaseAgenticExperimentTestCaseAgenticResultEvalScore
-            # Question to Alex
             total_cost += self._calculate_total_cost_eval_scores(
                 test_case.agentic_result.eval_scores,
             )
