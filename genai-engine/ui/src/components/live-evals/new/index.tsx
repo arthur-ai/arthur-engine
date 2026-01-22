@@ -161,6 +161,7 @@ export const LiveEvalsNew = () => {
             <FormControlLabel
               control={<Switch checked={field.state.value} onChange={(e) => field.handleChange(e.target.checked)} />}
               label="Enable continuous eval"
+              slotProps={{ typography: { color: "text.primary" } }}
             />
           )}
         </form.Field>
