@@ -8,7 +8,7 @@ import { createSessionLevelColumns } from "../../data/create-session-level-colum
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
-import { createFilterRow } from "../filtering/filters-row";
+import { FilterRow } from "../filtering/FilterRow";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
 
 import { TracesTable } from "./TracesTable";
@@ -91,11 +91,19 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     [formatDate, track]
   );
 
-  const { FiltersRow } = useMemo(
-    () =>
-      createFilterRow(SESSION_FIELDS, {
-        user_ids: { taskId: task?.id ?? "", api },
-      }),
+  const setFilters = useFilterStore((state) => state.setFilters);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: typeof filters) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
+
+  const dynamicEnumArgMap = useMemo(
+    () => ({
+      user_ids: { taskId: task?.id ?? "", api },
+    }),
     [task?.id, api]
   );
 
@@ -115,8 +123,16 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   return (
     <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
-        {/* Only show FiltersRow if we have sessions or if filters are active */}
-        {(hasData || hasActiveFilters) && <FiltersRow />}
+        {/* Only show FilterRow if we have sessions or if filters are active */}
+        {(hasData || hasActiveFilters) && (
+          <FilterRow
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            fieldConfig={SESSION_FIELDS as readonly typeof SESSION_FIELDS[number][]}
+            dynamicEnumArgMap={dynamicEnumArgMap}
+            onTrack={track}
+          />
+        )}
 
         {hasData && (
           <>

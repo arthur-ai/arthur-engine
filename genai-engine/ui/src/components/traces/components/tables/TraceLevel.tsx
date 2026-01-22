@@ -14,7 +14,8 @@ import { buildThresholdsFromSample } from "../../utils/duration";
 import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
 import { DurationCellWithBucket } from "../DurationCell";
-import { createFilterRow } from "../filtering/filters-row";
+import { FilterRow } from "../filtering/FilterRow";
+import { IncomingFilter } from "../filtering/mapper";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { TraceContentCell } from "../TraceContentCell";
 
@@ -109,14 +110,22 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     []
   );
 
-  const { FiltersRow } = useMemo(
-    () =>
-      createFilterRow([...TRACE_FIELDS], {
-        trace_ids: { taskId: task?.id ?? "", api },
-        session_ids: { taskId: task?.id ?? "", api },
-        user_ids: { taskId: task?.id ?? "", api },
-        span_ids: { taskId: task?.id ?? "", api },
-      }),
+  const setFilters = useFilterStore((state) => state.setFilters);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: IncomingFilter[]) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
+
+  const dynamicEnumArgMap = useMemo(
+    () => ({
+      trace_ids: { taskId: task?.id ?? "", api },
+      session_ids: { taskId: task?.id ?? "", api },
+      user_ids: { taskId: task?.id ?? "", api },
+      span_ids: { taskId: task?.id ?? "", api },
+    }),
     [task?.id, api]
   );
 
@@ -138,8 +147,16 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   return (
     <Stack gap={1} height="100%" overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
-        {/* Only show FiltersRow if we have traces or if filters are active */}
-        {(hasData || hasActiveFilters) && <FiltersRow />}
+        {/* Only show FilterRow if we have traces or if filters are active */}
+        {(hasData || hasActiveFilters) && (
+          <FilterRow
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            fieldConfig={TRACE_FIELDS}
+            dynamicEnumArgMap={dynamicEnumArgMap}
+            onTrack={track}
+          />
+        )}
 
         {hasData && (
           <>

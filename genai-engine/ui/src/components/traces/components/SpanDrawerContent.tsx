@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
+import { usePaginationContext } from "../stores/pagination-context";
 
 import { SpanDrawerBody } from "./drawer/SpanDrawerBody";
 
-import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
@@ -22,8 +22,9 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const [, setDrawerTarget] = useDrawerTarget();
+  const [current, setDrawerTarget] = useDrawerTarget();
   const [, select] = useSelection("span");
+  const paginationContext = usePaginationContext((state) => state.context);
 
   const { data: span } = useSuspenseQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -101,6 +102,10 @@ export const SpanDrawerContent = ({ id }: Props) => {
       isRefreshingMetrics={refreshMetrics.isPending}
       onOpenTraceDrawer={handleOpenTraceDrawer}
       onOpenPlayground={handleOpenInPlayground}
+      currentTarget={current?.target ?? null}
+      currentId={current?.id ?? null}
+      paginationContext={paginationContext}
+      onNavigate={(target, id) => setDrawerTarget({ target, id })}
     />
   );
 };

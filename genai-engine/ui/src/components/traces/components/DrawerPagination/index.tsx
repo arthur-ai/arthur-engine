@@ -1,35 +1,41 @@
 import { Button, ButtonGroup } from "@mui/material";
 
-import { useDrawerTarget } from "../../hooks/useDrawerTarget";
-import { usePaginationContext } from "../../stores/pagination-context";
+type DrawerPaginationProps = {
+  currentTarget: "trace" | "span" | "session" | "user" | null;
+  currentId: string | null;
+  contextType: "trace" | "span" | "session" | "user" | null;
+  contextIds: string[];
+  onNavigate: (target: "trace" | "span" | "session" | "user", id: string) => void;
+};
 
-export const DrawerPagination = () => {
-  const context = usePaginationContext((state) => state.context);
-  const [current, setDrawerTarget] = useDrawerTarget();
-
-  if (!current) return null;
-  if (context.type !== current.target)
+export const DrawerPagination = ({ currentTarget, currentId, contextType, contextIds, onNavigate }: DrawerPaginationProps) => {
+  if (!currentTarget || !currentId) return null;
+  if (contextType !== currentTarget)
     return (
       <span className="text-sm text-gray-400">
-        Currently navigating on <code className="font-mono bg-gray-700 text-white px-1 py-0.5 rounded-md">{context.type}</code> level.
+        Currently navigating on <code className="font-mono bg-gray-700 text-white px-1 py-0.5 rounded-md">{contextType}</code> level.
       </span>
     );
 
-  if (!context.ids.length) return <span className="text-sm text-gray-400">No context available.</span>;
+  if (!contextIds.length) return <span className="text-sm text-gray-400">No context available.</span>;
 
-  const idx = current.id ? context.ids.indexOf(current.id) : -1;
+  const idx = currentId ? contextIds.indexOf(currentId) : -1;
 
   if (idx === -1) return <span className="text-sm text-gray-400">Current item not found in context.</span>;
 
-  const hasNext = idx < context.ids.length - 1;
+  const hasNext = idx < contextIds.length - 1;
   const hasPrevious = idx > 0;
 
   const handlePrevious = () => {
-    setDrawerTarget({ target: context.type, id: context.ids[idx - 1] });
+    if (contextType) {
+      onNavigate(contextType, contextIds[idx - 1]);
+    }
   };
 
   const handleNext = () => {
-    setDrawerTarget({ target: context.type, id: context.ids[idx + 1] });
+    if (contextType) {
+      onNavigate(contextType, contextIds[idx + 1]);
+    }
   };
 
   return (
@@ -38,7 +44,7 @@ export const DrawerPagination = () => {
         Previous
       </Button>
       <Button disabled>
-        {idx + 1} of {context.ids.length}
+        {idx + 1} of {contextIds.length}
       </Button>
       <Button disabled={!hasNext} onClick={handleNext}>
         Next

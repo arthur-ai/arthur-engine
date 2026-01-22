@@ -35,6 +35,13 @@ type TraceDrawerBodyProps = {
   onOpenPlayground?: (spanId: string, taskId: string) => void;
   taskId?: string;
   onOpenContinuousEvals?: (traceId: string, taskId: string) => void;
+  currentTarget?: "trace" | "span" | "session" | "user" | null;
+  currentId?: string | null;
+  paginationContext?: {
+    type: "trace" | "span" | "session" | "user" | null;
+    ids: string[];
+  };
+  onNavigate?: (target: "trace" | "span" | "session" | "user", id: string) => void;
 };
 
 export const TraceDrawerBody = ({
@@ -49,6 +56,10 @@ export const TraceDrawerBody = ({
   onOpenPlayground,
   taskId,
   onOpenContinuousEvals,
+  currentTarget,
+  currentId,
+  paginationContext,
+  onNavigate,
 }: TraceDrawerBodyProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
@@ -149,7 +160,15 @@ export const TraceDrawerBody = ({
           gap={2}
           sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}
         >
-          <DrawerPagination />
+          {currentTarget && currentId && paginationContext && onNavigate && (
+            <DrawerPagination
+              currentTarget={currentTarget}
+              currentId={currentId}
+              contextType={paginationContext.type}
+              contextIds={paginationContext.ids}
+              onNavigate={onNavigate}
+            />
+          )}
           <Box sx={{ flex: 1 }} />
           {trace.annotations && trace.annotations.length > 0 && <AnnotationCell annotations={trace.annotations} traceId={traceId} />}
           <FeedbackPanel containerRef={containerRef} annotations={trace.annotations} traceId={traceId} />

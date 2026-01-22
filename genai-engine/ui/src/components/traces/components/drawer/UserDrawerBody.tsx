@@ -1,8 +1,8 @@
 import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { Suspense, useMemo } from "react";
+import { Suspense, useCallback, useMemo } from "react";
 
-import { TIME_RANGES, type TimeRange } from "../../constants";
+import type { TimeRange } from "../../constants";
 import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { createSessionLevelColumns } from "../../data/create-session-level-columns";
@@ -11,7 +11,7 @@ import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { FilterStoreProvider, useFilterStore } from "../../stores/filter.store";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { filterFields } from "../filtering/fields";
-import { createFilterRow } from "../filtering/filters-row";
+import { FilterRow } from "../filtering/FilterRow";
 import { IncomingFilter } from "../filtering/mapper";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { Operators } from "../filtering/types";
@@ -26,7 +26,7 @@ import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { SessionMetadataResponse, TraceMetadataResponse, TraceUserMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/amplitude";
 import { getFilteredSessions, getFilteredTraces } from "@/services/tracing";
 import { formatDate } from "@/utils/formatters";
 
@@ -156,18 +156,26 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    [formatDate, track]
+    []
   );
 
   const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
 
-  const { FiltersRow } = useMemo(
-    () =>
-      createFilterRow(USER_FILTERS, {
-        session_ids: { taskId, api },
-        user_ids: { taskId, api },
-        span_ids: { taskId, api },
-      }),
+  const setFilters = useFilterStore((state) => state.setFilters);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: IncomingFilter[]) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
+
+  const dynamicEnumArgMap = useMemo(
+    () => ({
+      session_ids: { taskId, api },
+      user_ids: { taskId, api },
+      span_ids: { taskId, api },
+    }),
     [taskId, api]
   );
 
@@ -181,7 +189,13 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
 
   return (
     <Stack gap={1} mt={1}>
-      <FiltersRow />
+      <FilterRow
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        fieldConfig={USER_FILTERS}
+        dynamicEnumArgMap={dynamicEnumArgMap}
+        onTrack={track}
+      />
       {traces.data?.count ? (
         <>
           <BucketProvider thresholds={thresholds}>
@@ -245,7 +259,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    [formatDate, track]
+    []
   );
 
   const handleRowClick = (row: SessionMetadataResponse) => {

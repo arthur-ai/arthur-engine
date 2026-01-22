@@ -18,6 +18,13 @@ type SpanDrawerBodyProps = {
   isRefreshingMetrics?: boolean;
   onOpenTraceDrawer?: () => void;
   onOpenPlayground?: (spanId: string, taskId: string) => void;
+  currentTarget?: "trace" | "span" | "session" | "user" | null;
+  currentId?: string | null;
+  paginationContext?: {
+    type: "trace" | "span" | "session" | "user" | null;
+    ids: string[];
+  };
+  onNavigate?: (target: "trace" | "span" | "session" | "user", id: string) => void;
 };
 
 export const SpanDrawerBody = ({
@@ -27,6 +34,10 @@ export const SpanDrawerBody = ({
   isRefreshingMetrics = false,
   onOpenTraceDrawer,
   onOpenPlayground,
+  currentTarget,
+  currentId,
+  paginationContext,
+  onNavigate,
 }: SpanDrawerBodyProps) => {
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
 
@@ -92,7 +103,15 @@ export const SpanDrawerBody = ({
       </Stack>
 
       <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
-        <DrawerPagination />
+        {currentTarget && currentId && paginationContext && onNavigate && (
+          <DrawerPagination
+            currentTarget={currentTarget}
+            currentId={currentId}
+            contextType={paginationContext.type}
+            contextIds={paginationContext.ids}
+            onNavigate={onNavigate}
+          />
+        )}
       </Box>
 
       <Box sx={{ overflow: "auto", maxHeight: "100%", px: 4, py: 2 }}>

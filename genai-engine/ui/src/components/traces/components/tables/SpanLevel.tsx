@@ -13,7 +13,7 @@ import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
 import { DurationCellWithBucket } from "../DurationCell";
-import { createFilterRow } from "../filtering/filters-row";
+import { FilterRow } from "../filtering/FilterRow";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { SpanStatusBadge } from "../span-status-badge";
 import { isValidStatusCode } from "../StatusCode";
@@ -111,14 +111,22 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     [formatDate, track]
   );
 
-  const { FiltersRow } = useMemo(
-    () =>
-      createFilterRow(SPAN_FIELDS, {
-        trace_ids: { taskId: task?.id ?? "", api },
-        session_ids: { taskId: task?.id ?? "", api },
-        span_ids: { taskId: task?.id ?? "", api },
-        user_ids: { taskId: task?.id ?? "", api },
-      }),
+  const setFilters = useFilterStore((state) => state.setFilters);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: typeof filters) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
+
+  const dynamicEnumArgMap = useMemo(
+    () => ({
+      trace_ids: { taskId: task?.id ?? "", api },
+      session_ids: { taskId: task?.id ?? "", api },
+      span_ids: { taskId: task?.id ?? "", api },
+      user_ids: { taskId: task?.id ?? "", api },
+    }),
     [task?.id, api]
   );
 
@@ -140,8 +148,16 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   return (
     <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
-        {/* Only show FiltersRow if we have spans or if filters are active */}
-        {(hasData || hasActiveFilters) && <FiltersRow />}
+        {/* Only show FilterRow if we have spans or if filters are active */}
+        {(hasData || hasActiveFilters) && (
+          <FilterRow
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            fieldConfig={SPAN_FIELDS}
+            dynamicEnumArgMap={dynamicEnumArgMap}
+            onTrack={track}
+          />
+        )}
 
         {hasData && (
           <>

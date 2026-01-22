@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
+import { usePaginationContext } from "../stores/pagination-context";
 import { flattenSpans, getSpanDuration } from "../utils/spans";
 
 import { TraceDrawerBody } from "./drawer/TraceDrawerBody";
@@ -29,8 +30,9 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   const api = useApi();
   const [selectedSpanId, select] = useSelection("span");
-  const [, setDrawerTarget] = useDrawerTarget();
+  const [current, setDrawerTarget] = useDrawerTarget();
   const navigate = useNavigate();
+  const paginationContext = usePaginationContext((state) => state.context);
 
   const { data: trace } = useSuspenseQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -126,6 +128,10 @@ export const TraceDrawerContent = ({ id }: Props) => {
       onOpenPlayground={(spanId, taskId) => navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`)}
       taskId={task?.id}
       onOpenContinuousEvals={handleOpenContinuousEvals}
+      currentTarget={current?.target ?? null}
+      currentId={current?.id ?? null}
+      paginationContext={paginationContext}
+      onNavigate={(target, id) => setDrawerTarget({ target, id })}
     />
   );
 };
