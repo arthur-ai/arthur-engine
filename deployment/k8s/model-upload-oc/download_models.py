@@ -70,6 +70,11 @@ DEFAULT_MODELS: dict[str, list[str]] = {
         "gliner_config.json",
         "pytorch_model.bin",
     ],
+    "microsoft/mdeberta-v3-base": [
+        "config.json",
+        "spm.model",
+        "tokenizer_config.json",
+    ],
     "tarekziade/pardonmyai": [
         "config.json",
         "model.safetensors",
