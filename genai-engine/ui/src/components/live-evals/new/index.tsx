@@ -88,7 +88,6 @@ export const LiveEvalsNew = () => {
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
-  const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 
   const { eval: evaluatorData } = useEval(task?.id, evaluator.name ?? undefined, evaluator.version ?? undefined);
 
@@ -99,26 +98,18 @@ export const LiveEvalsNew = () => {
     evaluator.version ?? undefined
   );
 
+  const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
+
   const handleSelectionChange = () => {
     form.setFieldValue("variableMappings", []);
   };
 
-  const shouldAutoPopulate = variableMappingData && variableMappingData.matching_variables.length > 0 && variableMappings.length === 0;
-
-  if (shouldAutoPopulate) {
-    form.setFieldValue(
-      "variableMappings",
-      variableMappingData.matching_variables.map((variable) => ({
-        eval_variable: variable,
-        transform_variable: variable,
-      }))
-    );
-  }
-
   const allVariablesMapped =
     !variableMappingData ||
     variableMappingData.eval_variables.length === 0 ||
-    variableMappingData.eval_variables.every((evalVar) => variableMappings.some((m) => m.eval_variable === evalVar && m.transform_variable));
+    variableMappingData.eval_variables.every((evalVar) =>
+      variableMappings.some((m) => m.eval_variable === evalVar && m.transform_variable)
+    );
 
   const canShowVariableMapping = evaluator.name && evaluator.version && transform.transformId;
 
@@ -195,11 +186,11 @@ export const LiveEvalsNew = () => {
           <>
             <Divider sx={{ my: 2 }} />
             <VariableMappingSection
+              form={form}
+              fields={{ variableMappings: "variableMappings" }}
               eval_variables={variableMappingData?.eval_variables ?? []}
               transform_variables={variableMappingData?.transform_variables ?? []}
               matching_variables={variableMappingData?.matching_variables ?? []}
-              mappings={variableMappings}
-              onChange={(mappings) => form.setFieldValue("variableMappings", mappings)}
               isLoading={isLoadingVariableMapping}
             />
           </>
