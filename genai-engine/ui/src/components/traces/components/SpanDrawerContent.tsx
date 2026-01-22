@@ -1,17 +1,10 @@
-import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import { Box, Button, ButtonGroup, Stack, Typography } from "@mui/material";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
-import { isSpanOfType } from "../utils/spans";
 
-import { DrawerPagination } from "./DrawerPagination";
-import { SpanStatusBadge } from "./span-status-badge";
-import { SpanDetails, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
+import { SpanDrawerBody } from "./drawer/SpanDrawerBody";
 
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
@@ -74,9 +67,11 @@ export const SpanDrawerContent = ({ id }: Props) => {
     },
   });
 
-  const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
+  const handleRefreshMetrics = () => {
+    refreshMetrics.mutate();
+  };
 
-  const onOpenTraceDrawer = () => {
+  const handleOpenTraceDrawer = () => {
     select(span.span_id);
     track(EVENT_NAMES.TRACING_DRAWER_SWITCH, {
       from_level: "span",
@@ -88,83 +83,24 @@ export const SpanDrawerContent = ({ id }: Props) => {
     setDrawerTarget({ target: "trace", id: span.trace_id });
   };
 
-  const handleOpenInPlayground = () => {
-    if (span.task_id) {
-      track(EVENT_NAMES.PLAYGROUND_OPEN_FROM_SPAN, {
-        task_id: span.task_id,
-        span_id: span.span_id,
-        trace_id: span.trace_id,
-        source: "span_drawer",
-      });
-      navigate(`/tasks/${span.task_id}/playgrounds/prompts?spanId=${span.span_id}`);
-    }
+  const handleOpenInPlayground = (spanId: string, taskId: string) => {
+    track(EVENT_NAMES.PLAYGROUND_OPEN_FROM_SPAN, {
+      task_id: taskId,
+      span_id: spanId,
+      trace_id: span.trace_id,
+      source: "span_drawer",
+    });
+    navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`);
   };
 
   return (
-    <Stack spacing={0} sx={{ height: "100%" }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{
-          px: 4,
-          py: 2,
-          backgroundColor: "grey.100",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Stack direction="column" width="100%">
-          <Typography variant="body2" color="text.secondary">
-            Span Details
-          </Typography>
-          <Stack direction="row" gap={2} alignItems="center">
-            <Typography variant="h6" color="text.primary" fontWeight={700}>
-              {span.span_name}
-            </Typography>
-            <SpanStatusBadge status={span.status_code ?? "Unset"} />
-            <div className="flex-1" />
-            <CopyableChip
-              label={id!}
-              sx={{
-                fontFamily: "monospace",
-              }}
-            />
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            Part of trace{" "}
-            <Button variant="text" size="small" color="primary" sx={{ fontFamily: "monospace" }} onClick={onOpenTraceDrawer}>
-              {span.trace_id}
-            </Button>
-          </Typography>
-        </Stack>
-
-        <Stack direction="column" spacing={1} alignItems="flex-end">
-          <Stack direction="row" spacing={0} sx={{ marginLeft: "auto" }}>
-            {isLLM && (
-              <ButtonGroup variant="outlined" size="small" disableElevation>
-                <Button onClick={handleOpenInPlayground} disabled={!span.task_id} startIcon={<OpenInNewIcon />}>
-                  Open in Playground
-                </Button>
-                <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
-                  Refresh Metrics
-                </Button>
-              </ButtonGroup>
-            )}
-          </Stack>
-        </Stack>
-      </Stack>
-
-      <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
-        <DrawerPagination />
-      </Box>
-
-      <Box sx={{ overflow: "auto", maxHeight: "100%", px: 4, py: 2 }}>
-        <SpanDetails span={span}>
-          <SpanDetailsWidgets />
-          <SpanDetailsPanels />
-        </SpanDetails>
-      </Box>
-    </Stack>
+    <SpanDrawerBody
+      span={span}
+      spanId={id}
+      onRefreshMetrics={handleRefreshMetrics}
+      isRefreshingMetrics={refreshMetrics.isPending}
+      onOpenTraceDrawer={handleOpenTraceDrawer}
+      onOpenPlayground={handleOpenInPlayground}
+    />
   );
 };

@@ -1,21 +1,28 @@
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
-import { MaterialReactTable } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
-import { spanLevelColumns } from "../../data/span-level-columns";
+import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
+import { createSpanLevelColumns } from "../../data/create-span-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
-import { useTable } from "../../hooks/useTable";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
+import { DurationCellWithBucket } from "../DurationCell";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
+import { SpanStatusBadge } from "../span-status-badge";
+import { isValidStatusCode } from "../StatusCode";
+import { TraceContentCell } from "../TraceContentCell";
 
+import { TracesTable } from "./TracesTable";
+
+import { CopyableChip } from "@/components/common";
+import { TypeChip } from "@/components/common/span/TypeChip";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -24,6 +31,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredSpans } from "@/services/tracing";
+import { formatDate } from "@/utils/formatters";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
@@ -84,20 +92,24 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     [data?.spans, setContext, setDrawerTarget, task?.id]
   );
 
-  const table = useTable({
-    data: data?.spans ?? DEFAULT_DATA,
-    columns: spanLevelColumns,
-    pagination: {
-      state: pagination,
-      onChange: props.onPaginationChange,
-      rowCount: data?.count ?? 0,
-    },
-    onRowClick: handleRowClick,
-    state: {
-      sorting,
-      isLoading,
-    },
-  });
+  const columns = useMemo(
+    () =>
+      createSpanLevelColumns({
+        formatDate,
+        formatCurrency: () => "", // Not used in span columns but required by type
+        onTrack: track,
+        Chip: CopyableChip,
+        DurationCell: DurationCellWithBucket,
+        TraceContentCell,
+        AnnotationCell: () => null, // Not used in span columns
+        SpanStatusBadge,
+        TypeChip,
+        TokenCountTooltip,
+        TokenCostTooltip,
+        isValidStatusCode,
+      }),
+    [formatDate, track]
+  );
 
   const { FiltersRow } = useMemo(
     () =>
@@ -134,7 +146,16 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
         {hasData && (
           <>
             <BucketProvider thresholds={thresholds}>
-              <MaterialReactTable table={table} />
+              <TracesTable
+                data={data?.spans ?? DEFAULT_DATA}
+                columns={columns}
+                rowCount={data?.count ?? 0}
+                pagination={pagination}
+                onPaginationChange={props.onPaginationChange}
+                isLoading={isLoading}
+                onRowClick={handleRowClick}
+                sorting={sorting}
+              />
             </BucketProvider>
           </>
         )}
