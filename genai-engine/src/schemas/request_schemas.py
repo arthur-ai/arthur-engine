@@ -862,6 +862,11 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
+class ContinuousEvalTransformVariableMappingRequest(BaseModel):
+    transform_variable: str = Field(description="Name of the transform variable")
+    eval_variable: str = Field(description="Name of the eval variable")
+
+
 class ContinuousEvalCreateRequest(BaseModel):
     """Request schema for creating a continuous eval"""
 
@@ -878,6 +883,15 @@ class ContinuousEvalCreateRequest(BaseModel):
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
+    )
+    transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest] = (
+        Field(
+            description="Mapping of transform variables to eval variables.",
+        )
+    )
+    enabled: bool = Field(
+        default=True,
+        description="Whether to enable or disable a continuous eval. Defaults to True.",
     )
 
 
@@ -901,6 +915,16 @@ class UpdateContinuousEvalRequest(BaseModel):
         default=None,
         description="ID of the transform to create the continuous eval for",
     )
+    transform_variable_mapping: Optional[
+        List[ContinuousEvalTransformVariableMappingRequest]
+    ] = Field(
+        default=None,
+        description="Mapping of transform variables to eval variables.",
+    )
+    enabled: Optional[bool] = Field(
+        default=None,
+        description="Whether to enable or disable a continuous eval.",
+    )
 
     @model_validator(mode="after")
     def validate_request(self):
@@ -908,6 +932,15 @@ class UpdateContinuousEvalRequest(BaseModel):
             raise ValueError(
                 "Must specify which version of the llm eval this continuous eval should be associated with",
             )
+        if self.transform_variable_mapping is None:
+            if (
+                self.transform_id is not None
+                or self.llm_eval_name is not None
+                or self.llm_eval_version is not None
+            ):
+                raise ValueError(
+                    "Must also update the transform variable mapping if updating the transform or llm eval",
+                )
         return self
 
 
@@ -931,6 +964,10 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+    enabled: Optional[bool] = Field(
+        None,
+        description="Whether the continuous eval is enabled.",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -950,6 +987,10 @@ class ContinuousEvalListFilterRequest(BaseModel):
             None,
             description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
         ),
+        enabled: Optional[str] = Query(
+            None,
+            description="Whether the continuous eval is enabled.",
+        ),
     ) -> "ContinuousEvalListFilterRequest":
         """Create a ContinuousEvalListFilterRequest from query parameters."""
         return ContinuousEvalListFilterRequest(
@@ -961,6 +1002,7 @@ class ContinuousEvalListFilterRequest(BaseModel):
             created_before=(
                 datetime.fromisoformat(created_before) if created_before else None
             ),
+            enabled=enabled.lower() == "true" if enabled else None,
         )
 
 
@@ -996,6 +1038,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+    continuous_eval_enabled: Optional[bool] = Field(
+        None,
+        description="Whether the continuous eval is enabled.",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1026,6 +1072,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         created_before: Optional[str] = Query(
             None,
             description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        continuous_eval_enabled: Optional[str] = Query(
+            None,
+            description="Whether the continuous eval is enabled.",
         ),
     ) -> "ContinuousEvalRunResultsListFilterRequest":
         """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
@@ -1061,6 +1111,11 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
             ),
             created_before=(
                 datetime.fromisoformat(created_before) if created_before else None
+            ),
+            continuous_eval_enabled=(
+                continuous_eval_enabled.lower() == "true"
+                if continuous_eval_enabled
+                else None
             ),
         )
 

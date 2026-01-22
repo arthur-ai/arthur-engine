@@ -23,6 +23,16 @@ The intention of this changelog is to document API changes as they happen to eff
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
 
 # 01/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'evals/items/enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_enabled'
+
+# 01/07/2026
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'input_tokens' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'output_tokens' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/completions  added the optional property 'total_tokens' to the response with the '200' status
@@ -75,6 +85,16 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/test_cases  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
+
+# 12/16/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new required request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the optional property 'missing_variables' to the response with the '200' status
 
 # 12/16/2025
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'

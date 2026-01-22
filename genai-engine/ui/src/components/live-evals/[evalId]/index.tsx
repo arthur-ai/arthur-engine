@@ -1,5 +1,21 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Box, Chip, CircularProgress, IconButton, Paper, Skeleton, Stack, Typography } from "@mui/material";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import {
+  Box,
+  Chip,
+  CircularProgress,
+  Divider,
+  IconButton,
+  Paper,
+  Skeleton,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
 
@@ -17,6 +33,8 @@ export const LiveEvalDetail = () => {
   const { data: liveEval } = useContinuousEval(evalId ?? "");
 
   const transform = useTransform(liveEval?.transform_id);
+
+  const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
 
   if (!liveEval) {
     return (
@@ -48,7 +66,7 @@ export const LiveEvalDetail = () => {
               <Typography variant="h5" fontWeight="bold" color="text.primary">
                 {liveEval.name}
               </Typography>
-              {/* <LiveEvalStatusChip status={liveEval.status} /> */}
+              <Chip label={liveEval.enabled ? "Enabled" : "Disabled"} color={liveEval.enabled ? "success" : "default"} size="small" />
             </Stack>
             <Typography variant="body2" color="text.secondary">
               {liveEval.description}
@@ -135,6 +153,42 @@ export const LiveEvalDetail = () => {
                 )}
               </Stack>
             </div>
+
+            {/* Variable Mappings */}
+            {hasVariableMappings && (
+              <>
+                <Divider sx={{ my: 3 }} />
+                <Stack gap={2}>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    Variable Mappings
+                  </Typography>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "grey.50" }}>
+                        <TableCell sx={{ fontWeight: 600 }}>Eval Variable</TableCell>
+                        <TableCell sx={{ width: 40 }} />
+                        <TableCell sx={{ fontWeight: 600 }}>Transform Variable</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {liveEval.transform_variable_mapping?.map((mapping) => (
+                        <TableRow key={mapping.eval_variable}>
+                          <TableCell>
+                            <Chip label={mapping.eval_variable} size="small" variant="outlined" sx={{ fontFamily: "monospace" }} />
+                          </TableCell>
+                          <TableCell sx={{ textAlign: "center" }}>
+                            <ArrowForwardIcon fontSize="small" color="action" />
+                          </TableCell>
+                          <TableCell>
+                            <Chip label={mapping.transform_variable} size="small" variant="outlined" sx={{ fontFamily: "monospace" }} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Stack>
+              </>
+            )}
           </Paper>
 
           {/* Evaluated Traces */}

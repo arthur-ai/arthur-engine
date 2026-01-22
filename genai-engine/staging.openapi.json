@@ -13599,6 +13599,24 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "enabled",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Whether the continuous eval is enabled.",
+                            "title": "Enabled"
+                        },
+                        "description": "Whether the continuous eval is enabled."
                     }
                 ],
                 "responses": {
@@ -13866,6 +13884,24 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "continuous_eval_enabled",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Whether the continuous eval is enabled.",
+                            "title": "Continuous Eval Enabled"
+                        },
+                        "description": "Whether the continuous eval is enabled."
                     }
                 ],
                 "responses": {
@@ -13875,6 +13911,89 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get all variables and mappings for a continuous eval",
+                "description": "Get all variables and mappings for a continuous eval",
+                "operationId": "get_continuous_eval_variables_and_mappings_api_v1_tasks__task_id__continuous_evals_transforms__transform_id__llm_evals__eval_name__versions__eval_version__variables_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Transform ID",
+                            "description": "The id of the transform to get the continuous eval variables and mappings for."
+                        },
+                        "description": "The id of the transform to get the continuous eval variables and mappings for."
+                    },
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to get the continuous eval variables and mappings for."
+                        },
+                        "description": "The name of the llm eval to get the continuous eval variables and mappings for."
+                    },
+                    {
+                        "name": "eval_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Version",
+                            "description": "The version of the llm eval to get the continuous eval variables and mappings for."
+                        },
+                        "description": "The version of the llm eval to get the continuous eval variables and mappings for."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalVariableMappingResponse"
                                 }
                             }
                         }
@@ -16744,6 +16863,20 @@
                         "format": "uuid",
                         "title": "Transform Id",
                         "description": "ID of the transform to create the continuous eval for"
+                    },
+                    "transform_variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContinuousEvalTransformVariableMappingRequest"
+                        },
+                        "type": "array",
+                        "title": "Transform Variable Mapping",
+                        "description": "Mapping of transform variables to eval variables."
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Whether to enable or disable a continuous eval. Defaults to True.",
+                        "default": true
                     }
                 },
                 "type": "object",
@@ -16751,7 +16884,8 @@
                     "name",
                     "llm_eval_name",
                     "llm_eval_version",
-                    "transform_id"
+                    "transform_id",
+                    "transform_variable_mapping"
                 ],
                 "title": "ContinuousEvalCreateRequest",
                 "description": "Request schema for creating a continuous eval"
@@ -16823,6 +16957,19 @@
                         "title": "Transform Id",
                         "description": "ID of the transform."
                     },
+                    "transform_variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContinuousEvalTransformVariableMappingResponse"
+                        },
+                        "type": "array",
+                        "title": "Transform Variable Mapping",
+                        "description": "Mapping of transform variables to eval variables."
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Whether the continuous eval is enabled."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -16844,6 +16991,7 @@
                     "llm_eval_name",
                     "llm_eval_version",
                     "transform_id",
+                    "enabled",
                     "created_at",
                     "updated_at"
                 ],
@@ -16860,6 +17008,81 @@
                     "error"
                 ],
                 "title": "ContinuousEvalRunStatus"
+            },
+            "ContinuousEvalTransformVariableMappingRequest": {
+                "properties": {
+                    "transform_variable": {
+                        "type": "string",
+                        "title": "Transform Variable",
+                        "description": "Name of the transform variable"
+                    },
+                    "eval_variable": {
+                        "type": "string",
+                        "title": "Eval Variable",
+                        "description": "Name of the eval variable"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "transform_variable",
+                    "eval_variable"
+                ],
+                "title": "ContinuousEvalTransformVariableMappingRequest"
+            },
+            "ContinuousEvalTransformVariableMappingResponse": {
+                "properties": {
+                    "transform_variable": {
+                        "type": "string",
+                        "title": "Transform Variable",
+                        "description": "Name of the transform variable."
+                    },
+                    "eval_variable": {
+                        "type": "string",
+                        "title": "Eval Variable",
+                        "description": "Name of the eval variable."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "transform_variable",
+                    "eval_variable"
+                ],
+                "title": "ContinuousEvalTransformVariableMappingResponse"
+            },
+            "ContinuousEvalVariableMappingResponse": {
+                "properties": {
+                    "matching_variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Matching Variables",
+                        "description": "List of matching variables."
+                    },
+                    "transform_variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Transform Variables",
+                        "description": "List of transform variables."
+                    },
+                    "eval_variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Eval Variables",
+                        "description": "List of eval variables."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "matching_variables",
+                    "transform_variables",
+                    "eval_variables"
+                ],
+                "title": "ContinuousEvalVariableMappingResponse"
             },
             "ConversationBaseResponse": {
                 "properties": {
@@ -19979,7 +20202,9 @@
                     "type": {
                         "$ref": "#/components/schemas/LLMResponseFormatEnum",
                         "description": "Response format type: 'text', 'json_object', or 'json_schema'",
-                        "example": "json_schema"
+                        "examples": [
+                            "json_schema"
+                        ]
                     },
                     "json_schema": {
                         "anyOf": [
@@ -20005,7 +20230,9 @@
                     "type": {
                         "$ref": "#/components/schemas/LLMResponseFormatEnum",
                         "description": "Response format type: 'text', 'json_object', or 'json_schema'",
-                        "example": "json_schema"
+                        "examples": [
+                            "json_schema"
+                        ]
                     },
                     "json_schema": {
                         "anyOf": [
@@ -27478,11 +27705,20 @@
                         "type": "array",
                         "title": "Variables",
                         "description": "List of extracted variables."
+                    },
+                    "missing_variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Missing Variables",
+                        "description": "List of variable names that had missing values (no matching span or attribute path)."
                     }
                 },
                 "type": "object",
                 "required": [
-                    "variables"
+                    "variables",
+                    "missing_variables"
                 ],
                 "title": "TransformExtractionResponseList"
             },
@@ -27910,6 +28146,33 @@
                         ],
                         "title": "Transform Id",
                         "description": "ID of the transform to create the continuous eval for"
+                    },
+                    "transform_variable_mapping": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTransformVariableMappingRequest"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Variable Mapping",
+                        "description": "Mapping of transform variables to eval variables."
+                    },
+                    "enabled": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enabled",
+                        "description": "Whether to enable or disable a continuous eval."
                     }
                 },
                 "type": "object",

@@ -1312,6 +1312,12 @@ export interface ContinuousEvalCreateRequest {
    */
   description?: string | null;
   /**
+   * Enabled
+   * Whether to enable or disable a continuous eval. Defaults to True.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
    * Llm Eval Name
    * Name of the llm eval to create the continuous eval for
    */
@@ -1332,6 +1338,11 @@ export interface ContinuousEvalCreateRequest {
    * @format uuid
    */
   transform_id: string;
+  /**
+   * Transform Variable Mapping
+   * Mapping of transform variables to eval variables.
+   */
+  transform_variable_mapping: ContinuousEvalTransformVariableMappingRequest[];
 }
 
 /** ContinuousEvalRerunResponse */
@@ -1362,6 +1373,11 @@ export interface ContinuousEvalResponse {
    * Description of the continuous eval.
    */
   description?: string | null;
+  /**
+   * Enabled
+   * Whether the continuous eval is enabled.
+   */
+  enabled: boolean;
   /**
    * Id
    * ID of the transform.
@@ -1395,6 +1411,11 @@ export interface ContinuousEvalResponse {
    */
   transform_id: string;
   /**
+   * Transform Variable Mapping
+   * Mapping of transform variables to eval variables.
+   */
+  transform_variable_mapping?: ContinuousEvalTransformVariableMappingResponse[];
+  /**
    * Updated At
    * Timestamp representing the time the continuous eval was last updated.
    * @format date-time
@@ -1404,6 +1425,53 @@ export interface ContinuousEvalResponse {
 
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
+
+/** ContinuousEvalTransformVariableMappingRequest */
+export interface ContinuousEvalTransformVariableMappingRequest {
+  /**
+   * Eval Variable
+   * Name of the eval variable
+   */
+  eval_variable: string;
+  /**
+   * Transform Variable
+   * Name of the transform variable
+   */
+  transform_variable: string;
+}
+
+/** ContinuousEvalTransformVariableMappingResponse */
+export interface ContinuousEvalTransformVariableMappingResponse {
+  /**
+   * Eval Variable
+   * Name of the eval variable.
+   */
+  eval_variable: string;
+  /**
+   * Transform Variable
+   * Name of the transform variable.
+   */
+  transform_variable: string;
+}
+
+/** ContinuousEvalVariableMappingResponse */
+export interface ContinuousEvalVariableMappingResponse {
+  /**
+   * Eval Variables
+   * List of eval variables.
+   */
+  eval_variables: string[];
+  /**
+   * Matching Variables
+   * List of matching variables.
+   */
+  matching_variables: string[];
+  /**
+   * Transform Variables
+   * List of transform variables.
+   */
+  transform_variables: string[];
+}
 
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
@@ -2829,6 +2897,12 @@ export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousE
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError = HTTPValidationError;
 
+export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetData =
+  ContinuousEvalVariableMappingResponse;
+
+export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetError =
+  HTTPValidationError;
+
 export type GetConversationsApiChatConversationsGetData = PageConversationBaseResponse;
 
 export type GetConversationsApiChatConversationsGetError = HTTPValidationError;
@@ -4143,10 +4217,7 @@ export type LLMResponseFormatEnum = "text" | "json_object" | "json_schema";
 export interface LLMResponseFormatInput {
   /** JSON schema definition (required when type is 'json_schema') */
   json_schema?: LLMResponseSchemaInput | null;
-  /**
-   * Response format type: 'text', 'json_object', or 'json_schema'
-   * @example "json_schema"
-   */
+  /** Response format type: 'text', 'json_object', or 'json_schema' */
   type: LLMResponseFormatEnum;
 }
 
@@ -4154,10 +4225,7 @@ export interface LLMResponseFormatInput {
 export interface LLMResponseFormatOutput {
   /** JSON schema definition (required when type is 'json_schema') */
   json_schema?: LLMResponseSchemaOutput | null;
-  /**
-   * Response format type: 'text', 'json_object', or 'json_schema'
-   * @example "json_schema"
-   */
+  /** Response format type: 'text', 'json_object', or 'json_schema' */
   type: LLMResponseFormatEnum;
 }
 
@@ -4414,6 +4482,11 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   annotation_score?: number | null;
   /**
+   * Continuous Eval Enabled
+   * Whether the continuous eval is enabled.
+   */
+  continuous_eval_enabled?: string | null;
+  /**
    * Continuous Eval Id
    * ID of the continuous eval to filter on.
    */
@@ -4482,6 +4555,11 @@ export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
+  /**
+   * Enabled
+   * Whether the continuous eval is enabled.
+   */
+  enabled?: string | null;
   /**
    * Llm Eval Name
    * Name of the llm eval to filter on
@@ -9902,6 +9980,11 @@ export interface TraceUserMetadataResponse {
 /** TransformExtractionResponseList */
 export interface TransformExtractionResponseList {
   /**
+   * Missing Variables
+   * List of variable names that had missing values (no matching span or attribute path).
+   */
+  missing_variables: string[];
+  /**
    * Variables
    * List of extracted variables.
    */
@@ -10141,6 +10224,11 @@ export interface UpdateContinuousEvalRequest {
    */
   description?: string | null;
   /**
+   * Enabled
+   * Whether to enable or disable a continuous eval.
+   */
+  enabled?: boolean | null;
+  /**
    * Llm Eval Name
    * Name of the llm eval to create the continuous eval for
    */
@@ -10160,6 +10248,11 @@ export interface UpdateContinuousEvalRequest {
    * ID of the transform to create the continuous eval for
    */
   transform_id?: string | null;
+  /**
+   * Transform Variable Mapping
+   * Mapping of transform variables to eval variables.
+   */
+  transform_variable_mapping?: ContinuousEvalTransformVariableMappingRequest[] | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -11283,7 +11376,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.304
+ * @version 2.1.312
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12766,6 +12859,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet: (evalId: string, params: RequestParams = {}) =>
       this.request<GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData, GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError>({
         path: `/api/v1/continuous_evals/${evalId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all variables and mappings for a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet
+     * @summary Get all variables and mappings for a continuous eval
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables
+     * @secure
+     */
+    getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet: (
+      transformId: string,
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetData,
+        GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/transforms/${transformId}/llm_evals/${evalName}/versions/${evalVersion}/variables`,
         method: "GET",
         secure: true,
         format: "json",
