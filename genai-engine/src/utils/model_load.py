@@ -255,7 +255,11 @@ def get_models_to_download() -> dict[str, list[str]]:
         ]
         models_to_download["microsoft/mdeberta-v3-base"] = [
             "config.json",
+            "generator_config.json",
+            "pytorch_model.bin",
+            "pytorch_model.generator.bin",
             "spm.model",
+            "tf_model.h5",
             "tokenizer_config.json",
         ]
     return models_to_download
