@@ -1,7 +1,7 @@
 """add vertex ai credentials to secrets
 
 Revision ID: f18f1870b3d7
-Revises: db04d47f9dd1
+Revises: b635f502f44f
 Create Date: 2026-01-16 13:12:35.418855
 
 """
@@ -13,7 +13,7 @@ from db_models.custom_types import EncryptedJSON
 
 # revision identifiers, used by Alembic.
 revision = "f18f1870b3d7"
-down_revision = "db04d47f9dd1"
+down_revision = "b635f502f44f"
 branch_labels = None
 depends_on = None
 
