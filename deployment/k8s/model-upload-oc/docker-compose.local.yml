@@ -1,0 +1,30 @@
+# Docker Compose configuration for LOCAL TESTING ONLY
+#
+# This file is for testing the model-upload-oc container locally on your machine.
+# It overrides the production user (nonroot) to root to avoid permission issues
+# with Docker volume mounts on Mac/Linux.
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up
+#
+# For production deployment, use the Kubernetes manifests in this directory.
+
+services:
+  model-upload-oc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    #image: arthurplatform/arthur-model-upload-oc:v1.0.1
+    container_name: arthur-model-upload-oc
+    # Override user to root for local testing to avoid permission issues
+    # In production (K8s), the container runs as nonroot (uid 65532)
+    user: root
+    volumes:
+      # Mount local directory for output (models will be copied here)
+      - ./models-output:/models-output
+    environment:
+      - SOURCE_DIR=/models
+      - TARGET_DIR=/models-output
+      - LOG_LEVEL=INFO
+    # Remove after completion (since this is a one-time copy job)
+    restart: "no"
