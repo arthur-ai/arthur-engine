@@ -54,6 +54,7 @@ from arthur_common.models.response_schemas import (
 )
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
+    ContinuousEvalVariableMappingResponse,
     ListContinuousEvalsResponse,
     ListTraceTransformsResponse,
     LLMEval,
@@ -3744,6 +3745,30 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 ListContinuousEvalsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_continuous_eval_variables_and_mappings(
+        self,
+        task_id: str,
+        transform_id: str,
+        eval_name: str,
+        eval_version: str,
+    ) -> tuple[int, ContinuousEvalVariableMappingResponse]:
+        """Get continuous eval variables and mappings."""
+        resp = self.base_client.get(
+            f"/api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalVariableMappingResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),
