@@ -28,9 +28,12 @@ from schemas.request_schemas import (
     NewTraceTransformRequest,
     TraceTransformUpdateRequest,
     TransformListFilterRequest,
+    TransformVersionListFilterRequest,
 )
 from schemas.response_schemas import (
     TransformExtractionResponseList,
+    TraceTransformVersionResponse,
+    ListTraceTransformVersionsResponse,
 )
 from utils.transform_executor import execute_transform
 from utils.users import permission_checker
@@ -77,6 +80,45 @@ def list_transforms_for_task(
 
 
 @transform_routes.get(
+    "/tasks/{task_id}/traces/transforms/{transform_id}/versions",
+    description="List all versions of a transform.",
+    response_model=ListTraceTransformVersionsResponse,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def list_transform_versions(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    filter_request: Annotated[
+        TransformVersionListFilterRequest,
+        Depends(TransformVersionListFilterRequest.from_query_parameters),
+    ],
+    transform_id: UUID = Path(description="ID of the transform to fetch versions for."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListTraceTransformVersionsResponse:
+    try:
+        trace_transform_repo = TraceTransformRepository(db_session)
+        transforms = trace_transform_repo.list_transform_versions(
+            transform_id,
+            pagination_parameters,
+            filter_request,
+        )
+        return ListTraceTransformVersionsResponse(
+            versions=[transform.to_response_model() for transform in transforms],
+            count=len(transforms),
+        )
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
     "/traces/transforms/{transform_id}",
     description="Get a specific transform.",
     response_model=TraceTransformResponse,
@@ -101,6 +143,38 @@ def get_transform(
         return trace_transform.to_response_model()
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/versions/{version_number}",
+    description="Get a specific transform version.",
+    response_model=TraceTransformVersionResponse,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_transform(
+    transform_id: UUID = Path(description="ID of the transform to fetch."),
+    version_number: int = Path(description="Version number of the version to fetch."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TraceTransformVersionResponse:
+    try:
+        trace_transform_repo = TraceTransformRepository(db_session)
+        trace_transform_version = trace_transform_repo.get_transform_version(transform_id, version_number)
+
+        if not trace_transform_version:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} version {version_number} not found",
+            )
+
+        return trace_transform_version.to_response_model()
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -128,7 +128,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchSettingConfigurationVersion,
     DatabaseRagSearchVersionTag,
 )
-from db_models.transform_models import DatabaseTraceTransform
+from db_models.transform_models import DatabaseTraceTransform, DatabaseTraceTransformVersion
 from schemas.agentic_experiment_schemas import (
     AgenticEvalRef,
     AgenticExperimentSummary,
@@ -209,6 +209,7 @@ from schemas.response_schemas import (
     WeaviateHybridSearchSettingsConfigurationResponse,
     WeaviateKeywordSearchSettingsConfigurationResponse,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
+    TraceTransformVersionResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -2355,7 +2356,7 @@ class TraceTransform(BaseModel):
     task_id: str
     name: str
     description: Optional[str]
-    definition: TraceTransformDefinition
+    latest_version_number: int
     created_at: datetime
     updated_at: datetime
 
@@ -2365,7 +2366,7 @@ class TraceTransform(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            definition=self.definition,
+            latest_version_number=self.latest_version_number,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2376,7 +2377,7 @@ class TraceTransform(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            definition=self.definition.model_dump(),
+            latest_version_number=self.latest_version_number,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2392,7 +2393,6 @@ class TraceTransform(BaseModel):
             task_id=task_id,
             name=request.name,
             description=request.description,
-            definition=request.definition,
             created_at=curr_time,
             updated_at=curr_time,
         )
@@ -2406,11 +2406,62 @@ class TraceTransform(BaseModel):
             task_id=db_transform.task_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=TraceTransformDefinition.model_validate(
-                db_transform.definition,
-            ),
+            latest_version_number=db_transform.latest_version_number,
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
+        )
+
+
+class TraceTransformVersion(BaseModel):
+    id: uuid.UUID
+    transform_id: uuid.UUID
+    definition: TraceTransformDefinition
+    version_number: int
+    created_at: datetime
+
+    def to_response_model(self) -> TraceTransformVersionResponse:
+        return TraceTransformVersionResponse(
+            id=self.id,
+            transform_id=self.transform_id,
+            definition=self.definition,
+            version_number=self.version_number,
+            created_at=self.created_at,
+        )
+
+    def to_db_model(self) -> DatabaseTraceTransformVersion:
+        return DatabaseTraceTransformVersion(
+            id=self.id,
+            transform_id=self.transform_id,
+            definition=self.definition.model_dump(),
+            version_number=self.version_number,
+            created_at=self.created_at,
+        )
+
+    @staticmethod
+    def from_request_model(
+        transform_id: uuid.UUID,
+        version_number: int,
+        created_at: datetime,
+        request: NewTraceTransformRequest,
+    ) -> "TraceTransformVersion":
+        return TraceTransformVersion(
+            id=uuid.uuid4(),
+            transform_id=transform_id,
+            definition=request.definition,
+            version_number=version_number,
+            created_at=created_at,
+        )
+
+    @staticmethod
+    def from_db_model(
+        db_transform_version: DatabaseTraceTransformVersion,
+    ) -> "TraceTransformVersion":
+        return TraceTransformVersion(
+            id=db_transform_version.id,
+            transform_id=db_transform_version.transform_id,
+            definition=TraceTransformDefinition.model_validate(db_transform_version.definition),
+            version_number=db_transform_version.version_number,
+            created_at=db_transform_version.created_at,
         )
 
 

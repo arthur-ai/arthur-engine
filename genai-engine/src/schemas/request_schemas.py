@@ -862,6 +862,67 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
+class TransformVersionListFilterRequest(BaseModel):
+    """Request schema for filtering transforms with comprehensive filtering options."""
+
+    id: Optional[UUID] = Field(
+        None,
+        description="Name of the transform to filter on using partial matching.",
+    )
+    version_number: Optional[int] = Field(
+        None,
+        description="Version number of the transform to filter on.",
+    )
+    created_after: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    created_before: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+    @staticmethod
+    def from_query_parameters(
+        id: Optional[str] = Query(
+            None,
+            description="Name of the transform to filter on using partial matching.",
+        ),
+        version_number: Optional[int] = Query(
+            None,
+            description="Version number of the transform to filter on.",
+        ),
+        created_after: Optional[str] = Query(
+            None,
+            description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+        created_before: Optional[str] = Query(
+            None,
+            description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+        ),
+    ) -> "TransformVersionListFilterRequest":
+        """Create a TransformVersionListFilterRequest from query parameters."""
+        # Validate UUID parameters
+        parsed_id = None
+        if id:
+            try:
+                parsed_id = UUID(id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid UUID format for parameter 'id': {id}",
+                )
+
+        return TransformVersionListFilterRequest(
+            id=parsed_id,
+            version_number=version_number,
+            created_after=datetime.fromisoformat(created_after) if created_after else None,
+            created_before=(
+                datetime.fromisoformat(created_before) if created_before else None
+            ),
+        )
+
+
 class ContinuousEvalTransformVariableMappingRequest(BaseModel):
     transform_variable: str = Field(description="Name of the transform variable")
     eval_variable: str = Field(description="Name of the eval variable")

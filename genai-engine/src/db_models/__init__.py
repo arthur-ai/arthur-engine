@@ -167,4 +167,5 @@ __all__ = [
     "DatabaseAgenticExperimentTestCaseAgenticResultEvalScore",
     # Transform models
     "DatabaseTraceTransform",
+    "DatabaseTraceTransformVersion",
 ]

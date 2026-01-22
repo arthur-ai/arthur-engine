@@ -5,6 +5,7 @@ from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
     ExternalInference,
@@ -764,3 +765,16 @@ class ContinuousEvalTransformVariableMappingResponse(BaseModel):
 class ContinuousEvalRerunResponse(BaseModel):
     run_id: UUID = Field(description="ID of the continuous eval run that was rerun.")
     trace_id: str = Field(description="ID of the trace that was rerun.")
+
+
+class TraceTransformVersionResponse(BaseModel):
+    id: UUID = Field(description="ID of the transform version.")
+    transform_id: UUID = Field(description="ID of the transform.")
+    definition: TraceTransformDefinition = Field(description="Definition of the transform.")
+    version_number: int = Field(description="Version number of the transform.")
+    created_at: datetime = Field(description="Timestamp when the transform version was created.")
+
+
+class ListTraceTransformVersionsResponse(BaseModel):
+    versions: list[TraceTransformVersionResponse] = Field(description="List of transform versions.")
+    count: int = Field(description="Total number of transform versions.")
