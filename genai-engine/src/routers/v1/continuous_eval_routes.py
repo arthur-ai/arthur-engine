@@ -5,8 +5,8 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
-    ListContinuousEvalsResponse,
     ContinuousEvalVariableMappingResponse,
+    ListContinuousEvalsResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
