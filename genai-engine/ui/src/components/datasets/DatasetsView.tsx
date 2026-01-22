@@ -14,12 +14,12 @@ import { PAGE_SIZE_OPTIONS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useDatasetsModalState } from "@/hooks/datasets/useDatasetsModalState";
-import { useDatasetsPaginationQuery } from "@/hooks/datasets/useDatasetsPaginationQuery";
 import { useDatasetsSearchQuery } from "@/hooks/datasets/useDatasetsSearchQuery";
 import { useDatasetsSortingQuery } from "@/hooks/datasets/useDatasetsSortingQuery";
 import { useDeleteDatasetMutation } from "@/hooks/datasets/useDeleteDatasetMutation";
 import { useUpdateDatasetMutation } from "@/hooks/datasets/useUpdateDatasetMutation";
 import { useDatasets } from "@/hooks/useDatasets";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import type { DatasetResponse, NewDatasetRequest } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
@@ -28,7 +28,7 @@ export const DatasetsView: React.FC = () => {
   const { task } = useTask();
   const navigate = useNavigate();
 
-  const pagination = useDatasetsPaginationQuery();
+  const pagination = usePagination();
   const search = useDatasetsSearchQuery(pagination.resetPage);
   const sorting = useDatasetsSortingQuery();
   const modals = useDatasetsModalState();
@@ -38,9 +38,9 @@ export const DatasetsView: React.FC = () => {
       searchQuery: search.debouncedSearchQuery,
       sortOrder: sorting.sortOrder,
       page: pagination.page,
-      pageSize: pagination.pageSize,
+      pageSize: pagination.rowsPerPage,
     }),
-    [search.debouncedSearchQuery, sorting.sortOrder, pagination.page, pagination.pageSize]
+    [search.debouncedSearchQuery, sorting.sortOrder, pagination.page, pagination.rowsPerPage]
   );
 
   const { datasets, count, error, isLoading, refetch } = useDatasets(task?.id, filters);
@@ -181,10 +181,10 @@ export const DatasetsView: React.FC = () => {
               track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { task_id: task?.id });
               pagination.handlePageChange(event, page);
             }}
-            rowsPerPage={pagination.pageSize}
-            onRowsPerPageChange={(event) => {
+            rowsPerPage={pagination.rowsPerPage}
+            onRowsPerPageChange={(event: React.ChangeEvent<HTMLInputElement>) => {
               track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { task_id: task?.id });
-              pagination.handlePageSizeChange(event);
+              pagination.handleRowsPerPageChange(event);
             }}
             rowsPerPageOptions={PAGE_SIZE_OPTIONS}
           />
