@@ -27713,12 +27713,21 @@
                         "type": "array",
                         "title": "Missing Variables",
                         "description": "List of variable names that had missing values (no matching span or attribute path)."
+                    },
+                    "missing_spans": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Missing Spans",
+                        "description": "List of matching spans for the variables."
                     }
                 },
                 "type": "object",
                 "required": [
                     "variables",
-                    "missing_variables"
+                    "missing_variables",
+                    "missing_spans"
                 ],
                 "title": "TransformExtractionResponseList"
             },

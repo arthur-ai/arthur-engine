@@ -254,11 +254,19 @@ class ContinuousEvalQueueService:
 
             # Execute the transform over the trace
             transform_results = execute_transform(trace, trace_transform.definition)
-            if len(transform_results.missing_variables) > 0:
+            if len(transform_results.missing_spans) > 0:
                 self._update_annotation_status(
                     db_session,
                     job.annotation_id,
                     ContinuousEvalRunStatus.SKIPPED.value,
+                    annotation_description=f"Spans {', '.join(transform_results.missing_spans)} not found in trace {job.trace_id} skipping continuous eval execution for eval {job.continuous_eval_id}",
+                )
+                return
+            if len(transform_results.missing_variables) > 0:
+                self._update_annotation_status(
+                    db_session,
+                    job.annotation_id,
+                    ContinuousEvalRunStatus.ERROR.value,
                     annotation_description=f"Could not extract variables: {', '.join(transform_results.missing_variables)} using transform {continuous_eval.transform_id} on trace {job.trace_id}",
                 )
                 return

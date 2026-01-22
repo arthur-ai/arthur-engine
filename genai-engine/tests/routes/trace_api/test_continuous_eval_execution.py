@@ -952,7 +952,7 @@ def test_continuous_eval_execution_transform_errors(
         run_status=ContinuousEvalRunStatus.PENDING,
     )
 
-    # test executing for a non-existent trace variables
+    # test executing for a missing span should skip
     job = ContinuousEvalJob(
         annotation_id=annotation.id,
         trace_id=test_data["trace_id"],
@@ -964,6 +964,68 @@ def test_continuous_eval_execution_transform_errors(
     status_code, received_annotation = client.get_annotation_by_id(annotation.id)
     assert status_code == 200
     assert received_annotation.run_status == ContinuousEvalRunStatus.SKIPPED.value
+    assert (
+        received_annotation.annotation_description
+        == f"Spans api_test_span not found in trace {test_data['trace_id']} skipping continuous eval execution for eval {bad_continuous_eval.id}"
+    )
+
+    delete_mock_annotation(annotation.id)
+
+    transform_definition = {
+        "variables": [
+            {
+                "variable_name": "model_name",
+                "span_name": "rag-retrieval-savedQueries",
+                "attribute_path": "fake_path",
+            },
+        ],
+    }
+    status_code, incorrect_transform = client.create_transform(
+        task_id=agentic_task.id,
+        name="incorrect_transform",
+        description="Test transform description",
+        definition=transform_definition,
+    )
+    assert status_code == 200
+
+    status_code, bad_continuous_eval = client.save_continuous_eval(
+        task_id=agentic_task.id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": "test_llm_eval",
+            "llm_eval_version": 1,
+            "transform_id": str(incorrect_transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "model_name",
+                    "eval_variable": "model_name",
+                },
+            ],
+        },
+    )
+    assert status_code == 200
+
+    # create a real mock annotation
+    annotation = create_mock_annotation(
+        trace_id=test_data["trace_id"],
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
+        continuous_eval_id=bad_continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PENDING,
+    )
+
+    # test executing for a missing variables should error
+    job = ContinuousEvalJob(
+        annotation_id=annotation.id,
+        trace_id=test_data["trace_id"],
+        continuous_eval_id=bad_continuous_eval.id,
+        task_id=test_data["task_id"],
+        delay_seconds=0,
+    )
+    continuous_eval_queue_service._execute_job(job)
+    status_code, received_annotation = client.get_annotation_by_id(annotation.id)
+    assert status_code == 200
+    assert received_annotation.run_status == ContinuousEvalRunStatus.ERROR.value
     assert (
         received_annotation.annotation_description
         == f"Could not extract variables: model_name using transform {incorrect_transform.id} on trace {test_data['trace_id']}"

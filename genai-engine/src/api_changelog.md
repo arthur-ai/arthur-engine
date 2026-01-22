@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/22/2026
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'missing_spans' to the response with the '200' status
+
 # 01/16/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
