@@ -96,6 +96,76 @@ def receive_traces(
         db_session.close()
 
 
+@trace_api_routes.post(
+    "/traces/gcp",
+    summary="Receive GCP Cloud Trace",
+    description="Receiver for GCP Cloud Trace. Converts GCP trace format with GenAI semantic conventions to OpenInference format before ingestion.",
+    response_model=None,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+def receive_gcp_traces(
+    body: bytes = Body(...),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    """
+    Receive and process GCP Cloud Trace data.
+
+    This endpoint:
+    1. Accepts traces in GCP Cloud Trace format (simple spans with labels)
+    2. Converts GCP labels with GenAI semantic conventions to OpenInference attributes
+    3. Stores spans directly in the database without protobuf conversion
+
+    Expected input format: GCP Cloud Trace JSON with:
+    - traceId: Trace ID (hex string)
+    - projectId: GCP project ID
+    - spans: Array of span objects with spanId (decimal), name, startTime, endTime, parentSpanId (optional), labels
+    - task_id (optional): Arthur task ID to associate spans with
+    """
+    try:
+        import json
+
+        # Parse JSON body
+        try:
+            gcp_trace = json.loads(body)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON body: {e}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid JSON format: {str(e)}"
+            )
+
+        # Extract task_id from request body if present
+        task_id = gcp_trace.get("task_id")
+
+        # Process through span repository (handles conversion and ingestion)
+        span_repo = _get_span_repository(db_session)
+        db_spans, span_results = span_repo.create_traces_from_gcp(
+            gcp_trace, task_id=task_id
+        )
+
+        # Enqueue continuous evals for root spans
+        continuous_evals_repo = ContinuousEvalsRepository(db_session)
+        continuous_evals_repo.enqueue_continuous_evals_for_root_spans(db_spans)
+
+        return _create_response(*span_results)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error processing GCP traces: {e}")
+        import traceback
+
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
 @trace_api_routes.get(
     "/traces",
     summary="List Trace Metadata",
