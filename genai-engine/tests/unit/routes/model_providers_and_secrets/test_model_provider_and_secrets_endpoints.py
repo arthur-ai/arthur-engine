@@ -261,24 +261,13 @@ def test_put_model_provider_validations(client: GenaiEngineTestClientBase):
     )
     assert response.status_code == 400
 
-    # verify credentials file with non-JSON content type fails
-    response = client.base_client.put(
-        f"/api/v1/model_providers/vertex_ai",
-        json={},
-        files={
-            "credentials_file": ("credentials.txt", b'{"test": "data"}', "text/plain"),
-        },
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 400
-    assert "must be a JSON file" in response.json()["detail"]
-
 
 @pytest.mark.unit_tests
 def test_setting_vertex_ai_provider_credentials(client: GenaiEngineTestClientBase):
     # Enabling vertex ai without any credentials should work since it will default to using the default credentials
     response = client.base_client.put(
         f"/api/v1/model_providers/vertex_ai",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
@@ -286,12 +275,20 @@ def test_setting_vertex_ai_provider_credentials(client: GenaiEngineTestClientBas
     # Enabling vertex ai with json credentials file
     response = client.base_client.put(
         f"/api/v1/model_providers/vertex_ai",
-        files={
-            "credentials_file": (
-                "credentials.txt",
-                b'{"type": "service_account", "project_id": "test-project", "private_key_id": "test-key", "private_key": "test-key", "client_email": "test-email", "client_id": "test-id", "auth_uri": "test-auth-uri", "token_uri": "test-token-uri", "auth_provider_x509_cert_url": "test-auth-provider-x509-cert-url", "client_x509_cert_url": "test-client-x509-cert-url", "universe_domain": "test-universe-domain"}',
-                "application/json",
-            ),
+        json={
+            "credentials_file": {
+                "type": "service_account",
+                "project_id": "test-project",
+                "private_key_id": "test-key",
+                "private_key": "test-key",
+                "client_email": "test-email",
+                "client_id": "test-id",
+                "auth_uri": "test-auth-uri",
+                "token_uri": "test-token-uri",
+                "auth_provider_x509_cert_url": "test-auth-provider-x509-cert-url",
+                "client_x509_cert_url": "test-client-x509-cert-url",
+                "universe_domain": "test-universe-domain",
+            },
         },
         headers=client.authorized_user_api_key_headers,
     )
@@ -310,6 +307,7 @@ def test_setting_bedrock_provider_credentials(client: GenaiEngineTestClientBase)
     # Enabling bedrock with no credentials should work because it will default to using attached credentials
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 201
