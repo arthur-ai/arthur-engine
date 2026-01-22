@@ -9,9 +9,9 @@ import { VariableMappingSection } from "../components/variable-mapping";
 import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 
+import { EvaluatorSelector } from "./components/EvaluatorSelector";
+
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import { useEvals } from "@/components/evaluators/hooks/useEvals";
-import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
@@ -265,80 +265,7 @@ export const DetailsFieldGroup = withFieldGroup({
   },
 });
 
-export const EvaluatorSelector = withFieldGroup({
-  defaultValues: {
-    name: null,
-    version: null,
-  } as EvaluatorFormState,
-  props: {} as {
-    taskId: string;
-    onSelectionChange?: () => void;
-  },
-  render: function Render({ group, taskId, onSelectionChange }) {
-    const evaluators = useEvals(taskId, {
-      page: 0,
-      pageSize: 10,
-      sort: "desc",
-    });
-
-    const name = useStore(group.store, (state) => state.values.name);
-
-    const versions = useEvalVersions(taskId, name ?? undefined, {
-      page: 0,
-      pageSize: 10,
-      sort: "desc",
-    });
-
-    return (
-      <Stack gap={2}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
-          Evaluator and Version
-        </Typography>
-        <Stack direction="row" gap={2} width="100%">
-          <group.AppField
-            name="name"
-            listeners={{
-              onChange: () => {
-                group.setFieldValue("version", null);
-                onSelectionChange?.();
-              },
-            }}
-            children={(field) => (
-              <field.MaterialAutocompleteField
-                sx={{ flex: 1 }}
-                options={evaluators?.evals.map((evaluator) => evaluator.name)}
-                renderInput={(params) => <TextField {...params} label="Evaluator" />}
-              />
-            )}
-          />
-
-          <group.AppField
-            name="version"
-            listeners={{
-              onChange: () => {
-                onSelectionChange?.();
-              },
-            }}
-            children={(field) => (
-              <field.MaterialAutocompleteField
-                multiple={false}
-                onBlur={() => {
-                  field.handleBlur();
-                }}
-                sx={{ width: 200 }}
-                loading={versions.isLoading}
-                disabled={!name}
-                options={versions.versions?.map((version) => version.version.toString())}
-                getOptionLabel={(option) => `v${option}`}
-                renderInput={(params) => <TextField {...params} label="Version" />}
-              />
-            )}
-          />
-        </Stack>
-      </Stack>
-    );
-  },
-});
+export { EvaluatorSelector } from "./components/EvaluatorSelector";
 
 export const TransformSelector = withFieldGroup({
   defaultValues: {

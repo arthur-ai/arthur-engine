@@ -7,13 +7,16 @@ This directory contains the trace viewer components for `arthur-engine`. As part
 The trace viewer has been split into two categories:
 
 ### Container Components (Remain Here)
+
 These components handle:
+
 - **Data fetching** - Using React Query hooks (`useQuery`, `useSuspenseQuery`)
 - **State management** - URL state (`nuqs`), filter store, pagination context
 - **Routing** - Navigation via `react-router-dom`
 - **App-specific logic** - Analytics tracking, drawer targets, etc.
 
 **Container Components:**
+
 - `TraceDrawerContent.tsx` - Fetches trace data and manages span selection
 - `SpanDrawerContent.tsx` - Fetches span data
 - `SessionDrawerContent.tsx` - Fetches session data
@@ -22,7 +25,9 @@ These components handle:
 - `TracesView.tsx` - Main container that manages level selection and time range
 
 ### Presentational Components (Migrated to shared-components)
+
 These components have been moved to `@arthur/shared-components`:
+
 - `FilterRow` - Pure filter component
 - `TracesTable` - Generic table wrapper
 - `TracesViewLayout` - Layout component
@@ -38,6 +43,7 @@ These components have been moved to `@arthur/shared-components`:
 ### Components Still in This Directory
 
 **Container Components:**
+
 - `TraceDrawerContent.tsx` - Thin fetcher that renders `TraceDrawerBody` from shared-components
 - `SpanDrawerContent.tsx` - Thin fetcher that renders `SpanDrawerBody` from shared-components
 - `SessionDrawerContent.tsx` - Thin fetcher that renders `SessionDrawerBody` from shared-components
@@ -48,12 +54,14 @@ These components have been moved to `@arthur/shared-components`:
 - `TracesView.tsx` - Main container component
 
 **App-Specific Components:**
+
 - `add-to-dataset/Drawer.tsx` - Dataset management (not migrated)
 - `AnnotationCell/` - Annotation display (may be app-specific)
 - `feedback/FeedbackPanel.tsx` - Feedback collection (not migrated)
 - Other app-specific utilities and components
 
 **Backward Compatibility:**
+
 - `filtering/filters-row.tsx` - Contains the old `createFilterRow` factory function (kept for backward compatibility)
 
 ### Import Strategy
@@ -71,7 +79,7 @@ Currently, components in this directory still use **local imports** for the pres
 export const TraceDrawerContent = ({ traceId }: Props) => {
   // Data fetching
   const { data: trace } = useSuspenseQuery({
-    queryKey: ['trace', traceId],
+    queryKey: ["trace", traceId],
     queryFn: () => apiClient.getTrace(traceId),
   });
 
@@ -82,7 +90,7 @@ export const TraceDrawerContent = ({ traceId }: Props) => {
 
   // Callbacks
   const handleOpenSpanDrawer = (spanId: string) => {
-    setDrawerTarget({ type: 'span', id: spanId });
+    setDrawerTarget({ type: "span", id: spanId });
   };
 
   const handleOpenPlayground = (spanId: string, taskId: string) => {
@@ -118,16 +126,19 @@ Container components in this directory depend on:
 ## Migration Notes
 
 ### FilterRow Migration
+
 - The old `createFilterRow` factory function remains in `filtering/filters-row.tsx` for backward compatibility
 - New code should use the `FilterRow` component from shared-components
 - The `FilterRow` component maintains the same initialization behavior (only sets form values when form is empty)
 
 ### Column Factories
+
 - Column factories now accept `ColumnDependencies` to inject app-specific components
 - This allows the same factories to work across different applications
 - Dependencies include: formatters, `Chip`, `DurationCell`, `TraceContentCell`, `AnnotationCell`, etc.
 
 ### Drawer Bodies
+
 - All drawer body components are now presentational
 - They accept data and callbacks as props
 - App-specific components (like `AddToDatasetDrawer`, `FeedbackPanel`) are expected to be provided via props or `ColumnDependencies`

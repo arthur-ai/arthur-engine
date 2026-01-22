@@ -8,11 +8,10 @@ import { useNavigate } from "react-router-dom";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 import { usePaginationContext } from "../stores/pagination-context";
-import { flattenSpans, getSpanDuration } from "../utils/spans";
+import { flattenSpans } from "../utils/spans";
 
 import { TraceDrawerBody } from "./drawer/TraceDrawerBody";
 
-import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { queryKeys } from "@/lib/queryKeys";

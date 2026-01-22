@@ -21,7 +21,7 @@ export const createSpanLevelColumns = (deps: ColumnDependencies) => {
       header: "Status",
       Cell: ({ cell }) => {
         const statusCode = cell.getValue();
-        const isValid = isValidStatusCode ? isValidStatusCode(statusCode) : (statusCode === "Ok" || statusCode === "Error" || statusCode === "Unset");
+        const isValid = isValidStatusCode ? isValidStatusCode(statusCode) : statusCode === "Ok" || statusCode === "Error" || statusCode === "Unset";
         return <SpanStatusBadge status={isValid ? statusCode : "Unset"} />;
       },
       size: 120,

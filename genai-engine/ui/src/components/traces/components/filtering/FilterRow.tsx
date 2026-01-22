@@ -79,7 +79,7 @@ export function FilterRow<TFields extends readonly Field[]>({
       const completeFilters = value.config.filter(isFilterComplete);
       const hadFilters = previousFiltersLengthRef.current > 0;
       const nextFilters = completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[];
-      
+
       if (nextFilters.length > 0) {
         onTrack?.("TRACING_FILTERS_APPLIED", {
           filter_count: nextFilters.length,
@@ -93,7 +93,7 @@ export function FilterRow<TFields extends readonly Field[]>({
           source: "filters_row",
         });
       }
-      
+
       previousFiltersLengthRef.current = nextFilters.length;
       onFiltersChange(nextFilters);
     },

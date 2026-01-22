@@ -88,7 +88,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    [formatDate, track]
+    []
   );
 
   const setFilters = useFilterStore((state) => state.setFilters);
@@ -128,7 +128,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
           <FilterRow
             filters={filters}
             onFiltersChange={handleFiltersChange}
-            fieldConfig={SESSION_FIELDS as readonly typeof SESSION_FIELDS[number][]}
+            fieldConfig={SESSION_FIELDS as readonly (typeof SESSION_FIELDS)[number][]}
             dynamicEnumArgMap={dynamicEnumArgMap}
             onTrack={track}
           />

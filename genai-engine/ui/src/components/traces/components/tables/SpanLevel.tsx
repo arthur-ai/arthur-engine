@@ -108,7 +108,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
         TokenCostTooltip,
         isValidStatusCode,
       }),
-    [formatDate, track]
+    []
   );
 
   const setFilters = useFilterStore((state) => state.setFilters);

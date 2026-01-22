@@ -1,11 +1,12 @@
 import { SortingState, type OnChangeFn, type PaginationState } from "@tanstack/react-table";
-import { MaterialReactTable, type MRT_RowData } from "material-react-table";
+import { MaterialReactTable, type MRT_ColumnDef, type MRT_RowData } from "material-react-table";
 
 import { useTable } from "../../hooks/useTable";
 
 type TracesTableProps<T extends MRT_RowData> = {
   data: T[];
-  columns: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  columns: MRT_ColumnDef<T, any>[];
   rowCount: number;
   pagination: {
     pageIndex: number;

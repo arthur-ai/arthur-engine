@@ -21,7 +21,6 @@ type Props = {
 };
 
 export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpanId, onSelectSpan }: Props) => {
-
   const values = spans.map((span) => span.span_id);
 
   return (
@@ -43,7 +42,13 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpan
               <Box className="h-(--accordion-panel-height) text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b overflow-hidden" />
             }
           >
-            <SpanTree spans={span.children ?? []} level={level + 1} ancestors={new Set(ancestors).add(span.span_id)} selectedSpanId={selectedSpanId} onSelectSpan={onSelectSpan} />
+            <SpanTree
+              spans={span.children ?? []}
+              level={level + 1}
+              ancestors={new Set(ancestors).add(span.span_id)}
+              selectedSpanId={selectedSpanId}
+              onSelectSpan={onSelectSpan}
+            />
           </Accordion.Panel>
         </Accordion.Item>
       ))}
@@ -52,7 +57,6 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpan
 };
 
 const SpanTreeItem = ({ span, level, selectedSpanId }: { span: NestedSpanWithMetricsResponse; level: number; selectedSpanId: string | null }) => {
-
   const isSelected = span.span_id === selectedSpanId;
   const hasChildren = span.children && span.children.length > 0;
 

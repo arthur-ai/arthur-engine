@@ -85,7 +85,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    [formatDate, track]
+    []
   );
 
   if (error) {

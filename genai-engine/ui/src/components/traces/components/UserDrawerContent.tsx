@@ -5,14 +5,10 @@ import { TIME_RANGES, type TimeRange } from "../constants";
 
 import { UserDrawerBody } from "./drawer/UserDrawerBody";
 
-import { Tabs } from "@/components/ui/Tabs";
 import { useApi } from "@/hooks/useApi";
-import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
-import { SessionMetadataResponse, TraceMetadataResponse } from "@/lib/api-client/api-client";
-import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { getFilteredSessions, getFilteredTraces, getUser } from "@/services/tracing";
+import { getUser } from "@/services/tracing";
 
 type Props = {
   id: string;
@@ -30,12 +26,5 @@ export const UserDrawerContent = ({ id }: Props) => {
     queryFn: () => getUser(api, { taskId: task?.id ?? "", userId: id }),
   });
 
-  return (
-    <UserDrawerBody
-      user={user}
-      timeRange={timeRange}
-      onTimeRangeChange={setTimeRange}
-      taskId={task?.id ?? ""}
-    />
-  );
+  return <UserDrawerBody user={user} timeRange={timeRange} onTimeRangeChange={setTimeRange} taskId={task?.id ?? ""} />;
 };

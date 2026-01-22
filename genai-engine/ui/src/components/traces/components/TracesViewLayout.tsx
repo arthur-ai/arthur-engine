@@ -2,12 +2,10 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
-import { Activity } from "react";
+
+import { Level, type TimeRange } from "../constants";
 
 import { TimeRangeSelect } from "./TimeRangeSelect";
-import { Level, TIME_RANGES, type TimeRange } from "../constants";
-
-const TIME_RANGE_VALUES = Object.values(TIME_RANGES);
 
 type TracesViewLayoutProps = {
   level: Level;
@@ -18,14 +16,7 @@ type TracesViewLayoutProps = {
   children: React.ReactNode;
 };
 
-export const TracesViewLayout = ({
-  level,
-  timeRange,
-  onLevelChange,
-  onTimeRangeChange,
-  welcomeDismissed,
-  children,
-}: TracesViewLayoutProps) => {
+export const TracesViewLayout = ({ level, timeRange, onLevelChange, onTimeRangeChange, welcomeDismissed, children }: TracesViewLayoutProps) => {
   return (
     <Box
       sx={{
@@ -60,9 +51,7 @@ export const TracesViewLayout = ({
           </Stack>
         )}
 
-        <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {children}
-        </Box>
+        <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>{children}</Box>
       </Box>
     </Box>
   );
