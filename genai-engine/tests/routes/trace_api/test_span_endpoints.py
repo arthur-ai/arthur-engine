@@ -60,6 +60,14 @@ def assert_spans_match_types(spans, expected_types):
     for span in spans:
         assert span.span_kind in expected_set
 
+def assert_spans_match_ids(spans, expected_ids):
+    """Assert all spans have span_id in expected_ids."""
+    expected_set = (
+        set(expected_ids) if isinstance(expected_ids, list) else {expected_ids}
+    )
+    for span in spans:
+        assert span.span_id in expected_set
+
 
 # ============================================================================
 # SPAN METADATA LIST TESTS
@@ -152,6 +160,36 @@ def test_list_spans_metadata_with_span_type_filtering(
                 assert span.prompt_token_cost is not None
                 assert span.completion_token_cost is not None
                 assert span.total_token_cost is not None
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "span_ids,expected_count",
+    [
+        (["api_span1", "api_span3"], 2),  # api_span1 and api_span3
+        (["api_span2"], 1),  # api_span2
+        (["api_span4"], 1),  # api_span4
+        (["api_span1", "api_span2", "api_span3"], 3),  # api_span1, api_span2, api_span3
+        (["non_existent_span_id"], 0),  # Non-existent span ID
+    ],
+)
+def test_list_spans_metadata_with_span_id_filtering(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+    span_ids,
+    expected_count,
+):
+    """Test span id filtering functionality."""
+
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        span_ids=span_ids,
+    )
+    assert status_code == 200
+    assert data.count == expected_count
+    assert len(data.spans) == expected_count
+
+    assert_spans_match_ids(data.spans, span_ids)
 
 
 @pytest.mark.unit_tests

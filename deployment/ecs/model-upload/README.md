@@ -1,6 +1,8 @@
-# Arthur Model Upload - ECS Task
+# Arthur Model Upload - ECS Task (S3 Version)
 
 An ECS task that uploads pre-downloaded ML models to an S3 bucket for airgapped deployments.
+
+> **Note**: This is the **S3 version**. For OpenShift/Kubernetes deployments using PersistentVolumes (no S3), see `../../k8s/model-upload-oc/`.
 
 ## Overview
 
