@@ -742,6 +742,9 @@ class TransformExtractionResponseList(BaseModel):
     missing_variables: List[str] = Field(
         description="List of variable names that had missing values (no matching span or attribute path).",
     )
+    missing_spans: list[str] = Field(
+        description="List of matching spans for the variables.",
+    )
 
 
 class ContinuousEvalVariableMappingResponse(BaseModel):
