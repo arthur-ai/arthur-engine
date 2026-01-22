@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: copy-gliner-config
+  labels:
+    app: copy-gliner-config
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 600  # 10 minutes
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: copy-gliner-config
+    spec:
+      serviceAccountName: arthur-model-upload-oc-sa
+      restartPolicy: Never
+      containers:
+      - name: copier
+        image: arthurplatform/arthur-model-upload-oc:latest  # Use same image as model upload job
+        imagePullPolicy: IfNotPresent
+        command:
+        - python
+        - -c
+        - |
+          import shutil
+          import os
+          import sys
+
+          model_dir = '/models-output/urchade/gliner_multi_pii-v1'
+          gliner_config = os.path.join(model_dir, 'gliner_config.json')
+          config_json = os.path.join(model_dir, 'config.json')
+
+          if os.path.exists(gliner_config):
+              shutil.copy2(gliner_config, config_json)
+              print('✅ Copied gliner_config.json to config.json')
+              print('Files:', os.listdir(model_dir))
+          else:
+              print('❌ gliner_config.json not found at', gliner_config)
+              if os.path.exists(model_dir):
+                  print('Files in directory:', os.listdir(model_dir))
+              else:
+                  print('Directory does not exist')
+              sys.exit(1)
+        volumeMounts:
+        - name: models-storage
+          mountPath: /models-output
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000760000
+          runAsGroup: 1000760000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: arthur-models-pvc

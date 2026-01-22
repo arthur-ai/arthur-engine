@@ -2142,6 +2142,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_ids: list[str],
         trace_ids: list[str] | None = None,
         span_types: list[str] | None = None,
+        span_ids: list[str] | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         page: int | None = None,
@@ -2176,6 +2177,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             task_ids: Task IDs to filter on (required)
             trace_ids: Trace IDs to filter on (optional)
             span_types: Span types to filter on (optional)
+            span_ids: Span IDs to filter on (optional)
             start_time: Filter by start time
             end_time: Filter by end time
             page: Page number for pagination
@@ -2208,6 +2210,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_ids"] = trace_ids
         if span_types is not None:
             params["span_types"] = span_types
+        if span_ids is not None:
+            params["span_ids"] = span_ids
         if start_time is not None:
             params["start_time"] = str(start_time)
         if end_time is not None:
