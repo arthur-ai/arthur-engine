@@ -129,6 +129,7 @@ const getFieldLabel = (name: string) => {
     {
       name: "Name",
       llm_eval_name: "Evaluator Name",
+      enabled: "Status",
       created_at: "Created At",
     }[name] ?? name
   );
