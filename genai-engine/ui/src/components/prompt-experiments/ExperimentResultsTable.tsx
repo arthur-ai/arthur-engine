@@ -2,8 +2,10 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
+  Alert,
   Box,
   Table,
   TableBody,
@@ -22,15 +24,18 @@ import {
   LinearProgress,
   CircularProgress,
   Button,
+  Snackbar,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 import { EvalInputsDialog } from "./PromptResultDetailModal";
 
+import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
 import { useApi } from "@/hooks/useApi";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
-import type { TestCase, DatasetVersionRowResponse } from "@/lib/api-client/api-client";
+import useSnackbar from "@/hooks/useSnackbar";
+import type { TestCase, DatasetVersionRowResponse, EvalExecution } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -40,7 +45,6 @@ interface Message {
 }
 
 interface ExperimentResultsTableProps {
-  taskId: string;
   experimentId: string;
   promptSummaries?: Array<{
     prompt_key?: string | null;
@@ -67,7 +71,9 @@ interface TestCaseDetailModalProps {
   totalCount: number;
   onPrevious: () => void;
   onNext: () => void;
-  onViewEvalInputs?: (evalExecution: any) => void;
+  onViewEvalInputs?: (evalExecution: EvalExecution) => void;
+  datasetId?: string;
+  datasetVersion?: number;
 }
 
 const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
@@ -79,7 +85,25 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   onPrevious,
   onNext,
   onViewEvalInputs,
+  datasetId,
+  datasetVersion,
 }) => {
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const [selectedOutputForUpdate, setSelectedOutputForUpdate] = useState<string | null>(null);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
+  const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && testCase?.dataset_row_id);
+
+  const handleOpenUpdateModal = (outputContent: string) => {
+    setSelectedOutputForUpdate(outputContent);
+    setUpdateModalOpen(true);
+  };
+
+  const handleUpdateSuccess = () => {
+    showSnackbar("Dataset updated successfully. New version created.", "success");
+    setUpdateModalOpen(false);
+  };
+
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
     return {
@@ -99,7 +123,6 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
     borderStyle: "solid",
   });
 
-  // Add keyboard navigation
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return;
@@ -203,9 +226,22 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
                         {/* Output */}
                         <Box>
-                          <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
-                            Output Message:
-                          </Typography>
+                          <Box className="flex items-center justify-between mb-2">
+                            <Typography variant="subtitle2" className="font-medium text-gray-700">
+                              Output Message:
+                            </Typography>
+                            {canUpdateDataset && promptResult.output?.content && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<SaveAltIcon />}
+                                onClick={() => handleOpenUpdateModal(promptResult.output!.content)}
+                                title="Update dataset row with this output"
+                              >
+                                Update Dataset
+                              </Button>
+                            )}
+                          </Box>
                           <Box className="max-h-96 overflow-auto">
                             {promptResult.output ? (
                               <>
@@ -284,6 +320,22 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
             </Box>
           </Box>
         </Box>
+
+        {canUpdateDataset && selectedOutputForUpdate && (
+          <UpdateDatasetRowModal
+            open={updateModalOpen}
+            onClose={() => setUpdateModalOpen(false)}
+            datasetId={datasetId!}
+            datasetVersion={datasetVersion!}
+            rowId={testCase.dataset_row_id}
+            outputValue={selectedOutputForUpdate}
+            onSuccess={handleUpdateSuccess}
+          />
+        )}
+
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
+        </Snackbar>
       </Box>
     </Modal>
   );
@@ -497,7 +549,7 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
                     <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
                       {item.column_name}
                     </Typography>
-                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap break-words">
+                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word">
                       {item.column_value}
                     </Typography>
                   </Box>
@@ -512,7 +564,6 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
 };
 
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
-  taskId,
   experimentId,
   promptSummaries = [],
   refreshTrigger,
@@ -526,7 +577,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
-  const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
   const [datasetRowModalOpen, setDatasetRowModalOpen] = useState(false);
   const [selectedDatasetRow, setSelectedDatasetRow] = useState<{ datasetId: string; versionNumber: number; rowId: string } | null>(null);
 
@@ -559,7 +610,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     setSelectedTestCaseIndex(-1);
   };
 
-  const handleViewEvalInputs = (evalExecution: any) => {
+  const handleViewEvalInputs = (evalExecution: EvalExecution) => {
     setSelectedEvalExecution(evalExecution);
     setEvalInputsDialogOpen(true);
   };
@@ -878,6 +929,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
         onPrevious={handlePrevious}
         onNext={handleNext}
         onViewEvalInputs={handleViewEvalInputs}
+        datasetId={datasetId}
+        datasetVersion={datasetVersion}
       />
 
       {/* Eval Inputs Dialog - rendered as sibling to avoid nesting in Modal */}

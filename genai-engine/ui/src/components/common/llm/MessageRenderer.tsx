@@ -69,20 +69,20 @@ const CollapsibleList = ({
   </Box>
 );
 
-const renderValue = (value: any): React.ReactNode => {
+const renderValue = (value: unknown): React.ReactNode => {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   if (Array.isArray(value)) {
     return <ArrayValue array={value} />;
   }
   if (typeof value === "object") {
-    return <ObjectValue obj={value} />;
+    return <ObjectValue obj={value as Record<string, unknown>} />;
   }
   if (typeof value === "string") return `"${value}"`;
   return String(value);
 };
 
-const ArrayValue = ({ array }: { array: any[] }) => {
+const ArrayValue = ({ array }: { array: unknown[] }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   if (array.length === 0) return <>[]</>;
@@ -98,7 +98,7 @@ const ArrayValue = ({ array }: { array: any[] }) => {
   );
 };
 
-const ObjectValue = ({ obj }: { obj: Record<string, any> }) => {
+const ObjectValue = ({ obj }: { obj: Record<string, unknown> }) => {
   const [isOpen, setIsOpen] = useState(false);
   const keys = Object.keys(obj);
 
@@ -113,7 +113,7 @@ const ObjectValue = ({ obj }: { obj: Record<string, any> }) => {
   );
 };
 
-const KeyValueList = ({ data }: { data: Record<string, any> }) => (
+const KeyValueList = ({ data }: { data: Record<string, unknown> }) => (
   <Box component="ul" sx={{ m: 0, p: 0, pl: 2, listStyle: "none" }}>
     {Object.entries(data).map(([key, value]) => (
       <KeyValueItem key={key} label={key} value={renderValue(value)} />
@@ -156,7 +156,7 @@ const ContentBox = ({ label, children }: { label: string; children: React.ReactN
 /**
  * Parses a string as JSON, returning null if parsing fails
  */
-const parseJson = (content: string): any | null => {
+const parseJson = (content: string): unknown => {
   try {
     return JSON.parse(content);
   } catch {
@@ -167,7 +167,7 @@ const parseJson = (content: string): any | null => {
 /**
  * Renders formatted JSON content (handles both objects and arrays)
  */
-const FormattedJsonContent = ({ data }: { data: any }) => {
+const FormattedJsonContent = ({ data }: { data: unknown }) => {
   if (Array.isArray(data)) {
     return (
       <Box component="ul" sx={{ m: 0, p: 0, pl: 0, listStyle: "none" }}>
@@ -180,7 +180,7 @@ const FormattedJsonContent = ({ data }: { data: any }) => {
     );
   }
 
-  return <KeyValueList data={data} />;
+  return <KeyValueList data={data as Record<string, unknown>} />;
 };
 
 /**
@@ -300,12 +300,13 @@ const AssistantMessageContent = ({ message }: { message: Extract<Message, { role
 /**
  * Renders array content (multimodal messages)
  */
-const ArrayMessageContent = ({ content }: { content: any[] }) => (
+const ArrayMessageContent = ({ content }: { content: unknown[] }) => (
   <ContentBox label="Contents">
     {content.map((item, index) => {
-      switch (item.type) {
+      const typedItem = item as { type?: string; text?: string };
+      switch (typedItem.type) {
         case "text":
-          return <TextMessageRenderer key={index} text={item.text} unwrapped />;
+          return <TextMessageRenderer key={index} text={typedItem.text ?? ""} unwrapped />;
         default:
           return <Highlight key={index} code={tryFormatJson(item)} language="json" unwrapped />;
       }

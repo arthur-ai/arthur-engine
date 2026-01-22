@@ -63,6 +63,11 @@ from arthur_common.models.response_schemas import (
     ToxicityDetailsResponse,
     UserResponse,
 )
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse,
+    TraceTransformDefinition,
+    TraceTransformResponse,
+)
 from fastapi import HTTPException
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
@@ -176,7 +181,6 @@ from schemas.request_schemas import (
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
     RagVectorSimilarityTextSearchSettingRequest,
-    TraceTransformDefinition,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
@@ -187,7 +191,6 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
-    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
@@ -201,7 +204,6 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
-    TraceTransformResponse,
     TraceUserMetadataResponse,
     WeaviateHybridSearchSettingsConfigurationResponse,
     WeaviateKeywordSearchSettingsConfigurationResponse,
@@ -3187,16 +3189,17 @@ class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
                 query=query_text,
                 limit=self.limit,
                 alpha=self.alpha,
-                return_properties=self.return_properties,
-                include_vector=self.include_vector,
-                return_metadata=self.return_metadata,
+                query_properties=self.query_properties,
+                fusion_type=self.fusion_type,
+                max_vector_distance=self.max_vector_distance,
                 minimum_match_or_operator=self.minimum_match_or_operator,
                 and_operator=self.and_operator,
-                certainty=self.certainty,
-                distance=self.distance,
                 target_vector=self.target_vector,
+                include_vector=self.include_vector,
                 offset=self.offset,
                 auto_limit=self.auto_limit,
+                return_metadata=self.return_metadata,
+                return_properties=self.return_properties,
             ),
         )
 

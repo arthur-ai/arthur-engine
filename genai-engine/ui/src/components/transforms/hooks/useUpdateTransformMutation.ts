@@ -10,10 +10,7 @@ interface UpdateTransformParams {
   definition: TransformDefinition;
 }
 
-export function useUpdateTransformMutation(
-  taskId: string | undefined,
-  onSuccess?: () => void
-) {
+export function useUpdateTransformMutation(taskId: string | undefined, onSuccess?: () => void) {
   const api = useApi();
   const queryClient = useQueryClient();
 
@@ -23,14 +20,11 @@ export function useUpdateTransformMutation(
         throw new Error("Task ID or API client not available");
       }
 
-      const response = await api.api.updateTransformApiV1TracesTransformsTransformIdPatch(
-        params.transformId,
-        {
-          name: params.name,
-          description: params.description || null,
-          definition: params.definition,
-        }
-      );
+      const response = await api.api.updateTransformApiV1TracesTransformsTransformIdPatch(params.transformId, {
+        name: params.name,
+        description: params.description || null,
+        definition: params.definition,
+      });
 
       return response.data;
     },

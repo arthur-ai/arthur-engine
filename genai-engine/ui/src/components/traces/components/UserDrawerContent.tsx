@@ -1,7 +1,7 @@
-import { Box, Paper, Skeleton, Stack, TablePagination, Typography } from "@mui/material";
+import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { MaterialReactTable } from "material-react-table";
+import { Suspense, useMemo, useState } from "react";
 
 import { TIME_RANGES, TimeRange } from "../constants";
 import { BucketProvider } from "../context/bucket-context";
@@ -9,6 +9,7 @@ import { columns } from "../data/columns";
 import { TokenCostTooltip, TokenCountTooltip } from "../data/common";
 import { sessionLevelColumns } from "../data/session-level-columns";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
+import { useTable } from "../hooks/useTable";
 import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
 import { buildThresholdsFromSample } from "../utils/duration";
 
@@ -19,11 +20,10 @@ import { TRACE_FIELDS } from "./filtering/trace-fields";
 import { Operators } from "./filtering/types";
 import { TimeRangeSelect } from "./TimeRangeSelect";
 import { TracesEmptyState } from "./TracesEmptyState";
-import { TracesTable } from "./TracesTable";
 
 import { Tabs } from "@/components/ui/Tabs";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
+import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
 import { SessionMetadataResponse, TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
@@ -124,10 +124,9 @@ type UserTableProps = {
 
 const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
   const api = useApi()!;
-  const ref = useRef<HTMLDivElement | null>(null);
   const [, setDrawerTarget] = useDrawerTarget();
 
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -136,8 +135,8 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
 
   const params = {
     taskId,
-    page: pagination.page,
-    pageSize: pagination.rowsPerPage,
+    page: pagination.pageIndex,
+    pageSize: pagination.pageSize,
     filters: combinedFilters,
     timeRange,
   };
@@ -148,10 +147,11 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
     queryFn: () => getFilteredTraces(api, params),
   });
 
-  const table = useReactTable({
+  const table = useTable({
     data: traces.data?.traces ?? (DEFAULT_DATA as TraceMetadataResponse[]),
     columns,
-    getCoreRowModel: getCoreRowModel(),
+    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: traces.data?.count ?? 0 },
+    onRowClick: (row) => setDrawerTarget({ target: "trace", id: row.trace_id }),
   });
 
   const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
@@ -172,26 +172,8 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
       {traces.data?.count ? (
         <>
           <BucketProvider thresholds={thresholds}>
-            <TracesTable
-              table={table}
-              ref={ref}
-              loading={traces.isFetching}
-              onRowClick={(row) => {
-                setDrawerTarget({ target: "trace", id: row.original.trace_id });
-              }}
-            />
+            <MaterialReactTable table={table} />
           </BucketProvider>
-          <TablePagination
-            component="div"
-            count={traces.data?.count ?? 0}
-            onPageChange={pagination.handlePageChange}
-            page={pagination.page}
-            rowsPerPage={pagination.rowsPerPage}
-            onRowsPerPageChange={pagination.handleRowsPerPageChange}
-            disabled={traces.isPlaceholderData}
-            sx={{ overflow: "visible" }}
-            rowsPerPageOptions={[FETCH_SIZE]}
-          />
         </>
       ) : (
         <TracesEmptyState title="No traces found">
@@ -206,9 +188,8 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
 
 const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
   const api = useApi()!;
-  const ref = useRef<HTMLDivElement | null>(null);
   const [, setDrawerTarget] = useDrawerTarget();
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
@@ -216,8 +197,8 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
 
   const params = {
     taskId,
-    page: pagination.page,
-    pageSize: pagination.rowsPerPage,
+    page: pagination.pageIndex,
+    pageSize: pagination.pageSize,
     filters,
     timeRange,
   };
@@ -228,33 +209,16 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
     queryFn: () => getFilteredSessions(api, params),
   });
 
-  const table = useReactTable({
+  const table = useTable({
     data: sessions.data?.sessions ?? (DEFAULT_DATA as SessionMetadataResponse[]),
     columns: sessionLevelColumns,
-    getCoreRowModel: getCoreRowModel(),
+    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: sessions.data?.count ?? 0 },
+    onRowClick: (row) => setDrawerTarget({ target: "session", id: row.session_id }),
   });
 
   return sessions.data?.count ? (
     <>
-      <TracesTable
-        table={table}
-        ref={ref}
-        loading={sessions.isFetching}
-        onRowClick={(row) => {
-          setDrawerTarget({ target: "session", id: row.original.session_id });
-        }}
-      />
-      <TablePagination
-        component="div"
-        count={sessions.data?.count ?? 0}
-        onPageChange={pagination.handlePageChange}
-        page={pagination.page}
-        rowsPerPage={pagination.rowsPerPage}
-        onRowsPerPageChange={pagination.handleRowsPerPageChange}
-        disabled={sessions.isPlaceholderData}
-        sx={{ overflow: "visible" }}
-        rowsPerPageOptions={[FETCH_SIZE]}
-      />
+      <MaterialReactTable table={table} />
     </>
   ) : (
     <TracesEmptyState title="No sessions found">

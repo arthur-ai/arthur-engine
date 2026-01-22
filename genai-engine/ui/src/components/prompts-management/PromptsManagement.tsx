@@ -27,13 +27,14 @@ const PromptsManagement: React.FC = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
-  // Sync fullScreenPrompt with URL parameter
+  // Sync fullScreenPrompt with URL parameter (one-way: URL -> state only)
   useEffect(() => {
     if (urlPromptName) {
       setFullScreenPrompt(urlPromptName);
     } else if (!urlPromptName && fullScreenPrompt) {
       setFullScreenPrompt(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlPromptName]);
 
   const filters = useMemo(
@@ -56,11 +57,14 @@ const PromptsManagement: React.FC = () => {
     window.location.href = `/tasks/${task?.id}/playgrounds/prompts`;
   }, [task?.id]);
 
-  const handleExpandToFullScreen = useCallback((promptName: string) => {
-    setFullScreenPrompt(promptName);
-    // Update URL to reflect the selected prompt
-    navigate(`/tasks/${taskId}/prompts/${promptName}`);
-  }, [taskId, navigate]);
+  const handleExpandToFullScreen = useCallback(
+    (promptName: string) => {
+      setFullScreenPrompt(promptName);
+      // Update URL to reflect the selected prompt
+      navigate(`/tasks/${taskId}/prompts/${promptName}`);
+    },
+    [taskId, navigate]
+  );
 
   const handleCloseFullScreen = useCallback(() => {
     setFullScreenPrompt(null);

@@ -3,6 +3,10 @@ from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse,
+    ListContinuousEvalsResponse,
+)
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 
@@ -24,8 +28,6 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ContinuousEvalRerunResponse,
-    ContinuousEvalResponse,
-    ListContinuousEvalsResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters

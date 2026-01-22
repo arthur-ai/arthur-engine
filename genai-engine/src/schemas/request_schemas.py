@@ -4,6 +4,18 @@ from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from arthur_common.models.llm_model_providers import (
+    LLMResponseFormat,
+    LLMTool,
+    LogitBiasItem,
+    ModelProvider,
+    OpenAIMessage,
+    ReasoningEffortEnum,
+    StreamOptions,
+    ToolChoice,
+    ToolChoiceEnum,
+)
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
@@ -23,21 +35,10 @@ from schemas.common_schemas import (
 )
 from schemas.enums import (
     DocumentStorageEnvironment,
-    ModelProvider,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
-    ReasoningEffortEnum,
-)
-from schemas.llm_schemas import (
-    LLMResponseFormat,
-    LLMTool,
-    LogitBiasItem,
-    OpenAIMessage,
-    StreamOptions,
-    ToolChoice,
-    ToolChoiceEnum,
 )
 
 
@@ -124,28 +125,6 @@ class NewDatasetVersionRequest(BaseModel):
     rows_to_update: list[NewDatasetVersionUpdateRowRequest] = Field(
         description="List of IDs of rows to be updated in the new dataset version with their new values. "
         "Should include the value in the row for every column in the dataset, not just the updated column values.",
-    )
-
-
-class TraceTransformVariableDefinition(BaseModel):
-    variable_name: str = Field(
-        description="Name of the variable to extract.",
-    )
-    span_name: str = Field(
-        description="Name of the span to extract data from.",
-    )
-    attribute_path: str = Field(
-        description="Dot-notation path to the attribute within the span (e.g., 'attributes.input.value.sqlQuery').",
-    )
-    fallback: Optional[str] = Field(
-        default=None,
-        description="Fallback value to use if the attribute is not found.",
-    )
-
-
-class TraceTransformDefinition(BaseModel):
-    variables: list[TraceTransformVariableDefinition] = Field(
-        description="List of variable extraction rules.",
     )
 
 
@@ -507,16 +486,17 @@ class WeaviateHybridSearchSettingsConfigurationRequest(
                 query=query_text,
                 limit=self.limit,
                 alpha=self.alpha,
-                return_properties=self.return_properties,
-                include_vector=self.include_vector,
-                return_metadata=self.return_metadata,
+                query_properties=self.query_properties,
+                fusion_type=self.fusion_type,
+                max_vector_distance=self.max_vector_distance,
                 minimum_match_or_operator=self.minimum_match_or_operator,
                 and_operator=self.and_operator,
-                certainty=self.certainty,
-                distance=self.distance,
                 target_vector=self.target_vector,
+                include_vector=self.include_vector,
                 offset=self.offset,
                 auto_limit=self.auto_limit,
+                return_metadata=self.return_metadata,
+                return_properties=self.return_properties,
             ),
         )
 

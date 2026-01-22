@@ -1,9 +1,4 @@
-import {
-  Edit,
-  Delete,
-  Warning,
-  SmartToy,
-} from "@mui/icons-material";
+import { Edit, Delete, Warning, SmartToy } from "@mui/icons-material";
 import {
   Box,
   Button,
@@ -59,14 +54,11 @@ export const ModelProviders: React.FC = () => {
           throw new Error("API client not available");
         }
 
-        const response =
-          await api.api.getModelProvidersApiV1ModelProvidersGet();
+        const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
         setProviders(response.data.providers || []);
       } catch (err) {
         console.error("Failed to fetch model providers:", err);
-        setError(
-          "Failed to load model providers. Please check your authentication."
-        );
+        setError("Failed to load model providers. Please check your authentication.");
       } finally {
         setIsLoading(false);
       }
@@ -83,35 +75,14 @@ export const ModelProviders: React.FC = () => {
       openai: "OpenAI",
       gemini: "Google Gemini",
     };
-    return (
-      displayNames[provider] ||
-      provider.charAt(0).toUpperCase() + provider.slice(1)
-    );
+    return displayNames[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
   };
 
   const getProviderIcon = (provider: string) => {
     const iconMap: Record<string, React.ReactElement> = {
-      anthropic: (
-        <img
-          src="/logos/model_providers/anthropic-logo.svg"
-          alt="Anthropic"
-          style={{ width: 20, height: 20 }}
-        />
-      ),
-      openai: (
-        <img
-          src="/logos/model_providers/openai-logo.svg"
-          alt="OpenAI"
-          style={{ width: 20, height: 20 }}
-        />
-      ),
-      gemini: (
-        <img
-          src="/logos/model_providers/gemini-logo.svg"
-          alt="Google Gemini"
-          style={{ width: 20, height: 20 }}
-        />
-      ),
+      anthropic: <img src="/logos/model_providers/anthropic-logo.svg" alt="Anthropic" style={{ width: 20, height: 20 }} />,
+      openai: <img src="/logos/model_providers/openai-logo.svg" alt="OpenAI" style={{ width: 20, height: 20 }} />,
+      gemini: <img src="/logos/model_providers/gemini-logo.svg" alt="Google Gemini" style={{ width: 20, height: 20 }} />,
     };
     return iconMap[provider] || <SmartToy sx={{ color: "primary.main" }} />;
   };
@@ -155,9 +126,7 @@ export const ModelProviders: React.FC = () => {
 
     try {
       setIsDeleting(true);
-      await api.api.deleteModelProviderApiV1ModelProvidersProviderDelete(
-        deleteModal.provider.provider
-      );
+      await api.api.deleteModelProviderApiV1ModelProvidersProviderDelete(deleteModal.provider.provider);
 
       // Refresh the providers list
       const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
@@ -187,10 +156,7 @@ export const ModelProviders: React.FC = () => {
 
     try {
       setIsSaving(true);
-      await api.api.setModelProviderApiV1ModelProvidersProviderPut(
-        editModal.provider.provider,
-        { api_key: apiKey.trim() }
-      );
+      await api.api.setModelProviderApiV1ModelProvidersProviderPut(editModal.provider.provider, { api_key: apiKey.trim() });
 
       // Refresh the providers list
       const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
@@ -201,9 +167,7 @@ export const ModelProviders: React.FC = () => {
       setApiKey("");
     } catch (err) {
       console.error("Failed to save model provider:", err);
-      setError(
-        "Failed to save model provider configuration. Please try again."
-      );
+      setError("Failed to save model provider configuration. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -241,13 +205,7 @@ export const ModelProviders: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h5"
-          component="h2"
-          gutterBottom
-          color="text.primary"
-          fontWeight="bold"
-        >
+        <Typography variant="h5" component="h2" gutterBottom color="text.primary" fontWeight="bold">
           Model Providers Configuration
         </Typography>
         <Typography variant="body1" color="text.secondary">
@@ -257,9 +215,7 @@ export const ModelProviders: React.FC = () => {
 
       <Card>
         <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-          <TableContainer
-            sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}
-          >
+          <TableContainer sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
             <Table stickyHeader size="small" sx={{ width: "100%" }}>
               <TableHead>
                 <TableRow>
@@ -307,18 +263,14 @@ export const ModelProviders: React.FC = () => {
                   providers.map((provider) => (
                     <TableRow key={provider.provider} hover>
                       <TableCell>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                           {getProviderIcon(provider.provider)}
                           <Typography variant="body2" fontWeight="medium">
                             {getProviderDisplayName(provider.provider)}
                           </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell align="center">
-                        {getStatusBadge(provider.enabled)}
-                      </TableCell>
+                      <TableCell align="center">{getStatusBadge(provider.enabled)}</TableCell>
                       <TableCell align="right">
                         <Box
                           sx={{
@@ -327,12 +279,7 @@ export const ModelProviders: React.FC = () => {
                             justifyContent: "flex-end",
                           }}
                         >
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleEditClick(provider)}
-                            title="Configure provider"
-                          >
+                          <IconButton size="small" color="primary" onClick={() => handleEditClick(provider)} title="Configure provider">
                             <Edit />
                           </IconButton>
                           <IconButton
@@ -340,11 +287,7 @@ export const ModelProviders: React.FC = () => {
                             color="error"
                             onClick={() => handleDeleteClick(provider)}
                             disabled={!provider.enabled}
-                            title={
-                              provider.enabled
-                                ? "Delete provider"
-                                : "Delete provider (disabled - provider not enabled)"
-                            }
+                            title={provider.enabled ? "Delete provider" : "Delete provider (disabled - provider not enabled)"}
                           >
                             <Delete />
                           </IconButton>
@@ -360,12 +303,7 @@ export const ModelProviders: React.FC = () => {
       </Card>
 
       {/* Delete Confirmation Modal */}
-      <Dialog
-        open={deleteModal.isOpen}
-        onClose={handleDeleteCancel}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={deleteModal.isOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
           <Box
             sx={{
@@ -399,18 +337,11 @@ export const ModelProviders: React.FC = () => {
             ?
           </Typography>
           <Alert severity="warning" sx={{ mt: 2 }}>
-            <Typography variant="body2">
-              Any agents or evals currently using this provider will no longer
-              work.
-            </Typography>
+            <Typography variant="body2">Any agents or evals currently using this provider will no longer work.</Typography>
           </Alert>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={handleDeleteCancel}
-            disabled={isDeleting}
-            variant="outlined"
-          >
+          <Button onClick={handleDeleteCancel} disabled={isDeleting} variant="outlined">
             Cancel
           </Button>
           <Button
@@ -426,12 +357,7 @@ export const ModelProviders: React.FC = () => {
       </Dialog>
 
       {/* Edit/Configure Modal */}
-      <Dialog
-        open={editModal.isOpen}
-        onClose={handleEditCancel}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={editModal.isOpen} onClose={handleEditCancel} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
           <Box
             sx={{
@@ -475,11 +401,7 @@ export const ModelProviders: React.FC = () => {
           />
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={handleEditCancel}
-            disabled={isSaving}
-            variant="outlined"
-          >
+          <Button onClick={handleEditCancel} disabled={isSaving} variant="outlined">
             Cancel
           </Button>
           <Button

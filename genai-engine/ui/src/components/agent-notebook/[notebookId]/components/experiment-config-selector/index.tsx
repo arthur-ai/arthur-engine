@@ -10,6 +10,7 @@ import { agentExperimentQueryOptions } from "@/components/agent-experiments/hook
 import { useAgentExperiments } from "@/components/agent-experiments/hooks/useAgentExperiments";
 import { useAppForm, withForm } from "@/components/traces/components/filtering/hooks/form";
 import { useApi } from "@/hooks/useApi";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 type Props = {
   onClose: () => void;
@@ -31,8 +32,12 @@ export const ExperimentConfigSelector = withForm({
         try {
           const experiment = await queryClient.fetchQuery(agentExperimentQueryOptions({ api, experimentId: value.experimentId }));
 
+          track(EVENT_NAMES.AGENT_NOTEBOOK_LOAD_EXPERIMENT_CONFIG, { experiment_id: value.experimentId });
+
           parentForm.reset(mapTemplateToForm(experiment.data));
           await parentForm.validateAllFields("change");
+
+          onClose();
         } catch (error) {
           console.error(error);
           enqueueSnackbar("Failed to load experiment configuration", { variant: "error" });
@@ -71,6 +76,7 @@ export const ExperimentConfigSelector = withForm({
                         field.handleChange(value?.id ?? "");
                       }}
                       getOptionLabel={(option) => option.name}
+                      getOptionKey={(option) => option.id}
                       renderOption={(props, option) => {
                         const { key, ...optionProps } = props;
                         return (

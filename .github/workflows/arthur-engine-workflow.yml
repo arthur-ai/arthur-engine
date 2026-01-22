@@ -174,6 +174,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
+      ui: ${{ steps.changes.outputs.ui }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v2
@@ -185,6 +186,51 @@ jobs:
             backend:
               - 'genai-engine/**'
               - '!genai-engine/ui/**'
+
+  run-genai-engine-ui-lint:
+    needs: check-genai-engine-changes
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev' &&
+      needs.check-genai-engine-changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: genai-engine/ui
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Run type-check
+        id: type-check
+        continue-on-error: true
+        run: yarn type-check
+      - name: Run lint
+        id: lint
+        continue-on-error: true
+        run: yarn lint
+      - name: Run format check
+        id: format-check
+        continue-on-error: true
+        run: yarn format:check
+      - name: Check results
+        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure'
+        run: |
+          echo "One or more checks failed:"
+          echo "  type-check: ${{ steps.type-check.outcome }}"
+          echo "  lint: ${{ steps.lint.outcome }}"
+          echo "  format-check: ${{ steps.format-check.outcome }}"
+          exit 1
 
   run-genai-engine-unit-tests:
     needs: check-genai-engine-changes
@@ -413,7 +459,7 @@ jobs:
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
-      github.ref == 'refs/heads/dev'
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     outputs:
       has_updates: ${{ steps.check-updates.outputs.has_updates }}
@@ -441,7 +487,7 @@ jobs:
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
-      github.ref == 'refs/heads/dev'
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     steps:
       - name: Generate Arthur GitHub Automator App Token
@@ -500,6 +546,40 @@ jobs:
           # Set GH_TOKEN to use the automator app token
           export GH_TOKEN=${{ steps.generate-token.outputs.token }}
           git push origin ${{ github.ref_name }}
+
+  tag-genai-engine-models-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'false' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Retag previous models image with new version
+        run: |
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
+          docker pull arthurplatform/genai-engine-models:${SOURCE_TAG}
+          docker tag arthurplatform/genai-engine-models:${SOURCE_TAG} arthurplatform/genai-engine-models:${{ env.VERSION }}
+          docker push arthurplatform/genai-engine-models:${{ env.VERSION }}
+          # Update latest tag for main branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/genai-engine-models:${SOURCE_TAG} arthurplatform/genai-engine-models:latest
+            docker push arthurplatform/genai-engine-models:latest
+          fi
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]

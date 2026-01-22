@@ -5,13 +5,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from arthur_common.models.task_eval_schemas import LLMEval
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from schemas.internal_schemas import Span as InternalSpan
 from schemas.internal_schemas import TraceTransform
-from schemas.llm_eval_schemas import LLMEval
 from services.continuous_eval.continuous_eval_queue_service import (
     ContinuousEvalQueueService,
 )
@@ -1317,7 +1317,10 @@ def test_list_continuous_eval_run_results_value_errors(
         )
         assert status_code == 400
         assert error is not None
-        assert "invalid uuid format for parameter 'id': invalid_uuid" in error.get("detail", "").lower()
+        assert (
+            "invalid uuid format for parameter 'id': invalid_uuid"
+            in error.get("detail", "").lower()
+        )
 
         status_code, error = client.list_continuous_eval_run_results(
             task_id=task_id,
@@ -1325,7 +1328,10 @@ def test_list_continuous_eval_run_results_value_errors(
         )
         assert status_code == 400
         assert error is not None
-        assert "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid" in error.get("detail", "").lower()
+        assert (
+            "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid"
+            in error.get("detail", "").lower()
+        )
     finally:
         cleanup_test_data(test_data)
 

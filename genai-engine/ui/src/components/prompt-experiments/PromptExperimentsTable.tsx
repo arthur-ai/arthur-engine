@@ -14,27 +14,11 @@ import {
 } from "@mui/material";
 import React from "react";
 
+import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
-export interface SavedPromptConfig {
-  type: "saved";
-  name: string;
-  version: number;
-}
-
-export interface UnsavedPromptConfig {
-  type: "unsaved";
-  auto_name?: string | null;
-  messages: Record<string, any>[];
-  model_name: string;
-  model_provider: string;
-  tools?: Record<string, any>[] | null;
-  config?: Record<string, any> | null;
-  variables?: string[] | null;
-}
-
-export type PromptConfig = SavedPromptConfig | UnsavedPromptConfig;
+export type PromptConfig = ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig);
 
 export interface PromptExperiment {
   id: string;

@@ -3,13 +3,14 @@ import uuid
 from datetime import datetime
 from typing import Any, List
 
+from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from pydantic import SecretStr
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient
 from db_models.secret_storage_models import DatabaseSecretStorage
-from schemas.enums import ModelProvider, SecretType
+from schemas.enums import SecretType
 from schemas.response_schemas import ModelProviderResponse
 
 logger = logging.getLogger(__name__)

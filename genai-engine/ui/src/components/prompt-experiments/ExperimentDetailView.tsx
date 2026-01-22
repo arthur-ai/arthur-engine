@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  IconButton,
   Link,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
@@ -31,7 +30,6 @@ import { PromptVersionDrawer } from "./PromptVersionDrawer";
 import { getContentHeight } from "@/constants/layout";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
-import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -586,7 +584,6 @@ export const ExperimentDetailView: React.FC = () => {
           </Box>
           {taskId && experimentId && (
             <ExperimentResultsTable
-              taskId={taskId}
               experimentId={experimentId}
               refreshTrigger={refreshTrigger}
               datasetId={experiment.dataset_ref.id}
@@ -620,6 +617,8 @@ export const ExperimentDetailView: React.FC = () => {
           taskId={taskId}
           experimentId={experimentId}
           experimentPromptConfigs={experiment.prompt_configs}
+          datasetId={experiment.dataset_ref.id}
+          datasetVersion={experiment.dataset_ref.version}
         />
       )}
 

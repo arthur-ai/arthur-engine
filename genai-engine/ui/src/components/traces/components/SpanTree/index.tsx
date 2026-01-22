@@ -8,6 +8,7 @@ import Typography from "@mui/material/Typography";
 import { useSelection } from "../../hooks/useSelection";
 import { getSpanDuration, getSpanType } from "../../utils/spans";
 import { DurationCell } from "../DurationCell";
+import { SpanStatusBadge } from "../span-status-badge";
 
 import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
@@ -107,7 +108,10 @@ const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; le
             <Typography variant="body2" fontWeight={500} fontSize={12}>
               {span.span_name}
             </Typography>
-            {typeof duration === "number" ? <DurationCell duration={duration} /> : null}
+            <Stack direction="row" alignItems="center" gap={0.5}>
+              {typeof duration === "number" ? <DurationCell duration={duration} /> : null}
+              <SpanStatusBadge status={span.status_code ?? "Unset"} disableLabel />
+            </Stack>
           </Stack>
         </Stack>
       </Accordion.Header>

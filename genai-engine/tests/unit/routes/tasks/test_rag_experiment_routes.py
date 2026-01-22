@@ -358,9 +358,10 @@ def test_rag_experiment_routes_happy_path(
                 "rag_provider_id": str(rag_provider_id),
                 "settings": {
                     "rag_provider": "weaviate",
-                    "search_kind": "keyword_search",
+                    "search_kind": "hybrid_search",
                     "collection_name": "test_collection",
                     "limit": 5,
+                    "alpha": 0.7,
                 },
                 "query_column": {
                     "type": "dataset_column",

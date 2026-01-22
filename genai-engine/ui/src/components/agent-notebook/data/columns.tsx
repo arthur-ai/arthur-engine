@@ -44,14 +44,17 @@ export const columns = [
   columnHelper.accessor("id", {
     header: "ID",
     Cell: ({ cell }) => {
-      const value = cell.getValue() as string;
+      const value = cell.getValue();
       return <CopyableChip label={value} sx={{ fontFamily: "monospace" }} />;
     },
   }),
   columnHelper.accessor("latest_run_id", {
     header: "Latest Run ID",
     Cell: ({ cell }) => {
-      const value = cell.getValue() as string;
+      const value = cell.getValue();
+
+      if (!value) return <Typography variant="body2">N/A</Typography>;
+
       return <CopyableChip label={value} sx={{ fontFamily: "monospace" }} />;
     },
   }),

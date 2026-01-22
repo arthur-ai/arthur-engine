@@ -16,17 +16,13 @@ const DURATION_MAP: Record<SnackbarDuration, number> = {
 const useSnackbar = (options?: UseSnackbarOptions) => {
   const [openSnackbar, setOpenSnackbar] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
-  const [snackbarSeverity, setSnackbarSeverity] =
-    useState<AlertColor>("success");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>("success");
 
-  const showSnackbar = useCallback(
-    (message: string, severity: AlertColor = "success") => {
-      setSnackbarMessage(message);
-      setSnackbarSeverity(severity);
-      setOpenSnackbar(true);
-    },
-    []
-  );
+  const showSnackbar = useCallback((message: string, severity: AlertColor = "success") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setOpenSnackbar(true);
+  }, []);
 
   const hideSnackbar = () => {
     setOpenSnackbar(false);

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.299"
+        "version": "2.1.313"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -15826,6 +15826,39 @@
                     "cost": {
                         "type": "string",
                         "title": "Cost"
+                    },
+                    "input_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Tokens"
+                    },
+                    "output_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Output Tokens"
+                    },
+                    "total_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Tokens"
                     }
                 },
                 "type": "object",
@@ -15947,8 +15980,7 @@
                         "description": "Headers that were sent (with variables resolved)"
                     },
                     "request_body": {
-                        "additionalProperties": true,
-                        "type": "object",
+                        "type": "string",
                         "title": "Request Body",
                         "description": "Request body that was sent (with variables resolved)"
                     },
@@ -18643,10 +18675,9 @@
                         "description": "HTTP headers (supports {{variable}} placeholders in names and values)"
                     },
                     "request_body": {
-                        "additionalProperties": true,
-                        "type": "object",
+                        "type": "string",
                         "title": "Request Body",
-                        "description": "Request body as JSON (supports {{variable}} placeholders)"
+                        "description": "Request body as a string (supports {{variable}} placeholders)"
                     }
                 },
                 "type": "object",

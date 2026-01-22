@@ -80,6 +80,18 @@ yarn generate-api:clean
 - Request/response interceptors handle authentication headers
 - Error handling via React Query's error boundaries
 
+### Before Committing (REQUIRED - CI Enforced)
+
+Always run and ensure these pass before committing UI changes:
+
+```bash
+yarn check  # Runs type-check, lint, and format:check
+```
+
+Fix any errors before committing. CI will block PRs with failures.
+
+If you need to auto-fix formatting issues, run `yarn format` first.
+
 ### Development Notes
 
 - The API client must be regenerated after backend OpenAPI spec changes

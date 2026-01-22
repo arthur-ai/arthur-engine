@@ -13,11 +13,7 @@ interface DatasetTableCellProps {
   maxLength?: number;
 }
 
-export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({
-  value,
-  columnName,
-  maxLength = CELL_TRUNCATION_LENGTH,
-}) => {
+export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({ value, columnName, maxLength = CELL_TRUNCATION_LENGTH }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const displayValue = formatCellValue(value, maxLength);
@@ -44,9 +40,7 @@ export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({
           {isTruncated ? (
             <>
               <Tooltip title={fullValue} arrow placement="top">
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {displayValue}
-                </span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{displayValue}</span>
               </Tooltip>
               <IconButton
                 size="small"
@@ -68,12 +62,7 @@ export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({
         </Box>
       </TableCell>
 
-      <CellContentModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        columnName={columnName}
-        value={value}
-      />
+      <CellContentModal open={isModalOpen} onClose={() => setIsModalOpen(false)} columnName={columnName} value={value} />
     </>
   );
 };
