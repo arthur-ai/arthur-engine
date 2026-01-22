@@ -1,11 +1,11 @@
-import { Link as MuiLink, Tooltip, Typography } from "@mui/material";
+import { Chip, Link as MuiLink, Tooltip, Typography } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Link } from "react-router-dom";
 
 import { LiveEvalActions } from "../components/actions";
 
 import { CopyableChip } from "@/components/common";
-import { ContinuousEvalResponse } from "@/lib/api-client/api-client";
+import type { ContinuousEvalResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<ContinuousEvalResponse>();
@@ -21,6 +21,13 @@ export const createColumns = ({ onEdit }: { onEdit: (id: string) => void }) => {
             {getValue()}
           </MuiLink>
         );
+      },
+    }),
+    columnHelper.accessor("enabled", {
+      header: "Status",
+      cell: ({ getValue }) => {
+        const enabled = getValue();
+        return <Chip label={enabled ? "Enabled" : "Disabled"} color={enabled ? "success" : "default"} size="small" />;
       },
     }),
     columnHelper.accessor("description", {
