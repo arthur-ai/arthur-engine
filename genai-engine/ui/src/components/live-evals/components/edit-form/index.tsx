@@ -106,9 +106,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
   const allVariablesMapped =
     !variableMappingData ||
     variableMappingData.eval_variables.length === 0 ||
-    variableMappingData.eval_variables.every((evalVar) =>
-      variableMappings.some((m) => m.eval_variable === evalVar && m.transform_variable)
-    );
+    variableMappingData.eval_variables.every((evalVar) => variableMappings.some((m) => m.eval_variable === evalVar && m.transform_variable));
 
   const canShowVariableMapping = evaluator.name && evaluator.version && transform.transformId;
 
