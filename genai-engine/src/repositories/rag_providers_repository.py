@@ -53,7 +53,7 @@ class RagProvidersRepository:
     def _get_db_rag_provider_config(
         self,
         config_id: UUID,
-    ) -> DatabaseRagProviderConfiguration:
+    ) -> DatabaseRagProviderConfiguration | DatabaseApiKeyRagProviderConfiguration:
         db_config = (
             self.db_session.query(DatabaseRagProviderConfiguration)
             .filter(DatabaseRagProviderConfiguration.id == config_id)
@@ -139,20 +139,22 @@ class RagProvidersRepository:
                 update_config.authentication_config,
                 ApiKeyRagAuthenticationConfigUpdateRequest,
             ):
+                if not isinstance(db_provider, DatabaseApiKeyRagProviderConfiguration):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="RAG provider configuration update not supported for this config type.",
+                    )
                 if update_config.authentication_config.api_key:
                     new_secret_value = ApiKeyRagProviderSecretValue(
                         api_key=update_config.authentication_config.api_key,
                     )
-                    # TODO: Question to Alex. There are not properties in db_provider to update
                     db_provider.api_key.value = new_secret_value.model_dump(mode="json")
                     db_provider.api_key.updated_at = datetime.now()
                 if update_config.authentication_config.host_url:
-                    # TODO: Question to Alex. There are not properties in db_provider to update
                     db_provider.host_url = str(
                         update_config.authentication_config.host_url,
                     )
                 if update_config.authentication_config.rag_provider:
-                    # TODO: This one is part of the db_provider.search_setting_configurations[].rag_provider
                     db_provider.rag_provider = (
                         update_config.authentication_config.rag_provider
                     )

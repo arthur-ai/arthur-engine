@@ -61,7 +61,6 @@ class ModelProviderRepository:
     ) -> str:
         key: str | None = secret.get(self.API_KEY_SECRET_FIELD)
         if not key:
-            # TODO: should we raise an error here or return None and handle it in the result?
             logger.warning(
                 f"api_key not found in credential secret for provider {provider}",
             )

@@ -2350,8 +2350,7 @@ class TraceQuerySchema(BaseModel):
             status_code=[
                 str(r_status_code) for r_status_code in request.status_code or []
             ],
-            # TODO: Question to Alex. There is no include_experiment_traces in the request model.
-            # include_experiment_traces=request.include_experiment_traces,
+            include_experiment_traces=request.include_experiment_traces,
         )
 
 
@@ -3385,9 +3384,6 @@ class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
                 max_vector_distance=self.max_vector_distance,
                 minimum_match_or_operator=self.minimum_match_or_operator,
                 and_operator=self.and_operator,
-                # TODO: Question to Alex. There is no certainty and distance in the request model.
-                # certainty=self.certainty,
-                # distance=self.distance,
                 target_vector=self.target_vector,
                 include_vector=self.include_vector,
                 offset=self.offset,
@@ -4026,6 +4022,7 @@ class RagNotebook(BaseModel):
         """Convert internal RagNotebook to RagNotebookDetail response"""
         # Convert state from JSON to Pydantic models (request types first)
         state_request = RagNotebookState()
+        dataset_ref = None
 
         if self.rag_configs is not None:
             state_request.rag_configs = [
@@ -4037,8 +4034,7 @@ class RagNotebook(BaseModel):
             and self.dataset_version is not None
             and self.dataset_name is not None
         ):
-            # TODO: Question to Alex. Here we are trying to set a parameter that suppose to be a DatasetRefInput, but we are setting a DatasetRef. Is this correct?
-            state_request.dataset_ref = DatasetRef(
+            dataset_ref = DatasetRef(
                 id=self.dataset_id,
                 name=self.dataset_name,
                 version=self.dataset_version,
@@ -4062,8 +4058,7 @@ class RagNotebook(BaseModel):
                 InternalSavedRagConfig.to_response(config)
                 for config in state_request.rag_configs
             ]
-        # TODO: Question to Alex. Here we are trying to set a parameter that suppose to be a DatasetRefInput, but we are setting a DatasetRef. Is this correct?
-        state.dataset_ref = state_request.dataset_ref
+        state.dataset_ref = dataset_ref
         state.dataset_row_filter = state_request.dataset_row_filter
         state.eval_list = state_request.eval_list
 
@@ -4082,6 +4077,7 @@ class RagNotebook(BaseModel):
         """Convert internal RagNotebook to RagNotebookStateResponse"""
         # Convert state from JSON to Pydantic models (request types first)
         state_request = RagNotebookState()
+        dataset_ref = None
 
         if self.rag_configs is not None:
             state_request.rag_configs = [
@@ -4093,8 +4089,7 @@ class RagNotebook(BaseModel):
             and self.dataset_version is not None
             and self.dataset_name is not None
         ):
-            # TODO: Question to Alex. Here we are trying to set a parameter that suppose to be a DatasetRefInput, but we are setting a DatasetRef. Is this correct?
-            state_request.dataset_ref = DatasetRef(
+            dataset_ref = DatasetRef(
                 id=self.dataset_id,
                 name=self.dataset_name,
                 version=self.dataset_version,
@@ -4118,8 +4113,7 @@ class RagNotebook(BaseModel):
                 InternalSavedRagConfig.to_response(config)
                 for config in state_request.rag_configs
             ]
-        # TODO: Question to Alex. Here we are trying to set a parameter that suppose to be a DatasetRefInput, but we are setting a DatasetRef. Is this correct?
-        state.dataset_ref = state_request.dataset_ref
+        state.dataset_ref = dataset_ref
         state.dataset_row_filter = state_request.dataset_row_filter
         state.eval_list = state_request.eval_list
 
