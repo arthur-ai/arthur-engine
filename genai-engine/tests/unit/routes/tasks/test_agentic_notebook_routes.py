@@ -36,6 +36,7 @@ from schemas.agentic_experiment_schemas import (
     AgenticExperimentListResponse,
     AgenticExperimentOutputVariableSource,
     CreateAgenticExperimentRequest,
+    GeneratedVariableSource,
     HttpHeader,
     HttpTemplate,
     TemplateVariableMapping,
@@ -653,6 +654,7 @@ def test_agentic_notebook_routes_happy_path(
             endpoint_url="https://api.example.com/chat",
             headers=[
                 HttpHeader(name="Content-Type", value="application/json"),
+                HttpHeader(name="X-Session-Id", value="{{session_id}}"),
             ],
             request_body='{"message": "{{user_message}}"}',
         ),
@@ -662,6 +664,13 @@ def test_agentic_notebook_routes_happy_path(
                 source=DatasetColumnVariableSource(
                     type="dataset_column",
                     dataset_column=DatasetColumnSource(name="user_message"),
+                ),
+            ),
+            TemplateVariableMapping(
+                variable_name="session_id",
+                source=GeneratedVariableSource(
+                    type="generated",
+                    generator_type="session_id",
                 ),
             ),
         ],

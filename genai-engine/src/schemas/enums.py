@@ -184,3 +184,8 @@ class RagSearchKind(str, Enum):
     VECTOR_SIMILARITY_TEXT_SEARCH = "vector_similarity_text_search"
     KEYWORD_SEARCH = "keyword_search"
     HYBRID_SEARCH = "hybrid_search"
+
+
+class AgenticExperimentGeneratorType(str, Enum):
+    UUID = "uuid"
+    SESSION_ID = "session_id"

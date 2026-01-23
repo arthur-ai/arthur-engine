@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Discriminator, Field
+from pydantic import BaseModel, Discriminator, Field, model_validator
 
 from schemas.base_experiment_schemas import (
     BaseConfigResult,
@@ -22,6 +22,7 @@ from schemas.common_schemas import (
     BasePaginationResponse,
     NewDatasetVersionRowColumnItemRequest,
 )
+from schemas.enums import AgenticExperimentGeneratorType
 
 
 # HTTP Template schemas
@@ -72,9 +73,12 @@ class GeneratedVariableSource(BaseModel):
     type: Literal["generated"] = Field(
         description="Type of source: 'generated'",
     )
-    generator_type: Literal["uuid"] = Field(
-        description="Type of generator to use. Currently supports 'uuid' for UUID generation.",
+    generator_type: AgenticExperimentGeneratorType = Field(
+        description="Type of generator to use. Supported values: 'uuid', 'session_id'. Exactly one session_id is required per experiment.",
     )
+
+    class Config:
+        use_enum_values = True
 
 
 # Union type for template variable sources
@@ -188,6 +192,21 @@ class CreateAgenticExperimentRequest(BaseModel):
     eval_list: list[AgenticEvalRef] = Field(
         description="List of evaluations to run, each with an associated transform",
     )
+
+    @model_validator(mode="after")
+    def validate_session_id(self) -> "CreateAgenticExperimentRequest":
+        session_id_count = 0
+        if self.template_variable_mapping:
+            for variable in self.template_variable_mapping:
+                if variable.source.type == "generated" and variable.source.generator_type == AgenticExperimentGeneratorType.SESSION_ID:
+                    if session_id_count > 0:
+                        raise ValueError("Exactly one session_id is required per experiment")
+                    session_id_count += 1
+
+        if session_id_count == 0:
+            raise ValueError("A session_id variable is required to create an agentic experiment")
+
+        return self
 
 
 class AgenticEvalResultSummaries(BaseModel):
