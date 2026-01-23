@@ -59,6 +59,7 @@ from schemas.common_schemas import (
 from schemas.request_schemas import (
     NewTraceTransformRequest,
 )
+from services.agentic_experiment_executor import AgenticExperimentExecutor
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.routes.trace_api.conftest import (
     _create_base_trace_request,
@@ -211,6 +212,7 @@ def create_mock_trace_with_session_id(
 
 
 @pytest.mark.unit_tests
+@patch("services.experiment_executor.BaseExperimentExecutor.execute_experiment_async")
 @patch("services.experiment_executor.db_session_context")
 @patch("repositories.llm_evals_repository.supports_response_schema")
 @patch("services.agentic_experiment_executor.requests.post")
@@ -226,6 +228,7 @@ def test_agentic_experiment_routes_happy_path(
     mock_requests_post,
     mock_supports_response_schema,
     mock_db_session_context,
+    mock_execute_async,
     client: GenaiEngineTestClientBase,
 ):
     """
@@ -255,6 +258,12 @@ def test_agentic_experiment_routes_happy_path(
 
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+
+    def sync_execute(experiment_id, request_time_parameters=None):
+        executor = AgenticExperimentExecutor()
+        return executor._execute_experiment(experiment_id, request_time_parameters)
+
+    mock_execute_async.side_effect = sync_execute
 
     # Setup: Create task
     task_name = f"agentic_experiment_task_{random.random()}"
@@ -1086,6 +1095,7 @@ def test_agentic_experiment_routes_happy_path(
 
 
 @pytest.mark.unit_tests
+@patch("services.experiment_executor.BaseExperimentExecutor.execute_experiment_async")
 @patch("services.experiment_executor.db_session_context")
 @patch("repositories.llm_evals_repository.supports_response_schema")
 @patch("services.agentic_experiment_executor.requests.post")
@@ -1101,6 +1111,7 @@ def test_agentic_experiment_session_id_generator(
     mock_requests_post,
     mock_supports_response_schema,
     mock_db_session_context,
+    mock_execute_async,
     client: GenaiEngineTestClientBase,
 ):
     """
@@ -1110,6 +1121,12 @@ def test_agentic_experiment_session_id_generator(
 
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+
+    def sync_execute(experiment_id, request_time_parameters=None):
+        executor = AgenticExperimentExecutor()
+        return executor._execute_experiment(experiment_id, request_time_parameters)
+
+    mock_execute_async.side_effect = sync_execute
 
     # Setup: Create task
     task_name = f"agentic_experiment_task_{random.random()}"
