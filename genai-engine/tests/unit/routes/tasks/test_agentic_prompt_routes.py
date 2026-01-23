@@ -2227,3 +2227,89 @@ def test_get_unsaved_prompt_variables_list_jinja_syntax_errors(
     assert (
         "Invalid Jinja2 template syntax in prompt messages" in response.json()["detail"]
     )
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_unsaved_prompt_cloud_providers_success(
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """
+    Test that our current completions pipeline still works for cloud providers.
+    This does not actually test that litellm is working correctly, just the parts of the pipeline
+    that come before and after the call to litellm.
+    """
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_message = MagicMock()
+    mock_message.content = "Test LLM response"
+    mock_message.tool_calls = None
+    mock_response.choices[0].message = mock_message
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.001234
+
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # configure with bedrock using default credentials
+    response = client.base_client.put(
+        f"/api/v1/model_providers/bedrock",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Run a prompt
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "anthropic.claude-instant-v1",
+        "model_provider": "bedrock",
+        "config": {
+            "temperature": 0.7,
+        },
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/completions",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    run_response = response.json()
+    assert run_response["content"] == "Test LLM response"
+    assert run_response["cost"] == "0.001234"
+
+    # configure with vertex ai using default credentials
+    response = client.base_client.put(
+        f"/api/v1/model_providers/vertex_ai",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Run a prompt
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "anthropic.claude-instant-v1",
+        "model_provider": "bedrock",
+        "config": {
+            "temperature": 0.7,
+        },
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/completions",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    run_response = response.json()
+    assert run_response["content"] == "Test LLM response"
+    assert run_response["cost"] == "0.001234"

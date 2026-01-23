@@ -1,7 +1,8 @@
+import json
 import logging
 
 from arthur_common.models.llm_model_providers import ModelProvider
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
@@ -10,7 +11,11 @@ from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import User
+from schemas.internal_schemas import (
+    AwsBedrockCredentials,
+    GCPServiceAccountCredentials,
+    User,
+)
 from schemas.request_schemas import PutModelProviderCredentials
 from schemas.response_schemas import (
     ModelProviderList,
@@ -29,7 +34,7 @@ model_provider_routes = APIRouter(
 @model_provider_routes.put(
     "/model_providers/{provider}",
     summary="Set the configuration for a model provider.",
-    description="Set the configuration for a model provider",
+    description="Set the configuration for a model provider. Optionally upload GCP service account JSON credentials or bedrock credentials",
     status_code=HTTP_201_CREATED,
     responses={
         HTTP_201_CREATED: {"description": "Configuration set"},
@@ -37,7 +42,7 @@ model_provider_routes = APIRouter(
     tags=["Model Providers"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
-def set_model_provider(
+async def set_model_provider(
     provider: ModelProvider,
     provider_credentials: PutModelProviderCredentials,
     db_session: Session = Depends(get_db_session),
@@ -46,13 +51,39 @@ def set_model_provider(
     """Set the configuration for a model provider"""
     try:
         repo = ModelProviderRepository(db_session)
+        repo.validate_model_provider_credentials(
+            provider=provider,
+            provider_credentials=provider_credentials,
+        )
+
+        # Extract vertex credentials if provided
+        vertex_credentials = None
+        if provider_credentials.credentials_file is not None:
+            vertex_credentials = GCPServiceAccountCredentials.from_request_model(
+                provider_credentials.credentials_file,
+            )
+
+        aws_bedrock_credentials = (
+            AwsBedrockCredentials.from_put_model_provider_credentials(
+                provider_credentials,
+            )
+        )
+
         repo.set_model_provider_credentials(
             provider=provider,
             api_key=provider_credentials.api_key,
+            project_id=provider_credentials.project_id,
+            region=provider_credentials.region,
+            vertex_credentials=vertex_credentials,
+            aws_bedrock_credentials=aws_bedrock_credentials,
         )
         return Response(status_code=HTTP_201_CREATED)
-    finally:
-        db_session.close()
+    except HTTPException:
+        raise
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @model_provider_routes.delete(
