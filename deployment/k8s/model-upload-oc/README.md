@@ -26,19 +26,24 @@ This is the **OpenShift PVC version** that:
 
 **First, regenerate the poetry.lock file** (since dependencies changed):
 ```bash
-poetry lock --no-update
+rm -rf poetry.lock && poetry lock
 ```
 
 Then build and push to Docker Hub:
 ```bash
-# Build
-docker build -t arthur-model-upload-oc:latest .
+# Build for Linux/AMD64 (required for Kubernetes/OpenShift)
+docker build --platform linux/amd64 -t genai-engine-models-k8s:1.0.0 .
 
 # Tag for Docker Hub (arthurplatform organization)
-docker tag arthur-model-upload-oc:latest arthurplatform/arthur-model-upload-oc:latest
+docker tag genai-engine-models-k8s:1.0.0 arthurplatform/genai-engine-models-k8s:1.0.0
 
 # Push to Docker Hub (requires: docker login)
-docker push arthurplatform/arthur-model-upload-oc:latest
+docker push arthurplatform/genai-engine-models-k8s:1.0.0
+```
+
+## Test the image locally
+```bash
+docker compose -f docker-compose.local.yml up
 ```
 
 ### Deploy to OpenShift
@@ -50,15 +55,8 @@ oc apply -f k8s-job-pvc.yaml
 ### Monitor
 
 ```bash
-oc logs -l app=arthur-model-upload-oc -f
+oc logs -l app=arthur-genai-engine-models-k8s -f
 ```
-
-## Documentation
-
-- **`AIRGAPPED_DEPLOYMENT.md`** - Complete guide for airgapped deployments
-- **`PVC_DEPLOYMENT.md`** - Detailed PVC deployment instructions
-- **`BUILD_INSTRUCTIONS.md`** - Image build instructions
-- **`QUICK_REFERENCE.md`** - Quick reference guide
 
 ## Environment Variables
 
@@ -71,7 +69,7 @@ oc logs -l app=arthur-model-upload-oc -f
 ## Architecture
 
 ```
-Docker Image (arthur-model-upload-oc)
+Docker Image (genai-engine-models-k8s)
   └── /models/ (pre-downloaded models)
        │
        │ Job runs: copy_models.py
@@ -82,7 +80,7 @@ PersistentVolumeClaim
        │ Other pods mount PVC
        ▼
 genai-engine Pods
-  └── /models/ (read models from PVC)
+  └── /home/nonroot/models/ (read models from PVC)
 ```
 
 ## See Also
