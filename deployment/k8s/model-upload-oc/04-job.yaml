@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: arthur-model-upload-oc
+  name: arthur-genai-engine-models-k8s
   labels:
-    app: arthur-model-upload-oc
+    app: arthur-genai-engine-models-k8s
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 3600  # 1 hour
@@ -12,15 +12,15 @@ spec:
   template:
     metadata:
       labels:
-        app: arthur-model-upload-oc
+        app: arthur-genai-engine-models-k8s
     spec:
       imagePullSecrets:
         - name: arthurai-repo-creds
-      serviceAccountName: arthur-model-upload-oc-sa
+      serviceAccountName: arthur-genai-engine-models-k8s-sa
       restartPolicy: Never
       containers:
       - name: model-upload
-        image: arthurplatform/arthur-model-upload-oc:v1.0.1  # Use version tag to ensure new image is pulled
+        image: arthurplatform/arthur-genai-engine-models-k8s:v1.0.0  # Use version tag to ensure new image is pulled
         imagePullPolicy: Always  # Always pull to get the new version
         command: ["python", "-u", "/app/copy_models.py"]  # Use copy script instead of upload
         env:
