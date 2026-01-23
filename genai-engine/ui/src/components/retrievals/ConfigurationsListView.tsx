@@ -65,7 +65,7 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
                 RAG Configurations
               </Typography>
               <Typography variant="body2" className="text-gray-600">
-                Manage and organize your RAG search configurations
+                Manage and organize your RAG configurations
               </Typography>
             </Box>
             <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} sx={{ whiteSpace: "nowrap" }}>
