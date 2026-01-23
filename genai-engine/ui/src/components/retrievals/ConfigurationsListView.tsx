@@ -58,7 +58,20 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
   return (
     <div className="flex-1 px-4 py-4">
       <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b flex gap-3 items-center">
+        <div className="p-4 border-b">
+          <div className="flex justify-between items-center mb-3">
+            <Box>
+              <Typography variant="h5" className="font-semibold mb-1 text-gray-900">
+                RAG Configurations
+              </Typography>
+              <Typography variant="body2" className="text-gray-600">
+                Manage and organize your RAG search configurations
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} sx={{ whiteSpace: "nowrap" }}>
+              Create Configuration
+            </Button>
+          </div>
           <TextField
             placeholder="Search configurations..."
             value={searchQuery}
@@ -67,11 +80,8 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
               setPage(0); // Reset to first page on search
             }}
             size="small"
-            className="flex-1"
+            fullWidth
           />
-          <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} sx={{ whiteSpace: "nowrap" }}>
-            Create Configuration
-          </Button>
         </div>
 
         {isLoading ? (
