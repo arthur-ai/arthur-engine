@@ -1289,7 +1289,7 @@ def test_agentic_experiment_session_id_generator(
             if value.startswith("arthur-exp"):
                 session_id = value
                 break
-    
+
         # Capture the actual request to validate request-time parameters are included
         # requests.post(url, headers=..., data=...) - first arg is URL
         request_url = args[0] if args else kwargs.get("url", "")
@@ -1584,7 +1584,7 @@ def test_agentic_experiment_session_id_generator(
     # With dataset_row_filter, only 1 row should match
     assert eval_result.total_count == 1
     assert eval_result.pass_count == 1  # All should pass with our mock
-    
+
     # Test 3: Test that the session_id variable included in the request body works properly
     experiment_request = CreateAgenticExperimentRequest(
         name=experiment_name,
@@ -1997,4 +1997,6 @@ def test_agentic_experiment_session_id_generator(
                 ),
             ],
         )
-    assert "A session_id variable is required to create an agentic experiment" in str(exc_info.value)
+    assert "A session_id variable is required to create an agentic experiment" in str(
+        exc_info.value,
+    )

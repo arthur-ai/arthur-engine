@@ -198,13 +198,21 @@ class CreateAgenticExperimentRequest(BaseModel):
         session_id_count = 0
         if self.template_variable_mapping:
             for variable in self.template_variable_mapping:
-                if variable.source.type == "generated" and variable.source.generator_type == AgenticExperimentGeneratorType.SESSION_ID:
+                if (
+                    variable.source.type == "generated"
+                    and variable.source.generator_type
+                    == AgenticExperimentGeneratorType.SESSION_ID
+                ):
                     if session_id_count > 0:
-                        raise ValueError("Exactly one session_id is required per experiment")
+                        raise ValueError(
+                            "Exactly one session_id is required per experiment",
+                        )
                     session_id_count += 1
 
         if session_id_count == 0:
-            raise ValueError("A session_id variable is required to create an agentic experiment")
+            raise ValueError(
+                "A session_id variable is required to create an agentic experiment",
+            )
 
         return self
 
