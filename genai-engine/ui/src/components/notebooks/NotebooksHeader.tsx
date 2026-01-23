@@ -20,7 +20,10 @@ const NotebooksHeader = ({ onCreateNotebook }: NotebooksHeaderProps) => {
         }}
       >
         <Box>
-          <Typography variant="subtitle1" color="text.primary">
+          <Typography variant="h5" className="font-semibold mb-1 text-gray-900">
+            Prompt Notebooks
+          </Typography>
+          <Typography variant="body2" className="text-gray-600">
             Manage and organize your prompt experiment notebooks
           </Typography>
         </Box>
