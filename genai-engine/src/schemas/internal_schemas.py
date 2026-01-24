@@ -65,6 +65,7 @@ from arthur_common.models.response_schemas import (
 )
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
+    ContinuousEvalTransformVariableMappingResponse,
     TraceTransformDefinition,
     TraceTransformResponse,
 )
@@ -170,10 +171,12 @@ from schemas.rag_notebook_schemas import (
 )
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
+    GCPServiceAccountCredentialsRequest,
     NewDatasetRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
     NewTraceTransformRequest,
+    PutModelProviderCredentials,
     RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
@@ -2720,6 +2723,129 @@ class ApiKeyRagProviderSecretValue(BaseModel):
         return model_dict
 
 
+class GCPServiceAccountCredentials(BaseModel):
+    type: SecretStr
+    project_id: SecretStr
+    private_key_id: SecretStr
+    private_key: SecretStr
+    client_email: SecretStr
+    client_id: SecretStr
+    auth_uri: SecretStr
+    token_uri: SecretStr
+    auth_provider_x509_cert_url: SecretStr
+    client_x509_cert_url: SecretStr
+    universe_domain: SecretStr
+
+    def to_sensitive_dict(self) -> dict[str, str]:
+        """Returns dict with all fields in the object. Secrets will be revealed as strings.
+        WARNING: should be very infrequently used. The secret will need to be revealed in a dictionary to store
+        its value in the database.
+        """
+        return {
+            "type": self.type.get_secret_value(),
+            "project_id": self.project_id.get_secret_value(),
+            "private_key_id": self.private_key_id.get_secret_value(),
+            "private_key": self.private_key.get_secret_value(),
+            "client_email": self.client_email.get_secret_value(),
+            "client_id": self.client_id.get_secret_value(),
+            "auth_uri": self.auth_uri.get_secret_value(),
+            "token_uri": self.token_uri.get_secret_value(),
+            "auth_provider_x509_cert_url": self.auth_provider_x509_cert_url.get_secret_value(),
+            "client_x509_cert_url": self.client_x509_cert_url.get_secret_value(),
+            "universe_domain": self.universe_domain.get_secret_value(),
+        }
+
+    @staticmethod
+    def from_request_model(
+        request: GCPServiceAccountCredentialsRequest,
+    ) -> "GCPServiceAccountCredentials":
+        return GCPServiceAccountCredentials(
+            type=request.type,
+            project_id=request.project_id,
+            private_key_id=request.private_key_id,
+            private_key=request.private_key,
+            client_email=request.client_email,
+            client_id=request.client_id,
+            auth_uri=request.auth_uri,
+            token_uri=request.token_uri,
+            auth_provider_x509_cert_url=request.auth_provider_x509_cert_url,
+            client_x509_cert_url=request.client_x509_cert_url,
+            universe_domain=request.universe_domain,
+        )
+
+
+class AwsBedrockCredentials(BaseModel):
+    aws_access_key_id: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS Bedrock credentials for the provider.",
+    )
+    aws_secret_access_key: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS Bedrock credentials for the provider.",
+    )
+    aws_bedrock_runtime_endpoint: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS Bedrock runtime endpoint to use.",
+    )
+    aws_role_name: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS role name to use.",
+    )
+    aws_session_name: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS session name to use.",
+    )
+
+    def to_sensitive_dict(self) -> dict[str, str]:
+        """Returns dict with all fields in the object. Secrets will be revealed as strings.
+        WARNING: should be very infrequently used. The secret will need to be revealed in a dictionary to store
+        its value in the database.
+        """
+        sensitive_dict = {}
+
+        if self.aws_access_key_id:
+            sensitive_dict["aws_access_key_id"] = (
+                self.aws_access_key_id.get_secret_value()
+            )
+        if self.aws_secret_access_key:
+            sensitive_dict["aws_secret_access_key"] = (
+                self.aws_secret_access_key.get_secret_value()
+            )
+        if self.aws_bedrock_runtime_endpoint:
+            sensitive_dict["aws_bedrock_runtime_endpoint"] = (
+                self.aws_bedrock_runtime_endpoint.get_secret_value()
+            )
+        if self.aws_role_name:
+            sensitive_dict["aws_role_name"] = self.aws_role_name.get_secret_value()
+        if self.aws_session_name:
+            sensitive_dict["aws_session_name"] = (
+                self.aws_session_name.get_secret_value()
+            )
+        return sensitive_dict
+
+    @staticmethod
+    def from_put_model_provider_credentials(
+        request: PutModelProviderCredentials,
+    ) -> "AwsBedrockCredentials":
+        return AwsBedrockCredentials(
+            aws_access_key_id=(
+                request.aws_access_key_id if request.aws_access_key_id else None
+            ),
+            aws_secret_access_key=(
+                request.aws_secret_access_key if request.aws_secret_access_key else None
+            ),
+            aws_bedrock_runtime_endpoint=(
+                request.aws_bedrock_runtime_endpoint
+                if request.aws_bedrock_runtime_endpoint
+                else None
+            ),
+            aws_role_name=request.aws_role_name if request.aws_role_name else None,
+            aws_session_name=(
+                request.aws_session_name if request.aws_session_name else None
+            ),
+        )
+
+
 class ApiKeyRagProviderSecret(BaseModel):
     id: str
     name: str
@@ -3515,6 +3641,11 @@ class RagSearchSettingConfiguration(BaseModel):
         )
 
 
+class ContinuousEvalTransformVariableMapping(BaseModel):
+    transform_variable: str
+    eval_variable: str
+
+
 class ContinuousEval(BaseModel):
     id: uuid.UUID
     name: str
@@ -3525,8 +3656,21 @@ class ContinuousEval(BaseModel):
     transform_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    transform_variable_mapping: List[ContinuousEvalTransformVariableMapping] = Field(
+        default_factory=list,
+        description="Mapping of transform variables to eval variables.",
+    )
+    enabled: bool = Field(
+        default=True,
+        description="Whether the continuous eval is enabled.",
+    )
 
     def to_db_model(self) -> DatabaseContinuousEval:
+        # Convert Pydantic models to dicts for JSON serialization
+        transform_variable_mapping_dicts = [
+            mapping.model_dump() for mapping in self.transform_variable_mapping
+        ]
+
         return DatabaseContinuousEval(
             id=self.id,
             name=self.name,
@@ -3537,12 +3681,20 @@ class ContinuousEval(BaseModel):
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            transform_variable_mapping=transform_variable_mapping_dicts,
+            enabled=self.enabled,
         )
 
     @staticmethod
     def from_db_model(
         db_eval: DatabaseContinuousEval,
     ) -> "ContinuousEval":
+        # Convert dicts from database to Pydantic models
+        transform_variable_mapping = [
+            ContinuousEvalTransformVariableMapping(**mapping)
+            for mapping in db_eval.transform_variable_mapping
+        ]
+
         return ContinuousEval(
             id=db_eval.id,
             name=db_eval.name,
@@ -3553,9 +3705,19 @@ class ContinuousEval(BaseModel):
             transform_id=db_eval.transform_id,
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
+            transform_variable_mapping=transform_variable_mapping,
+            enabled=db_eval.enabled,
         )
 
     def to_response_model(self) -> ContinuousEvalResponse:
+        transform_variable_mapping = [
+            ContinuousEvalTransformVariableMappingResponse(
+                transform_variable=mapping.transform_variable,
+                eval_variable=mapping.eval_variable,
+            )
+            for mapping in self.transform_variable_mapping
+        ]
+
         return ContinuousEvalResponse(
             id=self.id,
             name=self.name,
@@ -3566,6 +3728,8 @@ class ContinuousEval(BaseModel):
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            transform_variable_mapping=transform_variable_mapping,
+            enabled=self.enabled,
         )
 
 
