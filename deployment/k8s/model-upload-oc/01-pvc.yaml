@@ -10,6 +10,4 @@ spec:
     - ReadWriteOnce  # For single pod write, or ReadWriteMany for multiple pods
   resources:
     requests:
-      storage: 10Gi  # Adjust based on your model sizes (~3-4GB models + overhead)
-  # For OpenShift, you may want to specify storageClassName
-  # storageClassName: gp3  # or your cluster's default storage class
+      storage: 25Gi  # Adjust based on your model sizes
