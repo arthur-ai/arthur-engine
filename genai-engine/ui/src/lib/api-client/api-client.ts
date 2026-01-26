@@ -2536,6 +2536,65 @@ export interface FileUploadResult {
   word_count: number;
 }
 
+/** GCPServiceAccountCredentialsRequest */
+export interface GCPServiceAccountCredentialsRequest {
+  /**
+   * Auth Provider X509 Cert Url
+   * @format password
+   */
+  auth_provider_x509_cert_url: string;
+  /**
+   * Client X509 Cert Url
+   * @format password
+   */
+  client_x509_cert_url: string;
+  /**
+   * Auth Uri
+   * @format password
+   */
+  auth_uri: string;
+  /**
+   * Client Email
+   * @format password
+   */
+  client_email: string;
+  /**
+   * Client Id
+   * @format password
+   */
+  client_id: string;
+  /**
+   * Private Key
+   * @format password
+   */
+  private_key: string;
+  /**
+   * Private Key Id
+   * @format password
+   */
+  private_key_id: string;
+  /**
+   * Project Id
+   * @format password
+   */
+  project_id: string;
+  /**
+   * Token Uri
+   * @format password
+   */
+  token_uri: string;
+  /**
+   * Type
+   * @format password
+   */
+  type: string;
+  /**
+   * Universe Domain
+   * @format password
+   */
+  universe_domain: string;
+}
+
 /**
  * GeneratedVariableSource
  * Variable source for generated values (e.g., UUIDs, timestamps)
@@ -5538,7 +5597,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -6706,9 +6765,45 @@ export interface PutModelProviderCredentials {
   /**
    * Api Key
    * The API key for the provider.
-   * @format password
    */
-  api_key: string;
+  api_key?: string | null;
+  /**
+   * Aws Access Key Id
+   * The AWS access key ID.
+   */
+  aws_access_key_id?: string | null;
+  /**
+   * Aws Bedrock Runtime Endpoint
+   * The AWS Bedrock runtime endpoint.
+   */
+  aws_bedrock_runtime_endpoint?: string | null;
+  /**
+   * Aws Role Name
+   * The AWS role name.
+   */
+  aws_role_name?: string | null;
+  /**
+   * Aws Secret Access Key
+   * The AWS secret access key.
+   */
+  aws_secret_access_key?: string | null;
+  /**
+   * Aws Session Name
+   * The AWS session name.
+   */
+  aws_session_name?: string | null;
+  /** Optional GCP service account credentials JSON */
+  credentials_file?: GCPServiceAccountCredentialsRequest | null;
+  /**
+   * Project Id
+   * The vertex AI project ID. Will override the project ID in the key file if provided.
+   */
+  project_id?: string | null;
+  /**
+   * Region
+   * The vertex AI region to use
+   */
+  region?: string | null;
 }
 
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
@@ -9980,6 +10075,11 @@ export interface TraceUserMetadataResponse {
 /** TransformExtractionResponseList */
 export interface TransformExtractionResponseList {
   /**
+   * Missing Spans
+   * List of matching spans for the variables.
+   */
+  missing_spans: string[];
+  /**
    * Missing Variables
    * List of variable names that had missing values (no matching span or attribute path).
    */
@@ -11376,7 +11476,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.312
+ * @version 2.1.319
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -14455,7 +14555,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Set the configuration for a model provider
+     * @description Set the configuration for a model provider. Optionally upload GCP service account JSON credentials or bedrock credentials
      *
      * @tags Model Providers
      * @name SetModelProviderApiV1ModelProvidersProviderPut

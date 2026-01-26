@@ -581,6 +581,110 @@ jobs:
             docker push arthurplatform/genai-engine-models:latest
           fi
 
+  build-genai-engine-models-k8s-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'true' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:deployment/k8s/model-upload-oc"
+          file: Dockerfile
+          tags: |
+            arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && 'arthurplatform/genai-engine-models-k8s:latest' || '' }}
+            ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/genai-engine-models-k8s:latest-dev' || '' }}
+          push: true
+          platforms: linux/amd64
+      - name: Update models manifest
+        run: |
+          cd deployment/ecs/model-upload
+          python check_model_updates.py --update
+      - name: Commit updated manifest
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          # Pull latest changes in case ECS job already committed
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+          git pull --rebase origin ${{ github.ref_name }} || true
+          git add deployment/ecs/model-upload/models-manifest.json
+          # Commit only if there are changes (handles case where ECS job already committed)
+          if ! git diff --staged --quiet; then
+            git commit --no-verify -m "Update models manifest [skip ci]"
+            git push origin ${{ github.ref_name }}
+          fi
+
+  tag-genai-engine-models-k8s-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'false' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Retag previous models k8s image with new version
+        run: |
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
+          docker pull arthurplatform/genai-engine-models-k8s:${SOURCE_TAG}
+          docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+          docker push arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+          # Update latest tag for main branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:latest
+            docker push arthurplatform/genai-engine-models-k8s:latest
+          fi
+
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets

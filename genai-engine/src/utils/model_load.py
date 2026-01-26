@@ -253,6 +253,15 @@ def get_models_to_download() -> dict[str, list[str]]:
             "gliner_config.json",
             "pytorch_model.bin",
         ]
+        models_to_download["microsoft/mdeberta-v3-base"] = [
+            "config.json",
+            "generator_config.json",
+            "pytorch_model.bin",
+            "pytorch_model.generator.bin",
+            "spm.model",
+            "tf_model.h5",
+            "tokenizer_config.json",
+        ]
     return models_to_download
 
 
@@ -488,8 +497,13 @@ def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
 
     if USE_PII_MODEL_V2 and PII_GLINER_TOKENIZER is None:
         config = GLiNERConfig.from_json_file(GLINER_CONFIG_PATH)
+        # Resolve model_name to local path (e.g., "microsoft/mdeberta-v3-base" -> local path)
+        tokenizer_model_path = get_local_model_path(config.model_name)
+        logger.info(
+            f"Using local tokenizer from: {tokenizer_model_path} instead of {config.model_name}",
+        )
         PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
-            config.model_name,
+            tokenizer_model_path,
         )
     return PII_GLINER_TOKENIZER
 
