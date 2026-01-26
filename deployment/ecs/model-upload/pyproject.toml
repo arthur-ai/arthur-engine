@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "arthur-model-upload"
+name = "arthur-genai-engine-models"
 version = "1.0.0"
 description = "ECS task to upload ML models to S3 for airgapped environments"
 authors = ["Arthur <engineering@arthur.ai>"]
