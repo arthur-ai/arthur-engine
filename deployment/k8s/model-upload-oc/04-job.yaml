@@ -20,7 +20,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: model-upload
-        image: arthurplatform/arthur-genai-engine-models-k8s:v1.0.0  # Use version tag to ensure new image is pulled
+        image: arthurplatform/arthur-genai-engine-models-k8s:<genai_engine_models_version>  # Use version tag to ensure new image is pulled
         imagePullPolicy: Always  # Always pull to get the new version
         command: ["python", "-u", "/app/copy_models.py"]  # Use copy script instead of upload
         env:
@@ -35,11 +35,11 @@ spec:
           mountPath: /models-output
         resources:
           requests:
-            cpu: "100m"  # Reduced from 500m
-            memory: "256Mi"  # Reduced from 1Gi
+            cpu: "500m"
+            memory: "1Gi"
           limits:
-            cpu: "500m"  # Reduced from 1000m
-            memory: "512Mi"  # Reduced from 2Gi
+            cpu: "1000m"
+            memory: "1Gi"
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000760000  # UID in allowed range for restricted-v2 SCC [1000760000, 1000769999]

@@ -32,13 +32,13 @@ rm -rf poetry.lock && poetry lock
 Then build and push to Docker Hub:
 ```bash
 # Build for Linux/AMD64 (required for Kubernetes/OpenShift)
-docker build --platform linux/amd64 -t genai-engine-models-k8s:1.0.0 .
+docker build --platform linux/amd64 -t genai-engine-models-k8s:<genai_engine_models_version> .
 
 # Tag for Docker Hub (arthurplatform organization)
-docker tag genai-engine-models-k8s:1.0.0 arthurplatform/genai-engine-models-k8s:1.0.0
+docker tag genai-engine-models-k8s:<genai_engine_models_version> arthurplatform/genai-engine-models-k8s:<genai_engine_models_version>
 
 # Push to Docker Hub (requires: docker login)
-docker push arthurplatform/genai-engine-models-k8s:1.0.0
+docker push arthurplatform/genai-engine-models-k8s:<genai_engine_models_version>
 ```
 
 ## Test the image locally
@@ -48,8 +48,14 @@ docker compose -f docker-compose.local.yml up
 
 ### Deploy to OpenShift
 
+Update Apply the Kubernetes manifests in order:
+
 ```bash
-oc apply -f k8s-job-pvc.yaml
+oc apply -f 01-pvc.yaml
+oc apply -f 02-serviceaccount.yaml
+# Replace <genai_engine_models_version> with the version you want to deploy in 04-job.yaml
+oc apply -f 04-job.yaml
+oc apply -f 06-copy-config-job.yaml
 ```
 
 ### Monitor
