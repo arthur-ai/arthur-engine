@@ -13,11 +13,11 @@ spec:
       labels:
         app: copy-gliner-config
     spec:
-      serviceAccountName: arthur-model-upload-oc-sa
+      serviceAccountName: arthur-genai-engine-models-k8s-sa
       restartPolicy: Never
       containers:
       - name: copier
-        image: arthurplatform/arthur-model-upload-oc:latest  # Use same image as model upload job
+        image: arthurplatform/arthur-genai-engine-models-k8s:1.0.0  # Use same image as model upload job
         imagePullPolicy: IfNotPresent
         command:
         - python

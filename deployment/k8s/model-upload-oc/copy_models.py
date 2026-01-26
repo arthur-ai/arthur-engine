@@ -136,6 +136,8 @@ def post_process_models(target_dir: Path) -> None:
     Args:
         target_dir: Target directory where models were copied
     """
+    import json
+
     logger.info("🔧 Starting post-processing of models...")
 
     # GLiNER model needs config.json (transformers convention)
@@ -152,20 +154,57 @@ def post_process_models(target_dir: Path) -> None:
         logger.info(f"  - gliner_config.json exists: {gliner_config.exists()}")
         logger.info(f"  - config.json exists: {config_json.exists()}")
 
-    if gliner_config.exists() and not config_json.exists():
-        logger.info("📋 Creating config.json from gliner_config.json for GLiNER model")
+    # Update model_name to local path in both config files
+    local_model_path = "/home/nonroot/models/microsoft/mdeberta-v3-base"
+
+    if gliner_config.exists():
         try:
-            shutil.copy2(gliner_config, config_json)
-            logger.info("✅ Created config.json for GLiNER model")
+            # Read and update gliner_config.json
+            with open(gliner_config, "r") as f:
+                gliner_data = json.load(f)
+
+            if gliner_data.get("model_name") != local_model_path:
+                logger.info(
+                    f"📝 Updating model_name in gliner_config.json from '{gliner_data.get('model_name')}' to '{local_model_path}'",
+                )
+                gliner_data["model_name"] = local_model_path
+                with open(gliner_config, "w") as f:
+                    json.dump(gliner_data, f, indent=2)
+                logger.info("✅ Updated gliner_config.json")
+            else:
+                logger.info("⏭️  gliner_config.json already has correct model_name")
+
+            # Create or update config.json
+            if not config_json.exists():
+                logger.info(
+                    "📋 Creating config.json from gliner_config.json for GLiNER model",
+                )
+                shutil.copy2(gliner_config, config_json)
+                logger.info("✅ Created config.json for GLiNER model")
+            else:
+                logger.info("📝 Updating model_name in existing config.json")
+
+            # Update config.json if it exists
+            if config_json.exists():
+                with open(config_json, "r") as f:
+                    config_data = json.load(f)
+
+                if config_data.get("model_name") != local_model_path:
+                    logger.info(
+                        f"📝 Updating model_name in config.json from '{config_data.get('model_name')}' to '{local_model_path}'",
+                    )
+                    config_data["model_name"] = local_model_path
+                    with open(config_json, "w") as f:
+                        json.dump(config_data, f, indent=2)
+                    logger.info("✅ Updated config.json")
+                else:
+                    logger.info("⏭️  config.json already has correct model_name")
+
         except Exception as e:
-            logger.warning(f"⚠️  Failed to create config.json for GLiNER: {e}")
+            logger.warning(f"⚠️  Failed to update GLiNER config files: {e}")
     elif not gliner_config.exists():
         logger.info(
-            f"⏭️  Skipping GLiNER config.json creation: gliner_config.json not found at {gliner_config}",
-        )
-    elif config_json.exists():
-        logger.info(
-            f"⏭️  Skipping GLiNER config.json creation: config.json already exists",
+            f"⏭️  Skipping GLiNER config updates: gliner_config.json not found at {gliner_config}",
         )
 
     logger.info("✅ Post-processing complete")

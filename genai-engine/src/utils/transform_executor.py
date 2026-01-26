@@ -84,6 +84,7 @@ def execute_transform(
         flat_spans.extend(_flatten_spans(span))
 
     variables = []
+    missing_spans = []
     missing_variables = []
 
     # Iterate through variable definitions
@@ -99,9 +100,11 @@ def execute_transform(
         is_missing = False
         if not matching_spans:
             # No matching span found, use fallback
-            value = fallback if fallback is not None else ""
             if fallback is None:
-                is_missing = True
+                missing_spans.append(span_name)
+                value = ""
+            else:
+                value = fallback
         else:
             # Use the first matching span
             span = matching_spans[0]
@@ -126,4 +129,5 @@ def execute_transform(
     return TransformExtractionResponseList(
         variables=variables,
         missing_variables=missing_variables,
+        missing_spans=missing_spans,
     )

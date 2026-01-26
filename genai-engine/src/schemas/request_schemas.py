@@ -156,8 +156,57 @@ class TraceTransformUpdateRequest(BaseModel):
     )
 
 
+class GCPServiceAccountCredentialsRequest(BaseModel):
+    type: SecretStr
+    project_id: SecretStr
+    private_key_id: SecretStr
+    private_key: SecretStr
+    client_email: SecretStr
+    client_id: SecretStr
+    auth_uri: SecretStr
+    token_uri: SecretStr
+    auth_provider_x509_cert_url: SecretStr
+    client_x509_cert_url: SecretStr
+    universe_domain: SecretStr
+
+
 class PutModelProviderCredentials(BaseModel):
-    api_key: SecretStr = Field(description="The API key for the provider.")
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="The API key for the provider.",
+    )
+    project_id: Optional[str] = Field(
+        default=None,
+        description="The vertex AI project ID. Will override the project ID in the key file if provided.",
+    )
+    region: Optional[str] = Field(
+        default=None,
+        description="The vertex AI region to use",
+    )
+    aws_access_key_id: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS access key ID.",
+    )
+    aws_secret_access_key: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS secret access key.",
+    )
+    aws_bedrock_runtime_endpoint: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS Bedrock runtime endpoint.",
+    )
+    aws_role_name: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS role name.",
+    )
+    aws_session_name: Optional[SecretStr] = Field(
+        default=None,
+        description="The AWS session name.",
+    )
+    credentials_file: Optional[GCPServiceAccountCredentialsRequest] = Field(
+        default=None,
+        description="Optional GCP service account credentials JSON",
+    )
 
 
 class ApiKeyRagAuthenticationConfigRequest(BaseModel):

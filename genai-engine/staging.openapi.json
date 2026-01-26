@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.316"
+        "version": "2.1.321"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -7427,7 +7427,7 @@
                     "Model Providers"
                 ],
                 "summary": "Set the configuration for a model provider.",
-                "description": "Set the configuration for a model provider",
+                "description": "Set the configuration for a model provider. Optionally upload GCP service account JSON credentials or bedrock credentials",
                 "operationId": "set_model_provider_api_v1_model_providers__provider__put",
                 "security": [
                     {
@@ -18730,6 +18730,91 @@
                 ],
                 "title": "FileUploadResult"
             },
+            "GCPServiceAccountCredentialsRequest": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Type",
+                        "writeOnly": true
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Project Id",
+                        "writeOnly": true
+                    },
+                    "private_key_id": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Private Key Id",
+                        "writeOnly": true
+                    },
+                    "private_key": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Private Key",
+                        "writeOnly": true
+                    },
+                    "client_email": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Client Email",
+                        "writeOnly": true
+                    },
+                    "client_id": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Client Id",
+                        "writeOnly": true
+                    },
+                    "auth_uri": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Auth Uri",
+                        "writeOnly": true
+                    },
+                    "token_uri": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Token Uri",
+                        "writeOnly": true
+                    },
+                    "auth_provider_x509_cert_url": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Auth Provider X509 Cert Url",
+                        "writeOnly": true
+                    },
+                    "client_x509_cert_url": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Client X509 Cert Url",
+                        "writeOnly": true
+                    },
+                    "universe_domain": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Universe Domain",
+                        "writeOnly": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type",
+                    "project_id",
+                    "private_key_id",
+                    "private_key",
+                    "client_email",
+                    "client_id",
+                    "auth_uri",
+                    "token_uri",
+                    "auth_provider_x509_cert_url",
+                    "client_x509_cert_url",
+                    "universe_domain"
+                ],
+                "title": "GCPServiceAccountCredentialsRequest"
+            },
             "GeneratedVariableSource": {
                 "properties": {
                     "type": {
@@ -20848,7 +20933,9 @@
                 "enum": [
                     "anthropic",
                     "openai",
-                    "gemini"
+                    "gemini",
+                    "bedrock",
+                    "vertex_ai"
                 ],
                 "title": "ModelProvider"
             },
@@ -23162,17 +23249,126 @@
             "PutModelProviderCredentials": {
                 "properties": {
                     "api_key": {
-                        "type": "string",
-                        "format": "password",
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Api Key",
-                        "description": "The API key for the provider.",
-                        "writeOnly": true
+                        "description": "The API key for the provider."
+                    },
+                    "project_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Project Id",
+                        "description": "The vertex AI project ID. Will override the project ID in the key file if provided."
+                    },
+                    "region": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Region",
+                        "description": "The vertex AI region to use"
+                    },
+                    "aws_access_key_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Access Key Id",
+                        "description": "The AWS access key ID."
+                    },
+                    "aws_secret_access_key": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Secret Access Key",
+                        "description": "The AWS secret access key."
+                    },
+                    "aws_bedrock_runtime_endpoint": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Bedrock Runtime Endpoint",
+                        "description": "The AWS Bedrock runtime endpoint."
+                    },
+                    "aws_role_name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Role Name",
+                        "description": "The AWS role name."
+                    },
+                    "aws_session_name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Aws Session Name",
+                        "description": "The AWS session name."
+                    },
+                    "credentials_file": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPServiceAccountCredentialsRequest"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Optional GCP service account credentials JSON"
                     }
                 },
                 "type": "object",
-                "required": [
-                    "api_key"
-                ],
                 "title": "PutModelProviderCredentials"
             },
             "QueryFeedbackResponse": {
@@ -27713,12 +27909,21 @@
                         "type": "array",
                         "title": "Missing Variables",
                         "description": "List of variable names that had missing values (no matching span or attribute path)."
+                    },
+                    "missing_spans": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Missing Spans",
+                        "description": "List of matching spans for the variables."
                     }
                 },
                 "type": "object",
                 "required": [
                     "variables",
-                    "missing_variables"
+                    "missing_variables",
+                    "missing_spans"
                 ],
                 "title": "TransformExtractionResponseList"
             },
