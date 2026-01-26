@@ -11,7 +11,6 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
-
 import { APIKeyFields } from "./components/api";
 import { BedrockFields } from "./components/bedrock";
 import { VertexAIFields } from "./components/vertex";
@@ -170,8 +169,8 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
             .
           </DialogContentText>
           <DialogContentText sx={{ mt: 2 }}>
-            This requires that your environment has valid GCP credentials configured (e.g., through gcloud CLI or an attached service account).
-            If no valid credentials are available, calls to Vertex AI will fail.
+            This requires that your environment has valid GCP credentials configured (e.g., through gcloud CLI or an attached service account). If no
+            valid credentials are available, calls to Vertex AI will fail.
           </DialogContentText>
           <DialogContentText sx={{ mt: 2 }}>Do you want to proceed with this configuration?</DialogContentText>
         </DialogContent>
