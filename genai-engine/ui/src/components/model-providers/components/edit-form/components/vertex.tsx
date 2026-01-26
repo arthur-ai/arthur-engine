@@ -1,5 +1,5 @@
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { Button, Stack, styled, TextField, Typography } from "@mui/material";
+import { Button, Link, Stack, styled, TextField, Typography } from "@mui/material";
 import z from "zod";
 
 import { VertexAIFormValues } from "../form";
@@ -44,11 +44,11 @@ export const VertexAIFields = withFieldGroup({
           )}
         </group.AppField>
 
-        <group.AppField name="gcp_service_account_credentials" validators={{ onChange: z.instanceof(File) }}>
+        <group.AppField name="gcp_service_account_credentials" validators={{ onChange: z.instanceof(File).nullable() }}>
           {(field) => (
             <Stack gap={1}>
               <Button component="label" variant="contained" color="primary" disableElevation tabIndex={-1} startIcon={<UploadFileIcon />}>
-                Upload Credentials
+                Upload Credentials (Optional)
                 <VisuallyHiddenInput
                   type="file"
                   accept=".json,application/json"
@@ -67,6 +67,13 @@ export const VertexAIFields = withFieldGroup({
                   </group.Subscribe>
                 </Typography>
               )}
+              <Typography variant="caption" color="text.secondary">
+                If no credentials file is provided, the engine will use{" "}
+                <Link href="https://cloud.google.com/docs/authentication/application-default-credentials" target="_blank" rel="noopener">
+                  Application Default Credentials
+                </Link>
+                .
+              </Typography>
             </Stack>
           )}
         </group.AppField>
