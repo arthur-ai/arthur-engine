@@ -102,4 +102,7 @@ export const queryKeys = {
   ragSearchSettings: {
     load: (configId: string, versionNumber?: number) => ["loadRagConfig", configId, versionNumber] as const,
   },
+  providers: {
+    all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
+  },
 } as const;
