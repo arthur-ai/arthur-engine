@@ -15,7 +15,7 @@ export const VertexAIFields = withFieldGroup({
   render: function Render({ group }) {
     return (
       <Stack gap={2}>
-        <group.AppField name="project_id" validators={{ onChange: z.string().min(1, "Project ID is required") }}>
+        <group.AppField name="project_id" validators={{ onChange: z.string() }}>
           {(field) => (
             <TextField
               label="Project ID"
@@ -29,7 +29,7 @@ export const VertexAIFields = withFieldGroup({
             />
           )}
         </group.AppField>
-        <group.AppField name="region" validators={{ onChange: z.string().min(1, "Region is required") }}>
+        <group.AppField name="region" validators={{ onChange: z.string() }}>
           {(field) => (
             <TextField
               label="Region"
@@ -44,7 +44,7 @@ export const VertexAIFields = withFieldGroup({
           )}
         </group.AppField>
 
-        <group.AppField name="gcp_service_account_credentials" validators={{ onChange: z.instanceof(File).nullable() }}>
+        <group.AppField name="gcp_service_account_credentials" validators={{ onChange: z.instanceof(File) }}>
           {(field) => (
             <Stack gap={1}>
               <Button component="label" variant="contained" color="primary" disableElevation tabIndex={-1} startIcon={<UploadFileIcon />}>

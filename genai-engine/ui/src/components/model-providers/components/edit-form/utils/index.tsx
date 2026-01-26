@@ -5,7 +5,7 @@ export const parseCredentials = async (file: File) => {
     const fileContents = await file.text();
     const parsedJson = JSON.parse(fileContents);
     return CredentialsSchema.safeParseAsync(parsedJson);
-  } catch (error) {
-    throw new Error("Invalid credentials file", { cause: error });
+  } catch {
+    return { success: false, error: "Invalid credentials file" } as const;
   }
 };
