@@ -50,6 +50,24 @@ export const LiveEvalsNew = () => {
       variableMappings: [] as ContinuousEvalTransformVariableMappingRequest[],
     },
     validators: {
+      onMount: z.object({
+        name: z.string().min(1, "Name is required"),
+        description: z.string(),
+        enabled: z.boolean(),
+        evaluator: z.object({
+          name: z.string().min(1, "Evaluator name is required"),
+          version: z.string().min(1, "Evaluator version is required"),
+        }),
+        transform: z.object({
+          transformId: z.string().min(1, "Transform ID is required"),
+        }),
+        variableMappings: z.array(
+          z.object({
+            eval_variable: z.string(),
+            transform_variable: z.string(),
+          })
+        ),
+      }),
       onChange: z.object({
         name: z.string().min(1, "Name is required"),
         description: z.string(),
