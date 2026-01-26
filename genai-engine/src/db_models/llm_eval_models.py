@@ -131,7 +131,7 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
 
-    transform_variable_mapping: Mapped[List[Dict[str, str]]] = mapped_column(
+    transform_variable_mapping: Mapped[List[dict[str, str]]] = mapped_column(
         JSON,
         nullable=False,
         server_default="[]",

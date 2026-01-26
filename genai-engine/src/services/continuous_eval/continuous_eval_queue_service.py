@@ -229,13 +229,13 @@ class ContinuousEvalQueueService:
                 )
 
             # Load the continuous eval configuration
-            continuous_eval = (
+            db_continuous_eval = (
                 db_session.query(DatabaseContinuousEval)
                 .filter(DatabaseContinuousEval.id == job.continuous_eval_id)
                 .first()
             )
 
-            if not continuous_eval:
+            if not db_continuous_eval:
                 raise ValueError(f"Continuous eval {job.continuous_eval_id} not found")
 
             # Validate trace exists
@@ -254,10 +254,12 @@ class ContinuousEvalQueueService:
             # Verify the transform exists
             trace_transform_repository = TraceTransformRepository(db_session)
             trace_transform = trace_transform_repository.get_transform_by_id(
-                continuous_eval.transform_id,
+                db_continuous_eval.transform_id,
             )
             if not trace_transform:
-                raise ValueError(f"Transform {continuous_eval.transform_id} not found")
+                raise ValueError(
+                    f"Transform {db_continuous_eval.transform_id} not found",
+                )
 
             # Execute the transform over the trace
             transform_results = execute_transform(trace, trace_transform.definition)
@@ -274,16 +276,15 @@ class ContinuousEvalQueueService:
                     db_session,
                     job.annotation_id,
                     ContinuousEvalRunStatus.ERROR.value,
-                    annotation_description=f"Could not extract variables: {', '.join(transform_results.missing_variables)} using transform {continuous_eval.transform_id} on trace {job.trace_id}",
+                    annotation_description=f"Could not extract variables: {', '.join(transform_results.missing_variables)} using transform {db_continuous_eval.transform_id} on trace {job.trace_id}",
                 )
                 return
 
             # Get the mapping from transform var to eval var
-            continuous_eval = ContinuousEval.from_db_model(continuous_eval)
-            mapping_dict = {
-                mapping.transform_variable: mapping.eval_variable
-                for mapping in continuous_eval.transform_variable_mapping
-            }
+            continuous_eval = ContinuousEval.from_db_model(db_continuous_eval)
+            mapping_dict: dict[str, str] = {}
+            for mapping in continuous_eval.transform_variable_mapping:
+                mapping_dict[mapping.transform_variable] = mapping.eval_variable
 
             # Build the completion request variables
             completion_request_variables = []

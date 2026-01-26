@@ -167,12 +167,12 @@ class ModelProviderRepository:
     def set_model_provider_credentials(
         self,
         provider: ModelProvider,
-        api_key: SecretStr = None,
-        project_id: str = None,
-        region: str = None,
-        api_base: SecretStr = None,
-        vertex_credentials: GCPServiceAccountCredentials = None,
-        aws_bedrock_credentials: AwsBedrockCredentials = None,
+        api_key: SecretStr | None = None,
+        project_id: str | None = None,
+        region: str | None = None,
+        api_base: SecretStr | None = None,
+        vertex_credentials: GCPServiceAccountCredentials | None = None,
+        aws_bedrock_credentials: AwsBedrockCredentials | None = None,
     ) -> None:
         # first check if this provider already exists
         existing_provider = (
@@ -264,7 +264,7 @@ class ModelProviderRepository:
 
         return LLMClient(
             provider=provider,
-            api_key=api_key,
+            api_key=api_key or "",
             project_id=secret.project_id,
             region=secret.region,
             api_base=api_base,

@@ -205,6 +205,7 @@ def get_continuous_eval_variables_and_mappings(
         transform_vars = {v.variable_name for v in transform.definition.variables}
         matching_vars = list(eval_vars & transform_vars)
 
+        # TODO: Question to Tal, we are returning different type here than in the response model. Is this correct?
         return ContinuousEvalVariableMappingResponse(
             matching_variables=matching_vars,
             transform_variables=list(transform_vars),
@@ -319,6 +320,7 @@ def update_continuous_eval(
 
         existing_eval = continuous_eval_repo.get_continuous_eval_by_id(eval_id)
         llm_eval = None
+        llm_eval_version: str | int | None = None
 
         if update_request.llm_eval_version is not None:
             llm_eval_name = existing_eval.llm_eval_name

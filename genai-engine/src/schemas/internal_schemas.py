@@ -2031,8 +2031,7 @@ class Span(TokenCountCostSchema):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
-            # TODO: Question to Videet. There is no user_id in the response model.
-            # user_id=self.user_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -2065,8 +2064,7 @@ class Span(TokenCountCostSchema):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
-            # TODO: Question to Videet. There is no user_id in the response model.
-            # user_id=self.user_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,

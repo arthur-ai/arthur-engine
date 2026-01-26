@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.llm_model_providers import OpenAIMessage
 from fastapi import HTTPException
 from sqlalchemy import asc, column, desc, exists, func, or_, select
 from sqlalchemy.dialects import postgresql
@@ -369,8 +370,11 @@ class PromptExperimentRepository:
                     try:
                         # TODO: Ask Videet if variable passed here are in the correct order
                         missing_vars = self.chat_completion_service.find_missing_variables_in_messages(
-                            config.messages,
-                            {},
+                            variable_map={},
+                            messages=[
+                                OpenAIMessage.model_validate(message)
+                                for message in config.messages
+                            ],
                         )
                         detected_variables = list(missing_vars)
                     except Exception as e:

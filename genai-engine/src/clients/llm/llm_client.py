@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import httpx
 import litellm
@@ -81,11 +81,11 @@ class LLMClient:
         self,
         provider: ModelProvider,
         api_key: str,
-        project_id: str = None,
-        region: str = None,
-        api_base: str = None,
-        vertex_credentials: Dict[str, str] = None,
-        aws_bedrock_credentials: Dict[str, str] = None,
+        project_id: str | None = None,
+        region: str | None = None,
+        api_base: str | None = None,
+        vertex_credentials: dict[str, str] | None = None,
+        aws_bedrock_credentials: dict[str, str] | None = None,
     ):
         self.provider = provider
         self.api_key = api_key
