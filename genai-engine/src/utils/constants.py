@@ -27,6 +27,7 @@ DEFAULT_PAGE_SIZE = 5  # Reduced for trace-level pagination
 MAX_PAGE_SIZE = 5000
 MODEL_REPOSITORY_URL_ENV_VAR = "MODEL_REPOSITORY_URL"
 MODEL_STORAGE_PATH_ENV_VAR = "MODEL_STORAGE_PATH"
+GENAI_ENGINE_SKIP_MODEL_LOADING_ENV_VAR = "GENAI_ENGINE_SKIP_MODEL_LOADING"
 
 ##################################################################
 # Postgres
