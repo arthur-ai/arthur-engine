@@ -163,6 +163,7 @@ const BodyMapperGeneratedInput = withFieldGroup({
             label="Generator Type"
           >
             <MenuItem value="uuid">UUID</MenuItem>
+            <MenuItem value="session_id">Session ID</MenuItem>
           </TextField>
         )}
       </group.AppField>
