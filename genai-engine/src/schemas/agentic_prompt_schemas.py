@@ -1,15 +1,16 @@
 from datetime import datetime
 from typing import List, Optional
 
+from arthur_common.models.llm_model_providers import (
+    LLMConfigSettings,
+    LLMTool,
+    ModelProvider,
+    OpenAIMessage,
+)
 from pydantic import (
     BaseModel,
     Field,
 )
-
-from schemas.enums import (
-    ModelProvider,
-)
-from schemas.llm_schemas import LLMConfigSettings, LLMTool, OpenAIMessage
 
 
 class AgenticPrompt(BaseModel):

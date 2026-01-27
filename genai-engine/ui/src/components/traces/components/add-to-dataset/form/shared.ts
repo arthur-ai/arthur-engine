@@ -1,10 +1,6 @@
 import { formOptions } from "@tanstack/react-form";
 
-import type {
-  TraceTransformDefinition,
-  TraceTransformVariableDefinition,
-  TraceTransformResponse,
-} from "@/lib/api-client/api-client";
+import type { TraceTransformDefinition, TraceTransformVariableDefinition, TraceTransformResponse } from "@/lib/api-client/api-client";
 
 export type Column = {
   name: string;

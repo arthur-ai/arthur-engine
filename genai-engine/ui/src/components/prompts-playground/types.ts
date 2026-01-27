@@ -186,6 +186,7 @@ interface MessageComponentProps {
 interface PromptComponentProps {
   prompt: PromptType;
   useIconOnlyMode: boolean;
+  highlightCost?: boolean;
 }
 
 interface OutputFieldProps {
@@ -195,6 +196,7 @@ interface OutputFieldProps {
   responseFormat: string | undefined;
   dialogOpen: boolean;
   onCloseDialog: () => void;
+  highlightCost?: boolean;
 }
 
 interface SavePromptDialogProps {

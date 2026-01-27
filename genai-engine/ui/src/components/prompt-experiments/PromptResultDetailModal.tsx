@@ -2,22 +2,14 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import {
-  Box,
-  IconButton,
-  Typography,
-  Chip,
-  Modal,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
+import { Alert, Box, IconButton, Snackbar, Typography, Chip, Modal, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import React, { useState } from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 
+import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import useSnackbar from "@/hooks/useSnackbar";
 import type { InputVariable, EvalExecution, PromptOutput } from "@/lib/api-client/api-client";
 
 interface Message {
@@ -39,6 +31,10 @@ interface PromptResultDetailModalProps {
   onPrevious?: () => void;
   onNext?: () => void;
   onViewEvalInputs?: (evalExecution: EvalExecution) => void;
+  // Dataset update props (optional - only show button when all are provided)
+  datasetId?: string;
+  datasetVersion?: number;
+  datasetRowId?: string;
 }
 
 export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = ({
@@ -55,7 +51,19 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
   onPrevious,
   onNext,
   onViewEvalInputs,
+  datasetId,
+  datasetVersion,
+  datasetRowId,
 }) => {
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
+  const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && datasetRowId && output?.content);
+
+  const handleUpdateSuccess = () => {
+    showSnackbar("Dataset updated successfully. New version created.", "success");
+  };
+
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
     return {
@@ -75,7 +83,6 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
     borderStyle: "solid",
   });
 
-  // Add keyboard navigation
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return;
@@ -97,24 +104,13 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
   }, [open, onPrevious, onNext, onClose]);
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      aria-labelledby="prompt-result-detail-modal"
-    >
-      <Box
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-6xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-auto"
-      >
+    <Modal open={open} onClose={onClose} aria-labelledby="prompt-result-detail-modal">
+      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-6xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-auto">
         {/* Modal Header */}
         <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
           <Box className="flex items-center gap-3">
             {onPrevious && (
-              <IconButton
-                onClick={onPrevious}
-                size="small"
-                disabled={currentIndex <= 0}
-                className="hover:bg-gray-100"
-              >
+              <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100">
                 <ArrowBackIcon />
               </IconButton>
             )}
@@ -122,12 +118,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
               Result {currentIndex + 1} of {totalCount} - {promptName} (v{promptVersion})
             </Typography>
             {onNext && (
-              <IconButton
-                onClick={onNext}
-                size="small"
-                disabled={currentIndex >= totalCount - 1}
-                className="hover:bg-gray-100"
-              >
+              <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1} className="hover:bg-gray-100">
                 <ArrowForwardIcon />
               </IconButton>
             )}
@@ -141,29 +132,19 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
         <Box className="p-6">
           {/* Input Variables Section */}
           <Box className="mb-6">
-            <Typography
-              variant="h6"
-              className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900"
-            >
+            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
               Input Variables
             </Typography>
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {inputVariables.map((variable) => (
-                <VariableTile
-                  key={variable.variable_name}
-                  variableName={variable.variable_name}
-                  value={variable.value}
-                />
+                <VariableTile key={variable.variable_name} variableName={variable.variable_name} value={variable.value} />
               ))}
             </Box>
           </Box>
 
           {/* Messages: Rendered Prompt and Output */}
           <Box className="mb-6">
-            <Typography
-              variant="h6"
-              className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900"
-            >
+            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
               Messages
             </Typography>
             <Box className="grid grid-cols-2 gap-4">
@@ -176,11 +157,8 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                   {(() => {
                     try {
                       const messages = JSON.parse(renderedPrompt) as Message[];
-                      return messages.map((message, msgIndex) => (
-                        <MessageDisplay key={msgIndex} message={message} />
-                      ));
+                      return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                     } catch {
-                      // If not JSON, display as plain text
                       return (
                         <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
                           <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
@@ -195,17 +173,26 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
 
               {/* Output */}
               <Box>
-                <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
-                  Output Message:
-                </Typography>
+                <Box className="flex items-center justify-between mb-2">
+                  <Typography variant="subtitle2" className="font-medium text-gray-700">
+                    Output Message:
+                  </Typography>
+                  {canUpdateDataset && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<SaveAltIcon />}
+                      onClick={() => setUpdateModalOpen(true)}
+                      title="Update dataset row with this output"
+                    >
+                      Update Dataset
+                    </Button>
+                  )}
+                </Box>
                 <Box className="max-h-96 overflow-auto">
                   {output ? (
                     <>
-                      {output.content && (
-                        <MessageDisplay
-                          message={{ role: "assistant", content: output.content }}
-                        />
-                      )}
+                      {output.content && <MessageDisplay message={{ role: "assistant", content: output.content }} />}
                       {output.tool_calls && output.tool_calls.length > 0 && (
                         <Box className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
                           <Typography variant="caption" className="font-medium text-purple-700">
@@ -229,10 +216,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
           {/* Evals */}
           {evals.length > 0 && (
             <Box>
-              <Typography
-                variant="h6"
-                className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900"
-              >
+              <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
                 Evaluations
               </Typography>
               <Box className="space-y-2">
@@ -250,27 +234,14 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                               size="small"
                               sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                             />
-                            <Chip
-                              label={`Cost: $${evalItem.eval_results.cost}`}
-                              size="small"
-                              variant="outlined"
-                            />
+                            <Chip label={`Cost: $${evalItem.eval_results.cost}`} size="small" variant="outlined" />
                           </>
                         ) : (
-                          <Chip
-                            label="Pending"
-                            size="small"
-                            sx={getPendingChipSx()}
-                          />
+                          <Chip label="Pending" size="small" sx={getPendingChipSx()} />
                         )}
                       </Box>
                       {onViewEvalInputs && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<InfoOutlinedIcon />}
-                          onClick={() => onViewEvalInputs(evalItem)}
-                        >
+                        <Button size="small" variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => onViewEvalInputs(evalItem)}>
                           View Inputs
                         </Button>
                       )}
@@ -286,6 +257,22 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
             </Box>
           )}
         </Box>
+
+        {canUpdateDataset && (
+          <UpdateDatasetRowModal
+            open={updateModalOpen}
+            onClose={() => setUpdateModalOpen(false)}
+            datasetId={datasetId!}
+            datasetVersion={datasetVersion!}
+            rowId={datasetRowId!}
+            outputValue={output!.content}
+            onSuccess={handleUpdateSuccess}
+          />
+        )}
+
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
+        </Snackbar>
       </Box>
     </Modal>
   );
@@ -300,22 +287,13 @@ interface EvalInputsDialogProps {
 
 export const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClose, evalExecution }) => {
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-    >
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         <Box className="flex justify-between items-center">
           <Typography variant="h6">
             Evaluation Inputs: {evalExecution?.eval_name} v{evalExecution?.eval_version}
           </Typography>
-          <IconButton
-            size="small"
-            onClick={onClose}
-            sx={{ color: "text.secondary" }}
-          >
+          <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -324,11 +302,7 @@ export const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClos
         {evalExecution && evalExecution.eval_input_variables.length > 0 ? (
           <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {evalExecution.eval_input_variables.map((variable) => (
-              <VariableTile
-                key={variable.variable_name}
-                variableName={variable.variable_name}
-                value={variable.value}
-              />
+              <VariableTile key={variable.variable_name} variableName={variable.variable_name} value={variable.value} />
             ))}
           </Box>
         ) : (

@@ -7,10 +7,10 @@ metadata:
   {{- else }}
   name: arthur-genai-engine
   {{- end }}
+  {{- with .Values.arthurGenaiEngineDeployment.annotations }}
   annotations:
-    {{- with .Values.arthurGenaiEngineDeployment.annotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- end }}
   labels:
     app: arthur-genai-engine
     {{- include "arthur-genai-engine.labels" . | nindent 4 }}
@@ -23,10 +23,10 @@ spec:
       app: arthur-genai-engine
   template:
     metadata:
+      {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAnnotations }}
       annotations:
-        {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAnnotations }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+      {{- end }}
       labels:
         app: arthur-genai-engine
         {{- include "arthur-genai-engine.labels" . | nindent 8 }}
@@ -128,6 +128,21 @@ spec:
             {{- if .Values.modelRepositoryURL }}
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
+            {{- end }}
+            {{- if .Values.genaiEngineInternalHost }}
+            - name: GENAI_ENGINE_INTERNAL_HOST
+              value: {{ .Values.genaiEngineInternalHost | quote }}
+            {{- end }}
+            {{- if .Values.genaiEngineInternalIngressHost }}
+            - name: GENAI_ENGINE_INTERNAL_INGRESS_HOST
+              value: {{ .Values.genaiEngineInternalIngressHost | quote }}
+            {{- end }}
+            {{- if .Values.genaiEngineSecretInternalApiKeyName }}
+            - name: GENAI_ENGINE_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
+                  key: key
             {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:

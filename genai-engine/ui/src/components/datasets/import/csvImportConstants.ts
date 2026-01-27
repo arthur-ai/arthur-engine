@@ -53,20 +53,17 @@ export const CSV_IMPORT_MESSAGES = {
     noColumns: "No columns detected in CSV file",
     noRows: "No data rows found in CSV file",
     emptyHeaders: "Some column headers are empty",
-    datasetAtCapacity: (maxRows: number) =>
-      `Dataset is already at maximum capacity (${maxRows} rows)`,
+    datasetAtCapacity: (maxRows: number) => `Dataset is already at maximum capacity (${maxRows} rows)`,
     parseFailed: (message: string) => `Failed to parse CSV: ${message}`,
     importFailed: (message: string) => `Failed to import CSV: ${message}`,
     parseErrors: (messages: string) => `Parse errors: ${messages}`,
   },
   warnings: {
-    raggedRows: (count: number) =>
-      `${count} rows have inconsistent column counts`,
+    raggedRows: (count: number) => `${count} rows have inconsistent column counts`,
     emptyColumns: (count: number) => `${count} columns appear to be empty`,
     rowTruncation: (csvRows: number, available: number, maxRows: number) =>
       `CSV has ${csvRows} rows, but only ${available} can be imported (dataset limit: ${maxRows} total rows)`,
-    singleColumn:
-      "All data appears in one column. Check if delimiter is correct.",
+    singleColumn: "All data appears in one column. Check if delimiter is correct.",
   },
   info: {
     configAutoDetected: "Configuration auto-detected",
@@ -76,8 +73,7 @@ export const CSV_IMPORT_MESSAGES = {
     uploadInstructions: "Upload a CSV file and configure parsing options.",
     importNote: (maxRows: number) =>
       `New columns will be added to existing columns. Rows will be appended to existing data. Maximum total rows: ${maxRows}.`,
-    previewDescription: (shown: number, total: number) =>
-      `Showing first ${shown} of ${total} rows`,
+    previewDescription: (shown: number, total: number) => `Showing first ${shown} of ${total} rows`,
   },
   labels: {
     configureTitle: "Configure CSV Import",

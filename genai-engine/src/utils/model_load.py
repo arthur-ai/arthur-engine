@@ -21,7 +21,7 @@ from transformers import (
     pipeline,
 )
 from transformers.modeling_utils import PreTrainedModel
-from transformers.tokenization_utils import PreTrainedTokenizerBase
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from config.config import Config
 from custom_types import P, T
@@ -95,7 +95,7 @@ PROMPT_INJECTION_MODEL: PreTrainedModel | None = None
 PROMPT_INJECTION_TOKENIZER: PreTrainedTokenizerBase | None = None
 PROMPT_INJECTION_CLASSIFIER: TextClassificationPipeline | None = None
 TOXICITY_MODEL: AutoModelForSequenceClassification | None = None
-TOXICITY_TOKENIZER: AutoTokenizer | None = None
+TOXICITY_TOKENIZER: PreTrainedTokenizerBase | None = None
 RELEVANCE_MODEL: AutoModelForSequenceClassification | None = None
 RELEVANCE_TOKENIZER: AutoTokenizer | None = None
 TOXICITY_CLASSIFIER: TextClassificationPipeline | None = None
@@ -103,7 +103,7 @@ PROFANITY_CLASSIFIER = None
 BERT_SCORER: BERTScorer | None = None
 RELEVANCE_RERANKER: TextClassificationPipeline | None = None
 PII_GLINER_MODEL = None
-PII_GLINER_TOKENIZER: AutoTokenizer | None = None
+PII_GLINER_TOKENIZER: PreTrainedTokenizerBase | None = None
 PII_PRESIDIO_ANALYZER = None
 
 
@@ -253,6 +253,15 @@ def get_models_to_download() -> dict[str, list[str]]:
             "gliner_config.json",
             "pytorch_model.bin",
         ]
+        models_to_download["microsoft/mdeberta-v3-base"] = [
+            "config.json",
+            "generator_config.json",
+            "pytorch_model.bin",
+            "pytorch_model.generator.bin",
+            "spm.model",
+            "tf_model.h5",
+            "tokenizer_config.json",
+        ]
     return models_to_download
 
 
@@ -348,7 +357,7 @@ def get_toxicity_model() -> AutoModelForSequenceClassification | None:
 
 
 @log_model_loading("toxicity tokenizer", "TOXICITY_TOKENIZER")
-def get_toxicity_tokenizer() -> AutoTokenizer | None:
+def get_toxicity_tokenizer() -> PreTrainedTokenizerBase | None:
     global TOXICITY_TOKENIZER
     if not TOXICITY_TOKENIZER:
         model_path = get_local_model_path("s-nlp/roberta_toxicity_classifier")
@@ -363,7 +372,7 @@ def get_toxicity_tokenizer() -> AutoTokenizer | None:
 @log_model_loading("toxicity classifier pipeline", "TOXICITY_CLASSIFIER")
 def get_toxicity_classifier(
     model: AutoModelForSequenceClassification | None,
-    tokenizer: AutoTokenizer | None,
+    tokenizer: PreTrainedTokenizerBase | None,
 ) -> TextClassificationPipeline | None:
     if not model:
         model = get_toxicity_model()
@@ -478,7 +487,7 @@ def get_relevance_reranker() -> TextClassificationPipeline | None:
 
 
 @log_model_loading("gliner tokenizer")
-def get_gliner_tokenizer() -> AutoTokenizer | None:
+def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
     global PII_GLINER_TOKENIZER
 
     # Check if Gliner is enabled
@@ -488,8 +497,13 @@ def get_gliner_tokenizer() -> AutoTokenizer | None:
 
     if USE_PII_MODEL_V2 and PII_GLINER_TOKENIZER is None:
         config = GLiNERConfig.from_json_file(GLINER_CONFIG_PATH)
+        # Resolve model_name to local path (e.g., "microsoft/mdeberta-v3-base" -> local path)
+        tokenizer_model_path = get_local_model_path(config.model_name)
+        logger.info(
+            f"Using local tokenizer from: {tokenizer_model_path} instead of {config.model_name}",
+        )
         PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
-            config.model_name,
+            tokenizer_model_path,
         )
     return PII_GLINER_TOKENIZER
 

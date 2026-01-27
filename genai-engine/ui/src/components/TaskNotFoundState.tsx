@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 
-import { SidebarNavigation } from './SidebarNavigation';
+import { SidebarNavigation } from "./SidebarNavigation";
 
 interface TaskNotFoundStateProps {
   onBackToDashboard: () => void;
@@ -15,7 +15,7 @@ export const TaskNotFoundState: React.FC<TaskNotFoundStateProps> = ({
   onBackToDashboard,
   onLogout,
   onNavigate = () => {},
-  activeSection = 'task-details'
+  activeSection = "task-details",
 }) => {
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
@@ -23,9 +23,7 @@ export const TaskNotFoundState: React.FC<TaskNotFoundStateProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Task Details
-              </h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Task Details</h1>
             </div>
             <button
               onClick={onLogout}
@@ -38,18 +36,12 @@ export const TaskNotFoundState: React.FC<TaskNotFoundStateProps> = ({
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <SidebarNavigation
-          onBackToDashboard={onBackToDashboard}
-          onNavigate={onNavigate}
-          activeSection={activeSection}
-        />
+        <SidebarNavigation onBackToDashboard={onBackToDashboard} onNavigate={onNavigate} activeSection={activeSection} />
 
         <main className="flex-1 overflow-auto py-6 px-6">
           <div className="bg-white shadow rounded-lg p-6">
             <div className="text-center">
-              <div className="text-gray-600 text-lg font-medium mb-2">
-                Task Not Found
-              </div>
+              <div className="text-gray-600 text-lg font-medium mb-2">Task Not Found</div>
               <p className="text-gray-500 mb-4">The requested task could not be found.</p>
               <button
                 onClick={onBackToDashboard}

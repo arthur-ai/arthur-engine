@@ -1,23 +1,35 @@
 import { Tooltip } from "@mui/material";
-import { createColumnHelper } from "@tanstack/react-table";
+import { createMRTColumnHelper } from "material-react-table";
 
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { SessionMetadataResponse } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { formatDate } from "@/utils/formatters";
 
-const columnHelper = createColumnHelper<SessionMetadataResponse>();
+const columnHelper = createMRTColumnHelper<SessionMetadataResponse>();
 
 export const sessionLevelColumns = [
   columnHelper.accessor("session_id", {
     header: "Session ID",
-    cell: ({ getValue }) => {
-      const label = getValue();
+    Cell: ({ cell }) => {
+      const label = cell.getValue();
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "session",
+                  id_type: "session",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );
@@ -25,17 +37,17 @@ export const sessionLevelColumns = [
   }),
   columnHelper.accessor("trace_count", {
     header: "Trace Count",
-    cell: ({ getValue }) => `${getValue()} traces`,
+    Cell: ({ cell }) => `${cell.getValue()} traces`,
   }),
   columnHelper.accessor("span_count", {
     header: "Span Count",
-    cell: ({ getValue }) => `${getValue()} spans`,
+    Cell: ({ cell }) => `${cell.getValue()} spans`,
   }),
   columnHelper.display({
     id: "token-count",
     header: "Token Count",
-    cell: ({ row }) => {
-      const { total_token_count = 0, prompt_token_count = 0, completion_token_count = 0 } = row.original;
+    Cell: ({ cell }) => {
+      const { total_token_count = 0, prompt_token_count = 0, completion_token_count = 0 } = cell.row.original;
 
       if (!total_token_count) return "-";
 
@@ -45,8 +57,8 @@ export const sessionLevelColumns = [
   columnHelper.display({
     id: "token-cost",
     header: "Token Cost",
-    cell: ({ row }) => {
-      const { total_token_cost = 0, prompt_token_cost = 0, completion_token_cost = 0 } = row.original;
+    Cell: ({ cell }) => {
+      const { total_token_cost = 0, prompt_token_cost = 0, completion_token_cost = 0 } = cell.row.original;
 
       if (!total_token_cost) return "-";
 
@@ -55,20 +67,31 @@ export const sessionLevelColumns = [
   }),
   columnHelper.accessor("earliest_start_time", {
     header: "Earliest Start Time",
-    cell: ({ getValue }) => formatDate(getValue()),
+    Cell: ({ cell }) => formatDate(cell.getValue()),
   }),
   columnHelper.accessor("latest_end_time", {
     header: "Latest End Time",
-    cell: ({ getValue }) => formatDate(getValue()),
+    Cell: ({ cell }) => formatDate(cell.getValue()),
   }),
   columnHelper.accessor("user_id", {
     header: "User ID",
-    cell: ({ getValue }) => {
-      const label = getValue();
+    Cell: ({ cell }) => {
+      const label = cell.getValue();
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip label={label ?? ""} sx={{ fontFamily: "monospace" }} />
+            <CopyableChip
+              label={label ?? ""}
+              sx={{ fontFamily: "monospace" }}
+              onCopy={(value) =>
+                track(EVENT_NAMES.TRACING_ID_COPIED, {
+                  level: "session",
+                  id_type: "user",
+                  id_value: value,
+                  source: "table",
+                })
+              }
+            />
           </span>
         </Tooltip>
       );

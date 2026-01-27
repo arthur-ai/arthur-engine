@@ -32,6 +32,7 @@ import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailM
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
+import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp } from "@/utils/formatters";
 
 interface EvalResult {
@@ -60,13 +61,16 @@ interface PromptVersionDrawerProps {
     name?: string;
     version?: number;
     auto_name?: string | null;
-    messages?: any[] | null;
+    messages?: Record<string, unknown>[] | OpenAIMessageInput[] | null;
     model_name?: string;
     model_provider?: string;
-    tools?: any[] | null;
-    config?: any;
+    tools?: Record<string, unknown>[] | LLMToolInput[] | null;
+    config?: Record<string, unknown> | null;
     variables?: string[] | null;
   }>;
+  // Dataset info for update functionality
+  datasetId?: string;
+  datasetVersion?: number;
 }
 
 export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
@@ -76,6 +80,8 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   taskId,
   experimentId,
   experimentPromptConfigs,
+  datasetId,
+  datasetVersion,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -84,22 +90,25 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const [selectedResultIndex, setSelectedResultIndex] = useState<number>(-1);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
-  const [selectedEvalExecution, setSelectedEvalExecution] = useState<any>(null);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
 
   // Find unsaved prompt config if this is an unsaved prompt
   const unsavedPromptConfig = useMemo(() => {
     if (promptDetails?.prompt_type === "unsaved" && experimentPromptConfigs) {
-      return experimentPromptConfigs.find(config =>
-        config.type === "unsaved" &&
-        (config.auto_name === promptDetails.prompt_name ||
-         `unsaved:${config.auto_name}` === promptDetails.prompt_key)
+      return experimentPromptConfigs.find(
+        (config) =>
+          config.type === "unsaved" && (config.auto_name === promptDetails.prompt_name || `unsaved:${config.auto_name}` === promptDetails.prompt_key)
       );
     }
     return null;
   }, [promptDetails, experimentPromptConfigs]);
 
   // Fetch prompt version details (only for saved prompts)
-  const shouldFetchPrompt = promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) && !!promptDetails.prompt_name && !!promptDetails.prompt_version;
+  const shouldFetchPrompt =
+    promptDetails &&
+    (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) &&
+    !!promptDetails.prompt_name &&
+    !!promptDetails.prompt_version;
   const { prompt: fetchedPrompt, isLoading: isPromptLoading } = usePrompt(
     taskId,
     shouldFetchPrompt && promptDetails?.prompt_name ? promptDetails.prompt_name : undefined,
@@ -127,22 +136,14 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   }, [fetchedPrompt, unsavedPromptConfig]);
 
   // Use prompt_key directly from prompt details, or construct it from old format
-  const promptKey = promptDetails?.prompt_key ||
+  const promptKey =
+    promptDetails?.prompt_key ||
     (promptDetails && promptDetails.prompt_name && promptDetails.prompt_version
       ? `saved:${promptDetails.prompt_name}:${promptDetails.prompt_version}`
       : undefined);
 
   // Fetch prompt version results from the experiment
-  const {
-    results,
-    totalCount,
-    isLoading: isResultsLoading,
-  } = usePromptVersionResults(
-    experimentId,
-    promptKey,
-    page,
-    rowsPerPage
-  );
+  const { results, totalCount, isLoading: isResultsLoading } = usePromptVersionResults(experimentId, promptKey, page, rowsPerPage);
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -175,7 +176,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
     setSelectedResultIndex(-1);
   };
 
-  const handleViewEvalInputs = (evalExecution: any) => {
+  const handleViewEvalInputs = (evalExecution: EvalExecution) => {
     setSelectedEvalExecution(evalExecution);
     setEvalInputsDialogOpen(true);
   };
@@ -241,27 +242,30 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
               <Box className="flex items-center gap-2 mb-1">
                 <Typography variant="h5" className="font-semibold text-gray-900">
                   {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type)
-                    ? `${promptDetails.prompt_name || 'Unknown'} (v${promptDetails.prompt_version || '?'})`
+                    ? `${promptDetails.prompt_name || "Unknown"} (v${promptDetails.prompt_version || "?"})`
                     : promptDetails?.prompt_name || "Unsaved Prompt"}
                 </Typography>
                 {promptDetails?.prompt_type === "unsaved" && (
                   <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} />
                 )}
-                {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) && promptDetails.prompt_name && promptDetails.prompt_version && (
-                  <Link
-                    component={RouterLink}
-                    to={`/tasks/${taskId}/prompts/${promptDetails.prompt_name}/versions/${promptDetails.prompt_version}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-sm"
-                    sx={{ textDecoration: "none" }}
-                  >
-                    <OpenInNewIcon sx={{ fontSize: 16 }} />
-                    <Typography variant="caption" className="font-medium">
-                      View in Prompt Management
-                    </Typography>
-                  </Link>
-                )}
+                {promptDetails &&
+                  (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) &&
+                  promptDetails.prompt_name &&
+                  promptDetails.prompt_version && (
+                    <Link
+                      component={RouterLink}
+                      to={`/tasks/${taskId}/prompts/${promptDetails.prompt_name}/versions/${promptDetails.prompt_version}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-sm"
+                      sx={{ textDecoration: "none" }}
+                    >
+                      <OpenInNewIcon sx={{ fontSize: 16 }} />
+                      <Typography variant="caption" className="font-medium">
+                        View in Prompt Management
+                      </Typography>
+                    </Link>
+                  )}
               </Box>
             </Box>
             <IconButton onClick={onClose} size="small">
@@ -278,12 +282,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
               {/* Prompt Version Details */}
               <Box className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
                 <Box className="flex items-center justify-start">
-                  <Button
-                    variant="outlined"
-                    startIcon={<OpenInFullIcon />}
-                    onClick={() => setTemplateModalOpen(true)}
-                    size="small"
-                  >
+                  <Button variant="outlined" startIcon={<OpenInFullIcon />} onClick={() => setTemplateModalOpen(true)} size="small">
                     View Template
                   </Button>
                 </Box>
@@ -418,19 +417,12 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                     ) : (
                       results.map((result, idx) => {
                         // Sort evals by name for consistent ordering across rows
-                        const sortedEvals = [...result.evals].sort((a, b) =>
-                          a.eval_name.localeCompare(b.eval_name)
-                        );
+                        const sortedEvals = [...result.evals].sort((a, b) => a.eval_name.localeCompare(b.eval_name));
                         const passedCount = sortedEvals.filter((e) => e.eval_results && e.eval_results.score >= 0.5).length;
                         const totalCount = sortedEvals.length;
 
                         return (
-                          <TableRow
-                            key={`${result.dataset_row_id}-${idx}`}
-                            hover
-                            onClick={() => handleRowClick(idx)}
-                            sx={{ cursor: "pointer" }}
-                          >
+                          <TableRow key={`${result.dataset_row_id}-${idx}`} hover onClick={() => handleRowClick(idx)} sx={{ cursor: "pointer" }}>
                             <TableCell>
                               <Typography
                                 variant="body2"
@@ -443,9 +435,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                                   maxWidth: "250px",
                                 }}
                               >
-                                {result.prompt_input_variables
-                                  .map((v) => `${v.variable_name}: ${v.value}`)
-                                  .join("\n")}
+                                {result.prompt_input_variables.map((v) => `${v.variable_name}: ${v.value}`).join("\n")}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -475,7 +465,10 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                                   maxWidth: "300px",
                                 }}
                               >
-                                {result.output?.content || (result.output?.tool_calls && result.output.tool_calls.length > 0 ? `${result.output.tool_calls.length} tool call(s)` : "No output yet")}
+                                {result.output?.content ||
+                                  (result.output?.tool_calls && result.output.tool_calls.length > 0
+                                    ? `${result.output.tool_calls.length} tool call(s)`
+                                    : "No output yet")}
                               </Typography>
                             </TableCell>
                             <TableCell align="center">
@@ -531,8 +524,9 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
         <DialogTitle>
           <Box className="flex items-center justify-between">
             <Typography variant="h6" className="font-semibold">
-              Prompt Template - {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type)
-                ? `${promptDetails.prompt_name || 'Unknown'} (v${promptDetails.prompt_version || '?'})`
+              Prompt Template -{" "}
+              {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type)
+                ? `${promptDetails.prompt_name || "Unknown"} (v${promptDetails.prompt_version || "?"})`
                 : promptDetails?.prompt_name || "Unsaved Prompt"}
             </Typography>
             <IconButton onClick={() => setTemplateModalOpen(false)} size="small">
@@ -575,7 +569,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                         Temperature
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 font-mono">
-                        {prompt.config.temperature}
+                        {String(prompt.config.temperature)}
                       </Typography>
                     </Box>
                   )}
@@ -585,7 +579,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                         Max Tokens
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 font-mono">
-                        {prompt.config.max_tokens}
+                        {String(prompt.config.max_tokens)}
                       </Typography>
                     </Box>
                   )}
@@ -639,15 +633,14 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
           onPrevious={handlePrevious}
           onNext={handleNext}
           onViewEvalInputs={handleViewEvalInputs}
+          datasetId={datasetId}
+          datasetVersion={datasetVersion}
+          datasetRowId={results[selectedResultIndex].dataset_row_id}
         />
       )}
 
       {/* Eval Inputs Dialog - rendered as sibling to avoid nesting in Modal */}
-      <EvalInputsDialog
-        open={evalInputsDialogOpen}
-        onClose={handleCloseEvalInputsDialog}
-        evalExecution={selectedEvalExecution}
-      />
+      <EvalInputsDialog open={evalInputsDialogOpen} onClose={handleCloseEvalInputsDialog} evalExecution={selectedEvalExecution} />
     </Drawer>
   );
 };

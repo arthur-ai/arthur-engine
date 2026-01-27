@@ -12,6 +12,7 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 
+from arthur_common.models.common_schemas import VariableTemplateValue
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -32,7 +33,7 @@ from schemas.prompt_experiment_schemas import (
     PromptEvalResultSummaries,
     SummaryResults,
 )
-from schemas.request_schemas import PromptCompletionRequest, VariableTemplateValue
+from schemas.request_schemas import PromptCompletionRequest
 from services.experiment_executor import BaseExperimentExecutor
 from services.prompt.chat_completion_service import ChatCompletionService
 

@@ -1,26 +1,13 @@
-import { useApiQuery } from "./useApiQuery";
-import { useApiMutation } from "./useApiMutation";
 import { useApi } from "./useApi";
+import { useApiMutation } from "./useApiMutation";
+import { useApiQuery } from "./useApiQuery";
 
-import type {
-  PromptExperimentListResponse,
-  PromptExperimentDetail,
-  TestCaseListResponse,
-  PromptVersionResultListResponse,
-  CreatePromptExperimentRequest,
-  PromptExperimentSummary,
-} from "@/lib/api-client/api-client";
+import type { PromptExperimentDetail, CreatePromptExperimentRequest, PromptExperimentSummary } from "@/lib/api-client/api-client";
 
 /**
  * Hook to fetch all prompt experiments for a task
  */
-export function usePromptExperiments(
-  taskId: string | undefined,
-  page: number = 0,
-  pageSize: number = 100,
-  search?: string,
-  datasetId?: string
-) {
+export function usePromptExperiments(taskId: string | undefined, page: number = 0, pageSize: number = 100, search?: string, datasetId?: string) {
   const { data, error, isLoading, refetch } = useApiQuery<"listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet">({
     method: "listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet",
     args: [{ taskId: taskId!, page, page_size: pageSize, search, dataset_id: datasetId }] as const,
@@ -68,11 +55,7 @@ export function usePromptExperiment(experimentId: string | undefined, enabled: b
 /**
  * Hook to fetch test cases for an experiment
  */
-export function useExperimentTestCases(
-  experimentId: string | undefined,
-  page: number = 0,
-  pageSize: number = 20
-) {
+export function useExperimentTestCases(experimentId: string | undefined, page: number = 0, pageSize: number = 20) {
   const { data, error, isLoading, refetch } = useApiQuery<"getExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGet">({
     method: "getExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGet",
     args: [{ experimentId: experimentId!, page, page_size: pageSize }] as const,
@@ -99,12 +82,7 @@ export function useExperimentTestCases(
  * Hook to fetch results for a specific prompt in an experiment using prompt_key
  * @param promptKey Format: "saved:name:version" or "unsaved:auto_name"
  */
-export function usePromptVersionResults(
-  experimentId: string | undefined,
-  promptKey: string | undefined,
-  page: number = 0,
-  pageSize: number = 20
-) {
+export function usePromptVersionResults(experimentId: string | undefined, promptKey: string | undefined, page: number = 0, pageSize: number = 20) {
   const { data, error, isLoading, refetch } = useApiQuery<"getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet">({
     method: "getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptKeyResultsGet",
     args: [{ experimentId: experimentId!, promptKey: promptKey!, page, page_size: pageSize }] as const,
@@ -137,15 +115,10 @@ export function useCreateExperiment(taskId: string | undefined) {
     mutationFn: async (request: CreatePromptExperimentRequest) => {
       if (!api || !taskId) throw new Error("API client or taskId not available");
 
-      const response = await api.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(
-        taskId,
-        request
-      );
+      const response = await api.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(taskId, request);
       return response.data;
     },
-    invalidateQueries: [
-      { queryKey: ["listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet"] },
-    ],
+    invalidateQueries: [{ queryKey: ["listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet"] }],
   });
 }
 

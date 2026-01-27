@@ -1,21 +1,29 @@
-# Downloaded models (build artifact)
-models/
-
 # Python
 __pycache__/
-*.pyc
-*.pyo
-.pytest_cache/
-.mypy_cache/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
 
-# IDE
-.idea/
-.vscode/
-*.swp
-
-# Environment
-.env
+# Virtual environments
 .venv/
 venv/
+ENV/
 
-# Note: poetry.lock should be committed for reproducible builds
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+models/
+*.log
+.env

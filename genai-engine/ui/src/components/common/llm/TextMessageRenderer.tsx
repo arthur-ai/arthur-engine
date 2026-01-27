@@ -1,11 +1,4 @@
-import {
-  Paper,
-  Table,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-} from "@mui/material";
+import { Paper, Table, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
