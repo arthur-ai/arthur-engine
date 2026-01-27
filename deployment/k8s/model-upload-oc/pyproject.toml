@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "arthur-model-upload-oc"
+name = "arthur-genai-engine-models-k8s"
 version = "1.0.0"
 description = "OpenShift job to copy ML models to PVC for airgapped environments"
 authors = ["Arthur <engineering@arthur.ai>"]

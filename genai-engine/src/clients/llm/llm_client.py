@@ -42,6 +42,11 @@ def supported_models() -> dict[str, list[str]]:
         ):
             continue
 
+        # Normalize all vertex_ai variants (vertex_ai-language-models, vertex_ai-anthropic_models, etc.)
+        # to single "vertex_ai" key for consistent lookup
+        if provider.startswith("vertex_ai"):
+            provider = "vertex_ai"
+
         model_name = model_name.replace(f"{provider}/", "")
 
         if provider not in models:

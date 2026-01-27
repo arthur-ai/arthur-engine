@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.319"
+        "version": "2.1.324"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -16976,7 +16976,8 @@
                     "enabled": {
                         "type": "boolean",
                         "title": "Enabled",
-                        "description": "Whether the continuous eval is enabled."
+                        "description": "Whether the continuous eval is enabled.",
+                        "default": true
                     },
                     "created_at": {
                         "type": "string",
@@ -16999,7 +17000,6 @@
                     "llm_eval_name",
                     "llm_eval_version",
                     "transform_id",
-                    "enabled",
                     "created_at",
                     "updated_at"
                 ],
@@ -21153,6 +21153,17 @@
                             }
                         ],
                         "title": "Session Id"
+                    },
+                    "user_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Id"
                     },
                     "status_code": {
                         "type": "string",
@@ -26502,6 +26513,17 @@
                             }
                         ],
                         "title": "Session Id"
+                    },
+                    "user_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Id"
                     },
                     "status_code": {
                         "type": "string",

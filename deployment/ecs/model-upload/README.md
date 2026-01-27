@@ -159,6 +159,7 @@ aws ecs run-task \
 | `ProtectAI/deberta-v3-base-prompt-injection-v2` | ~370MB | Prompt injection detection |
 | `s-nlp/roberta_toxicity_classifier` | ~500MB | Toxicity classification |
 | `microsoft/deberta-v2-xlarge-mnli` | ~1.8GB | Relevance scoring |
+| `microsoft/mdeberta-v3-base` | ~3.4GB | PII detection |
 | `urchade/gliner_multi_pii-v1` | ~450MB | PII detection (v2) |
 | `tarekziade/pardonmyai` | ~150MB | Profanity detection |
 
