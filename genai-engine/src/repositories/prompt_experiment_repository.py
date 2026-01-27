@@ -368,7 +368,6 @@ class PromptExperimentRepository:
                 # Auto-detect variables if not provided
                 if config.variables is None:
                     try:
-                        # TODO: Ask Videet if variable passed here are in the correct order
                         missing_vars = self.chat_completion_service.find_missing_variables_in_messages(
                             variable_map={},
                             messages=[
