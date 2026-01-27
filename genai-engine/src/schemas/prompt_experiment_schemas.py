@@ -1,7 +1,7 @@
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
-from litellm.types.utils import ChatCompletionMessageToolCall
 from arthur_common.models.llm_model_providers import ModelProvider
+from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Discriminator, Field, model_validator
 
 from schemas.base_experiment_schemas import (
