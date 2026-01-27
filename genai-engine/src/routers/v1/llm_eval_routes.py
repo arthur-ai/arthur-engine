@@ -2,6 +2,7 @@ from typing import Annotated
 
 import jinja2
 from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
@@ -16,7 +17,6 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
-from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,

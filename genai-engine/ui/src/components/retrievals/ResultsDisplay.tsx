@@ -21,11 +21,7 @@ interface EmptyStateContainerProps {
 }
 
 const EmptyStateContainer: React.FC<EmptyStateContainerProps> = ({ children, centered = true }) => {
-  return (
-    <div className={`bg-white rounded-lg shadow h-full ${centered ? "flex items-center justify-center" : ""} p-6`} style={{ minHeight: "600px" }}>
-      {children}
-    </div>
-  );
+  return <div className={`bg-white rounded-lg shadow ${centered ? "flex items-center justify-center" : ""} p-6`}>{children}</div>;
 };
 
 interface VectorEmbeddingDisplayProps {
@@ -170,7 +166,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
       )}
 
       {results.objects.length === 0 ? (
-        <div className="flex items-center justify-center" style={{ minHeight: "400px" }}>
+        <div className="flex items-center justify-center py-8">
           <div className="text-center">
             <SearchOff className="mx-auto text-gray-400" sx={{ fontSize: 48 }} />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No results found</h3>

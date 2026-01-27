@@ -34,4 +34,3 @@ const NotebooksHeader = ({ onCreateNotebook }: NotebooksHeaderProps) => {
 };
 
 export default NotebooksHeader;
-

@@ -1,15 +1,14 @@
 import logging
 import threading
 import time
-from typing import Any, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import litellm
+from arthur_common.models.llm_model_providers import ModelProvider
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel, ConfigDict, Field
-
-from schemas.enums import ModelProvider
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +42,13 @@ def supported_models() -> dict[str, list[str]]:
         ):
             continue
 
+        # Normalize all vertex_ai variants (vertex_ai-language-models, vertex_ai-anthropic_models, etc.)
+        # to single "vertex_ai" key for consistent lookup
+        if provider.startswith("vertex_ai"):
+            provider = "vertex_ai"
+
+        model_name = model_name.replace(f"{provider}/", "")
+
         if provider not in models:
             models[provider] = []
         models[provider].append(model_name)
@@ -69,9 +75,73 @@ refresh_thread.start()
 
 
 class LLMClient:
-    def __init__(self, provider: ModelProvider, api_key: str):
+    def __init__(
+        self,
+        provider: ModelProvider,
+        api_key: str,
+        project_id: str = None,
+        region: str = None,
+        vertex_credentials: Dict[str, str] = None,
+        aws_bedrock_credentials: Dict[str, str] = None,
+    ):
         self.provider = provider
         self.api_key = api_key
+        self.project_id = project_id
+        self.region = region
+        self.vertex_credentials = vertex_credentials
+        self.aws_bedrock_credentials = aws_bedrock_credentials
+
+    def _add_provider_credentials(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
+
+        if self.provider == ModelProvider.VERTEX_AI:
+            if self.project_id:
+                kwargs["vertex_project"] = self.project_id
+            if self.region:
+                kwargs["vertex_location"] = self.region
+            if self.vertex_credentials is not None:
+                kwargs["vertex_credentials"] = self.vertex_credentials
+            else:
+                logger.warning(
+                    "Using default credentials. If there is no attached service account or cli authenticated user this will fail",
+                )
+        elif self.provider == ModelProvider.BEDROCK:
+            if self.aws_bedrock_credentials is not None:
+                if self.aws_bedrock_credentials.get("aws_access_key_id"):
+                    kwargs["aws_access_key_id"] = self.aws_bedrock_credentials.get(
+                        "aws_access_key_id",
+                    )
+                if self.aws_bedrock_credentials.get("aws_secret_access_key"):
+                    kwargs["aws_secret_access_key"] = self.aws_bedrock_credentials.get(
+                        "aws_secret_access_key",
+                    )
+                if self.aws_bedrock_credentials.get("aws_bedrock_runtime_endpoint"):
+                    kwargs["aws_bedrock_runtime_endpoint"] = (
+                        self.aws_bedrock_credentials.get("aws_bedrock_runtime_endpoint")
+                    )
+                if self.aws_bedrock_credentials.get("aws_role_name"):
+                    kwargs["aws_role_name"] = self.aws_bedrock_credentials.get(
+                        "aws_role_name",
+                    )
+                if self.aws_bedrock_credentials.get("aws_session_name"):
+                    kwargs["aws_session_name"] = self.aws_bedrock_credentials.get(
+                        "aws_session_name",
+                    )
+
+            if self.region:
+                kwargs["aws_region_name"] = self.region
+
+            if (
+                "aws_access_key_id" in kwargs and "aws_secret_access_key" not in kwargs
+            ) or (
+                "aws_access_key_id" not in kwargs and "aws_secret_access_key" in kwargs
+            ):
+                raise ValueError(
+                    "aws_access_key_id and aws_secret_access_key must be provided together",
+                )
+
+        return kwargs
 
     def completion(
         self,
@@ -79,7 +149,9 @@ class LLMClient:
         **kwargs: Any,
     ) -> LLMModelResponse:
         # Delegate to the top-level function
-        response = litellm.completion(*args, api_key=self.api_key, **kwargs)
+        kwargs = self._add_provider_credentials(kwargs)
+
+        response = litellm.completion(*args, **kwargs)
         cost_float = completion_cost(response)
         cost = f"{cost_float:.6f}" if cost_float is not None else None
 
@@ -103,9 +175,10 @@ class LLMClient:
         **kwargs: Any,
     ) -> ModelResponse | CustomStreamWrapper:
         # Delegate to the top-level function
+        kwargs = self._add_provider_credentials(kwargs)
+
         response: ModelResponse | CustomStreamWrapper = await litellm.acompletion(
             *args,
-            api_key=self.api_key,
             **kwargs,
         )
         return response

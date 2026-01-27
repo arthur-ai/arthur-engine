@@ -1,5 +1,6 @@
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
+from arthur_common.models.llm_model_providers import ModelProvider
 from pydantic import BaseModel, Discriminator, Field, model_validator
 
 from schemas.base_experiment_schemas import (
@@ -14,7 +15,6 @@ from schemas.base_experiment_schemas import (
     InputVariable,
 )
 from schemas.common_schemas import BasePaginationResponse
-from schemas.enums import ModelProvider
 
 
 class PromptVariableMapping(BaseModel):

@@ -1,18 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
+import type { ApiSearchSettings } from "@/components/retrievals/types";
 import { useApi } from "@/hooks/useApi";
-import type {
-  RagProviderCollectionResponse,
-  RagSearchSettingConfigurationResponse,
-  WeaviateHybridSearchSettingsConfigurationResponse,
-  WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
-  WeaviateKeywordSearchSettingsConfigurationResponse,
-} from "@/lib/api-client/api-client";
-
-type ApiSearchSettings =
-  | WeaviateHybridSearchSettingsConfigurationResponse
-  | WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
-  | WeaviateKeywordSearchSettingsConfigurationResponse;
+import type { RagProviderCollectionResponse, RagSearchSettingConfigurationResponse } from "@/lib/api-client/api-client";
+import { queryKeys } from "@/lib/queryKeys";
 
 export interface LoadedConfigData {
   config: RagSearchSettingConfigurationResponse;
@@ -22,48 +13,64 @@ export interface LoadedConfigData {
   settings: ApiSearchSettings;
 }
 
+interface LoadConfigParams {
+  configId: string;
+  versionNumber?: number;
+}
+
+async function fetchConfigData(api: ReturnType<typeof useApi>, configId: string, versionNumber?: number): Promise<LoadedConfigData> {
+  if (!api) {
+    throw new Error("API client not available");
+  }
+
+  const configResponse = await api.api.getRagSearchSetting(configId);
+  const config = configResponse.data;
+
+  const versionToLoad = versionNumber ?? config.latest_version_number;
+  const versionResponse = await api.api.getRagSearchSettingVersion(configId, versionToLoad);
+  const version = versionResponse.data;
+
+  const { settings: apiSettings } = version;
+  if (!apiSettings) {
+    throw new Error("Version settings not available");
+  }
+
+  let foundCollection: RagProviderCollectionResponse | null = null;
+
+  if (config.rag_provider_id) {
+    try {
+      const collectionsResponse = await api.api.listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet(config.rag_provider_id);
+      const providerCollections = collectionsResponse.data.rag_provider_collections;
+      foundCollection = providerCollections.find((c: RagProviderCollectionResponse) => c.identifier === apiSettings.collection_name) || null;
+    } catch {
+      // Collections fetch failed - foundCollection remains null
+    }
+  }
+
+  return {
+    config,
+    versionNumber: versionToLoad,
+    searchKind: apiSettings.search_kind!,
+    collection: foundCollection,
+    settings: apiSettings,
+  };
+}
+
 export function useLoadRagConfig(configId: string | null, versionNumber?: number) {
   const api = useApi();
 
   return useQuery({
-    queryKey: ["loadRagConfig", configId, versionNumber, api],
-    queryFn: async (): Promise<LoadedConfigData> => {
-      if (!api || !configId) {
-        throw new Error("API client or config ID not available");
-      }
-
-      const configResponse = await api.api.getRagSearchSetting(configId);
-      const config = configResponse.data;
-
-      const versionToLoad = versionNumber ?? config.latest_version_number;
-      const versionResponse = await api.api.getRagSearchSettingVersion(configId, versionToLoad);
-      const version = versionResponse.data;
-
-      const { settings: apiSettings } = version;
-      if (!apiSettings) {
-        throw new Error("Version settings not available");
-      }
-
-      let foundCollection: RagProviderCollectionResponse | null = null;
-
-      if (config.rag_provider_id) {
-        try {
-          const collectionsResponse = await api.api.listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet(config.rag_provider_id);
-          const providerCollections = collectionsResponse.data.rag_provider_collections;
-          foundCollection = providerCollections.find((c: RagProviderCollectionResponse) => c.identifier === apiSettings.collection_name) || null;
-        } catch (err) {
-          console.error("[RAG] Failed to fetch collections for config:", err);
-        }
-      }
-
-      return {
-        config,
-        versionNumber: versionToLoad,
-        searchKind: apiSettings.search_kind!,
-        collection: foundCollection,
-        settings: apiSettings,
-      };
-    },
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps -- api is a stable hook reference, not a serializable cache key
+    queryKey: queryKeys.ragSearchSettings.load(configId!, versionNumber),
+    queryFn: () => fetchConfigData(api, configId!, versionNumber),
     enabled: !!configId && !!api,
+  });
+}
+
+export function useLoadRagConfigMutation() {
+  const api = useApi();
+
+  return useMutation({
+    mutationFn: ({ configId, versionNumber }: LoadConfigParams) => fetchConfigData(api, configId, versionNumber),
   });
 }

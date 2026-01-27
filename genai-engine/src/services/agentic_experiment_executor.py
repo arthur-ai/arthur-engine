@@ -282,10 +282,10 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         Args:
             http_template: HTTP template configuration
             variable_map: Dictionary mapping variable names to values
-            session_id: Optional session ID to include in the request (prefer body if JSON, else headers)
+            session_id: Optional session ID to include in the request headers
 
         Returns:
-            Dictionary with rendered url, headers, and body
+            Dictionary with rendered url, headers, and body (body is a string)
         """
         # Render URL
         rendered_url = self.chat_completion_service._replace_variables_in_text(
@@ -306,21 +306,15 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             )
             rendered_headers[rendered_name] = rendered_value
 
-        # Render request body (convert to JSON string, render, then parse back)
-        request_body_str = json.dumps(http_template.request_body)
-        rendered_body_str = self.chat_completion_service._replace_variables_in_text(
+        # Render request body (it's already a string with template variables)
+        rendered_body = self.chat_completion_service._replace_variables_in_text(
             variable_map,
-            request_body_str,
+            http_template.request_body,
         )
-        rendered_body = json.loads(rendered_body_str)
 
-        # Add session_id to request body or headers if provided
+        # Add session_id to headers if provided
         if session_id:
-            if isinstance(rendered_body, dict):
-                rendered_body["session_id"] = session_id
-            else:
-                # If body is not a dict, add to headers
-                rendered_headers["X-Session-Id"] = session_id
+            rendered_headers["X-Session-Id"] = session_id
 
         return {
             "url": rendered_url,
@@ -377,7 +371,9 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             # BEFORE THIS POINT.
             agentic_result.request_url = rendered_request["url"]
             agentic_result.request_headers = rendered_request["headers"]
-            agentic_result.request_body = rendered_request["body"]
+            agentic_result.request_body = rendered_request[
+                "body"
+            ]  # body is now a string
             db_session.commit()
 
             # Make HTTP request - at this point, render the sensitive request time parameters to include in the request
@@ -394,10 +390,26 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             )
 
             try:
+                # Determine content type and send body appropriately
+                # If body looks like JSON, set Content-Type header and send as data
+                # Otherwise send as-is
+                headers_for_request = dict(rendered_request["headers"])
+                body_str = rendered_request["body"]
+
+                # Try to parse as JSON to determine if we should set Content-Type
+                try:
+                    json.loads(body_str)
+                    # If it's valid JSON, set Content-Type if not already set
+                    if "Content-Type" not in headers_for_request:
+                        headers_for_request["Content-Type"] = "application/json"
+                except (json.JSONDecodeError, ValueError):
+                    # Not valid JSON, don't set Content-Type (let requests handle it)
+                    pass
+
                 response = requests.post(
                     rendered_request["url"],
-                    headers=rendered_request["headers"],
-                    json=rendered_request["body"],
+                    headers=headers_for_request,
+                    data=body_str,
                     timeout=300,  # 5 minute timeout
                 )
                 status_code = response.status_code

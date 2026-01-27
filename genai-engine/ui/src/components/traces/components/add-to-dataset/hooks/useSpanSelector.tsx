@@ -28,10 +28,10 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
     // Try to match the path against each span's name to find the longest matching span name
     // This handles span names that contain dots or special characters
     let matchedSpan: NestedSpanWithMetricsResponse | undefined;
-    let remainingPath = '';
+    let remainingPath = "";
 
     for (const span of spans) {
-      if (span.span_name && path.startsWith(span.span_name + '.')) {
+      if (span.span_name && path.startsWith(span.span_name + ".")) {
         // Check if this is a longer match than what we have
         if (!matchedSpan || span.span_name.length > matchedSpan.span_name!.length) {
           matchedSpan = span;
@@ -44,16 +44,16 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
       return { spanId: null, keys: [] };
     }
 
-    const attributePath = remainingPath.split('.');
+    const attributePath = remainingPath.split(".");
     const navigationKeys = attributePath.slice(0, -1); // Navigate to parent of final attribute
 
     // Validate that the navigation path exists in the span's data
     if (navigationKeys.length > 0) {
-      const navPath = navigationKeys.join('.');
+      const navPath = navigationKeys.join(".");
       const data = getNestedValue(matchedSpan.raw_data, navPath);
 
       // If the navigation path doesn't exist or isn't an object, don't use it
-      if (!data || typeof data !== 'object') {
+      if (!data || typeof data !== "object") {
         return { spanId: null, keys: [] };
       }
 

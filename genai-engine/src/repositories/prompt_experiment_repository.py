@@ -549,10 +549,18 @@ class PromptExperimentRepository:
                 # Get the value from the dataset row
                 column_value = row_data.get(column_name)
 
+                # Convert None to empty string to match API schema requirement
+                if column_value is None:
+                    logger.warning(
+                        f"Dataset column '{column_name}' has None value for variable '{variable_name}' "
+                        f"in test case from row {row.id}. Converting to empty string for experiment execution.",
+                    )
+                    column_value = ""
+
                 prompt_input_variables.append(
                     {
                         "variable_name": variable_name,
-                        "value": column_value,
+                        "value": str(column_value),
                     },
                 )
 
@@ -613,10 +621,19 @@ class PromptExperimentRepository:
                             # Get value from dataset row
                             column_name = mapping.source.dataset_column.name
                             column_value = row_data.get(column_name)
+
+                            # Convert None to empty string to match API schema requirement
+                            if column_value is None:
+                                logger.warning(
+                                    f"Dataset column '{column_name}' has None value for eval variable '{variable_name}' "
+                                    f"in test case from row {row.id}. Converting to empty string for experiment execution.",
+                                )
+                                column_value = ""
+
                             eval_input_variables.append(
                                 {
                                     "variable_name": variable_name,
-                                    "value": column_value,
+                                    "value": str(column_value),
                                 },
                             )
                         elif mapping.source.type == "experiment_output":
@@ -749,7 +766,10 @@ class PromptExperimentRepository:
             # Cast JSON to JSONB since jsonb_array_elements requires JSONB type
             config_elem = (
                 func.jsonb_array_elements(
-                    func.cast(DatabasePromptExperiment.prompt_configs, postgresql.JSONB)
+                    func.cast(
+                        DatabasePromptExperiment.prompt_configs,
+                        postgresql.JSONB,
+                    ),
                 )
                 .table_valued(column("value", postgresql.JSONB))
                 .lateral("config_lateral")
@@ -762,8 +782,8 @@ class PromptExperimentRepository:
                     or_(
                         config_elem.c.value["name"].astext.ilike(search_pattern),
                         config_elem.c.value["auto_name"].astext.ilike(search_pattern),
-                    )
-                )
+                    ),
+                ),
             )
 
             base_query = base_query.filter(

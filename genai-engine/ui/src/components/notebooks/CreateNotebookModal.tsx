@@ -1,12 +1,4 @@
-import {
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-} from "@mui/material";
+import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useForm } from "@tanstack/react-form";
 import React from "react";
 
@@ -25,11 +17,7 @@ interface CreateNotebookFormContentProps {
   isLoading: boolean;
 }
 
-const CreateNotebookFormContent: React.FC<CreateNotebookFormContentProps> = ({
-  onClose,
-  onSubmit,
-  isLoading,
-}) => {
+const CreateNotebookFormContent: React.FC<CreateNotebookFormContentProps> = ({ onClose, onSubmit, isLoading }) => {
   const form = useForm({
     defaultValues: {
       name: "",
@@ -63,8 +51,8 @@ const CreateNotebookFormContent: React.FC<CreateNotebookFormContentProps> = ({
                 !value || value.trim().length === 0
                   ? "Notebook name is required"
                   : value.length > 100
-                  ? "Notebook name must be less than 100 characters"
-                  : undefined,
+                    ? "Notebook name must be less than 100 characters"
+                    : undefined,
             }}
           >
             {(field) => (
@@ -90,10 +78,7 @@ const CreateNotebookFormContent: React.FC<CreateNotebookFormContentProps> = ({
           <form.Field
             name="description"
             validators={{
-              onChange: ({ value }) =>
-                value && value.length > 500
-                  ? "Description must be less than 500 characters"
-                  : undefined,
+              onChange: ({ value }) => (value && value.length > 500 ? "Description must be less than 500 characters" : undefined),
             }}
           >
             {(field) => (
@@ -120,9 +105,7 @@ const CreateNotebookFormContent: React.FC<CreateNotebookFormContentProps> = ({
           <Button onClick={handleClose} disabled={isLoading} color="inherit">
             Cancel
           </Button>
-          <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
-          >
+          <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
             {([canSubmit]) => (
               <Button
                 type="submit"
@@ -141,12 +124,7 @@ const CreateNotebookFormContent: React.FC<CreateNotebookFormContentProps> = ({
   );
 };
 
-export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
-  open,
-  onClose,
-  onSubmit,
-  isLoading = false,
-}) => {
+export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({ open, onClose, onSubmit, isLoading = false }) => {
   return (
     <Dialog
       open={open}
@@ -159,12 +137,7 @@ export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
       fullWidth
       aria-labelledby="create-notebook-dialog-title"
     >
-      <CreateNotebookFormContent
-        key="create-notebook"
-        onClose={onClose}
-        onSubmit={onSubmit}
-        isLoading={isLoading}
-      />
+      <CreateNotebookFormContent key="create-notebook" onClose={onClose} onSubmit={onSubmit} isLoading={isLoading} />
     </Dialog>
   );
 };

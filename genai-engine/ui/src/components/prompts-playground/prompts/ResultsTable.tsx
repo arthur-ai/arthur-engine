@@ -1,7 +1,10 @@
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -9,6 +12,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Modal from "@mui/material/Modal";
 import Paper from "@mui/material/Paper";
+import Snackbar from "@mui/material/Snackbar";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -20,8 +24,11 @@ import React, { useState, useEffect } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 
+import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
+import useSnackbar from "@/hooks/useSnackbar";
 import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface ResultsTableProps {
   promptId: string;
@@ -31,7 +38,6 @@ interface Message {
   role: "system" | "user" | "assistant";
   content: string;
 }
-
 
 const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
   const roleColors: Record<string, string> = {
@@ -57,15 +63,32 @@ interface TestCaseDetailModalProps {
   testCaseIndex: number;
   open: boolean;
   onClose: () => void;
+  promptKey?: string;
+  datasetId?: string;
+  datasetVersion?: number;
 }
 
-const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: string }> = ({ testCase, testCaseIndex, open, onClose, promptKey }) => {
+const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
+  testCase,
+  testCaseIndex,
+  open,
+  onClose,
+  promptKey,
+  datasetId,
+  datasetVersion,
+}) => {
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
   if (!testCase) return null;
 
-  // Get the prompt result for this specific prompt using the prompt key
-  const promptResult = promptKey
-    ? testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey)
-    : testCase.prompt_results?.[0];
+  const promptResult = promptKey ? testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey) : testCase.prompt_results?.[0];
+
+  const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && testCase.dataset_row_id && promptResult?.output?.content);
+
+  const handleUpdateSuccess = () => {
+    showSnackbar("Dataset updated successfully. New version created.", "success");
+  };
 
   const getEvalChipSx = (isPass: boolean) => {
     const color = isPass ? "success.main" : "error.main";
@@ -111,10 +134,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
         }}
       >
         {/* Modal Header */}
-        <Box
-          className="flex items-center justify-between p-4 border-b"
-          sx={{ backgroundColor: "#f9fafb" }}
-        >
+        <Box className="flex items-center justify-between p-4 border-b" sx={{ backgroundColor: "#f9fafb" }}>
           <Typography variant="h6" className="font-semibold text-gray-900">
             Test Case {testCaseIndex + 1}
           </Typography>
@@ -140,11 +160,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                         (() => {
                           try {
                             const messages = JSON.parse(promptResult.rendered_prompt) as Message[];
-                            return messages.map((message, msgIndex) => (
-                              <MessageDisplay key={msgIndex} message={message} />
-                            ));
+                            return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                           } catch {
-                            // If not JSON, display as plain text
                             return (
                               <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
                                 <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
@@ -166,9 +183,22 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
 
                   {/* Output */}
                   <Box>
-                    <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
-                      Output Message:
-                    </Typography>
+                    <Box className="flex items-center justify-between mb-2">
+                      <Typography variant="subtitle2" className="font-medium text-gray-700">
+                        Output Message:
+                      </Typography>
+                      {canUpdateDataset && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<SaveAltIcon />}
+                          onClick={() => setUpdateModalOpen(true)}
+                          title="Update dataset row with this output"
+                        >
+                          Update Dataset
+                        </Button>
+                      )}
+                    </Box>
                     <Box className="max-h-96 overflow-auto">
                       {promptResult?.output?.content ? (
                         <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
@@ -201,11 +231,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
                                 </Typography>
                                 {evalResult?.score !== undefined ? (
                                   <>
-                                    <Chip
-                                      label={evalResult.score === 1 ? "Pass" : "Fail"}
-                                      size="small"
-                                      sx={getEvalChipSx(evalResult.score === 1)}
-                                    />
+                                    <Chip label={evalResult.score === 1 ? "Pass" : "Fail"} size="small" sx={getEvalChipSx(evalResult.score === 1)} />
                                   </>
                                 ) : (
                                   <Chip label="Pending" size="small" sx={getPendingChipSx()} />
@@ -227,6 +253,22 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps & { promptKey?: str
             </Card>
           </Box>
         </Box>
+
+        {canUpdateDataset && (
+          <UpdateDatasetRowModal
+            open={updateModalOpen}
+            onClose={() => setUpdateModalOpen(false)}
+            datasetId={datasetId!}
+            datasetVersion={datasetVersion!}
+            rowId={testCase.dataset_row_id}
+            outputValue={promptResult!.output!.content}
+            onSuccess={handleUpdateSuccess}
+          />
+        )}
+
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
+        </Snackbar>
       </Box>
     </Modal>
   );
@@ -238,42 +280,30 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
 
-  // Find the prompt to get its key for filtering results
   const prompt = state.prompts.find((p) => p.id === promptId);
 
-  // Generate the prompt key using the same logic as toExperimentPromptConfig
-  // Saved prompts (not dirty): "saved:{name}:{version}"
-  // Unsaved prompts (including dirty saved prompts): "unsaved:{name or id}"
   const promptKey = prompt
     ? prompt.name && prompt.version !== null && prompt.version !== undefined && !prompt.isDirty
       ? `saved:${prompt.name}:${prompt.version}`
       : `unsaved:${prompt.name || prompt.id}`
     : undefined;
 
-  // Use running experiment ID if available, otherwise use last completed
   const experimentIdToShow = runningExperimentId || lastCompletedExperimentId;
 
-  // Fetch test cases from the running or completed experiment
-  const { testCases, isLoading, refetch } = useExperimentTestCases(
-    experimentIdToShow || undefined,
-    0,
-    100 // Fetch all results for now
-  );
+  const { testCases, isLoading, refetch } = useExperimentTestCases(experimentIdToShow || undefined, 0, 100);
 
-  // Refetch test cases when runningExperimentId or lastCompletedExperimentId changes
   useEffect(() => {
     if (runningExperimentId || lastCompletedExperimentId) {
       refetch();
     }
   }, [runningExperimentId, lastCompletedExperimentId, refetch]);
 
-  // Poll for test case updates while experiment is running
   useEffect(() => {
     if (!runningExperimentId) return;
 
     const pollInterval = setInterval(() => {
       refetch();
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [runningExperimentId, refetch]);
@@ -289,44 +319,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   const handleCloseModal = () => {
     setModalOpen(false);
     setSelectedTestCase(null);
-  };
-
-  const getStatusColor = (
-    status: TestCase["status"]
-  ): "default" | "primary" | "info" | "success" | "error" => {
-    switch (status) {
-      case "queued":
-        return "default";
-      case "running":
-        return "primary";
-      case "completed":
-        return "success";
-      case "failed":
-        return "error";
-      default:
-        return "default";
-    }
-  };
-
-  const getStatusLabel = (status: string): string => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
-  const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
-    const colorMap = {
-      default: { color: "text.secondary", borderColor: "text.secondary" },
-      primary: { color: "primary.main", borderColor: "primary.main" },
-      info: { color: "info.main", borderColor: "info.main" },
-      success: { color: "success.main", borderColor: "success.main" },
-      error: { color: "error.main", borderColor: "error.main" },
-    };
-    return {
-      backgroundColor: "transparent",
-      color: colorMap[color].color,
-      borderColor: colorMap[color].borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-    };
   };
 
   return (
@@ -364,8 +356,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             {runningExperimentId
               ? "Experiment is running. Results will appear here..."
               : experimentIdToShow
-              ? "No test cases found for this experiment."
-              : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
+                ? "No test cases found for this experiment."
+                : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
           </Typography>
         </Box>
       ) : (
@@ -438,18 +430,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
-                    <Chip
-                      label={getStatusLabel(testCase.status)}
-                      size="small"
-                      sx={getStatusChipSx(getStatusColor(testCase.status as "completed" | "running" | "failed" | "queued"))}
-                    />
+                    <Chip label={testCase.status} size="small" sx={getStatusChipSx(testCase.status)} />
                   </TableCell>
                   {evals.map((evalRef: EvalRefOutput) => {
-                    // Find the result for THIS specific prompt using the prompt key
-                    const promptResult = testCase.prompt_results?.find(
-                      (pr: PromptResult) => pr.prompt_key === promptKey
-                    );
-                    // Compare eval version as strings since API returns them as strings
+                    const promptResult = testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey);
                     const evalResult = promptResult?.evals?.find(
                       (e: EvalExecution) => e.eval_name === evalRef.name && String(e.eval_version) === String(evalRef.version)
                     );
@@ -494,7 +478,15 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
         </TableContainer>
       )}
 
-      <TestCaseDetailModal testCase={selectedTestCase} testCaseIndex={selectedTestCaseIndex} open={modalOpen} onClose={handleCloseModal} promptKey={promptKey} />
+      <TestCaseDetailModal
+        testCase={selectedTestCase}
+        testCaseIndex={selectedTestCaseIndex}
+        open={modalOpen}
+        onClose={handleCloseModal}
+        promptKey={promptKey}
+        datasetId={experimentConfig?.dataset_ref?.id}
+        datasetVersion={experimentConfig?.dataset_ref?.version}
+      />
     </Box>
   );
 };

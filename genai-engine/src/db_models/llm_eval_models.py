@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import (
     TIMESTAMP,
     UUID,
+    Boolean,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -126,6 +127,13 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
 
+    transform_variable_mapping: Mapped[List[Dict[str, str]]] = mapped_column(
+        JSON,
+        nullable=False,
+        server_default="[]",
+        default=list,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         default=datetime.now,
@@ -136,6 +144,7 @@ class DatabaseContinuousEval(Base):
         default=datetime.now,
         nullable=False,
     )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     __table_args__ = (
         ForeignKeyConstraint(

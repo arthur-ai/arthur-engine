@@ -6,10 +6,10 @@ metadata:
   {{- else }}
   name: arthur-genai-engine-service
   {{- end }}
+  {{- with .Values.arthurGenaiEngineService.annotations }}
   annotations:
-    {{- with .Values.arthurGenaiEngineService.annotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- end }}
   labels:
     app: arthur-genai-engine
     {{- include "arthur-genai-engine.labels" . | nindent 4 }}

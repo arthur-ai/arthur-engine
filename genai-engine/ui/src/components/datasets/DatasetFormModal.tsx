@@ -1,12 +1,4 @@
-import {
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-} from "@mui/material";
+import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useForm } from "@tanstack/react-form";
 import React from "react";
 
@@ -30,13 +22,7 @@ interface DatasetFormContentProps {
   initialData?: NewDatasetRequest;
 }
 
-const DatasetFormContent: React.FC<DatasetFormContentProps> = ({
-  onClose,
-  onSubmit,
-  isLoading,
-  mode,
-  initialData,
-}) => {
+const DatasetFormContent: React.FC<DatasetFormContentProps> = ({ onClose, onSubmit, isLoading, mode, initialData }) => {
   const form = useForm({
     defaultValues: {
       name: initialData?.name || "",
@@ -74,8 +60,8 @@ const DatasetFormContent: React.FC<DatasetFormContentProps> = ({
                 !value || value.trim().length === 0
                   ? "Dataset name is required"
                   : value.length > 100
-                  ? "Dataset name must be less than 100 characters"
-                  : undefined,
+                    ? "Dataset name must be less than 100 characters"
+                    : undefined,
             }}
           >
             {(field) => (
@@ -101,10 +87,7 @@ const DatasetFormContent: React.FC<DatasetFormContentProps> = ({
           <form.Field
             name="description"
             validators={{
-              onChange: ({ value }) =>
-                value && value.length > 500
-                  ? "Description must be less than 500 characters"
-                  : undefined,
+              onChange: ({ value }) => (value && value.length > 500 ? "Description must be less than 500 characters" : undefined),
             }}
           >
             {(field) => (
@@ -131,9 +114,7 @@ const DatasetFormContent: React.FC<DatasetFormContentProps> = ({
           <Button onClick={handleClose} disabled={isLoading} color="inherit">
             Cancel
           </Button>
-          <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
-          >
+          <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
             {([canSubmit]) => (
               <Button
                 type="submit"
@@ -152,17 +133,8 @@ const DatasetFormContent: React.FC<DatasetFormContentProps> = ({
   );
 };
 
-export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
-  open,
-  onClose,
-  onSubmit,
-  isLoading = false,
-  mode,
-  initialData,
-  datasetId,
-}) => {
-  const formKey =
-    mode === "create" ? "create-new" : `edit-${datasetId || "unknown"}`;
+export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({ open, onClose, onSubmit, isLoading = false, mode, initialData, datasetId }) => {
+  const formKey = mode === "create" ? "create-new" : `edit-${datasetId || "unknown"}`;
 
   return (
     <Dialog
@@ -176,14 +148,7 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
       fullWidth
       aria-labelledby="dataset-form-dialog-title"
     >
-      <DatasetFormContent
-        key={formKey}
-        onClose={onClose}
-        onSubmit={onSubmit}
-        isLoading={isLoading}
-        mode={mode}
-        initialData={initialData}
-      />
+      <DatasetFormContent key={formKey} onClose={onClose} onSubmit={onSubmit} isLoading={isLoading} mode={mode} initialData={initialData} />
     </Dialog>
   );
 };

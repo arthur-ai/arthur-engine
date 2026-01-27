@@ -2,12 +2,12 @@ import { PromptType } from "../types";
 
 import { convertToolChoiceForBackend, filterNullParams } from ".";
 
-import { CompletionRequest, ModelProvider, OpenAIMessageItem } from "@/lib/api-client/api-client";
+import { CompletionRequest, ModelProvider, ToolCall } from "@/lib/api-client/api-client";
 
 const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>): CompletionRequest => {
   // Convert keywords Map to variables array for backend templating, filtering out empty values
   const variables = Array.from(keywords.entries())
-    .filter(([name, value]) => value.trim() !== "") // Filter out empty or whitespace-only values
+    .filter(([_name, value]) => value.trim() !== "") // Filter out empty or whitespace-only values
     .map(([name, value]) => ({
       name,
       value,
@@ -18,14 +18,14 @@ const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>):
     // Transform tool_calls from OpenInference format to OpenAI format
     // OpenInference stores: { tool_call: { id, function } }
     // OpenAI expects: { id, type: "function", function }
-    let processedToolCalls = null;
+    let processedToolCalls: ToolCall[] | null = null;
     if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
-      processedToolCalls = msg.tool_calls.map((tc: any) => ({
-        id: tc.tool_call.id,
-        type: "function",
+      processedToolCalls = msg.tool_calls.map((tc: ToolCall) => ({
+        id: tc.id,
+        type: tc.type ?? "function",
         function: {
-          name: tc.tool_call.function.name,
-          arguments: tc.tool_call.function.arguments || "",
+          name: tc.function.name,
+          arguments: tc.function.arguments || "",
         },
       }));
     }

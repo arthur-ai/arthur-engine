@@ -33,13 +33,8 @@ export async function autoDetectDelimiter(file: File): Promise<string> {
           }
 
           const rowLengths = results.data.map((row) => (row as string[]).length);
-          const avgLength =
-            rowLengths.reduce((a, b) => a + b, 0) / rowLengths.length;
-          const variance =
-            rowLengths.reduce(
-              (sum, len) => sum + Math.pow(len - avgLength, 2),
-              0
-            ) / rowLengths.length;
+          const avgLength = rowLengths.reduce((a, b) => a + b, 0) / rowLengths.length;
+          const variance = rowLengths.reduce((sum, len) => sum + Math.pow(len - avgLength, 2), 0) / rowLengths.length;
           const stdDev = Math.sqrt(variance);
 
           // Score: prefer more columns with less variance
@@ -53,9 +48,7 @@ export async function autoDetectDelimiter(file: File): Promise<string> {
     scores.push({ delimiter, score });
   }
 
-  const best = scores.reduce((prev, current) =>
-    current.score > prev.score ? current : prev
-  );
+  const best = scores.reduce((prev, current) => (current.score > prev.score ? current : prev));
 
   return best.score > 0 ? best.delimiter : ",";
 }
@@ -72,15 +65,9 @@ export function validateParseResults(
 
   // Check for critical parse errors
   if (parseErrors.length > 0) {
-    const criticalErrors = parseErrors.filter(
-      (e) => e.type === "Delimiter" || e.type === "Quotes"
-    );
+    const criticalErrors = parseErrors.filter((e) => e.type === "Delimiter" || e.type === "Quotes");
     if (criticalErrors.length > 0) {
-      errors.push(
-        CSV_IMPORT_MESSAGES.errors.parseErrors(
-          criticalErrors.map((e) => e.message).join(", ")
-        )
-      );
+      errors.push(CSV_IMPORT_MESSAGES.errors.parseErrors(criticalErrors.map((e) => e.message).join(", ")));
     }
   }
 
@@ -102,9 +89,7 @@ export function validateParseResults(
   // Check for ragged rows (inconsistent column counts)
   if (rows.length > 0 && columns.length > 0) {
     const expectedCols = columns.length;
-    const raggedRowCount = rows.filter(
-      (row) => Object.keys(row).length !== expectedCols
-    ).length;
+    const raggedRowCount = rows.filter((row) => Object.keys(row).length !== expectedCols).length;
 
     if (raggedRowCount > RAGGED_ROW_WARNING_THRESHOLD) {
       warnings.push(CSV_IMPORT_MESSAGES.warnings.raggedRows(raggedRowCount));
@@ -113,9 +98,7 @@ export function validateParseResults(
 
   // Check for empty columns
   if (columns.length > 0 && rows.length > 0) {
-    const emptyColCount = columns.filter((col) =>
-      rows.every((row) => !row[col] || row[col].trim() === "")
-    ).length;
+    const emptyColCount = columns.filter((col) => rows.every((row) => !row[col] || row[col].trim() === "")).length;
 
     if (emptyColCount > 0) {
       warnings.push(CSV_IMPORT_MESSAGES.warnings.emptyColumns(emptyColCount));
@@ -125,17 +108,9 @@ export function validateParseResults(
   // Check dataset capacity
   const availableRows = MAX_DATASET_ROWS - currentRowCount;
   if (availableRows <= 0) {
-    errors.push(
-      CSV_IMPORT_MESSAGES.errors.datasetAtCapacity(MAX_DATASET_ROWS)
-    );
+    errors.push(CSV_IMPORT_MESSAGES.errors.datasetAtCapacity(MAX_DATASET_ROWS));
   } else if (rows.length > availableRows) {
-    warnings.push(
-      CSV_IMPORT_MESSAGES.warnings.rowTruncation(
-        rows.length,
-        availableRows,
-        MAX_DATASET_ROWS
-      )
-    );
+    warnings.push(CSV_IMPORT_MESSAGES.warnings.rowTruncation(rows.length, availableRows, MAX_DATASET_ROWS));
   }
 
   // Check if all data is in one column (likely wrong delimiter)
@@ -170,13 +145,7 @@ export function parseCSVPreview(
       const columns = config.header ? results.meta.fields || [] : [];
       const rows = results.data as Record<string, string>[];
 
-      const validation = validateParseResults(
-        columns,
-        rows,
-        results.errors,
-        config,
-        currentRowCount
-      );
+      const validation = validateParseResults(columns, rows, results.errors, config, currentRowCount);
 
       const previewData: ParsedPreviewData = {
         columns,
@@ -222,4 +191,3 @@ export function parseCSVFull(
     },
   });
 }
-

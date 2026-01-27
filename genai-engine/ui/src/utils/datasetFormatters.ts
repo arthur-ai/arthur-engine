@@ -1,9 +1,6 @@
 import { CELL_TRUNCATION_LENGTH } from "@/constants/datasetConstants";
 
-export function formatCellValue(
-  value: unknown,
-  maxLength: number = CELL_TRUNCATION_LENGTH
-): string {
+export function formatCellValue(value: unknown, maxLength: number = CELL_TRUNCATION_LENGTH): string {
   if (value === null || value === undefined) return "-";
   if (typeof value === "boolean") return value ? "✓" : "✗";
   if (typeof value === "object") return JSON.stringify(value);
