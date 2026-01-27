@@ -1,18 +1,9 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Link,
-  DialogActions as FormDialogActions,
-  DialogContent as FormDialogContent,
-} from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent } from "@mui/material";
 import { useState } from "react";
 
 import { APIKeyFields } from "./components/api";
 import { BedrockFields } from "./components/bedrock";
+import { ConfirmationDialog } from "./components/confirmation-dialog";
 import { VertexAIFields } from "./components/vertex";
 import { BedrockFormValues, editFormOptions, VertexAIFormValues } from "./form";
 import { parseCredentials } from "./utils";
@@ -74,6 +65,14 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
         const { aws_bedrock_runtime_endpoint, aws_role_name, aws_session_name, ...values } = value as BedrockFormValues;
 
         if (values.type === "access_key") {
+          if (!values.aws_access_key_id || !values.aws_secret_access_key) {
+            setPendingSubmitData({
+              ...values,
+            });
+            setShowConfirmDialog(true);
+            return;
+          }
+
           await onSubmit({
             aws_access_key_id: values.aws_access_key_id,
             aws_secret_access_key: values.aws_secret_access_key,
@@ -84,6 +83,14 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
         }
 
         if (values.type === "api_key") {
+          if (!values.api_key) {
+            setPendingSubmitData({
+              ...values,
+            });
+            setShowConfirmDialog(true);
+            return;
+          }
+
           await onSubmit({
             api_key: values.api_key,
             aws_bedrock_runtime_endpoint: aws_bedrock_runtime_endpoint,
@@ -111,7 +118,7 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
           form.handleSubmit();
         }}
       >
-        <FormDialogContent dividers>
+        <DialogContent dividers>
           {["anthropic", "openai", "gemini"].includes(provider) && (
             <APIKeyFields
               form={form}
@@ -144,8 +151,8 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
               }}
             />
           )}
-        </FormDialogContent>
-        <FormDialogActions>
+        </DialogContent>
+        <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
           <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
             {([canSubmit, isSubmitting]) => (
@@ -154,26 +161,12 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
               </Button>
             )}
           </form.Subscribe>
-        </FormDialogActions>
+        </DialogActions>
       </form>
 
       {/* Confirmation Dialog for Application Default Credentials */}
       <Dialog open={showConfirmDialog} onClose={() => setShowConfirmDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Use Application Default Credentials?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            No credentials file was provided. The engine will attempt to use{" "}
-            <Link href="https://cloud.google.com/docs/authentication/application-default-credentials" target="_blank" rel="noopener">
-              Application Default Credentials
-            </Link>
-            .
-          </DialogContentText>
-          <DialogContentText sx={{ mt: 2 }}>
-            This requires that your environment has valid GCP credentials configured (e.g., through gcloud CLI or an attached service account). If no
-            valid credentials are available, calls to Vertex AI will fail.
-          </DialogContentText>
-          <DialogContentText sx={{ mt: 2 }}>Do you want to proceed with this configuration?</DialogContentText>
-        </DialogContent>
+        <ConfirmationDialog provider={provider} />
         <DialogActions>
           <Button onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
           <Button onClick={handleConfirmedSubmit} variant="contained" color="primary">

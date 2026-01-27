@@ -21,6 +21,8 @@ export const DEFAULT_VALUES = {
   bedrock: {
     type: "api_key",
     api_key: "",
+    aws_access_key_id: "",
+    aws_secret_access_key: "",
     aws_bedrock_runtime_endpoint: "",
     aws_role_name: "",
     aws_session_name: "",
