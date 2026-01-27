@@ -63,7 +63,7 @@ jobs:
         run: |
           poetry -C genai-engine run mypy src
       - name: Check linter results
-        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure'
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
           echo "One or more linters failed"
           exit 1
