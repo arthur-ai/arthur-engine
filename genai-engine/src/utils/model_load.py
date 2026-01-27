@@ -23,7 +23,6 @@ from transformers import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
-from config.config import Config
 from custom_types import P, T
 from utils import constants
 from utils.classifiers import get_device
