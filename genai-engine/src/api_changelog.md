@@ -2,6 +2,27 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/27/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'enabled' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans/anyOf[subschema #1]/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+
 # 01/22/2026
 - **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'missing_spans' to the response with the '200' status
 
