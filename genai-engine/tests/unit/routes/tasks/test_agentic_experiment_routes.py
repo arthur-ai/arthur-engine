@@ -2000,3 +2000,349 @@ def test_agentic_experiment_session_id_generator(
     assert "A session_id variable is required to create an agentic experiment" in str(
         exc_info.value,
     )
+
+
+@pytest.mark.unit_tests
+@patch("services.experiment_executor.db_session_context")
+@patch("repositories.llm_evals_repository.supports_response_schema")
+@patch("services.agentic_experiment_executor.requests.post")
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+@patch("services.agentic_experiment_executor.logger")
+@patch("services.experiment_executor.logger")
+def test_agentic_experiment_eval_preserves_dataset_and_transform_variables(
+    mock_experiment_logger,
+    mock_agentic_logger,
+    mock_completion,
+    mock_completion_cost,
+    mock_requests_post,
+    mock_supports_response_schema,
+    mock_db_session_context,
+    client: GenaiEngineTestClientBase,
+):
+    """
+    Test that eval input variables correctly include BOTH dataset columns AND transform outputs.
+
+    This test validates the fix where eval_input_variables were being lost when using
+    _build_eval_variable_map() directly instead of _set_eval_input_variables().
+    The bug would cause dataset column values to be dropped, leaving only transform variables.
+
+    Regression test for the agentic experiment executor to ensure that when an eval
+    has multiple variable sources (dataset columns + transform outputs), all variables
+    are properly preserved in eval_input_variables.
+    """
+    # Mock db_session_context for background thread execution to use test database
+    setup_db_session_context_mock(mock_db_session_context)
+
+    # Mock loggers to prevent I/O errors on closed file handles in background threads
+    mock_agentic_logger.info = MagicMock()
+    mock_agentic_logger.error = MagicMock()
+    mock_agentic_logger.warning = MagicMock()
+    mock_experiment_logger.info = MagicMock()
+    mock_experiment_logger.error = MagicMock()
+    mock_experiment_logger.warning = MagicMock()
+
+    # Setup: Create task
+    task_name = f"test_task_eval_vars_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200, f"Failed to create task: {task}"
+    task_id = task.id
+
+    # Setup: Configure model provider (required for LLM evals)
+    response = client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert (
+        response.status_code == 201
+    ), f"Failed to configure model provider: {response.text}"
+
+    # Setup: Create dataset with TWO columns: user_message (for HTTP template) AND expected_answer (for eval)
+    dataset_name = f"test_dataset_eval_vars_{random.random()}"
+    status_code, dataset = client.create_dataset(
+        name=dataset_name,
+        task_id=task_id,
+        description="Test dataset with two columns for eval variable test",
+    )
+    assert status_code == 200, f"Failed to create dataset: {dataset}"
+    dataset_id = dataset.id
+
+    # Create dataset version with rows containing BOTH columns
+    test_rows = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="user_message",
+                    column_value="What is machine learning?",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="expected_answer",
+                    column_value="Machine learning is AI",  # Expected answer for eval
+                ),
+            ],
+        ),
+    ]
+
+    status_code, dataset_version = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=test_rows,
+    )
+    assert status_code == 200, f"Failed to create dataset version: {dataset_version}"
+    dataset_version_number = dataset_version.version_number
+
+    # Setup: Create transform
+    transform_name = f"test_transform_eval_vars_{random.random()}"
+    transform_request = NewTraceTransformRequest(
+        name=transform_name,
+        description="Extract agent response from trace",
+        definition=TraceTransformDefinition(
+            variables=[
+                TraceTransformVariableDefinition(
+                    variable_name="agent_response",
+                    span_name="test_span",
+                    attribute_path="attributes.output.value.object.answer",
+                    fallback="No answer found",
+                ),
+            ],
+        ),
+    )
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task_id}/traces/transforms",
+        json=transform_request.model_dump(mode="json"),
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200, f"Failed to create transform: {response.text}"
+    transform_id = UUID(response.json()["id"])
+
+    # Setup: Create LLM eval
+    eval_name = "test_eval_two_vars"
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Compare the agent_response with the expected_answer and determine if they match",
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task_id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200, f"Failed to create LLM eval: {response.text}"
+
+    # Mock HTTP request responses
+    def mock_post_response(*args, **kwargs):
+        """Mock HTTP POST response from agent endpoint."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            "answer": "Machine learning is a subset of artificial intelligence.",
+        }
+        mock_response.text = (
+            '{"answer": "Machine learning is a subset of artificial intelligence."}'
+        )
+        mock_response.reason = "OK"
+        return mock_response
+
+    # Configure the mock to return our response function
+    mock_requests_post.side_effect = mock_post_response
+
+    # Mock supports_response_schema to return True (required by run_llm_eval)
+    mock_supports_response_schema.return_value = True
+
+    # Mock LLM eval responses
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "The agent response matches the expected answer.", "score": 1}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.002345
+    mock_completion.side_effect = None
+
+    # Track session IDs for trace creation
+    created_session_ids = []
+
+    def mock_post_with_trace_creation(*args, **kwargs):
+        """Mock HTTP POST response and create trace with session_id."""
+        headers = kwargs.get("headers", {})
+        session_id = headers.get("X-Session-Id") or headers.get("x-session-id")
+
+        if session_id:
+            created_session_ids.append(session_id)
+            # Create trace with this session_id
+            create_mock_trace_with_session_id(
+                client,
+                task_id,
+                session_id,
+            )
+
+        # Return the mocked response
+        return mock_post_response(*args, **kwargs)
+
+    # Set the side_effect after defining the function
+    mock_requests_post.side_effect = mock_post_with_trace_creation
+    mock_requests_post.return_value = None
+
+    # Test: Create experiment with eval that has BOTH dataset column and transform variable
+    experiment_name = f"test_agentic_experiment_eval_vars_{random.random()}"
+    experiment_request = CreateAgenticExperimentRequest(
+        name=experiment_name,
+        description="Test eval with both dataset and transform variables",
+        dataset_ref=DatasetRefInput(
+            id=dataset_id,
+            version=dataset_version_number,
+        ),
+        dataset_row_filter=None,
+        http_template=HttpTemplate(
+            endpoint_name="chat_endpoint",
+            endpoint_url="https://example.com/api/chat",
+            headers=[
+                HttpHeader(name="Content-Type", value="application/json"),
+            ],
+            request_body='{"message": "{{user_message}}"}',
+        ),
+        template_variable_mapping=[
+            TemplateVariableMapping(
+                variable_name="user_message",
+                source=DatasetColumnVariableSource(
+                    type="dataset_column",
+                    dataset_column=DatasetColumnSource(
+                        name="user_message",
+                    ),
+                ),
+            ),
+        ],
+        eval_list=[
+            AgenticEvalRef(
+                name=eval_name,
+                version=1,
+                transform_id=transform_id,
+                variable_mapping=[
+                    # CRITICAL: This eval has TWO variables:
+                    # 1. expected_answer (dataset column)
+                    # 2. agent_response (transform output)
+                    AgenticEvalVariableMapping(
+                        variable_name="expected_answer",
+                        source=DatasetColumnVariableSource(
+                            type="dataset_column",
+                            dataset_column=DatasetColumnSource(
+                                name="expected_answer",
+                            ),
+                        ),
+                    ),
+                    AgenticEvalVariableMapping(
+                        variable_name="agent_response",
+                        source=AgenticExperimentOutputVariableSource(
+                            type="experiment_output",
+                            experiment_output=TransformVariableExperimentOutputSource(
+                                type="transform_variable",
+                                transform_variable_name="agent_response",
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    # Create and run experiment
+    status_code, experiment_data = client.create_agentic_experiment(
+        task_id=task_id,
+        experiment_request=experiment_request.model_dump(mode="json"),
+    )
+    assert status_code == 200
+    experiment_id = experiment_data["id"]
+
+    # Wait for completion
+    experiment_detail = wait_for_experiment_completion(client, experiment_id)
+    assert experiment_detail.status == ExperimentStatus.COMPLETED
+
+    # Get test cases to inspect eval input variables
+    status_code, test_cases_data = client.get_agentic_experiment_test_cases(
+        experiment_id=experiment_id,
+        page=0,
+        page_size=10,
+    )
+    assert status_code == 200
+    test_cases_response = AgenticTestCaseListResponse.model_validate(
+        test_cases_data,
+    )
+    assert len(test_cases_response.data) == 1
+
+    test_case = test_cases_response.data[0]
+    assert test_case.agentic_result is not None
+    assert test_case.agentic_result.evals is not None
+    assert len(test_case.agentic_result.evals) == 1
+
+    eval_execution = test_case.agentic_result.evals[0]
+
+    # CRITICAL ASSERTION: Both variables should be present in eval_input_variables
+    # The old code would lose the dataset column variable (expected_answer)
+    assert eval_execution.eval_input_variables is not None
+    assert len(eval_execution.eval_input_variables) == 2, (
+        f"Expected 2 eval input variables (expected_answer from dataset + agent_response from transform), "
+        f"but found {len(eval_execution.eval_input_variables)}"
+    )
+
+    variable_names = {var.variable_name for var in eval_execution.eval_input_variables}
+    assert "expected_answer" in variable_names, (
+        "Dataset column variable 'expected_answer' was lost! "
+        f"Only found: {variable_names}"
+    )
+    assert "agent_response" in variable_names, (
+        "Transform variable 'agent_response' not found! "
+        f"Only found: {variable_names}"
+    )
+
+    # Validate the actual values
+    expected_answer_var = next(
+        (
+            v
+            for v in eval_execution.eval_input_variables
+            if v.variable_name == "expected_answer"
+        ),
+        None,
+    )
+    agent_response_var = next(
+        (
+            v
+            for v in eval_execution.eval_input_variables
+            if v.variable_name == "agent_response"
+        ),
+        None,
+    )
+
+    assert expected_answer_var is not None
+    assert expected_answer_var.value == "Machine learning is AI", (
+        f"Expected dataset column value 'Machine learning is AI', "
+        f"but got '{expected_answer_var.value}'"
+    )
+
+    assert agent_response_var is not None
+    assert len(agent_response_var.value) > 0, (
+        "Transform output should not be empty, " f"but got '{agent_response_var.value}'"
+    )
+
+    # Validate eval result exists
+    assert eval_execution.eval_results is not None
+    assert eval_execution.eval_results.score == 1
+
+    # Cleanup: Delete all created resources
+    status_code = client.delete_agentic_experiment(experiment_id)
+    assert status_code == 204, f"Failed to delete experiment: {status_code}"
+
+    status_code, _ = client.delete_llm_eval(task_id=task_id, llm_eval_name=eval_name)
+    assert status_code == 204, f"Failed to delete LLM eval: {status_code}"
+
+    # Delete transform
+    status_code, _ = client.delete_transform(transform_id=str(transform_id))
+    assert status_code == 204, f"Failed to delete transform: {status_code}"
+
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204, f"Failed to delete dataset: {status_code}"
+
+    status_code = client.delete_task(task_id)
+    assert status_code == 204, f"Failed to delete task: {status_code}"

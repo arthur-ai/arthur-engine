@@ -696,13 +696,14 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 agentic_result,
             )
 
-            # Set eval_input_variables
-            eval_input_variables = [
-                {"variable_name": name, "value": value}
-                for name, value in variable_map.items()
-            ]
-            eval_score.eval_input_variables = eval_input_variables
-            db_session.commit()
+            # Set eval_input_variables using shared method
+            if not self._set_eval_input_variables(
+                db_session,
+                eval_score,
+                experiment,
+                agentic_result,
+            ):
+                return False
 
             # Execute eval using shared method
             return self._execute_eval_with_variable_map(
