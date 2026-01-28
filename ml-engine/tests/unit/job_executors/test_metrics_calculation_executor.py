@@ -1,3 +1,4 @@
+import copy
 import logging
 import time
 from datetime import datetime, timedelta
@@ -104,6 +105,12 @@ def test_create_alert_check_job():
 @pytest.mark.parametrize(
     "segmentation_col_names,error_str",
     [
+        # happy path - single valid segmentation column
+        (["name"], None),
+        # happy path - multiple valid segmentation columns
+        (["name", "description"], None),
+        # happy path - three valid segmentation columns (max allowed)
+        (["name", "description", "desc2"], None),
         # column with bad dtype
         (["timestamp"], "data type mismatch"),
         # column with too many possibilities
@@ -140,22 +147,62 @@ def test_process_agg_args(
     # configure dataset mocks
     datasets_client = Mock()
     dataset = Dataset.model_validate(MOCK_BQ_DATASET)
-    datasets_client.get_dataset.return_value = dataset
+    dataset.id = str(uuid4())
+    dataset.name = "dataset1"
 
-    # configure connector mocks
+    # Create a second dataset with duplicate column names but different IDs
+    # This tests that columns are correctly identified from the specified dataset
+    dataset2_dict = copy.deepcopy(MOCK_BQ_DATASET)
+    dataset2_dict["id"] = str(uuid4())
+    dataset2_dict["name"] = "dataset2"
+
+    # Update all column IDs in dataset2 to be different from dataset1
+    for col in dataset2_dict["dataset_schema"].columns:
+        col.id = str(uuid4())
+        col.definition.actual_instance.id = str(uuid4())
+
+    # Update column_names mapping with new IDs
+    new_column_names = {}
+    for col in dataset2_dict["dataset_schema"].columns:
+        new_column_names[col.id] = col.source_name
+    dataset2_dict["dataset_schema"].column_names = new_column_names
+
+    dataset2 = Dataset.model_validate(dataset2_dict)
+
+    # Configure datasets_client to return the correct dataset
+    def get_dataset_side_effect(dataset_id: str):
+        if dataset_id == dataset.id:
+            return dataset
+        elif dataset_id == dataset2.id:
+            return dataset2
+        else:
+            raise ValueError(f"Unknown dataset ID: {dataset_id}")
+
+    datasets_client.get_dataset.side_effect = get_dataset_side_effect
+
+    # Configure connector mocks to return data for both datasets
+    def read_side_effect(
+        dataset,
+        start_time,
+        end_time,
+        filters=None,
+        pagination_options=None,
+    ):
+        return expected_data
+
     mock_connector = Mock()
-    mock_connector.read.return_value = expected_data
+    mock_connector.read.side_effect = read_side_effect
     connector_constructor = Mock()
     connector_constructor.get_connector_from_spec.return_value = mock_connector
 
-    # load mocked data into duckdb
+    # load both datasets into duckdb to test duplicate column name handling
     dataset_loader = DatasetLoader(
         connector_constructor=connector_constructor,
         datasets_client=datasets_client,
         logger=logger,
     )
     conn, unloaded_datasets = dataset_loader.load_datasets(
-        dataset_ids=[dataset.id],
+        dataset_ids=[dataset.id, dataset2.id],
         start_time=first_timestamp - timedelta(seconds=5),
         end_time=second_timestamp + timedelta(seconds=5),
         filters=None,
@@ -169,7 +216,7 @@ def test_process_agg_args(
         aggregation_args=[
             MetricsArgSpec(
                 arg_key="dataset",
-                arg_value=dataset.id,
+                arg_value=dataset.id,  # Use dataset1
             ),
             MetricsArgSpec(
                 arg_key="segmentation_cols",
@@ -196,12 +243,15 @@ def test_process_agg_args(
         agg_function_type,
     )
 
+    # Pass both datasets to process_agg_args to test duplicate column name handling
+    # The aggregation should correctly identify columns from dataset1 even though
+    # dataset2 has columns with the same names
     if error_str:
         with pytest.raises(ValueError) as exc:
-            metrics_calculator.process_agg_args([dataset])
+            metrics_calculator.process_agg_args([dataset, dataset2])
         assert error_str in str(exc.value)
     else:
-        metrics_calculator.process_agg_args([dataset])
+        metrics_calculator.process_agg_args([dataset, dataset2])
 
 
 @patch("job_executors.metrics_calculation_executor.ML_ENGINE_AGGREGATION_TIMEOUT", 1)
