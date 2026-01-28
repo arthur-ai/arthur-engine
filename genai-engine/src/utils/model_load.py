@@ -23,23 +23,17 @@ from transformers import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
-from config.config import Config
 from custom_types import P, T
 from utils import constants
 from utils.classifiers import get_device
-from utils.utils import get_env_var, get_logger, relevance_models_enabled
+from utils.utils import (
+    get_env_var,
+    get_logger,
+    relevance_models_enabled,
+    skip_model_loading,
+)
 
 logger = get_logger(__name__)
-
-
-def _init_worker_logging():
-    """Initialize logging in spawned worker processes."""
-    # Get the root logger
-    root_logger = get_logger(log_level=Config.get_log_level())
-    model_load_logger = get_logger(
-        logger_name="utils.model_load",
-        log_level=Config.get_log_level(),
-    )
 
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
@@ -266,6 +260,11 @@ def get_models_to_download() -> dict[str, list[str]]:
 
 
 def download_models(num_of_process: int) -> None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping model downloads - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return
     models_to_download = get_models_to_download()
     tasks = [
         (model_name, filename)
@@ -276,7 +275,6 @@ def download_models(num_of_process: int) -> None:
     logger.warning("Downloading models... this may take a while")
     with get_context("spawn").Pool(
         processes=num_of_process,
-        initializer=_init_worker_logging,
     ) as pool:
         pool.map(download_file, tasks)
 
@@ -286,6 +284,11 @@ def download_models(num_of_process: int) -> None:
     "CLAIM_CLASSIFIER_EMBEDDING_MODEL",
 )
 def get_claim_classifier_embedding_model() -> SentenceTransformer | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping claim classifier embedding model - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global CLAIM_CLASSIFIER_EMBEDDING_MODEL
     if not CLAIM_CLASSIFIER_EMBEDDING_MODEL:
         model_path = get_local_model_path("sentence-transformers/all-MiniLM-L12-v2")
@@ -295,6 +298,11 @@ def get_claim_classifier_embedding_model() -> SentenceTransformer | None:
 
 @log_model_loading("prompt injection model", "PROMPT_INJECTION_MODEL")
 def get_prompt_injection_model() -> PreTrainedModel | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping prompt injection model - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global PROMPT_INJECTION_MODEL
     if PROMPT_INJECTION_MODEL is None:
         model_path = get_local_model_path(
@@ -309,6 +317,11 @@ def get_prompt_injection_model() -> PreTrainedModel | None:
 
 @log_model_loading("prompt injection tokenizer", "PROMPT_INJECTION_TOKENIZER")
 def get_prompt_injection_tokenizer() -> PreTrainedTokenizerBase | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping prompt injection tokenizer - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global PROMPT_INJECTION_TOKENIZER
     if PROMPT_INJECTION_TOKENIZER is None:
         model_path = get_local_model_path(
@@ -332,6 +345,10 @@ def get_prompt_injection_classifier(
     if tokenizer is None:
         tokenizer = get_prompt_injection_tokenizer()
 
+    # If model loading is skipped, both model and tokenizer will be None
+    if model is None or tokenizer is None:
+        return None
+
     global PROMPT_INJECTION_CLASSIFIER
     if PROMPT_INJECTION_CLASSIFIER is None:
         PROMPT_INJECTION_CLASSIFIER = TextClassificationPipeline(  # type: ignore[no-untyped-call]
@@ -346,6 +363,11 @@ def get_prompt_injection_classifier(
 
 @log_model_loading("toxicity model", "TOXICITY_MODEL")
 def get_toxicity_model() -> AutoModelForSequenceClassification | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping toxicity model - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global TOXICITY_MODEL
     if not TOXICITY_MODEL:
         model_path = get_local_model_path("s-nlp/roberta_toxicity_classifier")
@@ -358,6 +380,11 @@ def get_toxicity_model() -> AutoModelForSequenceClassification | None:
 
 @log_model_loading("toxicity tokenizer", "TOXICITY_TOKENIZER")
 def get_toxicity_tokenizer() -> PreTrainedTokenizerBase | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping toxicity tokenizer - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global TOXICITY_TOKENIZER
     if not TOXICITY_TOKENIZER:
         model_path = get_local_model_path("s-nlp/roberta_toxicity_classifier")
@@ -379,6 +406,10 @@ def get_toxicity_classifier(
     if not tokenizer:
         tokenizer = get_toxicity_tokenizer()
 
+    # If model loading is skipped, both model and tokenizer will be None
+    if model is None or tokenizer is None:
+        return None
+
     global TOXICITY_CLASSIFIER
     if TOXICITY_CLASSIFIER is None:
         TOXICITY_CLASSIFIER = pipeline(  # type: ignore[call-overload]
@@ -395,6 +426,11 @@ def get_toxicity_classifier(
 
 @log_model_loading("profanity classifier", "PROFANITY_CLASSIFIER")
 def get_profanity_classifier() -> TextClassificationPipeline | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping profanity classifier - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global PROFANITY_CLASSIFIER
     if PROFANITY_CLASSIFIER is None:
         model_path = get_local_model_path("tarekziade/pardonmyai")
@@ -419,6 +455,11 @@ def get_harmful_request_classifier(
 
 @log_model_loading("relevance model", "RELEVANCE_MODEL")
 def get_relevance_model() -> AutoModelForSequenceClassification | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping relevance model - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global RELEVANCE_MODEL
     if not RELEVANCE_MODEL:
         model_path = get_local_model_path("microsoft/deberta-v2-xlarge-mnli")
@@ -432,6 +473,11 @@ def get_relevance_model() -> AutoModelForSequenceClassification | None:
 
 @log_model_loading("relevance tokenizer", "RELEVANCE_TOKENIZER")
 def get_relevance_tokenizer() -> AutoTokenizer | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping relevance tokenizer - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global RELEVANCE_TOKENIZER
     if not RELEVANCE_TOKENIZER:
         model_path = get_local_model_path("microsoft/deberta-v2-xlarge-mnli")
@@ -445,6 +491,12 @@ def get_relevance_tokenizer() -> AutoTokenizer | None:
 @log_model_loading("BERT scorer model", "BERT_SCORER")
 def get_bert_scorer() -> BERTScorer | None:
     """Get or create a shared BERT scorer instance for relevance metrics"""
+    if skip_model_loading():
+        logger.info(
+            "Skipping BERT scorer - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
+
     global BERT_SCORER
 
     # Check if relevance models are enabled
@@ -466,6 +518,12 @@ def get_bert_scorer() -> BERTScorer | None:
 @log_model_loading("relevance reranker pipeline", "RELEVANCE_RERANKER")
 def get_relevance_reranker() -> TextClassificationPipeline | None:
     """Get or create a shared relevance reranker pipeline instance"""
+    if skip_model_loading():
+        logger.info(
+            "Skipping relevance reranker - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
+
     global RELEVANCE_RERANKER
 
     # Check if relevance models are enabled
@@ -477,6 +535,11 @@ def get_relevance_reranker() -> TextClassificationPipeline | None:
 
         model = get_relevance_model()
         tokenizer = get_relevance_tokenizer()
+
+        # If model loading is skipped, both model and tokenizer will be None
+        if model is None or tokenizer is None:
+            return None
+
         RELEVANCE_RERANKER = TextClassificationPipeline(  # type: ignore[no-untyped-call]
             model=model,
             tokenizer=tokenizer,
@@ -488,6 +551,12 @@ def get_relevance_reranker() -> TextClassificationPipeline | None:
 
 @log_model_loading("gliner tokenizer")
 def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping gliner tokenizer - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
+
     global PII_GLINER_TOKENIZER
 
     # Check if Gliner is enabled
@@ -510,6 +579,12 @@ def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
 
 @log_model_loading("gliner model")
 def get_gliner_model() -> GLiNER | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping gliner model - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
+
     global PII_GLINER_MODEL
 
     # Check if Gliner is enabled
@@ -535,7 +610,12 @@ def get_gliner_model() -> GLiNER | None:
 
 
 @log_model_loading("presidio analyzer")
-def get_presidio_analyzer() -> AnalyzerEngine:
+def get_presidio_analyzer() -> AnalyzerEngine | None:
+    if skip_model_loading():
+        logger.info(
+            "Skipping presidio analyzer - GENAI_ENGINE_SKIP_MODEL_LOADING is True",
+        )
+        return None
     global PII_PRESIDIO_ANALYZER
     if PII_PRESIDIO_ANALYZER is None:
         PII_PRESIDIO_ANALYZER = AnalyzerEngine()
