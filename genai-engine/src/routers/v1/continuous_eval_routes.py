@@ -177,7 +177,7 @@ def get_continuous_eval_variables_and_mappings(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> ListAgenticAnnotationsResponse:
+) -> ContinuousEvalVariableMappingResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted
         llm_eval_repo = LLMEvalsRepository(db_session)
@@ -205,7 +205,6 @@ def get_continuous_eval_variables_and_mappings(
         transform_vars = {v.variable_name for v in transform.definition.variables}
         matching_vars = list(eval_vars & transform_vars)
 
-        # TODO: Question to Tal, we are returning different type here than in the response model. Is this correct?
         return ContinuousEvalVariableMappingResponse(
             matching_variables=matching_vars,
             transform_variables=list(transform_vars),
