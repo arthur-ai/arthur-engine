@@ -6,10 +6,8 @@ import { Button, Paper } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { createContext, Fragment, useContext } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
-import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
 import { SpanStatusBadge } from "./span-status-badge";
@@ -53,21 +51,24 @@ export const SpanDetails = ({ span, children }: Props) => {
   );
 };
 
-export const SpanDetailsHeader = () => {
-  const [, setDrawerTarget] = useDrawerTarget();
-  const navigate = useNavigate();
+type SpanDetailsHeaderProps = {
+  onOpenSpanDrawer?: (spanId: string) => void;
+  onOpenPlayground?: (spanId: string, taskId: string) => void;
+};
+
+export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDetailsHeaderProps = {}) => {
   const { span } = useSpanDetails();
 
   const duration = getSpanDuration(span);
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
 
-  const onOpenSpanDrawer = () => {
-    setDrawerTarget({ target: "span", id: span.span_id });
+  const handleOpenSpanDrawer = () => {
+    onOpenSpanDrawer?.(span.span_id);
   };
 
   const handleOpenInPlayground = () => {
     if (span.task_id) {
-      navigate(`/tasks/${span.task_id}/playgrounds/prompts?spanId=${span.span_id}`);
+      onOpenPlayground?.(span.span_id, span.task_id);
     }
   };
 
@@ -82,7 +83,7 @@ export const SpanDetailsHeader = () => {
             alignItems="center"
             color="primary.main"
             className="group cursor-pointer"
-            onClick={onOpenSpanDrawer}
+            onClick={handleOpenSpanDrawer}
           >
             <Typography variant="h6" fontWeight={700} className="group-hover:underline">
               {span.span_name}

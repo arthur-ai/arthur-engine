@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.326"
+        "version": "2.1.328"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -15265,6 +15265,14 @@
                 "title": "AgenticExperimentDetail",
                 "description": "Detailed information about an agentic experiment"
             },
+            "AgenticExperimentGeneratorType": {
+                "type": "string",
+                "enum": [
+                    "uuid",
+                    "session_id"
+                ],
+                "title": "AgenticExperimentGeneratorType"
+            },
             "AgenticExperimentListResponse": {
                 "properties": {
                     "page": {
@@ -18824,10 +18832,8 @@
                         "description": "Type of source: 'generated'"
                     },
                     "generator_type": {
-                        "type": "string",
-                        "const": "uuid",
-                        "title": "Generator Type",
-                        "description": "Type of generator to use. Currently supports 'uuid' for UUID generation."
+                        "$ref": "#/components/schemas/AgenticExperimentGeneratorType",
+                        "description": "Type of generator to use. Supported values: 'uuid', 'session_id'. Exactly one session_id is required per experiment."
                     }
                 },
                 "type": "object",
