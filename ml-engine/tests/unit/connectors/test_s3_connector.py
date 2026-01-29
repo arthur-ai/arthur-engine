@@ -520,6 +520,24 @@ def test_secondary_filter_primary_timestamp_with_different_types():
     assert filtered[0]["id"] == 7
     assert filtered[1]["id"] == 8
 
+    # Test with naive pd.Timestamp objects (need tz_localize, not astimezone)
+    inferences_with_naive_pd_timestamp = [
+        {"id": 13, "timestamp": pd.Timestamp("2024-01-01 12:00:00")},  # naive
+        {"id": 14, "timestamp": pd.Timestamp("2024-01-01 18:00:00")},  # naive
+        {"id": 15, "timestamp": pd.Timestamp("2024-01-02 12:00:00")},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_naive_pd_timestamp,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 13
+    assert filtered[1]["id"] == 14
+
     # Test mixed types (edge case, but should work)
     inferences_mixed = [
         {"id": 10, "timestamp": "2024-01-01 06:00:00"},

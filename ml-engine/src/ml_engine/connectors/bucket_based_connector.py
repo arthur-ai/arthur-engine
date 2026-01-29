@@ -155,7 +155,12 @@ class BucketBasedConnector(Connector, ABC):
                 timestamp_dt = parser.parse(timestamp)
             if not check_datetime_tz_aware(timestamp_dt):
                 # timestamp in data is naive - assume it should have the passed timezone
-                timestamp_dt = timestamp_dt.astimezone(tz)
+                if isinstance(timestamp_dt, pd.Timestamp):
+                    # pd.Timestamp requires tz_localize for naive timestamps
+                    timestamp_dt = timestamp_dt.tz_localize(tz)
+                else:
+                    # datetime objects use astimezone
+                    timestamp_dt = timestamp_dt.astimezone(tz)
             if start_time <= timestamp_dt < end_time:
                 filtered_inferences.append(inference)
         return filtered_inferences
