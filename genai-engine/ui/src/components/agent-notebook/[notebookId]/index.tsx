@@ -11,6 +11,7 @@ import { BodyVariableExtractor } from "./components/BodyVariableExtractor";
 import { ExperimentConfigSelector } from "./components/experiment-config-selector";
 import { Header } from "./components/header";
 import { History } from "./components/history";
+import { useShowState } from "./hooks/useShowState";
 import { useMetaStore } from "./store/meta.store";
 import { hashFormState } from "./utils/hash";
 import { mapFormToCreateAgenticExperimentRequest, mapTemplateToForm } from "./utils/mapper";
@@ -46,6 +47,7 @@ export const AgentNotebookDetail = () => {
 // I think a simple Suspense would be enough here
 const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
   const [showExperimentConfigSelector, setShowExperimentConfigSelector] = useState(false);
+  const [, setShow] = useShowState();
 
   const { cancel, save, forceSave, isSaving } = useAutosaveAgenticNotebook(notebook.id);
   const { execute } = useExecuteAgenticNotebook(notebook.id);
@@ -76,10 +78,12 @@ const Internal = ({ notebook }: { notebook: AgenticNotebookDetail }) => {
       },
     },
     onSubmit: async ({ value }) => {
-      await execute({
+      const id = await execute({
         ...mapFormToCreateAgenticExperimentRequest(value),
         name: `Experiment Run for notebook ${notebook.name}`,
       });
+
+      setShow({ id, show: "history" }, { history: "push" });
     },
   });
 

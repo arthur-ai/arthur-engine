@@ -44,6 +44,7 @@ from schemas.base_experiment_schemas import (
     EvalResultSummary,
     TestCaseStatus,
 )
+from schemas.enums import AgenticExperimentGeneratorType
 from services.experiment_executor import BaseExperimentExecutor
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
@@ -161,31 +162,31 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
 
     def _generate_variable_value(
         self,
-        generator_type: str,
-        variable_name: str,
+        generator_type: AgenticExperimentGeneratorType,
+        session_id: Optional[str] = None,
     ) -> Optional[str]:
         """
         Generate a value for a variable based on the generator type.
 
         Args:
-            generator_type: Type of generator (e.g., "uuid")
+            generator_type: Type of generator (e.g., UUID)
             variable_name: Name of the variable (for logging)
 
         Returns:
             Generated value as a string, or None if generator_type is not supported
         """
-        if generator_type == "uuid":
+        if generator_type == AgenticExperimentGeneratorType.UUID:
             return str(uuid4())
+        elif generator_type == AgenticExperimentGeneratorType.SESSION_ID:
+            return session_id
         else:
-            logger.warning(
-                f"Unknown generator_type '{generator_type}' for variable '{variable_name}', skipping",
-            )
             return None
 
     def _build_variable_map(
         self,
         test_case: DatabaseAgenticExperimentTestCase,
         experiment: DatabaseAgenticExperiment,
+        session_id: str,
         request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> Dict[str, str]:
         """
@@ -234,7 +235,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                     # Generate a new value (first time this variable is being generated)
                     generated_value = self._generate_variable_value(
                         mapping.source.generator_type,
-                        variable_name,
+                        session_id,
                     )
                     if generated_value is None:
                         continue
@@ -274,7 +275,6 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         self,
         http_template: HttpTemplate,
         variable_map: Dict[str, str],
-        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Render HTTP template with variable substitution.
@@ -282,7 +282,6 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         Args:
             http_template: HTTP template configuration
             variable_map: Dictionary mapping variable names to values
-            session_id: Optional session ID to include in the request headers
 
         Returns:
             Dictionary with rendered url, headers, and body (body is a string)
@@ -311,10 +310,6 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             variable_map,
             http_template.request_body,
         )
-
-        # Add session_id to headers if provided
-        if session_id:
-            rendered_headers["X-Session-Id"] = session_id
 
         return {
             "url": rendered_url,
@@ -357,13 +352,13 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 test_case,
                 experiment,
                 request_time_parameters=None,
+                session_id=session_id,
             )
 
             # Render HTTP template with variables (include session_id)
             rendered_request = self._render_http_template(
                 http_template,
                 variable_map,
-                session_id,
             )
 
             # Save request details to database (without request-time parameters)
@@ -382,11 +377,11 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 test_case,
                 experiment,
                 request_time_parameters=request_time_parameters,
+                session_id=session_id,
             )
             rendered_request = self._render_http_template(
                 http_template,
                 variable_map,
-                session_id,
             )
 
             try:
