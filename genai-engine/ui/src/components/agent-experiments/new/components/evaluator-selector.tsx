@@ -1,16 +1,17 @@
-import { Autocomplete, Button, Chip, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { NewAgentExperimentFormData } from "../form";
 
+import { EvaluatorsSelectorUI } from "./EvaluatorsSelectorUI";
+
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { AgenticEvalVariableMappingInput } from "@/lib/api-client/api-client";
+import { AgenticEvalRefInput, AgenticEvalVariableMappingInput } from "@/lib/api-client/api-client";
 
 export const EvaluatorsSelector = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "evals">,
@@ -47,9 +48,12 @@ export const EvaluatorsSelector = withFieldGroup({
     const selectedEvaluator = evals.find((e) => e.name === currentEvaluator.name) ?? null;
     const selectedVersion = versions.find((v) => v.version === currentEvaluator.version) ?? null;
 
-    const currentAlreadyAdded = useStore(group.store, (state) =>
-      state.values.evals.some((e) => e.name === currentEvaluator.name && e.version === currentEvaluator.version)
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const selectedEvals = useStore(group.store, (state: any) => state.values.evals as Array<{ name: string; version: number }>);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fullEvals = useStore(group.store, (state: any) => state.values.evals as AgenticEvalRefInput[]);
+
+    const currentAlreadyAdded = selectedEvals.some((e) => e.name === currentEvaluator.name && e.version === currentEvaluator.version);
 
     const handleAddEvaluator = async () => {
       if (!currentEvaluator.name || !currentEvaluator.version || currentAlreadyAdded) return;
@@ -58,73 +62,29 @@ export const EvaluatorsSelector = withFieldGroup({
       setCurrentEvaluator({ name: null, version: null });
     };
 
+    const handleRemove = (index: number) => {
+      const currentEvals = fullEvals.filter((_, i) => i !== index);
+      group.setFieldValue("evals", currentEvals);
+    };
+
     return (
-      <Stack component={Paper} variant="outlined" p={2}>
-        <Stack>
-          <Typography variant="body2" color="text.primary" fontWeight="bold">
-            Select Evaluator and Version
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Choose the evaluator that will assess the agent responses.
-          </Typography>
-        </Stack>
-        <Divider sx={{ my: 2 }} />
-        <Stack gap={2}>
-          <Stack direction="row" gap={2} width="100%">
-            <Autocomplete
-              size="small"
-              sx={{ flex: 1 }}
-              options={evals}
-              value={selectedEvaluator}
-              getOptionLabel={(option) => option.name}
-              renderInput={(params) => <TextField {...params} label="Evaluator" error={currentAlreadyAdded} />}
-              onChange={(_, value) => {
-                setCurrentEvaluator({ name: value?.name ?? null, version: null });
-              }}
-            />
-            <Autocomplete
-              size="small"
-              disabled={!currentEvaluator.name}
-              options={versions}
-              value={selectedVersion}
-              getOptionLabel={(option) => `v${option.version}`}
-              renderInput={(params) => <TextField {...params} label="Version" error={currentAlreadyAdded} />}
-              onChange={(_, value) => {
-                setCurrentEvaluator({ name: currentEvaluator.name, version: value?.version ?? null });
-              }}
-              sx={{ flex: 1 }}
-            />
-            <Button
-              disableElevation
-              loading={addEval.isPending}
-              disabled={!currentEvaluator.name || !currentEvaluator.version || currentAlreadyAdded}
-              variant="contained"
-              color="primary"
-              onClick={handleAddEvaluator}
-            >
-              Add
-            </Button>
-          </Stack>
-          {currentAlreadyAdded && (
-            <Typography variant="body2" color="error">
-              This evaluator and version have already been added!
-            </Typography>
-          )}
-          <group.AppField name="evals" mode="array">
-            {(field) => (
-              <Stack direction="row" gap={2}>
-                {field.state.value.map((evaluator, index) => (
-                  <Chip
-                    key={`${evaluator.name}-${evaluator.version}`}
-                    label={`${evaluator.name} v${evaluator.version}`}
-                    onDelete={() => field.removeValue(index)}
-                  />
-                ))}
-              </Stack>
-            )}
-          </group.AppField>
-        </Stack>
-      </Stack>
+      <EvaluatorsSelectorUI
+        evaluators={evals}
+        versions={versions}
+        selectedEvaluator={selectedEvaluator}
+        selectedVersion={selectedVersion}
+        selectedEvals={selectedEvals}
+        onSelectEvaluator={(evaluator) => {
+          setCurrentEvaluator({ name: evaluator?.name ?? null, version: null });
+        }}
+        onSelectVersion={(version) => {
+          setCurrentEvaluator({ name: currentEvaluator.name, version: version?.version ?? null });
+        }}
+        onAdd={handleAddEvaluator}
+        onRemove={handleRemove}
+        isAdding={addEval.isPending}
+        error={currentAlreadyAdded ? "This evaluator and version have already been added!" : null}
+      />
     );
   },
 });
