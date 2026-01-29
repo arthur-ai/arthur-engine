@@ -18,7 +18,7 @@ import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 
-import { ResultChip } from "@/components/live-evals/[evalId]/StatusChips";
+import { ResultChip } from "@/components/common";
 import { cn } from "@/utils/cn";
 
 type Props = {
