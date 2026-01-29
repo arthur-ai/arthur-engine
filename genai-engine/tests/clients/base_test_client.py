@@ -52,6 +52,14 @@ from arthur_common.models.response_schemas import (
     UserResponse,
     ValidationResult,
 )
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse,
+    ContinuousEvalVariableMappingResponse,
+    ListContinuousEvalsResponse,
+    ListTraceTransformsResponse,
+    LLMEval,
+    TraceTransformResponse,
+)
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
@@ -64,7 +72,6 @@ from schemas.enums import (
     RagProviderEnum,
 )
 from schemas.internal_schemas import AgenticAnnotation
-from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
@@ -99,15 +106,12 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
-    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
-    ListContinuousEvalsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
-    ListTraceTransformsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -119,7 +123,6 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
-    TraceTransformResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
     TransformExtractionResponseList,
@@ -2139,6 +2142,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_ids: list[str],
         trace_ids: list[str] | None = None,
         span_types: list[str] | None = None,
+        span_ids: list[str] | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         page: int | None = None,
@@ -2173,6 +2177,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             task_ids: Task IDs to filter on (required)
             trace_ids: Trace IDs to filter on (optional)
             span_types: Span types to filter on (optional)
+            span_ids: Span IDs to filter on (optional)
             start_time: Filter by start time
             end_time: Filter by end time
             page: Page number for pagination
@@ -2205,6 +2210,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_ids"] = trace_ids
         if span_types is not None:
             params["span_types"] = span_types
+        if span_ids is not None:
+            params["span_ids"] = span_ids
         if start_time is not None:
             params["start_time"] = str(start_time)
         if end_time is not None:
@@ -3738,6 +3745,30 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 ListContinuousEvalsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_continuous_eval_variables_and_mappings(
+        self,
+        task_id: str,
+        transform_id: str,
+        eval_name: str,
+        eval_version: str,
+    ) -> tuple[int, ContinuousEvalVariableMappingResponse]:
+        """Get continuous eval variables and mappings."""
+        resp = self.base_client.get(
+            f"/api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalVariableMappingResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

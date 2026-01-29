@@ -1,0 +1,13 @@
+# PersistentVolumeClaim for storing models
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: arthur-models-pvc
+  labels:
+    app: arthur-models
+spec:
+  accessModes:
+    - ReadWriteOnce  # For single pod write, or ReadWriteMany for multiple pods
+  resources:
+    requests:
+      storage: 25Gi  # Adjust based on your model sizes

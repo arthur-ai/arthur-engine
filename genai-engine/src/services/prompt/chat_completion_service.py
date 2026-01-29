@@ -1,6 +1,12 @@
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
 
+from arthur_common.models.llm_model_providers import (
+    LLMResponseFormat,
+    OpenAIMessage,
+    OpenAIMessageType,
+    ToolChoiceEnum,
+)
 from fastapi.responses import StreamingResponse
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -14,8 +20,6 @@ from litellm.types.utils import ModelResponse
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.enums import OpenAIMessageType, ToolChoiceEnum
-from schemas.llm_schemas import LLMResponseFormat, OpenAIMessage
 from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
 
@@ -127,6 +131,31 @@ class ChatCompletionService:
     # ============================================================================
     # Completion Helpers and Methods
     # ============================================================================
+
+    @staticmethod
+    def _extract_token_counts(
+        response: Any,
+    ) -> tuple[None | int, None | int, None | int]:
+        """
+        Extract token counts from a response object's usage attribute.
+
+        Args:
+            response: Response object (ModelResponse, TextCompletionResponse, etc.) that may have a usage attribute
+
+        Returns:
+            Tuple of (input_tokens, output_tokens, total_tokens), all may be None
+        """
+        input_tokens = None
+        output_tokens = None
+        total_tokens = None
+
+        if hasattr(response, "usage") and response.usage:
+            usage = response.usage
+            input_tokens = getattr(usage, "prompt_tokens", None)
+            output_tokens = getattr(usage, "completion_tokens", None)
+            total_tokens = getattr(usage, "total_tokens", None)
+
+        return input_tokens, output_tokens, total_tokens
 
     def _get_completion_params(
         self,
@@ -275,10 +304,18 @@ class ChatCompletionService:
                 Message,
                 getattr(llm_model_response.response.choices[0], "message"),
             )
+            # Extract token counts from usage if available
+            input_tokens, output_tokens, total_tokens = self._extract_token_counts(
+                llm_model_response.response
+            )
+
             return AgenticPromptRunResponse(
                 content=msg.content,
                 tool_calls=msg.tool_calls,
                 cost=llm_model_response.cost or "",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
             )
         else:
             raise ValueError("No message from model")
@@ -328,10 +365,18 @@ class ChatCompletionService:
                     Message,
                     getattr(complete_response.choices[0], "message"),
                 )
+                # Extract token counts from usage if available
+                input_tokens, output_tokens, total_tokens = self._extract_token_counts(
+                    complete_response
+                )
+
                 data = AgenticPromptRunResponse(
                     content=msg.content,
                     tool_calls=msg.tool_calls,
                     cost=f"{cost:.6f}",
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    total_tokens=total_tokens,
                 ).model_dump_json()
 
                 yield f"event: final_response\ndata: {data}\n\n"

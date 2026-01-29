@@ -232,14 +232,14 @@ urllib3 = ">=2.5.0,<3.0.0"
 
 [[package]]
 name = "arthur-common"
-version = "2.4.22"
+version = "2.4.27"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.4.22-py3-none-any.whl", hash = "sha256:6eab3ae5a0db6f4c41da7ef3ffcbb408acf758d74191ac48c038b9641620923d"},
-    {file = "arthur_common-2.4.22.tar.gz", hash = "sha256:6727f809fd72cad0aaf9b0aa56eb59640d8b0db4fb039f3dd7da8cd9498b5c29"},
+    {file = "arthur_common-2.4.27-py3-none-any.whl", hash = "sha256:e8c0621c28f0c542a09f4755737a62a73fbc0935470be657c687811e8dbec0f6"},
+    {file = "arthur_common-2.4.27.tar.gz", hash = "sha256:ca0166b4c0958bdca082debbb8b2edd6296bcdca4867e9dcfcb56dba2c6767b9"},
 ]
 
 [package.dependencies]
@@ -249,7 +249,7 @@ fastapi = ">=0.115.8"
 fsspec = ">=2024.10.0"
 litellm = ">=1.77.7,<2.0.0"
 openinference-semantic-conventions = ">=0.1.12,<0.2.0"
-pandas = ">=2.2.2"
+pandas = ">=2.2.2,<3.0.0"
 pydantic = ">=2"
 simple-settings = ">=1.2.0"
 types-python-dateutil = ">=2.9.0"
@@ -4874,4 +4874,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "84ecf058602229c4bf03cd25dd0555aaf05936bc15caae9967ef97c07ae375f8"
+content-hash = "f6b9f1eb68572b7a4dab54f3cd038688d2ec17c3b81ccb5ae4e3581338c87ec0"

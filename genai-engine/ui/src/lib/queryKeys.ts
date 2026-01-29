@@ -49,6 +49,11 @@ export const queryKeys = {
     all: (taskId: string) => ["listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet", { taskId }] as const,
     byId: (evalId: string) => ["getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet", { evalId }] as const,
     results: (taskId: string) => ["listContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResultsGet", { taskId }] as const,
+    variableMapping: (taskId: string, transformId: string, evalName: string, evalVersion: string) =>
+      [
+        "getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet",
+        { taskId, transformId, evalName, evalVersion },
+      ] as const,
   },
   transforms: {
     list: (taskId: string) => ["listTransformsApiV1TasksTaskIdTracesTransformsGet", { taskId }] as const,
@@ -96,5 +101,8 @@ export const queryKeys = {
   },
   ragSearchSettings: {
     load: (configId: string, versionNumber?: number) => ["loadRagConfig", configId, versionNumber] as const,
+  },
+  providers: {
+    all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
   },
 } as const;

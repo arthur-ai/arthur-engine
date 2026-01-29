@@ -705,8 +705,14 @@ export interface AgenticPromptRunResponse {
   content?: string | null;
   /** Cost */
   cost: string;
+  /** Input Tokens */
+  input_tokens?: number | null;
+  /** Output Tokens */
+  output_tokens?: number | null;
   /** Tool Calls */
   tool_calls?: ChatCompletionMessageToolCall[] | null;
+  /** Total Tokens */
+  total_tokens?: number | null;
 }
 
 /** AgenticPromptVersionListResponse */
@@ -1306,6 +1312,12 @@ export interface ContinuousEvalCreateRequest {
    */
   description?: string | null;
   /**
+   * Enabled
+   * Whether to enable or disable a continuous eval. Defaults to True.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
    * Llm Eval Name
    * Name of the llm eval to create the continuous eval for
    */
@@ -1326,6 +1338,11 @@ export interface ContinuousEvalCreateRequest {
    * @format uuid
    */
   transform_id: string;
+  /**
+   * Transform Variable Mapping
+   * Mapping of transform variables to eval variables.
+   */
+  transform_variable_mapping: ContinuousEvalTransformVariableMappingRequest[];
 }
 
 /** ContinuousEvalRerunResponse */
@@ -1356,6 +1373,11 @@ export interface ContinuousEvalResponse {
    * Description of the continuous eval.
    */
   description?: string | null;
+  /**
+   * Enabled
+   * Whether the continuous eval is enabled.
+   */
+  enabled: boolean;
   /**
    * Id
    * ID of the transform.
@@ -1389,6 +1411,11 @@ export interface ContinuousEvalResponse {
    */
   transform_id: string;
   /**
+   * Transform Variable Mapping
+   * Mapping of transform variables to eval variables.
+   */
+  transform_variable_mapping?: ContinuousEvalTransformVariableMappingResponse[];
+  /**
    * Updated At
    * Timestamp representing the time the continuous eval was last updated.
    * @format date-time
@@ -1398,6 +1425,53 @@ export interface ContinuousEvalResponse {
 
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
+
+/** ContinuousEvalTransformVariableMappingRequest */
+export interface ContinuousEvalTransformVariableMappingRequest {
+  /**
+   * Eval Variable
+   * Name of the eval variable
+   */
+  eval_variable: string;
+  /**
+   * Transform Variable
+   * Name of the transform variable
+   */
+  transform_variable: string;
+}
+
+/** ContinuousEvalTransformVariableMappingResponse */
+export interface ContinuousEvalTransformVariableMappingResponse {
+  /**
+   * Eval Variable
+   * Name of the eval variable.
+   */
+  eval_variable: string;
+  /**
+   * Transform Variable
+   * Name of the transform variable.
+   */
+  transform_variable: string;
+}
+
+/** ContinuousEvalVariableMappingResponse */
+export interface ContinuousEvalVariableMappingResponse {
+  /**
+   * Eval Variables
+   * List of eval variables.
+   */
+  eval_variables: string[];
+  /**
+   * Matching Variables
+   * List of matching variables.
+   */
+  matching_variables: string[];
+  /**
+   * Transform Variables
+   * List of transform variables.
+   */
+  transform_variables: string[];
+}
 
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
@@ -2462,6 +2536,65 @@ export interface FileUploadResult {
   word_count: number;
 }
 
+/** GCPServiceAccountCredentialsRequest */
+export interface GCPServiceAccountCredentialsRequest {
+  /**
+   * Auth Provider X509 Cert Url
+   * @format password
+   */
+  auth_provider_x509_cert_url: string;
+  /**
+   * Client X509 Cert Url
+   * @format password
+   */
+  client_x509_cert_url: string;
+  /**
+   * Auth Uri
+   * @format password
+   */
+  auth_uri: string;
+  /**
+   * Client Email
+   * @format password
+   */
+  client_email: string;
+  /**
+   * Client Id
+   * @format password
+   */
+  client_id: string;
+  /**
+   * Private Key
+   * @format password
+   */
+  private_key: string;
+  /**
+   * Private Key Id
+   * @format password
+   */
+  private_key_id: string;
+  /**
+   * Project Id
+   * @format password
+   */
+  project_id: string;
+  /**
+   * Token Uri
+   * @format password
+   */
+  token_uri: string;
+  /**
+   * Type
+   * @format password
+   */
+  type: string;
+  /**
+   * Universe Domain
+   * @format password
+   */
+  universe_domain: string;
+}
+
 /**
  * GeneratedVariableSource
  * Variable source for generated values (e.g., UUIDs, timestamps)
@@ -2822,6 +2955,12 @@ export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError = HTTPValidationError;
+
+export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetData =
+  ContinuousEvalVariableMappingResponse;
+
+export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetError =
+  HTTPValidationError;
 
 export type GetConversationsApiChatConversationsGetData = PageConversationBaseResponse;
 
@@ -4137,10 +4276,7 @@ export type LLMResponseFormatEnum = "text" | "json_object" | "json_schema";
 export interface LLMResponseFormatInput {
   /** JSON schema definition (required when type is 'json_schema') */
   json_schema?: LLMResponseSchemaInput | null;
-  /**
-   * Response format type: 'text', 'json_object', or 'json_schema'
-   * @example "json_schema"
-   */
+  /** Response format type: 'text', 'json_object', or 'json_schema' */
   type: LLMResponseFormatEnum;
 }
 
@@ -4148,10 +4284,7 @@ export interface LLMResponseFormatInput {
 export interface LLMResponseFormatOutput {
   /** JSON schema definition (required when type is 'json_schema') */
   json_schema?: LLMResponseSchemaOutput | null;
-  /**
-   * Response format type: 'text', 'json_object', or 'json_schema'
-   * @example "json_schema"
-   */
+  /** Response format type: 'text', 'json_object', or 'json_schema' */
   type: LLMResponseFormatEnum;
 }
 
@@ -4408,6 +4541,11 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   annotation_score?: number | null;
   /**
+   * Continuous Eval Enabled
+   * Whether the continuous eval is enabled.
+   */
+  continuous_eval_enabled?: string | null;
+  /**
    * Continuous Eval Id
    * ID of the continuous eval to filter on.
    */
@@ -4476,6 +4614,11 @@ export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
+  /**
+   * Enabled
+   * Whether the continuous eval is enabled.
+   */
+  enabled?: string | null;
   /**
    * Llm Eval Name
    * Name of the llm eval to filter on
@@ -5454,7 +5597,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -6622,9 +6765,45 @@ export interface PutModelProviderCredentials {
   /**
    * Api Key
    * The API key for the provider.
-   * @format password
    */
-  api_key: string;
+  api_key?: string | null;
+  /**
+   * Aws Access Key Id
+   * The AWS access key ID.
+   */
+  aws_access_key_id?: string | null;
+  /**
+   * Aws Bedrock Runtime Endpoint
+   * The AWS Bedrock runtime endpoint.
+   */
+  aws_bedrock_runtime_endpoint?: string | null;
+  /**
+   * Aws Role Name
+   * The AWS role name.
+   */
+  aws_role_name?: string | null;
+  /**
+   * Aws Secret Access Key
+   * The AWS secret access key.
+   */
+  aws_secret_access_key?: string | null;
+  /**
+   * Aws Session Name
+   * The AWS session name.
+   */
+  aws_session_name?: string | null;
+  /** Optional GCP service account credentials JSON */
+  credentials_file?: GCPServiceAccountCredentialsRequest | null;
+  /**
+   * Project Id
+   * The vertex AI project ID. Will override the project ID in the key file if provided.
+   */
+  project_id?: string | null;
+  /**
+   * Region
+   * The vertex AI region to use
+   */
+  region?: string | null;
 }
 
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
@@ -9896,6 +10075,16 @@ export interface TraceUserMetadataResponse {
 /** TransformExtractionResponseList */
 export interface TransformExtractionResponseList {
   /**
+   * Missing Spans
+   * List of matching spans for the variables.
+   */
+  missing_spans: string[];
+  /**
+   * Missing Variables
+   * List of variable names that had missing values (no matching span or attribute path).
+   */
+  missing_variables: string[];
+  /**
    * Variables
    * List of extracted variables.
    */
@@ -10135,6 +10324,11 @@ export interface UpdateContinuousEvalRequest {
    */
   description?: string | null;
   /**
+   * Enabled
+   * Whether to enable or disable a continuous eval.
+   */
+  enabled?: boolean | null;
+  /**
    * Llm Eval Name
    * Name of the llm eval to create the continuous eval for
    */
@@ -10154,6 +10348,11 @@ export interface UpdateContinuousEvalRequest {
    * ID of the transform to create the continuous eval for
    */
   transform_id?: string | null;
+  /**
+   * Transform Variable Mapping
+   * Mapping of transform variables to eval variables.
+   */
+  transform_variable_mapping?: ContinuousEvalTransformVariableMappingRequest[] | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -11277,7 +11476,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.304
+ * @version 2.1.319
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12760,6 +12959,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getContinuousEvalByIdApiV1ContinuousEvalsEvalIdGet: (evalId: string, params: RequestParams = {}) =>
       this.request<GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData, GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetError>({
         path: `/api/v1/continuous_evals/${evalId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all variables and mappings for a continuous eval
+     *
+     * @tags Continuous Evals
+     * @name GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet
+     * @summary Get all variables and mappings for a continuous eval
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables
+     * @secure
+     */
+    getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet: (
+      transformId: string,
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetData,
+        GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/transforms/${transformId}/llm_evals/${evalName}/versions/${evalVersion}/variables`,
         method: "GET",
         secure: true,
         format: "json",
@@ -14329,7 +14555,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Set the configuration for a model provider
+     * @description Set the configuration for a model provider. Optionally upload GCP service account JSON credentials or bedrock credentials
      *
      * @tags Model Providers
      * @name SetModelProviderApiV1ModelProvidersProviderPut

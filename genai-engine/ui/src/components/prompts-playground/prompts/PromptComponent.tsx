@@ -31,7 +31,7 @@ import useSnackbar from "@/hooks/useSnackbar";
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
-const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponentProps) => {
+const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = false }: PromptComponentProps) => {
   // This name value updates when an existing prompt is selected
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const [nameInputValue, setNameInputValue] = useState("");
@@ -225,6 +225,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
                   responseFormat={prompt.responseFormat}
                   dialogOpen={responseSchemaDialogOpen}
                   onCloseDialog={() => setResponseSchemaDialogOpen(false)}
+                  highlightCost={highlightCost}
                 />
               )}
             </Paper>

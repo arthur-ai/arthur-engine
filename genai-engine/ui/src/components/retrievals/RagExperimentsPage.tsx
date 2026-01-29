@@ -4,7 +4,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { CreateRagExperimentModal } from "./rag-experiment-modal";
@@ -15,6 +15,7 @@ import { RagSearchPanel } from "./RagSearchPanel";
 import type { SearchMethod, SearchSettings } from "./types";
 import { mapApiSettingsToLocal } from "./utils/ragSettingsUtils";
 
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { RagProvidersModal } from "@/components/rag/RagProvidersModal";
 import { getContentHeight } from "@/constants/layout";
 import { useRagProviders } from "@/hooks/rag/useRagProviders";
@@ -42,11 +43,39 @@ const RagExperimentsContent: React.FC = () => {
     notebook,
     isLoadingNotebook,
     notebookError,
+    isDirty,
   } = useRagPanels();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [experimentModalOpen, setExperimentModalOpen] = useState(false);
   const [historySidebarOpen, setHistorySidebarOpen] = useState(false);
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const pendingNavigationRef = useRef<string | null>(null);
+
+  const navigateWithUnsavedCheck = useCallback(
+    (path: string) => {
+      if (isDirty) {
+        pendingNavigationRef.current = path;
+        setShowUnsavedChangesModal(true);
+      } else {
+        navigate(path);
+      }
+    },
+    [isDirty, navigate]
+  );
+
+  const handleConfirmNavigation = useCallback(() => {
+    setShowUnsavedChangesModal(false);
+    if (pendingNavigationRef.current) {
+      navigate(pendingNavigationRef.current);
+      pendingNavigationRef.current = null;
+    }
+  }, [navigate]);
+
+  const handleCancelNavigation = useCallback(() => {
+    setShowUnsavedChangesModal(false);
+    pendingNavigationRef.current = null;
+  }, []);
 
   const createExperimentMutation = useCreateRagExperiment(task?.id);
   const attachNotebookMutation = useAttachNotebookToRagExperimentMutation();
@@ -198,7 +227,7 @@ const RagExperimentsContent: React.FC = () => {
         <Typography variant="body1" color="text.secondary" sx={{ textAlign: "center", maxWidth: 400 }}>
           The notebook you're looking for doesn't exist or may have been deleted.
         </Typography>
-        <Button variant="contained" onClick={() => navigate(`/tasks/${taskId}/rag-notebooks`)} sx={{ mt: 2 }}>
+        <Button variant="contained" onClick={() => navigateWithUnsavedCheck(`/tasks/${taskId}/rag-notebooks`)} sx={{ mt: 2 }}>
           Back to RAG Notebooks
         </Button>
       </Box>
@@ -269,6 +298,16 @@ const RagExperimentsContent: React.FC = () => {
       />
 
       <RagExperimentHistorySidebar open={historySidebarOpen} onClose={() => setHistorySidebarOpen(false)} notebookId={notebookId} />
+
+      <ConfirmationModal
+        open={showUnsavedChangesModal}
+        onClose={handleCancelNavigation}
+        onConfirm={handleConfirmNavigation}
+        title="Unsaved Changes"
+        message="You have unsaved changes. If you leave now, your changes will be lost. Are you sure you want to continue?"
+        confirmText="Leave Without Saving"
+        cancelText="Stay"
+      />
     </Box>
   );
 };

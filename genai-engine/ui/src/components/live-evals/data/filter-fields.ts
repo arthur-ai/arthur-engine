@@ -15,6 +15,13 @@ export const CONTINUOUS_EVAL_FILTER_FIELDS = [
     operators: [TextOperators.CONTAINS],
   }),
   createPrimitiveField({
+    name: "enabled",
+    type: "enum",
+    operators: [EnumOperators.EQUALS],
+    options: ["true", "false"],
+    itemToStringLabel: (option) => (option === "true" ? "Enabled" : "Disabled"),
+  }),
+  createPrimitiveField({
     name: "created_at",
     type: "date",
     operators: [Operators.GREATER_THAN, Operators.LESS_THAN],

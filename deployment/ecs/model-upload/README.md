@@ -1,6 +1,8 @@
-# Arthur Model Upload - ECS Task
+# Arthur Model Upload - ECS Task (S3 Version)
 
 An ECS task that uploads pre-downloaded ML models to an S3 bucket for airgapped deployments.
+
+> **Note**: This is the **S3 version**. For OpenShift/Kubernetes deployments using PersistentVolumes (no S3), see `../../k8s/model-upload-oc/`.
 
 ## Overview
 
@@ -157,6 +159,7 @@ aws ecs run-task \
 | `ProtectAI/deberta-v3-base-prompt-injection-v2` | ~370MB | Prompt injection detection |
 | `s-nlp/roberta_toxicity_classifier` | ~500MB | Toxicity classification |
 | `microsoft/deberta-v2-xlarge-mnli` | ~1.8GB | Relevance scoring |
+| `microsoft/mdeberta-v3-base` | ~3.4GB | PII detection |
 | `urchade/gliner_multi_pii-v1` | ~450MB | PII detection (v2) |
 | `tarekziade/pardonmyai` | ~150MB | Profanity detection |
 
