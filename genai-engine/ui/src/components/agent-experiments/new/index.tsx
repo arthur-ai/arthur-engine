@@ -81,14 +81,8 @@ const Internal = ({ template }: { template?: AgenticExperimentDetail }) => {
       },
     },
     onSubmit: async ({ value }) => {
-      try {
-        const request = mapFormToRequest(value);
-
-        await newExperimentMutation.mutateAsync(request);
-      } catch (error) {
-        console.error(error);
-        enqueueSnackbar("Failed to create experiment. Please check the form and try again.", { variant: "error" });
-      }
+      const request = mapFormToRequest(value);
+      await newExperimentMutation.mutateAsync(request);
     },
   });
 
