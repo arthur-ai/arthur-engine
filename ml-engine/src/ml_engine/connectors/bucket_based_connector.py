@@ -148,7 +148,11 @@ class BucketBasedConnector(Connector, ABC):
         filtered_inferences = []
         for inference in inferences:
             timestamp = inference[timestamp_col]
-            timestamp_dt = parser.parse(timestamp)
+            # Handle case where timestamp is already a datetime object (e.g., from parquet files)
+            if isinstance(timestamp, (datetime, pd.Timestamp)):
+                timestamp_dt = timestamp
+            else:
+                timestamp_dt = parser.parse(timestamp)
             if not check_datetime_tz_aware(timestamp_dt):
                 # timestamp in data is naive - assume it should have the passed timezone
                 timestamp_dt = timestamp_dt.astimezone(tz)
