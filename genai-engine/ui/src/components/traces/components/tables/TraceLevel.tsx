@@ -1,21 +1,27 @@
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
-import { MaterialReactTable } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
-import { columns } from "../../data/columns";
+import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
+import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
-import { useTable } from "../../hooks/useTable";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
+import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
-import { createFilterRow } from "../filtering/filters-row";
+import { DurationCellWithBucket } from "../DurationCell";
+import { FilterRow } from "../filtering/FilterRow";
+import { IncomingFilter } from "../filtering/mapper";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
+import { TraceContentCell } from "../TraceContentCell";
 
+import { TracesTable } from "./TracesTable";
+
+import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -24,6 +30,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredTraces } from "@/services/tracing";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
@@ -85,25 +92,40 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
 
-  const table = useTable({
-    data: data?.traces ?? DEFAULT_DATA,
-    columns,
-    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: data?.count ?? 0 },
-    onRowClick: handleRowClick,
-    state: {
-      sorting,
-      isLoading,
-    },
-  });
-
-  const { FiltersRow } = useMemo(
+  const columns = useMemo(
     () =>
-      createFilterRow(TRACE_FIELDS, {
-        trace_ids: { taskId: task?.id ?? "", api },
-        session_ids: { taskId: task?.id ?? "", api },
-        user_ids: { taskId: task?.id ?? "", api },
-        span_ids: { taskId: task?.id ?? "", api },
+      createTraceLevelColumns({
+        formatDate,
+        formatCurrency,
+        onTrack: track,
+        Chip: CopyableChip,
+        DurationCell: DurationCellWithBucket,
+        TraceContentCell,
+        AnnotationCell,
+        SpanStatusBadge: () => null, // Not used in trace columns
+        TypeChip: () => null, // Not used in trace columns
+        TokenCountTooltip,
+        TokenCostTooltip,
       }),
+    []
+  );
+
+  const setFilters = useFilterStore((state) => state.setFilters);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: IncomingFilter[]) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
+
+  const dynamicEnumArgMap = useMemo(
+    () => ({
+      trace_ids: { taskId: task?.id ?? "", api },
+      session_ids: { taskId: task?.id ?? "", api },
+      user_ids: { taskId: task?.id ?? "", api },
+      span_ids: { taskId: task?.id ?? "", api },
+    }),
     [task?.id, api]
   );
 
@@ -125,13 +147,30 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   return (
     <Stack gap={1} height="100%" overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
-        {/* Only show FiltersRow if we have traces or if filters are active */}
-        {(hasData || hasActiveFilters) && <FiltersRow />}
+        {/* Only show FilterRow if we have traces or if filters are active */}
+        {(hasData || hasActiveFilters) && (
+          <FilterRow
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            fieldConfig={TRACE_FIELDS}
+            dynamicEnumArgMap={dynamicEnumArgMap}
+            onTrack={track}
+          />
+        )}
 
         {hasData && (
           <>
             <BucketProvider thresholds={thresholds}>
-              <MaterialReactTable table={table} />
+              <TracesTable
+                data={data?.traces ?? DEFAULT_DATA}
+                columns={columns}
+                rowCount={data?.count ?? 0}
+                pagination={pagination}
+                onPaginationChange={props.onPaginationChange}
+                isLoading={isLoading}
+                onRowClick={handleRowClick}
+                sorting={sorting}
+              />
             </BucketProvider>
           </>
         )}

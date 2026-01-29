@@ -2,7 +2,7 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { Tooltip } from "@mui/material";
 import { createMRTColumnHelper } from "material-react-table";
 
-import { DurationCell } from "../components/DurationCell";
+import { DurationCellWithBucket } from "../components/DurationCell";
 import { SpanStatusBadge } from "../components/span-status-badge";
 import { isValidStatusCode } from "../components/StatusCode";
 import { TraceContentCell } from "../components/TraceContentCell";
@@ -116,7 +116,7 @@ export const spanLevelColumns = [
   }),
   columnHelper.accessor("duration_ms", {
     header: "Latency",
-    Cell: ({ cell }) => <DurationCell duration={cell.getValue()} />,
+    Cell: ({ cell }) => <DurationCellWithBucket duration={cell.getValue()} />,
   }),
   columnHelper.accessor("trace_id", {
     header: "Trace ID",
