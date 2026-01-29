@@ -152,13 +152,13 @@ const BodyMapperGeneratedInput = withFieldGroup({
   },
   render: function Render({ group, index }) {
     return (
-      <group.AppField name={`templateVariableMapping[${index}].source.generator_type`} defaultValue="uuid">
+      <group.AppField name={`templateVariableMapping[${index}].source.generator_type`}>
         {(field) => (
           <TextField
             size="small"
             select
-            value={field.state.value}
-            onChange={(e) => field.handleChange(e.target.value as "uuid")}
+            value={field.state.value ?? null}
+            onChange={(e) => field.handleChange(e.target.value as "uuid" | "session_id")}
             sx={{ flex: 1 }}
             label="Generator Type"
           >
