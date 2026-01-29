@@ -41,6 +41,10 @@ export const DEFAULT_VALUES = {
     aws_role_name: string;
     aws_session_name: string;
   },
+  hosted_vllm: {
+    api_base: "",
+    api_key: "",
+  },
 };
 
 export const CredentialsSchema = z.object({
@@ -67,3 +71,4 @@ export type OpenAIFormValues = typeof DEFAULT_VALUES.openai;
 export type GeminiFormValues = typeof DEFAULT_VALUES.gemini;
 export type VertexAIFormValues = typeof DEFAULT_VALUES.vertex_ai;
 export type BedrockFormValues = typeof DEFAULT_VALUES.bedrock;
+export type VllmFormValues = typeof DEFAULT_VALUES.hosted_vllm;
