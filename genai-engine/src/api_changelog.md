@@ -23,6 +23,33 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
 
+# 01/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  added the new 'session_id' enum value to the 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/agentic_experiments/{experiment_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/agentic_notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'session_id' enum value to the 'template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/agentic_notebooks/{notebook_id}/state
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/agentic_notebooks
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'session_id' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'uuid' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  added the new 'session_id' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  added the new 'uuid' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  added the new 'session_id' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  added the new 'uuid' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+
 # 01/22/2026
 - **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'missing_spans' to the response with the '200' status
 
