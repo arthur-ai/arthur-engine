@@ -70,6 +70,10 @@ from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
 )
+from services.currency import (
+    initialize_currency_conversion_service,
+    shutdown_currency_conversion_service,
+)
 from utils import constants as constants
 from utils import model_load
 from utils.classifiers import get_device
@@ -215,6 +219,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error initializing continuous eval queue service: {e}")
 
+    # Initialize currency conversion service (exchange rates, 6-hour refresh at 00/06/12/18 UTC)
+    try:
+        initialize_currency_conversion_service()
+    except Exception as e:
+        logger.error(f"Error initializing currency conversion service: {e}")
+
     # Conditionally load relevance models
     if relevance_models_enabled():
         model_load.get_bert_scorer()
@@ -231,6 +241,7 @@ async def lifespan(app: FastAPI):
     yield
 
     cleanup_cuda_cache()
+    shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
 
 
