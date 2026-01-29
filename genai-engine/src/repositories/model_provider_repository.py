@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
@@ -21,12 +21,26 @@ logger = logging.getLogger(__name__)
 
 class ModelProviderRepository:
     API_KEY_SECRET_FIELD = "api_key"
+    API_BASE_SECRET_FIELD = "api_base"
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def _format_creds_for_provider_secret(self, api_key: SecretStr) -> dict[str, str]:
-        return {self.API_KEY_SECRET_FIELD: api_key.get_secret_value()}
+    def _format_creds_for_provider_secret(
+        self,
+        api_key: Optional[SecretStr] = None,
+        api_base: Optional[SecretStr] = None,
+    ) -> dict[str, dict[str, str]]:
+        creds = {}
+        if api_key:
+            creds[self.API_KEY_SECRET_FIELD] = {
+                self.API_KEY_SECRET_FIELD: api_key.get_secret_value(),
+            }
+        if api_base:
+            creds[self.API_BASE_SECRET_FIELD] = {
+                self.API_BASE_SECRET_FIELD: api_base.get_secret_value(),
+            }
+        return creds
 
     def _format_creds_for_vertex_credentials(
         self,
@@ -139,6 +153,12 @@ class ModelProviderRepository:
                 logger.warning(
                     "No api key or aws credentials provided for Bedrock. Falling back to using default credentials. If you don't have the proper configurations in this environment, calls to bedrock will fail",
                 )
+        elif provider == ModelProvider.VLLM:
+            if provider_credentials.api_base is None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="api_base is required for VLLM hosted models",
+                )
         elif provider_credentials.api_key is None:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
@@ -151,6 +171,7 @@ class ModelProviderRepository:
         api_key: SecretStr = None,
         project_id: str = None,
         region: str = None,
+        api_base: SecretStr = None,
         vertex_credentials: GCPServiceAccountCredentials = None,
         aws_bedrock_credentials: AwsBedrockCredentials = None,
     ) -> None:
@@ -161,9 +182,7 @@ class ModelProviderRepository:
             .where(DatabaseSecretStorage.name == provider)
             .first()
         )
-        secret_data = None
-        if api_key:
-            secret_data = self._format_creds_for_provider_secret(api_key)
+        secret_data = self._format_creds_for_provider_secret(api_key, api_base)
 
         vertex_credentials_data = None
         if vertex_credentials:
@@ -178,9 +197,10 @@ class ModelProviderRepository:
             )
 
         if existing_provider:
-            existing_provider.value = secret_data
+            existing_provider.value = secret_data.get(self.API_KEY_SECRET_FIELD)
             existing_provider.project_id = project_id
             existing_provider.region = region
+            existing_provider.api_base = secret_data.get(self.API_BASE_SECRET_FIELD)
             existing_provider.vertex_credentials = vertex_credentials_data
             existing_provider.aws_bedrock_credentials = aws_bedrock_credentials_data
             existing_provider.updated_at = datetime.now()
@@ -189,10 +209,11 @@ class ModelProviderRepository:
                 DatabaseSecretStorage(
                     id=str(uuid.uuid4()),
                     name=provider,
-                    value=secret_data,
+                    value=secret_data.get(self.API_KEY_SECRET_FIELD),
                     secret_type=SecretType.MODEL_PROVIDER,
                     project_id=project_id,
                     region=region,
+                    api_base=secret_data.get(self.API_BASE_SECRET_FIELD),
                     vertex_credentials=vertex_credentials_data,
                     aws_bedrock_credentials=aws_bedrock_credentials_data,
                     created_at=datetime.now(),
@@ -238,11 +259,16 @@ class ModelProviderRepository:
             secret,
         )
 
+        api_base = None
+        if secret.api_base:
+            api_base = secret.api_base.get(self.API_BASE_SECRET_FIELD)
+
         return LLMClient(
             provider=provider,
             api_key=api_key,
             project_id=secret.project_id,
             region=secret.region,
+            api_base=api_base,
             vertex_credentials=vertex_credentials,
             aws_bedrock_credentials=aws_bedrock_credentials,
         )
