@@ -2003,6 +2003,7 @@ def test_agentic_experiment_session_id_generator(
 
 
 @pytest.mark.unit_tests
+@patch("services.experiment_executor.BaseExperimentExecutor.execute_experiment_async")
 @patch("services.experiment_executor.db_session_context")
 @patch("repositories.llm_evals_repository.supports_response_schema")
 @patch("services.agentic_experiment_executor.requests.post")
@@ -2018,6 +2019,7 @@ def test_agentic_experiment_eval_preserves_dataset_and_transform_variables(
     mock_requests_post,
     mock_supports_response_schema,
     mock_db_session_context,
+    mock_execute_async,
     client: GenaiEngineTestClientBase,
 ):
     """
@@ -2033,6 +2035,12 @@ def test_agentic_experiment_eval_preserves_dataset_and_transform_variables(
     """
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+
+    def sync_execute(experiment_id, request_time_parameters=None):
+        executor = AgenticExperimentExecutor()
+        return executor._execute_experiment(experiment_id, request_time_parameters)
+
+    mock_execute_async.side_effect = sync_execute
 
     # Mock loggers to prevent I/O errors on closed file handles in background threads
     mock_agentic_logger.info = MagicMock()
@@ -2201,6 +2209,7 @@ def test_agentic_experiment_eval_preserves_dataset_and_transform_variables(
             endpoint_url="https://example.com/api/chat",
             headers=[
                 HttpHeader(name="Content-Type", value="application/json"),
+                HttpHeader(name="X-Session-Id", value="{{session_id}}"),
             ],
             request_body='{"message": "{{user_message}}"}',
         ),
@@ -2212,6 +2221,13 @@ def test_agentic_experiment_eval_preserves_dataset_and_transform_variables(
                     dataset_column=DatasetColumnSource(
                         name="user_message",
                     ),
+                ),
+            ),
+            TemplateVariableMapping(
+                variable_name="session_id",
+                source=GeneratedVariableSource(
+                    type="generated",
+                    generator_type="session_id",
                 ),
             ),
         ],
@@ -2256,8 +2272,10 @@ def test_agentic_experiment_eval_preserves_dataset_and_transform_variables(
     assert status_code == 200
     experiment_id = experiment_data["id"]
 
-    # Wait for completion
-    experiment_detail = wait_for_experiment_completion(client, experiment_id)
+    # Get experiment details
+    status_code, experiment_detail_data = client.get_agentic_experiment(experiment_id)
+    assert status_code == 200
+    experiment_detail = AgenticExperimentDetail.model_validate(experiment_detail_data)
     assert experiment_detail.status == ExperimentStatus.COMPLETED
 
     # Get test cases to inspect eval input variables
