@@ -1,6 +1,8 @@
 import logging
 import os
+from datetime import datetime
 
+import pandas as pd
 import pytz
 from arthur_client.api_bindings import (
     AvailableDataset,
@@ -14,6 +16,7 @@ from arthur_common.models.connectors import (
     S3_CONNECTOR_ENDPOINT_FIELD,
     ConnectorPaginationOptions,
 )
+from connectors.bucket_based_connector import BucketBasedConnector
 from connectors.s3_connector import S3Connector
 from mock_data.connector_helpers import *
 
@@ -450,3 +453,103 @@ def test_s3_read_filters(
     )
 
     assert len(rows) == expected_rows
+
+
+def test_secondary_filter_primary_timestamp_with_different_types():
+    """Test that _secondary_filter_primary_timestamp handles both string and datetime/pd.Timestamp types.
+
+    This tests the fix for the issue where parquet files return timestamps as pd.Timestamp objects
+    rather than strings, which caused parser.parse() to fail with:
+    TypeError: Parser must be a string or character stream, not Timestamp
+    """
+    tz = pytz.timezone("UTC")
+    start_time = datetime(2024, 1, 1, hour=0).astimezone(tz)
+    end_time = datetime(2024, 1, 2, hour=0).astimezone(tz)
+
+    # Test with string timestamps (original behavior from JSON files)
+    inferences_with_strings = [
+        {"id": 1, "timestamp": "2024-01-01 12:00:00"},
+        {"id": 2, "timestamp": "2024-01-01 18:00:00"},
+        {"id": 3, "timestamp": "2024-01-02 12:00:00"},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_strings,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 1
+    assert filtered[1]["id"] == 2
+
+    # Test with datetime objects (from parquet files with datetime columns)
+    inferences_with_datetime = [
+        {"id": 4, "timestamp": datetime(2024, 1, 1, hour=12).astimezone(tz)},
+        {"id": 5, "timestamp": datetime(2024, 1, 1, hour=18).astimezone(tz)},
+        {"id": 6, "timestamp": datetime(2024, 1, 2, hour=12).astimezone(tz)},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_datetime,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 4
+    assert filtered[1]["id"] == 5
+
+    # Test with pd.Timestamp objects (from parquet files)
+    inferences_with_pd_timestamp = [
+        {"id": 7, "timestamp": pd.Timestamp("2024-01-01 12:00:00", tz=tz)},
+        {"id": 8, "timestamp": pd.Timestamp("2024-01-01 18:00:00", tz=tz)},
+        {"id": 9, "timestamp": pd.Timestamp("2024-01-02 12:00:00", tz=tz)},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_pd_timestamp,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 7
+    assert filtered[1]["id"] == 8
+
+    # Test with naive pd.Timestamp objects (need tz_localize, not astimezone)
+    inferences_with_naive_pd_timestamp = [
+        {"id": 13, "timestamp": pd.Timestamp("2024-01-01 12:00:00")},  # naive
+        {"id": 14, "timestamp": pd.Timestamp("2024-01-01 18:00:00")},  # naive
+        {"id": 15, "timestamp": pd.Timestamp("2024-01-02 12:00:00")},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_naive_pd_timestamp,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 13
+    assert filtered[1]["id"] == 14
+
+    # Test mixed types (edge case, but should work)
+    inferences_mixed = [
+        {"id": 10, "timestamp": "2024-01-01 06:00:00"},
+        {"id": 11, "timestamp": datetime(2024, 1, 1, hour=12).astimezone(tz)},
+        {"id": 12, "timestamp": pd.Timestamp("2024-01-01 18:00:00", tz=tz)},
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_mixed,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 3
