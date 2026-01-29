@@ -17,7 +17,10 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 import requests
-from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.common_schemas import (
+    PaginationParameters,
+    VariableTemplateValue,
+)
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -26,6 +29,7 @@ from db_models.agentic_experiment_models import (
     DatabaseAgenticExperiment,
     DatabaseAgenticExperimentTestCase,
     DatabaseAgenticExperimentTestCaseAgenticResult,
+    DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
 )
 from repositories.agentic_experiment_repository import AgenticExperimentRepository
 from repositories.metrics_repository import MetricRepository
@@ -603,7 +607,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_single_eval(
         self,
         db_session: Session,
-        eval_score: Any,  # DatabaseAgenticExperimentTestCaseAgenticResultEvalScore
+        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
         agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,
     ) -> bool:
         """
@@ -691,19 +695,17 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             # Build variable map from eval variable mappings
             variable_map = self._build_eval_variable_map(
                 eval_config,
-                agentic_result.test_case,
+                eval_score,
                 transform_results.variables,
-                agentic_result,
             )
 
-            # Set eval_input_variables using shared method
-            if not self._set_eval_input_variables(
-                db_session,
-                eval_score,
-                experiment,
-                agentic_result,
-            ):
-                return False
+            # Set eval_input_variables
+            eval_input_variables = [
+                {"variable_name": name, "value": value}
+                for name, value in variable_map.items()
+            ]
+            eval_score.eval_input_variables = eval_input_variables
+            db_session.commit()
 
             # Execute eval using shared method
             return self._execute_eval_with_variable_map(
@@ -722,9 +724,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _build_eval_variable_map(
         self,
         eval_config: Dict[str, Any],
-        test_case: DatabaseAgenticExperimentTestCase,
-        transform_variables: List[Any],  # List[VariableTemplateValue]
-        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,
+        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
+        transform_variables: List[VariableTemplateValue],
     ) -> Dict[str, str]:
         """
         Build variable map for eval from dataset columns and transform variables.
@@ -737,7 +738,10 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         Returns:
             Dictionary mapping variable names to values
         """
-        variable_map = {}
+        variable_map = {
+            var["variable_name"]: var["value"]
+            for var in eval_score.eval_input_variables
+        }
 
         # Create a map of transform variable names to values
         transform_var_map = {var.name: var.value for var in transform_variables}
@@ -747,14 +751,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             variable_name = mapping["variable_name"]
             source = mapping["source"]
 
-            if source["type"] == "dataset_column":
-                # Get value from test case input variables
-                column_name = source["dataset_column"]["name"]
-                for var in test_case.template_input_variables:
-                    if var["variable_name"] == variable_name:
-                        variable_map[variable_name] = var["value"]
-                        break
-            elif source["type"] == "experiment_output":
+            if source["type"] == "experiment_output":
                 # Agentic experiments only support transform variables (not json_path)
                 # The experiment_output should be a TransformVariableExperimentOutputSource
                 experiment_output = source.get("experiment_output", {})
