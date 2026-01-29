@@ -3,8 +3,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import PendingOutlinedIcon from "@mui/icons-material/PendingOutlined";
 import { capitalize, Stack, Tooltip, Typography } from "@mui/material";
 import { memo } from "react";
-
-import { cn } from "@/utils/cn";
+import { twMerge } from "tailwind-merge";
 
 type Props = {
   status: string;
@@ -24,9 +23,9 @@ export const SpanStatusBadge = memo(({ status, disableLabel = false, className }
         alignItems="center"
         color={color}
         data-icon-only={disableLabel ? "" : undefined}
-        className={cn(
+        className={twMerge(
           "px-1 data-icon-only:py-1 bg-[color-mix(in_oklab,var(--bucket-color)_20%,white)] w-fit border border-(--bucket-color)/50 rounded-md text-nowrap",
-          className
+          className ?? ""
         )}
         style={{ "--bucket-color": color } as React.CSSProperties}
       >
