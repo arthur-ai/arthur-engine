@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSnackbar } from "notistack";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -15,6 +16,8 @@ export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
   const { task } = useTask();
   const { api } = useApi()!;
 
+  const { enqueueSnackbar } = useSnackbar();
+
   return useMutation({
     mutationFn: async (data: CreateAgenticExperimentRequest) => {
       const response = await api.createAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPost(task!.id, data);
@@ -25,6 +28,9 @@ export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
       track(EVENT_NAMES.AGENT_EXPERIMENT_CREATED, { experiment_id: data.id });
       queryClient.invalidateQueries({ queryKey: [queryKeys.agentExperiments.all(task!.id)] });
       onSuccess?.(data);
+    },
+    onError: () => {
+      enqueueSnackbar("Failed to create experiment. Please check the form and try again.", { variant: "error" });
     },
   });
 };
