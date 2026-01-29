@@ -179,6 +179,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             return str(uuid4())
         elif generator_type == AgenticExperimentGeneratorType.SESSION_ID:
             return session_id
+        else:
+            return None
 
     def _build_variable_map(
         self,
