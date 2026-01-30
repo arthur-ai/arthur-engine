@@ -11,8 +11,12 @@ class CurrencyConfig(BaseSettings):
     SUPPORTED_CURRENCIES: Optional[list[str]] = None  # None = use all from provider
     DEFAULT_CURRENCY: str = "USD"
     CURRENCY_PROVIDER: Literal["frankfurter", "static"] = "frankfurter"
-    CURRENCY_EXCHANGE_RATE: Optional[float] = None  # Required when CURRENCY_PROVIDER=static
-    CURRENCY_PROVIDER_API_KEY: Optional[str] = None  # Optional; Frankfurter does not use it
+    CURRENCY_EXCHANGE_RATE: Optional[float] = (
+        None  # Required when CURRENCY_PROVIDER=static
+    )
+    CURRENCY_PROVIDER_API_KEY: Optional[str] = (
+        None  # Optional; Frankfurter does not use it
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
