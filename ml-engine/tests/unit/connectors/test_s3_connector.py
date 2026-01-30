@@ -25,6 +25,17 @@ from mock_data.connector_helpers import *
 logger = logging.getLogger("job_logger")
 
 
+def assert_column_names_are_strings(rows: list[dict]) -> None:
+    """Assert that all column names in the returned rows are strings, not integers."""
+    if not rows:
+        return  # Empty results are OK
+    for row in rows:
+        for key in row.keys():
+            assert isinstance(
+                key, str
+            ), f"Column name {key} is type {type(key)}, expected str. Row: {row}"
+
+
 MOCK_S3_CONNECTOR_SPEC = mock_bucket_based_connector_spec(
     connector_type=ConnectorType.S3,
     fields=[
@@ -259,6 +270,8 @@ def test_s3_read_data(
             pagination_options=pagination_options,
         )
         assert len(rows) == expected_rows
+        # Verify all column names are strings, not integers
+        assert_column_names_are_strings(rows)
 
 
 MOCK_AXIOS_S3_CONNECTOR_SPEC = mock_bucket_based_connector_spec(
@@ -327,6 +340,8 @@ def test_s3_read_parquet_data(mock_s3fs_walk, mock_s3fs_open, mock_s3fs_is_file)
     )
 
     assert len(rows) == 50
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
 
 
 @patch("s3fs.S3FileSystem.open", side_effect=open)
@@ -350,6 +365,8 @@ def test_s3_read_data_deterministic(mock_s3fs_walk, mock_s3fs_open, mock_s3fs_is
         pagination_options=ConnectorPaginationOptions(page=2, page_size=4),
     )
     assert len(rows) == 4
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
     # data will be sorted in descending order by default
     ordered_expected_alerts = [
         "49129fe9-8955-4ee2-8725-8b84c2c0e153",
@@ -390,6 +407,8 @@ def test_s3_read_data_time_range_inclusive(
         pagination_options=ConnectorPaginationOptions(page_size=50),
     )
     assert len(rows) == 10
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
 
 
 @patch("s3fs.S3FileSystem.open", side_effect=open)
@@ -455,6 +474,8 @@ def test_s3_read_filters(
     )
 
     assert len(rows) == expected_rows
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
 
 
 def test_secondary_filter_primary_timestamp_with_different_types():
@@ -638,8 +659,11 @@ def test_secondary_filter_primary_timestamp_with_different_types():
             ),
             3,
             {
-                "generates_column_names": lambda r: 0 in r[0]
-                and 1 in r[0],  # Auto-generated integer column names
+                "has_expected_column_names": lambda r: "0" in r[0]
+                and "1" in r[0]
+                and "2" in r[0]
+                and "3" in r[0]
+                and "4" in r[0],  # Should have string column names "0", "1", "2", "3", "4"
             },
         ),
         # Simple CSV without quotes
@@ -686,6 +710,9 @@ def test_csv_various_formats(
 
     # Verify correct number of records
     assert len(records) == expected_count, f"Expected {expected_count} records, got {len(records)}"
+
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(records)
 
     # Run format-specific validation checks
     for check_name, check_func in validation_checks.items():

@@ -85,6 +85,11 @@ def read_file(
 
                 # Read CSV and convert to list of dicts (matches JSON/PARQUET output format)
                 df = pd.read_csv(f, **csv_kwargs)
+
+                # Convert column names to strings if they are integers (happens when has_header=False)
+                # This ensures consistency - all column names should be strings
+                df.columns = df.columns.astype(str)
+
                 return cast(list[dict[str, Any]], df.to_dict("records"))
         case _:
             raise NotImplementedError(
