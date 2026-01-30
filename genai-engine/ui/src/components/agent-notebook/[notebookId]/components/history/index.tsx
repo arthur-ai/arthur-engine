@@ -23,7 +23,7 @@ type Props = {
 };
 
 export const History = ({ notebookId }: Props) => {
-  const [show, setShow] = useShowState();
+  const [{ show }, setShow] = useShowState();
 
   return (
     <Drawer
@@ -56,6 +56,7 @@ export const History = ({ notebookId }: Props) => {
 };
 
 const HistoryContent = ({ notebookId }: { notebookId: string }) => {
+  const [{ id }, setShow] = useShowState();
   const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange } = usePagination(10);
 
   const { data } = useSuspensePollAgenticNotebookHistory(notebookId, { page, page_size: rowsPerPage });
@@ -75,9 +76,9 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
             </Typography>
           </Stack>
         ) : (
-          <Accordion.Root render={<List disablePadding />}>
+          <Accordion.Root render={<List disablePadding />} value={[id]}>
             {data.data.map((item) => (
-              <HistoryItem key={item.id} item={item} />
+              <HistoryItem key={item.id} item={item} onOpenChange={(open) => setShow({ id: open ? item.id : "" })} />
             ))}
           </Accordion.Root>
         )}
@@ -99,13 +100,13 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
   );
 };
 
-const HistoryItem = ({ item }: { item: AgenticExperimentSummary }) => {
+const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; onOpenChange: (open: boolean) => void }) => {
   const { task } = useTask();
   const isRunning = item.status === "running" || item.status === "queued";
   const progress = item.total_rows > 0 ? Math.round((item.completed_rows / item.total_rows) * 100) : 0;
 
   return (
-    <Accordion.Item key={item.id} value={item.id} className="border-b border-gray-200">
+    <Accordion.Item key={item.id} value={item.id} onOpenChange={onOpenChange} className="border-b border-gray-200">
       <Accordion.Header>
         <Accordion.Trigger render={<ListItemButton className="px-0" />}>
           <ListItemText

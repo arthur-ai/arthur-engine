@@ -22,6 +22,8 @@ export const useExecuteAgenticNotebook = (notebookId: string) => {
       enqueueSnackbar(`Experiment "${experiment.name}" attached to notebook successfully!`, { variant: "success" });
 
       track(EVENT_NAMES.AGENT_NOTEBOOK_EXPERIMENT_RUN, { notebook_id: notebookId, experiment_id: experiment.id });
+
+      return experiment.id;
     },
     loading: createNewExperimentMutation.isPending || attachExperimentToNotebookMutation.isPending,
   };
