@@ -6,7 +6,11 @@ from arthur_common.models.llm_model_providers import ModelProvider
 from litellm.types.utils import ModelResponse
 
 from clients.llm.llm_client import SUPPORTED_TEXT_MODELS
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from db_models.secret_storage_models import DatabaseSecretStorage
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 
 
 @pytest.mark.unit_tests
@@ -23,7 +27,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 5
+    assert len(response.json()["providers"]) == 6
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert not provider["enabled"]
@@ -42,7 +46,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 5
+    assert len(response.json()["providers"]) == 6
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert (
@@ -83,7 +87,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 5
+    assert len(response.json()["providers"]) == 6
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert (
@@ -113,7 +117,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 5
+    assert len(response.json()["providers"]) == 6
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert (
@@ -264,6 +268,8 @@ def test_put_model_provider_validations(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_setting_vertex_ai_provider_credentials(client: GenaiEngineTestClientBase):
+    db_session = override_get_db_session()
+
     # Enabling vertex ai without any credentials should work since it will default to using the default credentials
     response = client.base_client.put(
         f"/api/v1/model_providers/vertex_ai",
@@ -294,6 +300,23 @@ def test_setting_vertex_ai_provider_credentials(client: GenaiEngineTestClientBas
     )
     assert response.status_code == 201
 
+    # Verify adding other models does not set vertex ai credentials
+    response = client.base_client.put(
+        f"/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Verify in the database that aws_bedrock_credentials is None for other providers
+    secret = (
+        db_session.query(DatabaseSecretStorage)
+        .filter(DatabaseSecretStorage.name == "anthropic")
+        .first()
+    )
+    assert secret is not None
+    assert secret.vertex_credentials is None
+
     # Cleanup
     response = client.base_client.delete(
         f"/api/v1/model_providers/vertex_ai",
@@ -301,9 +324,13 @@ def test_setting_vertex_ai_provider_credentials(client: GenaiEngineTestClientBas
     )
     assert response.status_code == 204
 
+    db_session.close()
+
 
 @pytest.mark.unit_tests
 def test_setting_bedrock_provider_credentials(client: GenaiEngineTestClientBase):
+    db_session = override_get_db_session()
+
     # Enabling bedrock with no credentials should work because it will default to using attached credentials
     response = client.base_client.put(
         f"/api/v1/model_providers/bedrock",
@@ -348,9 +375,94 @@ def test_setting_bedrock_provider_credentials(client: GenaiEngineTestClientBase)
     )
     assert response.status_code == 201
 
+    # Verify adding other models does not set bedrock credentials
+    response = client.base_client.put(
+        f"/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Verify in the database that aws_bedrock_credentials is None for other providers
+    secret = (
+        db_session.query(DatabaseSecretStorage)
+        .filter(DatabaseSecretStorage.name == "anthropic")
+        .first()
+    )
+    assert secret is not None
+    assert secret.aws_bedrock_credentials is None
+
     # Cleanup
     response = client.base_client.delete(
         f"/api/v1/model_providers/bedrock",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 204
+
+    db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_setting_vllm_provider_credentials(client: GenaiEngineTestClientBase):
+    db_session = override_get_db_session()
+
+    # Enabling vllm with no credentials should fail since api_base is required
+    response = client.base_client.put(
+        f"/api/v1/model_providers/hosted_vllm",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
+    # Enabling vllm with only api_base should work
+    response = client.base_client.put(
+        f"/api/v1/model_providers/hosted_vllm",
+        json={"api_base": "test-api-base"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Enabling vllm with api_base and api_key should work
+    response = client.base_client.put(
+        f"/api/v1/model_providers/hosted_vllm",
+        json={
+            "api_base": "test-api-base",
+            "api_key": "test-api-key",
+        },
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Enabling vllm with just an api_key should fail
+    response = client.base_client.put(
+        f"/api/v1/model_providers/hosted_vllm",
+        json={"api_key": "test-api-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
+    # Verify adding other models does not set vertex ai credentials
+    response = client.base_client.put(
+        f"/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Verify in the database that api_base is None for other providers
+    secret = (
+        db_session.query(DatabaseSecretStorage)
+        .filter(DatabaseSecretStorage.name == "anthropic")
+        .first()
+    )
+    assert secret is not None
+    assert secret.api_base is None
+
+    # Cleanup
+    response = client.base_client.delete(
+        f"/api/v1/model_providers/hosted_vllm",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    db_session.close()

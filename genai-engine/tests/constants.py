@@ -1,6 +1,9 @@
 # Test Constants:
 from config.openai_config import GenaiEngineOpenAIProvider, OpenAISettings
 
+# Environment variable names
+GENAI_ENGINE_SKIP_MODEL_LOADING = "GENAI_ENGINE_SKIP_MODEL_LOADING"
+
 DEFAULT_REGEX = ["\\d{3}-\\d{2}-\\d{4}", "\\d{5}-\\d{6}-\\d{7}"]
 DEFAULT_KEYWORDS = ["key_word_1", "key_word_2"]
 DEFAULT_EXAMPLES = [{"example": "John has O negative blood group", "result": True}]

@@ -325,6 +325,9 @@ export interface AgenticExperimentDetail {
   total_rows: number;
 }
 
+/** AgenticExperimentGeneratorType */
+export type AgenticExperimentGeneratorType = "uuid" | "session_id";
+
 /**
  * AgenticExperimentListResponse
  * Paginated list of agentic experiments
@@ -1376,8 +1379,9 @@ export interface ContinuousEvalResponse {
   /**
    * Enabled
    * Whether the continuous eval is enabled.
+   * @default true
    */
-  enabled: boolean;
+  enabled?: boolean;
   /**
    * Id
    * ID of the transform.
@@ -2600,11 +2604,8 @@ export interface GCPServiceAccountCredentialsRequest {
  * Variable source for generated values (e.g., UUIDs, timestamps)
  */
 export interface GeneratedVariableSource {
-  /**
-   * Generator Type
-   * Type of generator to use. Currently supports 'uuid' for UUID generation.
-   */
-  generator_type: "uuid";
+  /** Type of generator to use. Supported values: 'uuid', 'session_id'. Exactly one session_id is required per experiment. */
+  generator_type: AgenticExperimentGeneratorType;
   /**
    * Type
    * Type of source: 'generated'
@@ -5597,7 +5598,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -5746,6 +5747,8 @@ export interface NestedSpanWithMetricsResponse {
    * @format date-time
    */
   updated_at: string;
+  /** User Id */
+  user_id?: string | null;
 }
 
 /** NewApiKeyRequest */
@@ -6762,6 +6765,11 @@ export interface PromptVersionResultListResponse {
 
 /** PutModelProviderCredentials */
 export interface PutModelProviderCredentials {
+  /**
+   * Api Base
+   * The API base URL. Used for VLLM models.
+   */
+  api_base?: string | null;
   /**
    * Api Key
    * The API key for the provider.
@@ -9329,6 +9337,8 @@ export interface SpanWithMetricsResponse {
    * @format date-time
    */
   updated_at: string;
+  /** User Id */
+  user_id?: string | null;
 }
 
 /** StreamOptions */
@@ -11476,7 +11486,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.319
+ * @version 2.1.330
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

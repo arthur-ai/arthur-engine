@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.323"
+        "version": "2.1.335"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -15265,6 +15265,14 @@
                 "title": "AgenticExperimentDetail",
                 "description": "Detailed information about an agentic experiment"
             },
+            "AgenticExperimentGeneratorType": {
+                "type": "string",
+                "enum": [
+                    "uuid",
+                    "session_id"
+                ],
+                "title": "AgenticExperimentGeneratorType"
+            },
             "AgenticExperimentListResponse": {
                 "properties": {
                     "page": {
@@ -16968,7 +16976,8 @@
                     "enabled": {
                         "type": "boolean",
                         "title": "Enabled",
-                        "description": "Whether the continuous eval is enabled."
+                        "description": "Whether the continuous eval is enabled.",
+                        "default": true
                     },
                     "created_at": {
                         "type": "string",
@@ -16991,7 +17000,6 @@
                     "llm_eval_name",
                     "llm_eval_version",
                     "transform_id",
-                    "enabled",
                     "created_at",
                     "updated_at"
                 ],
@@ -18824,10 +18832,8 @@
                         "description": "Type of source: 'generated'"
                     },
                     "generator_type": {
-                        "type": "string",
-                        "const": "uuid",
-                        "title": "Generator Type",
-                        "description": "Type of generator to use. Currently supports 'uuid' for UUID generation."
+                        "$ref": "#/components/schemas/AgenticExperimentGeneratorType",
+                        "description": "Type of generator to use. Supported values: 'uuid', 'session_id'. Exactly one session_id is required per experiment."
                     }
                 },
                 "type": "object",
@@ -20935,7 +20941,8 @@
                     "openai",
                     "gemini",
                     "bedrock",
-                    "vertex_ai"
+                    "vertex_ai",
+                    "hosted_vllm"
                 ],
                 "title": "ModelProvider"
             },
@@ -21147,6 +21154,17 @@
                             }
                         ],
                         "title": "Session Id"
+                    },
+                    "user_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Id"
                     },
                     "status_code": {
                         "type": "string",
@@ -23355,6 +23373,20 @@
                         ],
                         "title": "Aws Session Name",
                         "description": "The AWS session name."
+                    },
+                    "api_base": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Base",
+                        "description": "The API base URL. Used for VLLM models."
                     },
                     "credentials_file": {
                         "anyOf": [
@@ -26496,6 +26528,17 @@
                             }
                         ],
                         "title": "Session Id"
+                    },
+                    "user_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Id"
                     },
                     "status_code": {
                         "type": "string",

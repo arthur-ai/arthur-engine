@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from typing import Any
 
 import numpy as np
@@ -22,6 +23,16 @@ from job_executors.fetch_data_executor import FetchDataExecutor
                 },
             ],
             '[{"Column1": 1, "Column2": "Infinity", "Column3": 5}, {"Column1": 2, "Column2": "-Infinity", "Column3": "NaN"}, {"Column1": "NaN", "Column2": 3, "Column3": "Infinity"}, {"Column1": 4, "Column2": 4, "Column3": "-Infinity"}, {"Column1": "NaN", "Column2": "Infinity", "Column3": "-Infinity"}]',
+        ),
+        (
+            [
+                {
+                    "date_col": date(2024, 1, 15),
+                    "datetime_col": datetime(2024, 1, 15, 10, 30, 45),
+                    "pd_timestamp_col": pd.Timestamp("2024-01-15 10:30:45"),
+                },
+            ],
+            '[{"date_col": "2024-01-15", "datetime_col": "2024-01-15T10:30:45", "pd_timestamp_col": "2024-01-15T10:30:45"}]',
         ),
     ],
 )
