@@ -159,8 +159,7 @@ You have two options to run the linter:
    See [CONTRIBUTING.MD](../CONTRIBUTING.md#install-the-pre-commit-hooks-before-making-your-first-commit) for how.
 2. You can manually trigger the linters
 ```bash
-cd scripts
-./lint.sh
+./scripts/lint.sh
 ```
 
 Commit any linter changes.
