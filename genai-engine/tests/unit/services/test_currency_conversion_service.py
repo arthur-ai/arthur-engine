@@ -126,7 +126,7 @@ def test_initialize_currency_conversion_service_static_uses_load_not_start():
             mock_config,
         ),
         patch(
-            "services.currency.currency_conversion_service.StaticCurrencyRateProvider",
+            "clients.currency.static_provider.StaticCurrencyRateProvider",
             return_value=mock_provider_instance,
         ) as mock_static_provider,
         patch(
