@@ -157,17 +157,18 @@ def initialize_currency_conversion_service() -> None:
     from config.currency_config import currency_config
 
     service = get_currency_conversion_service()
+    provider: ABCCurrencyRateProvider
     if currency_config.CURRENCY_PROVIDER == "static":
         if currency_config.CURRENCY_EXCHANGE_RATE is None:
             logger.warning(
                 "CURRENCY_PROVIDER=static but CURRENCY_EXCHANGE_RATE is not set; "
                 "conversion will fall back to USD until configured."
             )
-        service.load_rates_from_provider(
-            StaticCurrencyRateProvider(config=currency_config)
-        )
+        provider = StaticCurrencyRateProvider(config=currency_config)
+        service.load_rates_from_provider(provider)
     else:
-        service.start(FrankfurterCurrencyRateProvider(config=currency_config))
+        provider = FrankfurterCurrencyRateProvider(config=currency_config)
+        service.start(provider)
 
 
 def shutdown_currency_conversion_service(timeout: float = 30.0) -> None:
