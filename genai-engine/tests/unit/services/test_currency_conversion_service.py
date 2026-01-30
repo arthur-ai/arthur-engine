@@ -92,3 +92,51 @@ def test_convert_usd_to_on_exception_returns_usd():
     amount, currency = service.convert_usd_to(10.0, 123)  # type: ignore[arg-type]
     assert amount == 10.0
     assert currency == "USD"
+
+
+@pytest.mark.unit_tests
+def test_load_rates_from_provider_populates_cache_without_thread():
+    service = CurrencyConversionService()
+    provider = MagicMock()
+    provider.fetch_rates.return_value = {"USD": 1.0, "EUR": 0.92}
+    service.load_rates_from_provider(provider)
+    assert service.has_rates() is True
+    assert service._rates["EUR"] == 0.92
+    assert service._background_thread is None
+
+
+@pytest.mark.unit_tests
+def test_initialize_currency_conversion_service_static_uses_load_not_start():
+    from unittest.mock import patch
+
+    from services.currency.currency_conversion_service import (
+        initialize_currency_conversion_service,
+    )
+
+    mock_config = MagicMock()
+    mock_config.CURRENCY_PROVIDER = "static"
+    mock_config.CURRENCY_EXCHANGE_RATE = 0.92
+    mock_config.DEFAULT_CURRENCY = "EUR"
+    mock_provider_instance = MagicMock()
+    mock_svc = MagicMock()
+
+    with (
+        patch(
+            "config.currency_config.currency_config",
+            mock_config,
+        ),
+        patch(
+            "services.currency.currency_conversion_service.StaticCurrencyRateProvider",
+            return_value=mock_provider_instance,
+        ) as mock_static_provider,
+        patch(
+            "services.currency.currency_conversion_service.get_currency_conversion_service",
+            return_value=mock_svc,
+        ),
+    ):
+        initialize_currency_conversion_service()
+        mock_static_provider.assert_called_once_with(config=mock_config)
+        mock_svc.load_rates_from_provider.assert_called_once_with(
+            mock_provider_instance
+        )
+        mock_svc.start.assert_not_called()

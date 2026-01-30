@@ -4,16 +4,16 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 
 ## Overview
 
-- **`CurrencyConversionService`** – Holds a thread-safe cache of rates (USD → other currencies), runs a background thread that refreshes from a provider, and exposes `convert_usd_to(amount_usd, target_currency)`.
-- **Lifecycle** – The service is a singleton. The app starts it in FastAPI lifespan via `initialize_currency_conversion_service()` and stops it via `shutdown_currency_conversion_service()`.
+- **`CurrencyConversionService`** – Holds a thread-safe cache of rates (USD → other currencies). When using the Frankfurter provider, a background thread refreshes on a schedule; when using the static provider, rates are loaded once and no thread runs. Exposes `convert_usd_to(amount_usd, target_currency)`.
+- **Lifecycle** – The service is a singleton. The app starts or loads it in FastAPI lifespan via `initialize_currency_conversion_service()` and stops it via `shutdown_currency_conversion_service()` (no-op when no thread was started).
 
 ## Behavior
 
 ### Refresh schedule
 
-- **First run** – One fetch runs immediately when the background thread starts.
-- **Then** – Refreshes at **00:00, 06:00, 12:00, 18:00 UTC** every day (every 6 hours). The thread sleeps until the next such boundary, then fetches, then sleeps 6 hours, and repeats.
-- **Provider** – By default uses `FrankfurterCurrencyRateProvider` and `config.currency_config.currency_config`. See `src/clients/currency/README.md` for the provider contract and how to swap providers.
+- **Frankfurter** – A background thread runs: one fetch immediately, then refreshes at **00:00, 06:00, 12:00, 18:00 UTC** every 6 hours.
+- **Static** – When `CURRENCY_PROVIDER=static`, rates are loaded once via `load_rates_from_provider()` and **no thread is started**. For air-gapped environments; redeploy to update the rate.
+- **Provider** – Chosen by `currency_config.CURRENCY_PROVIDER` (`frankfurter` or `static`). See `src/clients/currency/README.md` for the provider contract.
 
 ### Conversion
 
@@ -37,7 +37,13 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 
 ## Configuration
 
-See `config.currency_config`: `CURRENCY_PROVIDER_BASE_URL`, optional `SUPPORTED_CURRENCIES`. Env prefix: `CURRENCY_`.
+See `config.currency_config`. Env prefix: `CURRENCY_`.
+
+- **`DEFAULT_CURRENCY`** – App-wide display currency (e.g. `EUR`). Use when converting: `convert_usd_to(amount_usd, currency_config.DEFAULT_CURRENCY)`.
+- **`CURRENCY_PROVIDER`** – `frankfurter` (default) or `static`. When `static`, no external calls and no background thread.
+- **`CURRENCY_EXCHANGE_RATE`** – Required when provider is `static`: rate from USD to `DEFAULT_CURRENCY` (e.g. `0.92` for EUR).
+- **`CURRENCY_PROVIDER_API_KEY`** – Optional; Frankfurter does not use it; other providers can.
+- **`CURRENCY_PROVIDER_BASE_URL`**, **`SUPPORTED_CURRENCIES`** – For Frankfurter (see clients/currency README).
 
 ## Standalone test script
 

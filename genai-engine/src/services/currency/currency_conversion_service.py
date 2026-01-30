@@ -102,6 +102,13 @@ class CurrencyConversionService:
                 break
         logger.info("Currency conversion scheduler thread exiting")
 
+    def load_rates_from_provider(self, provider: ABCCurrencyRateProvider) -> None:
+        """Load rates once from the provider without starting the background thread. Use for static provider."""
+        with self._lock:
+            self._provider = provider
+        self._refresh()
+        logger.info("Currency conversion service loaded rates (no background thread)")
+
     def start(self, provider: ABCCurrencyRateProvider) -> None:
         """Start the service with the given provider and begin the refresh thread."""
         with self._lock:
@@ -144,13 +151,23 @@ def get_currency_conversion_service() -> CurrencyConversionService:
 
 
 def initialize_currency_conversion_service() -> None:
-    """Create the service singleton and start its refresh thread. Call from app lifespan."""
+    """Create the service singleton and start or load provider. Call from app lifespan."""
     from clients.currency.frankfurter_provider import FrankfurterCurrencyRateProvider
+    from clients.currency.static_provider import StaticCurrencyRateProvider
     from config.currency_config import currency_config
 
     service = get_currency_conversion_service()
-    provider = FrankfurterCurrencyRateProvider(config=currency_config)
-    service.start(provider)
+    if currency_config.CURRENCY_PROVIDER == "static":
+        if currency_config.CURRENCY_EXCHANGE_RATE is None:
+            logger.warning(
+                "CURRENCY_PROVIDER=static but CURRENCY_EXCHANGE_RATE is not set; "
+                "conversion will fall back to USD until configured."
+            )
+        service.load_rates_from_provider(
+            StaticCurrencyRateProvider(config=currency_config)
+        )
+    else:
+        service.start(FrankfurterCurrencyRateProvider(config=currency_config))
 
 
 def shutdown_currency_conversion_service(timeout: float = 30.0) -> None:

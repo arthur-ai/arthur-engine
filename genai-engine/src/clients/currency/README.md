@@ -6,6 +6,7 @@ This package defines the abstraction for fetching exchange rates and provides th
 
 - **`ABCCurrencyRateProvider`** – Abstract base class. Implement this to plug in a new data source (e.g. another API or a test double).
 - **`FrankfurterCurrencyRateProvider`** – Fetches rates from the [Frankfurter API](https://www.frankfurter.app/docs/) (default: `https://api.frankfurter.dev`). No API key required.
+- **`StaticCurrencyRateProvider`** – Returns a single rate from config (`CURRENCY_EXCHANGE_RATE` for `DEFAULT_CURRENCY`). For air-gapped environments; no network. Redeploy to update the rate.
 
 ## Provider contract
 
@@ -26,6 +27,12 @@ def fetch_rates(self, base_currency: str) -> dict[str, float]:
   - `SUPPORTED_CURRENCIES` – Optional list (e.g. `["USD", "EUR", "GBP"]`). When set, requests only those symbols; when `None`, uses all rates returned by the API.
 - **API** – `GET {base_url}/v1/latest?base=USD` (and optional `symbols=...`). Response `rates` is parsed; non-numeric entries are skipped. For base USD, `USD: 1.0` is always included in the result.
 - **Timeout** – HTTP request timeout (default 5 seconds). Exceptions propagate to the caller.
+- **API key** – Config has optional `CURRENCY_PROVIDER_API_KEY`; Frankfurter does not use it. Other providers (e.g. Open Exchange Rates) can read it.
+
+## Static provider
+
+- **Config** – Uses `CurrencyConfig`: `DEFAULT_CURRENCY`, `CURRENCY_EXCHANGE_RATE` (rate from USD to DEFAULT_CURRENCY, e.g. `0.92` for EUR). No network; always returns the same dict.
+- **Use case** – Air-gapped deployments; set `CURRENCY_PROVIDER=static` and `CURRENCY_EXCHANGE_RATE` (and optionally `DEFAULT_CURRENCY`). No background thread is started when using the static provider.
 
 ## Adding another provider
 
