@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime
 
+import fsspec
 import pandas as pd
 import pytz
 from arthur_client.api_bindings import (
@@ -16,7 +17,8 @@ from arthur_common.models.connectors import (
     S3_CONNECTOR_ENDPOINT_FIELD,
     ConnectorPaginationOptions,
 )
-from connectors.bucket_based_connector import BucketBasedConnector
+from arthur_common.models.datasets import DatasetFileType
+from connectors.bucket_based_connector import BucketBasedConnector, read_file
 from connectors.s3_connector import S3Connector
 from mock_data.connector_helpers import *
 
@@ -553,3 +555,138 @@ def test_secondary_filter_primary_timestamp_with_different_types():
         tz,
     )
     assert len(filtered) == 3
+
+
+@patch("s3fs.S3FileSystem.open", side_effect=open)
+@patch("s3fs.S3FileSystem.walk", side_effect=os.walk)
+@patch("s3fs.S3FileSystem.isfile", side_effect=os.path.isfile)
+@pytest.mark.parametrize(
+    "file_name,csv_config,expected_count,validation_checks",
+    [
+        # Pipe-separated with complex quotes and newlines (RFC 4180)
+        (
+            "test_quotes.csv",
+            {
+                "delimiter": "|",
+                "quote_char": '"',
+                "escape_char": '"',  # Same as quote_char = use double-quote convention
+                "encoding": "utf-8",
+            },
+            3,
+            {
+                "has_embedded_newlines": lambda r: "Johnson\nIII" in r[0]["last_name"],
+                "preserves_escaped_quotes": lambda r: '"Highly recommended"'
+                in r[0]["customer_notes"],
+                "handles_empty_fields": lambda r: pd.isna(r[1]["last_name"]),
+            },
+        ),
+        # Standard comma-separated with double-quote escaping (RFC 4180)
+        (
+            "standard_comma.csv",
+            {
+                "delimiter": ",",
+                "quote_char": '"',
+                "escape_char": '"',  # Same as quote = double-quote convention
+                "encoding": "utf-8",
+            },
+            3,
+            {
+                "has_embedded_quotes": lambda r: '"Jay"' in r[1]["name"],
+                "has_embedded_newlines": lambda r: "\n" in r[2]["name"],
+                "preserves_quotes_in_notes": lambda r: '"quotes"' in r[1]["notes"],
+            },
+        ),
+        # Tab-separated with single quotes
+        (
+            "tab_separated.csv",
+            {
+                "delimiter": "\t",
+                "quote_char": "'",
+                "escape_char": "'",  # Double single-quote convention
+                "encoding": "utf-8",
+            },
+            3,
+            {
+                "has_embedded_single_quotes": lambda r: "O'Brien" in r[1]["name"],
+                "has_embedded_tabs": lambda r: "\t" in r[2]["name"],
+            },
+        ),
+        # Semicolon-separated with backslash escaping
+        (
+            "semicolon_backslash.csv",
+            {
+                "delimiter": ";",
+                "quote_char": '"',
+                "escape_char": "\\",  # Backslash escape
+                "encoding": "utf-8",
+            },
+            3,
+            {
+                "has_escaped_quotes": lambda r: '"Jay"' in r[1]["name"],
+                "has_embedded_semicolon": lambda r: "Bob;Wilson" in r[2]["name"],
+            },
+        ),
+        # No header file
+        (
+            "no_header.csv",
+            {
+                "delimiter": ",",
+                "quote_char": '"',
+                "escape_char": '"',
+                "has_header": False,
+                "encoding": "utf-8",
+            },
+            3,
+            {
+                "generates_column_names": lambda r: 0 in r[0]
+                and 1 in r[0],  # Auto-generated integer column names
+            },
+        ),
+        # Simple CSV without quotes
+        (
+            "no_quotes_needed.csv",
+            {
+                "delimiter": ",",
+                "encoding": "utf-8",
+            },
+            3,
+            {
+                "reads_simple_values": lambda r: r[0]["name"] == "John"
+                and r[1]["name"] == "Jane",
+            },
+        ),
+    ],
+)
+def test_csv_various_formats(
+    mock_s3fs_walk,
+    mock_s3fs_open,
+    mock_s3fs_is_file,
+    file_name,
+    csv_config,
+    expected_count,
+    validation_checks,
+):
+    """Test CSV reading with various delimiter, quote, and escape configurations.
+
+    This ensures robust handling of different customer CSV formats:
+    - Standard comma-separated (RFC 4180)
+    - Tab-separated with single quotes
+    - Semicolon-separated with backslash escaping
+    - Files without headers
+    - Simple files without special characters
+    """
+    fs = fsspec.filesystem("file")
+
+    records = read_file(
+        fs,
+        f"tests/unit/mock_data/csv_test_bucket/data/{file_name}",
+        DatasetFileType.CSV,
+        csv_config,
+    )
+
+    # Verify correct number of records
+    assert len(records) == expected_count, f"Expected {expected_count} records, got {len(records)}"
+
+    # Run format-specific validation checks
+    for check_name, check_func in validation_checks.items():
+        assert check_func(records), f"Validation failed: {check_name}"
