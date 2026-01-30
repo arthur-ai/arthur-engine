@@ -18,7 +18,7 @@ from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
 )
 from arthur_common.models.datasets import DatasetFileType
-from connectors.bucket_based_connector import BucketBasedConnector, read_file
+from connectors.bucket_based_connector import BucketBasedConnector, CSVConfig, read_file
 from connectors.s3_connector import S3Connector
 from mock_data.connector_helpers import *
 
@@ -566,12 +566,12 @@ def test_secondary_filter_primary_timestamp_with_different_types():
         # Pipe-separated with complex quotes and newlines (RFC 4180)
         (
             "test_quotes.csv",
-            {
-                "delimiter": "|",
-                "quote_char": '"',
-                "escape_char": '"',  # Same as quote_char = use double-quote convention
-                "encoding": "utf-8",
-            },
+            CSVConfig(
+                delimiter="|",
+                quote_char='"',
+                escape_char='"',  # Same as quote_char = use double-quote convention
+                encoding="utf-8",
+            ),
             3,
             {
                 "has_embedded_newlines": lambda r: "Johnson\nIII" in r[0]["last_name"],
@@ -583,12 +583,12 @@ def test_secondary_filter_primary_timestamp_with_different_types():
         # Standard comma-separated with double-quote escaping (RFC 4180)
         (
             "standard_comma.csv",
-            {
-                "delimiter": ",",
-                "quote_char": '"',
-                "escape_char": '"',  # Same as quote = double-quote convention
-                "encoding": "utf-8",
-            },
+            CSVConfig(
+                delimiter=",",
+                quote_char='"',
+                escape_char='"',  # Same as quote = double-quote convention
+                encoding="utf-8",
+            ),
             3,
             {
                 "has_embedded_quotes": lambda r: '"Jay"' in r[1]["name"],
@@ -599,12 +599,12 @@ def test_secondary_filter_primary_timestamp_with_different_types():
         # Tab-separated with single quotes
         (
             "tab_separated.csv",
-            {
-                "delimiter": "\t",
-                "quote_char": "'",
-                "escape_char": "'",  # Double single-quote convention
-                "encoding": "utf-8",
-            },
+            CSVConfig(
+                delimiter="\t",
+                quote_char="'",
+                escape_char="'",  # Double single-quote convention
+                encoding="utf-8",
+            ),
             3,
             {
                 "has_embedded_single_quotes": lambda r: "O'Brien" in r[1]["name"],
@@ -614,12 +614,12 @@ def test_secondary_filter_primary_timestamp_with_different_types():
         # Semicolon-separated with backslash escaping
         (
             "semicolon_backslash.csv",
-            {
-                "delimiter": ";",
-                "quote_char": '"',
-                "escape_char": "\\",  # Backslash escape
-                "encoding": "utf-8",
-            },
+            CSVConfig(
+                delimiter=";",
+                quote_char='"',
+                escape_char="\\",  # Backslash escape
+                encoding="utf-8",
+            ),
             3,
             {
                 "has_escaped_quotes": lambda r: '"Jay"' in r[1]["name"],
@@ -629,13 +629,13 @@ def test_secondary_filter_primary_timestamp_with_different_types():
         # No header file
         (
             "no_header.csv",
-            {
-                "delimiter": ",",
-                "quote_char": '"',
-                "escape_char": '"',
-                "has_header": False,
-                "encoding": "utf-8",
-            },
+            CSVConfig(
+                delimiter=",",
+                quote_char='"',
+                escape_char='"',
+                has_header=False,
+                encoding="utf-8",
+            ),
             3,
             {
                 "generates_column_names": lambda r: 0 in r[0]
@@ -645,10 +645,10 @@ def test_secondary_filter_primary_timestamp_with_different_types():
         # Simple CSV without quotes
         (
             "no_quotes_needed.csv",
-            {
-                "delimiter": ",",
-                "encoding": "utf-8",
-            },
+            CSVConfig(
+                delimiter=",",
+                encoding="utf-8",
+            ),
             3,
             {
                 "reads_simple_values": lambda r: r[0]["name"] == "John"
