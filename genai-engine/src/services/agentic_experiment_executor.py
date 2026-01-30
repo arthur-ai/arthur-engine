@@ -608,8 +608,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_single_eval(
         self,
         db_session: Session,
-        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
-        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,
+        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,  # type: ignore[override]
+        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,  # type: ignore[override]
     ) -> bool:
         """
         Execute a single evaluation.
