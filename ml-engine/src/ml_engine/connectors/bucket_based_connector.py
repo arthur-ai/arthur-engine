@@ -28,12 +28,12 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
-    ConnectorPaginationOptions,
     CSV_DELIMITER_FIELD,
-    CSV_QUOTE_CHAR_FIELD,
+    CSV_ENCODING_FIELD,
     CSV_ESCAPE_CHAR_FIELD,
     CSV_HAS_HEADER_FIELD,
-    CSV_ENCODING_FIELD,
+    CSV_QUOTE_CHAR_FIELD,
+    ConnectorPaginationOptions,
 )
 from arthur_common.models.datasets import DatasetFileType
 from arthur_common.tools.time_utils import (
@@ -360,7 +360,11 @@ class BucketBasedConnector(Connector, ABC):
         csv_quote_char = dataset_locator_fields.get(CSV_QUOTE_CHAR_FIELD, '"')
         csv_escape_char = dataset_locator_fields.get(CSV_ESCAPE_CHAR_FIELD)
         csv_has_header_str = dataset_locator_fields.get(CSV_HAS_HEADER_FIELD, "true")
-        csv_has_header = csv_has_header_str.lower() == "true" if isinstance(csv_has_header_str, str) else True
+        csv_has_header = (
+            csv_has_header_str.lower() == "true"
+            if isinstance(csv_has_header_str, str)
+            else True
+        )
         csv_encoding = dataset_locator_fields.get(CSV_ENCODING_FIELD, "utf-8")
 
         return _BucketBasedDatasetLocatorFields(
@@ -370,7 +374,9 @@ class BucketBasedConnector(Connector, ABC):
             timezone=timezone,
             csv_delimiter=csv_delimiter if file_type == DatasetFileType.CSV else None,
             csv_quote_char=csv_quote_char if file_type == DatasetFileType.CSV else None,
-            csv_escape_char=csv_escape_char if file_type == DatasetFileType.CSV else None,
+            csv_escape_char=(
+                csv_escape_char if file_type == DatasetFileType.CSV else None
+            ),
             csv_has_header=csv_has_header if file_type == DatasetFileType.CSV else None,
             csv_encoding=csv_encoding if file_type == DatasetFileType.CSV else None,
         )
