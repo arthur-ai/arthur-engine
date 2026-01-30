@@ -1,8 +1,10 @@
+import logging
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
 
 from arthur_common.models.llm_model_providers import (
     LLMResponseFormat,
+    ModelProvider,
     OpenAIMessage,
     OpenAIMessageType,
     ToolChoiceEnum,
@@ -22,6 +24,8 @@ from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
+
+logger = logging.getLogger(__name__)
 
 
 class ChatCompletionService:
@@ -306,7 +310,7 @@ class ChatCompletionService:
             )
             # Extract token counts from usage if available
             input_tokens, output_tokens, total_tokens = self._extract_token_counts(
-                llm_model_response.response
+                llm_model_response.response,
             )
 
             return AgenticPromptRunResponse(
@@ -355,7 +359,13 @@ class ChatCompletionService:
                 messages=completion_params.get("messages", []),
             )
 
-            cost = completion_cost(complete_response)
+            if llm_client.provider != ModelProvider.VLLM:
+                cost_float = completion_cost(complete_response)
+                cost = f"{cost_float:.6f}" if cost_float is not None else None
+            else:
+                cost = "0.00"
+                logger.warning("Cost calculation is not supported for this provider")
+
             if not complete_response:
                 yield f"event: error\ndata: No response from model\n\n"
             elif not complete_response.choices:
@@ -367,13 +377,13 @@ class ChatCompletionService:
                 )
                 # Extract token counts from usage if available
                 input_tokens, output_tokens, total_tokens = self._extract_token_counts(
-                    complete_response
+                    complete_response,
                 )
 
                 data = AgenticPromptRunResponse(
                     content=msg.content,
                     tool_calls=msg.tool_calls,
-                    cost=f"{cost:.6f}",
+                    cost=cost,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     total_tokens=total_tokens,

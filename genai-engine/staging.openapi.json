@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.313"
+        "version": "2.1.334"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -21133,7 +21133,8 @@
                     "openai",
                     "gemini",
                     "bedrock",
-                    "vertex_ai"
+                    "vertex_ai",
+                    "hosted_vllm"
                 ],
                 "title": "ModelProvider"
             },
@@ -23564,6 +23565,20 @@
                         ],
                         "title": "Aws Session Name",
                         "description": "The AWS session name."
+                    },
+                    "api_base": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Base",
+                        "description": "The API base URL. Used for VLLM models."
                     },
                     "credentials_file": {
                         "anyOf": [
