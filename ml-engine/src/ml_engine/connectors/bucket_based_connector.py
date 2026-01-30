@@ -151,12 +151,6 @@ class _BucketBasedDatasetLocatorFields:
     file_type: DatasetFileType
     timezone: tzinfo
     csv_config: Optional[CSVConfig] = None
-    # CSV configuration
-    csv_delimiter: str | None = None
-    csv_quote_char: str | None = None
-    csv_escape_char: str | None = None
-    csv_has_header: bool | None = None
-    csv_encoding: str | None = None
 
 
 class BucketBasedConnector(Connector, ABC):
