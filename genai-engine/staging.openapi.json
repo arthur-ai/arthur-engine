@@ -20941,7 +20941,8 @@
                     "openai",
                     "gemini",
                     "bedrock",
-                    "vertex_ai"
+                    "vertex_ai",
+                    "hosted_vllm"
                 ],
                 "title": "ModelProvider"
             },
@@ -23372,6 +23373,20 @@
                         ],
                         "title": "Aws Session Name",
                         "description": "The AWS session name."
+                    },
+                    "api_base": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Base",
+                        "description": "The API base URL. Used for VLLM models."
                     },
                     "credentials_file": {
                         "anyOf": [
