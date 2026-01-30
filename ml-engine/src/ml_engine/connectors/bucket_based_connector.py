@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from logging import Logger
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -28,6 +28,11 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
+    CSV_DELIMITER_FIELD,
+    CSV_ENCODING_FIELD,
+    CSV_ESCAPE_CHAR_FIELD,
+    CSV_HAS_HEADER_FIELD,
+    CSV_QUOTE_CHAR_FIELD,
     ConnectorPaginationOptions,
 )
 from arthur_common.models.datasets import DatasetFileType
@@ -55,6 +60,7 @@ def read_file(
     fs: AbstractFileSystem,
     file_name: str,
     file_type: DatasetFileType,
+    csv_config: Optional["CSVConfig"] = None,
 ) -> list[dict[str, Any]]:
     inferences: list[dict[str, Any]] = []
     match file_type:
@@ -72,6 +78,19 @@ def read_file(
         case DatasetFileType.PARQUET:
             with fs.open(file_name, "rb") as f:
                 return pq.ParquetFile(f).read().to_pylist()  # type: ignore
+        case DatasetFileType.CSV:
+            with fs.open(file_name, "r") as f:
+                # Get pandas kwargs from CSVConfig
+                csv_kwargs = csv_config.to_pandas_kwargs() if csv_config else {}
+
+                # Read CSV and convert to list of dicts (matches JSON/PARQUET output format)
+                df = pd.read_csv(f, **csv_kwargs)
+
+                # Convert column names to strings if they are integers (happens when has_header=False)
+                # This ensures consistency - all column names should be strings
+                df.columns = df.columns.astype(str)
+
+                return cast(list[dict[str, Any]], df.to_dict("records"))
         case _:
             raise NotImplementedError(
                 f"read_file not supported for file type {file_type}.",
@@ -80,11 +99,63 @@ def read_file(
 
 
 @dataclass()
+class CSVConfig:
+    """Configuration for CSV file parsing."""
+
+    delimiter: str = ","
+    quote_char: str = '"'
+    escape_char: Optional[str] = None
+    has_header: bool = True
+    encoding: str = "utf-8"
+
+    def to_pandas_kwargs(self) -> dict[str, Any]:
+        """Convert CSVConfig to pandas read_csv kwargs.
+
+        Handles the translation between user-friendly config and pandas parameters,
+        particularly for escape character handling where:
+        - escape_char == quote_char means use RFC 4180 double-quote convention
+        - escape_char == "" means disable escaping
+        - escape_char == other means use that character for escaping
+        """
+        kwargs: dict[str, Any] = {
+            "sep": self.delimiter,
+            "encoding": self.encoding,
+        }
+
+        if self.quote_char:
+            kwargs["quotechar"] = self.quote_char
+
+        # Handle escape character logic
+        if self.escape_char is not None:
+            if self.escape_char == self.quote_char:
+                # Use RFC 4180 double-quote convention: "" means literal "
+                kwargs["doublequote"] = True
+                kwargs["escapechar"] = None
+            elif self.escape_char == "":
+                # Empty string explicitly disables escape character
+                kwargs["escapechar"] = None
+                kwargs["doublequote"] = True
+            else:
+                # Use specified escape character (e.g., backslash)
+                kwargs["escapechar"] = self.escape_char
+                kwargs["doublequote"] = False
+        else:
+            # Default: use double-quote convention
+            kwargs["doublequote"] = True
+
+        if not self.has_header:
+            kwargs["header"] = None
+
+        return kwargs
+
+
+@dataclass()
 class _BucketBasedDatasetLocatorFields:
     file_prefix: str
     file_suffix: str | None
     file_type: DatasetFileType
     timezone: tzinfo
+    csv_config: Optional[CSVConfig] = None
 
 
 class BucketBasedConnector(Connector, ABC):
@@ -148,10 +219,19 @@ class BucketBasedConnector(Connector, ABC):
         filtered_inferences = []
         for inference in inferences:
             timestamp = inference[timestamp_col]
-            timestamp_dt = parser.parse(timestamp)
+            # Handle case where timestamp is already a datetime object (e.g., from parquet files)
+            if isinstance(timestamp, (datetime, pd.Timestamp)):
+                timestamp_dt = timestamp
+            else:
+                timestamp_dt = parser.parse(timestamp)
             if not check_datetime_tz_aware(timestamp_dt):
                 # timestamp in data is naive - assume it should have the passed timezone
-                timestamp_dt = timestamp_dt.astimezone(tz)
+                if isinstance(timestamp_dt, pd.Timestamp):
+                    # pd.Timestamp requires tz_localize for naive timestamps
+                    timestamp_dt = timestamp_dt.tz_localize(tz)
+                else:
+                    # datetime objects use astimezone
+                    timestamp_dt = timestamp_dt.astimezone(tz)
             if start_time <= timestamp_dt < end_time:
                 filtered_inferences.append(inference)
         return filtered_inferences
@@ -291,11 +371,33 @@ class BucketBasedConnector(Connector, ABC):
         timezone = pytz.timezone(
             dataset_locator_fields[BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD],
         )
+
+        # Create CSV configuration if file type is CSV
+        csv_config = None
+        if file_type == DatasetFileType.CSV:
+            csv_has_header_str = dataset_locator_fields.get(
+                CSV_HAS_HEADER_FIELD, "true"
+            )
+            csv_has_header = (
+                csv_has_header_str.lower() == "true"
+                if isinstance(csv_has_header_str, str)
+                else True
+            )
+
+            csv_config = CSVConfig(
+                delimiter=dataset_locator_fields.get(CSV_DELIMITER_FIELD, ","),
+                quote_char=dataset_locator_fields.get(CSV_QUOTE_CHAR_FIELD, '"'),
+                escape_char=dataset_locator_fields.get(CSV_ESCAPE_CHAR_FIELD),
+                has_header=csv_has_header,
+                encoding=dataset_locator_fields.get(CSV_ENCODING_FIELD, "utf-8"),
+            )
+
         return _BucketBasedDatasetLocatorFields(
             file_prefix=file_prefix,
             file_suffix=file_suffix,
             file_type=file_type,
             timezone=timezone,
+            csv_config=csv_config,
         )
 
     def _get_matching_files(
@@ -381,6 +483,7 @@ class BucketBasedConnector(Connector, ABC):
                         self.file_system,
                         file_name,
                         locator_fields.file_type,
+                        locator_fields.csv_config,
                     ): file_name
                     for file_name in matching_files
                 }

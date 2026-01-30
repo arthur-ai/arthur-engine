@@ -57,6 +57,17 @@ def relevance_models_enabled() -> bool:
     return False
 
 
+def skip_model_loading() -> bool:
+    """Check if model downloading and loading should be skipped."""
+    if skip_loading := get_env_var(
+        constants.GENAI_ENGINE_SKIP_MODEL_LOADING_ENV_VAR,
+        none_on_missing=False,
+        default="false",
+    ):
+        return skip_loading.lower() == "true"
+    return False
+
+
 def log_llm_metrics(
     operation: str,
     openai_callback: OpenAICallbackHandler,
@@ -341,11 +352,15 @@ def get_logger(
 ) -> logging.Logger:
     logger = logging.getLogger(logger_name)
     logger.setLevel(log_level)
-    stream_handler = logging.StreamHandler()
-    log_formatter = logging.Formatter(
-        fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
-        datefmt="%Y-%m-%d %H:%M:%S %z",
-    )
-    stream_handler.setFormatter(log_formatter)
-    logger.addHandler(stream_handler)
+    # Only add handler if one doesn't already exist to prevent duplicate logs
+    if not logger.handlers:
+        stream_handler = logging.StreamHandler()
+        log_formatter = logging.Formatter(
+            fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
+            datefmt="%Y-%m-%d %H:%M:%S %z",
+        )
+        stream_handler.setFormatter(log_formatter)
+        logger.addHandler(stream_handler)
+    # Disable propagation to prevent duplicate logs from parent loggers
+    logger.propagate = False
     return logger

@@ -1,17 +1,19 @@
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
-import { MaterialReactTable } from "material-react-table";
 import { useCallback, useMemo, useState } from "react";
 
-import { sessionLevelColumns } from "../../data/session-level-columns";
+import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
+import { createSessionLevelColumns } from "../../data/create-session-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
-import { useTable } from "../../hooks/useTable";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
-import { createFilterRow } from "../filtering/filters-row";
+import { FilterRow } from "../filtering/FilterRow";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
 
+import { TracesTable } from "./TracesTable";
+
+import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -20,6 +22,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredSessions } from "@/services/tracing";
+import { formatDate } from "@/utils/formatters";
 
 interface SessionLevelProps {
   welcomeDismissed: boolean;
@@ -70,22 +73,37 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     [setDrawerTarget, task?.id]
   );
 
-  const table = useTable({
-    data: data?.sessions ?? DEFAULT_DATA,
-    columns: sessionLevelColumns,
-    pagination: { state: pagination, onChange: props.onPaginationChange, rowCount: data?.count ?? 0 },
-    state: {
-      sorting,
-      isLoading,
-    },
-    onRowClick: handleRowClick,
-  });
-
-  const { FiltersRow } = useMemo(
+  const columns = useMemo(
     () =>
-      createFilterRow(SESSION_FIELDS, {
-        user_ids: { taskId: task?.id ?? "", api },
+      createSessionLevelColumns({
+        formatDate,
+        formatCurrency: () => "", // Not used in session columns but required by type
+        onTrack: track,
+        Chip: CopyableChip,
+        DurationCell: () => null, // Not used in session columns
+        TraceContentCell: () => null, // Not used in session columns
+        AnnotationCell: () => null, // Not used in session columns
+        SpanStatusBadge: () => null, // Not used in session columns
+        TypeChip: () => null, // Not used in session columns
+        TokenCountTooltip,
+        TokenCostTooltip,
       }),
+    []
+  );
+
+  const setFilters = useFilterStore((state) => state.setFilters);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: typeof filters) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
+
+  const dynamicEnumArgMap = useMemo(
+    () => ({
+      user_ids: { taskId: task?.id ?? "", api },
+    }),
     [task?.id, api]
   );
 
@@ -105,12 +123,29 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   return (
     <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
-        {/* Only show FiltersRow if we have sessions or if filters are active */}
-        {(hasData || hasActiveFilters) && <FiltersRow />}
+        {/* Only show FilterRow if we have sessions or if filters are active */}
+        {(hasData || hasActiveFilters) && (
+          <FilterRow
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            fieldConfig={SESSION_FIELDS as readonly (typeof SESSION_FIELDS)[number][]}
+            dynamicEnumArgMap={dynamicEnumArgMap}
+            onTrack={track}
+          />
+        )}
 
         {hasData && (
           <>
-            <MaterialReactTable table={table} />
+            <TracesTable
+              data={data?.sessions ?? DEFAULT_DATA}
+              columns={columns}
+              rowCount={data?.count ?? 0}
+              pagination={pagination}
+              onPaginationChange={props.onPaginationChange}
+              isLoading={isLoading}
+              onRowClick={handleRowClick}
+              sorting={sorting}
+            />
           </>
         )}
       </DataContentGate>

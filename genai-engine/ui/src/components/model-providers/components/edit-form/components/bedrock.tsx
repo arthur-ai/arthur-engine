@@ -1,4 +1,4 @@
-import { Stack, TextField, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Divider, Stack, TextField, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import z from "zod";
 
@@ -10,6 +10,8 @@ export const BedrockFields = withFieldGroup({
   defaultValues: {
     type: "api_key",
     api_key: "",
+    aws_access_key_id: "",
+    aws_secret_access_key: "",
     aws_bedrock_runtime_endpoint: "",
     aws_role_name: "",
     aws_session_name: "",
@@ -50,10 +52,9 @@ export const BedrockFields = withFieldGroup({
         </group.AppField>
 
         {type === "api_key" && (
-          <group.AppField name="api_key" validators={{ onChange: z.string().min(1, "API Key is required") }}>
+          <group.AppField name="api_key" validators={{ onChange: z.string() }}>
             {(field) => (
               <TextField
-                required
                 label="API Key"
                 type="password"
                 fullWidth
@@ -69,10 +70,25 @@ export const BedrockFields = withFieldGroup({
 
         {type === "access_key" && (
           <>
-            <group.AppField name="aws_access_key_id" validators={{ onChange: z.string().min(1, "Access Key ID is required") }}>
+            <group.AppField
+              name="aws_access_key_id"
+              validators={{
+                onChangeListenTo: ["aws_secret_access_key"],
+                onChange: ({ value, fieldApi }) => {
+                  const secretKey = fieldApi.form.getFieldValue("aws_secret_access_key");
+
+                  if (!secretKey && !value) return null;
+
+                  if (!secretKey || !value) {
+                    return { message: "Access Key ID and Secret Access Key must be provided together" };
+                  }
+
+                  return null;
+                },
+              }}
+            >
               {(field) => (
                 <TextField
-                  required
                   label="Access Key ID"
                   type="password"
                   fullWidth
@@ -85,10 +101,9 @@ export const BedrockFields = withFieldGroup({
               )}
             </group.AppField>
 
-            <group.AppField name="aws_secret_access_key" validators={{ onChange: z.string().min(1, "Secret Access Key is required") }}>
+            <group.AppField name="aws_secret_access_key" validators={{ onChange: z.string() }}>
               {(field) => (
                 <TextField
-                  required
                   label="Secret Access Key"
                   type="password"
                   fullWidth
@@ -102,6 +117,8 @@ export const BedrockFields = withFieldGroup({
             </group.AppField>
           </>
         )}
+
+        <Divider />
 
         <group.AppField name="aws_bedrock_runtime_endpoint" validators={{ onChange: z.url().or(z.literal("")) }}>
           {(field) => (

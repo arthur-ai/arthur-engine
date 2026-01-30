@@ -1850,13 +1850,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/pacer@npm:0.17.3":
-  version: 0.17.3
-  resolution: "@tanstack/pacer@npm:0.17.3"
+"@tanstack/pacer@npm:0.18.0":
+  version: 0.18.0
+  resolution: "@tanstack/pacer@npm:0.18.0"
   dependencies:
     "@tanstack/devtools-event-client": "npm:^0.4.0"
     "@tanstack/store": "npm:^0.8.0"
-  checksum: 10c0/0c1d40901b7b30124e5df8a37ebb087b44e8dfb6834145c00dbb1f384233c501df546cd6675fcfcf2da6eb4d3323d40c0c96169e36db380531998f95783efd5e
+  checksum: 10c0/0ac73f1a9808e6efb4ad996f97514271fe3fde72a3d4f7d54ba6dbd323a8e9e30d2e4134efcfceb45717b387b0e8e7c026af72ea4261a270fe4eabc3385168a3
   languageName: node
   linkType: hard
 
@@ -1890,15 +1890,15 @@ __metadata:
   linkType: hard
 
 "@tanstack/react-pacer@npm:^0.19.0":
-  version: 0.19.3
-  resolution: "@tanstack/react-pacer@npm:0.19.3"
+  version: 0.19.4
+  resolution: "@tanstack/react-pacer@npm:0.19.4"
   dependencies:
-    "@tanstack/pacer": "npm:0.17.3"
+    "@tanstack/pacer": "npm:0.18.0"
     "@tanstack/react-store": "npm:^0.8.0"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 10c0/aa625abf2ba83eaf9785ee3ffecc875ce6ed4587158f1bb7a62f14dfc667254056aca976242f64cfcd18437c8567a28196b42ab6c178fad03f7af04911340980
+  checksum: 10c0/05152a11f015c35b13c1d156985f408c33f5970739a734859ebccedbd8f853f80209db0503adb78f9dc0e97762fced565ea1d34e44b9da94c90924ce39bc81ba
   languageName: node
   linkType: hard
 
@@ -2222,11 +2222,11 @@ __metadata:
   linkType: hard
 
 "@types/react@npm:*, @types/react@npm:^19.1.13":
-  version: 19.2.9
-  resolution: "@types/react@npm:19.2.9"
+  version: 19.2.10
+  resolution: "@types/react@npm:19.2.10"
   dependencies:
     csstype: "npm:^3.2.2"
-  checksum: 10c0/91c6839edd10ebdab4cd686d2a744e6ae078ed5831a36d48284ae92df0463c89bda1084ffdd2e6445f0716236c2c6ae0828b82f70720727632331695f4581d2a
+  checksum: 10c0/17b96203a79ad3fa3cee8f1f1f324b93f005bc125755e29ac149402807275feaf3f00a4e65b8405f633923ac993da5737fd9800d27ee49911f3ed51dc27478f9
   languageName: node
   linkType: hard
 
@@ -2705,13 +2705,13 @@ __metadata:
   linkType: hard
 
 "axios@npm:^1.12.2":
-  version: 1.13.3
-  resolution: "axios@npm:1.13.3"
+  version: 1.13.4
+  resolution: "axios@npm:1.13.4"
   dependencies:
     follow-redirects: "npm:^1.15.6"
     form-data: "npm:^4.0.4"
     proxy-from-env: "npm:^1.1.0"
-  checksum: 10c0/86f0770624d9f14a3f8f8738c8b8f7f7fbb7b0d4ad38757db1de2d71007a0311bc597661c5ff4b4a9ee6350c6956a7282e3a281fcdf7b5b32054e35a8801e2ce
+  checksum: 10c0/474c00b7d71f4de4ad562589dae6b615149df7c2583bbc5ebba96229f3f85bfb0775d23705338df072f12e48d3e85685c065a3cf6855d58968a672d19214c728
   languageName: node
   linkType: hard
 
@@ -6584,13 +6584,13 @@ __metadata:
   linkType: hard
 
 "react-dom@npm:^19.1.1":
-  version: 19.2.3
-  resolution: "react-dom@npm:19.2.3"
+  version: 19.2.4
+  resolution: "react-dom@npm:19.2.4"
   dependencies:
     scheduler: "npm:^0.27.0"
   peerDependencies:
-    react: ^19.2.3
-  checksum: 10c0/dc43f7ede06f46f3acc16ee83107c925530de9b91d1d0b3824583814746ff4c498ea64fd65cd83aba363205268adff52e2827c582634ae7b15069deaeabc4892
+    react: ^19.2.4
+  checksum: 10c0/f0c63f1794dedb154136d4d0f59af00b41907f4859571c155940296808f4b94bf9c0c20633db75b5b2112ec13d8d7dd4f9bf57362ed48782f317b11d05a44f35
   languageName: node
   linkType: hard
 
@@ -6727,9 +6727,9 @@ __metadata:
   linkType: hard
 
 "react@npm:^19.1.1":
-  version: 19.2.3
-  resolution: "react@npm:19.2.3"
-  checksum: 10c0/094220b3ba3a76c1b668f972ace1dd15509b157aead1b40391d1c8e657e720c201d9719537375eff08f5e0514748c0319063392a6f000e31303aafc4471f1436
+  version: 19.2.4
+  resolution: "react@npm:19.2.4"
+  checksum: 10c0/cd2c9ff67a720799cc3b38a516009986f7fc4cb8d3e15716c6211cf098d1357ee3e348ab05ad0600042bbb0fd888530ba92e329198c92eafa0994f5213396596
   languageName: node
   linkType: hard
 

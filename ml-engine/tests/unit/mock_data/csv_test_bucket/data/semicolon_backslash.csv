@@ -1,0 +1,4 @@
+id;name;value;notes;timestamp
+1;"John Doe";100.5;"Simple note";2025-01-01 10:00:00
+2;"Jane \"Jay\" Smith";200.75;"Contains \"quotes\" here";2025-01-02 11:30:00
+3;"Bob;Wilson";150.25;"Has;semicolon";2025-01-03 12:45:00
