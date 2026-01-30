@@ -26,7 +26,13 @@ from schemas.response_schemas import (
 from services.prompt.chat_completion_service import ChatCompletionService
 
 
-class AgenticPromptRepository(BaseLLMRepository):
+class AgenticPromptRepository(
+    BaseLLMRepository[
+        DatabaseAgenticPrompt,
+        DatabaseAgenticPromptVersionTag,
+        CreateAgenticPromptRequest,
+    ],
+):
     db_model: Type[DatabaseAgenticPrompt] = DatabaseAgenticPrompt
     tag_db_model: Type[DatabaseAgenticPromptVersionTag] = (
         DatabaseAgenticPromptVersionTag
@@ -37,7 +43,7 @@ class AgenticPromptRepository(BaseLLMRepository):
         super().__init__(db_session)
         self.model_provider_repo = ModelProviderRepository(db_session)
 
-    def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:  # type: ignore[override]
+    def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:
         # Added the type override to avoid type error when overriding the method from the base class
         tags = self._get_all_tags_for_item_version(db_prompt)
 
@@ -57,7 +63,7 @@ class AgenticPromptRepository(BaseLLMRepository):
 
     def _extract_variables_from_item(
         self,
-        item: CreateAgenticPromptRequest,  # type: ignore[override]
+        item: CreateAgenticPromptRequest,
     ) -> List[str]:
         return list(
             self.chat_completion_service.find_missing_variables_in_messages(
@@ -68,7 +74,7 @@ class AgenticPromptRepository(BaseLLMRepository):
 
     def _to_versions_reponse_item(
         self,
-        db_item: DatabaseAgenticPrompt,  # type: ignore[override]
+        db_item: DatabaseAgenticPrompt,
     ) -> AgenticPromptVersionResponse:
         num_messages = len(db_item.messages or [])
         num_tools = len(db_item.tools or [])
@@ -85,7 +91,7 @@ class AgenticPromptRepository(BaseLLMRepository):
             tags=tags or [],
         )
 
-    def _clear_db_item_data(self, db_item: DatabaseAgenticPrompt) -> None:  # type: ignore[override]
+    def _clear_db_item_data(self, db_item: DatabaseAgenticPrompt) -> None:
         db_item.model_name = ""
         db_item.messages = []
         db_item.tools = None
@@ -95,7 +101,7 @@ class AgenticPromptRepository(BaseLLMRepository):
         self,
         task_id: str,
         item_name: str,
-        item: CreateAgenticPromptRequest,  # type: ignore[override]
+        item: CreateAgenticPromptRequest,
     ) -> AgenticPrompt:
         return cast(
             AgenticPrompt,

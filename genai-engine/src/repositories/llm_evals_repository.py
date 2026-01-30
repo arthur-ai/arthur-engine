@@ -12,7 +12,6 @@ from litellm import supports_response_schema
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from db_models.base import Base
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
@@ -31,9 +30,11 @@ from schemas.response_schemas import (
 from services.prompt.chat_completion_service import ChatCompletionService
 
 
-class LLMEvalsRepository(BaseLLMRepository):
-    db_model: Type[Base] = DatabaseLLMEval
-    tag_db_model: Type[Base] = DatabaseLLMEvalVersionTag
+class LLMEvalsRepository(
+    BaseLLMRepository[DatabaseLLMEval, DatabaseLLMEvalVersionTag, CreateEvalRequest],
+):
+    db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
+    tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
 
     def __init__(self, db_session: Session):
@@ -41,7 +42,7 @@ class LLMEvalsRepository(BaseLLMRepository):
         self.model_provider_repo = ModelProviderRepository(db_session)
         self.chat_completion_service = ChatCompletionService()
 
-    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:  # type: ignore[override]
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
         tags = self._get_all_tags_for_item_version(db_eval)
 
         return LLMEval(
@@ -57,7 +58,7 @@ class LLMEvalsRepository(BaseLLMRepository):
             version=db_eval.version,
         )
 
-    def _to_versions_reponse_item(  # type: ignore[override]
+    def _to_versions_reponse_item(
         self,
         db_item: DatabaseLLMEval,
         tags: Optional[List[str]] = None,
@@ -73,12 +74,12 @@ class LLMEvalsRepository(BaseLLMRepository):
             tags=tags,
         )
 
-    def _clear_db_item_data(self, db_item: DatabaseLLMEval) -> None:  # type: ignore[override]
+    def _clear_db_item_data(self, db_item: DatabaseLLMEval) -> None:
         db_item.model_name = ""
         db_item.instructions = ""
         db_item.config = None
 
-    def _extract_variables_from_item(self, item: CreateEvalRequest) -> List[str]:  # type: ignore[override]
+    def _extract_variables_from_item(self, item: CreateEvalRequest) -> List[str]:
         return list(
             self.chat_completion_service.find_undeclared_variables_in_text(
                 item.instructions,
@@ -117,7 +118,7 @@ class LLMEvalsRepository(BaseLLMRepository):
         self,
         task_id: str,
         item_name: str,
-        item: CreateEvalRequest,  # type: ignore[override]
+        item: CreateEvalRequest,
     ) -> LLMEval:
         return cast(LLMEval, super().save_llm_item(task_id, item_name, item))
 

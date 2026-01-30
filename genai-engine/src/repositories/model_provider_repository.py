@@ -264,7 +264,7 @@ class ModelProviderRepository:
 
         return LLMClient(
             provider=provider,
-            api_key=api_key or "",
+            api_key=api_key,
             project_id=secret.project_id,
             region=secret.region,
             api_base=api_base,

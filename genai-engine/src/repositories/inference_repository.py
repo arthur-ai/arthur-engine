@@ -353,7 +353,7 @@ class InferenceRepository:
                 )
                 else RuleResultEnum.FAIL
             )
-            db_inference.model_name = model_name or ""
+            db_inference.model_name = model_name
             self.db_session.commit()
         except IntegrityError as err:
             logger.warning("Response was already validated.")

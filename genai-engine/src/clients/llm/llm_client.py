@@ -80,7 +80,7 @@ class LLMClient:
     def __init__(
         self,
         provider: ModelProvider,
-        api_key: str,
+        api_key: str | None = None,
         project_id: str | None = None,
         region: str | None = None,
         api_base: str | None = None,
