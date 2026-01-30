@@ -5598,7 +5598,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -6765,6 +6765,11 @@ export interface PromptVersionResultListResponse {
 
 /** PutModelProviderCredentials */
 export interface PutModelProviderCredentials {
+  /**
+   * Api Base
+   * The API base URL. Used for VLLM models.
+   */
+  api_base?: string | null;
   /**
    * Api Key
    * The API key for the provider.
@@ -11481,7 +11486,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.324
+ * @version 2.1.330
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

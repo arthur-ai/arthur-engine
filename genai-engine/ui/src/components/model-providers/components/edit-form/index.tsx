@@ -5,7 +5,8 @@ import { APIKeyFields } from "./components/api";
 import { BedrockFields } from "./components/bedrock";
 import { ConfirmationDialog } from "./components/confirmation-dialog";
 import { VertexAIFields } from "./components/vertex";
-import { BedrockFormValues, editFormOptions, VertexAIFormValues } from "./form";
+import { VllmFields } from "./components/vllm";
+import { BedrockFormValues, editFormOptions, VertexAIFormValues, VllmFormValues } from "./form";
 import { parseCredentials } from "./utils";
 
 import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
@@ -102,6 +103,23 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
         return;
       }
 
+      if (provider === "hosted_vllm") {
+        const values = value as VllmFormValues;
+
+        if (!values.api_base) {
+          formApi.setFieldMeta("api_base", (old) => ({
+            ...old,
+            errorMap: { onSubmit: { message: "API Base URL is required" } },
+          }));
+          return;
+        }
+
+        return onSubmit({
+          api_base: values.api_base,
+          api_key: values.api_key || undefined,
+        });
+      }
+
       return onSubmit({
         ...value,
       });
@@ -148,6 +166,15 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
                 aws_bedrock_runtime_endpoint: "aws_bedrock_runtime_endpoint",
                 aws_role_name: "aws_role_name",
                 aws_session_name: "aws_session_name",
+              }}
+            />
+          )}
+          {provider === "hosted_vllm" && (
+            <VllmFields
+              form={form}
+              fields={{
+                api_base: "api_base",
+                api_key: "api_key",
               }}
             />
           )}

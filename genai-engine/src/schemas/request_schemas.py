@@ -203,6 +203,10 @@ class PutModelProviderCredentials(BaseModel):
         default=None,
         description="The AWS session name.",
     )
+    api_base: Optional[SecretStr] = Field(
+        default=None,
+        description="The API base URL. Used for VLLM models.",
+    )
     credentials_file: Optional[GCPServiceAccountCredentialsRequest] = Field(
         default=None,
         description="Optional GCP service account credentials JSON",
