@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 01/30/2026
+- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
+
 # 01/27/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'

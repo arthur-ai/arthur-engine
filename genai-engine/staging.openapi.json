@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.332"
+        "version": "2.1.313"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -14062,6 +14062,53 @@
                 }
             }
         },
+        "/api/v1/discover-agents": {
+            "post": {
+                "tags": [
+                    "Agent Discovery"
+                ],
+                "summary": "Discover Agents",
+                "description": "Discover agents from infrastructure (e.g., GCP Vertex AI). This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.",
+                "operationId": "discover_agents_api_v1_discover_agents_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DiscoverAgentsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DiscoverAgentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -17608,6 +17655,38 @@
                 ],
                 "title": "CreateUserRequest"
             },
+            "CreationSource": {
+                "properties": {
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id",
+                        "description": "Optional UUID of the task that created this agent."
+                    },
+                    "resource_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Resource Id",
+                        "description": "Optional infrastructure resource ID (e.g., GCP reasoning engine ID)."
+                    }
+                },
+                "type": "object",
+                "title": "CreationSource",
+                "description": "Source information for how an unregistered agent was created."
+            },
             "DatasetColumnSource": {
                 "properties": {
                     "name": {
@@ -17975,6 +18054,119 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
+            },
+            "DiscoverAgentsRequest": {
+                "properties": {
+                    "data_plane_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Data Plane Id",
+                        "description": "UUID of the data plane to discover agents from"
+                    },
+                    "lookback_hours": {
+                        "type": "integer",
+                        "title": "Lookback Hours",
+                        "description": "Number of hours to look back for traces (default 30 days)",
+                        "default": 720
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data_plane_id"
+                ],
+                "title": "DiscoverAgentsRequest",
+                "description": "Request to discover agents from infrastructure."
+            },
+            "DiscoverAgentsResponse": {
+                "properties": {
+                    "agents": {
+                        "items": {
+                            "$ref": "#/components/schemas/DiscoveredAgent"
+                        },
+                        "type": "array",
+                        "title": "Agents",
+                        "description": "List of discovered agents"
+                    },
+                    "metadata": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Metadata",
+                        "description": "Discovery metadata (e.g., traces processed, errors)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "agents"
+                ],
+                "title": "DiscoverAgentsResponse",
+                "description": "Response containing discovered agents."
+            },
+            "DiscoveredAgent": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the agent."
+                    },
+                    "creation_source": {
+                        "$ref": "#/components/schemas/CreationSource",
+                        "description": "Information about how this agent was created."
+                    },
+                    "first_detected": {
+                        "type": "string",
+                        "title": "First Detected",
+                        "description": "ISO 8601 timestamp when agent was first detected."
+                    },
+                    "num_spans": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Num Spans",
+                        "description": "Number of spans associated with this agent."
+                    },
+                    "infrastructure": {
+                        "type": "string",
+                        "title": "Infrastructure",
+                        "description": "Infrastructure where this agent is running (e.g., 'GCP')."
+                    },
+                    "data_plane_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Data Plane Id",
+                        "description": "UUID of the data plane where this agent was detected."
+                    },
+                    "tools": {
+                        "items": {
+                            "$ref": "#/components/schemas/Tool"
+                        },
+                        "type": "array",
+                        "title": "Tools",
+                        "description": "List of tools used by this agent."
+                    },
+                    "sub_agents": {
+                        "items": {
+                            "$ref": "#/components/schemas/SubAgent"
+                        },
+                        "type": "array",
+                        "title": "Sub Agents",
+                        "description": "List of sub-agents used by this agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "creation_source",
+                    "first_detected",
+                    "infrastructure",
+                    "data_plane_id"
+                ],
+                "title": "DiscoveredAgent",
+                "description": "A discovered agent from infrastructure."
             },
             "EvalExecution": {
                 "properties": {
@@ -26611,6 +26803,21 @@
                 "type": "object",
                 "title": "StreamOptions"
             },
+            "SubAgent": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the sub-agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "SubAgent",
+                "description": "Sub-agent definition."
+            },
             "SummaryResults": {
                 "properties": {
                     "prompt_eval_summaries": {
@@ -26967,6 +27174,50 @@
                     "task"
                 ],
                 "title": "TokenUsageScope"
+            },
+            "Tool": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the tool."
+                    },
+                    "arguments": {
+                        "items": {
+                            "$ref": "#/components/schemas/ToolArgument"
+                        },
+                        "type": "array",
+                        "title": "Arguments",
+                        "description": "List of arguments for this tool."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "Tool",
+                "description": "Tool definition with arguments."
+            },
+            "ToolArgument": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the tool argument."
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type of the tool argument."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "type"
+                ],
+                "title": "ToolArgument",
+                "description": "Argument definition for a tool."
             },
             "ToolCall": {
                 "properties": {

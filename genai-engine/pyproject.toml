@@ -83,6 +83,7 @@ weaviate-client = "^4.17.0"
 arthur-common = "2.4.26"
 google-auth = "^2.48.0"
 google-cloud-aiplatform = ">=1.38"
+google-cloud-trace = "^1.11.0"
 
 
 [[tool.poetry.source]]
