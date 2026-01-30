@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from logging import Logger
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -85,7 +85,7 @@ def read_file(
 
                 # Read CSV and convert to list of dicts (matches JSON/PARQUET output format)
                 df = pd.read_csv(f, **csv_kwargs)
-                return df.to_dict("records")
+                return cast(list[dict[str, Any]], df.to_dict("records"))
         case _:
             raise NotImplementedError(
                 f"read_file not supported for file type {file_type}.",
