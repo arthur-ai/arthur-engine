@@ -206,13 +206,16 @@ export function useSyntheticDataSession(
         };
         const updatedConversation = [...conversation, userMessage];
 
+        // Filter out locked rows before sending to the backend
+        const unlockedRows = rows.filter((row) => !row.locked);
+
         const response =
           await api.api.sendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePost(
             datasetId,
             versionNumber,
             {
               message,
-              current_rows: syntheticRowsToApiFormat(rows),
+              current_rows: syntheticRowsToApiFormat(unlockedRows),
               conversation_history: updatedConversation,
               dataset_purpose: config.datasetPurpose,
               column_descriptions: config.columnDescriptions.map((col) => ({
@@ -233,7 +236,10 @@ export function useSyntheticDataSession(
           response.data.rows_modified ?? [],
           rows
         );
-        setRows(newRows);
+
+        // Merge locked rows back in (they weren't sent to the backend)
+        const lockedRows = rows.filter((row) => row.locked);
+        setRows([...newRows, ...lockedRows]);
 
         // Add assistant response to conversation
         setConversation([
