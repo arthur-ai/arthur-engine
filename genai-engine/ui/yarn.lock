@@ -6061,8 +6061,8 @@ __metadata:
   linkType: hard
 
 "nuqs@npm:^2.8.0":
-  version: 2.8.6
-  resolution: "nuqs@npm:2.8.6"
+  version: 2.8.7
+  resolution: "nuqs@npm:2.8.7"
   dependencies:
     "@standard-schema/spec": "npm:1.0.0"
   peerDependencies:
@@ -6083,7 +6083,7 @@ __metadata:
       optional: true
     react-router-dom:
       optional: true
-  checksum: 10c0/51cd3cbc77903688844daa2f189ce5548db05f43b9e98a62cd5fd0e62334dd270e413cfd9365ebcaa08d38be77bd9864563bca5c2e2a237f0f80b1d8ad1c0cad
+  checksum: 10c0/8c869aba208b245bad48b8d8e167a5505c35d0ec63e2741f10938a5b08227f2bb8b553c3d0ccdef186749cb2b9c7def6b226e75ca5b1b55d5715d2be6a21407c
   languageName: node
   linkType: hard
 
