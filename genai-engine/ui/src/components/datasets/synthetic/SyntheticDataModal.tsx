@@ -67,17 +67,22 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
     onClose();
   }, [session, onClose]);
 
-  const handleAcceptRows = useCallback(() => {
-    // Convert synthetic rows to the format expected by the dataset
-    const rowsToAdd = session.rows.map((row) => ({
-      data: Object.entries(row.data).map(([column_name, column_value]) => ({
-        column_name,
-        column_value,
-      })),
-    }));
-    onAcceptRows(rowsToAdd);
-    handleClose();
-  }, [session.rows, onAcceptRows, handleClose]);
+  const handleAcceptRows = useCallback(
+    (selectedIds: Set<string>) => {
+      // Convert selected synthetic rows to the format expected by the dataset
+      const rowsToAdd = session.rows
+        .filter((row) => selectedIds.has(row.id))
+        .map((row) => ({
+          data: Object.entries(row.data).map(([column_name, column_value]) => ({
+            column_name,
+            column_value,
+          })),
+        }));
+      onAcceptRows(rowsToAdd);
+      handleClose();
+    },
+    [session.rows, onAcceptRows, handleClose]
+  );
 
   const handleBack = useCallback(() => {
     setPhase("configure");

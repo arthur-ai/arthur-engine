@@ -1,6 +1,6 @@
 import { ArrowBack, Check } from "@mui/icons-material";
 import { Box, Button, Divider, Alert } from "@mui/material";
-import React from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { SyntheticDataChat } from "./SyntheticDataChat";
 import { SyntheticDataTable } from "./SyntheticDataTable";
@@ -20,7 +20,7 @@ interface SyntheticDataCanvasProps {
   onDeleteRows: (ids: string[]) => void;
   onToggleLock: (id: string) => void;
   onBack: () => void;
-  onAccept: () => void;
+  onAccept: (selectedIds: Set<string>) => void;
 }
 
 export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
@@ -37,6 +37,38 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
   onBack,
   onAccept,
 }) => {
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+
+  // Locked rows are always treated as selected. The effective selection is
+  // the user's checkbox selection merged with all locked row IDs.
+  // When nothing is explicitly selected (no checkboxes checked), accept all rows.
+  const lockedIds = useMemo(
+    () => new Set(rows.filter((r) => r.locked).map((r) => r.id)),
+    [rows]
+  );
+
+  // What the table shows as "checked": user selections + locked rows
+  const visibleSelection = useMemo(() => {
+    const merged = new Set(selectedRows);
+    for (const id of lockedIds) {
+      merged.add(id);
+    }
+    return merged;
+  }, [selectedRows, lockedIds]);
+
+  // What gets accepted: if any rows are selected (user checkboxes OR locked rows),
+  // use that selection. Otherwise accept all rows.
+  const effectiveSelection = useMemo(() => {
+    if (visibleSelection.size > 0) {
+      return visibleSelection;
+    }
+    return new Set(rows.map((r) => r.id));
+  }, [rows, visibleSelection]);
+
+  const handleAccept = useCallback(() => {
+    onAccept(effectiveSelection);
+  }, [onAccept, effectiveSelection]);
+
   return (
     <Box
       sx={{
@@ -90,6 +122,8 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
           <SyntheticDataTable
             rows={rows}
             columns={columns}
+            selectedRows={visibleSelection}
+            onSelectedRowsChange={setSelectedRows}
             onUpdateRow={onUpdateRow}
             onAddRow={onAddRow}
             onDeleteRows={onDeleteRows}
@@ -121,10 +155,10 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
           variant="contained"
           color="primary"
           startIcon={<Check />}
-          onClick={onAccept}
+          onClick={handleAccept}
           disabled={rows.length === 0 || isLoading}
         >
-          Accept {rows.length} Row{rows.length !== 1 ? "s" : ""}
+          Accept {effectiveSelection.size} Row{effectiveSelection.size !== 1 ? "s" : ""}
         </Button>
       </Box>
     </Box>

@@ -21,6 +21,8 @@ import type { SyntheticRow } from "./types";
 interface SyntheticDataTableProps {
   rows: SyntheticRow[];
   columns: string[];
+  selectedRows: Set<string>;
+  onSelectedRowsChange: (selectedRows: Set<string>) => void;
   onUpdateRow: (id: string, data: Record<string, string>) => void;
   onAddRow: (data: Record<string, string>) => void;
   onDeleteRows: (ids: string[]) => void;
@@ -30,12 +32,13 @@ interface SyntheticDataTableProps {
 export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
   rows,
   columns,
+  selectedRows,
+  onSelectedRowsChange,
   onUpdateRow,
   onAddRow,
   onDeleteRows,
   onToggleLock,
 }) => {
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{
     rowId: string;
     column: string;
@@ -46,30 +49,28 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
     (checked: boolean) => {
       if (checked) {
         // Only select unlocked rows
-        setSelectedRows(new Set(rows.filter((r) => !r.locked).map((r) => r.id)));
+        onSelectedRowsChange(new Set(rows.filter((r) => !r.locked).map((r) => r.id)));
       } else {
-        setSelectedRows(new Set());
+        onSelectedRowsChange(new Set());
       }
     },
-    [rows]
+    [rows, onSelectedRowsChange]
   );
 
   const handleSelectRow = useCallback((rowId: string, checked: boolean) => {
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(rowId);
-      } else {
-        next.delete(rowId);
-      }
-      return next;
-    });
-  }, []);
+    const next = new Set(selectedRows);
+    if (checked) {
+      next.add(rowId);
+    } else {
+      next.delete(rowId);
+    }
+    onSelectedRowsChange(next);
+  }, [selectedRows, onSelectedRowsChange]);
 
   const handleDeleteSelected = useCallback(() => {
     onDeleteRows(Array.from(selectedRows));
-    setSelectedRows(new Set());
-  }, [selectedRows, onDeleteRows]);
+    onSelectedRowsChange(new Set());
+  }, [selectedRows, onDeleteRows, onSelectedRowsChange]);
 
   const handleCellClick = useCallback(
     (rowId: string, column: string, currentValue: string, isLocked: boolean) => {
@@ -116,8 +117,9 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
   }, [columns, onAddRow]);
 
   const unlockedRows = rows.filter((r) => !r.locked);
-  const allSelected = unlockedRows.length > 0 && selectedRows.size === unlockedRows.length;
-  const someSelected = selectedRows.size > 0 && selectedRows.size < unlockedRows.length;
+  const unlockedSelectedCount = unlockedRows.filter((r) => selectedRows.has(r.id)).length;
+  const allSelected = unlockedRows.length > 0 && unlockedSelectedCount === unlockedRows.length;
+  const someSelected = unlockedSelectedCount > 0 && unlockedSelectedCount < unlockedRows.length;
 
   return (
     <Box
