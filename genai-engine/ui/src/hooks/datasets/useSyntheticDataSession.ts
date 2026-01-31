@@ -97,8 +97,9 @@ function apiRowsToSyntheticRows(
 
 function syntheticRowsToApiFormat(
   rows: SyntheticRow[]
-): { data: NewDatasetVersionRowColumnItemRequest[] }[] {
+): { id?: string; data: NewDatasetVersionRowColumnItemRequest[] }[] {
   return rows.map((row) => ({
+    id: row.id,
     data: Object.entries(row.data).map(([column_name, column_value]) => ({
       column_name,
       column_value,
@@ -230,16 +231,32 @@ export function useSyntheticDataSession(
             }
           );
 
-        const newRows = apiRowsToSyntheticRows(
+        // Only pass unlocked rows as existing rows context (locked rows are handled separately)
+        const unlockedRowsContext = rows.filter((r) => !r.locked);
+
+        const newUnlockedRows = apiRowsToSyntheticRows(
           response.data.rows,
           response.data.rows_added ?? [],
           response.data.rows_modified ?? [],
-          rows
+          unlockedRowsContext
         );
 
-        // Merge locked rows back in (they weren't sent to the backend)
-        const lockedRows = rows.filter((row) => row.locked);
-        setRows([...newRows, ...lockedRows]);
+        // Merge locked rows back in at their original positions
+        const newRowsMap = new Map(newUnlockedRows.map((r) => [r.id, r]));
+        const mergedRows = rows.map((row) => {
+          // Keep locked rows as-is with their locked state preserved
+          if (row.locked) {
+            return row;
+          }
+          // Replace unlocked rows with the updated version from the backend
+          return newRowsMap.get(row.id) || row;
+        });
+
+        // Add any new rows that weren't in the original set (newly generated rows)
+        const existingIds = new Set(rows.map((r) => r.id));
+        const additionalNewRows = newUnlockedRows.filter((r) => !existingIds.has(r.id));
+
+        setRows([...mergedRows, ...additionalNewRows]);
 
         // Add assistant response to conversation
         setConversation([

@@ -293,11 +293,8 @@ class SyntheticDataService:
         current_rows_internal = []
         current_row_ids = set()
         for row in request.current_rows:
-            row_id = (
-                str(uuid.uuid4())
-                if not hasattr(row, "id")
-                else getattr(row, "id", str(uuid.uuid4()))
-            )
+            # Use the provided row ID if available, otherwise generate a new one
+            row_id = row.id if row.id is not None else str(uuid.uuid4())
             # Handle NewDatasetVersionRowRequest format
             row_data = []
             if hasattr(row, "data"):
