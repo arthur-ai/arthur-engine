@@ -1,11 +1,13 @@
 from typing import Any, Callable, ParamSpec, TypeVar
 
+from sqlalchemy import Select
 from sqlalchemy.orm import Query
 
 # QueryT: A bounded TypeVar for SQLAlchemy Query objects.
 # Introduced to maintain type safety in filter aggregation functions that return
 # SQLAlchemy Query instances, allowing proper type inference throughout the call chain.
-QueryT = TypeVar("QueryT", bound=Query)
+QueryT = TypeVar("QueryT", bound=Query[Any])
+QueryTSelect = TypeVar("QueryTSelect", bound=Select[Any])
 
 # FunctionT: A bounded TypeVar for callable objects.
 # Used in authentication decorators to preserve the original function's type signature

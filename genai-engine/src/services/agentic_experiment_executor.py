@@ -14,13 +14,14 @@ import json
 import logging
 import time
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import requests
 from arthur_common.models.common_schemas import (
     PaginationParameters,
     VariableTemplateValue,
 )
+from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -84,7 +85,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             )
             return None
 
-    def _get_db_test_cases(
+    def _get_db_test_cases(  # type: ignore[override]
         self,
         experiment_id: str,
         db_session: Session,
@@ -93,7 +94,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         agentic_experiment_repo = AgenticExperimentRepository(db_session)
         return agentic_experiment_repo._get_db_test_cases(experiment_id, status_filter)
 
-    def _get_db_test_case(
+    def _get_db_test_case(  # type: ignore[override]
         self,
         test_case_id: str,
         db_session: Session,
@@ -104,7 +105,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_experiment_outputs(
         self,
         db_session: Session,
-        test_case: DatabaseAgenticExperimentTestCase,
+        test_case: DatabaseAgenticExperimentTestCase,  # type: ignore[override]
         request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
@@ -144,7 +145,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
 
     def _calculate_total_test_case_cost(
         self,
-        test_case: DatabaseAgenticExperimentTestCase,
+        test_case: DatabaseAgenticExperimentTestCase,  # type: ignore[override]
     ) -> float:
         """
         Calculate the total cost for an agentic test case.
@@ -507,7 +508,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 pagination_params = PaginationParameters(
                     page=0,
                     page_size=10,
-                    sort="desc",
+                    sort=PaginationSortMethod.DESCENDING,
                 )
                 count, traces = span_repo.get_session_traces(
                     session_id=session_id,
@@ -534,7 +535,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_evaluations(
         self,
         db_session: Session,
-        test_case: DatabaseAgenticExperimentTestCase,
+        test_case: DatabaseAgenticExperimentTestCase,  # type: ignore[override]
     ) -> bool:
         """
         Execute all evaluations for an agentic test case.
@@ -607,8 +608,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_single_eval(
         self,
         db_session: Session,
-        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
-        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,
+        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,  # type: ignore[override]
+        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,  # type: ignore[override]
     ) -> bool:
         """
         Execute a single evaluation.
@@ -826,7 +827,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _set_summary_results(
         self,
         db_session: Session,
-        experiment: DatabaseAgenticExperiment,
+        experiment: DatabaseAgenticExperiment,  # type: ignore[override]
     ) -> None:
         """
         Calculate summary results for an experiment based on completed test cases.
@@ -907,7 +908,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                     AgenticEvalResultSummaries(
                         eval_name=eval_name,
                         eval_version=str(eval_version),
-                        transform_id=transform_id,
+                        transform_id=UUID(transform_id),
                         eval_results=[eval_result_summary],
                     ),
                 )

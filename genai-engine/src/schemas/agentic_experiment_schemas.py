@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Annotated, Dict, List, Literal, Optional, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Discriminator, Field, model_validator
 
 from schemas.base_experiment_schemas import (
     BaseConfigResult,
-    BaseExperimentDetail,
+    BaseEvalRef,
     BaseExperimentSummary,
     BaseResult,
     BaseTestCase,
     DatasetColumnVariableSource,
     DatasetRefInput,
-    EvalRef,
     EvalResultSummary,
+    GroundBaseExperimentDetail,
     InputVariable,
     TransformVariableExperimentOutputSource,
 )
@@ -140,7 +140,7 @@ class AgenticEvalVariableMapping(BaseModel):
 
 
 # Eval configuration with transform
-class AgenticEvalRef(EvalRef):
+class AgenticEvalRef(BaseEvalRef):
     """Reference to an evaluation configuration with transform"""
 
     transform_id: UUID = Field(
@@ -238,7 +238,7 @@ class AgenticSummaryResults(BaseModel):
     )
 
 
-class AgenticExperimentDetail(BaseExperimentDetail):
+class AgenticExperimentDetail(GroundBaseExperimentDetail):
     """Detailed information about an agentic experiment"""
 
     http_template: HttpTemplate = Field(
@@ -268,7 +268,9 @@ class AgenticExperimentListResponse(BasePaginationResponse):
 class AgenticOutput(BaseModel):
     """Output from an agent HTTP request execution"""
 
-    response_body: Dict = Field(description="Response body from the agent endpoint")
+    response_body: Dict[str, Any] = Field(
+        description="Response body from the agent endpoint",
+    )
     status_code: Optional[int] = Field(
         default=None,
         description="HTTP status code (None if request failed before receiving a response)",
