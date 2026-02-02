@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.334"
+        "version": "2.1.313"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -17670,7 +17670,7 @@
                         "title": "Task Id",
                         "description": "Optional UUID of the task that created this agent."
                     },
-                    "resource_id": {
+                    "top_level_span_name": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -17679,8 +17679,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Resource Id",
-                        "description": "Optional infrastructure resource ID (e.g., GCP reasoning engine ID)."
+                        "title": "Top Level Span Name",
+                        "description": "Optional top-level span name (will be migrated to resource_id in future)."
                     }
                 },
                 "type": "object",
@@ -21133,8 +21133,7 @@
                     "openai",
                     "gemini",
                     "bedrock",
-                    "vertex_ai",
-                    "hosted_vllm"
+                    "vertex_ai"
                 ],
                 "title": "ModelProvider"
             },

@@ -78,9 +78,9 @@ def discover_agents(
         return response
 
     except ValueError as e:
-        # Data plane not found or invalid infrastructure
+        # Configuration error (e.g., missing GOOGLE_CLOUD_PROJECT)
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
     except Exception as e:

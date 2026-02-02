@@ -27,9 +27,9 @@ class CreationSource(BaseModel):
         default=None,
         description="Optional UUID of the task that created this agent.",
     )
-    resource_id: str | None = Field(
+    top_level_span_name: str | None = Field(
         default=None,
-        description="Optional infrastructure resource ID (e.g., GCP reasoning engine ID).",
+        description="Optional top-level span name (will be migrated to resource_id in future).",
     )
 
 

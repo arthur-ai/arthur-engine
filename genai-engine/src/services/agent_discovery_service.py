@@ -371,12 +371,12 @@ class AgentDiscoveryService:
             # Get span count
             num_spans = trace_data.get("num_spans", 0)
 
-        # Build discovered agent with resource_id as the unique identifier
+        # Build discovered agent with top_level_span_name (will be migrated to resource_id in future)
         return DiscoveredAgent(
             name=f"Vertex AI Agent: {name}",
             creation_source=CreationSource(
                 task_id=None,
-                resource_id=resource_id,  # Use full GCP resource path (e.g., projects/.../reasoningEngines/...)
+                top_level_span_name=resource_id,  # Use full GCP resource path (e.g., projects/.../reasoningEngines/...)
             ),
             first_detected=first_detected,
             infrastructure="GCP",

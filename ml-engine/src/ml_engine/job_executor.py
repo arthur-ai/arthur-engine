@@ -354,9 +354,26 @@ class JobExecutor:
                             raise ValueError(
                                 f"Expected DiscoverAgentsJobSpec type, got {type(job.job_spec.actual_instance)}.",
                             )
+
+                        # Get GenAI Engine configuration
+                        genai_engine_url = Config.settings.GENAI_ENGINE_INTERNAL_HOST
+                        genai_engine_api_key = (
+                            Config.settings.GENAI_ENGINE_INTERNAL_API_KEY
+                        )
+
+                        if not genai_engine_url or not genai_engine_api_key:
+                            self.logger.error(
+                                "GenAI Engine configuration missing. "
+                                "GENAI_ENGINE_INTERNAL_HOST and GENAI_ENGINE_INTERNAL_API_KEY must be set."
+                            )
+                            raise ValueError("GenAI Engine configuration missing")
+
                         DiscoverAgentsExecutor(
                             self.unregistered_agents_client,
+                            self.models_client,
                             self.logger,
+                            genai_engine_url,
+                            genai_engine_api_key,
                         ).execute(job, job.job_spec.actual_instance)
                     case _:
                         raise NotImplementedError(f"Job type {job.kind} not supported.")

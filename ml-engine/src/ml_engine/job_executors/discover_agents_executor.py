@@ -2,36 +2,44 @@
 Executor for discovering unregistered agents from GCP data planes.
 
 This executor:
-1. Lists all deployed Vertex AI agent engines
-2. Fetches traces from Cloud Trace to extract agent metadata (tools, sub-agents)
-3. Converts them to Arthur's unregistered agent format
-4. Publishes them to the Arthur platform
+1. Calls GenAI Engine API to discover agents from infrastructure
+2. Filters discovered agents against existing Models
+3. Publishes filtered agents to the Arthur platform as UnregisteredAgents
 """
 
 import logging
-import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List
 
-import vertexai
 from arthur_client.api_bindings import (
     DiscoverAgentsJobSpec,
     Job,
+    ModelsV1Api,
     PutUnregisteredAgents,
     UnregisteredAgent,
     UnregisteredAgentsV1Api,
 )
-from google.cloud import trace_v1
+from genai_client import (
+    AgentDiscoveryApi,
+    ApiClient,
+    Configuration,
+    DiscoverAgentsRequest,
+)
 
 
 class DiscoverAgentsExecutor:
     def __init__(
         self,
         unregistered_agents_client: UnregisteredAgentsV1Api,
+        models_client: ModelsV1Api,
         logger: logging.Logger,
+        genai_engine_url: str,
+        genai_engine_api_key: str,
     ) -> None:
         self.unregistered_agents_client = unregistered_agents_client
+        self.models_client = models_client
         self.logger = logger
+        self.genai_engine_url = genai_engine_url
+        self.genai_engine_api_key = genai_engine_api_key
 
     def execute(self, job: Job, job_spec: DiscoverAgentsJobSpec) -> None:
         """Execute agent discovery job."""
@@ -47,41 +55,64 @@ class DiscoverAgentsExecutor:
         )
 
         try:
-            # Load GCP configuration from data plane
-            gcp_config = self._load_gcp_config(str(job_spec.data_plane_id))
-
-            if not gcp_config:
-                self.logger.warning(
-                    f"Data plane {job_spec.data_plane_id} is not GCP infrastructure, skipping",
-                    extra={"data_plane_id": str(job_spec.data_plane_id)},
-                )
-                return
-
-            # Discover agents from GCP
-            agents = self._discover_gcp_agents(
-                gcp_config,
+            # Call GenAI Engine to discover agents
+            discovered_agents = self._discover_agents_from_genai_engine(
                 str(job_spec.data_plane_id),
                 job_spec.lookback_hours,
             )
 
-            if not agents:
+            if not discovered_agents:
                 self.logger.info(
-                    f"No agents found for data plane {job_spec.data_plane_id}",
+                    f"No agents discovered for data plane {job_spec.data_plane_id}",
                     extra={"data_plane_id": str(job_spec.data_plane_id)},
                 )
                 return
 
+            self.logger.info(
+                f"Discovered {len(discovered_agents)} agent(s) from GenAI Engine",
+                extra={"num_discovered": len(discovered_agents)},
+            )
+
+            # Filter against existing Models (if project_id provided)
+            project_id = str(job_spec.project_id) if job_spec.project_id else None
+            filtered_agents = self._filter_against_existing_models(
+                discovered_agents,
+                str(job_spec.workspace_id),
+                str(job_spec.data_plane_id),
+                project_id,
+            )
+
+            if not filtered_agents:
+                self.logger.info(
+                    f"All discovered agents match existing Models, nothing to publish",
+                    extra={
+                        "data_plane_id": str(job_spec.data_plane_id),
+                        "num_discovered": len(discovered_agents),
+                        "num_filtered": 0,
+                    },
+                )
+                return
+
+            self.logger.info(
+                f"Filtered to {len(filtered_agents)} new agent(s) after matching",
+                extra={
+                    "num_discovered": len(discovered_agents),
+                    "num_filtered": len(filtered_agents),
+                },
+            )
+
             # Publish to Arthur platform
             results = self._publish_agents(
                 str(job_spec.workspace_id),
-                agents,
+                filtered_agents,
             )
 
             self.logger.info(
                 f"Agent discovery completed for data plane {job_spec.data_plane_id}",
                 extra={
                     "data_plane_id": str(job_spec.data_plane_id),
-                    "total_agents": len(agents),
+                    "total_discovered": len(discovered_agents),
+                    "total_filtered": len(filtered_agents),
                     "num_created": results["created"],
                     "num_updated": results["updated"],
                     "num_skipped": results["skipped"],
@@ -99,321 +130,158 @@ class DiscoverAgentsExecutor:
             )
             raise
 
-    def _load_gcp_config(self, data_plane_id: str) -> Dict[str, str] | None:
-        """Load GCP configuration from environment variables.
-
-        If GCP environment variables are not set, returns None (non-GCP environment).
-        This allows the executor to run in local/non-GCP environments.
-        """
+    def _discover_agents_from_genai_engine(
+        self, data_plane_id: str, lookback_hours: int
+    ) -> List[Dict[str, Any]]:
+        """Call GenAI Engine API to discover agents."""
         try:
-            # Extract GCP configuration from environment variables
-            # These are set by the GCP infrastructure when running on GCP
-            gcp_config = {
-                "project_id": os.getenv("GOOGLE_CLOUD_PROJECT"),
-                "project_number": os.getenv("GOOGLE_CLOUD_PROJECT_NUMBER"),
-                "location": os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1"),
-            }
-
-            # If GCP project_id is not set, this is not a GCP environment
-            # Note: project_number is optional and not used by the GCP APIs
-            if not gcp_config["project_id"]:
-                self.logger.info(
-                    f"GOOGLE_CLOUD_PROJECT not set, skipping GCP discovery for data plane {data_plane_id}",
-                    extra={"data_plane_id": data_plane_id},
-                )
-                return None
-
             self.logger.info(
-                f"Loaded GCP config for data plane {data_plane_id}",
+                f"Calling GenAI Engine for agent discovery",
                 extra={
+                    "genai_engine_url": self.genai_engine_url,
                     "data_plane_id": data_plane_id,
-                    "project_id": gcp_config["project_id"],
-                    "location": gcp_config["location"],
+                    "lookback_hours": lookback_hours,
                 },
             )
 
-            return gcp_config
-
-        except Exception as e:
-            self.logger.error(
-                f"Failed to load GCP config for data plane {data_plane_id}: {str(e)}",
-                extra={"data_plane_id": data_plane_id, "error": str(e)},
+            # Configure OpenAPI client
+            config = Configuration(
+                host=self.genai_engine_url,
+                access_token=self.genai_engine_api_key,
             )
-            return None
 
-    def _discover_gcp_agents(
-        self, gcp_config: Dict[str, str], data_plane_id: str, lookback_hours: int
-    ) -> List[Dict[str, Any]]:
-        """Discover agents from GCP Vertex AI and Cloud Trace."""
-        # List Vertex AI agents
-        vertex_agents = self._list_vertex_ai_agents(gcp_config)
-
-        if not vertex_agents:
-            self.logger.info(
-                "No Vertex AI agents found",
-                extra={"project_id": gcp_config["project_id"]},
-            )
-            return []
-
-        self.logger.info(
-            f"Found {len(vertex_agents)} Vertex AI agent(s)",
-            extra={"num_agents": len(vertex_agents)},
-        )
-
-        # Fetch trace data
-        trace_resources = self._fetch_trace_data(
-            gcp_config["project_id"],
-            lookback_hours,
-        )
-
-        self.logger.info(
-            f"Extracted trace data for {len(trace_resources)} resource(s)",
-            extra={"num_resources": len(trace_resources)},
-        )
-
-        # Build lookup of agents by ID
-        agents_by_id = {}
-        for agent in vertex_agents:
-            api_resource = agent.api_resource
-            resource_name = getattr(api_resource, "name", "")
-            agent_id = resource_name.split("/")[-1] if resource_name else None
-            if agent_id:
-                agents_by_id[agent_id] = agent
-
-        # Convert agents to unregistered agent format
-        agents_payload = []
-
-        # Process agents with trace data
-        for resource_id, trace_data in trace_resources.items():
-            # Extract ID from resource_id
-            agent_id = None
-            if "/reasoningEngines/" in resource_id or "/agentEngines/" in resource_id:
-                agent_id = resource_id.split("/")[-1]
-
-            # Find matching agent
-            if agent_id and agent_id in agents_by_id:
-                agent = agents_by_id[agent_id]
-                payload = self._convert_to_unregistered_agent(
-                    agent, trace_data, data_plane_id
+            # Call GenAI Engine discover agents endpoint
+            with ApiClient(config) as api_client:
+                api = AgentDiscoveryApi(api_client)
+                request = DiscoverAgentsRequest(
+                    data_plane_id=data_plane_id,
+                    lookback_hours=lookback_hours,
                 )
-                agents_payload.append(payload)
-                self.logger.debug(
-                    f"Converted agent {payload['name']} with trace data",
+                response = api.discover_agents_api_v1_discover_agents_post(request)
+
+                # Convert response agents to dict format
+                agents = [agent.model_dump() for agent in response.agents]
+
+                self.logger.info(
+                    f"Received {len(agents)} agent(s) from GenAI Engine",
                     extra={
-                        "agent_name": payload["name"],
-                        "num_tools": len(payload["tools"]),
-                        "num_sub_agents": len(payload["sub_agents"]),
-                        "num_spans": trace_data.get("num_spans", 0),
+                        "num_agents": len(agents),
+                        "metadata": response.metadata,
                     },
                 )
 
-        # Add agents without trace data
-        for agent_id, agent in agents_by_id.items():
-            # Check if this agent was already processed from trace data
-            already_processed = False
-            for resource_id in trace_resources.keys():
-                if agent_id in resource_id:
-                    already_processed = True
-                    break
-
-            if not already_processed:
-                payload = self._convert_to_unregistered_agent(
-                    agent, None, data_plane_id
-                )
-                agents_payload.append(payload)
-                self.logger.debug(
-                    f"Converted agent {payload['name']} without trace data",
-                    extra={"agent_name": payload["name"]},
-                )
-
-        return agents_payload
-
-    def _list_vertex_ai_agents(self, gcp_config: Dict[str, str]) -> List[Any]:
-        """List all deployed Vertex AI agent engines."""
-        try:
-            # Initialize Vertex AI
-            vertexai.init(
-                project=gcp_config["project_id"],
-                location=gcp_config["location"],
-            )
-
-            # List agent engines
-            client = vertexai.Client(
-                project=gcp_config["project_id"],
-                location=gcp_config["location"],
-            )
-            agents = list(client.agent_engines.list())
-
-            return agents
+                return agents
 
         except Exception as e:
             self.logger.error(
-                f"Failed to list Vertex AI agents: {str(e)}",
+                f"Failed to discover agents from GenAI Engine: {str(e)}",
                 extra={"error": str(e)},
+                exc_info=True,
             )
-            return []
+            raise
 
-    def _fetch_trace_data(
-        self, project_id: str, lookback_hours: int
-    ) -> Dict[str, Dict[str, Any]]:
-        """Fetch traces from Google Cloud Trace and extract agents/tools grouped by cloud.resource_id."""
-        try:
-            # Initialize Cloud Trace client
-            trace_client = trace_v1.TraceServiceClient()
+    def _filter_against_existing_models(
+        self,
+        agents: List[Dict[str, Any]],
+        workspace_id: str,
+        data_plane_id: str,
+        project_id: str | None,
+    ) -> List[Dict[str, Any]]:
+        """Filter discovered agents against existing Models.
 
-            # Define time range for trace fetching
-            end_time = datetime.now(timezone.utc)
-            start_time = end_time - timedelta(hours=lookback_hours)
+        Args:
+            agents: List of discovered agents to filter
+            workspace_id: Workspace ID (for logging)
+            data_plane_id: Data plane ID to filter models by
+            project_id: Optional project ID for "Registered Applications" project.
+                       If None, no filtering is performed (all agents returned).
 
+        Returns:
+            List of agents that don't match existing Models.
+        """
+        # If no project_id provided, skip filtering
+        if not project_id:
             self.logger.info(
-                f"Fetching traces from {start_time.isoformat()} to {end_time.isoformat()}",
+                f"No project_id provided, skipping Model filtering for workspace {workspace_id}",
+                extra={"workspace_id": workspace_id, "data_plane_id": data_plane_id},
+            )
+            return agents
+
+        try:
+            self.logger.info(
+                f"Fetching existing Models for project {project_id}",
                 extra={
-                    "start_time": start_time.isoformat(),
-                    "end_time": end_time.isoformat(),
+                    "workspace_id": workspace_id,
+                    "project_id": project_id,
+                    "data_plane_id": data_plane_id,
                 },
             )
 
-            # Fetch trace IDs
-            request = trace_v1.ListTracesRequest(
+            # Query Models for this project and data plane
+            models = self.models_client.get_models(
                 project_id=project_id,
-                start_time=start_time,
-                end_time=end_time,
             )
 
-            trace_ids = []
-            page_result = trace_client.list_traces(request=request)
-            for trace in page_result:
-                trace_ids.append(trace.trace_id)
+            # Filter to only models for this data plane
+            models = [m for m in models if str(m.data_plane_id) == data_plane_id]
 
             self.logger.info(
-                f"Found {len(trace_ids)} trace ID(s)",
-                extra={"num_traces": len(trace_ids)},
+                f"Found {len(models)} existing Model(s) for data plane",
+                extra={"num_models": len(models)},
             )
 
-            if not trace_ids:
-                return {}
+            if not models:
+                # No existing models, all agents are new
+                return agents
 
-            # Fetch complete traces and extract resource data
-            resources = {}
-
-            for i, trace_id in enumerate(trace_ids, 1):
-                if i % 10 == 0:
+            # Filter agents
+            filtered_agents = []
+            for agent in agents:
+                if not self._matches_existing_model(agent, models):
+                    filtered_agents.append(agent)
+                else:
                     self.logger.debug(
-                        f"Processing trace {i}/{len(trace_ids)}",
-                        extra={"current_trace": i, "total_traces": len(trace_ids)},
+                        f"Agent {agent['name']} matches existing Model, skipping",
+                        extra={"agent_name": agent["name"]},
                     )
 
-                try:
-                    get_request = trace_v1.GetTraceRequest(
-                        project_id=project_id,
-                        trace_id=trace_id,
-                    )
-                    trace = trace_client.get_trace(request=get_request)
-
-                    # Process each span in the trace
-                    for span in trace.spans:
-                        labels = getattr(span, "labels", {})
-
-                        # Extract cloud.resource_id
-                        resource_id = labels.get("cloud.resource_id")
-                        if not resource_id:
-                            continue
-
-                        # Initialize resource entry if not exists
-                        if resource_id not in resources:
-                            resources[resource_id] = {
-                                "agents": set(),
-                                "tools": set(),
-                                "num_spans": 0,
-                            }
-
-                        # Count spans for this resource
-                        resources[resource_id]["num_spans"] += 1
-
-                        # Extract gen_ai.agent.name
-                        agent_name = labels.get("gen_ai.agent.name")
-                        if agent_name:
-                            resources[resource_id]["agents"].add(agent_name)
-
-                        # Extract gen_ai.tool.name
-                        tool_name = labels.get("gen_ai.tool.name")
-                        if tool_name:
-                            resources[resource_id]["tools"].add(tool_name)
-
-                except Exception as e:
-                    self.logger.debug(
-                        f"Error fetching trace {trace_id}: {str(e)}",
-                        extra={"trace_id": trace_id, "error": str(e)},
-                    )
-                    continue
-
-            return resources
+            return filtered_agents
 
         except Exception as e:
             self.logger.error(
-                f"Failed to fetch trace data: {str(e)}",
+                f"Failed to filter agents against Models: {str(e)}",
                 extra={"error": str(e)},
+                exc_info=True,
             )
-            return {}
+            # On error, return all agents (better to have duplicates than miss new agents)
+            return agents
 
-    def _convert_to_unregistered_agent(
-        self,
-        agent: Any,
-        trace_data: Dict[str, Set[str]] | None,
-        data_plane_id: str,
-    ) -> Dict[str, Any]:
-        """Convert a Vertex AI agent to Arthur unregistered agent format."""
-        api_resource = agent.api_resource
+    def _matches_existing_model(self, agent: Dict[str, Any], models: List[Any]) -> bool:
+        """Check if an agent matches any existing Model.
 
-        # Extract agent details
-        name = getattr(api_resource, "display_name", None) or getattr(
-            api_resource, "name", "Unknown Agent"
-        )
-        resource_name = getattr(api_resource, "name", "")
-        agent_id = resource_name.split("/")[-1] if resource_name else "unknown"
+        Matching criteria:
+        1. Same data_plane_id
+        2. Same name
+        3. Exact match on tools and sub_agents
+        """
+        agent_tools = set(t["name"] for t in agent.get("tools", []))
+        agent_sub_agents = set(s["name"] for s in agent.get("sub_agents", []))
 
-        # Get creation time or use current time
-        create_time = getattr(api_resource, "create_time", None)
-        if create_time:
-            # Ensure proper ISO format: either Z or +00:00, not both
-            first_detected = create_time.isoformat()
-            # Remove timezone info and add Z for UTC
-            first_detected = first_detected.replace("+00:00", "").replace("Z", "") + "Z"
-        else:
-            # Use current time in UTC with Z suffix
-            first_detected = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        for model in models:
+            # Must be same data plane
+            if agent["data_plane_id"] != str(model.data_plane_id):
+                continue
 
-        # Extract tools, sub-agents, and span count from trace data if available
-        tools = []
-        sub_agents = []
-        num_spans = 0
-        if trace_data:
-            # Convert tool names to Tool objects with name and arguments (list)
-            tool_names = sorted(list(trace_data.get("tools", set())))
-            tools = [{"name": tool_name, "arguments": []} for tool_name in tool_names]
+            # Name match + tools/sub_agents match
+            if agent["name"] == model.name:
+                model_tools = set(t.name for t in model.tools)
+                model_sub_agents = set(s.name for s in model.sub_agents)
 
-            # Convert agent names to SubAgent objects with name
-            agent_names = sorted(list(trace_data.get("agents", set())))
-            sub_agents = [{"name": agent_name} for agent_name in agent_names]
+                # Exact match on tools and sub_agents
+                if agent_tools == model_tools and agent_sub_agents == model_sub_agents:
+                    return True
 
-            # Get span count from trace data
-            num_spans = trace_data.get("num_spans", 0)
-
-        # Build unregistered agent payload
-        unregistered_agent = {
-            "name": f"Vertex AI Agent: {name}",
-            "creation_source": {
-                "top_level_span_name": f"vertex-ai-agent-{agent_id}",
-            },
-            "first_detected": first_detected,
-            "infrastructure": "GCP",
-            "num_spans": num_spans,
-            "tools": tools,
-            "sub_agents": sub_agents,
-            "data_plane_id": data_plane_id,
-        }
-
-        return unregistered_agent
+        return False
 
     def _publish_agents(
         self, workspace_id: str, agents_payload: List[Dict[str, Any]]

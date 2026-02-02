@@ -453,6 +453,7 @@ def get_test_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
+            agent_discovery_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -502,6 +503,7 @@ def get_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
+            agent_discovery_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:
