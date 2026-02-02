@@ -215,24 +215,15 @@ class SyntheticDataService:
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
 
-        # Call LLM with JSON mode (compatible with all models)
+        # Call LLM with structured outputs
         response = client.completion(
             model=request.model_name,
             messages=messages,
-            response_format={"type": "json_object"},
+            response_format=SyntheticDataLLMOutput,
             **config_kwargs,
         )
 
-        # Parse JSON response manually
-        content = response.response.choices[0].message.get("content", "{}")
-        try:
-            parsed_json = json.loads(content)
-            llm_output = SyntheticDataLLMOutput(
-                rows_json=json.dumps(parsed_json.get("rows", [])),
-                message=parsed_json.get("message", "Generated data successfully."),
-            )
-        except json.JSONDecodeError as e:
-            raise ValueError(f"LLM response was not valid JSON: {e}") from e
+        llm_output: SyntheticDataLLMOutput = response.structured_output_response
 
         # Parse the response
         rows, rows_added, rows_modified, rows_removed = self._parse_llm_response(
@@ -338,24 +329,15 @@ class SyntheticDataService:
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
 
-        # Call LLM with JSON mode (compatible with all models)
+        # Call LLM with structured outputs
         response = client.completion(
             model=request.model_name,
             messages=messages,
-            response_format={"type": "json_object"},
+            response_format=SyntheticDataLLMOutput,
             **config_kwargs,
         )
 
-        # Parse JSON response manually
-        content = response.response.choices[0].message.get("content", "{}")
-        try:
-            parsed_json = json.loads(content)
-            llm_output = SyntheticDataLLMOutput(
-                rows_json=json.dumps(parsed_json.get("rows", [])),
-                message=parsed_json.get("message", "Updated data successfully."),
-            )
-        except json.JSONDecodeError as e:
-            raise ValueError(f"LLM response was not valid JSON: {e}") from e
+        llm_output: SyntheticDataLLMOutput = response.structured_output_response
 
         # Parse the response
         rows, rows_added, rows_modified, rows_removed = self._parse_llm_response(

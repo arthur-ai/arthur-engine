@@ -93,3 +93,8 @@ poetry install --only performance
 - Agentic workflow support: multi-step agent trace evaluation
 - Pre-commit hooks enforce black, isort, mypy - see CONTRIBUTING.md
 - Database migrations should be reviewed before applying to ensure idempotency
+
+### Coding Conventions
+
+- **DB sessions are auto-closed**: Do NOT wrap route handlers in `try/finally: db_session.close()`. The database session obtained via `Depends(get_db_session)` is automatically closed by FastAPI's dependency lifecycle. Adding manual `finally` blocks is unnecessary.
+- **Use structured outputs for LLM calls**: When calling the LLM client (`client.completion()`), prefer passing a Pydantic `BaseModel` class as `response_format` instead of `{"type": "json_object"}`. This uses structured outputs / `json_schema` mode, which guarantees the response conforms to the schema. The parsed result is available on `response.structured_output_response`. Only fall back to `json_object` mode if the model does not support structured outputs.

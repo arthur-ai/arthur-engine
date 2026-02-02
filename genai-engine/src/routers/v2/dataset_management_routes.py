@@ -318,49 +318,46 @@ def generate_synthetic_data(
     The dataset must have at least 1 existing row to provide reference
     examples for the LLM.
     """
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        model_provider_repo = ModelProviderRepository(db_session)
+    dataset_repo = DatasetRepository(db_session)
+    model_provider_repo = ModelProviderRepository(db_session)
 
-        # Get the dataset version with pagination to get rows
-        pagination = PaginationParameters(page=0, page_size=10)
-        dataset_version = dataset_repo.get_dataset_version(
-            dataset_id,
-            version_number,
-            pagination,
+    # Get the dataset version with pagination to get rows
+    pagination = PaginationParameters(page=0, page_size=10)
+    dataset_version = dataset_repo.get_dataset_version(
+        dataset_id,
+        version_number,
+        pagination,
+    )
+
+    # Check that dataset has at least 1 row
+    if dataset_version.total_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Dataset must have at least 1 row to generate synthetic data. "
+            "Add some example rows first to provide reference patterns.",
         )
 
-        # Check that dataset has at least 1 row
-        if dataset_version.total_count == 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Dataset must have at least 1 row to generate synthetic data. "
-                "Add some example rows first to provide reference patterns.",
-            )
+    # Get column names from the dataset version
+    column_names = dataset_version.column_names
 
-        # Get column names from the dataset version
-        column_names = dataset_version.column_names
+    # Convert existing rows to dict format for the service
+    existing_rows = [
+        {
+            "data": [
+                {"column_name": col.column_name, "column_value": col.column_value}
+                for col in row.data
+            ]
+        }
+        for row in dataset_version.rows
+    ]
 
-        # Convert existing rows to dict format for the service
-        existing_rows = [
-            {
-                "data": [
-                    {"column_name": col.column_name, "column_value": col.column_value}
-                    for col in row.data
-                ]
-            }
-            for row in dataset_version.rows
-        ]
-
-        # Create the synthetic data service and generate data
-        synthetic_service = SyntheticDataService(model_provider_repo)
-        return synthetic_service.generate_initial(
-            request=request,
-            existing_rows=existing_rows,
-            column_names=column_names,
-        )
-    finally:
-        db_session.close()
+    # Create the synthetic data service and generate data
+    synthetic_service = SyntheticDataService(model_provider_repo)
+    return synthetic_service.generate_initial(
+        request=request,
+        existing_rows=existing_rows,
+        column_names=column_names,
+    )
 
 
 @dataset_management_routes.post(
@@ -385,38 +382,35 @@ def send_synthetic_data_message(
     The current state of the generated data (including any manual edits)
     is sent with each message.
     """
-    try:
-        dataset_repo = DatasetRepository(db_session)
-        model_provider_repo = ModelProviderRepository(db_session)
+    dataset_repo = DatasetRepository(db_session)
+    model_provider_repo = ModelProviderRepository(db_session)
 
-        # Get the dataset version with pagination to get sample rows
-        pagination = PaginationParameters(page=0, page_size=10)
-        dataset_version = dataset_repo.get_dataset_version(
-            dataset_id,
-            version_number,
-            pagination,
-        )
+    # Get the dataset version with pagination to get sample rows
+    pagination = PaginationParameters(page=0, page_size=10)
+    dataset_version = dataset_repo.get_dataset_version(
+        dataset_id,
+        version_number,
+        pagination,
+    )
 
-        # Get column names from the dataset version
-        column_names = dataset_version.column_names
+    # Get column names from the dataset version
+    column_names = dataset_version.column_names
 
-        # Convert existing rows to dict format for the service
-        existing_rows = [
-            {
-                "data": [
-                    {"column_name": col.column_name, "column_value": col.column_value}
-                    for col in row.data
-                ]
-            }
-            for row in dataset_version.rows
-        ]
+    # Convert existing rows to dict format for the service
+    existing_rows = [
+        {
+            "data": [
+                {"column_name": col.column_name, "column_value": col.column_value}
+                for col in row.data
+            ]
+        }
+        for row in dataset_version.rows
+    ]
 
-        # Create the synthetic data service and continue conversation
-        synthetic_service = SyntheticDataService(model_provider_repo)
-        return synthetic_service.continue_conversation(
-            request=request,
-            existing_rows=existing_rows,
-            column_names=column_names,
-        )
-    finally:
-        db_session.close()
+    # Create the synthetic data service and continue conversation
+    synthetic_service = SyntheticDataService(model_provider_repo)
+    return synthetic_service.continue_conversation(
+        request=request,
+        existing_rows=existing_rows,
+        column_names=column_names,
+    )
