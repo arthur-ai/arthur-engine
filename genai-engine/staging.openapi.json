@@ -2398,10 +2398,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -2741,6 +2741,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -2890,10 +2902,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -3233,6 +3245,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -3298,10 +3322,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "start_time",
@@ -3621,10 +3645,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -3964,6 +3988,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -4112,10 +4148,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -4455,6 +4491,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
