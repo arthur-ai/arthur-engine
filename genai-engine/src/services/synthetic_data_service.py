@@ -8,9 +8,13 @@ This module provides the SyntheticDataService class which handles:
 
 import json
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
-from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
+from arthur_common.models.llm_model_providers import (
+    MessageRole,
+    ModelProvider,
+    OpenAIMessage,
+)
 from pydantic import BaseModel, Field
 
 from clients.llm.llm_client import LLMClient
@@ -94,7 +98,7 @@ class SyntheticDataService:
     def _parse_llm_response(
         self,
         llm_output: SyntheticDataLLMOutput,
-        existing_row_ids: set,
+        existing_row_ids: set[str],
     ) -> tuple[List[SyntheticDataRowResponse], List[str], List[str], List[str]]:
         """
         Parse LLM output and determine which rows were added, modified, or removed.
@@ -222,7 +226,7 @@ class SyntheticDataService:
             **config_kwargs,
         )
 
-        llm_output: SyntheticDataLLMOutput = response.structured_output_response
+        llm_output = cast(SyntheticDataLLMOutput, response.structured_output_response)
 
         # Parse the response
         rows, rows_added, rows_modified, rows_removed = self._parse_llm_response(
@@ -232,7 +236,7 @@ class SyntheticDataService:
 
         # Create assistant message
         assistant_message = OpenAIMessage(
-            role="assistant",
+            role=MessageRole.AI,
             content=llm_output.message,
         )
 
@@ -313,7 +317,7 @@ class SyntheticDataService:
         for msg in request.conversation_history:
             messages.append(
                 {
-                    "role": msg.role,
+                    "role": msg.role.value,
                     "content": (
                         msg.content
                         if isinstance(msg.content, str)
@@ -336,7 +340,7 @@ class SyntheticDataService:
             **config_kwargs,
         )
 
-        llm_output: SyntheticDataLLMOutput = response.structured_output_response
+        llm_output = cast(SyntheticDataLLMOutput, response.structured_output_response)
 
         # Parse the response
         rows, rows_added, rows_modified, rows_removed = self._parse_llm_response(
@@ -346,7 +350,7 @@ class SyntheticDataService:
 
         # Create assistant message
         assistant_message = OpenAIMessage(
-            role="assistant",
+            role=MessageRole.AI,
             content=llm_output.message,
         )
 

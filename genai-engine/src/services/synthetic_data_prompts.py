@@ -5,7 +5,7 @@ This module contains the system and user prompt templates used
 for generating synthetic dataset rows via LLM.
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 SYSTEM_PROMPT_TEMPLATE = """You are an expert at generating realistic, diverse synthetic data for datasets.
 Your task is to generate or modify dataset rows based on the user's instructions.
@@ -102,7 +102,7 @@ def format_reference_examples(
 
 
 def format_current_rows_for_prompt(
-    current_rows: List[Dict],
+    current_rows: List[Dict[str, Any]],
     column_names: List[str],
 ) -> str:
     """Format the current generated rows for inclusion in conversation prompts."""
@@ -151,7 +151,7 @@ def build_initial_generation_prompt(num_rows: int) -> str:
 
 def build_conversation_prompt(
     user_message: str,
-    current_rows: List[Dict],
+    current_rows: List[Dict[str, Any]],
     column_names: List[str],
 ) -> str:
     """Build the user prompt for conversation-based refinement."""
