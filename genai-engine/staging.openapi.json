@@ -2398,10 +2398,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -2883,10 +2883,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -3284,10 +3284,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "start_time",
@@ -3607,10 +3607,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -4091,10 +4091,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -21537,6 +21537,18 @@
             },
             "NewDatasetVersionRowRequest": {
                 "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "Optional ID for the row (used for synthetic data generation)."
+                    },
                     "data": {
                         "items": {
                             "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"

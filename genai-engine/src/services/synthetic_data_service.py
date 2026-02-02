@@ -10,12 +10,11 @@ import json
 import uuid
 from typing import Any, Dict, List, Optional
 
-from arthur_common.models.llm_model_providers import ModelProvider
+from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
 from pydantic import BaseModel, Field
 
 from clients.llm.llm_client import LLMClient
 from repositories.model_provider_repository import ModelProviderRepository
-from schemas.llm_schemas import OpenAIMessage
 from schemas.request_schemas import (
     LLMRequestConfigSettings,
     SyntheticDataColumnDescription,
