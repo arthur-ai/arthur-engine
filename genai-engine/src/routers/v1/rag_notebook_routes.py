@@ -45,7 +45,7 @@ def create_rag_notebook(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> RagNotebookDetail:
     """
     Create a new RAG notebook for a task.
 
@@ -85,7 +85,7 @@ def list_rag_notebooks(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> RagNotebookListResponse:
     """
     List all RAG notebooks for a given task.
 
@@ -120,7 +120,7 @@ def get_rag_notebook(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagNotebookDetail:
     """
     Get detailed information about a RAG notebook.
 
@@ -153,7 +153,7 @@ def update_rag_notebook(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagNotebookDetail:
     """
     Update RAG notebook metadata (name and/or description).
 
@@ -185,7 +185,7 @@ def get_rag_notebook_state(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagNotebookStateResponse:
     """
     Get the current state of a RAG notebook.
 
@@ -218,7 +218,7 @@ def set_rag_notebook_state(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagNotebookDetail:
     """
     Set the state of a RAG notebook.
 
@@ -286,7 +286,7 @@ def get_rag_notebook_history(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagExperimentListResponse:
     """
     Get the history of experiments run from this RAG notebook.
 

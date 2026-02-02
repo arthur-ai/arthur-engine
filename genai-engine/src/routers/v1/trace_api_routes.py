@@ -4,6 +4,7 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
@@ -178,7 +179,7 @@ def list_spans_metadata(
 
         # Use query_spans with comprehensive filtering via filters parameter
         spans, total_count = span_repo.query_spans(
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
             include_metrics=False,  # No metrics for metadata endpoint

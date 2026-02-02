@@ -50,6 +50,14 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'hosted_vllm' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'hosted_vllm' enum value to the request property 'model_provider'
 
+# 01/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  the 'data/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/traces  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /api/v1/traces/spans  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/metrics/  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/query  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+
 # 01/27/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'

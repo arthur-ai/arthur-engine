@@ -120,19 +120,22 @@ class DatasetRefInput(BaseModel):
     version: int = Field(description="Dataset version number")
 
 
-class DatasetRef(BaseModel):
+class DatasetRef(DatasetRefInput):
     """Reference to a dataset and version (with name)"""
 
-    id: UUID = Field(description="Dataset ID")
     name: str = Field(description="Dataset name")
-    version: int = Field(description="Dataset version number")
 
 
-class EvalRef(BaseModel):
-    """Reference to an evaluation configuration"""
+class BaseEvalRef(BaseModel):
+    """Base reference to an evaluation configuration"""
 
     name: str = Field(description="Name of the evaluation")
     version: int = Field(description="Version of the evaluation")
+
+
+class EvalRef(BaseEvalRef):
+    """Reference to an evaluation configuration"""
+
     variable_mapping: list[EvalVariableMapping] = Field(
         description="Mapping of eval variables to data sources",
     )
@@ -228,11 +231,7 @@ class BaseCreateExperimentRequest(BaseModel):
     )
 
 
-class BaseExperimentDetail(BaseModel):
-    """Base model for experiment details.
-    See PromptExperimentDetail for an example usage.
-    """
-
+class GroundBaseExperimentDetail(BaseModel):
     id: str = Field(description="Unique identifier for the experiment")
     name: str = Field(description="Name of the experiment")
     description: Optional[str] = Field(
@@ -255,7 +254,6 @@ class BaseExperimentDetail(BaseModel):
         description="Total cost of running the experiment",
     )
     dataset_ref: DatasetRef = Field(description="Reference to the dataset used")
-    eval_list: list[EvalRef] = Field(description="List of evaluations being run")
     dataset_row_filter: Optional[List[NewDatasetVersionRowColumnItemRequest]] = Field(
         default=None,
         description="Optional list of column name and value filters applied to dataset rows. "
@@ -265,6 +263,14 @@ class BaseExperimentDetail(BaseModel):
         default=None,
         description="Optional notebook ID this experiment is linked to",
     )
+
+
+class BaseExperimentDetail(GroundBaseExperimentDetail):
+    """Base model for experiment details.
+    See PromptExperimentDetail for an example usage.
+    """
+
+    eval_list: list[EvalRef] = Field(description="List of evaluations being run")
 
 
 class BaseTestCase(BaseModel):

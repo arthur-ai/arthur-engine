@@ -211,7 +211,9 @@ class Notebook(BaseModel):
             updated_at=db_notebook.updated_at,
             prompt_configs=db_notebook.prompt_configs,
             prompt_variable_mapping=db_notebook.prompt_variable_mapping,
-            dataset_id=db_notebook.dataset_id,
+            dataset_id=(
+                uuid.UUID(db_notebook.dataset_id) if db_notebook.dataset_id else None
+            ),
             dataset_name=db_notebook.dataset_name,
             dataset_version=db_notebook.dataset_version,
             dataset_row_filter=db_notebook.dataset_row_filter,
@@ -249,8 +251,8 @@ class Notebook(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            created_at=self.created_at.isoformat() if self.created_at else None,
-            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            created_at=self.created_at.isoformat() if self.created_at else "",
+            updated_at=self.updated_at.isoformat() if self.updated_at else "",
             run_count=run_count,
             latest_run_id=latest_run_id,
             latest_run_status=latest_run_status,
@@ -304,8 +306,8 @@ class Notebook(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            created_at=self.created_at.isoformat() if self.created_at else None,
-            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            created_at=self.created_at.isoformat() if self.created_at else "",
+            updated_at=self.updated_at.isoformat() if self.updated_at else "",
             state=state,
             experiments=self.experiments,
         )

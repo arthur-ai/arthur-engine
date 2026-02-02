@@ -42,12 +42,14 @@ class MetricsEngine:
         metrics: List[Metric],
     ) -> List[MetricResult]:
         # Values: (Metric, run_metric_thread)
-        thread_futures: list[tuple[Metric, concurrent.futures.Future]] = []
+        thread_futures: list[tuple[Metric, concurrent.futures.Future[MetricResult]]] = (
+            []
+        )
         num_threads = int(
             get_env_var(
                 constants.GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR,
-                default=str(constants.DEFAULT_THREAD_POOL_MAX_WORKERS),
-            ),
+            )
+            or constants.DEFAULT_THREAD_POOL_MAX_WORKERS,
         )
         with TracedThreadPoolExecutor(tracer, max_workers=num_threads) as executor:
             for metric in metrics:
@@ -79,7 +81,7 @@ class MetricsEngine:
                 metric_results.append(future.result())
         return metric_results
 
-    def run_metric(self, request: MetricRequest, metric: Metric):
+    def run_metric(self, request: MetricRequest, metric: Metric) -> MetricResult:
         start_time = time.time()
 
         logger.info(f"Starting metric execution: {metric.type}")

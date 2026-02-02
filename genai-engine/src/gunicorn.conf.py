@@ -1,5 +1,8 @@
 from os import environ
 
+from gunicorn.arbiter import Arbiter
+from gunicorn.workers.base import Worker
+
 bind = "0.0.0.0:" + environ.get("PORT", "3030")
 workers = environ.get("WORKERS", 1)
 loglevel = environ.get("LOG_LEVEL", "info")
@@ -18,30 +21,30 @@ max_requests = int(environ.get("MAX_REQUESTS", 0))  # 0 = disabled
 max_requests_jitter = int(environ.get("MAX_REQUESTS_JITTER", 0))
 
 
-def on_starting(server):
+def on_starting(server: Arbiter) -> None:
     """Called just before the master process is initialized."""
     server.log.info("Gunicorn master process starting")
 
 
-def when_ready(server):
+def when_ready(server: Arbiter) -> None:
     """Called just after the server is started."""
     server.log.info("Gunicorn server is ready. Accepting connections.")
 
 
-def on_exit(server):
+def on_exit(server: Arbiter) -> None:
     """Called just before exiting Gunicorn."""
     server.log.info("Gunicorn master process exiting")
 
 
-def worker_exit(server, worker):
+def worker_exit(server: Arbiter, worker: Worker) -> None:
     """Called just after a worker has been exited."""
     server.log.info(f"Worker {worker.pid} exited")
 
 
-def pre_fork(server, worker):
+def pre_fork(server: Arbiter, worker: Worker) -> None:
     """Called just before a worker is forked."""
 
 
-def post_fork(server, worker):
+def post_fork(server: Arbiter, worker: Worker) -> None:
     """Called just after a worker has been forked."""
     server.log.info(f"Worker spawned (pid: {worker.pid})")
