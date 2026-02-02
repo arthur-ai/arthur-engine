@@ -1173,8 +1173,6 @@ class RuleDetails(BaseModel):
                 return PIIDetailsResponse(
                     score=self.score,
                     message=self.message,
-                    # TODO: Question: There is no pii_results in the response model. Should we add it?
-                    # pii_results=[c.entity for c in self.pii_entities or []],
                     pii_entities=[
                         c._to_response_model() for c in self.pii_entities or []
                     ],
