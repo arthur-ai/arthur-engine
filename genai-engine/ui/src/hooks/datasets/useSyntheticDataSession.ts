@@ -35,9 +35,7 @@ export interface UseSyntheticDataSessionReturn {
   reset: () => void;
 }
 
-function datasetVersionRowsToSyntheticRows(
-  datasetRows: DatasetVersionRowResponse[]
-): SyntheticRow[] {
+function datasetVersionRowsToSyntheticRows(datasetRows: DatasetVersionRowResponse[]): SyntheticRow[] {
   return datasetRows.map((datasetRow) => {
     const data: Record<string, string> = {};
     datasetRow.data.forEach((col) => {
@@ -95,9 +93,7 @@ function apiRowsToSyntheticRows(
   });
 }
 
-function syntheticRowsToApiFormat(
-  rows: SyntheticRow[]
-): { id?: string; data: NewDatasetVersionRowColumnItemRequest[] }[] {
+function syntheticRowsToApiFormat(rows: SyntheticRow[]): { id?: string; data: NewDatasetVersionRowColumnItemRequest[] }[] {
   return rows.map((row) => ({
     id: row.id,
     data: Object.entries(row.data).map(([column_name, column_value]) => ({
@@ -107,11 +103,7 @@ function syntheticRowsToApiFormat(
   }));
 }
 
-export function useSyntheticDataSession(
-  datasetId: string,
-  versionNumber: number,
-  _columns: string[]
-): UseSyntheticDataSessionReturn {
+export function useSyntheticDataSession(datasetId: string, versionNumber: number, _columns: string[]): UseSyntheticDataSessionReturn {
   const api = useApi();
 
   const [rows, setRows] = useState<SyntheticRow[]>([]);
@@ -139,36 +131,28 @@ export function useSyntheticDataSession(
           setConversation([
             {
               role: "assistant",
-              content: `I've loaded ${existingRows.length} existing row${existingRows.length !== 1 ? 's' : ''} from your dataset. You can now edit them directly in the table, or ask me to modify or generate additional data.`,
+              content: `I've loaded ${existingRows.length} existing row${existingRows.length !== 1 ? "s" : ""} from your dataset. You can now edit them directly in the table, or ask me to modify or generate additional data.`,
             },
           ]);
         } else {
           // Generate new data
-          const response =
-            await api.api.generateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost(
-              datasetId,
-              versionNumber,
-              {
-                dataset_purpose: config.datasetPurpose,
-                column_descriptions: config.columnDescriptions.map((col) => ({
-                  column_name: col.columnName,
-                  description: col.description,
-                })),
-                num_rows: config.numRows,
-                model_provider: config.modelProvider,
-                model_name: config.modelName,
-                config: config.temperature
-                  ? { temperature: config.temperature }
-                  : undefined,
-              }
-            );
-
-          const newRows = apiRowsToSyntheticRows(
-            response.data.rows,
-            response.data.rows_added ?? [],
-            response.data.rows_modified ?? [],
-            []
+          const response = await api.api.generateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost(
+            datasetId,
+            versionNumber,
+            {
+              dataset_purpose: config.datasetPurpose,
+              column_descriptions: config.columnDescriptions.map((col) => ({
+                column_name: col.columnName,
+                description: col.description,
+              })),
+              num_rows: config.numRows,
+              model_provider: config.modelProvider,
+              model_name: config.modelName,
+              config: config.temperature ? { temperature: config.temperature } : undefined,
+            }
           );
+
+          const newRows = apiRowsToSyntheticRows(response.data.rows, response.data.rows_added ?? [], response.data.rows_modified ?? [], []);
           setRows(newRows);
 
           // Initialize conversation with the assistant's response
@@ -210,26 +194,23 @@ export function useSyntheticDataSession(
         // Filter out locked rows before sending to the backend
         const unlockedRows = rows.filter((row) => !row.locked);
 
-        const response =
-          await api.api.sendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePost(
-            datasetId,
-            versionNumber,
-            {
-              message,
-              current_rows: syntheticRowsToApiFormat(unlockedRows),
-              conversation_history: updatedConversation,
-              dataset_purpose: config.datasetPurpose,
-              column_descriptions: config.columnDescriptions.map((col) => ({
-                column_name: col.columnName,
-                description: col.description,
-              })),
-              model_provider: config.modelProvider,
-              model_name: config.modelName,
-              config: config.temperature
-                ? { temperature: config.temperature }
-                : undefined,
-            }
-          );
+        const response = await api.api.sendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePost(
+          datasetId,
+          versionNumber,
+          {
+            message,
+            current_rows: syntheticRowsToApiFormat(unlockedRows),
+            conversation_history: updatedConversation,
+            dataset_purpose: config.datasetPurpose,
+            column_descriptions: config.columnDescriptions.map((col) => ({
+              column_name: col.columnName,
+              description: col.description,
+            })),
+            model_provider: config.modelProvider,
+            model_name: config.modelName,
+            config: config.temperature ? { temperature: config.temperature } : undefined,
+          }
+        );
 
         // Only pass unlocked rows as existing rows context (locked rows are handled separately)
         const unlockedRowsContext = rows.filter((r) => !r.locked);
@@ -276,30 +257,18 @@ export function useSyntheticDataSession(
     [api, datasetId, versionNumber, rows, conversation]
   );
 
-  const updateRow = useCallback(
-    (id: string, data: Record<string, string>) => {
-      setRows((prevRows) =>
-        prevRows.map((row) =>
-          row.id === id
-            ? { ...row, data, status: "modified" as const }
-            : row
-        )
-      );
-    },
-    []
-  );
+  const updateRow = useCallback((id: string, data: Record<string, string>) => {
+    setRows((prevRows) => prevRows.map((row) => (row.id === id ? { ...row, data, status: "modified" as const } : row)));
+  }, []);
 
-  const addRow = useCallback(
-    (data: Record<string, string>) => {
-      const newRow: SyntheticRow = {
-        id: generateTempRowId(),
-        data,
-        status: "added",
-      };
-      setRows((prevRows) => [...prevRows, newRow]);
-    },
-    []
-  );
+  const addRow = useCallback((data: Record<string, string>) => {
+    const newRow: SyntheticRow = {
+      id: generateTempRowId(),
+      data,
+      status: "added",
+    };
+    setRows((prevRows) => [...prevRows, newRow]);
+  }, []);
 
   const deleteRows = useCallback((ids: string[]) => {
     const idsSet = new Set(ids);
@@ -307,11 +276,7 @@ export function useSyntheticDataSession(
   }, []);
 
   const toggleLock = useCallback((id: string) => {
-    setRows((prevRows) =>
-      prevRows.map((row) =>
-        row.id === id ? { ...row, locked: !row.locked } : row
-      )
-    );
+    setRows((prevRows) => prevRows.map((row) => (row.id === id ? { ...row, locked: !row.locked } : row)));
   }, []);
 
   const reset = useCallback(() => {

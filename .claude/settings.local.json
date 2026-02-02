@@ -32,7 +32,9 @@
       "Bash(cd:*)",
       "Bash(poetry run isort:*)",
       "Bash(PGPASSWORD=changeme_pg_password psql:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(yarn format:check:*)",
+      "Bash(yarn format:*)"
     ]
   }
 }

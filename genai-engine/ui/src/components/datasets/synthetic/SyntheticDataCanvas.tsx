@@ -42,10 +42,7 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
   // Locked rows are always treated as selected. The effective selection is
   // the user's checkbox selection merged with all locked row IDs.
   // When nothing is explicitly selected (no checkboxes checked), accept all rows.
-  const lockedIds = useMemo(
-    () => new Set(rows.filter((r) => r.locked).map((r) => r.id)),
-    [rows]
-  );
+  const lockedIds = useMemo(() => new Set(rows.filter((r) => r.locked).map((r) => r.id)), [rows]);
 
   // What the table shows as "checked": user selections + locked rows
   const visibleSelection = useMemo(() => {
@@ -98,11 +95,7 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
             borderColor: "divider",
           }}
         >
-          <SyntheticDataChat
-            conversation={conversation}
-            isLoading={isLoading}
-            onSendMessage={onSendMessage}
-          />
+          <SyntheticDataChat conversation={conversation} isLoading={isLoading} onSendMessage={onSendMessage} />
         </Box>
 
         {/* Right panel - Table */}
@@ -143,21 +136,10 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
           bgcolor: "grey.50",
         }}
       >
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={onBack}
-          disabled={isLoading}
-          variant="outlined"
-        >
+        <Button startIcon={<ArrowBack />} onClick={onBack} disabled={isLoading} variant="outlined">
           Back to Configure
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<Check />}
-          onClick={handleAccept}
-          disabled={rows.length === 0 || isLoading}
-        >
+        <Button variant="contained" color="primary" startIcon={<Check />} onClick={handleAccept} disabled={rows.length === 0 || isLoading}>
           Accept {effectiveSelection.size} Row{effectiveSelection.size !== 1 ? "s" : ""}
         </Button>
       </Box>

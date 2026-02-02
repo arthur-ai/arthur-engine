@@ -57,31 +57,31 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
     [rows, onSelectedRowsChange]
   );
 
-  const handleSelectRow = useCallback((rowId: string, checked: boolean) => {
-    const next = new Set(selectedRows);
-    if (checked) {
-      next.add(rowId);
-    } else {
-      next.delete(rowId);
-    }
-    onSelectedRowsChange(next);
-  }, [selectedRows, onSelectedRowsChange]);
+  const handleSelectRow = useCallback(
+    (rowId: string, checked: boolean) => {
+      const next = new Set(selectedRows);
+      if (checked) {
+        next.add(rowId);
+      } else {
+        next.delete(rowId);
+      }
+      onSelectedRowsChange(next);
+    },
+    [selectedRows, onSelectedRowsChange]
+  );
 
   const handleDeleteSelected = useCallback(() => {
     onDeleteRows(Array.from(selectedRows));
     onSelectedRowsChange(new Set());
   }, [selectedRows, onDeleteRows, onSelectedRowsChange]);
 
-  const handleCellClick = useCallback(
-    (rowId: string, column: string, currentValue: string, isLocked: boolean) => {
-      // Prevent editing locked rows
-      if (isLocked) return;
+  const handleCellClick = useCallback((rowId: string, column: string, currentValue: string, isLocked: boolean) => {
+    // Prevent editing locked rows
+    if (isLocked) return;
 
-      setEditingCell({ rowId, column });
-      setEditValue(currentValue);
-    },
-    []
-  );
+    setEditingCell({ rowId, column });
+    setEditValue(currentValue);
+  }, []);
 
   const handleCellBlur = useCallback(() => {
     if (editingCell) {
@@ -146,12 +146,7 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
         </Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
           {selectedRows.size > 0 && (
-            <Button
-              size="small"
-              color="error"
-              startIcon={<Delete />}
-              onClick={handleDeleteSelected}
-            >
+            <Button size="small" color="error" startIcon={<Delete />} onClick={handleDeleteSelected}>
               Delete ({selectedRows.size})
             </Button>
           )}
@@ -173,20 +168,14 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
               color: "text.secondary",
             }}
           >
-            <Typography variant="body2">
-              No data generated yet. Use the chat to generate or refine data.
-            </Typography>
+            <Typography variant="body2">No data generated yet. Use the chat to generate or refine data.</Typography>
           </Box>
         ) : (
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
                 <TableCell padding="checkbox" sx={{ bgcolor: "grey.100" }}>
-                  <Checkbox
-                    checked={allSelected}
-                    indeterminate={someSelected}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
+                  <Checkbox checked={allSelected} indeterminate={someSelected} onChange={(e) => handleSelectAll(e.target.checked)} />
                 </TableCell>
                 <TableCell
                   sx={{
@@ -218,39 +207,22 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                   hover
                   selected={selectedRows.has(row.id)}
                   sx={{
-                    bgcolor:
-                      row.locked
-                        ? "grey.100"
-                        : row.status === "added"
-                          ? "success.50"
-                          : row.status === "modified"
-                            ? "warning.50"
-                            : "inherit",
+                    bgcolor: row.locked ? "grey.100" : row.status === "added" ? "success.50" : row.status === "modified" ? "warning.50" : "inherit",
                     opacity: row.locked ? 0.7 : 1,
                   }}
                 >
                   <TableCell padding="checkbox">
-                    <Checkbox
-                      checked={selectedRows.has(row.id)}
-                      onChange={(e) => handleSelectRow(row.id, e.target.checked)}
-                      disabled={row.locked}
-                    />
+                    <Checkbox checked={selectedRows.has(row.id)} onChange={(e) => handleSelectRow(row.id, e.target.checked)} disabled={row.locked} />
                   </TableCell>
                   <TableCell>
                     <Tooltip title={row.locked ? "Unlock row" : "Lock row"}>
-                      <IconButton
-                        size="small"
-                        onClick={() => onToggleLock(row.id)}
-                        color={row.locked ? "primary" : "default"}
-                      >
+                      <IconButton size="small" onClick={() => onToggleLock(row.id)} color={row.locked ? "primary" : "default"}>
                         {row.locked ? <Lock fontSize="small" /> : <LockOpen fontSize="small" />}
                       </IconButton>
                     </Tooltip>
                   </TableCell>
                   {columns.map((column) => {
-                    const isEditing =
-                      editingCell?.rowId === row.id &&
-                      editingCell?.column === column;
+                    const isEditing = editingCell?.rowId === row.id && editingCell?.column === column;
                     const value = row.data[column] || "";
 
                     return (
@@ -274,20 +246,9 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                             }}
                           />
                         ) : (
-                          <Tooltip
-                            title={
-                              row.locked
-                                ? "Unlock row to edit"
-                                : value.length > 100
-                                  ? value
-                                  : ""
-                            }
-                            placement="top"
-                          >
+                          <Tooltip title={row.locked ? "Unlock row to edit" : value.length > 100 ? value : ""} placement="top">
                             <Box
-                              onClick={() =>
-                                handleCellClick(row.id, column, value, !!row.locked)
-                              }
+                              onClick={() => handleCellClick(row.id, column, value, !!row.locked)}
                               sx={{
                                 cursor: row.locked ? "not-allowed" : "pointer",
                                 p: 0.5,
@@ -303,12 +264,7 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                             >
                               <Typography variant="body2" noWrap>
                                 {value || (
-                                  <Typography
-                                    component="span"
-                                    variant="body2"
-                                    color="text.secondary"
-                                    fontStyle="italic"
-                                  >
+                                  <Typography component="span" variant="body2" color="text.secondary" fontStyle="italic">
                                     Click to edit
                                   </Typography>
                                 )}

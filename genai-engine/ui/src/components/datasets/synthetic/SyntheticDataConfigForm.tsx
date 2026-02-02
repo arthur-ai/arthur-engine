@@ -19,11 +19,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import type { GenerationConfig } from "./types";
 
 import { useApi } from "@/hooks/useApi";
-import type {
-  DatasetVersionRowResponse,
-  ModelProvider,
-  ModelProviderResponse,
-} from "@/lib/api-client/api-client";
+import type { DatasetVersionRowResponse, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 interface SyntheticDataConfigFormProps {
   columns: string[];
@@ -49,9 +45,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
 
   // Form state
   const [datasetPurpose, setDatasetPurpose] = useState("");
-  const [columnDescriptions, setColumnDescriptions] = useState<ColumnDescription[]>(
-    columns.map((col) => ({ columnName: col, description: "" }))
-  );
+  const [columnDescriptions, setColumnDescriptions] = useState<ColumnDescription[]>(columns.map((col) => ({ columnName: col, description: "" })));
   const [numRows, setNumRows] = useState(10);
   const [modelProvider, setModelProvider] = useState<ModelProvider | null>(null);
   const [modelName, setModelName] = useState<string | null>(null);
@@ -72,9 +66,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
       try {
         setIsLoadingProviders(true);
         const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
-        const enabledProviders = (response.data.providers || []).filter(
-          (p) => p.enabled
-        );
+        const enabledProviders = (response.data.providers || []).filter((p) => p.enabled);
         setProviders(enabledProviders);
 
         // Auto-select first enabled provider
@@ -103,10 +95,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
       try {
         setIsLoadingModels(true);
         setModelName(null);
-        const response =
-          await api.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(
-            modelProvider
-          );
+        const response = await api.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(modelProvider);
         setAvailableModels(response.data.available_models || []);
       } catch (err) {
         console.error("Failed to fetch available models:", err);
@@ -119,16 +108,9 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
     fetchModels();
   }, [api, modelProvider]);
 
-  const handleColumnDescriptionChange = useCallback(
-    (columnName: string, description: string) => {
-      setColumnDescriptions((prev) =>
-        prev.map((col) =>
-          col.columnName === columnName ? { ...col, description } : col
-        )
-      );
-    },
-    []
-  );
+  const handleColumnDescriptionChange = useCallback((columnName: string, description: string) => {
+    setColumnDescriptions((prev) => prev.map((col) => (col.columnName === columnName ? { ...col, description } : col)));
+  }, []);
 
   const handleSubmit = useCallback(() => {
     if (!modelProvider || !modelName) return;
@@ -141,22 +123,10 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
       modelName,
       editExisting,
     });
-  }, [
-    datasetPurpose,
-    columnDescriptions,
-    numRows,
-    modelProvider,
-    modelName,
-    editExisting,
-    onSubmit,
-  ]);
+  }, [datasetPurpose, columnDescriptions, numRows, modelProvider, modelName, editExisting, onSubmit]);
 
   const enabledProviders = providers.filter((p) => p.enabled);
-  const canSubmit =
-    datasetPurpose.trim() &&
-    modelProvider &&
-    modelName &&
-    columnDescriptions.every((col) => col.description.trim());
+  const canSubmit = datasetPurpose.trim() && modelProvider && modelName && columnDescriptions.every((col) => col.description.trim());
 
   if (isLoadingProviders) {
     return (
@@ -170,8 +140,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
     return (
       <Box sx={{ py: 2 }}>
         <Alert severity="warning">
-          No model providers are configured. Please configure at least one model
-          provider in Settings to use synthetic data generation.
+          No model providers are configured. Please configure at least one model provider in Settings to use synthetic data generation.
         </Alert>
         <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
           <Button onClick={onCancel}>Close</Button>
@@ -212,9 +181,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
               label={col.columnName}
               placeholder={`Describe what "${col.columnName}" contains...`}
               value={col.description}
-              onChange={(e) =>
-                handleColumnDescriptionChange(col.columnName, e.target.value)
-              }
+              onChange={(e) => handleColumnDescriptionChange(col.columnName, e.target.value)}
               fullWidth
               size="small"
               required
@@ -227,15 +194,10 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
       <Box sx={{ display: "flex", gap: 2 }}>
         <FormControl fullWidth size="small">
           <InputLabel>Model Provider</InputLabel>
-          <Select
-            value={modelProvider || ""}
-            label="Model Provider"
-            onChange={(e) => setModelProvider(e.target.value as ModelProvider)}
-          >
+          <Select value={modelProvider || ""} label="Model Provider" onChange={(e) => setModelProvider(e.target.value as ModelProvider)}>
             {enabledProviders.map((provider) => (
               <MenuItem key={provider.provider} value={provider.provider}>
-                {provider.provider.charAt(0).toUpperCase() +
-                  provider.provider.slice(1)}
+                {provider.provider.charAt(0).toUpperCase() + provider.provider.slice(1)}
               </MenuItem>
             ))}
           </Select>
@@ -258,9 +220,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
                 ...params.InputProps,
                 endAdornment: (
                   <>
-                    {isLoadingModels ? (
-                      <CircularProgress color="inherit" size={20} />
-                    ) : null}
+                    {isLoadingModels ? <CircularProgress color="inherit" size={20} /> : null}
                     {params.InputProps.endAdornment}
                   </>
                 ),
@@ -292,12 +252,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
       {/* Edit Existing Data Toggle */}
       <Box>
         <FormControlLabel
-          control={
-            <Switch
-              checked={editExisting}
-              onChange={(e) => setEditExisting(e.target.checked)}
-            />
-          }
+          control={<Switch checked={editExisting} onChange={(e) => setEditExisting(e.target.checked)} />}
           label="Edit existing data"
         />
         <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>

@@ -1,12 +1,5 @@
 import { Send, SmartToy, Person } from "@mui/icons-material";
-import {
-  Box,
-  CircularProgress,
-  IconButton,
-  Paper,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, CircularProgress, IconButton, Paper, TextField, Typography } from "@mui/material";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import type { OpenAIMessageInput } from "@/lib/api-client/api-client";
@@ -17,11 +10,7 @@ interface SyntheticDataChatProps {
   onSendMessage: (message: string) => void;
 }
 
-export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({
-  conversation,
-  isLoading,
-  onSendMessage,
-}) => {
+export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({ conversation, isLoading, onSendMessage }) => {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -81,9 +70,7 @@ export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({
               color: "text.secondary",
             }}
           >
-            <Typography variant="body2">
-              The AI will respond here after generating data...
-            </Typography>
+            <Typography variant="body2">The AI will respond here after generating data...</Typography>
           </Box>
         )}
 
@@ -140,13 +127,8 @@ export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({
             <Send />
           </IconButton>
         </Box>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", mt: 1 }}
-        >
-          Try: "Add 5 more diverse rows", "Make the data more realistic", "Remove
-          rows 3-5"
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+          Try: "Add 5 more diverse rows", "Make the data more realistic", "Remove rows 3-5"
         </Typography>
       </Box>
     </Box>
@@ -159,8 +141,7 @@ interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isAssistant = message.role === "assistant";
-  const content =
-    typeof message.content === "string" ? message.content : String(message.content);
+  const content = typeof message.content === "string" ? message.content : String(message.content);
 
   return (
     <Box

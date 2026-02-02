@@ -1,12 +1,5 @@
 import { AutoAwesome, Close } from "@mui/icons-material";
-import {
-  Box,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Typography,
-} from "@mui/material";
+import { Box, Dialog, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
 import React, { useCallback, useState } from "react";
 
 import { SyntheticDataCanvas } from "./SyntheticDataCanvas";
@@ -126,11 +119,7 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <AutoAwesome color="primary" />
-          <Typography variant="h6">
-            {phase === "configure"
-              ? "Generate Synthetic Data"
-              : "Synthetic Data Generation"}
-          </Typography>
+          <Typography variant="h6">{phase === "configure" ? "Generate Synthetic Data" : "Synthetic Data Generation"}</Typography>
         </Box>
         <IconButton onClick={handleAttemptClose} size="small">
           <Close />

@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/02/2026
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  Added new endpoint for generating synthetic dataset rows using LLM. Accepts dataset purpose, column descriptions, model configuration, and number of rows to generate.
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  Added new endpoint for conversational refinement of synthetic data generation. Supports iterative modification of generated rows via natural language instructions.
+- **CHANGE** Added new request schemas: `SyntheticDataGenerationRequest`, `SyntheticDataConversationRequest`, `SyntheticDataColumnDescription`
+- **CHANGE** Added new response schemas: `SyntheticDataGenerationResponse`, `SyntheticDataRowResponse`
+
 # 01/29/2026
 - **CHANGE** for **URL**: /api/v1/model_providers  added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/model_providers/{provider}/available_models
