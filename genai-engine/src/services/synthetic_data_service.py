@@ -6,7 +6,6 @@ This module provides the SyntheticDataService class which handles:
 2. Conversational refinement of generated data
 """
 
-import json
 import uuid
 from typing import Any, Dict, List, Optional, cast
 
@@ -37,19 +36,27 @@ from services.synthetic_data_prompts import (
 )
 
 
+class SyntheticDataColumn(BaseModel):
+    """A single column-value pair in a synthetic data row."""
+
+    column_name: str = Field(description="Name of the column.")
+    column_value: str = Field(description="Value for this column.")
+
+
+class SyntheticDataRow(BaseModel):
+    """A single row of synthetic data."""
+
+    id: str = Field(description="Unique identifier for the row.")
+    data: List[SyntheticDataColumn] = Field(
+        description="List of column-value pairs in the row.",
+    )
+
+
 class SyntheticDataLLMOutput(BaseModel):
-    """Schema for structured LLM output for synthetic data generation.
+    """Schema for structured LLM output for synthetic data generation."""
 
-    Uses a JSON string for rows to avoid OpenAI structured output limitations
-    with nested complex types.
-    """
-
-    rows_json: str = Field(
-        description=(
-            "JSON array of row objects. Each row has 'id' (string) and 'data' "
-            "(array of {column_name, column_value} objects). "
-            'Example: [{"id": "1", "data": [{"column_name": "col1", "column_value": "val1"}]}]'
-        ),
+    rows: List[SyntheticDataRow] = Field(
+        description="List of generated data rows.",
     )
     message: str = Field(
         description="Explanation of what was done",
@@ -109,38 +116,26 @@ class SyntheticDataService:
         rows = []
         rows_added = []
         rows_modified = []
+        new_row_ids: set[str] = set()
 
-        new_row_ids = set()
+        for row in llm_output.rows:
+            new_row_ids.add(row.id)
 
-        # Parse the JSON string to get rows
-        try:
-            parsed_rows = json.loads(llm_output.rows_json)
-        except json.JSONDecodeError:
-            parsed_rows = []
-
-        for row in parsed_rows:
-            row_id = row.get("id", str(uuid.uuid4()))
-            new_row_ids.add(row_id)
-
-            # Convert data to response format
-            row_data = row.get("data", [])
             data = [
                 DatasetVersionRowColumnItemResponse(
-                    column_name=item.get("column_name", ""),
-                    column_value=item.get("column_value", ""),
+                    column_name=col.column_name,
+                    column_value=col.column_value,
                 )
-                for item in row_data
+                for col in row.data
             ]
 
-            rows.append(SyntheticDataRowResponse(id=row_id, data=data))
+            rows.append(SyntheticDataRowResponse(id=row.id, data=data))
 
-            # Track if this is a new or modified row
-            if row_id in existing_row_ids:
-                rows_modified.append(row_id)
+            if row.id in existing_row_ids:
+                rows_modified.append(row.id)
             else:
-                rows_added.append(row_id)
+                rows_added.append(row.id)
 
-        # Determine removed rows (IDs that were in existing but not in new)
         rows_removed = list(existing_row_ids - new_row_ids)
 
         return rows, rows_added, rows_modified, rows_removed

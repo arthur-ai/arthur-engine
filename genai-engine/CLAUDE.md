@@ -97,4 +97,35 @@ poetry install --only performance
 ### Coding Conventions
 
 - **DB sessions are auto-closed**: Do NOT wrap route handlers in `try/finally: db_session.close()`. The database session obtained via `Depends(get_db_session)` is automatically closed by FastAPI's dependency lifecycle. Adding manual `finally` blocks is unnecessary.
-- **Use structured outputs for LLM calls**: When calling the LLM client (`client.completion()`), prefer passing a Pydantic `BaseModel` class as `response_format` instead of `{"type": "json_object"}`. This uses structured outputs / `json_schema` mode, which guarantees the response conforms to the schema. The parsed result is available on `response.structured_output_response`. Only fall back to `json_object` mode if the model does not support structured outputs.
+- **Strongly type all data structures**: API objects, LLM response schemas, request/response bodies, and any data with a known semantic structure must be represented as Pydantic `BaseModel` classes — not raw `dict`, `str`, or `Any`. Typed models provide validation, IDE support, and catch errors at parse time rather than at runtime via `.get()` calls. For LLM calls specifically, pass a Pydantic `BaseModel` class as `response_format` to `client.completion()` instead of `{"type": "json_object"}`; the parsed result is available on `response.structured_output_response`.
+
+#### Strong typing examples
+
+**Good** — nested Pydantic models for structured data:
+```python
+class SyntheticDataColumn(BaseModel):
+    column_name: str
+    column_value: str
+
+class SyntheticDataRow(BaseModel):
+    id: str
+    data: List[SyntheticDataColumn]
+
+class SyntheticDataLLMOutput(BaseModel):
+    rows: List[SyntheticDataRow]
+    message: str
+```
+
+**Bad** — JSON string that requires manual parsing:
+```python
+class SyntheticDataLLMOutput(BaseModel):
+    rows_json: str  # JSON blob parsed with json.loads, accessed via .get()
+    message: str
+```
+
+**Bad** — untyped dicts for data with known structure:
+```python
+def process_row(row: Dict[str, Any]) -> None:
+    name = row.get("column_name", "")  # no validation, typos silently pass
+    value = row.get("column_value", "")
+```
