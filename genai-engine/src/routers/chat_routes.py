@@ -232,7 +232,7 @@ def chat(
             )
         except LLMContentFilterException:
             return ChatResponse(
-                inference_id=validation_prompt_request.inference_id,
+                inference_id=validation_prompt_request.inference_id or "",
                 conversation_id=body.conversation_id,
                 timestamp=_serialize_datetime(datetime.now()),
                 retrieved_context=[
@@ -246,7 +246,7 @@ def chat(
 
         # Send response to GenAI Engine
         validation_response_request = validate_response(
-            inference_id=validation_prompt_request.inference_id,
+            inference_id=validation_prompt_request.inference_id or "",
             body=ResponseValidationRequest(
                 response=chat_response,
                 context=(
@@ -261,12 +261,12 @@ def chat(
         )
 
         inference_repo.save_inference_document_context(
-            validation_response_request.inference_id,
+            validation_response_request.inference_id or "",
             retrieval_info.embeddings,
         )
 
         return ChatResponse(
-            inference_id=validation_prompt_request.inference_id,
+            inference_id=validation_prompt_request.inference_id or "",
             conversation_id=body.conversation_id,
             timestamp=_serialize_datetime(datetime.now()),
             retrieved_context=[

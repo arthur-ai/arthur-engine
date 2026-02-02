@@ -177,7 +177,7 @@ def get_continuous_eval_variables_and_mappings(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> ListAgenticAnnotationsResponse:
+) -> ContinuousEvalVariableMappingResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted
         llm_eval_repo = LLMEvalsRepository(db_session)
@@ -319,6 +319,7 @@ def update_continuous_eval(
 
         existing_eval = continuous_eval_repo.get_continuous_eval_by_id(eval_id)
         llm_eval = None
+        llm_eval_version: str | int | None = None
 
         if update_request.llm_eval_version is not None:
             llm_eval_name = existing_eval.llm_eval_name

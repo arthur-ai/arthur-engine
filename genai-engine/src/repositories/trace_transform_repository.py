@@ -7,8 +7,9 @@ from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy import asc, desc
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.orm import Session
 
+from custom_types import QueryT
 from db_models.transform_models import DatabaseTraceTransform
 from schemas.internal_schemas import TraceTransform
 from schemas.request_schemas import (
@@ -24,10 +25,10 @@ class TraceTransformRepository:
 
     def _apply_sorting_pagination_and_count(
         self,
-        query: Query,
+        query: QueryT,
         pagination_parameters: PaginationParameters,
         sort_column: str,
-    ) -> Query:
+    ) -> QueryT:
         """
         Apply sorting and pagination to a query and return the total count.
 

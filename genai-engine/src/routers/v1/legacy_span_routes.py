@@ -7,6 +7,8 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import (
     AgenticAnnotationType,
     ContinuousEvalRunStatus,
+    PaginationSortMethod,
+    StatusCodeEnum,
     ToolClassEnum,
 )
 from arthur_common.models.request_schemas import SpanQueryRequest, TraceQueryRequest
@@ -144,7 +146,7 @@ def trace_query_parameters(
         None,
         description="Return only results where span name contains this substring.",
     ),
-    status_code: list[str] = Query(
+    status_code: list[StatusCodeEnum] | None = Query(
         None,
         description="Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
     ),
@@ -451,6 +453,12 @@ def query_spans_by_type(
             span_types=span_types,
             start_time=start_time,
             end_time=end_time,
+            session_ids=None,
+            span_ids=None,
+            user_ids=None,
+            span_name=None,
+            span_name_contains=None,
+            status_code=None,
         )
 
         # Create minimal TraceQueryRequest for legacy filtering
@@ -459,6 +467,31 @@ def query_spans_by_type(
             span_types=query_request.span_types,
             start_time=query_request.start_time,
             end_time=query_request.end_time,
+            trace_ids=None,
+            tool_name=None,
+            span_ids=None,
+            session_ids=None,
+            user_ids=None,
+            span_name=None,
+            span_name_contains=None,
+            status_code=None,
+            annotation_score=None,
+            annotation_type=None,
+            continuous_eval_run_status=None,
+            continuous_eval_name=None,
+            query_relevance_eq=None,
+            query_relevance_gt=None,
+            query_relevance_gte=None,
+            query_relevance_lt=None,
+            query_relevance_lte=None,
+            response_relevance_eq=None,
+            response_relevance_gt=None,
+            response_relevance_gte=None,
+            response_relevance_lt=None,
+            response_relevance_lte=None,
+            tool_selection=None,
+            tool_usage=None,
+            trace_duration_eq=None,
             trace_duration_gt=None,
             trace_duration_gte=None,
             trace_duration_lt=None,
@@ -467,7 +500,7 @@ def query_spans_by_type(
 
         span_repo = _get_span_repository(db_session)
         spans, total_count = span_repo.query_spans(
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
             include_metrics=True,  # Include existing metrics

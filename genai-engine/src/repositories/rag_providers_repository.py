@@ -53,7 +53,7 @@ class RagProvidersRepository:
     def _get_db_rag_provider_config(
         self,
         config_id: UUID,
-    ) -> DatabaseRagProviderConfiguration:
+    ) -> DatabaseRagProviderConfiguration | DatabaseApiKeyRagProviderConfiguration:
         db_config = (
             self.db_session.query(DatabaseRagProviderConfiguration)
             .filter(DatabaseRagProviderConfiguration.id == config_id)
@@ -139,6 +139,11 @@ class RagProvidersRepository:
                 update_config.authentication_config,
                 ApiKeyRagAuthenticationConfigUpdateRequest,
             ):
+                if not isinstance(db_provider, DatabaseApiKeyRagProviderConfiguration):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="RAG provider configuration update not supported for this config type.",
+                    )
                 if update_config.authentication_config.api_key:
                     new_secret_value = ApiKeyRagProviderSecretValue(
                         api_key=update_config.authentication_config.api_key,
@@ -299,9 +304,9 @@ class RagProvidersRepository:
         db_parent_config.latest_version_number = db_version.version_number
 
         # validate tags must be unique across versions - want to raise clean error instead of 5XX
-        existing_tags = db_parent_config.all_possible_tags
+        existing_tags = db_parent_config.all_possible_tags or []
         existing_tag_strings = {tag.tag for tag in existing_tags}
-        for new_tag_db in db_version.tags:
+        for new_tag_db in db_version.tags or []:
             if new_tag_db.tag in existing_tag_strings:
                 raise HTTPException(
                     status_code=404,
@@ -309,7 +314,7 @@ class RagProvidersRepository:
                 )
         # update all_possible_tags to include the new tags as well
         # reuse the tag DB objects from db_version to avoid creating duplicates
-        tags_to_add = [tag_db for tag_db in db_version.tags]
+        tags_to_add = [tag_db for tag_db in db_version.tags or []]
         db_parent_config.all_possible_tags = existing_tags + tags_to_add
 
         # add objects to DB
@@ -334,8 +339,8 @@ class RagProvidersRepository:
             )
         )
         if not include_deleted_versions:
-            query.filter(
-                DatabaseRagSearchSettingConfigurationVersion.deleted_at is None,
+            query = query.filter(
+                DatabaseRagSearchSettingConfigurationVersion.deleted_at.is_(None),
             )
 
         db_config = query.first()
@@ -349,11 +354,16 @@ class RagProvidersRepository:
 
     def get_rag_setting_configuration_version(
         self,
-        config_id: UUID,
-        version_number: int,
+        config_id: UUID | None,
+        version_number: int | None,
         include_deleted_versions: bool = False,
     ) -> RagSearchSettingConfigurationVersion:
         """Get a RAG provider configuration version by ID and version number"""
+        if config_id is None or version_number is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Config ID or version number is required",
+            )
         db_config = self._get_db_rag_setting_config_version(
             config_id,
             version_number,
@@ -447,7 +457,7 @@ class RagProvidersRepository:
         # empty out all other fields in the version except for the PK fields and the created/updated fields
         db_version_config.settings = None
         # delete the tag records from the database and clear the relationship
-        for tag in db_version_config.tags:
+        for tag in db_version_config.tags or []:
             self.db_session.delete(tag)
         db_version_config.tags = []
 
@@ -505,7 +515,7 @@ class RagProvidersRepository:
         curr_time = datetime.now()
 
         # delete old tag objects
-        for tag_db in db_setting_version.tags:
+        for tag_db in db_setting_version.tags or []:
             self.db_session.delete(tag_db)
 
         # create new tag objects from the string list

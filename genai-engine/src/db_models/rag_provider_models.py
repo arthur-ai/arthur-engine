@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, List, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -20,6 +20,9 @@ from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
 )
+
+if TYPE_CHECKING:
+    from db_models.secret_storage_models import DatabaseSecretStorage
 
 
 class DatabaseRagProviderConfiguration(Base):

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleResultEnum, RuleType
+from arthur_common.models.enums import PaginationSortMethod, RuleResultEnum, RuleType
 from arthur_common.models.response_schemas import QueryInferencesResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -103,7 +103,7 @@ def query_inferences(
             count = len(results)
         else:
             results, count = inference_repo.query_inferences(
-                pagination_parameters.sort,
+                pagination_parameters.sort or PaginationSortMethod.DESCENDING,
                 pagination_parameters.page,
                 task_ids=task_ids,
                 task_name=task_name,
