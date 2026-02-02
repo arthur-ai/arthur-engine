@@ -1,16 +1,15 @@
-import { Box, Dialog, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
+import { Box, Dialog, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useMemo } from "react";
 
-import { CONTINUOUS_EVAL_RESULT_FIELDS } from "../../data/filter-fields";
 import { createColumns } from "../../data/results-columns";
 import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEvalsResults";
 
 import { Details } from "./components/details";
+import { FilterModal } from "./components/FilterModal";
 
-import { createFilterRow } from "@/components/traces/components/filtering/filters-row";
 import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useApi } from "@/hooks/useApi";
@@ -42,11 +41,11 @@ export const Results = () => {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const { FiltersRow } = useMemo(() => createFilterRow(CONTINUOUS_EVAL_RESULT_FIELDS, {}), []);
-
   return (
     <>
-      <FiltersRow sx={{ border: "none" }} getNameLabel={getFieldLabel} />
+      <Stack direction="row" justifyContent="flex-end" sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+        <FilterModal />
+      </Stack>
       {data.annotations.length === 0 ? (
         <Box sx={{ p: 2 }}>
           <TracesEmptyState title="No annotations found" />
@@ -105,17 +104,5 @@ export const Results = () => {
         />
       </Dialog>
     </>
-  );
-};
-
-const getFieldLabel = (name: string) => {
-  return (
-    {
-      continuous_eval_id: "Continuous Eval ID",
-      trace_id: "Trace ID",
-      annotation_score: "Annotation Score",
-      run_status: "Run Status",
-      created_at: "Created At",
-    }[name] ?? name
   );
 };

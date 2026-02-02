@@ -4551,10 +4551,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   continuous_eval_enabled?: string | null;
   /**
-   * Continuous Eval Id
-   * ID of the continuous eval to filter on.
+   * Continuous Eval Ids
+   * List of continuous eval IDs to filter on.
    */
-  continuous_eval_id?: string | null;
+  continuous_eval_ids?: string[] | null;
   /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
@@ -4566,10 +4566,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   created_before?: string | null;
   /**
-   * Id
-   * ID of the continuous eval to filter on.
+   * Ids
+   * List of agentic annotation IDs to filter on.
    */
-  id?: string | null;
+  ids?: string[] | null;
   /**
    * Page
    * Page number
@@ -4598,10 +4598,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   taskId: string;
   /**
-   * Trace Id
-   * Trace ID to filter on.
+   * Trace Ids
+   * List of trace IDs to filter on.
    */
-  trace_id?: string | null;
+  trace_ids?: string[] | null;
 }
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
@@ -4954,6 +4954,12 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -5062,7 +5068,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5075,7 +5081,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5169,6 +5175,12 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Include Spans
    * Include flat list of spans for each trace. Defaults to false for performance.
@@ -5284,7 +5296,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5297,7 +5309,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -6610,7 +6622,7 @@ export interface PromptOutput {
    * Tool Calls
    * Tool calls made by the prompt
    */
-  tool_calls?: any[];
+  tool_calls?: ChatCompletionMessageToolCall[];
 }
 
 /**
@@ -7063,7 +7075,7 @@ export interface QuerySpansByTypeV1SpansQueryGetParams {
   sort?: PaginationSortMethod;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7121,6 +7133,12 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Page
    * Page number
@@ -7230,7 +7248,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7243,7 +7261,7 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -7329,6 +7347,12 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -7437,7 +7461,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7450,7 +7474,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -9348,6 +9372,9 @@ export interface SpanWithMetricsResponse {
   /** User Id */
   user_id?: string | null;
 }
+
+/** StatusCodeEnum */
+export type StatusCodeEnum = "Ok" | "Error" | "Unset";
 
 /** StreamOptions */
 export interface StreamOptions {
@@ -11632,7 +11659,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.335
+ * @version 2.1.339
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

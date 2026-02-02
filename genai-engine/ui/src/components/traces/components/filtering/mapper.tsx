@@ -57,6 +57,21 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       return (request["continuous_eval_name"] = filter.value as string);
     }
 
+    // Special handling for continuous_eval_id with EQUALS operator (backend expects "continuous_eval_id", not "continuous_eval_id_eq")
+    if (key === "continuous_eval_id" && filter.operator === Operators.EQUALS) {
+      return (request["continuous_eval_id"] = filter.value as string);
+    }
+
+    // Special handling for trace_id with EQUALS operator (backend expects "trace_id", not "trace_id_eq")
+    if (key === "trace_id" && filter.operator === Operators.EQUALS) {
+      return (request["trace_id"] = filter.value as string);
+    }
+
+    // Special handling for id with IN operator (backend expects "id_in")
+    if (key === "id" && filter.operator === Operators.IN) {
+      return (request["id_in"] = filter.value as string[]);
+    }
+
     // Handle boolean fields
     if (key === "include_experiment_traces" && filter.operator === Operators.EQUALS) {
       const value = Array.isArray(filter.value) ? filter.value[0] : filter.value;
