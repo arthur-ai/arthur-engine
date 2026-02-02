@@ -311,23 +311,24 @@ class ContinuousEvalsRepository:
         )
 
         if filter_request:
-            if filter_request.id:
+            if filter_request.ids:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.id == filter_request.id,
+                    DatabaseAgenticAnnotation.id.in_(filter_request.ids),
                 )
 
-            if filter_request.continuous_eval_id:
+            if filter_request.continuous_eval_ids:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.continuous_eval_id
-                    == filter_request.continuous_eval_id,
+                    DatabaseAgenticAnnotation.continuous_eval_id.in_(
+                        filter_request.continuous_eval_ids,
+                    ),
                 )
 
-            if filter_request.trace_id:
+            if filter_request.trace_ids:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.trace_id == filter_request.trace_id,
+                    DatabaseAgenticAnnotation.trace_id.in_(filter_request.trace_ids),
                 )
 
-            if filter_request.annotation_score:
+            if filter_request.annotation_score is not None:
                 base_query = base_query.filter(
                     DatabaseAgenticAnnotation.annotation_score
                     == filter_request.annotation_score,

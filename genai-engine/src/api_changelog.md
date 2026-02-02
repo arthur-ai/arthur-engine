@@ -30,6 +30,15 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
 
 # 02/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  deleted the 'query' request parameter 'continuous_eval_id'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals/results
+- **CHANGE**warning [request-parameter-removed] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'trace_ids'
+
+# 02/02/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/id'
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  Added new endpoint for generating synthetic dataset rows using LLM. Accepts dataset purpose, column descriptions, model configuration, and number of rows to generate.
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  Added new endpoint for conversational refinement of synthetic data generation. Supports iterative modification of generated rows via natural language instructions.

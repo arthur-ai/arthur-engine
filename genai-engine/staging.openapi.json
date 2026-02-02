@@ -13980,58 +13980,67 @@
                         "description": "Page number"
                     },
                     {
-                        "name": "id",
+                        "name": "ids",
                         "in": "query",
                         "required": false,
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "ID of the continuous eval to filter on.",
-                            "title": "Id"
+                            "description": "List of agentic annotation IDs to filter on.",
+                            "title": "Ids"
                         },
-                        "description": "ID of the continuous eval to filter on."
+                        "description": "List of agentic annotation IDs to filter on."
                     },
                     {
-                        "name": "continuous_eval_id",
+                        "name": "continuous_eval_ids",
                         "in": "query",
                         "required": false,
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "ID of the continuous eval to filter on.",
-                            "title": "Continuous Eval Id"
+                            "description": "List of continuous eval IDs to filter on.",
+                            "title": "Continuous Eval Ids"
                         },
-                        "description": "ID of the continuous eval to filter on."
+                        "description": "List of continuous eval IDs to filter on."
                     },
                     {
-                        "name": "trace_id",
+                        "name": "trace_ids",
                         "in": "query",
                         "required": false,
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "Trace ID to filter on.",
-                            "title": "Trace Id"
+                            "description": "List of trace IDs to filter on.",
+                            "title": "Trace Ids"
                         },
-                        "description": "Trace ID to filter on."
+                        "description": "List of trace IDs to filter on."
                     },
                     {
                         "name": "annotation_score",

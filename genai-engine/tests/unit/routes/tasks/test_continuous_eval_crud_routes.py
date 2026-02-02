@@ -1332,28 +1332,28 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
     annotations = [annotation_1, annotation_2, annotation_3, annotation_4]
 
     try:
-        # Test filtering by annotation id
+        # Test filtering by annotation id (using plural parameter name)
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"id={str(annotation_1.id)}",
+            search_url=f"ids={str(annotation_1.id)}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
         assert received_run_results.count == 1
 
-        # Test filtering by trace id
+        # Test filtering by trace id (using plural parameter name)
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"trace_id={trace_id}",
+            search_url=f"trace_ids={trace_id}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 3
         assert received_run_results.count == 3
 
-        # Test filtering by continuous eval id
+        # Test filtering by continuous eval id (using plural parameter name)
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"continuous_eval_id={continuous_eval.id}",
+            search_url=f"continuous_eval_ids={continuous_eval.id}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 2
@@ -1361,7 +1361,7 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
 
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"continuous_eval_id={continuous_eval_2.id}",
+            search_url=f"continuous_eval_ids={continuous_eval_2.id}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
@@ -1433,6 +1433,24 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
         assert received_run_results.count == 1
+
+        # Test filtering by multiple annotation ids
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"ids={str(annotation_1.id)}&ids={str(annotation_2.id)}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 2
+        assert received_run_results.count == 2
+
+        # Test filtering by multiple continuous eval ids
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"continuous_eval_ids={continuous_eval.id}&continuous_eval_ids={continuous_eval_2.id}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 3
+        assert received_run_results.count == 3
     finally:
         client.delete_transform(transform.id)
         client.delete_llm_eval(task_id, llm_eval.name)
@@ -1454,23 +1472,23 @@ def test_list_continuous_eval_run_results_value_errors(
     try:
         status_code, error = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url="id=invalid_uuid",
+            search_url="ids=invalid_uuid",
         )
         assert status_code == 400
         assert error is not None
         assert (
-            "invalid uuid format for parameter 'id': invalid_uuid"
+            "invalid uuid format for parameter 'ids':"
             in error.get("detail", "").lower()
         )
 
         status_code, error = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url="continuous_eval_id=invalid_uuid",
+            search_url="continuous_eval_ids=invalid_uuid",
         )
         assert status_code == 400
         assert error is not None
         assert (
-            "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid"
+            "invalid uuid format for parameter 'continuous_eval_ids':"
             in error.get("detail", "").lower()
         )
     finally:
