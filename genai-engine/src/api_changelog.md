@@ -1,6 +1,7 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
 # 02/02/2026
 - Added /api/v1/discover-agents endpoint
 
