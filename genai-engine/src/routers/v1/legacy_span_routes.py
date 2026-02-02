@@ -247,6 +247,10 @@ def trace_query_parameters(
         ge=0,
         description="Duration less than or equal to this value (seconds).",
     ),
+    include_experiment_traces: bool = Query(
+        default=True,
+        description="Include traces originating from Arthur experiments. Defaults to true.",
+    ),
 ) -> TraceQueryRequest:
     """Create a TraceQueryRequest from query parameters."""
     return TraceQueryRequest(
@@ -283,6 +287,7 @@ def trace_query_parameters(
         trace_duration_gte=trace_duration_gte,
         trace_duration_lt=trace_duration_lt,
         trace_duration_lte=trace_duration_lte,
+        include_experiment_traces=include_experiment_traces,
     )
 
 

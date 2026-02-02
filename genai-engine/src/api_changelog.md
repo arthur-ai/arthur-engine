@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/02/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'include_experiment_traces'
+
 # 01/29/2026
 - **CHANGE** for **URL**: /api/v1/model_providers  added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/model_providers/{provider}/available_models
