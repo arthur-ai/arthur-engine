@@ -267,7 +267,7 @@ class AgentDiscoveryService:
             return {}
 
         # Fetch complete traces and extract resource data
-        resources = {}
+        resources: dict[str, dict[str, Any]] = {}
 
         for i, trace_id in enumerate(trace_ids, 1):
             if i % 10 == 0:
