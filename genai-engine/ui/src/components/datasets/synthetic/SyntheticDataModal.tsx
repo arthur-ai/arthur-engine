@@ -13,6 +13,7 @@ import { SyntheticDataCanvas } from "./SyntheticDataCanvas";
 import { SyntheticDataConfigForm } from "./SyntheticDataConfigForm";
 import type { GenerationConfig } from "./types";
 
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { useSyntheticDataSession } from "@/hooks/datasets/useSyntheticDataSession";
 import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
@@ -39,6 +40,7 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
 }) => {
   const [phase, setPhase] = useState<ModalPhase>("configure");
   const [config, setConfig] = useState<GenerationConfig | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   const session = useSyntheticDataSession(datasetId, versionNumber, columns);
 
@@ -84,15 +86,27 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
     [session.rows, onAcceptRows, handleClose]
   );
 
+  const handleAttemptClose = useCallback(() => {
+    if (phase === "canvas" && session.rows.length > 0) {
+      setShowDiscardConfirm(true);
+    } else {
+      handleClose();
+    }
+  }, [phase, session.rows.length, handleClose]);
+
   const handleBack = useCallback(() => {
-    setPhase("configure");
-    session.reset();
+    if (session.rows.length > 0) {
+      setShowDiscardConfirm(true);
+    } else {
+      setPhase("configure");
+      session.reset();
+    }
   }, [session]);
 
   return (
     <Dialog
       open={open}
-      onClose={handleClose}
+      onClose={handleAttemptClose}
       maxWidth={phase === "canvas" ? "xl" : "md"}
       fullWidth
       PaperProps={{
@@ -118,7 +132,7 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
               : "Synthetic Data Generation"}
           </Typography>
         </Box>
-        <IconButton onClick={handleClose} size="small">
+        <IconButton onClick={handleAttemptClose} size="small">
           <Close />
         </IconButton>
       </DialogTitle>
@@ -156,6 +170,16 @@ export const SyntheticDataModal: React.FC<SyntheticDataModalProps> = ({
           />
         )}
       </DialogContent>
+
+      <ConfirmationModal
+        open={showDiscardConfirm}
+        onClose={() => setShowDiscardConfirm(false)}
+        onConfirm={handleClose}
+        title="Discard Generated Data?"
+        message="You have generated data that hasn't been accepted. Closing will discard all generated rows and conversation history."
+        confirmText="Discard"
+        cancelText="Keep Editing"
+      />
     </Dialog>
   );
 };
