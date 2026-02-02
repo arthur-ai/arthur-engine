@@ -32,6 +32,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import InstrumentedAttribute, Session
 from sqlalchemy.types import Numeric
 
+from custom_types import QueryTSelect
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseSpan,
@@ -510,9 +511,9 @@ class SpanQueryService:
 
     def _apply_pagination(
         self,
-        query: Select[Tuple[Any]],
+        query: QueryTSelect,
         pagination_parameters: PaginationParameters,
-    ) -> Select[Tuple[Any]]:
+    ) -> QueryTSelect:
         """Apply OFFSET and LIMIT to a query."""
         offset = pagination_parameters.page * pagination_parameters.page_size
         return query.offset(offset).limit(pagination_parameters.page_size)

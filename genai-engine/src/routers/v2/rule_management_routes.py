@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleScope, RuleType
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
 from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
 from fastapi import APIRouter, Body, Depends
@@ -158,7 +158,7 @@ def search_rules(
             response_enabled=request.response_enabled,
             rule_scopes=request.rule_scopes,
             rule_types=request.rule_types,
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page_size=pagination_parameters.page_size,
             page=pagination_parameters.page,
         )

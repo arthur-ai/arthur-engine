@@ -303,6 +303,9 @@ class BinaryPIIDataClassifier:
         if not presidio_entities:
             return []
 
+        if not self.analyzer:
+            return []
+
         presidio_results = self.analyzer.analyze(
             text=text,
             entities=presidio_entities,

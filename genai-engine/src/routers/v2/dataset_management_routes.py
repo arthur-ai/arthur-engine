@@ -24,6 +24,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
+    DatasetVersionRowColumnItemResponse,
     DatasetVersionRowResponse,
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
@@ -280,7 +281,7 @@ def get_dataset_version_row(
 
         # Convert database row to response format
         row_data = [
-            {"column_name": key, "column_value": value}
+            DatasetVersionRowColumnItemResponse(column_name=key, column_value=value)
             for key, value in db_row.data.items()
         ]
 

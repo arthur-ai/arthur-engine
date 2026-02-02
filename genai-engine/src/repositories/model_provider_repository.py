@@ -61,7 +61,6 @@ class ModelProviderRepository:
     ) -> str:
         key: str | None = secret.get(self.API_KEY_SECRET_FIELD)
         if not key:
-            # TODO: should we raise an error here or return None and handle it in the result?
             logger.warning(
                 f"api_key not found in credential secret for provider {provider}",
             )
@@ -168,12 +167,12 @@ class ModelProviderRepository:
     def set_model_provider_credentials(
         self,
         provider: ModelProvider,
-        api_key: SecretStr = None,
-        project_id: str = None,
-        region: str = None,
-        api_base: SecretStr = None,
-        vertex_credentials: GCPServiceAccountCredentials = None,
-        aws_bedrock_credentials: AwsBedrockCredentials = None,
+        api_key: SecretStr | None = None,
+        project_id: str | None = None,
+        region: str | None = None,
+        api_base: SecretStr | None = None,
+        vertex_credentials: GCPServiceAccountCredentials | None = None,
+        aws_bedrock_credentials: AwsBedrockCredentials | None = None,
     ) -> None:
         # first check if this provider already exists
         existing_provider = (

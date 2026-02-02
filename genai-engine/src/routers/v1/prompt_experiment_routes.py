@@ -54,7 +54,7 @@ def list_prompt_experiments(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> PromptExperimentListResponse:
     """
     List all prompt experiments for a given task.
 
@@ -105,7 +105,7 @@ def create_prompt_experiment(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> PromptExperimentSummary:
     """
     Create a new prompt experiment and start execution.
 
@@ -180,7 +180,7 @@ def get_prompt_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> PromptExperimentDetail:
     """
     Get detailed information about a prompt experiment.
 
@@ -223,7 +223,7 @@ def get_experiment_test_cases(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TestCaseListResponse:
     """
     Get detailed test case results for an experiment.
 
@@ -284,7 +284,7 @@ def get_prompt_version_results(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> PromptVersionResultListResponse:
     """
     Get detailed results for a specific prompt within an experiment.
 

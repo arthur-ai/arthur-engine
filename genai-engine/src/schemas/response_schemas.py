@@ -70,7 +70,7 @@ class DatasetResponse(BaseModel):
         default=None,
         description="Description of the dataset.",
     )
-    metadata: Optional[dict] = Field(
+    metadata: Optional[dict[Any, Any]] = Field(
         default=None,
         description="Any metadata to include that describes additional information about the dataset.",
     )

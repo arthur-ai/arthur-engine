@@ -54,7 +54,7 @@ def list_rag_experiments(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> RagExperimentListResponse:
     """
     List all RAG experiments for a given task.
 
@@ -105,7 +105,7 @@ def create_rag_experiment(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> RagExperimentSummary:
     """
     Create a new RAG experiment and start execution.
 
@@ -180,7 +180,7 @@ def get_rag_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagExperimentDetail:
     """
     Get detailed information about a RAG experiment.
 
@@ -223,7 +223,7 @@ def get_rag_experiment_test_cases(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RagTestCaseListResponse:
     """
     Get detailed test case results for a RAG experiment.
 

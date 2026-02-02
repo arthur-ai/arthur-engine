@@ -14,10 +14,10 @@ class LLMTokenConsumption(BaseModel):
     prompt_tokens: int
     completion_tokens: int
 
-    def total_tokens(self):
+    def total_tokens(self) -> int:
         return self.prompt_tokens + self.completion_tokens
 
-    def add(self, token_consumption: LLMTokenConsumption):
+    def add(self, token_consumption: LLMTokenConsumption) -> "LLMTokenConsumption":
         self.prompt_tokens += token_consumption.prompt_tokens
         self.completion_tokens += token_consumption.completion_tokens
         return self
@@ -34,10 +34,10 @@ class UserPermission(BaseModel):
     action: UserPermissionAction
     resource: UserPermissionResource
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.action, self.resource))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, UserPermission) and self.__hash__() == other.__hash__()
 
 

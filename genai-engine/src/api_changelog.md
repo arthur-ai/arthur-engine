@@ -4,13 +4,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 02/02/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/id'
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new optional request property 'current_rows/items/id'
-
-# 02/02/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  Added new endpoint for generating synthetic dataset rows using LLM. Accepts dataset purpose, column descriptions, model configuration, and number of rows to generate.
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  Added new endpoint for conversational refinement of synthetic data generation. Supports iterative modification of generated rows via natural language instructions.
 - **CHANGE** Added new request schemas: `SyntheticDataGenerationRequest`, `SyntheticDataConversationRequest`, `SyntheticDataColumnDescription`
 - **CHANGE** Added new response schemas: `SyntheticDataGenerationResponse`, `SyntheticDataRowResponse`
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'include_experiment_traces'
 
 # 01/29/2026
 - **CHANGE** for **URL**: /api/v1/model_providers  added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
@@ -59,6 +60,14 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'hosted_vllm' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'hosted_vllm' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'hosted_vllm' enum value to the request property 'model_provider'
+
+# 01/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  the 'data/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/traces  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /api/v1/traces/spans  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/metrics/  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/query  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
 
 # 01/27/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'

@@ -45,7 +45,7 @@ def create_notebook(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> NotebookDetail:
     """
     Create a new notebook for a task.
 
@@ -85,7 +85,7 @@ def list_notebooks(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> NotebookListResponse:
     """
     List all notebooks for a given task.
 
@@ -118,7 +118,7 @@ def get_notebook(
     notebook_id: str = Path(..., description="Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> NotebookDetail:
     """
     Get detailed information about a notebook.
 
@@ -151,7 +151,7 @@ def update_notebook(
     notebook_id: str = Path(..., description="Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> NotebookDetail:
     """
     Update notebook metadata (name and/or description).
 
@@ -183,7 +183,7 @@ def get_notebook_state(
     notebook_id: str = Path(..., description="Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> NotebookState:
     """
     Get the current state of a notebook.
 
@@ -216,7 +216,7 @@ def set_notebook_state(
     notebook_id: str = Path(..., description="Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> NotebookDetail:
     """
     Set the state of a notebook.
 
@@ -284,7 +284,7 @@ def get_notebook_history(
     notebook_id: str = Path(..., description="Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> PromptExperimentListResponse:
     """
     Get the history of experiments run from this notebook.
 

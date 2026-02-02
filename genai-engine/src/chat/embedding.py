@@ -22,6 +22,6 @@ class EmbeddingModel:
         """
         if self.model is None:
             raise ValueError("Embedding model is not initialized")
-        r = self.model.embed_query(query)
+        r: list[float] = self.model.embed_query(query)
 
         return r

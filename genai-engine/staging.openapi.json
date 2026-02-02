@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.335"
+        "version": "2.1.339"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2516,10 +2516,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -2734,6 +2741,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -3001,10 +3020,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -3219,6 +3245,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -3725,10 +3763,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -3943,6 +3988,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -4209,10 +4266,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -4427,6 +4491,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -15094,6 +15170,12 @@
                         "title": "Version",
                         "description": "Version of the evaluation"
                     },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform to apply to the trace before evaluation"
+                    },
                     "variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticEvalVariableMapping-Input"
@@ -15101,20 +15183,14 @@
                         "type": "array",
                         "title": "Variable Mapping",
                         "description": "Mapping of eval variables to data sources (supports transform variables for agentic experiments)"
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Transform Id",
-                        "description": "ID of the transform to apply to the trace before evaluation"
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "version",
-                    "variable_mapping",
-                    "transform_id"
+                    "transform_id",
+                    "variable_mapping"
                 ],
                 "title": "AgenticEvalRef",
                 "description": "Reference to an evaluation configuration with transform"
@@ -15131,6 +15207,12 @@
                         "title": "Version",
                         "description": "Version of the evaluation"
                     },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform to apply to the trace before evaluation"
+                    },
                     "variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticEvalVariableMapping-Output"
@@ -15138,20 +15220,14 @@
                         "type": "array",
                         "title": "Variable Mapping",
                         "description": "Mapping of eval variables to data sources (supports transform variables for agentic experiments)"
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Transform Id",
-                        "description": "ID of the transform to apply to the trace before evaluation"
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "version",
-                    "variable_mapping",
-                    "transform_id"
+                    "transform_id",
+                    "variable_mapping"
                 ],
                 "title": "AgenticEvalRef",
                 "description": "Reference to an evaluation configuration with transform"
@@ -15339,14 +15415,6 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "eval_list": {
-                        "items": {
-                            "$ref": "#/components/schemas/AgenticEvalRef-Output"
-                        },
-                        "type": "array",
-                        "title": "Eval List",
-                        "description": "List of evaluations being run, each with an associated transform"
-                    },
                     "dataset_row_filter": {
                         "anyOf": [
                             {
@@ -15386,6 +15454,14 @@
                         "title": "Template Variable Mapping",
                         "description": "Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables)"
                     },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticEvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run, each with an associated transform"
+                    },
                     "summary_results": {
                         "$ref": "#/components/schemas/AgenticSummaryResults",
                         "description": "Summary of results across all test cases"
@@ -15401,9 +15477,9 @@
                     "completed_rows",
                     "failed_rows",
                     "dataset_ref",
-                    "eval_list",
                     "http_template",
                     "template_variable_mapping",
+                    "eval_list",
                     "summary_results"
                 ],
                 "title": "AgenticExperimentDetail",
@@ -17796,22 +17872,22 @@
                         "title": "Id",
                         "description": "Dataset ID"
                     },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Dataset name"
-                    },
                     "version": {
                         "type": "integer",
                         "title": "Version",
                         "description": "Dataset version number"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Dataset name"
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
-                    "name",
-                    "version"
+                    "version",
+                    "name"
                 ],
                 "title": "DatasetRef",
                 "description": "Reference to a dataset and version (with name)"
@@ -22877,14 +22953,6 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "eval_list": {
-                        "items": {
-                            "$ref": "#/components/schemas/EvalRef-Output"
-                        },
-                        "type": "array",
-                        "title": "Eval List",
-                        "description": "List of evaluations being run"
-                    },
                     "dataset_row_filter": {
                         "anyOf": [
                             {
@@ -22911,6 +22979,14 @@
                         ],
                         "title": "Notebook Id",
                         "description": "Optional notebook ID this experiment is linked to"
+                    },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run"
                     },
                     "prompt_configs": {
                         "items": {
@@ -23143,7 +23219,9 @@
                         "description": "Content of the prompt response"
                     },
                     "tool_calls": {
-                        "items": {},
+                        "items": {
+                            "$ref": "#/components/schemas/ChatCompletionMessageToolCall"
+                        },
                         "type": "array",
                         "title": "Tool Calls",
                         "description": "Tool calls made by the prompt"
@@ -24036,14 +24114,6 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "eval_list": {
-                        "items": {
-                            "$ref": "#/components/schemas/EvalRef-Output"
-                        },
-                        "type": "array",
-                        "title": "Eval List",
-                        "description": "List of evaluations being run"
-                    },
                     "dataset_row_filter": {
                         "anyOf": [
                             {
@@ -24070,6 +24140,14 @@
                         ],
                         "title": "Notebook Id",
                         "description": "Optional notebook ID this experiment is linked to"
+                    },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run"
                     },
                     "rag_configs": {
                         "items": {
@@ -26763,6 +26841,15 @@
                     "raw_data"
                 ],
                 "title": "SpanWithMetricsResponse"
+            },
+            "StatusCodeEnum": {
+                "type": "string",
+                "enum": [
+                    "Ok",
+                    "Error",
+                    "Unset"
+                ],
+                "title": "StatusCodeEnum"
             },
             "StreamOptions": {
                 "properties": {

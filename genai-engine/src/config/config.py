@@ -16,7 +16,9 @@ class Config:
 
     @classmethod
     def max_api_key_limit(cls) -> int:
-        max_api_key_limit = get_env_var(constants.MAX_API_KEYS_ENV_VAR, default="100")
+        max_api_key_limit = (
+            get_env_var(constants.MAX_API_KEYS_ENV_VAR, default="100") or "100"
+        )
         return int(max_api_key_limit)
 
     @classmethod

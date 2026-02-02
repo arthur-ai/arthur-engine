@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, List, Optional, Union
 
 import httpx
 import litellm
@@ -23,7 +23,7 @@ class LLMModelResponse(BaseModel):
         ...,
         description="The raw response from litellm",
     )
-    structured_output_response: Optional[Type[BaseModel]] = Field(
+    structured_output_response: Optional[BaseModel] = Field(
         None,
         description="The structured output base model response from the model",
     )
@@ -80,12 +80,12 @@ class LLMClient:
     def __init__(
         self,
         provider: ModelProvider,
-        api_key: str,
-        project_id: str = None,
-        region: str = None,
-        api_base: str = None,
-        vertex_credentials: Dict[str, str] = None,
-        aws_bedrock_credentials: Dict[str, str] = None,
+        api_key: str | None = None,
+        project_id: str | None = None,
+        region: str | None = None,
+        api_base: str | None = None,
+        vertex_credentials: dict[str, str] | None = None,
+        aws_bedrock_credentials: dict[str, str] | None = None,
     ):
         self.provider = provider
         self.api_key = api_key
@@ -217,17 +217,30 @@ class LLMClient:
             cost = "0.00"
             logger.warning("Cost calculation is not supported for this provider")
 
-        llm_model_response = LLMModelResponse(response=response, cost=cost)
+        llm_model_response = LLMModelResponse(
+            response=response,
+            cost=cost,
+            structured_output_response=None,
+        )
+
+        message_content: Optional[str] = None
+        if (
+            response
+            and response.choices
+            and response.choices[0].message
+            and response.choices[0].message.get("content") is not None
+        ):
+            message_content = response.choices[0].message.get("content")
 
         if (
             "response_format" in kwargs
             and isinstance(kwargs["response_format"], type)
             and issubclass(kwargs["response_format"], BaseModel)
-            and response.choices[0].message.get("content") is not None
+            and message_content is not None
         ):
-            llm_model_response.structured_output_response = kwargs[
-                "response_format"
-            ].model_validate_json(response.choices[0].message.get("content"))
+            response_format: type[BaseModel] = kwargs["response_format"]
+            loaded_response = response_format.model_validate_json(message_content)
+            llm_model_response.structured_output_response = loaded_response
 
         return llm_model_response
 

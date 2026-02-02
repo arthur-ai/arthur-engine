@@ -4,7 +4,7 @@ import os
 import random
 import time
 from contextlib import asynccontextmanager
-from typing import Callable
+from typing import AsyncGenerator
 
 import torch
 import uvicorn
@@ -21,8 +21,10 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import Response
+from starlette.types import Lifespan
 
 from auth.SPAStaticFiles import SPAStaticFiles
 from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemetry_event
@@ -151,7 +153,7 @@ tags_metadata = [
 ]
 
 
-def bootstrap_genai_engine_keycloak():
+def bootstrap_genai_engine_keycloak() -> None:
     lock_file = "/tmp/bootstrap.lock"
     with open(lock_file, "w") as f:
         # Acquire an exclusive lock (blocking)
@@ -175,7 +177,7 @@ def cleanup_cuda_cache() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
 
     device = torch.device(get_device())
@@ -263,7 +265,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             headers.append("connect-src 'self'")
         return headers
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
         response = await call_next(request)
         # Tell browsers to trust the content type header instead of trying to sniff the MIME type
         response.headers[constants.X_CONTENT_TYPE_OPTIONS_HEADER] = "nosniff"
@@ -290,9 +296,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-async def add_opentelemetry_custom_attributes(request: Request, call_next):
+async def add_opentelemetry_custom_attributes(
+    request: Request,
+    call_next: RequestResponseEndpoint,
+) -> Response:
     s = trace.get_current_span()
-    s.set_attribute("http.client_ip", request.client.host)
+    if request.client is not None:
+        s.set_attribute("http.client_ip", request.client.host)
     if "X-Forwarded-For" in request.headers:
         s.set_attribute("http.x_forwarded_for", request.headers["X-Forwarded-For"])
     response = await call_next(request)
@@ -303,32 +313,33 @@ async def add_opentelemetry_custom_attributes(request: Request, call_next):
     return response
 
 
-def setup_newrelic(app: FastAPI):
+def setup_newrelic(app: FastAPI) -> None:
     app.add_middleware(BaseHTTPMiddleware, dispatch=add_opentelemetry_custom_attributes)
+    service_name = get_env_var(
+        constants.NEWRELIC_APP_NAME_ENV_VAR,
+        none_on_missing=False,
+    )
+    if service_name is None:
+        service_name = "genai-engine"
 
-    OTEL_RESOURCE_ATTRIBUTES = {
-        "service.name": get_env_var(constants.NEWRELIC_APP_NAME_ENV_VAR),
-    }
+    OTEL_RESOURCE_ATTRIBUTES: dict[str, str] = {"service.name": service_name}
 
     t = TracerProvider(resource=Resource.create(OTEL_RESOURCE_ATTRIBUTES))
     trace.set_tracer_provider(t)
-
-    trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(OTLPSpanExporter()),
-    )
+    t.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
     SQLAlchemyInstrumentor().instrument(tracer_provider=t, engine=get_db_engine())
 
     FastAPIInstrumentor.instrument_app(app)
 
-    _logs.set_logger_provider(
-        LoggerProvider(resource=Resource.create(OTEL_RESOURCE_ATTRIBUTES)),
+    logger_provider = LoggerProvider(
+        resource=Resource.create(attributes=OTEL_RESOURCE_ATTRIBUTES),
     )
-    h = LoggingHandler(
-        logger_provider=_logs.get_logger_provider().add_log_record_processor(
-            BatchLogRecordProcessor(OTLPLogExporter()),
-        ),
+    _logs.set_logger_provider(logger_provider)
+    logger_provider.add_log_record_processor(
+        BatchLogRecordProcessor(OTLPLogExporter()),
     )
+    h = LoggingHandler(logger_provider=logger_provider)
 
     logger.addHandler(h)
     logging.getLogger("uvicorn.access").addHandler(h)
@@ -336,7 +347,7 @@ def setup_newrelic(app: FastAPI):
 
 def get_base_app(
     version: str = get_genai_engine_version(),
-    lifespan: Callable | None = lifespan,
+    lifespan: Lifespan[FastAPI] | None = lifespan,
 ) -> FastAPI:
     logger.info(f"Booting up Arthur GenAI Engine: {version}")
     kwargs = {}
@@ -346,7 +357,7 @@ def get_base_app(
         title="Arthur GenAI Engine",
         version=version,
         openapi_tags=tags_metadata,
-        **kwargs,
+        **kwargs,  # type: ignore
     )
     origins = [
         "http://localhost",
@@ -377,7 +388,7 @@ def get_base_app(
     return app
 
 
-def add_routers(app: FastAPI, routers: list[APIRouter]):
+def add_routers(app: FastAPI, routers: list[APIRouter]) -> None:
     for router in routers:
         app.include_router(router)
 
@@ -459,7 +470,7 @@ def get_test_app() -> FastAPI:
     if is_api_only_mode_enabled():
 
         @app.get("/", include_in_schema=False)
-        async def redirect_to_docs():
+        async def redirect_to_docs() -> RedirectResponse:
             return RedirectResponse("/docs")
 
     return app
@@ -520,7 +531,7 @@ def get_app() -> FastAPI:
     return app
 
 
-def start():
+def start() -> None:
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
     app = get_app()
     uvicorn.run(app, host="0.0.0.0", port=3030)

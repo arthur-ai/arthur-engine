@@ -85,9 +85,7 @@ class AgenticExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
@@ -148,9 +146,7 @@ class AgenticExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
@@ -237,7 +233,13 @@ class AgenticExperimentRepository:
             status=db_test_case.status,
             dataset_row_id=db_test_case.dataset_row_id,
             template_input_variables=template_input_variables,
-            agentic_result=agentic_result or AgenticResult(evals=[]),
+            agentic_result=agentic_result
+            or AgenticResult(
+                request_url="",
+                request_headers={},
+                request_body="",
+                evals=[],
+            ),
             total_cost=db_test_case.total_cost,
         )
 
@@ -355,10 +357,10 @@ class AgenticExperimentRepository:
         # Check eval variable mappings - validate dataset columns exist and no duplicates
         for agentic_eval_ref, llm_eval, _ in eval_configs:
             eval_variable_names = []
-            for mapping in agentic_eval_ref.variable_mapping:
-                eval_variable_names.append(mapping.variable_name)
-                if mapping.source.type == "dataset_column":
-                    column_name = mapping.source.dataset_column.name
+            for eval_mapping in agentic_eval_ref.variable_mapping:
+                eval_variable_names.append(eval_mapping.variable_name)
+                if eval_mapping.source.type == "dataset_column":
+                    column_name = eval_mapping.source.dataset_column.name
                     if column_name not in dataset_columns:
                         raise HTTPException(
                             status_code=400,
@@ -477,13 +479,13 @@ class AgenticExperimentRepository:
             for agentic_eval_ref, llm_eval, _ in eval_configs:
                 # Build eval input variables based on the mapping
                 eval_input_variables = []
-                for mapping in agentic_eval_ref.variable_mapping:
-                    variable_name = mapping.variable_name
+                for eval_mapping in agentic_eval_ref.variable_mapping:
+                    variable_name = eval_mapping.variable_name
 
                     # Check the source type
-                    if mapping.source.type == "dataset_column":
+                    if eval_mapping.source.type == "dataset_column":
                         # Get value from dataset row
-                        column_name = mapping.source.dataset_column.name
+                        column_name = eval_mapping.source.dataset_column.name
                         column_value = row_data.get(column_name)
                         eval_input_variables.append(
                             {
@@ -495,7 +497,7 @@ class AgenticExperimentRepository:
                                 ),
                             },
                         )
-                    elif mapping.source.type == "experiment_output":
+                    elif eval_mapping.source.type == "experiment_output":
                         # Mark as placeholder - will be filled from agent output or transform when experiment runs
                         eval_input_variables.append(
                             {
