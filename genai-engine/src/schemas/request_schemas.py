@@ -50,7 +50,11 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
     assumable_role_arn: Optional[str] = None
 
     @model_validator(mode="before")
-    def check_azure_or_aws_complete_config(cls, values):
+    @classmethod
+    def check_azure_or_aws_complete_config(
+        cls,
+        values: dict[str, Any],
+    ) -> dict[str, Any]:
         if values.get("environment") == "azure":
             if (values.get("connection_string") is None) or (
                 values.get("container_name") is None
@@ -86,7 +90,7 @@ class NewDatasetRequest(BaseModel):
         default=None,
         description="Description of the dataset.",
     )
-    metadata: Optional[dict] = Field(
+    metadata: Optional[dict[Any, Any]] = Field(
         default=None,
         description="Any metadata to include that describes additional information about the dataset.",
     )
@@ -100,7 +104,7 @@ class DatasetUpdateRequest(BaseModel):
         default=None,
         description="Description of the dataset.",
     )
-    metadata: Optional[dict] = Field(
+    metadata: Optional[dict[Any, Any]] = Field(
         default=None,
         description="Any metadata to include that describes additional information about the dataset.",
         examples=[{"created_by": "John Doe"}],
@@ -402,7 +406,9 @@ class WeaviateKeywordSearchSettingsBaseConfigurationRequest(
     )
 
     @model_validator(mode="after")
-    def check_operators(self):
+    def check_operators(
+        self,
+    ) -> "WeaviateKeywordSearchSettingsBaseConfigurationRequest":
         if self.and_operator and self.minimum_match_or_operator:
             raise HTTPException(
                 status_code=400,
@@ -513,7 +519,7 @@ class WeaviateHybridSearchSettingsBaseRequest(
     )
 
     @model_validator(mode="after")
-    def check_operators(self):
+    def check_operators(self) -> "WeaviateHybridSearchSettingsBaseRequest":
         if self.and_operator and self.minimum_match_or_operator:
             raise HTTPException(
                 status_code=400,
@@ -828,7 +834,7 @@ class BaseCompletionRequest(BaseModel):
     _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
 
     @model_validator(mode="after")
-    def _build_variable_map(self):
+    def _build_variable_map(self) -> "BaseCompletionRequest":
         """Construct a private lookup dictionary for variable substitution"""
         if self.variables:
             self._variable_map = {v.name: v.value for v in self.variables}
@@ -980,7 +986,7 @@ class UpdateContinuousEvalRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_request(self):
+    def validate_request(self) -> "UpdateContinuousEvalRequest":
         if self.llm_eval_name is not None and self.llm_eval_version is None:
             raise ValueError(
                 "Must specify which version of the llm eval this continuous eval should be associated with",
@@ -1232,7 +1238,9 @@ class AgenticAnnotationListFilterRequest(BaseModel):
         """Create a AgenticAnnotationListFilterRequest from query parameters."""
         return AgenticAnnotationListFilterRequest(
             continuous_eval_id=UUID(continuous_eval_id) if continuous_eval_id else None,
-            annotation_type=annotation_type,
+            annotation_type=(
+                AgenticAnnotationType(annotation_type) if annotation_type else None
+            ),
             annotation_score=annotation_score,
             run_status=run_status,
             created_after=(

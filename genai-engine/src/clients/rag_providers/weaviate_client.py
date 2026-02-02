@@ -10,6 +10,7 @@ from schemas.enums import ConnectionCheckOutcome
 from schemas.internal_schemas import (
     ApiKeyRagAuthenticationConfig,
     RagProviderConfiguration,
+    RagProviderTestConfiguration,
 )
 from schemas.request_schemas import (
     RagHybridSearchSettingRequest,
@@ -28,7 +29,10 @@ from schemas.response_schemas import (
 
 
 class WeaviateClient(RagProviderClient):
-    def __init__(self, provider_config: RagProviderConfiguration) -> None:
+    def __init__(
+        self,
+        provider_config: RagProviderConfiguration | RagProviderTestConfiguration,
+    ) -> None:
         try:
             if not isinstance(
                 provider_config.authentication_config,
@@ -110,7 +114,7 @@ class WeaviateClient(RagProviderClient):
                             if hasattr(obj, "metadata")
                             else None
                         ),
-                        properties=obj.properties,
+                        properties={k: v for k, v in obj.properties.items()},
                         vector=obj.vector if hasattr(obj, "vector") else None,
                     )
                     for obj in query_return.objects
@@ -183,7 +187,7 @@ class WeaviateClient(RagProviderClient):
 
         return self._client_result_to_arthur_response(response)
 
-    def __del__(self):
+    def __del__(self) -> None:
         # client may not have been initialized if clean up happens after a failed class instantiation so validate
         # before closing the connection
         if hasattr(self, "client"):

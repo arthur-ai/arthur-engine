@@ -32,7 +32,7 @@ class TokenCounter:
         """
         self.encoder = tiktoken.get_encoding(model)
 
-    def count(self, query: str) -> int:
+    def count(self, query: str | None) -> int:
         """Returns token count of the query using chunking for long texts.
 
         :param query: string query sent to LLM

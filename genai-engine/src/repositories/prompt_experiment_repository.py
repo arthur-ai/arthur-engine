@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.llm_model_providers import OpenAIMessage
 from fastapi import HTTPException
 from sqlalchemy import asc, column, desc, exists, func, or_, select
 from sqlalchemy.dialects import postgresql
@@ -118,9 +119,7 @@ class PromptExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
@@ -186,9 +185,7 @@ class PromptExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
@@ -332,7 +329,7 @@ class PromptExperimentRepository:
             )
 
         # Validate and process prompt configs (saved and unsaved)
-        validated_prompt_configs = []
+        validated_prompt_configs: list[PromptConfig] = []
         unsaved_prompt_counter = 1
         all_prompt_variables = set()
 
@@ -372,8 +369,11 @@ class PromptExperimentRepository:
                 if config.variables is None:
                     try:
                         missing_vars = self.chat_completion_service.find_missing_variables_in_messages(
-                            config.messages,
-                            {},
+                            variable_map={},
+                            messages=[
+                                OpenAIMessage.model_validate(message)
+                                for message in config.messages
+                            ],
                         )
                         detected_variables = list(missing_vars)
                     except Exception as e:
@@ -401,7 +401,7 @@ class PromptExperimentRepository:
                 validated_prompt_configs.append(updated_config)
 
         # Validate eval versions exist and collect their variables
-        llm_evals = []
+        llm_evals: list[tuple[EvalRef, DatabaseLLMEval]] = []
         for eval_ref in request.eval_list:
             llm_eval = (
                 self.db_session.query(DatabaseLLMEval)
@@ -468,10 +468,10 @@ class PromptExperimentRepository:
         # Check eval variable mappings - validate dataset columns exist and no duplicates
         for eval_ref in request.eval_list:
             eval_variable_names = []
-            for mapping in eval_ref.variable_mapping:
-                eval_variable_names.append(mapping.variable_name)
-                if mapping.source.type == "dataset_column":
-                    column_name = mapping.source.dataset_column.name
+            for eval_mapping in eval_ref.variable_mapping:
+                eval_variable_names.append(eval_mapping.variable_name)
+                if eval_mapping.source.type == "dataset_column":
+                    column_name = eval_mapping.source.dataset_column.name
                     if column_name not in dataset_columns:
                         raise ValueError(
                             f"Dataset column '{column_name}' referenced in eval '{eval_ref.name}' variable mapping not found in dataset version. "
@@ -613,13 +613,13 @@ class PromptExperimentRepository:
                 for eval_ref, llm_eval in eval_configs:
                     # Build eval input variables based on the mapping
                     eval_input_variables = []
-                    for mapping in eval_ref.variable_mapping:
-                        variable_name = mapping.variable_name
+                    for eval_mapping in eval_ref.variable_mapping:
+                        variable_name = eval_mapping.variable_name
 
                         # Check the source type
-                        if mapping.source.type == "dataset_column":
+                        if eval_mapping.source.type == "dataset_column":
                             # Get value from dataset row
-                            column_name = mapping.source.dataset_column.name
+                            column_name = eval_mapping.source.dataset_column.name
                             column_value = row_data.get(column_name)
 
                             # Convert None to empty string to match API schema requirement
@@ -636,7 +636,7 @@ class PromptExperimentRepository:
                                     "value": str(column_value),
                                 },
                             )
-                        elif mapping.source.type == "experiment_output":
+                        elif eval_mapping.source.type == "experiment_output":
                             # Mark as placeholder - will be filled from prompt output when experiment runs
                             eval_input_variables.append(
                                 {
