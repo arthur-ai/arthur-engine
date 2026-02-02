@@ -1,45 +1,8 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
-
 # 02/02/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'hosted_vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  removed the enum value 'hosted_vllm' from the 'path' request parameter 'provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  removed the enum value 'hosted_vllm' from the 'path' request parameter 'provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  removed the enum value 'hosted_vllm' from the 'path' request parameter 'provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed the enum value 'hosted_vllm' of the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the enum value 'hosted_vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed the enum value 'hosted_vllm' of the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the enum value 'hosted_vllm' of the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the enum value 'hosted_vllm' of the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
-- **CHANGE** for **URL**: /api/v1/model_providers  removed the 'hosted_vllm' enum value from the 'providers/items/provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  removed the 'hosted_vllm' enum value from the 'provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  removed the 'hosted_vllm' enum value from the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  removed the 'hosted_vllm' enum value from the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  removed the 'hosted_vllm' enum value from the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  removed the 'hosted_vllm' enum value from the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  removed the 'hosted_vllm' enum value from the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed the 'hosted_vllm' enum value from the 'prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed the 'hosted_vllm' enum value from the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  removed the 'hosted_vllm' enum value from the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the 'hosted_vllm' enum value from the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/notebook  removed the 'hosted_vllm' enum value from the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'hosted_vllm' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed the 'hosted_vllm' enum value from the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed the 'hosted_vllm' enum value from the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the 'hosted_vllm' enum value from the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the 'hosted_vllm' enum value from the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'hosted_vllm' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
+- Added /api/v1/discover-agents endpoint
 
 # 01/29/2026
 - **CHANGE** for **URL**: /api/v1/model_providers  added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
