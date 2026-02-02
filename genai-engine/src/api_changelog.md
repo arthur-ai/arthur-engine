@@ -2,11 +2,7 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 01/30/2026
-- **CHANGE** for **URL**: /api/v1/discover-agents  removed the optional property 'agents/items/creation_source/resource_id' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/discover-agents  added the optional property 'agents/items/creation_source/top_level_span_name' to the response with the '200' status
-
-# 01/30/2026
+# 02/02/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'hosted_vllm' of the request property 'model_provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  removed the enum value 'hosted_vllm' from the 'path' request parameter 'provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  removed the enum value 'hosted_vllm' from the 'path' request parameter 'provider'
@@ -16,6 +12,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  removed the enum value 'hosted_vllm' of the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the enum value 'hosted_vllm' of the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the enum value 'hosted_vllm' of the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
 - **CHANGE** for **URL**: /api/v1/model_providers  removed the 'hosted_vllm' enum value from the 'providers/items/provider' response property for the response status '200'
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  removed the 'hosted_vllm' enum value from the 'provider' response property for the response status '200'
 - **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  removed the 'hosted_vllm' enum value from the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
@@ -44,10 +41,6 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
 
-<<<<<<< HEAD
-# 01/30/2026
-- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
-=======
 # 01/29/2026
 - **CHANGE** for **URL**: /api/v1/model_providers  added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/model_providers/{provider}/available_models
@@ -95,7 +88,6 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'hosted_vllm' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'hosted_vllm' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'hosted_vllm' enum value to the request property 'model_provider'
->>>>>>> dev
 
 # 01/27/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
