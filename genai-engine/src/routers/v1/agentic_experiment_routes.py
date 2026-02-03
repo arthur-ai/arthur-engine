@@ -47,7 +47,7 @@ def list_agentic_experiments(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> AgenticExperimentListResponse:
     """
     List all agentic experiments for a given task.
 
@@ -98,7 +98,7 @@ def create_agentic_experiment(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> AgenticExperimentSummary:
     """
     Create a new agentic experiment and start execution.
 
@@ -160,7 +160,7 @@ def get_agentic_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticExperimentDetail:
     """
     Get detailed information about an agentic experiment.
 
@@ -203,7 +203,7 @@ def get_agentic_experiment_test_cases(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticTestCaseListResponse:
     """
     Get detailed test case results for an agentic experiment.
 

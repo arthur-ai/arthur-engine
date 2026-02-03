@@ -111,7 +111,7 @@ export const Results = () => {
 const getFieldLabel = (name: string) => {
   return (
     {
-      id: "Continuous Eval ID",
+      continuous_eval_id: "Continuous Eval ID",
       trace_id: "Trace ID",
       annotation_score: "Annotation Score",
       run_status: "Run Status",

@@ -1,4 +1,5 @@
-from typing import Annotated
+from datetime import datetime, timedelta
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -8,7 +9,7 @@ from arthur_common.models.task_eval_schemas import (
     ContinuousEvalVariableMappingResponse,
     ListContinuousEvalsResponse,
 )
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from dependencies import (
@@ -29,6 +30,7 @@ from schemas.request_schemas import (
     UpdateContinuousEvalRequest,
 )
 from schemas.response_schemas import (
+    AgenticAnnotationAnalyticsResponse,
     ContinuousEvalRerunResponse,
 )
 from utils.users import permission_checker
@@ -177,7 +179,7 @@ def get_continuous_eval_variables_and_mappings(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> ListAgenticAnnotationsResponse:
+) -> ContinuousEvalVariableMappingResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted
         llm_eval_repo = LLMEvalsRepository(db_session)
@@ -319,6 +321,7 @@ def update_continuous_eval(
 
         existing_eval = continuous_eval_repo.get_continuous_eval_by_id(eval_id)
         llm_eval = None
+        llm_eval_version: str | int | None = None
 
         if update_request.llm_eval_version is not None:
             llm_eval_name = existing_eval.llm_eval_name
@@ -460,6 +463,59 @@ def delete_continuous_eval(
             raise HTTPException(status_code=404, detail=str(e))
         else:
             raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.get(
+    "/tasks/{task_id}/continuous_evals/analytics/daily",
+    summary="Get daily aggregated analytics for agentic annotations",
+    description="Returns daily counts of passed/failed/error/skipped annotations and total cost per day",
+    response_model=AgenticAnnotationAnalyticsResponse,
+    response_model_exclude_none=True,
+    tags=["Continuous Evals"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_daily_annotation_analytics(
+    start_time: Annotated[
+        Optional[datetime],
+        Query(description="Start time (inclusive). Defaults to 30 days ago."),
+    ] = None,
+    end_time: Annotated[
+        Optional[datetime],
+        Query(description="End time (exclusive). Defaults to now."),
+    ] = None,
+    db_session: Session = Depends(get_db_session),
+    current_user: User = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_task),
+) -> AgenticAnnotationAnalyticsResponse:
+    try:
+        # Set defaults: last 30 days if not provided
+        if end_time is None:
+            end_time = datetime.now()
+        if start_time is None:
+            start_time = end_time - timedelta(days=30)
+
+        # Validate time range
+        if start_time >= end_time:
+            raise HTTPException(
+                status_code=400, detail="start_time must be before end_time"
+            )
+
+        # Get analytics from repository (already returns response models)
+        continuous_eval_repo = ContinuousEvalsRepository(db_session)
+        stats = continuous_eval_repo.get_daily_annotation_analytics(
+            task.id,
+            start_time,
+            end_time,
+        )
+
+        return AgenticAnnotationAnalyticsResponse(
+            stats=stats,
+            count=len(stats),
+        )
     except HTTPException:
         raise
     except Exception as e:

@@ -5,12 +5,12 @@ from utils import constants
 
 class BaseEnum(str, Enum):
     @classmethod
-    def values(self):
+    def values(self) -> list[str]:
         values: list[str] = [e for e in self]
         return values
 
-    def __str__(self):
-        return self.value
+    def __str__(self) -> str:
+        return str(self.value)
 
 
 class RuleDataType(str, Enum):
@@ -184,3 +184,8 @@ class RagSearchKind(str, Enum):
     VECTOR_SIMILARITY_TEXT_SEARCH = "vector_similarity_text_search"
     KEYWORD_SEARCH = "keyword_search"
     HYBRID_SEARCH = "hybrid_search"
+
+
+class AgenticExperimentGeneratorType(str, Enum):
+    UUID = "uuid"
+    SESSION_ID = "session_id"

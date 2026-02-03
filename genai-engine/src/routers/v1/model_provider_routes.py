@@ -63,17 +63,26 @@ async def set_model_provider(
                 provider_credentials.credentials_file,
             )
 
-        aws_bedrock_credentials = (
-            AwsBedrockCredentials.from_put_model_provider_credentials(
-                provider_credentials,
+        aws_bedrock_credentials = None
+        if (
+            provider_credentials.aws_access_key_id
+            or provider_credentials.aws_secret_access_key
+            or provider_credentials.aws_bedrock_runtime_endpoint
+            or provider_credentials.aws_role_name
+            or provider_credentials.aws_session_name
+        ):
+            aws_bedrock_credentials = (
+                AwsBedrockCredentials.from_put_model_provider_credentials(
+                    provider_credentials,
+                )
             )
-        )
 
         repo.set_model_provider_credentials(
             provider=provider,
             api_key=provider_credentials.api_key,
             project_id=provider_credentials.project_id,
             region=provider_credentials.region,
+            api_base=provider_credentials.api_base,
             vertex_credentials=vertex_credentials,
             aws_bedrock_credentials=aws_bedrock_credentials,
         )

@@ -14,10 +14,14 @@ import json
 import logging
 import time
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import requests
-from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.common_schemas import (
+    PaginationParameters,
+    VariableTemplateValue,
+)
+from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -26,6 +30,7 @@ from db_models.agentic_experiment_models import (
     DatabaseAgenticExperiment,
     DatabaseAgenticExperimentTestCase,
     DatabaseAgenticExperimentTestCaseAgenticResult,
+    DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
 )
 from repositories.agentic_experiment_repository import AgenticExperimentRepository
 from repositories.metrics_repository import MetricRepository
@@ -44,6 +49,7 @@ from schemas.base_experiment_schemas import (
     EvalResultSummary,
     TestCaseStatus,
 )
+from schemas.enums import AgenticExperimentGeneratorType
 from services.experiment_executor import BaseExperimentExecutor
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
@@ -79,7 +85,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             )
             return None
 
-    def _get_db_test_cases(
+    def _get_db_test_cases(  # type: ignore[override]
         self,
         experiment_id: str,
         db_session: Session,
@@ -88,7 +94,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         agentic_experiment_repo = AgenticExperimentRepository(db_session)
         return agentic_experiment_repo._get_db_test_cases(experiment_id, status_filter)
 
-    def _get_db_test_case(
+    def _get_db_test_case(  # type: ignore[override]
         self,
         test_case_id: str,
         db_session: Session,
@@ -99,7 +105,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_experiment_outputs(
         self,
         db_session: Session,
-        test_case: DatabaseAgenticExperimentTestCase,
+        test_case: DatabaseAgenticExperimentTestCase,  # type: ignore[override]
         request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> bool:
         """
@@ -139,7 +145,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
 
     def _calculate_total_test_case_cost(
         self,
-        test_case: DatabaseAgenticExperimentTestCase,
+        test_case: DatabaseAgenticExperimentTestCase,  # type: ignore[override]
     ) -> float:
         """
         Calculate the total cost for an agentic test case.
@@ -161,31 +167,31 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
 
     def _generate_variable_value(
         self,
-        generator_type: str,
-        variable_name: str,
+        generator_type: AgenticExperimentGeneratorType,
+        session_id: Optional[str] = None,
     ) -> Optional[str]:
         """
         Generate a value for a variable based on the generator type.
 
         Args:
-            generator_type: Type of generator (e.g., "uuid")
+            generator_type: Type of generator (e.g., UUID)
             variable_name: Name of the variable (for logging)
 
         Returns:
             Generated value as a string, or None if generator_type is not supported
         """
-        if generator_type == "uuid":
+        if generator_type == AgenticExperimentGeneratorType.UUID:
             return str(uuid4())
+        elif generator_type == AgenticExperimentGeneratorType.SESSION_ID:
+            return session_id
         else:
-            logger.warning(
-                f"Unknown generator_type '{generator_type}' for variable '{variable_name}', skipping",
-            )
             return None
 
     def _build_variable_map(
         self,
         test_case: DatabaseAgenticExperimentTestCase,
         experiment: DatabaseAgenticExperiment,
+        session_id: str,
         request_time_parameters: Optional[List[RequestTimeParameter]] = None,
     ) -> Dict[str, str]:
         """
@@ -234,7 +240,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                     # Generate a new value (first time this variable is being generated)
                     generated_value = self._generate_variable_value(
                         mapping.source.generator_type,
-                        variable_name,
+                        session_id,
                     )
                     if generated_value is None:
                         continue
@@ -274,7 +280,6 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         self,
         http_template: HttpTemplate,
         variable_map: Dict[str, str],
-        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Render HTTP template with variable substitution.
@@ -282,7 +287,6 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         Args:
             http_template: HTTP template configuration
             variable_map: Dictionary mapping variable names to values
-            session_id: Optional session ID to include in the request headers
 
         Returns:
             Dictionary with rendered url, headers, and body (body is a string)
@@ -311,10 +315,6 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             variable_map,
             http_template.request_body,
         )
-
-        # Add session_id to headers if provided
-        if session_id:
-            rendered_headers["X-Session-Id"] = session_id
 
         return {
             "url": rendered_url,
@@ -357,13 +357,13 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 test_case,
                 experiment,
                 request_time_parameters=None,
+                session_id=session_id,
             )
 
             # Render HTTP template with variables (include session_id)
             rendered_request = self._render_http_template(
                 http_template,
                 variable_map,
-                session_id,
             )
 
             # Save request details to database (without request-time parameters)
@@ -382,11 +382,11 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 test_case,
                 experiment,
                 request_time_parameters=request_time_parameters,
+                session_id=session_id,
             )
             rendered_request = self._render_http_template(
                 http_template,
                 variable_map,
-                session_id,
             )
 
             try:
@@ -508,7 +508,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 pagination_params = PaginationParameters(
                     page=0,
                     page_size=10,
-                    sort="desc",
+                    sort=PaginationSortMethod.DESCENDING,
                 )
                 count, traces = span_repo.get_session_traces(
                     session_id=session_id,
@@ -535,7 +535,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_evaluations(
         self,
         db_session: Session,
-        test_case: DatabaseAgenticExperimentTestCase,
+        test_case: DatabaseAgenticExperimentTestCase,  # type: ignore[override]
     ) -> bool:
         """
         Execute all evaluations for an agentic test case.
@@ -608,8 +608,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _execute_single_eval(
         self,
         db_session: Session,
-        eval_score: Any,  # DatabaseAgenticExperimentTestCaseAgenticResultEvalScore
-        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,
+        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,  # type: ignore[override]
+        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,  # type: ignore[override]
     ) -> bool:
         """
         Execute a single evaluation.
@@ -696,9 +696,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             # Build variable map from eval variable mappings
             variable_map = self._build_eval_variable_map(
                 eval_config,
-                agentic_result.test_case,
+                eval_score,
                 transform_results.variables,
-                agentic_result,
             )
 
             # Set eval_input_variables
@@ -726,9 +725,8 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _build_eval_variable_map(
         self,
         eval_config: Dict[str, Any],
-        test_case: DatabaseAgenticExperimentTestCase,
-        transform_variables: List[Any],  # List[VariableTemplateValue]
-        agentic_result: DatabaseAgenticExperimentTestCaseAgenticResult,
+        eval_score: DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
+        transform_variables: List[VariableTemplateValue],
     ) -> Dict[str, str]:
         """
         Build variable map for eval from dataset columns and transform variables.
@@ -741,7 +739,10 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
         Returns:
             Dictionary mapping variable names to values
         """
-        variable_map = {}
+        variable_map = {
+            var["variable_name"]: var["value"]
+            for var in eval_score.eval_input_variables
+        }
 
         # Create a map of transform variable names to values
         transform_var_map = {var.name: var.value for var in transform_variables}
@@ -751,14 +752,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
             variable_name = mapping["variable_name"]
             source = mapping["source"]
 
-            if source["type"] == "dataset_column":
-                # Get value from test case input variables
-                column_name = source["dataset_column"]["name"]
-                for var in test_case.template_input_variables:
-                    if var["variable_name"] == variable_name:
-                        variable_map[variable_name] = var["value"]
-                        break
-            elif source["type"] == "experiment_output":
+            if source["type"] == "experiment_output":
                 # Agentic experiments only support transform variables (not json_path)
                 # The experiment_output should be a TransformVariableExperimentOutputSource
                 experiment_output = source.get("experiment_output", {})
@@ -833,7 +827,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
     def _set_summary_results(
         self,
         db_session: Session,
-        experiment: DatabaseAgenticExperiment,
+        experiment: DatabaseAgenticExperiment,  # type: ignore[override]
     ) -> None:
         """
         Calculate summary results for an experiment based on completed test cases.
@@ -914,7 +908,7 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                     AgenticEvalResultSummaries(
                         eval_name=eval_name,
                         eval_version=str(eval_version),
-                        transform_id=transform_id,
+                        transform_id=UUID(transform_id),
                         eval_results=[eval_result_summary],
                     ),
                 )

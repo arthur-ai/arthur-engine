@@ -2,7 +2,7 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
-import { DurationCell } from "../components/DurationCell";
+import { DurationCellWithBucket } from "../components/DurationCell";
 import { ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
 import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
@@ -71,7 +71,7 @@ const WIDGETS = {
 
       if (typeof latency !== "number") return null;
 
-      return <DurationCell duration={latency} />;
+      return <DurationCellWithBucket duration={latency} />;
     },
   },
 } as const;

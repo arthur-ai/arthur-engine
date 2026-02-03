@@ -1,6 +1,7 @@
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from arthur_common.models.llm_model_providers import ModelProvider
+from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Discriminator, Field, model_validator
 
 from schemas.base_experiment_schemas import (
@@ -176,7 +177,7 @@ class PromptOutput(BaseModel):
     """Output from a prompt execution"""
 
     content: str = Field(description="Content of the prompt response")
-    tool_calls: list = Field(
+    tool_calls: list[ChatCompletionMessageToolCall] = Field(
         default_factory=list,
         description="Tool calls made by the prompt",
     )

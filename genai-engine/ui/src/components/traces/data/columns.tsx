@@ -3,7 +3,7 @@ import { createMRTColumnHelper } from "material-react-table";
 
 import { CopyableChip } from "../../common";
 import { AnnotationCell } from "../components/AnnotationCell";
-import { DurationCell } from "../components/DurationCell";
+import { DurationCellWithBucket } from "../components/DurationCell";
 import { TraceContentCell } from "../components/TraceContentCell";
 
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
@@ -101,7 +101,7 @@ export const columns = [
   }),
   columnHelper.accessor("duration_ms", {
     header: "Latency",
-    Cell: ({ cell }) => <DurationCell duration={cell.getValue()} />,
+    Cell: ({ cell }) => <DurationCellWithBucket duration={cell.getValue()} />,
   }),
   columnHelper.accessor("session_id", {
     header: "Session ID",

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
@@ -1834,3 +1834,335 @@ def test_get_continuous_eval_variables_and_mappings_missing_params(
         client.delete_llm_eval(task_id, llm_eval.name)
         client.delete_transform(transform.id)
         client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "start_offset_days,end_offset_days,expect_today,expect_yesterday",
+    [
+        # Query for just today: start=today, end=tomorrow
+        (0, 1, True, False),
+        # Query for just yesterday: start=2 days ago, end=today
+        (-2, 0, False, True),
+        # Query for both days: start=2 days ago, end=tomorrow
+        (-2, 1, True, True),
+        # Query for future range: start=tomorrow, end=2 days from now
+        (1, 2, False, False),
+        # Query for past range: start=10 days ago, end=5 days ago
+        (-10, -5, False, False),
+    ],
+)
+def test_get_daily_annotation_analytics_time_filtering(
+    client: GenaiEngineTestClientBase,
+    start_offset_days: int,
+    end_offset_days: int,
+    expect_today: bool,
+    expect_yesterday: bool,
+):
+    """
+    Test time range filtering for daily annotation analytics.
+
+    Creates annotations on today and yesterday, then queries with different time ranges
+    to verify that only data within the requested range is returned.
+
+    Args:
+        start_offset_days: Days to add to base_date for start_time (negative = past)
+        end_offset_days: Days to add to base_date for end_time (negative = past)
+        expect_today: Should today's annotations be in the results?
+        expect_yesterday: Should yesterday's annotations be in the results?
+    """
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+    trace_id = test_data["trace_id"]
+
+    # Save an llm eval
+    status_code, llm_eval = create_test_llm_eval(client, task_id)
+    assert status_code == 200
+
+    # Create transforms
+    status_code, transform = create_test_transform(client, task_id)
+    assert status_code == 200
+
+    # Save a continuous eval
+    status_code, continuous_eval = client.save_continuous_eval(
+        task_id=task_id,
+        continuous_eval_data={
+            "name": "test_continuous_eval",
+            "description": "Test continuous eval description",
+            "llm_eval_name": llm_eval.name,
+            "llm_eval_version": llm_eval.version,
+            "transform_id": str(transform.id),
+            "transform_variable_mapping": [
+                {
+                    "transform_variable": "test_variable",
+                    "eval_variable": "test_variable",
+                },
+            ],
+        },
+    )
+
+    # Create annotations with different scores and statuses
+    db_session = override_get_db_session()
+    base_date = datetime.now()
+
+    # Create annotations for today
+    annotation_passed_1 = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        trace_id=trace_id,
+        annotation_score=1,  # passed
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PASSED.value,
+        cost=0.05,
+        created_at=base_date,
+        updated_at=base_date,
+    )
+    annotation_passed_2 = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        trace_id=trace_id,
+        annotation_score=1,  # passed
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PASSED.value,
+        cost=0.03,
+        created_at=base_date,
+        updated_at=base_date,
+    )
+    annotation_failed = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        trace_id=trace_id,
+        annotation_score=0,  # failed
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED.value,
+        cost=0.02,
+        created_at=base_date,
+        updated_at=base_date,
+    )
+    annotation_error = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        trace_id=trace_id,
+        annotation_score=None,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.ERROR.value,
+        cost=0.01,
+        created_at=base_date,
+        updated_at=base_date,
+    )
+    annotation_skipped = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        trace_id=trace_id,
+        annotation_score=None,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.SKIPPED.value,
+        cost=None,
+        created_at=base_date,
+        updated_at=base_date,
+    )
+
+    # Create annotations for yesterday
+    yesterday = base_date - timedelta(days=1)
+    annotation_yesterday_passed = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        trace_id=trace_id,
+        annotation_score=1,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.PASSED.value,
+        cost=0.04,
+        created_at=yesterday,
+        updated_at=yesterday,
+    )
+    annotation_yesterday_failed = DatabaseAgenticAnnotation(
+        id=uuid.uuid4(),
+        annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL.value,
+        trace_id=trace_id,
+        annotation_score=0,
+        continuous_eval_id=continuous_eval.id,
+        run_status=ContinuousEvalRunStatus.FAILED.value,
+        cost=0.02,
+        created_at=yesterday,
+        updated_at=yesterday,
+    )
+
+    annotations = [
+        annotation_passed_1,
+        annotation_passed_2,
+        annotation_failed,
+        annotation_error,
+        annotation_skipped,
+        annotation_yesterday_passed,
+        annotation_yesterday_failed,
+    ]
+
+    for annotation in annotations:
+        db_session.add(annotation)
+    db_session.commit()
+
+    try:
+        # Calculate time range from offsets
+        start_time = (base_date + timedelta(days=start_offset_days)).isoformat()
+        end_time = (base_date + timedelta(days=end_offset_days)).isoformat()
+
+        status_code, analytics = client.get_daily_annotation_analytics(
+            task_id=task_id,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        assert status_code == 200
+
+        # Calculate expected count
+        expected_count = int(expect_today) + int(expect_yesterday)
+        assert analytics.count == expected_count, (
+            f"Expected {expected_count} days with data, but got {analytics.count}. "
+            f"Start: {start_time}, End: {end_time}"
+        )
+        assert len(analytics.stats) == expected_count
+
+        # Find today's and yesterday's stats
+        today_stats = next(
+            (s for s in analytics.stats if s.date == base_date.date().isoformat()),
+            None,
+        )
+        yesterday_stats = next(
+            (s for s in analytics.stats if s.date == yesterday.date().isoformat()),
+            None,
+        )
+
+        # Verify today's data is present/absent as expected
+        if expect_today:
+            assert today_stats is not None, "Today's stats should be present"
+            assert today_stats.passed_count == 2
+            assert today_stats.failed_count == 1
+            assert today_stats.error_count == 1
+            assert today_stats.skipped_count == 1
+            assert today_stats.total_count == 5
+            assert abs(today_stats.total_cost - 0.11) < 0.001
+        else:
+            assert today_stats is None, "Today's stats should NOT be present"
+
+        # Verify yesterday's data is present/absent as expected
+        if expect_yesterday:
+            assert yesterday_stats is not None, "Yesterday's stats should be present"
+            assert yesterday_stats.passed_count == 1
+            assert yesterday_stats.failed_count == 1
+            assert yesterday_stats.error_count == 0
+            assert yesterday_stats.skipped_count == 0
+            assert yesterday_stats.total_count == 2
+            assert abs(yesterday_stats.total_cost - 0.06) < 0.001
+        else:
+            assert yesterday_stats is None, "Yesterday's stats should NOT be present"
+
+    finally:
+        # Cleanup annotations
+        db_session = override_get_db_session()
+        for annotation in annotations:
+            try:
+                delete_mock_annotation(annotation.id)
+            except Exception:
+                pass  # Continue cleanup even if one fails
+
+        # Cleanup continuous eval resources
+        try:
+            client.delete_continuous_eval(continuous_eval.id)
+        except Exception:
+            pass
+
+        try:
+            client.delete_llm_eval(task_id, llm_eval.name)
+        except Exception:
+            pass
+
+        try:
+            client.delete_transform(transform.id)
+        except Exception:
+            pass
+
+        # Cleanup base test data (task, trace, spans)
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+def test_get_daily_annotation_analytics_empty_results(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting daily annotation analytics when there are no annotations"""
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+
+    try:
+        # Get analytics for a time range with no data
+        base_date = datetime.now()
+        start_time = (base_date - timedelta(days=7)).isoformat()
+        end_time = base_date.isoformat()
+
+        status_code, analytics = client.get_daily_annotation_analytics(
+            task_id=task_id,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        assert status_code == 200
+        assert analytics.count == 0
+        assert len(analytics.stats) == 0
+
+    finally:
+        # Cleanup base test data (task, trace, spans)
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+def test_get_daily_annotation_analytics_invalid_time_range(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting daily annotation analytics with invalid time range"""
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+
+    try:
+        base_date = datetime.now()
+        start_time = base_date.isoformat()
+        end_time = (base_date - timedelta(days=1)).isoformat()  # end before start
+
+        status_code, response = client.get_daily_annotation_analytics(
+            task_id=task_id,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        assert status_code == 400
+        assert "start_time must be before end_time" in response.get("detail", "")
+
+    finally:
+        # Cleanup base test data (task, trace, spans)
+        cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+def test_get_daily_annotation_analytics_default_time_range(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting daily annotation analytics with default time range (30 days)"""
+
+    test_data = setup_test_data()
+    task_id = test_data["task_id"]
+
+    try:
+        # Call without time range parameters (should default to last 30 days)
+        status_code, analytics = client.get_daily_annotation_analytics(
+            task_id=task_id,
+        )
+
+        assert status_code == 200
+        # Should return successfully even if no data
+        assert analytics.count >= 0
+
+    finally:
+        # Cleanup base test data (task, trace, spans)
+        cleanup_test_data(test_data)

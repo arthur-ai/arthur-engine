@@ -1,6 +1,5 @@
 import logging
 
-from arthur_common.models.request_schemas import UpdateMetricRequest
 from cachetools import TTLCache
 from sqlalchemy.orm import Session
 
@@ -37,19 +36,6 @@ class MetricRepository:
 
     def get_metric(self, metric_id: str) -> Metric:
         metric_obj_db = self.get_metric_by_id(metric_id)
-        return Metric._from_database_model(metric_obj_db)
-
-    def update_metric(self, metric_id: str, metric: UpdateMetricRequest) -> Metric:
-        metric_obj_db = self.get_metric_by_id(metric_id)
-
-        if metric.name is not None:
-            metric_obj_db.name = metric.name
-        if metric.metric_metadata is not None:
-            metric_obj_db.metric_metadata = metric.metric_metadata
-
-        self.db_session.commit()
-        # Clear cache entry after update
-        METRICS_CACHE.pop(metric_id, None)
         return Metric._from_database_model(metric_obj_db)
 
     def archive_metric(self, metric_id: str) -> None:

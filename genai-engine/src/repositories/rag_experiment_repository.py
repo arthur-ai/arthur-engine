@@ -60,8 +60,10 @@ logger = logging.getLogger(__name__)
 # TypeAdapter for RagConfig: RagConfig is a type alias (Annotated[Union[...], Discriminator(...)])
 # not a BaseModel, so it doesn't have model_validate(). TypeAdapter allows us to validate
 # discriminated union types that aren't Pydantic models.
-RagConfigAdapter = TypeAdapter(RagConfig)
-RagConfigResponseAdapter = TypeAdapter(RagConfigResponse)
+RagConfigAdapter: TypeAdapter[RagConfig] = TypeAdapter(RagConfig)
+RagConfigResponseAdapter: TypeAdapter[RagConfigResponse] = TypeAdapter(
+    RagConfigResponse,
+)
 
 
 class RagExperimentRepository:
@@ -108,14 +110,12 @@ class RagExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
                 if db_experiment.finished_at
-                else None
+                else ""
             ),
             status=db_experiment.status,
             dataset_id=db_experiment.dataset_id,
@@ -172,14 +172,12 @@ class RagExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
                 if db_experiment.finished_at
-                else None
+                else ""
             ),
             status=db_experiment.status,
             rag_configs=rag_configs,
@@ -303,7 +301,7 @@ class RagExperimentRepository:
             )
 
         # Validate and process RAG configs
-        validated_rag_configs = []
+        validated_rag_configs: list[RagConfig] = []
         unsaved_config_counter = 0
 
         for config in request.rag_configs:

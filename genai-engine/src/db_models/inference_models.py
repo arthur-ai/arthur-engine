@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from arthur_common.models.enums import InferenceFeedbackTarget
 from sqlalchemy import TIMESTAMP, ForeignKey, Index, Integer, String, UniqueConstraint
@@ -23,14 +23,18 @@ class DatabaseInference(Base):
     result: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
-    task_id: Mapped[str] = mapped_column(
+    task_id: Mapped[Optional[str]] = mapped_column(
         String,
         ForeignKey("tasks.id"),
         index=True,
         nullable=True,
     )
-    conversation_id: Mapped[str] = mapped_column(String, index=True, nullable=True)
-    user_id: Mapped[str] = mapped_column(String, nullable=True)
+    conversation_id: Mapped[Optional[str]] = mapped_column(
+        String,
+        index=True,
+        nullable=True,
+    )
+    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     inference_prompt: Mapped["DatabaseInferencePrompt"] = relationship(lazy="joined")
     inference_response: Mapped["DatabaseInferenceResponse"] = relationship(
         lazy="joined",
@@ -39,7 +43,7 @@ class DatabaseInference(Base):
         lazy="joined",
     )
     task: Mapped["DatabaseTask"] = relationship(lazy="joined")
-    model_name: Mapped[str] = mapped_column(String, nullable=True)
+    model_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     __table_args__ = (
         Index(
@@ -66,7 +70,7 @@ class DatabaseInferencePrompt(Base):
         lazy="subquery",
     )
     content: Mapped["DatabaseInferencePromptContent"] = relationship(lazy="joined")
-    tokens: Mapped[int] = mapped_column(Integer, nullable=True)
+    tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
 
 class DatabaseInferenceResponse(Base):
@@ -85,8 +89,8 @@ class DatabaseInferenceResponse(Base):
         lazy="subquery",
     )
     content: Mapped["DatabaseInferenceResponseContent"] = relationship(lazy="joined")
-    tokens: Mapped[int] = mapped_column(Integer, nullable=True)
-    model_name: Mapped[str] = mapped_column(String, nullable=True)
+    tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    model_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
 
 # Store in seperate table as its TBD if this database will always hold the more sensitive customer data
@@ -113,7 +117,7 @@ class DatabaseInferenceResponseContent(Base):
         index=True,
     )
     content: Mapped[str] = mapped_column(CustomerDataString)
-    context: Mapped[str] = mapped_column(CustomerDataString, nullable=True)
+    context: Mapped[Optional[str]] = mapped_column(CustomerDataString, nullable=True)
 
 
 class DatabaseInferenceFeedback(Base):
@@ -126,7 +130,7 @@ class DatabaseInferenceFeedback(Base):
     )
     target: Mapped[InferenceFeedbackTarget] = mapped_column(String)
     score: Mapped[int] = mapped_column(Integer)
-    reason: Mapped[str] = mapped_column(String, nullable=True)
-    user_id: Mapped[str] = mapped_column(String, nullable=True)
+    reason: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())

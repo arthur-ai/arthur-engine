@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 
-from schemas.internal_schemas import RagProviderConfiguration
+from schemas.internal_schemas import (
+    RagProviderConfiguration,
+    RagProviderTestConfiguration,
+)
 from schemas.request_schemas import (
     RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
@@ -14,7 +17,10 @@ from schemas.response_schemas import (
 
 
 class RagProviderClient(ABC):
-    def __init__(self, provider_config: RagProviderConfiguration) -> None:
+    def __init__(
+        self,
+        provider_config: RagProviderConfiguration | RagProviderTestConfiguration,
+    ) -> None:
         self.provider_config = provider_config
 
     @abstractmethod

@@ -9,7 +9,7 @@ import threading
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from sqlalchemy.orm import Session
@@ -39,6 +39,7 @@ from schemas.request_schemas import (
 from utils.trace import get_nested_value
 
 logger = logging.getLogger(__name__)
+EVAL_SCORE_TYPE = TypeVar("EVAL_SCORE_TYPE", bound=DatabaseBaseEvalScore)
 
 
 class BaseExperimentExecutor(ABC):
@@ -138,7 +139,7 @@ class BaseExperimentExecutor(ABC):
 
     @staticmethod
     def _calculate_total_cost_eval_scores(
-        eval_scores: List[DatabaseBaseEvalScore],
+        eval_scores: List[EVAL_SCORE_TYPE],
     ) -> float:
         """Calculates total cost for a list of eval scores"""
         total_cost = 0.0
@@ -206,6 +207,11 @@ class BaseExperimentExecutor(ABC):
         try:
             # Mark experiment as running
             experiment = self._get_database_experiment(experiment_id, db_session)
+
+            if experiment is None:
+                logger.error(f"Experiment {experiment_id} not found")
+                return None
+
             self._update_experiment_status(
                 experiment,
                 ExperimentStatus.RUNNING,
@@ -269,6 +275,10 @@ class BaseExperimentExecutor(ABC):
 
             # fetch refreshed experiment object
             experiment = self._get_database_experiment(experiment_id, db_session)
+
+            if experiment is None:
+                logger.error(f"Experiment {experiment_id} not found")
+                return
 
             # Calculate total cost across all test cases
             total_experiment_cost = self._calculate_total_cost(test_cases)

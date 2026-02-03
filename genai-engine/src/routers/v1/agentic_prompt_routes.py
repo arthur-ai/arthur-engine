@@ -154,12 +154,14 @@ def get_all_agentic_prompt_versions(
 ) -> AgenticPromptVersionListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_llm_item_versions(
+        result = agentic_prompt_service.get_llm_item_versions(
             task.id,
             prompt_name,
             pagination_parameters,
             filter_request,
         )
+        assert isinstance(result, AgenticPromptVersionListResponse)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -681,11 +683,13 @@ def get_agentic_prompt_by_tag(
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_llm_item_by_tag(
+        result = agentic_prompt_service.get_llm_item_by_tag(
             task.id,
             prompt_name,
             tag,
         )
+        assert isinstance(result, AgenticPrompt)
+        return result
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -722,12 +726,20 @@ def add_tag_to_agentic_prompt_version(
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.add_tag_to_llm_item_version(
+        agentic_prompt_service.add_tag_to_llm_item_version(
             task.id,
             prompt_name,
             prompt_version,
             tag,
         )
+        # Fetch and return the updated prompt
+        result = agentic_prompt_service.get_llm_item(
+            task.id,
+            prompt_name,
+            prompt_version,
+        )
+        assert isinstance(result, AgenticPrompt)
+        return result
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))

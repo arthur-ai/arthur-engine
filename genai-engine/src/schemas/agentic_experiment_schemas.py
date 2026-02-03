@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Annotated, Dict, List, Literal, Optional, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Discriminator, Field
+from pydantic import BaseModel, Discriminator, Field, model_validator
 
 from schemas.base_experiment_schemas import (
     BaseConfigResult,
-    BaseExperimentDetail,
+    BaseEvalRef,
     BaseExperimentSummary,
     BaseResult,
     BaseTestCase,
     DatasetColumnVariableSource,
     DatasetRefInput,
-    EvalRef,
     EvalResultSummary,
+    GroundBaseExperimentDetail,
     InputVariable,
     TransformVariableExperimentOutputSource,
 )
@@ -22,6 +22,7 @@ from schemas.common_schemas import (
     BasePaginationResponse,
     NewDatasetVersionRowColumnItemRequest,
 )
+from schemas.enums import AgenticExperimentGeneratorType
 
 
 # HTTP Template schemas
@@ -72,9 +73,12 @@ class GeneratedVariableSource(BaseModel):
     type: Literal["generated"] = Field(
         description="Type of source: 'generated'",
     )
-    generator_type: Literal["uuid"] = Field(
-        description="Type of generator to use. Currently supports 'uuid' for UUID generation.",
+    generator_type: AgenticExperimentGeneratorType = Field(
+        description="Type of generator to use. Supported values: 'uuid', 'session_id'. Exactly one session_id is required per experiment.",
     )
+
+    class Config:
+        use_enum_values = True
 
 
 # Union type for template variable sources
@@ -136,7 +140,7 @@ class AgenticEvalVariableMapping(BaseModel):
 
 
 # Eval configuration with transform
-class AgenticEvalRef(EvalRef):
+class AgenticEvalRef(BaseEvalRef):
     """Reference to an evaluation configuration with transform"""
 
     transform_id: UUID = Field(
@@ -189,6 +193,29 @@ class CreateAgenticExperimentRequest(BaseModel):
         description="List of evaluations to run, each with an associated transform",
     )
 
+    @model_validator(mode="after")
+    def validate_session_id(self) -> "CreateAgenticExperimentRequest":
+        session_id_count = 0
+        if self.template_variable_mapping:
+            for variable in self.template_variable_mapping:
+                if (
+                    variable.source.type == "generated"
+                    and variable.source.generator_type
+                    == AgenticExperimentGeneratorType.SESSION_ID
+                ):
+                    if session_id_count > 0:
+                        raise ValueError(
+                            "Exactly one session_id is required per experiment",
+                        )
+                    session_id_count += 1
+
+        if session_id_count == 0:
+            raise ValueError(
+                "A session_id variable is required to create an agentic experiment",
+            )
+
+        return self
+
 
 class AgenticEvalResultSummaries(BaseModel):
     """Summary of evaluation results for an agentic experiment"""
@@ -211,7 +238,7 @@ class AgenticSummaryResults(BaseModel):
     )
 
 
-class AgenticExperimentDetail(BaseExperimentDetail):
+class AgenticExperimentDetail(GroundBaseExperimentDetail):
     """Detailed information about an agentic experiment"""
 
     http_template: HttpTemplate = Field(
@@ -241,7 +268,9 @@ class AgenticExperimentListResponse(BasePaginationResponse):
 class AgenticOutput(BaseModel):
     """Output from an agent HTTP request execution"""
 
-    response_body: Dict = Field(description="Response body from the agent endpoint")
+    response_body: Dict[str, Any] = Field(
+        description="Response body from the agent endpoint",
+    )
     status_code: Optional[int] = Field(
         default=None,
         description="HTTP status code (None if request failed before receiving a response)",
