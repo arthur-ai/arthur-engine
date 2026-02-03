@@ -234,8 +234,8 @@ export const FilterModal = () => {
         }}
         transitionDuration={150}
       >
-        <Paper sx={{ width: 400, maxHeight: 600, overflow: "auto" }}>
-          <Box sx={{ p: 2 }}>
+        <Paper sx={{ width: 400, maxHeight: 600, display: "flex", flexDirection: "column" }}>
+          <Box sx={{ p: 2, overflowY: "auto", flex: 1 }}>
             <Stack spacing={3}>
               {/* Run Status */}
               <Box>
@@ -439,16 +439,25 @@ export const FilterModal = () => {
                   </Box>
                 </Stack>
               </Box>
+            </Stack>
+          </Box>
 
-              {/* Action Buttons */}
-              <Stack direction="row" spacing={2} justifyContent="flex-end">
-                <Button variant="outlined" onClick={handleClearFilters} disabled={!hasActiveFilters}>
-                  Clear
-                </Button>
-                <Button variant="contained" onClick={handleApplyFilters}>
-                  Apply Filters
-                </Button>
-              </Stack>
+          {/* Action Buttons - Sticky at bottom */}
+          <Box
+            sx={{
+              p: 2,
+              borderTop: "1px solid",
+              borderColor: "divider",
+              backgroundColor: "background.paper",
+            }}
+          >
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Button variant="outlined" onClick={handleClearFilters} disabled={!hasActiveFilters}>
+                Clear
+              </Button>
+              <Button variant="contained" onClick={handleApplyFilters}>
+                Apply Filters
+              </Button>
             </Stack>
           </Box>
         </Paper>
