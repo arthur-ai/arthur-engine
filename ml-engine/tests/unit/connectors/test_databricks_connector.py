@@ -260,7 +260,7 @@ class TestDatabricksConnectorSQLBackend:
 class TestDatabricksConnectorODBCBackend:
     """Test ODBC backend (pyodbc)."""
 
-    @patch("connectors.databricks_connector.pyodbc.connect")
+    @patch("pyodbc.connect")
     def test_test_connection_success(self, mock_pyodbc_connect):
         mock_conn = Mock()
         mock_cursor = Mock()
@@ -274,7 +274,7 @@ class TestDatabricksConnectorODBCBackend:
         result = conn.test_connection()
         assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
 
-    @patch("connectors.databricks_connector.pyodbc.connect")
+    @patch("pyodbc.connect")
     def test_test_connection_failure(self, mock_pyodbc_connect):
         mock_pyodbc_connect.side_effect = Exception("ODBC error")
 
@@ -284,7 +284,7 @@ class TestDatabricksConnectorODBCBackend:
         assert result.connection_check_outcome == ConnectorCheckOutcome.FAILED
         assert "ODBC error" in (result.failure_reason or "")
 
-    @patch("connectors.databricks_connector.pyodbc.connect")
+    @patch("pyodbc.connect")
     def test_read_returns_dataframe(self, mock_pyodbc_connect):
         mock_conn = Mock()
         mock_cursor = Mock()
@@ -305,7 +305,7 @@ class TestDatabricksConnectorODBCBackend:
         assert list(result.columns) == ["ts", "x"]
         assert len(result) == 1
 
-    @patch("connectors.databricks_connector.pyodbc.connect")
+    @patch("pyodbc.connect")
     def test_list_datasets_returns_put_available_datasets(self, mock_pyodbc_connect):
         mock_conn = Mock()
         mock_cursor = Mock()
