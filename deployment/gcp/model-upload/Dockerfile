@@ -47,9 +47,9 @@ RUN poetry config virtualenvs.in-project true && \
 COPY upload_models.py .
 
 # =============================================================================
-# Stage 3: Distroless runtime
+# Stage 3: Runtime (slim has libffi etc. required by cffi/cryptography)
 # =============================================================================
-FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
+FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
@@ -67,8 +67,10 @@ ENV PYTHONPATH=/app/site-packages
 ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
 
-# Run as non-root user (distroless nonroot image runs as uid 65532)
+# Create non-root user for Cloud Run
+RUN groupadd -r nonroot -g 65532 && useradd -r -u 65532 -g nonroot nonroot \
+    && chown -R nonroot:nonroot /app
 USER nonroot
 
-# Run upload task directly with Python (no shell in distroless)
+# Run upload task
 ENTRYPOINT ["python", "upload_models.py"]
