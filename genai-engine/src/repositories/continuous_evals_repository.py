@@ -11,7 +11,7 @@ from arthur_common.models.enums import (
 )
 from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import HTTPException
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, case, desc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 
@@ -26,7 +26,10 @@ from schemas.request_schemas import (
     ContinuousEvalTransformVariableMappingRequest,
     UpdateContinuousEvalRequest,
 )
-from schemas.response_schemas import ContinuousEvalRerunResponse
+from schemas.response_schemas import (
+    ContinuousEvalRerunResponse,
+    DailyAgenticAnnotationStats,
+)
 from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,
@@ -545,3 +548,74 @@ class ContinuousEvalsRepository:
         queue_service.enqueue(job)
 
         return ContinuousEvalRerunResponse(run_id=run_id, trace_id=annotation.trace_id)
+
+    def get_daily_annotation_analytics(
+        self,
+        task_id: str,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> List[DailyAgenticAnnotationStats]:
+        """Get daily aggregated statistics for agentic annotations.
+
+        Includes both continuous eval annotations and human annotations.
+        """
+        # Use func.date() for database-agnostic date truncation
+        date_col = func.date(DatabaseAgenticAnnotation.created_at)
+
+        # Conditional counts using CASE WHEN
+        passed_count = func.count(
+            case((DatabaseAgenticAnnotation.annotation_score == 1, 1))
+        )
+        failed_count = func.count(
+            case((DatabaseAgenticAnnotation.annotation_score == 0, 1))
+        )
+        error_count = func.count(
+            case((DatabaseAgenticAnnotation.run_status == "error", 1))
+        )
+        skipped_count = func.count(
+            case((DatabaseAgenticAnnotation.run_status == "skipped", 1))
+        )
+        total_cost = func.coalesce(func.sum(DatabaseAgenticAnnotation.cost), 0.0)
+        total_count = func.count(DatabaseAgenticAnnotation.id)
+
+        # Build query with JOIN to continuous_evals for task_id filtering
+        # Note: This will only include annotations with a continuous_eval_id (not human annotations)
+        # If human annotations should be included, need to use LEFT JOIN and filter differently
+        query = (
+            self.db_session.query(
+                date_col.label("date"),
+                passed_count.label("passed_count"),
+                failed_count.label("failed_count"),
+                error_count.label("error_count"),
+                skipped_count.label("skipped_count"),
+                total_cost.label("total_cost"),
+                total_count.label("total_count"),
+            )
+            .join(
+                DatabaseContinuousEval,
+                DatabaseAgenticAnnotation.continuous_eval_id == DatabaseContinuousEval.id,
+            )
+            .filter(
+                DatabaseContinuousEval.task_id == task_id,
+                DatabaseAgenticAnnotation.created_at >= start_time,
+                DatabaseAgenticAnnotation.created_at < end_time,
+            )
+            .group_by(date_col)
+            .order_by(desc(date_col))
+        )
+
+        results = query.all()
+
+        # Convert to response model instances
+        return [
+            DailyAgenticAnnotationStats(
+                date=str(row.date),
+                passed_count=row.passed_count,
+                failed_count=row.failed_count,
+                error_count=row.error_count,
+                skipped_count=row.skipped_count,
+                total_cost=float(row.total_cost),
+                total_count=row.total_count,
+            )
+            for row in results
+        ]

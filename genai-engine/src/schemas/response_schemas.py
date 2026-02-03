@@ -806,3 +806,26 @@ class SyntheticDataGenerationResponse(BaseModel):
         default_factory=list,
         description="IDs of rows that were removed in this response.",
     )
+
+
+class DailyAgenticAnnotationStats(BaseModel):
+    """Statistics for a single day of agentic annotations."""
+
+    date: str = Field(description="Date in YYYY-MM-DD format")
+    passed_count: int = Field(description="Count of annotations with score=1")
+    failed_count: int = Field(description="Count of annotations with score=0")
+    error_count: int = Field(description="Count of annotations with run_status='error'")
+    skipped_count: int = Field(
+        description="Count of annotations with run_status='skipped'"
+    )
+    total_cost: float = Field(description="Total cost for the day")
+    total_count: int = Field(description="Total annotations for the day")
+
+
+class AgenticAnnotationAnalyticsResponse(BaseModel):
+    """Response containing daily aggregated statistics."""
+
+    stats: List[DailyAgenticAnnotationStats] = Field(
+        description="Daily statistics ordered by date descending"
+    )
+    count: int = Field(description="Number of days with data")
