@@ -4,7 +4,6 @@ from typing import Any, Optional
 from urllib.parse import quote_plus
 
 import pandas as pd
-import pyodbc
 from arthur_client.api_bindings import (
     AvailableDataset,
     ConnectorCheckOutcome,
@@ -258,6 +257,8 @@ class DatabricksConnector(Connector):
                 df = pd.read_sql(text(query), conn)
             return df
         else:
+            import pyodbc
+
             conn_str = self._build_odbc_connection_string()
             with pyodbc.connect(conn_str, autocommit=True) as conn:
                 cursor = conn.cursor()
@@ -272,6 +273,8 @@ class DatabricksConnector(Connector):
                 with self._engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
             else:
+                import pyodbc
+
                 conn_str = self._build_odbc_connection_string()
                 with pyodbc.connect(conn_str, autocommit=True) as conn:
                     cursor = conn.cursor()
@@ -311,6 +314,8 @@ class DatabricksConnector(Connector):
                 ],
             )
         else:
+            import pyodbc
+
             conn_str = self._build_odbc_connection_string()
             with pyodbc.connect(conn_str, autocommit=True) as conn:
                 cursor = conn.cursor()
