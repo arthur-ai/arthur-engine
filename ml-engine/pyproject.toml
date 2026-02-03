@@ -32,10 +32,11 @@ types-requests = "2.32.4.20250913"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
 arthur-client = "1.4.1713"
-arthur-common = "2.4.30"
+arthur-common = "2.4.32"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.45"
 snowflake-sqlalchemy = "1.7.7"
+databricks-sqlalchemy = "^2.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -74,6 +75,9 @@ src_paths = ["src/ml_engine", "tests"]
 [tool.pytest.ini_options]
 pythonpath = ["src", "src/genai_client"]
 testpaths = ["tests"]
+markers = [
+    "integration_tests: mark a test as an integration test (requires real backend credentials via env vars)",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

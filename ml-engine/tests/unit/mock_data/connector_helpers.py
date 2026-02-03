@@ -26,9 +26,19 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
+    DATABRICKS_CONNECTOR_ACCESS_TOKEN_FIELD,
+    DATABRICKS_CONNECTOR_AUTHENTICATOR_FIELD,
+    DATABRICKS_CONNECTOR_CATALOG_FIELD,
+    DATABRICKS_CONNECTOR_CONNECTION_METHOD_FIELD,
+    DATABRICKS_CONNECTOR_HTTP_PATH_FIELD,
+    DATABRICKS_CONNECTOR_SCHEMA_FIELD,
+    DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD,
 )
 from arthur_common.models.datasets import DatasetFileType
-from arthur_common.models.enums import ModelProblemType
+from arthur_common.models.enums import (
+    DatabricksConnectorAuthenticatorMethods,
+    ModelProblemType,
+)
 
 
 def mock_bucket_based_connector_spec(
@@ -48,6 +58,43 @@ def mock_bucket_based_connector_spec(
         "project_id": str(uuid4()),
         "data_plane_id": str(uuid4()),
     }
+
+
+def mock_databricks_connector_spec(
+    connection_method: str = "sql_connector",
+    server_hostname: str = "dbc-xxx.cloud.databricks.com",
+    http_path: str = "/sql/1.0/warehouses/yyy",
+    authenticator: str = DatabricksConnectorAuthenticatorMethods.DATABRICKS_PAT,
+    access_token: str = "mock_token",
+    catalog: str | None = None,
+    schema: str | None = None,
+) -> dict:
+    """Build a mock Databricks connector spec for tests."""
+    fields: List[Dict] = [
+        {"key": DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD, "value": server_hostname},
+        {"key": DATABRICKS_CONNECTOR_HTTP_PATH_FIELD, "value": http_path},
+        {"key": DATABRICKS_CONNECTOR_AUTHENTICATOR_FIELD, "value": authenticator},
+        {"key": DATABRICKS_CONNECTOR_ACCESS_TOKEN_FIELD, "value": access_token},
+        {
+            "key": DATABRICKS_CONNECTOR_CONNECTION_METHOD_FIELD,
+            "value": connection_method,
+        },
+    ]
+    if catalog:
+        fields.append({"key": DATABRICKS_CONNECTOR_CATALOG_FIELD, "value": catalog})
+    if schema:
+        fields.append({"key": DATABRICKS_CONNECTOR_SCHEMA_FIELD, "value": schema})
+    return mock_bucket_based_connector_spec(
+        connector_type=Mock(value="databricks"),
+        fields=[
+            {
+                **f,
+                "is_sensitive": f["key"] == DATABRICKS_CONNECTOR_ACCESS_TOKEN_FIELD,
+                "d_type": ConnectorFieldDataType.STRING.value,
+            }
+            for f in fields
+        ],
+    )
 
 
 def mock_expel_tabular_dataset(locator: DatasetLocator) -> dict:
