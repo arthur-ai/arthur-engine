@@ -40,7 +40,7 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
   filters.forEach((filter) => {
     const key = filter.name;
 
-    if (key === "id") {
+    if (key === "continuous_eval_id") {
       return (request[key] = filter.value as string);
     }
 
