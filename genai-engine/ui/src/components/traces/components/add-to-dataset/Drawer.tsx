@@ -10,6 +10,7 @@ import { flattenSpans, getNestedValue } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
 
 import { AddColumnDialog } from "./AddColumnDialog";
+import { Matcher } from "./components/matcher";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
 import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
@@ -26,7 +27,6 @@ import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
-import { Matcher } from "./components/matcher";
 
 type Props = {
   traceId: string;
@@ -338,6 +338,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                         const transformId = value?.id ?? "";
                         field.handleChange(transformId);
 
+                        // TODO: Move the logic to `listeners`
                         if (transformId && value && selectedDataset && traceId) {
                           try {
                             const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
@@ -409,6 +410,25 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                         } else {
                           form.setFieldValue("columns", []);
                         }
+                      }}
+                      renderOption={(props, option) => {
+                        return (
+                          <li {...props} key={option.id}>
+                            <Stack>
+                              <Typography variant="body2" fontWeight="medium">
+                                {option.name}
+                              </Typography>
+                              <Stack direction="row" alignItems="center" gap={1} divider={<span className="text-gray-500 text-xs">•</span>}>
+                                <Typography variant="caption" color="text.secondary">
+                                  {option.description ?? "No description"}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {option.definition.variables.length} variables
+                                </Typography>
+                              </Stack>
+                            </Stack>
+                          </li>
+                        );
                       }}
                       getOptionLabel={(option) => option.name}
                     />
