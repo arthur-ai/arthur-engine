@@ -323,6 +323,13 @@ class ContinuousEvalsRepository:
                     ),
                 )
 
+            if filter_request.eval_name:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.llm_eval_name.ilike(
+                        f"%{filter_request.eval_name}%",
+                    ),
+                )
+
             if filter_request.trace_ids:
                 base_query = base_query.filter(
                     DatabaseAgenticAnnotation.trace_id.in_(filter_request.trace_ids),

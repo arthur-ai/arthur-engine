@@ -1077,6 +1077,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         None,
         description="List of continuous eval IDs to filter on",
     )
+    eval_name: Optional[str] = Field(
+        None,
+        description="Name of the llm eval to filter on",
+    )
     trace_ids: Optional[List[str]] = Field(
         None,
         description="List of trace IDs to filter on",
@@ -1111,6 +1115,10 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         continuous_eval_ids: Optional[List[str]] = Query(
             None,
             description="List of continuous eval IDs to filter on.",
+        ),
+        eval_name: Optional[str] = Query(
+            None,
+            description="Name of the llm eval to filter on.",
         ),
         trace_ids: Optional[List[str]] = Query(
             None,
@@ -1162,6 +1170,7 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         return ContinuousEvalRunResultsListFilterRequest(
             ids=parsed_ids,
             continuous_eval_ids=parsed_continuous_eval_ids,
+            eval_name=eval_name,
             trace_ids=trace_ids,
             annotation_score=annotation_score,
             run_status=run_status,

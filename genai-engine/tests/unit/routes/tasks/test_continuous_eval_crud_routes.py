@@ -1367,6 +1367,23 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         assert len(received_run_results.annotations) == 1
         assert received_run_results.count == 1
 
+        # Test filtering by llm eval name
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"eval_name={continuous_eval.llm_eval_name}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 3
+        assert received_run_results.count == 3
+
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"eval_name=non_existent",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 0
+        assert received_run_results.count == 0
+
         # Test filtering by annotation score
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,

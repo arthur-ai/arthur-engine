@@ -28,6 +28,7 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 02/03/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'eval_name'
 
 # 02/02/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  deleted the 'query' request parameter 'continuous_eval_id'

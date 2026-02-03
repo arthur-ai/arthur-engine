@@ -14022,6 +14022,24 @@
                         "description": "List of continuous eval IDs to filter on."
                     },
                     {
+                        "name": "eval_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the llm eval to filter on.",
+                            "title": "Eval Name"
+                        },
+                        "description": "Name of the llm eval to filter on."
+                    },
+                    {
                         "name": "trace_ids",
                         "in": "query",
                         "required": false,
