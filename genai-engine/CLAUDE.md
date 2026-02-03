@@ -93,6 +93,9 @@ poetry install --only performance
 - Agentic workflow support: multi-step agent trace evaluation
 - Pre-commit hooks enforce black, isort, mypy - see CONTRIBUTING.md
 - Database migrations should be reviewed before applying to ensure idempotency
+- Ensure python best coding practices are followed
+- Put all imports at the top of Python files
+- Make sure any unit tests are deterministic. They shouldn't rely on database ordering of results and should clean up any state they create
 
 ### Coding Conventions
 

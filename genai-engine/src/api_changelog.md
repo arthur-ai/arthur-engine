@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/03/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
+
 # 02/02/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/id'
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  Added new endpoint for generating synthetic dataset rows using LLM. Accepts dataset purpose, column descriptions, model configuration, and number of rows to generate.
