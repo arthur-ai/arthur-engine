@@ -33,6 +33,7 @@ export interface DatasetState {
     configure: boolean;
     import: boolean;
     fill: { open: boolean; columnName: string | null };
+    synthetic: boolean;
   };
   versionDrawerOpen: boolean;
   confirmation: {
@@ -65,6 +66,7 @@ export type DatasetAction =
   | { type: "UI/TOGGLE_IMPORT_MODAL"; payload: boolean }
   | { type: "UI/OPEN_FILL_MODAL"; payload: string }
   | { type: "UI/CLOSE_FILL_MODAL" }
+  | { type: "UI/TOGGLE_SYNTHETIC_MODAL"; payload: boolean }
   | { type: "UI/TOGGLE_VERSION_DRAWER"; payload: boolean }
   | {
       type: "UI/SHOW_CONFIRMATION";
@@ -129,6 +131,7 @@ export const initialDatasetState: DatasetState = {
     configure: false,
     import: false,
     fill: { open: false, columnName: null },
+    synthetic: false,
   },
   versionDrawerOpen: false,
   confirmation: { type: null, targetVersion: null, targetColumn: null },

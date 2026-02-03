@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from arthur_common.models.enums import (
@@ -51,6 +51,10 @@ class NewDatasetVersionRowColumnItemRequest(BaseModel):
 class NewDatasetVersionRowRequest(BaseModel):
     """Represents a row to be added to a dataset version."""
 
+    id: Optional[str] = Field(
+        default=None,
+        description="Optional ID for the row (used for synthetic data generation).",
+    )
     data: List[NewDatasetVersionRowColumnItemRequest] = Field(
         description="List of column-value pairs in the new dataset row.",
     )

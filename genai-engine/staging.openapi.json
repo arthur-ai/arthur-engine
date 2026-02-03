@@ -7497,6 +7497,150 @@
                 }
             }
         },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic": {
+            "post": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Generate Synthetic Data",
+                "description": "Generate synthetic data rows based on existing dataset patterns.",
+                "operationId": "generate_synthetic_data_api_v2_datasets__dataset_id__versions__version_number__generate_synthetic_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the dataset.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the dataset."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticDataGenerationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticDataGenerationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message": {
+            "post": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Send Synthetic Data Message",
+                "description": "Send a message to refine synthetic data generation.",
+                "operationId": "send_synthetic_data_message_api_v2_datasets__dataset_id__versions__version_number__generate_synthetic_message_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the dataset.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the dataset."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticDataConversationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticDataGenerationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/model_providers/{provider}": {
             "put": {
                 "tags": [
@@ -21469,6 +21613,18 @@
             },
             "NewDatasetVersionRowRequest": {
                 "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "Optional ID for the row (used for synthetic data generation)."
+                    },
                     "data": {
                         "items": {
                             "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
@@ -26730,6 +26886,222 @@
                 ],
                 "title": "SummaryResults",
                 "description": "Summary results across all prompt versions and evaluations"
+            },
+            "SyntheticDataColumnDescription": {
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "title": "Column Name",
+                        "description": "Name of the column to generate data for."
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description",
+                        "description": "Description of what this column contains and how to generate realistic values."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "column_name",
+                    "description"
+                ],
+                "title": "SyntheticDataColumnDescription",
+                "description": "Description of a column for synthetic data generation."
+            },
+            "SyntheticDataConversationRequest": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message",
+                        "description": "User's message/instruction for refining the generated data."
+                    },
+                    "current_rows": {
+                        "items": {
+                            "$ref": "#/components/schemas/NewDatasetVersionRowRequest"
+                        },
+                        "type": "array",
+                        "title": "Current Rows",
+                        "description": "Current state of generated rows (including any manual edits)."
+                    },
+                    "conversation_history": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Conversation History",
+                        "description": "Previous conversation messages for context."
+                    },
+                    "dataset_purpose": {
+                        "type": "string",
+                        "title": "Dataset Purpose",
+                        "description": "Original dataset purpose for context."
+                    },
+                    "column_descriptions": {
+                        "items": {
+                            "$ref": "#/components/schemas/SyntheticDataColumnDescription"
+                        },
+                        "type": "array",
+                        "title": "Column Descriptions",
+                        "description": "Original column descriptions for context."
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the LLM model to use for generation."
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model to use for generation."
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMRequestConfigSettings"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Optional LLM configuration settings (temperature, max_tokens, etc.)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message",
+                    "current_rows",
+                    "conversation_history",
+                    "dataset_purpose",
+                    "column_descriptions",
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "SyntheticDataConversationRequest",
+                "description": "Request for continuing a synthetic data generation conversation."
+            },
+            "SyntheticDataGenerationRequest": {
+                "properties": {
+                    "dataset_purpose": {
+                        "type": "string",
+                        "title": "Dataset Purpose",
+                        "description": "Description of the dataset's purpose and what the data represents."
+                    },
+                    "column_descriptions": {
+                        "items": {
+                            "$ref": "#/components/schemas/SyntheticDataColumnDescription"
+                        },
+                        "type": "array",
+                        "title": "Column Descriptions",
+                        "description": "Descriptions for each column to guide generation."
+                    },
+                    "num_rows": {
+                        "type": "integer",
+                        "maximum": 25.0,
+                        "minimum": 1.0,
+                        "title": "Num Rows",
+                        "description": "Number of rows to generate (1-25).",
+                        "default": 10
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the LLM model to use for generation."
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model to use for generation."
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMRequestConfigSettings"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Optional LLM configuration settings (temperature, max_tokens, etc.)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "dataset_purpose",
+                    "column_descriptions",
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "SyntheticDataGenerationRequest",
+                "description": "Request for initial synthetic data generation."
+            },
+            "SyntheticDataGenerationResponse": {
+                "properties": {
+                    "rows": {
+                        "items": {
+                            "$ref": "#/components/schemas/SyntheticDataRowResponse"
+                        },
+                        "type": "array",
+                        "title": "Rows",
+                        "description": "Full current state of all generated rows."
+                    },
+                    "assistant_message": {
+                        "$ref": "#/components/schemas/OpenAIMessage-Output",
+                        "description": "The assistant's response message explaining what was done."
+                    },
+                    "rows_added": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Rows Added",
+                        "description": "IDs of newly added rows in this response."
+                    },
+                    "rows_modified": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Rows Modified",
+                        "description": "IDs of rows that were modified in this response."
+                    },
+                    "rows_removed": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Rows Removed",
+                        "description": "IDs of rows that were removed in this response."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rows",
+                    "assistant_message"
+                ],
+                "title": "SyntheticDataGenerationResponse",
+                "description": "Response for synthetic data generation (both initial and conversation)."
+            },
+            "SyntheticDataRowResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Temporary client-side ID for tracking this row during the session."
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatasetVersionRowColumnItemResponse"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of column names and values in the generated row."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "data"
+                ],
+                "title": "SyntheticDataRowResponse",
+                "description": "A single generated row with a temporary client-side ID for tracking."
             },
             "TaskResponse": {
                 "properties": {
