@@ -26,6 +26,7 @@ import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { Matcher } from "./components/matcher";
 
 type Props = {
   traceId: string;
@@ -415,6 +416,14 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                 }}
               </form.Field>
             </Stack>
+
+            <Matcher
+              form={form}
+              fields={{
+                dataset: "dataset",
+                transform: "transform",
+              }}
+            />
 
             {selectedDataset && (
               <>
