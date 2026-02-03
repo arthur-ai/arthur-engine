@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional
 
-from sqlalchemy import JSON, UUID, CheckConstraint, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, UUID, CheckConstraint, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
@@ -87,5 +87,11 @@ class DatabaseAgenticAnnotation(Base):
         CheckConstraint(
             "(annotation_type != 'continuous_eval') OR (run_status IS NOT NULL)",
             name="ck_continuous_eval_requires_run_status",
+        ),
+        # Composite index for analytics queries
+        Index(
+            "ix_agentic_annotations_continuous_eval_created",
+            "continuous_eval_id",
+            "created_at",
         ),
     )
