@@ -325,7 +325,7 @@ class SpanRepository:
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(
             trace_ids=trace_ids,
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         )
 
         # Validate spans and add existing metrics
@@ -339,7 +339,7 @@ class SpanRepository:
         # Build trace tree structures
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
-            pagination_parameters.sort,
+            pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         )
 
         # add annotation info to trace responses if it exists
@@ -372,7 +372,7 @@ class SpanRepository:
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(
             trace_ids=trace_ids,
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         )
 
         # Validate spans and compute metrics
@@ -386,7 +386,7 @@ class SpanRepository:
         # Build trace tree structures
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
-            pagination_parameters.sort,
+            pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         )
 
         # add annotation info to trace responses if it exists
@@ -564,7 +564,7 @@ class SpanRepository:
         # Query all spans in the paginated traces
         spans, _ = self.span_query_service.query_spans_from_db(
             trace_ids=paginated_trace_ids,
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         )
 
         # Validate spans and add metrics if requested
@@ -578,7 +578,7 @@ class SpanRepository:
         # Group spans by trace and build nested structure
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
-            pagination_parameters.sort,
+            pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         )
 
         # add annotation info to trace responses if it exists
@@ -604,7 +604,7 @@ class SpanRepository:
     def get_annotation_by_id(
         self,
         annotation_id: UUID,
-    ) -> AgenticAnnotation:
+    ) -> AgenticAnnotation | None:
         """Get an annotation by id."""
         return self.trace_annotation_service.get_annotation_by_id(
             annotation_id=annotation_id,

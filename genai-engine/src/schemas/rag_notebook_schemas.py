@@ -21,8 +21,10 @@ from schemas.rag_experiment_schemas import (
 # TypeAdapter for RagConfig: RagConfig is a type alias (Annotated[Union[...], Discriminator(...)])
 # not a BaseModel, so it doesn't have model_validate(). TypeAdapter allows us to validate
 # discriminated union types that aren't Pydantic models.
-RagConfigAdapter = TypeAdapter(RagConfig)
-RagConfigResponseAdapter = TypeAdapter(RagConfigResponse)
+RagConfigAdapter: TypeAdapter[RagConfig] = TypeAdapter(RagConfig)
+RagConfigResponseAdapter: TypeAdapter[RagConfigResponse] = TypeAdapter(
+    RagConfigResponse,
+)
 
 
 class RagNotebookState(BaseModel):

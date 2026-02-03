@@ -399,8 +399,7 @@ def test_rag_experiment_routes_happy_path(
     assert experiment_summary["completed_rows"] == 0
     assert experiment_summary["failed_rows"] == 0
     assert "created_at" in experiment_summary
-    # finished_at may be excluded from response if None due to response_model_exclude_none=True
-    assert experiment_summary.get("finished_at") is None
+    assert experiment_summary.get("finished_at") == ""
     assert "rag_configs" in experiment_summary
     assert len(experiment_summary["rag_configs"]) == 1
     assert experiment_summary["rag_configs"][0]["type"] == "unsaved"

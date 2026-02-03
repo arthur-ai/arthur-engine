@@ -2599,6 +2599,10 @@ export interface GCPServiceAccountCredentialsRequest {
   universe_domain: string;
 }
 
+export type GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostData = SyntheticDataGenerationResponse;
+
+export type GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostError = HTTPValidationError;
+
 /**
  * GeneratedVariableSource
  * Variable source for generated values (e.g., UUIDs, timestamps)
@@ -8933,6 +8937,10 @@ export interface SearchUsersUsersGetParams {
   sort?: PaginationSortMethod;
 }
 
+export type SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostData = SyntheticDataGenerationResponse;
+
+export type SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostError = HTTPValidationError;
+
 /**
  * SessionListResponse
  * Response for session list endpoint
@@ -9360,6 +9368,144 @@ export interface SummaryResults {
    * Summary for each prompt version tested
    */
   prompt_eval_summaries: PromptEvalResultSummaries[];
+}
+
+/**
+ * SyntheticDataColumnDescription
+ * Description of a column for synthetic data generation.
+ */
+export interface SyntheticDataColumnDescription {
+  /**
+   * Column Name
+   * Name of the column to generate data for.
+   */
+  column_name: string;
+  /**
+   * Description
+   * Description of what this column contains and how to generate realistic values.
+   */
+  description: string;
+}
+
+/**
+ * SyntheticDataConversationRequest
+ * Request for continuing a synthetic data generation conversation.
+ */
+export interface SyntheticDataConversationRequest {
+  /**
+   * Column Descriptions
+   * Original column descriptions for context.
+   */
+  column_descriptions: SyntheticDataColumnDescription[];
+  /** Optional LLM configuration settings (temperature, max_tokens, etc.). */
+  config?: LLMRequestConfigSettings | null;
+  /**
+   * Conversation History
+   * Previous conversation messages for context.
+   */
+  conversation_history: OpenAIMessageInput[];
+  /**
+   * Current Rows
+   * Current state of generated rows (including any manual edits).
+   */
+  current_rows: NewDatasetVersionRowRequest[];
+  /**
+   * Dataset Purpose
+   * Original dataset purpose for context.
+   */
+  dataset_purpose: string;
+  /**
+   * Message
+   * User's message/instruction for refining the generated data.
+   */
+  message: string;
+  /**
+   * Model Name
+   * Name of the LLM model to use for generation.
+   */
+  model_name: string;
+  /** Provider of the LLM model to use for generation. */
+  model_provider: ModelProvider;
+}
+
+/**
+ * SyntheticDataGenerationRequest
+ * Request for initial synthetic data generation.
+ */
+export interface SyntheticDataGenerationRequest {
+  /**
+   * Column Descriptions
+   * Descriptions for each column to guide generation.
+   */
+  column_descriptions: SyntheticDataColumnDescription[];
+  /** Optional LLM configuration settings (temperature, max_tokens, etc.). */
+  config?: LLMRequestConfigSettings | null;
+  /**
+   * Dataset Purpose
+   * Description of the dataset's purpose and what the data represents.
+   */
+  dataset_purpose: string;
+  /**
+   * Model Name
+   * Name of the LLM model to use for generation.
+   */
+  model_name: string;
+  /** Provider of the LLM model to use for generation. */
+  model_provider: ModelProvider;
+  /**
+   * Num Rows
+   * Number of rows to generate (1-25).
+   * @min 1
+   * @max 25
+   * @default 10
+   */
+  num_rows?: number;
+}
+
+/**
+ * SyntheticDataGenerationResponse
+ * Response for synthetic data generation (both initial and conversation).
+ */
+export interface SyntheticDataGenerationResponse {
+  /** The assistant's response message explaining what was done. */
+  assistant_message: OpenAIMessageOutput;
+  /**
+   * Rows
+   * Full current state of all generated rows.
+   */
+  rows: SyntheticDataRowResponse[];
+  /**
+   * Rows Added
+   * IDs of newly added rows in this response.
+   */
+  rows_added?: string[];
+  /**
+   * Rows Modified
+   * IDs of rows that were modified in this response.
+   */
+  rows_modified?: string[];
+  /**
+   * Rows Removed
+   * IDs of rows that were removed in this response.
+   */
+  rows_removed?: string[];
+}
+
+/**
+ * SyntheticDataRowResponse
+ * A single generated row with a temporary client-side ID for tracking.
+ */
+export interface SyntheticDataRowResponse {
+  /**
+   * Data
+   * List of column names and values in the generated row.
+   */
+  data: DatasetVersionRowColumnItemResponse[];
+  /**
+   * Id
+   * Temporary client-side ID for tracking this row during the session.
+   */
+  id: string;
 }
 
 /** TaskResponse */
@@ -11486,7 +11632,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.330
+ * @version 2.1.335
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12666,6 +12812,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/${traceId}/transforms/${transformId}/extractions`,
         method: "POST",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Generate synthetic data rows based on existing dataset patterns.
+     *
+     * @tags Datasets
+     * @name GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost
+     * @summary Generate Synthetic Data
+     * @request POST:/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic
+     * @secure
+     */
+    generateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost: (
+      datasetId: string,
+      versionNumber: number,
+      data: SyntheticDataGenerationRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostData,
+        GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/generate-synthetic`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -14530,6 +14704,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/tasks/search`,
         method: "POST",
         query: query,
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Send a message to refine synthetic data generation.
+     *
+     * @tags Datasets
+     * @name SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePost
+     * @summary Send Synthetic Data Message
+     * @request POST:/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message
+     * @secure
+     */
+    sendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePost: (
+      datasetId: string,
+      versionNumber: number,
+      data: SyntheticDataConversationRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostData,
+        SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/generate-synthetic/message`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,

@@ -70,7 +70,7 @@ class DatasetResponse(BaseModel):
         default=None,
         description="Description of the dataset.",
     )
-    metadata: Optional[dict] = Field(
+    metadata: Optional[dict[Any, Any]] = Field(
         default=None,
         description="Any metadata to include that describes additional information about the dataset.",
     )
@@ -767,3 +767,65 @@ class ContinuousEvalTransformVariableMappingResponse(BaseModel):
 class ContinuousEvalRerunResponse(BaseModel):
     run_id: UUID = Field(description="ID of the continuous eval run that was rerun.")
     trace_id: str = Field(description="ID of the trace that was rerun.")
+
+
+# ============================================================================
+# Synthetic Data Generation Response Schemas
+# ============================================================================
+
+
+class SyntheticDataRowResponse(BaseModel):
+    """A single generated row with a temporary client-side ID for tracking."""
+
+    id: str = Field(
+        description="Temporary client-side ID for tracking this row during the session.",
+    )
+    data: List[DatasetVersionRowColumnItemResponse] = Field(
+        description="List of column names and values in the generated row.",
+    )
+
+
+class SyntheticDataGenerationResponse(BaseModel):
+    """Response for synthetic data generation (both initial and conversation)."""
+
+    rows: List[SyntheticDataRowResponse] = Field(
+        description="Full current state of all generated rows.",
+    )
+    assistant_message: OpenAIMessage = Field(
+        description="The assistant's response message explaining what was done.",
+    )
+    rows_added: List[str] = Field(
+        default_factory=list,
+        description="IDs of newly added rows in this response.",
+    )
+    rows_modified: List[str] = Field(
+        default_factory=list,
+        description="IDs of rows that were modified in this response.",
+    )
+    rows_removed: List[str] = Field(
+        default_factory=list,
+        description="IDs of rows that were removed in this response.",
+    )
+
+
+class DailyAgenticAnnotationStats(BaseModel):
+    """Statistics for a single day of agentic annotations."""
+
+    date: str = Field(description="Date in YYYY-MM-DD format")
+    passed_count: int = Field(description="Count of annotations with score=1")
+    failed_count: int = Field(description="Count of annotations with score=0")
+    error_count: int = Field(description="Count of annotations with run_status='error'")
+    skipped_count: int = Field(
+        description="Count of annotations with run_status='skipped'"
+    )
+    total_cost: float = Field(description="Total cost for the day")
+    total_count: int = Field(description="Total annotations for the day")
+
+
+class AgenticAnnotationAnalyticsResponse(BaseModel):
+    """Response containing daily aggregated statistics."""
+
+    stats: List[DailyAgenticAnnotationStats] = Field(
+        description="Daily statistics ordered by date descending"
+    )
+    count: int = Field(description="Number of days with data")

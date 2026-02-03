@@ -6,6 +6,7 @@ from arthur_common.models.metric_schemas import MetricRequest
 
 from schemas.internal_schemas import Metric, MetricResult
 from schemas.scorer_schemas import RuleScore, ScoreRequest
+from scorer import BinaryPIIDataClassifier
 from scorer.scorer import MetricScorer, RuleScorer
 
 
@@ -29,7 +30,7 @@ class ScorerClient:
         self,
         name_version_mapping: dict[
             Union[RuleType, MetricType],
-            Union[RuleScorer, MetricScorer],
+            Union[RuleScorer, MetricScorer, BinaryPIIDataClassifier],
         ],
     ):
         self.NAME_VERSION_MAPPING: ScorerMapping = name_version_mapping  # type: ignore[assignment]

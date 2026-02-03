@@ -442,10 +442,10 @@ def test_span_api_error_handling_and_edge_cases(
 
 
 @pytest.mark.unit_tests
-def test_experiment_traces_excluded_from_span_endpoint(
+def test_experiment_traces_included_in_span_endpoint(
     client: GenaiEngineTestClientBase,
 ):
-    """Test that experiment traces are excluded from span endpoint by default."""
+    """Test that experiment traces are included in span endpoint by default."""
 
     # Create a regular trace (non-experiment)
     regular_trace_request, regular_resource_span, regular_scope_span = (
@@ -489,17 +489,15 @@ def test_experiment_traces_excluded_from_span_endpoint(
     assert status_code1 == 200, "Regular trace should be accepted"
     assert status_code2 == 200, "Experiment trace should be accepted"
 
-    # Query spans - should only return the regular span (experiment span excluded by default)
+    # Query spans - should return the regular span and the experiment span
     status_code, response = client.trace_api_list_spans_metadata(
         task_ids=["exp_test_task"],
     )
     assert status_code == 200
 
-    # Verify only regular span is returned (span IDs are stored as hex strings in DB)
+    # Verify regular span and experiment span are returned (span IDs are stored as hex strings in DB)
     span_ids = {span.span_id for span in response.spans}
     regular_span_hex = b"regular_span_span".hex()
     experiment_span_hex = b"experiment_span_span".hex()
     assert regular_span_hex in span_ids, "Regular span should be included"
-    assert (
-        experiment_span_hex not in span_ids
-    ), "Experiment span should be excluded by default"
+    assert experiment_span_hex in span_ids, "Experiment span should be included"

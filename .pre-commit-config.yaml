@@ -68,6 +68,13 @@ repos:
         pass_filenames: false
         always_run: false
         files: ^genai-engine/src/
+      - id: genai-engine-mypy-check
+        name: "genai-engine: mypy type checking"
+        entry: poetry -C genai-engine run mypy src
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^genai-engine/src/
       - id: genai-engine-api-changelog-check
         name: "genai-engine: api changelog"
         entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && poetry -C genai-engine run generate_changelog"
