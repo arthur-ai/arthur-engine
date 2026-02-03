@@ -30,7 +30,6 @@ from arthur_common.models.enums import (
 from mock_data.connector_helpers import mock_databricks_connector_spec
 
 from connectors.databricks_connector import (
-    CONNECTION_METHOD_ODBC,
     CONNECTION_METHOD_SQL_CONNECTOR,
     DatabricksConnector,
 )
@@ -252,79 +251,6 @@ class TestDatabricksConnectorSQLBackend:
         assert len(result.available_datasets) == 2
         names = {d.name for d in result.available_datasets}
         assert names == {"t1", "t2"}
-        for d in result.available_datasets:
-            locator_fields = {f.key: f.value for f in d.dataset_locator.fields}
-            assert ODBC_CONNECTOR_TABLE_NAME_FIELD in locator_fields
-
-
-class TestDatabricksConnectorODBCBackend:
-    """Test ODBC backend (pyodbc)."""
-
-    @patch("pyodbc.connect")
-    def test_test_connection_success(self, mock_pyodbc_connect):
-        mock_conn = Mock()
-        mock_cursor = Mock()
-        mock_conn.cursor.return_value = mock_cursor
-        mock_conn.__enter__ = Mock(return_value=mock_conn)
-        mock_conn.__exit__ = Mock(return_value=None)
-        mock_pyodbc_connect.return_value = mock_conn
-
-        spec = _make_connector_spec(connection_method=CONNECTION_METHOD_ODBC)
-        conn = DatabricksConnector(spec, logger)
-        result = conn.test_connection()
-        assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
-
-    @patch("pyodbc.connect")
-    def test_test_connection_failure(self, mock_pyodbc_connect):
-        mock_pyodbc_connect.side_effect = Exception("ODBC error")
-
-        spec = _make_connector_spec(connection_method=CONNECTION_METHOD_ODBC)
-        conn = DatabricksConnector(spec, logger)
-        result = conn.test_connection()
-        assert result.connection_check_outcome == ConnectorCheckOutcome.FAILED
-        assert "ODBC error" in (result.failure_reason or "")
-
-    @patch("pyodbc.connect")
-    def test_read_returns_dataframe(self, mock_pyodbc_connect):
-        mock_conn = Mock()
-        mock_cursor = Mock()
-        mock_cursor.description = [("ts",), ("x",)]
-        mock_cursor.fetchall.return_value = [(datetime.now(timezone.utc), 1)]
-        mock_conn.cursor.return_value = mock_cursor
-        mock_conn.__enter__ = Mock(return_value=mock_conn)
-        mock_conn.__exit__ = Mock(return_value=None)
-        mock_pyodbc_connect.return_value = mock_conn
-
-        spec = _make_connector_spec(connection_method=CONNECTION_METHOD_ODBC)
-        conn = DatabricksConnector(spec, logger)
-        dataset = _make_dataset_with_timestamp()
-        start = datetime(2025, 1, 1, tzinfo=timezone.utc)
-        end = datetime(2025, 1, 2, tzinfo=timezone.utc)
-        result = conn.read(dataset, start, end)
-        assert isinstance(result, pd.DataFrame)
-        assert list(result.columns) == ["ts", "x"]
-        assert len(result) == 1
-
-    @patch("pyodbc.connect")
-    def test_list_datasets_returns_put_available_datasets(self, mock_pyodbc_connect):
-        mock_conn = Mock()
-        mock_cursor = Mock()
-        # cursor.tables() returns TABLE_CAT, TABLE_SCHEM, TABLE_NAME, TABLE_TYPE, REMARKS
-        mock_cursor.fetchall.return_value = [
-            ("cat", "schema_a", "table1", "TABLE", None),
-            ("cat", "schema_a", "table2", "TABLE", None),
-        ]
-        mock_conn.cursor.return_value = mock_cursor
-        mock_conn.__enter__ = Mock(return_value=mock_conn)
-        mock_conn.__exit__ = Mock(return_value=None)
-        mock_pyodbc_connect.return_value = mock_conn
-
-        spec = _make_connector_spec(connection_method=CONNECTION_METHOD_ODBC)
-        conn = DatabricksConnector(spec, logger)
-        result = conn.list_datasets()
-        assert len(result.available_datasets) == 2
-        names = {d.name for d in result.available_datasets}
-        assert names == {"table1", "table2"}
         for d in result.available_datasets:
             locator_fields = {f.key: f.value for f in d.dataset_locator.fields}
             assert ODBC_CONNECTOR_TABLE_NAME_FIELD in locator_fields
