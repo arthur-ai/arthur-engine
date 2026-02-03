@@ -6,9 +6,9 @@ apiVersion: run.googleapis.com/v1
 kind: Job
 metadata:
   name: arthur-model-upload
-  namespace: PROJECT_NUMBER
+  namespace: aa-dp-npr-01
   labels:
-    cloud.googleapis.com/location: REGION
+    cloud.googleapis.com/location: us-central1
 spec:
   template:
     spec:
@@ -16,7 +16,7 @@ spec:
         spec:
           maxRetries: 0
           timeoutSeconds: 3600
-          serviceAccountName: SERVICE_ACCOUNT_EMAIL
+          serviceAccountName: aa-sa-npr-dp-svc@aa-dp-npr-01.iam.gserviceaccount.com
           containers:
             - image: arthurplatform/genai-engine-models-gcp:latest
               command:
@@ -24,7 +24,7 @@ spec:
                 - upload_models.py
               env:
                 - name: GCS_BUCKET
-                  value: BUCKET_NAME
+                  value: manual-model-upload-test-bucket
                 - name: GCS_PREFIX
                   value: models
                 - name: LOG_LEVEL
