@@ -104,6 +104,7 @@ from schemas.request_schemas import (
     WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
+    AgenticAnnotationAnalyticsResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
     DatasetResponse,
@@ -3794,6 +3795,38 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 ListAgenticAnnotationsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_daily_annotation_analytics(
+        self,
+        task_id: str,
+        start_time: str = None,
+        end_time: str = None,
+    ) -> tuple[int, AgenticAnnotationAnalyticsResponse]:
+        """Get daily aggregated analytics for agentic annotations."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals/analytics/daily"
+        params = []
+        if start_time:
+            params.append(f"start_time={urllib.parse.quote(start_time)}")
+        if end_time:
+            params.append(f"end_time={urllib.parse.quote(end_time)}")
+        if params:
+            base_url = base_url + "?" + "&".join(params)
+
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                AgenticAnnotationAnalyticsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),
