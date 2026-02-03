@@ -25,6 +25,66 @@ from schemas.agent_discovery_schemas import (
 logger = logging.getLogger(__name__)
 
 
+def parse_gcp_resource_path(
+    resource_id: str,
+) -> tuple[str | None, str | None, str | None]:
+    """Parse GCP resource path to extract project_id, region, and reasoning_engine_id.
+
+    Handles multiple resource path formats:
+    - projects/{project}/locations/{location}/reasoningEngines/{id}
+    - projects/{project}/locations/{location}/agentEngines/{id}
+    - //aiplatform.googleapis.com/projects/{project}/locations/{location}/reasoningEngines/{id}
+
+    Args:
+        resource_id: GCP resource path string
+
+    Returns:
+        Tuple of (gcp_project_id, gcp_region, gcp_reasoning_engine_id) or (None, None, None) if parsing fails
+    """
+    try:
+        # Strip any leading protocol/host prefix (e.g., //aiplatform.googleapis.com/)
+        resource_path = resource_id
+        if resource_path.startswith("//"):
+            # Remove protocol and host, keeping just the path
+            path_parts = resource_path.split(
+                "/", 3
+            )  # Split into ['', '', 'host', 'path...']
+            if len(path_parts) > 3:
+                resource_path = path_parts[3]  # Get everything after the host
+
+        parts = resource_path.split("/")
+
+        gcp_project_id = None
+        gcp_region = None
+        gcp_reasoning_engine_id = None
+
+        # Find the 'projects' segment
+        if "projects" in parts:
+            project_idx = parts.index("projects")
+            if len(parts) > project_idx + 1:
+                gcp_project_id = parts[project_idx + 1]
+
+        # Find the 'locations' segment
+        if "locations" in parts:
+            location_idx = parts.index("locations")
+            if len(parts) > location_idx + 1:
+                gcp_region = parts[location_idx + 1]
+
+        # Find the engine type and ID
+        for engine_type in ("reasoningEngines", "agentEngines"):
+            if engine_type in parts:
+                engine_idx = parts.index(engine_type)
+                if len(parts) > engine_idx + 1:
+                    gcp_reasoning_engine_id = parts[engine_idx + 1]
+                    break
+
+        return gcp_project_id, gcp_region, gcp_reasoning_engine_id
+
+    except (IndexError, ValueError) as e:
+        logger.warning(f"Failed to parse GCP resource path '{resource_id}': {str(e)}")
+        return None, None, None
+
+
 class AgentDiscoveryService:
     """Service for discovering agents from infrastructure using GCP ADC."""
 
@@ -155,13 +215,9 @@ class AgentDiscoveryService:
             if agent_id and agent_id in agents_by_id:
                 agent = agents_by_id[agent_id]
                 discovered_agent = self._convert_to_discovered_agent(
-                    agent, trace_data, resource_id, data_plane_id
+                    agent, trace_data, resource_id, data_plane_id, project_id, location
                 )
                 discovered_agents.append(discovered_agent)
-                logger.debug(
-                    f"Converted agent {discovered_agent.name} with trace data "
-                    f"(resource_id={resource_id})"
-                )
 
         # Add agents without trace data
         for agent_id, agent in agents_by_id.items():
@@ -179,12 +235,9 @@ class AgentDiscoveryService:
                 )
 
                 discovered_agent = self._convert_to_discovered_agent(
-                    agent, None, resource_id, data_plane_id
+                    agent, None, resource_id, data_plane_id, project_id, location
                 )
                 discovered_agents.append(discovered_agent)
-                logger.debug(
-                    f"Converted agent {discovered_agent.name} without trace data"
-                )
 
         metadata = {
             "total_vertex_agents": len(vertex_agents),
@@ -269,10 +322,7 @@ class AgentDiscoveryService:
         # Fetch complete traces and extract resource data
         resources: dict[str, dict[str, Any]] = {}
 
-        for i, trace_id in enumerate(trace_ids, 1):
-            if i % 10 == 0:
-                logger.debug(f"Processing trace {i}/{len(trace_ids)}")
-
+        for trace_id in trace_ids:
             try:
                 get_request = trace_v1.GetTraceRequest(
                     project_id=project_id,
@@ -323,6 +373,8 @@ class AgentDiscoveryService:
         trace_data: dict[str, Any] | None,
         resource_id: str,
         data_plane_id: UUID,
+        project_id: str,
+        location: str,
     ) -> DiscoveredAgent:
         """Convert a Vertex AI agent to DiscoveredAgent format.
 
@@ -331,6 +383,8 @@ class AgentDiscoveryService:
             trace_data: Optional trace data dictionary
             resource_id: Infrastructure resource ID (full GCP resource path)
             data_plane_id: Data plane UUID (used only in agent object, not for discovery)
+            project_id: GCP project ID used to initialize Vertex AI client
+            location: GCP location/region used to initialize Vertex AI client
 
         Returns:
             DiscoveredAgent object
@@ -371,13 +425,26 @@ class AgentDiscoveryService:
             # Get span count
             num_spans = trace_data.get("num_spans", 0)
 
-        # Build discovered agent with top_level_span_name (will be migrated to resource_id in future)
-        return DiscoveredAgent(
+        # Extract reasoning_engine_id from resource_id, use provided project_id and location
+        _, _, gcp_reasoning_engine_id = parse_gcp_resource_path(resource_id)
+
+        # Use the project_id and location from the Vertex AI client initialization
+        gcp_project_id = project_id
+        gcp_region = location
+
+        # Build creation source
+        creation_source = CreationSource(
+            task_id=None,
+            top_level_span_name=resource_id if not gcp_reasoning_engine_id else None,
+            gcp_project_id=gcp_project_id,
+            gcp_region=gcp_region,
+            gcp_reasoning_engine_id=gcp_reasoning_engine_id,
+        )
+
+        # Build discovered agent with GCP fields when available
+        discovered_agent = DiscoveredAgent(
             name=f"Vertex AI Agent: {name}",
-            creation_source=CreationSource(
-                task_id=None,
-                top_level_span_name=resource_id,  # Use full GCP resource path (e.g., projects/.../reasoningEngines/...)
-            ),
+            creation_source=creation_source,
             first_detected=first_detected,
             infrastructure="GCP",
             num_spans=num_spans,
@@ -385,3 +452,5 @@ class AgentDiscoveryService:
             sub_agents=sub_agents,
             data_plane_id=data_plane_id,  # Only used when creating the agent object
         )
+
+        return discovered_agent

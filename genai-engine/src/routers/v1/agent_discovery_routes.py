@@ -3,6 +3,8 @@
 This module provides endpoints for discovering agents from infrastructure (e.g., GCP Vertex AI).
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
@@ -24,6 +26,8 @@ agent_discovery_routes = APIRouter(
     route_class=GenaiEngineRoute,
 )
 
+logger = logging.getLogger(__name__)
+
 
 ################################
 #### Agent Discovery Routes ####
@@ -35,6 +39,7 @@ agent_discovery_routes = APIRouter(
     description="Discover agents from infrastructure (e.g., GCP Vertex AI). "
     "This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.",
     response_model=DiscoverAgentsResponse,
+    response_model_exclude_none=False,
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
 )

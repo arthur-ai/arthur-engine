@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/03/2026
+- **CHANGE** for **URL**: /api/v1/discover-agents  added the optional property 'agents/items/creation_source/gcp_project_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/discover-agents  added the optional property 'agents/items/creation_source/gcp_reasoning_engine_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/discover-agents  added the optional property 'agents/items/creation_source/gcp_region' to the response with the '200' status
+
 # 02/02/2026
 - Added /api/v1/discover-agents endpoint
 

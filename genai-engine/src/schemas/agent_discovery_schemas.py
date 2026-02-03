@@ -29,7 +29,19 @@ class CreationSource(BaseModel):
     )
     top_level_span_name: str | None = Field(
         default=None,
-        description="Optional top-level span name (will be migrated to resource_id in future).",
+        description="Optional top-level span name (legacy field, prefer GCP fields for GCP agents).",
+    )
+    gcp_project_id: str | None = Field(
+        default=None,
+        description="Optional GCP project ID where the agent is running.",
+    )
+    gcp_region: str | None = Field(
+        default=None,
+        description="Optional GCP region where the agent is running.",
+    )
+    gcp_reasoning_engine_id: str | None = Field(
+        default=None,
+        description="Optional GCP Vertex AI Reasoning Engine ID.",
     )
 
 

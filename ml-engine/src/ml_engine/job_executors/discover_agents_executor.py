@@ -7,6 +7,7 @@ This executor:
 3. Publishes filtered agents to the Arthur platform as UnregisteredAgents
 """
 
+import json
 import logging
 from typing import Any, Dict, List
 
@@ -24,6 +25,7 @@ from genai_client import (
     Configuration,
     DiscoverAgentsRequest,
 )
+import urllib3
 
 
 class DiscoverAgentsExecutor:
@@ -157,18 +159,17 @@ class DiscoverAgentsExecutor:
                     data_plane_id=data_plane_id,
                     lookback_hours=lookback_hours,
                 )
+
                 response = api.discover_agents_api_v1_discover_agents_post(request)
 
                 # Convert response agents to dict format
-                agents = [agent.model_dump() for agent in response.agents]
+                agents = []
+                for agent in response.agents:
+                    self.logger.info(f"Agent: {agent.name}, creation_source: {agent.creation_source}")
+                    agent_dict = agent.model_dump(exclude_none=False)
+                    agents.append(agent_dict)
 
-                self.logger.info(
-                    f"Received {len(agents)} agent(s) from GenAI Engine",
-                    extra={
-                        "num_agents": len(agents),
-                        "metadata": response.metadata,
-                    },
-                )
+                self.logger.info(f"Received {len(agents)} agent(s) from GenAI Engine")
 
                 return agents
 
@@ -300,7 +301,11 @@ class DiscoverAgentsExecutor:
                 extra={"num_new": len(agents_payload)},
             )
 
+            # Create UnregisteredAgent objects
             agent_objects = [UnregisteredAgent(**agent) for agent in agents_payload]
+
+            self.logger.info(f"Publishing {len(agent_objects)} agents to App Plane")
+
             put_request = PutUnregisteredAgents(unregistered_agents=agent_objects)
 
             self.unregistered_agents_client.put_unregistered_agents(

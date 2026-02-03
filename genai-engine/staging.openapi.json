@@ -17708,7 +17708,43 @@
                             }
                         ],
                         "title": "Top Level Span Name",
-                        "description": "Optional top-level span name (will be migrated to resource_id in future)."
+                        "description": "Optional top-level span name (legacy field, prefer GCP fields for GCP agents)."
+                    },
+                    "gcp_project_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Gcp Project Id",
+                        "description": "Optional GCP project ID where the agent is running."
+                    },
+                    "gcp_region": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Gcp Region",
+                        "description": "Optional GCP region where the agent is running."
+                    },
+                    "gcp_reasoning_engine_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Gcp Reasoning Engine Id",
+                        "description": "Optional GCP Vertex AI Reasoning Engine ID."
                     }
                 },
                 "type": "object",
