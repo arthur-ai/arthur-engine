@@ -14282,6 +14282,93 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/continuous_evals/analytics/daily": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get daily aggregated analytics for agentic annotations",
+                "description": "Returns daily counts of passed/failed/error/skipped annotations and total cost per day",
+                "operationId": "get_daily_annotation_analytics_api_v1_tasks__task_id__continuous_evals_analytics_daily_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Start time (inclusive). Defaults to 30 days ago.",
+                            "title": "Start Time"
+                        },
+                        "description": "Start time (inclusive). Defaults to 30 days ago."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "End time (exclusive). Defaults to now.",
+                            "title": "End Time"
+                        },
+                        "description": "End time (exclusive). Defaults to now."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticAnnotationAnalyticsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -14972,6 +15059,30 @@
                     "ORG-ADMIN"
                 ],
                 "title": "APIKeysRolesEnum"
+            },
+            "AgenticAnnotationAnalyticsResponse": {
+                "properties": {
+                    "stats": {
+                        "items": {
+                            "$ref": "#/components/schemas/DailyAgenticAnnotationStats"
+                        },
+                        "type": "array",
+                        "title": "Stats",
+                        "description": "Daily statistics ordered by date descending"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Number of days with data"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "stats",
+                    "count"
+                ],
+                "title": "AgenticAnnotationAnalyticsResponse",
+                "description": "Response containing daily aggregated statistics."
             },
             "AgenticAnnotationRequest": {
                 "properties": {
@@ -17827,6 +17938,57 @@
                     "lastName"
                 ],
                 "title": "CreateUserRequest"
+            },
+            "DailyAgenticAnnotationStats": {
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "Date",
+                        "description": "Date in YYYY-MM-DD format"
+                    },
+                    "passed_count": {
+                        "type": "integer",
+                        "title": "Passed Count",
+                        "description": "Count of annotations with score=1"
+                    },
+                    "failed_count": {
+                        "type": "integer",
+                        "title": "Failed Count",
+                        "description": "Count of annotations with score=0"
+                    },
+                    "error_count": {
+                        "type": "integer",
+                        "title": "Error Count",
+                        "description": "Count of annotations with run_status='error'"
+                    },
+                    "skipped_count": {
+                        "type": "integer",
+                        "title": "Skipped Count",
+                        "description": "Count of annotations with run_status='skipped'"
+                    },
+                    "total_cost": {
+                        "type": "number",
+                        "title": "Total Cost",
+                        "description": "Total cost for the day"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total annotations for the day"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "date",
+                    "passed_count",
+                    "failed_count",
+                    "error_count",
+                    "skipped_count",
+                    "total_cost",
+                    "total_count"
+                ],
+                "title": "DailyAgenticAnnotationStats",
+                "description": "Statistics for a single day of agentic annotations."
             },
             "DatasetColumnSource": {
                 "properties": {
