@@ -1,8 +1,9 @@
-import { Box, Dialog, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
+import { Box, Button, Dialog, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
+import { Search } from "@mui/icons-material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { createColumns } from "../../data/results-columns";
 import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEvalsResults";
@@ -11,6 +12,7 @@ import { Details } from "./components/details";
 import { FilterModal } from "./components/FilterModal";
 
 import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
+import { TextOperators } from "@/components/traces/components/filtering/types";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
@@ -23,8 +25,27 @@ export const Results = () => {
   const [annotationId, setAnnotationId] = useQueryState("id", parseAsString.withDefault(""));
   const [action, setAction] = useQueryState("action", parseAsStringEnum(["rerun"]));
 
+  const [searchInput, setSearchInput] = useState("");
   const filters = useFilterStore((state) => state.filters);
+  const setFilters = useFilterStore((state) => state.setFilters);
   const pagination = usePagination();
+
+  const handleSearch = () => {
+    if (searchInput.trim()) {
+      const existingFilters = filters.filter((f) => f.name !== "eval_name");
+      setFilters([
+        ...existingFilters,
+        {
+          name: "eval_name",
+          operator: TextOperators.CONTAINS,
+          value: searchInput.trim(),
+        },
+      ]);
+    } else {
+      // Clear the eval_name filter if search is empty
+      setFilters(filters.filter((f) => f.name !== "eval_name"));
+    }
+  };
 
   const { data } = useSuspenseQuery(
     continuousEvalsResultsQueryOptions({
@@ -43,7 +64,22 @@ export const Results = () => {
 
   return (
     <>
-      <Stack direction="row" justifyContent="flex-end" sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}>
+        <TextField
+          size="small"
+          placeholder="Search by eval name"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleSearch();
+            }
+          }}
+          sx={{ width: 300 }}
+        />
+        <Button variant="outlined" startIcon={<Search />} onClick={handleSearch}>
+          Search
+        </Button>
         <FilterModal />
       </Stack>
       {data.annotations.length === 0 ? (

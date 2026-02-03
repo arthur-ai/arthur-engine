@@ -4566,6 +4566,11 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   created_before?: string | null;
   /**
+   * Eval Name
+   * Name of the llm eval to filter on.
+   */
+  eval_name?: string | null;
+  /**
    * Ids
    * List of agentic annotation IDs to filter on.
    */

@@ -66,6 +66,10 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       return (request[key] = filter.value as ContinuousEvalRunStatus);
     }
 
+    if (key === "eval_name") {
+      return (request[key] = filter.value as string);
+    }
+
     if (key === "created_at") {
       if (filter.operator === Operators.GREATER_THAN) {
         return (request["created_after"] = filter.value as string);
