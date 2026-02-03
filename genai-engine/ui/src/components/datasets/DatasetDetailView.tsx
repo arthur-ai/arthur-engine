@@ -11,6 +11,7 @@ import { DatasetTable } from "./DatasetTable";
 import { EditRowModal } from "./EditRowModal";
 import { FillColumnModal } from "./FillColumnModal";
 import { ImportDatasetModal } from "./ImportDatasetModal";
+import { SyntheticDataModal } from "./synthetic";
 import { VersionDrawer } from "./VersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
@@ -223,6 +224,21 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     }
   }, [queries.dataset, api, datasetId, queries.currentVersion, queries.totalRowCount, showSnackbar]);
 
+  const handleAcceptSyntheticRows = useCallback(
+    (rows: { data: { column_name: string; column_value: string }[] }[]) => {
+      rows.forEach((row) => {
+        const rowData: Record<string, unknown> = {};
+        row.data.forEach((col) => {
+          rowData[col.column_name] = col.column_value;
+        });
+        dispatch({ type: "DATA/ADD_ROW", payload: rowData });
+      });
+      dispatch({ type: "UI/TOGGLE_SYNTHETIC_MODAL", payload: false });
+      showSnackbar(`Added ${rows.length} synthetic row${rows.length !== 1 ? "s" : ""}`, "success");
+    },
+    [dispatch, showSnackbar]
+  );
+
   if (queries.isLoading && !queries.dataset) {
     return <DatasetLoadingState type="full" />;
   }
@@ -282,6 +298,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           onImport={() => dispatch({ type: "UI/TOGGLE_IMPORT_MODAL", payload: true })}
           onOpenVersions={() => dispatch({ type: "UI/TOGGLE_VERSION_DRAWER", payload: true })}
           onViewExperiments={handleViewExperiments}
+          onGenerateSynthetic={() => dispatch({ type: "UI/TOGGLE_SYNTHETIC_MODAL", payload: true })}
           searchValue={state.searchQuery}
           onSearchChange={(q) => dispatch({ type: "VIEW/SET_SEARCH", payload: q })}
           onSearchClear={() => dispatch({ type: "VIEW/SET_SEARCH", payload: "" })}
@@ -409,6 +426,18 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         onApply={handleFillColumnApply}
         isLoading={mutations.fillColumn.isPending}
       />
+
+      {datasetId && queries.currentVersion !== undefined && (
+        <SyntheticDataModal
+          open={state.modals.synthetic}
+          onClose={() => dispatch({ type: "UI/TOGGLE_SYNTHETIC_MODAL", payload: false })}
+          columns={state.columns}
+          existingRowsSample={state.rows.slice(0, 10)}
+          datasetId={datasetId}
+          versionNumber={queries.currentVersion}
+          onAcceptRows={handleAcceptSyntheticRows}
+        />
+      )}
 
       <ConfirmationModal
         open={state.confirmation.type === "unsavedNavigation"}

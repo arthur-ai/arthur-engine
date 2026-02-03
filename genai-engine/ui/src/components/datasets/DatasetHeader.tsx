@@ -1,5 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import DownloadIcon from "@mui/icons-material/Download";
 import HistoryIcon from "@mui/icons-material/History";
 import SaveIcon from "@mui/icons-material/Save";
@@ -32,6 +33,7 @@ interface DatasetHeaderProps {
   onExport: () => void;
   onImport: () => void;
   onViewExperiments: () => void;
+  onGenerateSynthetic: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
@@ -56,6 +58,7 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   onExport,
   onImport,
   onViewExperiments,
+  onGenerateSynthetic,
   searchValue,
   onSearchChange,
   onSearchClear,
@@ -135,6 +138,16 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
         </Button>
         <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={onImport} title="Import data from CSV">
           Import
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<AutoAwesomeIcon />}
+          onClick={onGenerateSynthetic}
+          disabled={rowCount === 0}
+          title={rowCount === 0 ? "Add at least one row first to generate synthetic data" : "Generate synthetic data using AI"}
+        >
+          Generate
         </Button>
         <Button
           variant="contained"
