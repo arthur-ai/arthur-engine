@@ -7,7 +7,6 @@ This executor:
 3. Publishes filtered agents to the Arthur platform as UnregisteredAgents
 """
 
-import json
 import logging
 from typing import Any, Dict, List
 
@@ -25,7 +24,6 @@ from genai_client import (
     Configuration,
     DiscoverAgentsRequest,
 )
-import urllib3
 
 
 class DiscoverAgentsExecutor:
@@ -165,7 +163,9 @@ class DiscoverAgentsExecutor:
                 # Convert response agents to dict format
                 agents = []
                 for agent in response.agents:
-                    self.logger.info(f"Agent: {agent.name}, creation_source: {agent.creation_source}")
+                    self.logger.info(
+                        f"Agent: {agent.name}, creation_source: {agent.creation_source}"
+                    )
                     agent_dict = agent.model_dump(exclude_none=False)
                     agents.append(agent_dict)
 
