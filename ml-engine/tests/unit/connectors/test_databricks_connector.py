@@ -27,13 +27,13 @@ from arthur_common.models.connectors import (
 from arthur_common.models.enums import (
     DatabricksConnectorAuthenticatorMethods,
 )
+from mock_data.connector_helpers import mock_databricks_connector_spec
 
 from connectors.databricks_connector import (
     CONNECTION_METHOD_ODBC,
     CONNECTION_METHOD_SQL_CONNECTOR,
     DatabricksConnector,
 )
-from tests.unit.mock_data.connector_helpers import mock_databricks_connector_spec
 
 logger = logging.getLogger("databricks_test_logger")
 
