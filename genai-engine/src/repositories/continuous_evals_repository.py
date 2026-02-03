@@ -593,7 +593,8 @@ class ContinuousEvalsRepository:
             )
             .join(
                 DatabaseContinuousEval,
-                DatabaseAgenticAnnotation.continuous_eval_id == DatabaseContinuousEval.id,
+                DatabaseAgenticAnnotation.continuous_eval_id
+                == DatabaseContinuousEval.id,
             )
             .filter(
                 DatabaseContinuousEval.task_id == task_id,

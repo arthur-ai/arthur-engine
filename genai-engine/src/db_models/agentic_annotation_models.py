@@ -2,7 +2,16 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional
 
-from sqlalchemy import JSON, UUID, CheckConstraint, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    JSON,
+    UUID,
+    CheckConstraint,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
