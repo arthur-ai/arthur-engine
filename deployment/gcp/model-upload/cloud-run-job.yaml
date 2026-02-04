@@ -18,7 +18,7 @@ spec:
           timeoutSeconds: 3600
           serviceAccountName: SERVICE_ACCOUNT_EMAIL
           containers:
-            - image: gcr.io/PROJECT_ID/arthur-model-upload-gcp:latest
+            - image: arthurplatform/genai-engine-models-gcp:latest
               command:
                 - python
                 - upload_models.py

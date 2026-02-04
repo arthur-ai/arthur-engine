@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.343"
+version = "2.1.346"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -83,6 +83,7 @@ weaviate-client = "^4.17.0"
 arthur-common = "2.4.32"
 google-auth = "^2.48.0"
 google-cloud-aiplatform = ">=1.38"
+google-cloud-trace = "^1.11.0"
 
 
 [[tool.poetry.source]]
