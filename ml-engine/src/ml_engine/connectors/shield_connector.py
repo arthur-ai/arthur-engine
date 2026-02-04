@@ -325,8 +325,12 @@ class ShieldBaseConnector(Connector, ABC):
         is_agentic: bool = False,
         agent_metadata: Optional[AgentMetadata] = None,
     ) -> TaskResponse:
+        # Serialize to dict to bridge the gap between arthur_common and generated client types
+        agent_metadata_dict = agent_metadata.model_dump() if agent_metadata else None
         new_task_req = NewTaskRequest(
-            name=name, is_agentic=is_agentic, agent_metadata=agent_metadata
+            name=name,
+            is_agentic=is_agentic,
+            agent_metadata=agent_metadata_dict,  # type: ignore[call-arg]
         )
         resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
             new_task_request=new_task_req,
