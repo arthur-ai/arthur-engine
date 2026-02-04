@@ -70,7 +70,7 @@ class GcpConversionService:
             Dict of OpenInference attributes with proper types and structure
         """
         # Start with all labels as-is
-        attributes = dict(labels)
+        attributes: dict[str, Any] = dict(labels)
 
         # Map GenAI semantic conventions to OpenInference
         # These are the common mappings from GCP/GenAI to OpenInference
@@ -85,7 +85,7 @@ class GcpConversionService:
         if "gen_ai.usage.input_tokens" in attributes:
             try:
                 attributes[SpanAttributes.LLM_TOKEN_COUNT_PROMPT] = int(
-                    attributes["gen_ai.usage.input_tokens"]
+                    attributes["gen_ai.usage.input_tokens"],
                 )
             except (ValueError, TypeError):
                 pass
@@ -93,7 +93,7 @@ class GcpConversionService:
         if "gen_ai.usage.output_tokens" in attributes:
             try:
                 attributes[SpanAttributes.LLM_TOKEN_COUNT_COMPLETION] = int(
-                    attributes["gen_ai.usage.output_tokens"]
+                    attributes["gen_ai.usage.output_tokens"],
                 )
             except (ValueError, TypeError):
                 pass
@@ -114,7 +114,7 @@ class GcpConversionService:
 
         # Determine and set span kind based on label presence
         attributes[SpanAttributes.OPENINFERENCE_SPAN_KIND] = self._determine_span_kind(
-            attributes
+            attributes,
         )
 
         # Agent name mapping

@@ -121,7 +121,7 @@ class OtelConversionService:
         span_attributes: dict[str, Any],
     ) -> tuple[dict[str, Any], set[str]]:
         """Map provider and system to openinference attributes"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
         attrs = {}
 
         provider = self._get_and_mark(
@@ -143,7 +143,7 @@ class OtelConversionService:
         span_attributes: dict[str, Any],
     ) -> tuple[dict[str, Any], set[str]]:
         """Map model name to openinference attributes"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
 
         request_model = self._get_and_mark(
             span_attributes,
@@ -185,7 +185,7 @@ class OtelConversionService:
         span_attributes: dict[str, Any],
     ) -> tuple[dict[str, Any], set[str]]:
         """Map invocation parameters to openinference attributes"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
         invocation_params = {}
 
         param_mappings = [
@@ -217,7 +217,7 @@ class OtelConversionService:
         span_attributes: dict[str, Any],
     ) -> tuple[dict[str, Any], set[str]]:
         """Map input value to openinference attributes"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
 
         input_val = self._get_and_mark(
             span_attributes,
@@ -238,7 +238,7 @@ class OtelConversionService:
         span_attributes: dict[str, Any],
     ) -> tuple[dict[str, Any], set[str]]:
         """Map output value to openinference attributes"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
 
         output_val = self._get_and_mark(
             span_attributes,
@@ -283,7 +283,7 @@ class OtelConversionService:
         dest_prefix: str,
     ) -> tuple[dict[str, Any], set[str]]:
         """Generic message mapping logic"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
         messages = self._get_and_mark(span_attributes, source_key, converted_keys)
 
         if not messages:
@@ -396,7 +396,7 @@ class OtelConversionService:
         span_attributes: dict[str, Any],
     ) -> tuple[dict[str, Any], set[str]]:
         """Map usage token counts to openinference attributes"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
         attrs = {}
 
         input_tokens = self._get_and_mark(
@@ -427,7 +427,7 @@ class OtelConversionService:
         span_attributes: dict[str, Any],
     ) -> tuple[dict[str, Any], set[str]]:
         """Map tool execution to openinference attributes"""
-        converted_keys = set()
+        converted_keys: set[str] = set()
         attrs = {}
 
         tool_name = self._get_and_mark(
