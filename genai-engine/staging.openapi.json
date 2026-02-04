@@ -4026,53 +4026,6 @@
                 }
             }
         },
-        "/api/v1/traces/gcp": {
-            "post": {
-                "tags": [
-                    "Traces"
-                ],
-                "summary": "Receive GCP Cloud Trace",
-                "description": "Receiver for GCP Cloud Trace. Converts GCP trace format with GenAI semantic conventions to OpenInference format before ingestion.",
-                "operationId": "receive_gcp_traces_api_v1_traces_gcp_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "string",
-                                "format": "binary",
-                                "title": "Body"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            }
-        },
         "/api/v1/traces/spans": {
             "get": {
                 "tags": [
