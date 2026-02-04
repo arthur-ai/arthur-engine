@@ -1,4 +1,5 @@
 import logging
+import uuid
 from datetime import datetime
 from typing import Any, List, Optional, Tuple
 from uuid import UUID
@@ -8,7 +9,9 @@ from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
+from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseSpan
@@ -33,6 +36,11 @@ from services.trace.span_query_service import SpanQueryService
 from services.trace.trace_annotation_service import TraceAnnotationService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from services.trace.tree_building_service import TreeBuildingService
+from utils import trace as trace_utils
+from utils.constants import (
+    EXPECTED_SPAN_VERSION,
+    SPAN_VERSION_KEY,
+)
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -475,16 +483,6 @@ class SpanRepository:
         Raises:
             ValueError: If GCP trace format is invalid
         """
-        import uuid
-
-        from openinference.semconv.trace import SpanAttributes
-
-        from utils import trace as trace_utils
-        from utils.constants import (
-            EXPECTED_SPAN_VERSION,
-            SPAN_VERSION_KEY,
-        )
-
         # Validate basic structure
         if "spans" not in gcp_trace_data:
             raise ValueError("Invalid GCP trace format: missing 'spans' field")
@@ -508,11 +506,11 @@ class SpanRepository:
 
                 # Convert IDs to hex format
                 span_id_hex = self.gcp_conversion_service.decimal_span_id_to_hex(
-                    span_id_decimal
+                    span_id_decimal,
                 )
                 parent_span_id_hex = (
                     self.gcp_conversion_service.decimal_span_id_to_hex(
-                        parent_span_id_decimal
+                        parent_span_id_decimal,
                     )
                     if parent_span_id_decimal
                     else None
@@ -520,22 +518,23 @@ class SpanRepository:
 
                 # Convert timestamps
                 start_time = self.gcp_conversion_service.iso_timestamp_to_datetime(
-                    gcp_span.get("startTime", "")
+                    gcp_span.get("startTime", ""),
                 )
                 end_time = self.gcp_conversion_service.iso_timestamp_to_datetime(
-                    gcp_span.get("endTime", "")
+                    gcp_span.get("endTime", ""),
                 )
 
                 # Convert GCP labels to OpenInference attributes
                 attributes = (
                     self.gcp_conversion_service.convert_gcp_labels_to_openinference(
-                        labels
+                        labels,
                     )
                 )
 
                 # Extract span kind from attributes
                 span_kind = attributes.get(
-                    SpanAttributes.OPENINFERENCE_SPAN_KIND, "LLM"
+                    SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                    "LLM",
                 )
 
                 # Extract session_id and user_id if present
@@ -556,7 +555,8 @@ class SpanRepository:
 
                 # Extract token/cost info from attributes
                 token_data = trace_utils.extract_token_cost_from_span(
-                    raw_data, span_kind
+                    raw_data,
+                    span_kind,
                 )
 
                 # Create DatabaseSpan object
@@ -844,10 +844,6 @@ class SpanRepository:
         This method is primarily used for testing and direct span insertion.
         For normal operation, use create_traces() instead.
         """
-        from sqlalchemy import insert
-
-        from db_models import DatabaseSpan
-
         if not spans:
             return
 

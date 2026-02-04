@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from typing import Annotated
@@ -125,15 +126,14 @@ def receive_gcp_traces(
     - task_id (optional): Arthur task ID to associate spans with
     """
     try:
-        import json
-
         # Parse JSON body
         try:
             gcp_trace = json.loads(body)
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON body: {e}")
             raise HTTPException(
-                status_code=400, detail=f"Invalid JSON format: {str(e)}"
+                status_code=400,
+                detail=f"Invalid JSON format: {str(e)}",
             )
 
         # Extract task_id from request body if present
@@ -142,7 +142,8 @@ def receive_gcp_traces(
         # Process through span repository (handles conversion and ingestion)
         span_repo = _get_span_repository(db_session)
         db_spans, span_results = span_repo.create_traces_from_gcp(
-            gcp_trace, task_id=task_id
+            gcp_trace,
+            task_id=task_id,
         )
 
         # Enqueue continuous evals for root spans
