@@ -14,7 +14,10 @@ export function useTransforms(taskId: string | undefined) {
       if (!taskId || !api) return [];
 
       try {
-        const response = await api.api.listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet({ taskId });
+        const response = await api.api.listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet({
+          taskId,
+          page_size: 1000,
+        });
         return (response.data.transforms || []) as TraceTransform[];
       } catch (error: unknown) {
         if (error && typeof error === "object" && "response" in error) {
