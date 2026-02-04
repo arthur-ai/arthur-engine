@@ -1,4 +1,3 @@
-import logging
 from typing import Optional
 
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType

@@ -29,7 +29,6 @@ from arthur_common.models.enums import (
     ToxicityViolationType,
 )
 from arthur_common.models.request_schemas import (
-    AgentMetadata,
     NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
@@ -577,7 +576,7 @@ class Task(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
-    task_metadata: Optional[dict] = None
+    task_metadata: Optional[dict[str, Any]] = None
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
 
