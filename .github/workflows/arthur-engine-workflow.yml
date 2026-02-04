@@ -684,6 +684,16 @@ jobs:
             docker push arthurplatform/genai-engine-models-k8s:latest
           fi
 
+  build-gcp-model-upload-docker-image:
+    uses: ./.github/workflows/build-gcp-model-upload.yml
+    needs: [check-models-updates]
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    with:
+      push: true
+      image: arthurplatform/arthur-model-upload
+
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
