@@ -231,20 +231,20 @@ Example GitHub Actions workflow:
 - name: Check for model updates
   id: check_models
   run: |
-    cd deployment/model-upload
+    cd model-upload
     poetry install
     poetry run python check_model_updates.py --output github >> $GITHUB_OUTPUT
 
 - name: Build images
   if: steps.check_models.outputs.has_updates == 'true'
   run: |
-    cd deployment/model-upload
+    cd model-upload
     ./build.sh --version ${{ github.sha }} --push all
 
 - name: Update manifest
   if: steps.check_models.outputs.has_updates == 'true'
   run: |
-    cd deployment/model-upload
+    cd model-upload
     poetry run python check_model_updates.py --update
     git add models-manifest.json
     git commit -m "chore: update models manifest to ${{ steps.check_models.outputs.current_hash }}"
