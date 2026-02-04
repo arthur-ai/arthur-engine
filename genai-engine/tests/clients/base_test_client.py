@@ -56,7 +56,6 @@ from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
     ListContinuousEvalsResponse,
-    ListTraceTransformsResponse,
     LLMEval,
     TraceTransformResponse,
 )
@@ -124,6 +123,7 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceTransformListResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
     TransformExtractionResponseList,
@@ -1079,7 +1079,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         task_id: str,
         search_url: str = None,
-    ) -> tuple[int, ListTraceTransformsResponse]:
+    ) -> tuple[int, TraceTransformListResponse]:
         base_url = f"/api/v1/tasks/{task_id}/traces/transforms"
         if search_url:
             base_url = base_url + "?" + search_url
@@ -1093,7 +1093,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                ListTraceTransformsResponse.model_validate(resp.json())
+                TraceTransformListResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),

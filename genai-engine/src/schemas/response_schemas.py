@@ -12,6 +12,7 @@ from arthur_common.models.response_schemas import (
     TokenCountCostSchema,
     TraceResponse,
 )
+from arthur_common.models.task_eval_schemas import TraceTransformResponse
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -816,7 +817,7 @@ class DailyAgenticAnnotationStats(BaseModel):
     failed_count: int = Field(description="Count of annotations with score=0")
     error_count: int = Field(description="Count of annotations with run_status='error'")
     skipped_count: int = Field(
-        description="Count of annotations with run_status='skipped'"
+        description="Count of annotations with run_status='skipped'",
     )
     total_cost: float = Field(description="Total cost for the day")
     total_count: int = Field(description="Total annotations for the day")
@@ -826,6 +827,23 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
     """Response containing daily aggregated statistics."""
 
     stats: List[DailyAgenticAnnotationStats] = Field(
-        description="Daily statistics ordered by date descending"
+        description="Daily statistics ordered by date descending",
     )
     count: int = Field(description="Number of days with data")
+
+
+# ============================================================================
+# Trace Transform Response Schemas
+# ============================================================================
+
+
+class TraceTransformListResponse(BaseModel):
+    """Paginated response for listing trace transforms."""
+
+    transforms: List[TraceTransformResponse] = Field(
+        description="List of transforms for the task.",
+    )
+    page: int = Field(description="Current page number (0-indexed)")
+    page_size: int = Field(description="Number of items per page")
+    total_pages: int = Field(description="Total number of pages")
+    total_count: int = Field(description="Total number of transforms")

@@ -20,6 +20,23 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
+/**
+ * AgenticAnnotationAnalyticsResponse
+ * Response containing daily aggregated statistics.
+ */
+export interface AgenticAnnotationAnalyticsResponse {
+  /**
+   * Count
+   * Number of days with data
+   */
+  count: number;
+  /**
+   * Stats
+   * Daily statistics ordered by date descending
+   */
+  stats: DailyAgenticAnnotationStats[];
+}
+
 /** AgenticAnnotationRequest */
 export interface AgenticAnnotationRequest {
   /**
@@ -1810,6 +1827,80 @@ export type CreateUserUsersPostData = any;
 export type CreateUserUsersPostError = HTTPValidationError;
 
 /**
+ * CreationSource
+ * Source information for how an unregistered agent was created.
+ */
+export interface CreationSource {
+  /**
+   * Gcp Project Id
+   * Optional GCP project ID where the agent is running.
+   */
+  gcp_project_id?: string | null;
+  /**
+   * Gcp Reasoning Engine Id
+   * Optional GCP Vertex AI Reasoning Engine ID.
+   */
+  gcp_reasoning_engine_id?: string | null;
+  /**
+   * Gcp Region
+   * Optional GCP region where the agent is running.
+   */
+  gcp_region?: string | null;
+  /**
+   * Task Id
+   * Optional UUID of the task that created this agent.
+   */
+  task_id?: string | null;
+  /**
+   * Top Level Span Name
+   * Optional top-level span name (legacy field, prefer GCP fields for GCP agents).
+   */
+  top_level_span_name?: string | null;
+}
+
+/**
+ * DailyAgenticAnnotationStats
+ * Statistics for a single day of agentic annotations.
+ */
+export interface DailyAgenticAnnotationStats {
+  /**
+   * Date
+   * Date in YYYY-MM-DD format
+   */
+  date: string;
+  /**
+   * Error Count
+   * Count of annotations with run_status='error'
+   */
+  error_count: number;
+  /**
+   * Failed Count
+   * Count of annotations with score=0
+   */
+  failed_count: number;
+  /**
+   * Passed Count
+   * Count of annotations with score=1
+   */
+  passed_count: number;
+  /**
+   * Skipped Count
+   * Count of annotations with run_status='skipped'
+   */
+  skipped_count: number;
+  /**
+   * Total Cost
+   * Total cost for the day
+   */
+  total_cost: number;
+  /**
+   * Total Count
+   * Total annotations for the day
+   */
+  total_count: number;
+}
+
+/**
  * DatasetColumnSource
  * Reference to a dataset column
  */
@@ -2144,6 +2235,91 @@ export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPVal
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
+
+export type DiscoverAgentsApiV1DiscoverAgentsPostData = DiscoverAgentsResponse;
+
+export type DiscoverAgentsApiV1DiscoverAgentsPostError = HTTPValidationError;
+
+/**
+ * DiscoverAgentsRequest
+ * Request to discover agents from infrastructure.
+ */
+export interface DiscoverAgentsRequest {
+  /**
+   * Data Plane Id
+   * UUID of the data plane to discover agents from
+   * @format uuid
+   */
+  data_plane_id: string;
+  /**
+   * Lookback Hours
+   * Number of hours to look back for traces (default 30 days)
+   * @default 720
+   */
+  lookback_hours?: number;
+}
+
+/**
+ * DiscoverAgentsResponse
+ * Response containing discovered agents.
+ */
+export interface DiscoverAgentsResponse {
+  /**
+   * Agents
+   * List of discovered agents
+   */
+  agents: DiscoveredAgent[];
+  /**
+   * Metadata
+   * Discovery metadata (e.g., traces processed, errors)
+   */
+  metadata?: Record<string, any>;
+}
+
+/**
+ * DiscoveredAgent
+ * A discovered agent from infrastructure.
+ */
+export interface DiscoveredAgent {
+  /** Information about how this agent was created. */
+  creation_source: CreationSource;
+  /**
+   * Data Plane Id
+   * UUID of the data plane where this agent was detected.
+   * @format uuid
+   */
+  data_plane_id: string;
+  /**
+   * First Detected
+   * ISO 8601 timestamp when agent was first detected.
+   */
+  first_detected: string;
+  /**
+   * Infrastructure
+   * Infrastructure where this agent is running (e.g., 'GCP').
+   */
+  infrastructure: string;
+  /**
+   * Name
+   * Name of the agent.
+   */
+  name: string;
+  /**
+   * Num Spans
+   * Number of spans associated with this agent.
+   */
+  num_spans?: number | null;
+  /**
+   * Sub Agents
+   * List of sub-agents used by this agent.
+   */
+  sub_agents?: SubAgent[];
+  /**
+   * Tools
+   * List of tools used by this agent.
+   */
+  tools?: Tool[];
+}
 
 /**
  * EvalExecution
@@ -2985,6 +3161,28 @@ export interface GetConversationsApiChatConversationsGetParams {
    * @default 50
    */
   size?: number;
+}
+
+export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData = AgenticAnnotationAnalyticsResponse;
+
+export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetError = HTTPValidationError;
+
+export interface GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetParams {
+  /**
+   * End Time
+   * End time (exclusive). Defaults to now.
+   */
+  end_time?: string | null;
+  /**
+   * Start Time
+   * Start time (inclusive). Defaults to 30 days ago.
+   */
+  start_time?: string | null;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
 }
 
 export type GetDatasetApiV2DatasetsDatasetIdGetData = DatasetResponse;
@@ -4954,6 +5152,12 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -5062,7 +5266,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5075,7 +5279,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5133,15 +5337,6 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   user_ids?: string[];
 }
 
-/** ListTraceTransformsResponse */
-export interface ListTraceTransformsResponse {
-  /**
-   * Transforms
-   * List of transforms for the task.
-   */
-  transforms: TraceTransformResponse[];
-}
-
 export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
 
 export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
@@ -5169,6 +5364,12 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Include Spans
    * Include flat list of spans for each trace. Defaults to false for performance.
@@ -5284,7 +5485,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5297,7 +5498,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5355,7 +5556,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   user_ids?: string[];
 }
 
-export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData = ListTraceTransformsResponse;
+export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData = TraceTransformListResponse;
 
 export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetError = HTTPValidationError;
 
@@ -5840,6 +6041,11 @@ export interface NewDatasetVersionRowRequest {
    * List of column-value pairs in the new dataset row.
    */
   data: NewDatasetVersionRowColumnItemRequest[];
+  /**
+   * Id
+   * Optional ID for the row (used for synthetic data generation).
+   */
+  id?: string | null;
 }
 
 /**
@@ -6610,7 +6816,7 @@ export interface PromptOutput {
    * Tool Calls
    * Tool calls made by the prompt
    */
-  tool_calls?: any[];
+  tool_calls?: ChatCompletionMessageToolCall[];
 }
 
 /**
@@ -7063,7 +7269,7 @@ export interface QuerySpansByTypeV1SpansQueryGetParams {
   sort?: PaginationSortMethod;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7121,6 +7327,12 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Page
    * Page number
@@ -7230,7 +7442,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7243,7 +7455,7 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -7329,6 +7541,12 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -7437,7 +7655,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7450,7 +7668,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -9349,6 +9567,9 @@ export interface SpanWithMetricsResponse {
   user_id?: string | null;
 }
 
+/** StatusCodeEnum */
+export type StatusCodeEnum = "Ok" | "Error" | "Unset";
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -9356,6 +9577,18 @@ export interface StreamOptions {
    * Whether to include usage information in the stream
    */
   include_usage?: boolean | null;
+}
+
+/**
+ * SubAgent
+ * Sub-agent definition.
+ */
+export interface SubAgent {
+  /**
+   * Name
+   * Name of the sub-agent.
+   */
+  name: string;
 }
 
 /**
@@ -9719,6 +9952,40 @@ export interface TokenUsageResponse {
 /** TokenUsageScope */
 export type TokenUsageScope = "rule_type" | "task";
 
+/**
+ * Tool
+ * Tool definition with arguments.
+ */
+export interface Tool {
+  /**
+   * Arguments
+   * List of arguments for this tool.
+   */
+  arguments?: ToolArgument[];
+  /**
+   * Name
+   * Name of the tool.
+   */
+  name: string;
+}
+
+/**
+ * ToolArgument
+ * Argument definition for a tool.
+ */
+export interface ToolArgument {
+  /**
+   * Name
+   * Name of the tool argument.
+   */
+  name: string;
+  /**
+   * Type
+   * Type of the tool argument.
+   */
+  type: string;
+}
+
 /** ToolCall */
 export interface ToolCall {
   /** Function details */
@@ -10046,6 +10313,38 @@ export interface TraceTransformDefinition {
    * List of variable extraction rules.
    */
   variables: TraceTransformVariableDefinition[];
+}
+
+/**
+ * TraceTransformListResponse
+ * Paginated response for listing trace transforms.
+ */
+export interface TraceTransformListResponse {
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of transforms
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+  /**
+   * Transforms
+   * List of transforms for the task.
+   */
+  transforms: TraceTransformResponse[];
 }
 
 /** TraceTransformResponse */
@@ -11632,7 +11931,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.335
+ * @version 2.1.350
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12711,6 +13010,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Discover agents from infrastructure (e.g., GCP Vertex AI). This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.
+     *
+     * @tags Agent Discovery
+     * @name DiscoverAgentsApiV1DiscoverAgentsPost
+     * @summary Discover Agents
+     * @request POST:/api/v1/discover-agents
+     * @secure
+     */
+    discoverAgentsApiV1DiscoverAgentsPost: (data: DiscoverAgentsRequest, params: RequestParams = {}) =>
+      this.request<DiscoverAgentsApiV1DiscoverAgentsPostData, DiscoverAgentsApiV1DiscoverAgentsPostError>({
+        path: `/api/v1/discover-agents`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Execute a RAG provider hybrid (keyword and vector similarity) search.
      *
      * @tags RAG Providers
@@ -13189,6 +13508,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/chat/conversations`,
         method: "GET",
         query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns daily counts of passed/failed/error/skipped annotations and total cost per day
+     *
+     * @tags Continuous Evals
+     * @name GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGet
+     * @summary Get daily aggregated analytics for agentic annotations
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/analytics/daily
+     * @secure
+     */
+    getDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGet: (
+      { taskId, ...query }: GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData,
+        GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/analytics/daily`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),

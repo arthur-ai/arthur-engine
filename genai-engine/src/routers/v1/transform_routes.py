@@ -1,9 +1,9 @@
+import math
 from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.task_eval_schemas import (
-    ListTraceTransformsResponse,
     TraceTransformResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -30,6 +30,7 @@ from schemas.request_schemas import (
     TransformListFilterRequest,
 )
 from schemas.response_schemas import (
+    TraceTransformListResponse,
     TransformExtractionResponseList,
 )
 from utils.transform_executor import execute_transform
@@ -45,7 +46,7 @@ transform_routes = APIRouter(
 @transform_routes.get(
     "/tasks/{task_id}/traces/transforms",
     description="List all transforms for a task.",
-    response_model=ListTraceTransformsResponse,
+    response_model=TraceTransformListResponse,
     tags=["Transforms"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
@@ -61,16 +62,25 @@ def list_transforms_for_task(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> ListTraceTransformsResponse:
+) -> TraceTransformListResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        transforms = trace_transform_repo.list_transforms(
+        transforms, total_count = trace_transform_repo.list_transforms(
             task.id,
             pagination_parameters,
             filter_request,
         )
-        return ListTraceTransformsResponse(
+
+        page = pagination_parameters.page
+        page_size = pagination_parameters.page_size
+        total_pages = math.ceil(total_count / page_size) if page_size > 0 else 0
+
+        return TraceTransformListResponse(
             transforms=[transform.to_response_model() for transform in transforms],
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            total_count=total_count,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
