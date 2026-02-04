@@ -29,10 +29,7 @@ from arthur_common.models.enums import (
 )
 from mock_data.connector_helpers import mock_databricks_connector_spec
 
-from connectors.databricks_connector import (
-    CONNECTION_METHOD_SQL_CONNECTOR,
-    DatabricksConnector,
-)
+from connectors.databricks_connector import DatabricksConnector
 
 logger = logging.getLogger("databricks_test_logger")
 
@@ -91,12 +88,10 @@ class TestDatabricksConnectorConfig:
         with patch("connectors.databricks_connector.create_engine") as mock_engine:
             mock_engine.return_value = Mock()
             spec = _make_connector_spec(
-                connection_method=CONNECTION_METHOD_SQL_CONNECTOR,
                 authenticator=DatabricksConnectorAuthenticatorMethods.DATABRICKS_PAT,
                 access_token="token123",
             )
             conn = DatabricksConnector(spec, logger)
-            assert conn.connection_method == CONNECTION_METHOD_SQL_CONNECTOR
             assert conn.access_token == "token123"
             assert conn.server_hostname == "dbc-xxx.cloud.databricks.com"
             assert conn.http_path == "/sql/1.0/warehouses/yyy"
@@ -152,7 +147,6 @@ class TestDatabricksConnectorConfig:
         with patch("connectors.databricks_connector.create_engine") as mock_engine:
             mock_engine.return_value = Mock()
             spec = _make_connector_spec(
-                connection_method=CONNECTION_METHOD_SQL_CONNECTOR,
                 access_token="test_token_123",
             )
             DatabricksConnector(spec, logger)
@@ -191,7 +185,7 @@ class TestDatabricksConnectorSQLBackend:
         mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
         mock_create_engine.return_value = mock_engine
 
-        spec = _make_connector_spec(connection_method=CONNECTION_METHOD_SQL_CONNECTOR)
+        spec = _make_connector_spec()
         conn = DatabricksConnector(spec, logger)
         result = conn.test_connection()
         assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
@@ -202,7 +196,7 @@ class TestDatabricksConnectorSQLBackend:
         mock_engine.connect.side_effect = Exception("Connection refused")
         mock_create_engine.return_value = mock_engine
 
-        spec = _make_connector_spec(connection_method=CONNECTION_METHOD_SQL_CONNECTOR)
+        spec = _make_connector_spec()
         conn = DatabricksConnector(spec, logger)
         result = conn.test_connection()
         assert result.connection_check_outcome == ConnectorCheckOutcome.FAILED
@@ -221,9 +215,7 @@ class TestDatabricksConnectorSQLBackend:
             "connectors.databricks_connector.pd.read_sql",
             return_value=expected_df,
         ):
-            spec = _make_connector_spec(
-                connection_method=CONNECTION_METHOD_SQL_CONNECTOR,
-            )
+            spec = _make_connector_spec()
             conn = DatabricksConnector(spec, logger)
             dataset = _make_dataset_with_timestamp()
             start = datetime(2025, 1, 1, tzinfo=timezone.utc)
@@ -243,9 +235,7 @@ class TestDatabricksConnectorSQLBackend:
             return_value=mock_inspector,
         ):
             mock_create_engine.return_value = mock_engine
-            spec = _make_connector_spec(
-                connection_method=CONNECTION_METHOD_SQL_CONNECTOR,
-            )
+            spec = _make_connector_spec()
             conn = DatabricksConnector(spec, logger)
             result = conn.list_datasets()
         assert len(result.available_datasets) == 2

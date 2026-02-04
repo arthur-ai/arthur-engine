@@ -6,8 +6,6 @@
 # - pymysql (MySQL)
 # - pyodbc (ODBC)
 # - MSSQL connections
-# - Databricks connections (via ODBC)
-
 set -e  # Exit on any error
 
 echo "🚀 Installing database driver dependencies for ML Engine..."
@@ -92,11 +90,6 @@ echo ""
 echo "⚠️  Oracle Instant Client requires manual download due to license restrictions."
 echo "   It is not installed by this script. Please refer to the README for installation instructions."
 echo ""
-echo "⚠️  Databricks ODBC Driver (Simba Spark ODBC Driver) requires manual installation."
-echo "   Download from: https://www.databricks.com/spark/odbc-drivers-download"
-echo "   Note: The Databricks connector defaults to SQL connector method which doesn't require ODBC."
-
-echo ""
 echo "✅ Database dependencies installation completed!"
 echo ""
 echo "📋 Summary of installed components:"
@@ -109,11 +102,9 @@ fi
 echo ""
 echo "🔧 Next steps:"
 echo "   • Restart your terminal to ensure environment variables are loaded"
-echo "   • Install Databricks ODBC driver if using Databricks ODBC connection method"
 echo "   • Run 'poetry install' to install Python dependencies"
 echo ""
 echo "🌐 For more information, visit:"
 echo "   • psycopg: https://www.psycopg.org/docs/install.html"
 echo "   • pymysql: https://pymysql.readthedocs.io/en/latest/user/installation.html"
 echo "   • pyodbc: https://github.com/mkleehammer/pyodbc/wiki/Install"
-echo "   • Databricks ODBC: https://www.databricks.com/spark/odbc-drivers-download"

@@ -29,7 +29,6 @@ from arthur_common.models.connectors import (
     DATABRICKS_CONNECTOR_ACCESS_TOKEN_FIELD,
     DATABRICKS_CONNECTOR_AUTHENTICATOR_FIELD,
     DATABRICKS_CONNECTOR_CATALOG_FIELD,
-    DATABRICKS_CONNECTOR_CONNECTION_METHOD_FIELD,
     DATABRICKS_CONNECTOR_HTTP_PATH_FIELD,
     DATABRICKS_CONNECTOR_SCHEMA_FIELD,
     DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD,
@@ -61,7 +60,6 @@ def mock_bucket_based_connector_spec(
 
 
 def mock_databricks_connector_spec(
-    connection_method: str = "sql_connector",
     server_hostname: str = "dbc-xxx.cloud.databricks.com",
     http_path: str = "/sql/1.0/warehouses/yyy",
     authenticator: str = DatabricksConnectorAuthenticatorMethods.DATABRICKS_PAT,
@@ -75,10 +73,6 @@ def mock_databricks_connector_spec(
         {"key": DATABRICKS_CONNECTOR_HTTP_PATH_FIELD, "value": http_path},
         {"key": DATABRICKS_CONNECTOR_AUTHENTICATOR_FIELD, "value": authenticator},
         {"key": DATABRICKS_CONNECTOR_ACCESS_TOKEN_FIELD, "value": access_token},
-        {
-            "key": DATABRICKS_CONNECTOR_CONNECTION_METHOD_FIELD,
-            "value": connection_method,
-        },
     ]
     if catalog:
         fields.append({"key": DATABRICKS_CONNECTOR_CATALOG_FIELD, "value": catalog})
