@@ -1,25 +1,33 @@
 import { Autocomplete, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
+import { useSnackbar } from "notistack";
 
 import { withFieldGroup } from "../../filtering/hooks/form";
+import { addToDatasetFormOptions } from "../form/shared";
 import { useMatchingVariables } from "../hooks/useMatchingVariables";
 
+import { getNestedValue } from "@/components/traces/utils/spans";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
+import { useApi } from "@/hooks/useApi";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useTask } from "@/hooks/useTask";
-import { DatasetVersionMetadataResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
+import { DatasetVersionMetadataResponse, NestedSpanWithMetricsResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
 
 export const TransformSelector = withFieldGroup({
-  defaultValues: {} as {
-    dataset: string;
-    transform: string;
+  ...addToDatasetFormOptions,
+  props: {} as {
+    traceId: string;
+    flatSpans: NestedSpanWithMetricsResponse[];
   },
-  render: function Render({ group }) {
+  render: function Render({ group, traceId, flatSpans }) {
+    const api = useApi()!;
     const { task } = useTask();
     const dataset = useStore(group.store, (state) => state.values.dataset);
 
     const { latestVersion } = useDatasetLatestVersion(dataset);
     const { data: transforms } = useTransforms(task?.id);
+
+    const snackbar = useSnackbar();
 
     return (
       <group.Field name="transform">
@@ -47,77 +55,77 @@ export const TransformSelector = withFieldGroup({
                 field.handleChange(transformId);
 
                 // // TODO: Move the logic to `listeners`
-                // if (transformId && value && selectedDataset && traceId) {
-                //   try {
-                //     const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
-                //       traceId,
-                //       transformId
-                //     );
+                if (traceId) {
+                  try {
+                    const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
+                      traceId,
+                      transformId
+                    );
 
-                //     if (response.data.variables && response.data.variables.length > 0) {
-                //       // Map extracted variables with path information from transform definition
-                //       const executedColumns = response.data.variables.map((variable) => {
-                //         const variableDef = value.definition.variables.find((v) => v.variable_name === variable.name);
+                    if (response.data.variables && response.data.variables.length > 0) {
+                      // Map extracted variables with path information from transform definition
+                      const executedColumns = response.data.variables.map((variable) => {
+                        const variableDef = selected?.definition.variables.find((v) => v.variable_name === variable.name);
 
-                //         if (!variableDef) {
-                //           return {
-                //             name: variable.name,
-                //             value: variable.value,
-                //             path: "",
-                //             span_name: "",
-                //             attribute_path: "",
-                //           };
-                //         }
+                        if (!variableDef) {
+                          return {
+                            name: variable.name,
+                            value: variable.value,
+                            path: "",
+                            span_name: "",
+                            attribute_path: "",
+                          };
+                        }
 
-                //         // Validate that the path exists in the trace data
-                //         const span = flatSpans.find((s) => s.span_name === variableDef.span_name);
-                //         let validatedPath = "";
-                //         let validatedSpanName = "";
-                //         let validatedAttributePath = "";
+                        // Validate that the path exists in the trace data
+                        const span = flatSpans.find((s) => s.span_name === variableDef.span_name);
+                        let validatedPath = "";
+                        let validatedSpanName = "";
+                        let validatedAttributePath = "";
 
-                //         if (span) {
-                //           // Check if the attribute path exists
-                //           const data = getNestedValue(span.raw_data, variableDef.attribute_path);
-                //           if (data !== undefined) {
-                //             validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
-                //             validatedSpanName = variableDef.span_name;
-                //             validatedAttributePath = variableDef.attribute_path;
-                //           }
-                //         }
+                        if (span) {
+                          // Check if the attribute path exists
+                          const data = getNestedValue(span.raw_data, variableDef.attribute_path);
+                          if (data !== undefined) {
+                            validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
+                            validatedSpanName = variableDef.span_name;
+                            validatedAttributePath = variableDef.attribute_path;
+                          }
+                        }
 
-                //         return {
-                //           name: variable.name,
-                //           value: variable.value,
-                //           path: validatedPath,
-                //           span_name: validatedSpanName,
-                //           attribute_path: validatedAttributePath,
-                //         };
-                //       });
+                        return {
+                          name: variable.name,
+                          value: variable.value,
+                          path: validatedPath,
+                          span_name: validatedSpanName,
+                          attribute_path: validatedAttributePath,
+                        };
+                      });
 
-                //       const existingDatasetColumns = latestVersion?.column_names || [];
-                //       const executedColumnNames = new Set(executedColumns.map((col) => col.name));
+                      const existingDatasetColumns = latestVersion?.column_names || [];
+                      const executedColumnNames = new Set(executedColumns.map((col) => col.name));
 
-                //       // Create columns for dataset columns that aren't in the transform
-                //       const datasetOnlyColumns = existingDatasetColumns
-                //         .filter((columnName) => !executedColumnNames.has(columnName))
-                //         .map((columnName) => ({
-                //           name: columnName,
-                //           value: "",
-                //           path: "",
-                //           span_name: "",
-                //           attribute_path: "",
-                //         }));
+                      // Create columns for dataset columns that aren't in the transform
+                      const datasetOnlyColumns = existingDatasetColumns
+                        .filter((columnName) => !executedColumnNames.has(columnName))
+                        .map((columnName) => ({
+                          name: columnName,
+                          value: "",
+                          path: "",
+                          span_name: "",
+                          attribute_path: "",
+                        }));
 
-                //       form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
-                //     }
-                //   } catch (error) {
-                //     console.error("Failed to execute transform:", error);
-                //     snackbar.showSnackbar("Failed to execute transform", "error");
-                //     form.setFieldValue("columns", []);
-                //   }
-                // } else {
-                //   form.setFieldValue("columns", []);
-                // }
+                      group.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
+                    }
+                  } catch (error) {
+                    console.error("Failed to execute transform:", error);
+                    snackbar.enqueueSnackbar("Failed to execute transform", { variant: "error" });
+                    group.setFieldValue("columns", []);
+                  }
+                } else {
+                  group.setFieldValue("columns", []);
+                }
               }}
               renderOption={(props, option) => {
                 return (

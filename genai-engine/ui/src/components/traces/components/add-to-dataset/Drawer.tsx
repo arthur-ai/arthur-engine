@@ -310,11 +310,14 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
               </form.Field>
 
               <TransformSelector
+                form={form}
                 fields={{
                   dataset: "dataset",
                   transform: "transform",
+                  columns: "columns",
                 }}
-                form={form}
+                traceId={traceId}
+                flatSpans={flatSpans}
               />
             </Stack>
 
