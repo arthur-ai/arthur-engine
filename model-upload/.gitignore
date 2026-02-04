@@ -7,24 +7,31 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-
-# Virtual environments
 .venv/
 venv/
-ENV/
+
+# Poetry
+poetry.lock
+
+# Models (downloaded during build)
+models/
+/models/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Project specific
-models/
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
 *.log
-.env
-models-output/

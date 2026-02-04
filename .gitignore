@@ -42,3 +42,5 @@ ml-engine/src/genai_client/**
 .cursor/
 
 models/
+arthur-engine.code-workspace
+genai-engine/.vscode/settings.json

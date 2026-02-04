@@ -1,94 +1,140 @@
-# Arthur Model Upload - OpenShift PVC Version
+# Kubernetes/OpenShift Model Upload Deployment
 
-An OpenShift/Kubernetes job that copies pre-downloaded ML models to a PersistentVolumeClaim for airgapped deployments.
+This directory contains Kubernetes/OpenShift-specific deployment configuration for the unified model upload job.
 
-## Overview
+## About
 
-This is the **OpenShift PVC version** that:
-1. Downloads ML models from Hugging Face during Docker build
-2. When run as a Kubernetes Job, copies all models to a PersistentVolumeClaim
-3. Other pods (like genai-engine) can mount the same PVC to access models
-4. **No S3 required** - uses OpenShift native storage
+The model upload code is located at `/model-upload/` (repository root). This directory only contains Kubernetes deployment manifests.
 
-## Differences from S3 Version
+## Files
 
-| Feature | S3 Version (`model-upload`) | PVC Version (`model-upload-oc`) |
-|---------|---------------------------|--------------------------------|
-| Storage | AWS S3 | PersistentVolumeClaim |
-| Script | `upload_models.py` | `copy_models.py` |
-| Dependencies | boto3, AWS credentials | Python stdlib only |
-| Network | Requires S3 access | No external network needed |
-| Use Case | AWS/cloud deployments | Airgapped OpenShift |
+- `01-pvc.yaml` - PersistentVolumeClaim for model storage
+- `02-serviceaccount.yaml` - ServiceAccount for the job
+- `04-job.yaml` - Job definition to copy models to PVC
+- `06-copy-config-job.yaml` - Optional job to copy configuration
 
-## Quick Start
+## Usage
 
-### Build the Docker Image
+### Prerequisites
 
-**First, regenerate the poetry.lock file** (since dependencies changed):
+1. Build and push the unified K8s image:
+   ```bash
+   cd ../../../model-upload
+   ./build.sh --version <VERSION> --push k8s
+   ```
+
+2. Ensure the image is accessible to your cluster:
+   ```bash
+   # For Docker Hub (if using private repo)
+   kubectl create secret docker-registry arthurai-repo-creds \
+     --docker-server=https://index.docker.io/v1/ \
+     --docker-username=<USERNAME> \
+     --docker-password=<PASSWORD>
+   ```
+
+### Deploy
+
+1. Update `04-job.yaml`:
+   - Replace `<genai_engine_models_version>` with your version (e.g., `2.1.343`)
+
+2. Apply the manifests in order:
+   ```bash
+   # Create PVC for model storage
+   kubectl apply -f 01-pvc.yaml
+
+   # Create ServiceAccount
+   kubectl apply -f 02-serviceaccount.yaml
+
+   # Run model upload job
+   kubectl apply -f 04-job.yaml
+
+   # (Optional) Copy configuration
+   kubectl apply -f 06-copy-config-job.yaml
+   ```
+
+### Monitor Job
+
 ```bash
-rm -rf poetry.lock && poetry lock
+# Check job status
+kubectl get job arthur-genai-engine-models-k8s
+
+# View logs
+kubectl logs job/arthur-genai-engine-models-k8s
+
+# Watch pod events
+kubectl get pods -l app=arthur-genai-engine-models-k8s --watch
 ```
 
-Then build and push to Docker Hub:
-```bash
-# Build for Linux/AMD64 (required for Kubernetes/OpenShift)
-docker build --platform linux/amd64 -t genai-engine-models-k8s:<genai_engine_models_version> .
-
-# Tag for Docker Hub (arthurplatform organization)
-docker tag genai-engine-models-k8s:<genai_engine_models_version> arthurplatform/genai-engine-models-k8s:<genai_engine_models_version>
-
-# Push to Docker Hub (requires: docker login)
-docker push arthurplatform/genai-engine-models-k8s:<genai_engine_models_version>
-```
-
-## Test the image locally
-```bash
-docker compose -f docker-compose.local.yml up
-```
-
-### Deploy to OpenShift
-
-Update Apply the Kubernetes manifests in order:
+### Verify Models
 
 ```bash
-oc apply -f 01-pvc.yaml
-oc apply -f 02-serviceaccount.yaml
-# Replace <genai_engine_models_version> with the version you want to deploy in 04-job.yaml
-oc apply -f 04-job.yaml
-oc apply -f 06-copy-config-job.yaml
-```
+# Create a debug pod to verify models were copied
+kubectl run -it --rm debug --image=busybox --restart=Never -- sh
 
-### Monitor
-
-```bash
-oc logs -l app=arthur-genai-engine-models-k8s -f
+# Inside the pod, mount the PVC and check
+ls -la /models-output/
 ```
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SOURCE_DIR` | `/models` | Source directory in container |
-| `TARGET_DIR` | `/models-output` | PVC mount point |
-| `LOG_LEVEL` | `INFO` | Logging level |
+The job uses the unified `upload_models.py` script with the following environment variables:
 
-## Architecture
+- `STORAGE_BACKEND=filesystem` - Use filesystem backend (copies to PVC)
+- `SOURCE_DIR=/models` - Source directory in container (pre-downloaded models)
+- `TARGET_DIR=/models-output` - Target directory (PVC mount point)
+- `LOG_LEVEL=INFO` - Logging level
 
+## Image Tags
+
+Images follow the naming convention:
+- `arthurplatform/genai-engine-models:<VERSION>-k8s`
+- Example: `arthurplatform/genai-engine-models:2.1.343-k8s`
+
+## Storage
+
+The PVC is configured with:
+- **Size**: 10Gi (adjust based on model size, currently ~1.8GB)
+- **AccessMode**: ReadWriteOnce
+- **StorageClass**: Default (or specify custom class)
+
+Models are copied to the PVC and can be mounted by GenAI Engine pods:
+
+```yaml
+volumes:
+  - name: models
+    persistentVolumeClaim:
+      claimName: arthur-models-pvc
 ```
-Docker Image (genai-engine-models-k8s)
-  └── /models/ (pre-downloaded models)
-       │
-       │ Job runs: copy_models.py
-       ▼
-PersistentVolumeClaim
-  └── /models-output/ (copied models)
-       │
-       │ Other pods mount PVC
-       ▼
-genai-engine Pods
-  └── /home/nonroot/models/ (read models from PVC)
+
+## OpenShift Security
+
+The job runs with restricted security context:
+- Non-root user (UID 1000760000)
+- No privilege escalation
+- Drops all capabilities
+- Read-only root filesystem: false (needs to write to /models-output)
+
+Ensure your namespace has the appropriate SecurityContextConstraints (SCC):
+```bash
+# Grant restricted-v2 SCC to service account
+oc adm policy add-scc-to-user restricted-v2 \
+  system:serviceaccount:YOUR_NAMESPACE:arthur-genai-engine-models-k8s-sa
 ```
 
-## See Also
+## Cleanup
 
-For the S3 version, see `../model-upload/README.md`
+```bash
+# Delete job (PVC and ServiceAccount remain for reuse)
+kubectl delete job arthur-genai-engine-models-k8s
+
+# To delete everything:
+kubectl delete -f 04-job.yaml
+kubectl delete -f 02-serviceaccount.yaml
+kubectl delete -f 01-pvc.yaml  # WARNING: Deletes all models
+```
+
+## Related
+
+- [Unified Model Upload Code](/model-upload/) - Source code and Dockerfile
+- [ECS Deployment](../ecs/model-upload/) - AWS ECS deployment
+- [GCP Deployment](../gcp/model-upload/) - GCS Cloud Run deployment
