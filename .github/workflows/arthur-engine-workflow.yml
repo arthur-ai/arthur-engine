@@ -692,7 +692,7 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
       push: true
-      image: arthurplatform/arthur-model-upload-gcp
+      image: arthurplatform/arthur-model-upload
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]

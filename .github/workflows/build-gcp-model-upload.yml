@@ -61,8 +61,10 @@ jobs:
           context: "{{defaultContext}}:deployment/gcp/model-upload"
           file: Dockerfile
           tags: |
-            ${{ inputs.image }}:${{ env.VERSION }}
+            ${{ inputs.image }}:${{ env.VERSION }}-gcp
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', inputs.image) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest-gcp', inputs.image) || '' }}
             ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev-gcp', inputs.image) || '' }}
           push: ${{ inputs.push }}
           platforms: linux/amd64
