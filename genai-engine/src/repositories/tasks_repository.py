@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
@@ -132,7 +133,8 @@ class TaskRepository:
         self.db_session.add(db_task)
         self.db_session.commit()
 
-        return Task._from_database_model(db_task)
+        result = Task._from_database_model(db_task)
+        return result
 
     def link_rule_to_task(
         self,

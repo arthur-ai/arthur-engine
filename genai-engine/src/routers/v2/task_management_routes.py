@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -86,7 +87,8 @@ def create_task(
         task = tasks_repo.create_task(task)
 
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
-        return task._to_response_model()
+        response = task._to_response_model()
+        return response
     except:
         raise
     finally:

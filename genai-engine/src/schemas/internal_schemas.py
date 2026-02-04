@@ -29,6 +29,7 @@ from arthur_common.models.enums import (
     ToxicityViolationType,
 )
 from arthur_common.models.request_schemas import (
+    AgentMetadata,
     NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
@@ -36,6 +37,7 @@ from arthur_common.models.request_schemas import (
 )
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
+    AgentMetadataResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
     ChatDocumentContext,
@@ -575,17 +577,24 @@ class Task(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
+    task_metadata: Optional[dict] = None
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
     def _from_request_model(x: NewTaskRequest) -> "Task":
+        # Convert AgentMetadata to dict for database storage
+        task_metadata_dict = None
+        if x.agent_metadata:
+            task_metadata_dict = x.agent_metadata.model_dump(exclude_none=True)
+
         return Task(
             id=str(uuid.uuid4()),
             name=x.name,
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=x.is_agentic,
+            task_metadata=task_metadata_dict,
         )
 
     @staticmethod
@@ -596,6 +605,7 @@ class Task(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             is_agentic=x.is_agentic,
+            task_metadata=x.task_metadata,
             rule_links=[
                 TaskToRuleLink._from_database_model(link) for link in x.rule_links
             ],
@@ -611,6 +621,7 @@ class Task(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             is_agentic=self.is_agentic,
+            task_metadata=self.task_metadata,
         )
 
     def _to_response_model(self) -> TaskResponse:
@@ -626,12 +637,18 @@ class Task(BaseModel):
             response_metric.enabled = metric_link.enabled
             response_metrics.append(response_metric)
 
+        # Convert dict back to AgentMetadataResponse
+        agent_metadata_response = None
+        if self.task_metadata:
+            agent_metadata_response = AgentMetadataResponse(**self.task_metadata)
+
         return TaskResponse(
             id=self.id,
             name=self.name,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             is_agentic=self.is_agentic,
+            agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,
         )

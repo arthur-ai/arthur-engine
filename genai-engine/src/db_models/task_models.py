@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, IsArchivable
@@ -22,6 +23,7 @@ class DatabaseTask(Base, IsArchivable):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    task_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     rule_links: Mapped[list["DatabaseTaskToRules"]] = relationship(
         back_populates="task",
         lazy="joined",

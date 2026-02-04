@@ -15107,6 +15107,55 @@
                 ],
                 "title": "APIKeysRolesEnum"
             },
+            "AgentMetadata": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/RegisteredAgentProvider",
+                        "description": "Provider of the registered agent."
+                    },
+                    "gcp_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPAgentMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "AgentMetadata"
+            },
+            "AgentMetadataResponse": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/RegisteredAgentProvider",
+                        "description": "Provider of the registered agent."
+                    },
+                    "gcp_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPAgentMetadataResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "AgentMetadataResponse",
+                "description": "Agent metadata for responses."
+            },
             "AgenticAnnotationAnalyticsResponse": {
                 "properties": {
                     "stats": {
@@ -19348,6 +19397,59 @@
                 ],
                 "title": "FileUploadResult"
             },
+            "GCPAgentMetadata": {
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "title": "Project Id",
+                        "description": "Project ID of the agent."
+                    },
+                    "region": {
+                        "type": "string",
+                        "title": "Region",
+                        "description": "Region of the agent."
+                    },
+                    "resource_id": {
+                        "type": "string",
+                        "title": "Resource Id",
+                        "description": "Resource ID of the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "project_id",
+                    "region",
+                    "resource_id"
+                ],
+                "title": "GCPAgentMetadata"
+            },
+            "GCPAgentMetadataResponse": {
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "title": "Project Id",
+                        "description": "Project ID of the agent."
+                    },
+                    "region": {
+                        "type": "string",
+                        "title": "Region",
+                        "description": "Region of the agent."
+                    },
+                    "resource_id": {
+                        "type": "string",
+                        "title": "Resource Id",
+                        "description": "Resource ID of the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "project_id",
+                    "region",
+                    "resource_id"
+                ],
+                "title": "GCPAgentMetadataResponse",
+                "description": "GCP-specific agent metadata for responses."
+            },
             "GCPServiceAccountCredentialsRequest": {
                 "properties": {
                     "type": {
@@ -22330,6 +22432,17 @@
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not.",
                         "default": false
+                    },
+                    "agent_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for registered agents."
                     }
                 },
                 "type": "object",
@@ -25923,6 +26036,13 @@
                 ],
                 "title": "RegexSpanResponse"
             },
+            "RegisteredAgentProvider": {
+                "type": "string",
+                "enum": [
+                    "gcp"
+                ],
+                "title": "RegisteredAgentProvider"
+            },
             "RelevanceMetricConfig": {
                 "properties": {
                     "relevance_threshold": {
@@ -27541,6 +27661,17 @@
                         ],
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not"
+                    },
+                    "agent_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentMetadataResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for registered agents."
                     },
                     "rules": {
                         "items": {
