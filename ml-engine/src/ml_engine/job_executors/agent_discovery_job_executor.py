@@ -1,6 +1,6 @@
 """Agent discovery job executor - POC implementation."""
+
 import logging
-from typing import Any
 
 import requests
 from arthur_client.api_bindings import DiscoverAgentsJobSpec, WorkspacesV1Api
@@ -66,7 +66,9 @@ class AgentDiscoveryJobExecutor:
 
             # Step 3: Store in app-plane using existing API
             if agents_to_store:
-                self.logger.info(f"Storing {len(agents_to_store)} agents in app-plane...")
+                self.logger.info(
+                    f"Storing {len(agents_to_store)} agents in app-plane..."
+                )
                 self.workspaces_client.put_unregistered_agents(
                     workspace_id=workspace_id,
                     put_unregistered_agents={"agents": agents_to_store},
