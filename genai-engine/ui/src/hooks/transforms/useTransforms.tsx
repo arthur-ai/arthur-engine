@@ -14,6 +14,7 @@ export const useTransforms = () => {
     queryFn: () =>
       api.listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet({
         taskId: task!.id,
+        page_size: 1000,
       }),
     select: (data) => data.data.transforms,
   });
