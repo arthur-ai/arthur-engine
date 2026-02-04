@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/04/2026
+- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
+
 # 02/03/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
 
