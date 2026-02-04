@@ -496,7 +496,7 @@ def test_trace_api_error_handling(
 def test_experiment_traces_excluded_from_trace_endpoint(
     client: GenaiEngineTestClientBase,
 ):
-    """Test that experiment traces are excluded from trace endpoint by default."""
+    """Test that experiment traces are included in trace endpoint by default."""
 
     # Create a regular trace (non-experiment)
     regular_trace_request, regular_resource_span, regular_scope_span = (
@@ -540,20 +540,20 @@ def test_experiment_traces_excluded_from_trace_endpoint(
     assert status_code1 == 200, "Regular trace should be accepted"
     assert status_code2 == 200, "Experiment trace should be accepted"
 
-    # Query traces - should only return the regular trace (experiment trace excluded by default)
+    # Query traces - should return both regular and experiment traces (experiment traces included by default)
     status_code, response = client.trace_api_list_traces_metadata(
         task_ids=["exp_test_task"],
     )
     assert status_code == 200
 
-    # Verify only regular trace is returned (trace IDs are stored as hex strings in DB)
+    # Verify both regular and experiment traces are returned (trace IDs are stored as hex strings in DB)
     trace_ids = {trace.trace_id for trace in response.traces}
     regular_trace_hex = b"regular_trace".hex()
     experiment_trace_hex = b"experiment_trace".hex()
     assert regular_trace_hex in trace_ids, "Regular trace should be included"
     assert (
-        experiment_trace_hex not in trace_ids
-    ), "Experiment trace should be excluded by default"
+        experiment_trace_hex in trace_ids
+    ), "Experiment trace should be included by default"
 
 
 # ============================================================================

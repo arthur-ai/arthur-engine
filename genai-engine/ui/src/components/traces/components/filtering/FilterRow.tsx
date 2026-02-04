@@ -330,6 +330,9 @@ const ValueInput = withForm({
 
     const config = useStore(field.store, (state) => state.value);
 
+    // Guard against undefined config during array mutations (same pattern as FilterItem)
+    if (!config) return null;
+
     const { name } = config;
 
     const fieldConfig = fields.find((field) => field.name === name);
@@ -342,6 +345,11 @@ const ValueInput = withForm({
       fieldValidators = {
         onMount: multiple ? validators.valueArray : validators.value,
         onChange: multiple ? validators.valueArray : validators.value,
+      };
+    } else if (fieldConfig.type === "boolean") {
+      fieldValidators = {
+        onMount: validators.value,
+        onChange: validators.value,
       };
     } else if (fieldConfig.type === "numeric") {
       fieldValidators = {
@@ -364,6 +372,31 @@ const ValueInput = withForm({
     return (
       <form.AppField key={index} name={`config[${index}].value` as const} validators={fieldValidators}>
         {(field) => {
+          if (fieldConfig.type === "boolean") {
+            return (
+              <field.MaterialAutocompleteField
+                disablePortal
+                options={["true", "false"]}
+                getOptionLabel={(option) => (option === "true" ? "True" : "False")}
+                multiple={false}
+                autoHighlight={false}
+                onClose={onClose}
+                size="small"
+                sx={{
+                  width: 200,
+                  minWidth: 200,
+                  "& .MuiAutocomplete-inputRoot": {
+                    borderRadius: 0,
+                    "& fieldset": {
+                      borderInlineWidth: 0,
+                    },
+                  },
+                }}
+                renderInput={(params) => <TextField {...params} variant="filled" label="Value" />}
+              />
+            );
+          }
+
           if (fieldConfig.type === "enum") {
             const multiple = config.operator === EnumOperators.IN;
             return (

@@ -46,7 +46,12 @@ export type DateField = {
   operators: Operator[];
 };
 
-export type PrimitiveFieldType = NumericField | EnumField | TextField | FreeSoloField | DateField;
+export type BooleanField = {
+  type: "boolean";
+  operators: Extract<Operator, "eq">[];
+};
+
+export type PrimitiveFieldType = NumericField | EnumField | TextField | FreeSoloField | DateField | BooleanField;
 
 export function createPrimitiveField<Type extends PrimitiveFieldType, const Name extends string>(field: { name: Name } & Type) {
   return field;

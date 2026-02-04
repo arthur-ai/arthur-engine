@@ -316,6 +316,16 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
       };
     }
 
+    case "UI/TOGGLE_SYNTHETIC_MODAL": {
+      return {
+        ...state,
+        modals: {
+          ...state.modals,
+          synthetic: action.payload,
+        },
+      };
+    }
+
     case "UI/OPEN_FILL_MODAL": {
       return {
         ...state,
