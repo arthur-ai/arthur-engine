@@ -15,11 +15,11 @@ import { TransformSelector } from "./components/transform-selector";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
 import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
-import { useTransforms } from "./hooks/useTransforms";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
+import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
@@ -130,7 +130,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
 
   const { latestVersion } = useDatasetLatestVersion(selectedDataset?.id);
-  const transformsQuery = useTransforms(selectedDataset?.id);
+  const transformsQuery = useTransforms();
 
   // Get the selected transform ID from form state
   const selectedTransformId = useStore(form.store, (state) => state.values.transform);
@@ -206,6 +206,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       });
 
       setSavedTransformId(response.data.id);
+      form.setFieldValue("transform", response.data.id);
       transformsQuery.refetch();
 
       setTimeout(() => {
