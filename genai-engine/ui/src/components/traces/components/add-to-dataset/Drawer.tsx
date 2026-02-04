@@ -6,11 +6,12 @@ import { useStore } from "@tanstack/react-form";
 import { AxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
 
-import { flattenSpans, getNestedValue } from "../../utils/spans";
+import { flattenSpans } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
 
 import { AddColumnDialog } from "./AddColumnDialog";
 import { Matcher } from "./components/matcher";
+import { TransformSelector } from "./components/transform-selector";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
 import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
@@ -308,133 +309,13 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                 }}
               </form.Field>
 
-              <form.Field name="transform">
-                {(field) => {
-                  const hasTransforms = selectedDataset && transformsQuery.data && transformsQuery.data.length > 0;
-                  const options = hasTransforms ? transformsQuery.data : [];
-                  const isDisabled = !selectedDataset || !hasTransforms;
-
-                  return (
-                    <Autocomplete
-                      options={options}
-                      value={options.find((opt) => opt.id === field.state.value) || null}
-                      disabled={isDisabled}
-                      disablePortal
-                      sx={{ flex: 1 }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Transform"
-                          helperText={
-                            !selectedDataset
-                              ? "Select a dataset first"
-                              : !hasTransforms
-                                ? "No transforms available for this dataset"
-                                : "Select a saved transform"
-                          }
-                        />
-                      )}
-                      onChange={async (_event, value) => {
-                        const transformId = value?.id ?? "";
-                        field.handleChange(transformId);
-
-                        // TODO: Move the logic to `listeners`
-                        if (transformId && value && selectedDataset && traceId) {
-                          try {
-                            const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
-                              traceId,
-                              transformId
-                            );
-
-                            if (response.data.variables && response.data.variables.length > 0) {
-                              // Map extracted variables with path information from transform definition
-                              const executedColumns = response.data.variables.map((variable) => {
-                                const variableDef = value.definition.variables.find((v) => v.variable_name === variable.name);
-
-                                if (!variableDef) {
-                                  return {
-                                    name: variable.name,
-                                    value: variable.value,
-                                    path: "",
-                                    span_name: "",
-                                    attribute_path: "",
-                                  };
-                                }
-
-                                // Validate that the path exists in the trace data
-                                const span = flatSpans.find((s) => s.span_name === variableDef.span_name);
-                                let validatedPath = "";
-                                let validatedSpanName = "";
-                                let validatedAttributePath = "";
-
-                                if (span) {
-                                  // Check if the attribute path exists
-                                  const data = getNestedValue(span.raw_data, variableDef.attribute_path);
-                                  if (data !== undefined) {
-                                    validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
-                                    validatedSpanName = variableDef.span_name;
-                                    validatedAttributePath = variableDef.attribute_path;
-                                  }
-                                }
-
-                                return {
-                                  name: variable.name,
-                                  value: variable.value,
-                                  path: validatedPath,
-                                  span_name: validatedSpanName,
-                                  attribute_path: validatedAttributePath,
-                                };
-                              });
-
-                              const existingDatasetColumns = latestVersion?.column_names || [];
-                              const executedColumnNames = new Set(executedColumns.map((col) => col.name));
-
-                              // Create columns for dataset columns that aren't in the transform
-                              const datasetOnlyColumns = existingDatasetColumns
-                                .filter((columnName) => !executedColumnNames.has(columnName))
-                                .map((columnName) => ({
-                                  name: columnName,
-                                  value: "",
-                                  path: "",
-                                  span_name: "",
-                                  attribute_path: "",
-                                }));
-
-                              form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
-                            }
-                          } catch (error) {
-                            console.error("Failed to execute transform:", error);
-                            snackbar.showSnackbar("Failed to execute transform", "error");
-                            form.setFieldValue("columns", []);
-                          }
-                        } else {
-                          form.setFieldValue("columns", []);
-                        }
-                      }}
-                      renderOption={(props, option) => {
-                        return (
-                          <li {...props} key={option.id}>
-                            <Stack>
-                              <Typography variant="body2" fontWeight="medium">
-                                {option.name}
-                              </Typography>
-                              <Stack direction="row" alignItems="center" gap={1} divider={<span className="text-gray-500 text-xs">•</span>}>
-                                <Typography variant="caption" color="text.secondary">
-                                  {option.description ?? "No description"}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {option.definition.variables.length} variables
-                                </Typography>
-                              </Stack>
-                            </Stack>
-                          </li>
-                        );
-                      }}
-                      getOptionLabel={(option) => option.name}
-                    />
-                  );
+              <TransformSelector
+                fields={{
+                  dataset: "dataset",
+                  transform: "transform",
                 }}
-              </form.Field>
+                form={form}
+              />
             </Stack>
 
             <Matcher

@@ -2,14 +2,12 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useMemo } from "react";
 
 import { withFieldGroup } from "../../filtering/hooks/form";
+import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
-
-type MatchStatus = "full-match" | "partial" | "no-match";
 
 const STATUS_CONFIG: Record<MatchStatus, { backgroundColor: string; borderColor: string; color: string }> = {
   "full-match": { backgroundColor: "var(--color-green-50)", borderColor: "var(--color-green-200)", color: "var(--color-green-700)" },
@@ -29,30 +27,16 @@ export const Matcher = withFieldGroup({
     const { latestVersion: dataset } = useDatasetLatestVersion(datasetId);
     const { data: transform } = useTransform(transformId ?? undefined);
 
-    const { matchingNames, unmatchedTransform } = useMemo(() => {
-      const datasetNames = new Set(dataset?.column_names ?? []);
-      const transformNames = transform?.definition.variables?.map((v) => v.variable_name) ?? [];
-      const transformNamesSet = new Set(transformNames);
-
-      const matching = [...datasetNames].filter((name) => transformNamesSet.has(name));
-      const unmatchedFromTransform = transformNames.filter((name) => !datasetNames.has(name));
-
-      return {
-        matchingNames: matching,
-        unmatchedTransform: unmatchedFromTransform,
-      };
-    }, [dataset?.column_names, transform?.definition.variables]);
+    const { matchingNames, unmatchedTransform, matchStatus, matchCount } = useMatchingVariables({
+      columnNames: dataset?.column_names ?? [],
+      variables: transform?.definition.variables ?? [],
+    });
 
     // We only show the matcher if a transform is selected
     if (!transformId) return null;
 
-    const totalTransformVars = transform?.definition.variables?.length ?? 0;
-    const matchCount = matchingNames.length;
-
-    const matchStatus: MatchStatus =
-      matchCount > 0 && unmatchedTransform.length === 0 ? "full-match" : matchCount === 0 && totalTransformVars > 0 ? "no-match" : "partial";
-
     const config = STATUS_CONFIG[matchStatus];
+    const totalTransformVars = transform?.definition.variables?.length ?? 0;
 
     return (
       <Box
