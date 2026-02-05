@@ -8,10 +8,10 @@ import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { CopyableChip } from "./common";
-
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+
+import { CopyableChip } from "./common";
 
 interface TaskMetrics {
   traceCount: number;
