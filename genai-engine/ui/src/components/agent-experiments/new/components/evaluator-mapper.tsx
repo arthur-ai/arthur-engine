@@ -13,7 +13,9 @@ import { TraceTransformResponse } from "@/lib/api-client/api-client";
 export const EvaluatorMapper = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "evals" | "datasetRef">,
   render: function Render({ group }) {
-    const { data: transforms } = useTransforms();
+    const { data } = useTransforms();
+
+    const transforms = data?.transforms ?? [];
 
     const ready = useStore(group.store, (state) => state.values.datasetRef.version && state.values.evals.length > 0);
 

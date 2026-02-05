@@ -180,6 +180,8 @@ class ArthurChat:
 
         executor = get_llm_executor()
         chat_llm = executor.get_gpt_model(chat_temperature=0.0)
+        if chat_llm is None:
+            raise ValueError("Chat LLM is not initialized")
         call = lambda: chat_llm.invoke(all_prompts).content
 
         # Tokens used for chat not recorded

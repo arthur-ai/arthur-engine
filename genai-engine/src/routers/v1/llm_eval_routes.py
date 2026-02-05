@@ -60,7 +60,7 @@ def get_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> LLMEval:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
         llm_eval = llm_eval_service.get_llm_item(
@@ -104,16 +104,18 @@ def get_all_llm_eval_versions(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> LLMEvalsVersionListResponse:
     try:
-
         llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.get_llm_item_versions(
+        result = llm_eval_service.get_llm_item_versions(
             task.id,
             eval_name,
             pagination_parameters,
             filter_request,
         )
+        # Cast from generic BaseModel to specific type
+        assert isinstance(result, LLMEvalsVersionListResponse)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -141,7 +143,7 @@ def get_all_llm_evals(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> LLMGetAllMetadataListResponse:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
         return llm_eval_service.get_all_llm_item_metadata(
@@ -179,7 +181,7 @@ def run_saved_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> LLMEvalRunResponse:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
         return llm_eval_service.run_llm_eval(
@@ -213,7 +215,7 @@ def save_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> LLMEval:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
         return llm_eval_service.save_llm_item(task.id, eval_name, eval_config)
@@ -329,11 +331,14 @@ def get_llm_eval_by_tag(
 ) -> LLMEval:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.get_llm_item_by_tag(
+        result = llm_eval_service.get_llm_item_by_tag(
             task.id,
             eval_name,
             tag,
         )
+        # Cast from generic BaseModel to specific type
+        assert isinstance(result, LLMEval)
+        return result
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -372,12 +377,14 @@ def add_tag_to_llm_eval_version(
 ) -> LLMEval:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.add_tag_to_llm_item_version(
+        llm_eval_service.add_tag_to_llm_item_version(
             task.id,
             eval_name,
             eval_version,
             tag,
         )
+        # Fetch and return the updated eval
+        return llm_eval_service.get_llm_item(task.id, eval_name, eval_version)
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))

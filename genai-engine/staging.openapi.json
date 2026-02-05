@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.335"
+        "version": "2.1.355"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2398,10 +2398,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -2516,10 +2516,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -2734,6 +2741,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -2883,10 +2902,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -3001,10 +3020,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -3219,6 +3245,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -3284,10 +3322,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "start_time",
@@ -3607,10 +3645,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -3725,10 +3763,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -3943,6 +3988,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -4091,10 +4148,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN",
                             "title": "Span Types"
                         },
-                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
                         "name": "annotation_score",
@@ -4209,10 +4266,17 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusCodeEnum"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
                             "description": "Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
                             "title": "Status Code"
                         },
@@ -4427,6 +4491,18 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "include_experiment_traces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Include traces originating from Arthur experiments. Defaults to true.",
+                            "default": true,
+                            "title": "Include Experiment Traces"
+                        },
+                        "description": "Include traces originating from Arthur experiments. Defaults to true."
                     }
                 ],
                 "responses": {
@@ -7404,6 +7480,150 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/DatasetVersionRowResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic": {
+            "post": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Generate Synthetic Data",
+                "description": "Generate synthetic data rows based on existing dataset patterns.",
+                "operationId": "generate_synthetic_data_api_v2_datasets__dataset_id__versions__version_number__generate_synthetic_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the dataset.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the dataset."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticDataGenerationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticDataGenerationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message": {
+            "post": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Send Synthetic Data Message",
+                "description": "Send a message to refine synthetic data generation.",
+                "operationId": "send_synthetic_data_message_api_v2_datasets__dataset_id__versions__version_number__generate_synthetic_message_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the dataset.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the dataset."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticDataConversationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticDataGenerationResponse"
                                 }
                             }
                         }
@@ -14062,6 +14282,140 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/continuous_evals/analytics/daily": {
+            "get": {
+                "tags": [
+                    "Continuous Evals"
+                ],
+                "summary": "Get daily aggregated analytics for agentic annotations",
+                "description": "Returns daily counts of passed/failed/error/skipped annotations and total cost per day",
+                "operationId": "get_daily_annotation_analytics_api_v1_tasks__task_id__continuous_evals_analytics_daily_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Start time (inclusive). Defaults to 30 days ago.",
+                            "title": "Start Time"
+                        },
+                        "description": "Start time (inclusive). Defaults to 30 days ago."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "End time (exclusive). Defaults to now.",
+                            "title": "End Time"
+                        },
+                        "description": "End time (exclusive). Defaults to now."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticAnnotationAnalyticsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/discover-agents": {
+            "post": {
+                "tags": [
+                    "Agent Discovery"
+                ],
+                "summary": "Discover Agents",
+                "description": "Discover agents from infrastructure (e.g., GCP Vertex AI). This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.",
+                "operationId": "discover_agents_api_v1_discover_agents_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DiscoverAgentsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DiscoverAgentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -14753,6 +15107,79 @@
                 ],
                 "title": "APIKeysRolesEnum"
             },
+            "AgentMetadata": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/RegisteredAgentProvider",
+                        "description": "Provider of the registered agent."
+                    },
+                    "gcp_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPAgentMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "AgentMetadata"
+            },
+            "AgentMetadataResponse": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/RegisteredAgentProvider",
+                        "description": "Provider of the registered agent."
+                    },
+                    "gcp_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPAgentMetadataResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "AgentMetadataResponse",
+                "description": "Agent metadata for responses."
+            },
+            "AgenticAnnotationAnalyticsResponse": {
+                "properties": {
+                    "stats": {
+                        "items": {
+                            "$ref": "#/components/schemas/DailyAgenticAnnotationStats"
+                        },
+                        "type": "array",
+                        "title": "Stats",
+                        "description": "Daily statistics ordered by date descending"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Number of days with data"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "stats",
+                    "count"
+                ],
+                "title": "AgenticAnnotationAnalyticsResponse",
+                "description": "Response containing daily aggregated statistics."
+            },
             "AgenticAnnotationRequest": {
                 "properties": {
                     "annotation_score": {
@@ -14950,6 +15377,12 @@
                         "title": "Version",
                         "description": "Version of the evaluation"
                     },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform to apply to the trace before evaluation"
+                    },
                     "variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticEvalVariableMapping-Input"
@@ -14957,20 +15390,14 @@
                         "type": "array",
                         "title": "Variable Mapping",
                         "description": "Mapping of eval variables to data sources (supports transform variables for agentic experiments)"
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Transform Id",
-                        "description": "ID of the transform to apply to the trace before evaluation"
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "version",
-                    "variable_mapping",
-                    "transform_id"
+                    "transform_id",
+                    "variable_mapping"
                 ],
                 "title": "AgenticEvalRef",
                 "description": "Reference to an evaluation configuration with transform"
@@ -14987,6 +15414,12 @@
                         "title": "Version",
                         "description": "Version of the evaluation"
                     },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the transform to apply to the trace before evaluation"
+                    },
                     "variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticEvalVariableMapping-Output"
@@ -14994,20 +15427,14 @@
                         "type": "array",
                         "title": "Variable Mapping",
                         "description": "Mapping of eval variables to data sources (supports transform variables for agentic experiments)"
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Transform Id",
-                        "description": "ID of the transform to apply to the trace before evaluation"
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "version",
-                    "variable_mapping",
-                    "transform_id"
+                    "transform_id",
+                    "variable_mapping"
                 ],
                 "title": "AgenticEvalRef",
                 "description": "Reference to an evaluation configuration with transform"
@@ -15195,14 +15622,6 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "eval_list": {
-                        "items": {
-                            "$ref": "#/components/schemas/AgenticEvalRef-Output"
-                        },
-                        "type": "array",
-                        "title": "Eval List",
-                        "description": "List of evaluations being run, each with an associated transform"
-                    },
                     "dataset_row_filter": {
                         "anyOf": [
                             {
@@ -15242,6 +15661,14 @@
                         "title": "Template Variable Mapping",
                         "description": "Mapping of template variables to their sources (dataset columns, request-time parameters, or generated variables)"
                     },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticEvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run, each with an associated transform"
+                    },
                     "summary_results": {
                         "$ref": "#/components/schemas/AgenticSummaryResults",
                         "description": "Summary of results across all test cases"
@@ -15257,9 +15684,9 @@
                     "completed_rows",
                     "failed_rows",
                     "dataset_ref",
-                    "eval_list",
                     "http_template",
                     "template_variable_mapping",
+                    "eval_list",
                     "summary_results"
                 ],
                 "title": "AgenticExperimentDetail",
@@ -17608,6 +18035,125 @@
                 ],
                 "title": "CreateUserRequest"
             },
+            "CreationSource": {
+                "properties": {
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id",
+                        "description": "Optional UUID of the task that created this agent."
+                    },
+                    "top_level_span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Level Span Name",
+                        "description": "Optional top-level span name (legacy field, prefer GCP fields for GCP agents)."
+                    },
+                    "gcp_project_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Gcp Project Id",
+                        "description": "Optional GCP project ID where the agent is running."
+                    },
+                    "gcp_region": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Gcp Region",
+                        "description": "Optional GCP region where the agent is running."
+                    },
+                    "gcp_reasoning_engine_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Gcp Reasoning Engine Id",
+                        "description": "Optional GCP Vertex AI Reasoning Engine ID."
+                    }
+                },
+                "type": "object",
+                "title": "CreationSource",
+                "description": "Source information for how an unregistered agent was created."
+            },
+            "DailyAgenticAnnotationStats": {
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "Date",
+                        "description": "Date in YYYY-MM-DD format"
+                    },
+                    "passed_count": {
+                        "type": "integer",
+                        "title": "Passed Count",
+                        "description": "Count of annotations with score=1"
+                    },
+                    "failed_count": {
+                        "type": "integer",
+                        "title": "Failed Count",
+                        "description": "Count of annotations with score=0"
+                    },
+                    "error_count": {
+                        "type": "integer",
+                        "title": "Error Count",
+                        "description": "Count of annotations with run_status='error'"
+                    },
+                    "skipped_count": {
+                        "type": "integer",
+                        "title": "Skipped Count",
+                        "description": "Count of annotations with run_status='skipped'"
+                    },
+                    "total_cost": {
+                        "type": "number",
+                        "title": "Total Cost",
+                        "description": "Total cost for the day"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total annotations for the day"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "date",
+                    "passed_count",
+                    "failed_count",
+                    "error_count",
+                    "skipped_count",
+                    "total_cost",
+                    "total_count"
+                ],
+                "title": "DailyAgenticAnnotationStats",
+                "description": "Statistics for a single day of agentic annotations."
+            },
             "DatasetColumnSource": {
                 "properties": {
                     "name": {
@@ -17652,22 +18198,22 @@
                         "title": "Id",
                         "description": "Dataset ID"
                     },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Dataset name"
-                    },
                     "version": {
                         "type": "integer",
                         "title": "Version",
                         "description": "Dataset version number"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Dataset name"
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
-                    "name",
-                    "version"
+                    "version",
+                    "name"
                 ],
                 "title": "DatasetRef",
                 "description": "Reference to a dataset and version (with name)"
@@ -17975,6 +18521,119 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
+            },
+            "DiscoverAgentsRequest": {
+                "properties": {
+                    "data_plane_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Data Plane Id",
+                        "description": "UUID of the data plane to discover agents from"
+                    },
+                    "lookback_hours": {
+                        "type": "integer",
+                        "title": "Lookback Hours",
+                        "description": "Number of hours to look back for traces (default 30 days)",
+                        "default": 720
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data_plane_id"
+                ],
+                "title": "DiscoverAgentsRequest",
+                "description": "Request to discover agents from infrastructure."
+            },
+            "DiscoverAgentsResponse": {
+                "properties": {
+                    "agents": {
+                        "items": {
+                            "$ref": "#/components/schemas/DiscoveredAgent"
+                        },
+                        "type": "array",
+                        "title": "Agents",
+                        "description": "List of discovered agents"
+                    },
+                    "metadata": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Metadata",
+                        "description": "Discovery metadata (e.g., traces processed, errors)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "agents"
+                ],
+                "title": "DiscoverAgentsResponse",
+                "description": "Response containing discovered agents."
+            },
+            "DiscoveredAgent": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the agent."
+                    },
+                    "creation_source": {
+                        "$ref": "#/components/schemas/CreationSource",
+                        "description": "Information about how this agent was created."
+                    },
+                    "first_detected": {
+                        "type": "string",
+                        "title": "First Detected",
+                        "description": "ISO 8601 timestamp when agent was first detected."
+                    },
+                    "num_spans": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Num Spans",
+                        "description": "Number of spans associated with this agent."
+                    },
+                    "infrastructure": {
+                        "type": "string",
+                        "title": "Infrastructure",
+                        "description": "Infrastructure where this agent is running (e.g., 'GCP')."
+                    },
+                    "data_plane_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Data Plane Id",
+                        "description": "UUID of the data plane where this agent was detected."
+                    },
+                    "tools": {
+                        "items": {
+                            "$ref": "#/components/schemas/Tool"
+                        },
+                        "type": "array",
+                        "title": "Tools",
+                        "description": "List of tools used by this agent."
+                    },
+                    "sub_agents": {
+                        "items": {
+                            "$ref": "#/components/schemas/SubAgent"
+                        },
+                        "type": "array",
+                        "title": "Sub Agents",
+                        "description": "List of sub-agents used by this agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "creation_source",
+                    "first_detected",
+                    "infrastructure",
+                    "data_plane_id"
+                ],
+                "title": "DiscoveredAgent",
+                "description": "A discovered agent from infrastructure."
             },
             "EvalExecution": {
                 "properties": {
@@ -18737,6 +19396,59 @@
                     "success"
                 ],
                 "title": "FileUploadResult"
+            },
+            "GCPAgentMetadata": {
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "title": "Project Id",
+                        "description": "Project ID of the agent."
+                    },
+                    "region": {
+                        "type": "string",
+                        "title": "Region",
+                        "description": "Region of the agent."
+                    },
+                    "resource_id": {
+                        "type": "string",
+                        "title": "Resource Id",
+                        "description": "Resource ID of the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "project_id",
+                    "region",
+                    "resource_id"
+                ],
+                "title": "GCPAgentMetadata"
+            },
+            "GCPAgentMetadataResponse": {
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "title": "Project Id",
+                        "description": "Project ID of the agent."
+                    },
+                    "region": {
+                        "type": "string",
+                        "title": "Region",
+                        "description": "Region of the agent."
+                    },
+                    "resource_id": {
+                        "type": "string",
+                        "title": "Resource Id",
+                        "description": "Resource ID of the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "project_id",
+                    "region",
+                    "resource_id"
+                ],
+                "title": "GCPAgentMetadataResponse",
+                "description": "GCP-specific agent metadata for responses."
             },
             "GCPServiceAccountCredentialsRequest": {
                 "properties": {
@@ -21393,6 +22105,18 @@
             },
             "NewDatasetVersionRowRequest": {
                 "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "Optional ID for the row (used for synthetic data generation)."
+                    },
                     "data": {
                         "items": {
                             "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
@@ -21708,6 +22432,17 @@
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not.",
                         "default": false
+                    },
+                    "agent_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for registered agents."
                     }
                 },
                 "type": "object",
@@ -22721,14 +23456,6 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "eval_list": {
-                        "items": {
-                            "$ref": "#/components/schemas/EvalRef-Output"
-                        },
-                        "type": "array",
-                        "title": "Eval List",
-                        "description": "List of evaluations being run"
-                    },
                     "dataset_row_filter": {
                         "anyOf": [
                             {
@@ -22755,6 +23482,14 @@
                         ],
                         "title": "Notebook Id",
                         "description": "Optional notebook ID this experiment is linked to"
+                    },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run"
                     },
                     "prompt_configs": {
                         "items": {
@@ -22987,7 +23722,9 @@
                         "description": "Content of the prompt response"
                     },
                     "tool_calls": {
-                        "items": {},
+                        "items": {
+                            "$ref": "#/components/schemas/ChatCompletionMessageToolCall"
+                        },
                         "type": "array",
                         "title": "Tool Calls",
                         "description": "Tool calls made by the prompt"
@@ -23880,14 +24617,6 @@
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
                     },
-                    "eval_list": {
-                        "items": {
-                            "$ref": "#/components/schemas/EvalRef-Output"
-                        },
-                        "type": "array",
-                        "title": "Eval List",
-                        "description": "List of evaluations being run"
-                    },
                     "dataset_row_filter": {
                         "anyOf": [
                             {
@@ -23914,6 +24643,14 @@
                         ],
                         "title": "Notebook Id",
                         "description": "Optional notebook ID this experiment is linked to"
+                    },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run"
                     },
                     "rag_configs": {
                         "items": {
@@ -25299,6 +26036,13 @@
                 ],
                 "title": "RegexSpanResponse"
             },
+            "RegisteredAgentProvider": {
+                "type": "string",
+                "enum": [
+                    "gcp"
+                ],
+                "title": "RegisteredAgentProvider"
+            },
             "RelevanceMetricConfig": {
                 "properties": {
                     "relevance_threshold": {
@@ -26608,6 +27352,15 @@
                 ],
                 "title": "SpanWithMetricsResponse"
             },
+            "StatusCodeEnum": {
+                "type": "string",
+                "enum": [
+                    "Ok",
+                    "Error",
+                    "Unset"
+                ],
+                "title": "StatusCodeEnum"
+            },
             "StreamOptions": {
                 "properties": {
                     "include_usage": {
@@ -26626,6 +27379,21 @@
                 "type": "object",
                 "title": "StreamOptions"
             },
+            "SubAgent": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the sub-agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "SubAgent",
+                "description": "Sub-agent definition."
+            },
             "SummaryResults": {
                 "properties": {
                     "prompt_eval_summaries": {
@@ -26643,6 +27411,222 @@
                 ],
                 "title": "SummaryResults",
                 "description": "Summary results across all prompt versions and evaluations"
+            },
+            "SyntheticDataColumnDescription": {
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "title": "Column Name",
+                        "description": "Name of the column to generate data for."
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Description",
+                        "description": "Description of what this column contains and how to generate realistic values."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "column_name",
+                    "description"
+                ],
+                "title": "SyntheticDataColumnDescription",
+                "description": "Description of a column for synthetic data generation."
+            },
+            "SyntheticDataConversationRequest": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message",
+                        "description": "User's message/instruction for refining the generated data."
+                    },
+                    "current_rows": {
+                        "items": {
+                            "$ref": "#/components/schemas/NewDatasetVersionRowRequest"
+                        },
+                        "type": "array",
+                        "title": "Current Rows",
+                        "description": "Current state of generated rows (including any manual edits)."
+                    },
+                    "conversation_history": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Conversation History",
+                        "description": "Previous conversation messages for context."
+                    },
+                    "dataset_purpose": {
+                        "type": "string",
+                        "title": "Dataset Purpose",
+                        "description": "Original dataset purpose for context."
+                    },
+                    "column_descriptions": {
+                        "items": {
+                            "$ref": "#/components/schemas/SyntheticDataColumnDescription"
+                        },
+                        "type": "array",
+                        "title": "Column Descriptions",
+                        "description": "Original column descriptions for context."
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the LLM model to use for generation."
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model to use for generation."
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMRequestConfigSettings"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Optional LLM configuration settings (temperature, max_tokens, etc.)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message",
+                    "current_rows",
+                    "conversation_history",
+                    "dataset_purpose",
+                    "column_descriptions",
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "SyntheticDataConversationRequest",
+                "description": "Request for continuing a synthetic data generation conversation."
+            },
+            "SyntheticDataGenerationRequest": {
+                "properties": {
+                    "dataset_purpose": {
+                        "type": "string",
+                        "title": "Dataset Purpose",
+                        "description": "Description of the dataset's purpose and what the data represents."
+                    },
+                    "column_descriptions": {
+                        "items": {
+                            "$ref": "#/components/schemas/SyntheticDataColumnDescription"
+                        },
+                        "type": "array",
+                        "title": "Column Descriptions",
+                        "description": "Descriptions for each column to guide generation."
+                    },
+                    "num_rows": {
+                        "type": "integer",
+                        "maximum": 25.0,
+                        "minimum": 1.0,
+                        "title": "Num Rows",
+                        "description": "Number of rows to generate (1-25).",
+                        "default": 10
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the LLM model to use for generation."
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model to use for generation."
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMRequestConfigSettings"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Optional LLM configuration settings (temperature, max_tokens, etc.)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "dataset_purpose",
+                    "column_descriptions",
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "SyntheticDataGenerationRequest",
+                "description": "Request for initial synthetic data generation."
+            },
+            "SyntheticDataGenerationResponse": {
+                "properties": {
+                    "rows": {
+                        "items": {
+                            "$ref": "#/components/schemas/SyntheticDataRowResponse"
+                        },
+                        "type": "array",
+                        "title": "Rows",
+                        "description": "Full current state of all generated rows."
+                    },
+                    "assistant_message": {
+                        "$ref": "#/components/schemas/OpenAIMessage-Output",
+                        "description": "The assistant's response message explaining what was done."
+                    },
+                    "rows_added": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Rows Added",
+                        "description": "IDs of newly added rows in this response."
+                    },
+                    "rows_modified": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Rows Modified",
+                        "description": "IDs of rows that were modified in this response."
+                    },
+                    "rows_removed": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Rows Removed",
+                        "description": "IDs of rows that were removed in this response."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rows",
+                    "assistant_message"
+                ],
+                "title": "SyntheticDataGenerationResponse",
+                "description": "Response for synthetic data generation (both initial and conversation)."
+            },
+            "SyntheticDataRowResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Temporary client-side ID for tracking this row during the session."
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatasetVersionRowColumnItemResponse"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of column names and values in the generated row."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "data"
+                ],
+                "title": "SyntheticDataRowResponse",
+                "description": "A single generated row with a temporary client-side ID for tracking."
             },
             "TaskResponse": {
                 "properties": {
@@ -26677,6 +27661,17 @@
                         ],
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not"
+                    },
+                    "agent_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentMetadataResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for registered agents."
                     },
                     "rules": {
                         "items": {
@@ -26982,6 +27977,50 @@
                     "task"
                 ],
                 "title": "TokenUsageScope"
+            },
+            "Tool": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the tool."
+                    },
+                    "arguments": {
+                        "items": {
+                            "$ref": "#/components/schemas/ToolArgument"
+                        },
+                        "type": "array",
+                        "title": "Arguments",
+                        "description": "List of arguments for this tool."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "Tool",
+                "description": "Tool definition with arguments."
+            },
+            "ToolArgument": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the tool argument."
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type of the tool argument."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "type"
+                ],
+                "title": "ToolArgument",
+                "description": "Argument definition for a tool."
             },
             "ToolCall": {
                 "properties": {

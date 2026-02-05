@@ -45,7 +45,7 @@ def create_agentic_notebook(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> AgenticNotebookDetail:
     """
     Create a new agentic notebook for a task.
 
@@ -85,7 +85,7 @@ def list_agentic_notebooks(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-):
+) -> AgenticNotebookListResponse:
     """
     List all agentic notebooks for a given task.
 
@@ -120,7 +120,7 @@ def get_agentic_notebook(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticNotebookDetail:
     """
     Get detailed information about an agentic notebook.
 
@@ -153,7 +153,7 @@ def update_agentic_notebook(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticNotebookDetail:
     """
     Update agentic notebook metadata (name and/or description).
 
@@ -185,7 +185,7 @@ def get_agentic_notebook_state(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticNotebookStateResponse:
     """
     Get the current state of an agentic notebook.
 
@@ -218,7 +218,7 @@ def set_agentic_notebook_state(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticNotebookDetail:
     """
     Set the state of an agentic notebook.
 
@@ -286,7 +286,7 @@ def get_agentic_notebook_history(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticExperimentListResponse:
     """
     Get the history of experiments run from this agentic notebook.
 

@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleScope, RuleType
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import (
     NewMetricRequest,
     NewRuleRequest,
@@ -86,7 +86,8 @@ def create_task(
         task = tasks_repo.create_task(task)
 
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
-        return task._to_response_model()
+        response = task._to_response_model()
+        return response
     except:
         raise
     finally:
@@ -228,7 +229,7 @@ def search_tasks(
             ids=request.task_ids,
             task_name=request.task_name,
             is_agentic=request.is_agentic,
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
         )

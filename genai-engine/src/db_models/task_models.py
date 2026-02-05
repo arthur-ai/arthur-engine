@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String
+from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, IsArchivable
@@ -22,6 +22,7 @@ class DatabaseTask(Base, IsArchivable):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    task_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     rule_links: Mapped[list["DatabaseTaskToRules"]] = relationship(
         back_populates="task",
         lazy="joined",

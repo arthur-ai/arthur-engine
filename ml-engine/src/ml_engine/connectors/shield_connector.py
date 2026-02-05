@@ -2,7 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from logging import Logger
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 import genai_client.exceptions
@@ -29,6 +29,9 @@ from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
 )
 from arthur_common.models.enums import ModelProblemType
+from arthur_common.models.request_schemas import (
+    AgentMetadata,
+)
 from arthur_common.models.request_schemas import (
     NewMetricRequest as ArthurCommonNewMetricRequest,
 )
@@ -316,11 +319,24 @@ class ShieldBaseConnector(Connector, ABC):
             page += 1
         return datasets
 
-    def create_task(self, name: str, is_agentic: bool = False) -> TaskResponse:
-        resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
-            new_task_request=NewTaskRequest(name=name, is_agentic=is_agentic),
+    def create_task(
+        self,
+        name: str,
+        is_agentic: bool = False,
+        agent_metadata: Optional[AgentMetadata] = None,
+    ) -> TaskResponse:
+        # Serialize to dict to bridge the gap between arthur_common and generated client types
+        agent_metadata_dict = agent_metadata.model_dump() if agent_metadata else None
+        new_task_req = NewTaskRequest(
+            name=name,
+            is_agentic=is_agentic,
+            agent_metadata=agent_metadata_dict,
         )
-        return TaskResponse.model_validate_json(resp.raw_data)
+        resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
+            new_task_request=new_task_req,
+        )
+        task_response = TaskResponse.model_validate_json(resp.raw_data)
+        return task_response
 
     def read_task(self, task_id: str) -> TaskResponse:
         resp = self._tasks_client.get_task_api_v2_tasks_task_id_get_with_http_info(
