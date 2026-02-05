@@ -693,6 +693,7 @@ jobs:
     with:
       push: true
       image: arthurplatform/arthur-model-upload
+    secrets: inherit
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
