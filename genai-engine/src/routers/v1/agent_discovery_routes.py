@@ -107,7 +107,7 @@ def discover_agents(
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
 )
-@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def retry_agent_polling(
     agent_polling_data_id: UUID,
     db_session: Session = Depends(get_db_session),

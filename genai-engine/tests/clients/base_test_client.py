@@ -4547,6 +4547,25 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
+    def retry_agent_polling_task(
+        self,
+        agent_polling_data_id: str,
+    ) -> tuple[int, dict]:
+        """Retry an agent polling task"""
+        url = f"/api/v1/discover-agents/retry/{agent_polling_data_id}"
+
+        resp = self.base_client.post(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
+        )
+
 
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,

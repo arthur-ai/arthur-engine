@@ -114,6 +114,12 @@ class AgentDiscoveryRepository:
                 detail=f"Agent polling data {agent_polling_data_id} not found",
             )
 
+        if db_agent_polling_data.status != AgentPollingStatus.ERROR.value:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot retry a polling job that is not in an error state",
+            )
+
         db_agent_polling_data.status = AgentPollingStatus.IDLE.value
         db_agent_polling_data.error_message = None
         db_agent_polling_data.failed_runs = 0
@@ -124,6 +130,7 @@ class AgentDiscoveryRepository:
         )
         if polling_service.enqueue(job):
             logger.info(f"Enqueued retry polling job for agent {agent_polling_data_id}")
+            self.db_session.commit()
         else:
             # Failed to enqueue - update status to ERROR
             db_agent_polling_data.status = AgentPollingStatus.ERROR.value
@@ -131,5 +138,8 @@ class AgentDiscoveryRepository:
             logger.error(
                 f"Failed to enqueue retry polling job for agent {agent_polling_data_id}",
             )
-
-        self.db_session.commit()
+            self.db_session.commit()
+            raise HTTPException(
+                status_code=503,
+                detail="Registered agent polling service is not initialized. Skipping adding this agent to the polling queue.",
+            )
