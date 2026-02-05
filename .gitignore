@@ -27,7 +27,8 @@ local.env
 .env.local
 .env
 
-.vscode/
+# Ignore .vscode contents but allow settings.json (per-folder Python interpreters)
+**/.vscode/*
 
 .pre-commit-config-no-pytest-check.yaml
 oasdiff*
@@ -42,3 +43,4 @@ ml-engine/src/genai_client/**
 .cursor/
 
 models/
+arthur-engine.code-workspace
