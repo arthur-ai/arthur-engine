@@ -88,7 +88,9 @@ class JobSpecRawParser:
         return job_dict[self.JOB_SPEC_KEY]
 
     def to_create_model_task_spec(self) -> CreateModelTaskJobSpec:
-        return CreateModelTaskJobSpec.model_validate(self._parse_job_spec_field())
+        job_spec_dict = self._parse_job_spec_field()
+        spec = CreateModelTaskJobSpec.model_validate(job_spec_dict)
+        return spec
 
     def to_update_model_task_spec(self) -> UpdateModelTaskRulesJobSpec:
         return UpdateModelTaskRulesJobSpec.model_validate(self._parse_job_spec_field())

@@ -14,7 +14,6 @@ import { useParams } from "react-router-dom";
 
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
-import { useTransforms } from "./hooks/useTransforms";
 import { useUpdateTransformMutation } from "./hooks/useUpdateTransformMutation";
 import TransformsTable from "./table/TransformsTable";
 import TransformDetailsModal from "./TransformDetailsModal";
@@ -24,21 +23,24 @@ import { TraceTransform } from "./types";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { getContentHeight } from "@/constants/layout";
+import { useTransforms } from "@/hooks/transforms/useTransforms";
+import { usePagination } from "@/hooks/usePagination";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const TransformsManagement: React.FC = () => {
+  const pagination = usePagination();
   const { id: taskId } = useParams<{ id: string }>();
   const [sortColumn, setSortColumn] = useState<string | null>("updated_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTransform, setEditingTransform] = useState<TraceTransform | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [transformId, setTransformId] = useQueryState("id", parseAsString.withDefault(""));
 
-  const { data: transforms, error, isLoading, refetch } = useTransforms(taskId);
+  const { data, error, isLoading, refetch } = useTransforms({ page: pagination.page, page_size: pagination.rowsPerPage });
+
+  const transforms = useMemo(() => data?.transforms ?? [], [data]);
 
   const createMutation = useCreateTransformMutation(taskId, () => {
     setIsCreateModalOpen(false);
@@ -79,11 +81,6 @@ const TransformsManagement: React.FC = () => {
     }
     return sorted;
   }, [transforms, sortColumn, sortDirection]);
-
-  const paginatedTransforms = useMemo(() => {
-    const start = page * pageSize;
-    return sortedTransforms.slice(start, start + pageSize);
-  }, [sortedTransforms, page, pageSize]);
 
   const handleCreateTransform = useCallback(
     async (name: string, description: string, definition: TransformDefinition) => {
@@ -137,15 +134,6 @@ const TransformsManagement: React.FC = () => {
     },
     [sortColumn]
   );
-
-  const handlePageChange = useCallback((_event: unknown, newPage: number) => {
-    setPage(newPage);
-  }, []);
-
-  const handlePageSizeChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setPageSize(parseInt(event.target.value, 10));
-    setPage(0);
-  }, []);
 
   const viewingTransform = useMemo(() => {
     if (!transformId) return null;
@@ -231,7 +219,7 @@ const TransformsManagement: React.FC = () => {
           </Box>
         ) : (
           <TransformsTable
-            transforms={paginatedTransforms}
+            transforms={sortedTransforms}
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
@@ -255,10 +243,10 @@ const TransformsManagement: React.FC = () => {
           <TablePagination
             component="div"
             count={sortedTransforms.length}
-            page={page}
-            onPageChange={handlePageChange}
-            rowsPerPage={pageSize}
-            onRowsPerPageChange={handlePageSizeChange}
+            page={pagination.page}
+            onPageChange={pagination.handlePageChange}
+            rowsPerPage={pagination.rowsPerPage}
+            onRowsPerPageChange={pagination.handleRowsPerPageChange}
             rowsPerPageOptions={PAGE_SIZE_OPTIONS}
           />
         </Box>
