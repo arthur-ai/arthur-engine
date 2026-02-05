@@ -575,3 +575,136 @@ class TestDatabricksConnectorRead:
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert result.iloc[0]["x"] == 1
+
+
+class TestDatabricksConnectorQualifiedNames:
+    """Test qualified table name building with proper escaping."""
+
+    @patch("connectors.databricks_connector.create_engine")
+    def test_build_qualified_table_name(self, mock_create_engine):
+        """Test that _build_qualified_table_name properly escapes identifiers."""
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+
+        spec = _make_connector_spec()
+        conn = DatabricksConnector(spec, logger)
+
+        # Test simple names
+        qualified = conn._build_qualified_table_name("catalog1", "schema1", "table1")
+        assert qualified == "`catalog1`.`schema1`.`table1`"
+
+    @patch("connectors.databricks_connector.create_engine")
+    def test_build_qualified_table_name_with_special_chars(self, mock_create_engine):
+        """Test escaping of table names with special characters."""
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+
+        spec = _make_connector_spec()
+        conn = DatabricksConnector(spec, logger)
+
+        # Test names with backticks (should be escaped)
+        qualified = conn._build_qualified_table_name("cat`log", "sche`ma", "tab`le")
+        assert qualified == "`cat\\`log`.`sche\\`ma`.`tab\\`le`"
+
+    @patch("connectors.databricks_connector.create_engine")
+    def test_get_qualified_table_name_from_locator(self, mock_create_engine):
+        """Test that _get_qualified_table_name extracts from locator correctly."""
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+
+        spec = _make_connector_spec()
+        conn = DatabricksConnector(spec, logger)
+
+        locator = {
+            DATABRICKS_DATASET_CATALOG_FIELD: "my_catalog",
+            DATABRICKS_DATASET_SCHEMA_FIELD: "my_schema",
+            ODBC_CONNECTOR_TABLE_NAME_FIELD: "my_table",
+        }
+
+        qualified = conn._get_qualified_table_name(locator)
+        assert qualified == "`my_catalog`.`my_schema`.`my_table`"
+
+
+class TestDatabricksConnectorConnectionRobust:
+    """Test robust connection validation."""
+
+    @patch("connectors.databricks_connector.create_engine")
+    @patch("connectors.databricks_connector.WorkspaceClient")
+    def test_test_connection_finds_accessible_table(
+        self, mock_workspace_client_class, mock_create_engine
+    ):
+        """Test that test_connection successfully finds and queries an accessible table."""
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+
+        # Mock version query
+        mock_conn = Mock()
+        version_result = Mock()
+        version_result.fetchone.return_value = ["14.3.0"]
+        mock_conn.execute.side_effect = [
+            version_result,  # version query
+            Mock(),  # can_query_table LIMIT 0 query
+        ]
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
+
+        # Mock WorkspaceClient
+        mock_client = Mock()
+        mock_workspace_client_class.return_value = mock_client
+
+        catalog = Mock(name="test_catalog")
+        mock_client.catalogs.list.return_value = [catalog]
+
+        schema = Mock(name="test_schema")
+        mock_client.schemas.list.return_value = [schema]
+
+        table = Mock(name="test_table")
+        mock_client.tables.list.return_value = [table]
+
+        spec = _make_connector_spec()
+        conn = DatabricksConnector(spec, logger)
+        result = conn.test_connection()
+
+        assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
+        # Verify it tried to list catalogs
+        mock_client.catalogs.list.assert_called_once()
+
+    @patch("connectors.databricks_connector.create_engine")
+    @patch("connectors.databricks_connector.WorkspaceClient")
+    def test_test_connection_succeeds_without_queryable_tables(
+        self, mock_workspace_client_class, mock_create_engine
+    ):
+        """Test that connection succeeds even if no queryable tables found (warning logged)."""
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+
+        # Mock version query succeeds
+        mock_conn = Mock()
+        version_result = Mock()
+        version_result.fetchone.return_value = ["14.3.0"]
+        mock_conn.execute.side_effect = [
+            version_result,  # version query
+            Exception("permission denied"),  # can_query_table fails
+        ]
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
+
+        # Mock WorkspaceClient with tables but permission denied on queries
+        mock_client = Mock()
+        mock_workspace_client_class.return_value = mock_client
+
+        catalog = Mock(name="test_catalog")
+        mock_client.catalogs.list.return_value = [catalog]
+
+        schema = Mock(name="test_schema")
+        mock_client.schemas.list.return_value = [schema]
+
+        table = Mock(name="test_table")
+        mock_client.tables.list.return_value = [table]
+
+        spec = _make_connector_spec()
+        conn = DatabricksConnector(spec, logger)
+        result = conn.test_connection()
+
+        # Should still succeed (connection works, just no queryable tables)
+        assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
