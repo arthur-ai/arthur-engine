@@ -4,21 +4,13 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import Tooltip from "@mui/material/Tooltip";
-import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { CopyableChip } from "./common";
 
-import { useApi } from "@/hooks/useApi";
+import { useTaskMetrics } from "@/hooks/tasks/useTaskMetrics";
 import { TaskResponse } from "@/lib/api";
-
-interface TaskMetrics {
-  traceCount: number;
-  totalTokens: number;
-  successRate: number;
-  lastActive: string | null;
-}
 
 interface TaskCardProps {
   task: TaskResponse;
@@ -26,64 +18,9 @@ interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const navigate = useNavigate();
-  const api = useApi();
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
 
-  const { data: metrics = { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null } } = useQuery({
-    queryKey: ["taskMetrics", task.id, api],
-    queryFn: async (): Promise<TaskMetrics> => {
-      if (!api) {
-        return { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null };
-      }
-
-      try {
-        // Get traces from last 7 days
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const response = await api.api.listTracesMetadataApiV1TracesGet({
-          task_ids: [task.id],
-          start_time: sevenDaysAgo.toISOString(),
-          page_size: 5000, // Get all traces for accurate metrics
-          page: 0,
-        });
-
-        const traces = response.data.traces || [];
-        const traceCount = response.data.count || 0;
-
-        // Calculate total tokens
-        const totalTokens = traces.reduce((sum, trace) => {
-          return sum + (trace.total_token_count || 0);
-        }, 0);
-
-        // Calculate success rate (traces without errors)
-        // We'll consider a trace successful if it completed (has end_time)
-        const successfulTraces = traces.filter((trace) => trace.end_time).length;
-        const successRate = traceCount > 0 ? Math.round((successfulTraces / traceCount) * 100) : 0;
-
-        // Find the most recent trace end_time for last active
-        let lastActive: string | null = null;
-        if (traces.length > 0) {
-          for (const trace of traces) {
-            const traceDate = trace.end_time || trace.created_at;
-            if (traceDate) {
-              if (!lastActive || new Date(traceDate) > new Date(lastActive)) {
-                lastActive = traceDate;
-              }
-            }
-          }
-        }
-
-        return { traceCount, totalTokens, successRate, lastActive };
-      } catch (err) {
-        console.error(`Failed to fetch metrics for task ${task.id}:`, err);
-        return { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null };
-      }
-    },
-    enabled: !!api,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-  });
+  const { data: metrics = { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null } } = useTaskMetrics(task.id);
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -168,22 +105,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               arrow
               placement="top"
             >
-              <div
-                className={`flex-1 p-3 text-center ${metrics.successRate >= 1 && metrics.successRate < 50 ? "bg-red-50" : ""}`}
-              >
+              <div className={`flex-1 p-3 text-center ${metrics.successRate >= 1 && metrics.successRate < 50 ? "bg-red-50" : ""}`}>
                 {metrics.successRate >= 1 && metrics.successRate < 50 ? (
                   <ErrorOutlineIcon sx={{ fontSize: 20, color: "#EF4444", mb: 0.5 }} />
                 ) : (
                   <CheckCircleIcon sx={{ fontSize: 20, color: "#22C55E", mb: 0.5 }} />
                 )}
-                <div
-                  className={`text-xl font-semibold ${metrics.successRate >= 1 && metrics.successRate < 50 ? "text-red-600" : "text-gray-900"}`}
-                >
+                <div className={`text-xl font-semibold ${metrics.successRate >= 1 && metrics.successRate < 50 ? "text-red-600" : "text-gray-900"}`}>
                   {metrics.successRate}%
                 </div>
-                <div
-                  className={`text-xs mt-0.5 ${metrics.successRate >= 1 && metrics.successRate < 50 ? "text-red-600" : "text-gray-500"}`}
-                >
+                <div className={`text-xs mt-0.5 ${metrics.successRate >= 1 && metrics.successRate < 50 ? "text-red-600" : "text-gray-500"}`}>
                   Success
                 </div>
               </div>
@@ -194,9 +125,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           <div className="flex gap-8 text-xs">
             <div className="flex flex-col gap-1">
               <span className="text-gray-400">Last active</span>
-              <span className={`font-medium ${metrics.lastActive ? "text-gray-900" : "text-gray-400"}`}>
-                {formatLastActive(metrics.lastActive)}
-              </span>
+              <span className={`font-medium ${metrics.lastActive ? "text-gray-900" : "text-gray-400"}`}>{formatLastActive(metrics.lastActive)}</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-gray-400">Created</span>
@@ -206,9 +135,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
           {/* Footer */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
-            <span className="text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              View traces →
-            </span>
+            <span className="text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-150">View traces →</span>
             <div className="relative">
               {copiedTaskId === task.id ? (
                 <div
