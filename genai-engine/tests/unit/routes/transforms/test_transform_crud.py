@@ -166,6 +166,12 @@ def test_list_all_transforms_success(
         assert status_code == 200
         assert len(retrieved_transforms.transforms) == 10
 
+        # Verify pagination metadata
+        assert retrieved_transforms.total_count == 10
+        assert retrieved_transforms.page == 0
+        assert retrieved_transforms.page_size == 10
+        assert retrieved_transforms.total_pages == 1
+
         for i, transform in enumerate(retrieved_transforms.transforms):
             assert transform.id == transforms[i].id
             assert transform.task_id == task.id
@@ -208,6 +214,8 @@ def test_list_all_transforms_pagination(
         )
         assert status_code == 200
         assert len(retrieved_transforms.transforms) == 10
+        assert retrieved_transforms.total_count == 10
+        assert retrieved_transforms.total_pages == 1
 
         for i, transform in enumerate(retrieved_transforms.transforms):
             assert transform.id == transforms[i].id
@@ -223,6 +231,11 @@ def test_list_all_transforms_pagination(
         )
         assert status_code == 200
         assert len(retrieved_transforms.transforms) == 5
+        # Verify pagination metadata shows total count even though page only has 5
+        assert retrieved_transforms.total_count == 10
+        assert retrieved_transforms.page == 0
+        assert retrieved_transforms.page_size == 5
+        assert retrieved_transforms.total_pages == 2
 
         for i, transform in enumerate(retrieved_transforms.transforms):
             assert transform.id == transforms[i].id
@@ -238,6 +251,11 @@ def test_list_all_transforms_pagination(
         )
         assert status_code == 200
         assert len(retrieved_transforms.transforms) == 5
+        # Verify pagination metadata for second page
+        assert retrieved_transforms.total_count == 10
+        assert retrieved_transforms.page == 1
+        assert retrieved_transforms.page_size == 5
+        assert retrieved_transforms.total_pages == 2
 
         for i, transform in enumerate(retrieved_transforms.transforms):
             transform_idx = i + 5
@@ -254,6 +272,11 @@ def test_list_all_transforms_pagination(
         )
         assert status_code == 200
         assert len(retrieved_transforms.transforms) == 0
+        # Verify pagination metadata shows total even for empty page
+        assert retrieved_transforms.total_count == 10
+        assert retrieved_transforms.page == 2
+        assert retrieved_transforms.page_size == 5
+        assert retrieved_transforms.total_pages == 2
     finally:
         client.delete_task(task.id)
 

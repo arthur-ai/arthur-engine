@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Tuple
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -79,7 +79,7 @@ class TraceTransformRepository:
         task_id: str,
         pagination_parameters: PaginationParameters,
         filter_request: TransformListFilterRequest,
-    ) -> List[TraceTransform]:
+    ) -> Tuple[List[TraceTransform], int]:
         base_query = self.db_session.query(DatabaseTraceTransform).filter(
             DatabaseTraceTransform.task_id == task_id,
         )
@@ -98,6 +98,10 @@ class TraceTransformRepository:
                 DatabaseTraceTransform.created_at < filter_request.created_before,
             )
 
+        # Get total count BEFORE applying pagination
+        total_count = base_query.count()
+
+        # Apply sorting and pagination
         base_query = self._apply_sorting_pagination_and_count(
             base_query,
             pagination_parameters,
@@ -110,7 +114,7 @@ class TraceTransformRepository:
         for db_transform in db_transforms:
             transforms.append(TraceTransform.from_db_model(db_transform))
 
-        return transforms
+        return transforms, total_count
 
     def create_transform(
         self,
