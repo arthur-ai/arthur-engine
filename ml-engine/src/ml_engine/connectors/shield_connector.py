@@ -330,7 +330,7 @@ class ShieldBaseConnector(Connector, ABC):
         new_task_req = NewTaskRequest(
             name=name,
             is_agentic=is_agentic,
-            agent_metadata=agent_metadata_dict,  # type: ignore[call-arg]
+            agent_metadata=agent_metadata_dict,  # type: ignore[arg-type]
         )
         resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
             new_task_request=new_task_req,
