@@ -69,6 +69,10 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
+from services.agent_discovery import (
+    initialize_registered_agent_polling_service,
+    shutdown_registered_agent_polling_service,
+)
 from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
@@ -218,6 +222,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Error initializing continuous eval queue service: {e}")
 
+    # Initialize registered agent polling service
+    try:
+        initialize_registered_agent_polling_service(num_workers=4)
+    except Exception as e:
+        logger.error(f"Error initializing registered agent polling service: {e}")
+
     # Conditionally load relevance models
     if relevance_models_enabled():
         model_load.get_bert_scorer()
@@ -235,6 +245,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     cleanup_cuda_cache()
     shutdown_continuous_eval_queue_service()
+    shutdown_registered_agent_polling_service()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

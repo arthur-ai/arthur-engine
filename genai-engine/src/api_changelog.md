@@ -3,6 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 02/05/2026
+- **CHANGE** for **URL**: /api/v1/discover-agents/retry/{agent_polling_data_id}  endpoint added
+
+# 02/05/2026
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status

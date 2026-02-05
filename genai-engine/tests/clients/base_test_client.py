@@ -22,6 +22,7 @@ from arthur_common.models.enums import (
     TokenUsageScope,
 )
 from arthur_common.models.request_schemas import (
+    AgentMetadata,
     ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
@@ -437,9 +438,14 @@ class GenaiEngineTestClientBase(httpx.Client):
         is_agentic: bool = False,
         empty_rules: bool = False,
         user_id: str = None,
+        agent_metadata: AgentMetadata = None,
     ) -> tuple[int, TaskResponse]:
         name = name if name else str(random.random())
-        request = NewTaskRequest(name=name, is_agentic=is_agentic)
+        request = NewTaskRequest(
+            name=name,
+            is_agentic=is_agentic,
+            agent_metadata=agent_metadata,
+        )
 
         resp = self.base_client.post(
             "/api/v2/tasks",

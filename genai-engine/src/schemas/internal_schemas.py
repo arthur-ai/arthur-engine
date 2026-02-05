@@ -17,11 +17,13 @@ from arthur_common.models.common_schemas import (
 )
 from arthur_common.models.enums import (
     AgenticAnnotationType,
+    AgentPollingStatus,
     ComparisonOperatorEnum,
     ContinuousEvalRunStatus,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
+    RegisteredAgentProvider,
     RuleResultEnum,
     RuleScope,
     RuleType,
@@ -29,6 +31,7 @@ from arthur_common.models.enums import (
     ToxicityViolationType,
 )
 from arthur_common.models.request_schemas import (
+    AgentMetadata,
     NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
@@ -85,6 +88,7 @@ from weaviate.types import INCLUDE_VECTOR
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseAgenticNotebook,
+    DatabaseAgentPollingData,
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
@@ -4356,3 +4360,125 @@ class AgenticNotebook(BaseModel):
             ]
 
         return state
+
+
+class RegisteredGCPAgentCredentials(BaseModel):
+    """
+    Credentials required for polling registered GCP agents.
+    """
+
+    region: str
+    project_id: str
+    resource_id: str
+
+
+class AgentPollingData(BaseModel):
+    """
+    Data required for polling registered agents.
+    """
+
+    id: uuid.UUID = Field(description="ID of the agent polling data.")
+    task_id: str = Field(description="ID of the parent task.")
+    provider: RegisteredAgentProvider = Field(
+        description="Provider of the registered agent.",
+    )
+    gcp_credentials: Optional[RegisteredGCPAgentCredentials] = Field(
+        default=None,
+        description="Optional GCP credentials for the agent.",
+    )
+    created_at: datetime = Field(description="Time the agent polling data was created.")
+    updated_at: datetime = Field(
+        description="Time the agent polling data was last updated.",
+    )
+    last_fetched: Optional[datetime] = Field(
+        default=None,
+        description="Time the registered agent was last polled.",
+    )
+    status: AgentPollingStatus = Field(description="Status of the agent polling data.")
+    error_message: Optional[str] = Field(
+        default=None,
+        description="Error message if the agent polling data failed.",
+    )
+    failed_runs: int = Field(
+        default=0,
+        description="Number of times the agent polling data ran into api errors",
+    )
+
+    @staticmethod
+    def from_metadata_request_model(
+        task_id: str,
+        metadata_request: AgentMetadata,
+    ) -> "AgentPollingData":
+        gcp_credentials = None
+        if metadata_request.provider == RegisteredAgentProvider.GCP:
+            if metadata_request.gcp_metadata is None:
+                raise ValueError("GCP metadata is required when provider is GCP.")
+
+            gcp_credentials = RegisteredGCPAgentCredentials(
+                region=metadata_request.gcp_metadata.region,
+                project_id=metadata_request.gcp_metadata.project_id,
+                resource_id=metadata_request.gcp_metadata.resource_id,
+            )
+
+        now = datetime.now()
+
+        return AgentPollingData(
+            id=uuid.uuid4(),
+            task_id=task_id,
+            provider=metadata_request.provider,
+            gcp_credentials=gcp_credentials,
+            created_at=now,
+            updated_at=now,
+            last_fetched=None,
+            status=AgentPollingStatus.PENDING,
+            error_message=None,
+            failed_runs=0,
+        )
+
+    @staticmethod
+    def from_database_model(
+        db_model: DatabaseAgentPollingData,
+    ) -> "AgentPollingData":
+        gcp_credentials = None
+        if db_model.provider == RegisteredAgentProvider.GCP.value:
+            if db_model.gcp_credentials is None:
+                raise ValueError("GCP credentials cannot be null for GCP provider")
+            try:
+                gcp_credentials = RegisteredGCPAgentCredentials(
+                    region=db_model.gcp_credentials["region"],
+                    project_id=db_model.gcp_credentials["project_id"],
+                    resource_id=db_model.gcp_credentials["resource_id"],
+                )
+            except KeyError:
+                raise ValueError(
+                    f"GCP credentials are missing required fields: {db_model.gcp_credentials}",
+                )
+
+        return AgentPollingData(
+            id=db_model.id,
+            task_id=db_model.task_id,
+            provider=RegisteredAgentProvider(db_model.provider),
+            gcp_credentials=gcp_credentials,
+            created_at=db_model.created_at,
+            updated_at=db_model.updated_at,
+            last_fetched=db_model.last_fetched,
+            status=AgentPollingStatus(db_model.status),
+            error_message=db_model.error_message,
+            failed_runs=db_model.failed_runs,
+        )
+
+    def to_database_model(self) -> DatabaseAgentPollingData:
+        return DatabaseAgentPollingData(
+            id=self.id,
+            task_id=self.task_id,
+            provider=self.provider.value,
+            gcp_credentials=(
+                self.gcp_credentials.model_dump() if self.gcp_credentials else None
+            ),
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            last_fetched=self.last_fetched,
+            status=self.status.value,
+            error_message=self.error_message,
+            failed_runs=self.failed_runs,
+        )
