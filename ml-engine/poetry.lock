@@ -243,13 +243,13 @@ trio = ["trio (>=0.31.0)", "trio (>=0.32.0)"]
 
 [[package]]
 name = "arthur-client"
-version = "1.4.1782"
+version = "1.4.1786"
 description = "Arthur Python API Client Library"
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "arthur_client-1.4.1782-py3-none-any.whl", hash = "sha256:fe3ee7d1ff8b7e11d2006bb242e7d6b451ef9df59c7370b8a05e52261f7822de"},
-    {file = "arthur_client-1.4.1782.tar.gz", hash = "sha256:c37b085d7e713169f59145726d6eedb5733e5fedb9487f5f6e270e3e3738152d"},
+    {file = "arthur_client-1.4.1786-py3-none-any.whl", hash = "sha256:91afce82b149ef3ff85857d3631b3e29bce9f962578d9624bcd8afcf30b3d6f5"},
+    {file = "arthur_client-1.4.1786.tar.gz", hash = "sha256:2ad088f2cc082bcc84a6293498933fbb6640bfb92effba9ae32f7ad4852e7884"},
 ]
 
 [package.dependencies]
@@ -1576,13 +1576,13 @@ files = [
 
 [[package]]
 name = "google-genai"
-version = "1.61.0"
+version = "1.62.0"
 description = "GenAI Python SDK"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "google_genai-1.61.0-py3-none-any.whl", hash = "sha256:cb073ef8287581476c1c3f4d8e735426ee34478e500a56deef218fa93071e3ca"},
-    {file = "google_genai-1.61.0.tar.gz", hash = "sha256:5773a4e8ad5b2ebcd54a633a67d8e9c4f413032fef07977ee47ffa34a6d3bbdf"},
+    {file = "google_genai-1.62.0-py3-none-any.whl", hash = "sha256:4c3daeff3d05fafee4b9a1a31f9c07f01bc22051081aa58b4d61f58d16d1bcc0"},
+    {file = "google_genai-1.62.0.tar.gz", hash = "sha256:709468a14c739a080bc240a4f3191df597bf64485b1ca3728e0fb67517774c18"},
 ]
 
 [package.dependencies]
@@ -5195,4 +5195,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.13.*"
-content-hash = "a7f0b5fe42a5113eb3a53814f0e310e9ecc6c86b5279f74649f262fe425e1efa"
+content-hash = "395d5b1bb5f778eac43200c8440e433d0835885cb193d9c78cc851f37f521791"
