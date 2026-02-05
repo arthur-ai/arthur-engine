@@ -237,11 +237,13 @@ class DatabricksConnector(Connector):
         Returns:
             Fully qualified and escaped table name: `catalog`.`schema`.`table`
         """
-        return ".".join([
-            self._escape_identifier(catalog),
-            self._escape_identifier(schema),
-            self._escape_identifier(table),
-        ])
+        return ".".join(
+            [
+                self._escape_identifier(catalog),
+                self._escape_identifier(schema),
+                self._escape_identifier(table),
+            ]
+        )
 
     def _get_qualified_table_name(
         self,
@@ -356,7 +358,9 @@ class DatabricksConnector(Connector):
                 catalogs = list(workspace_client.catalogs.list())
                 for catalog in catalogs[:3]:  # Check up to 3 catalogs to avoid slowness
                     try:
-                        schemas = list(workspace_client.schemas.list(catalog_name=catalog.name))
+                        schemas = list(
+                            workspace_client.schemas.list(catalog_name=catalog.name)
+                        )
                         for schema in schemas[:3]:  # Check up to 3 schemas per catalog
                             try:
                                 tables = list(
@@ -367,7 +371,9 @@ class DatabricksConnector(Connector):
                                 )
                                 # Try to query the first table
                                 for table in tables[:3]:  # Try up to 3 tables
-                                    if self._can_query_table(catalog.name, schema.name, table.name):
+                                    if self._can_query_table(
+                                        catalog.name, schema.name, table.name
+                                    ):
                                         self.logger.info(
                                             f"Successfully verified query permissions on {catalog.name}.{schema.name}.{table.name}"
                                         )
@@ -376,12 +382,16 @@ class DatabricksConnector(Connector):
                                 if test_table_found:
                                     break
                             except Exception as e:
-                                self.logger.debug(f"Cannot access tables in {catalog.name}.{schema.name}: {e}")
+                                self.logger.debug(
+                                    f"Cannot access tables in {catalog.name}.{schema.name}: {e}"
+                                )
                                 continue
                         if test_table_found:
                             break
                     except Exception as e:
-                        self.logger.debug(f"Cannot access schemas in {catalog.name}: {e}")
+                        self.logger.debug(
+                            f"Cannot access schemas in {catalog.name}: {e}"
+                        )
                         continue
                     if test_table_found:
                         break
@@ -450,9 +460,7 @@ class DatabricksConnector(Connector):
 
         for catalog in catalogs:
             try:
-                schemas = list(
-                    workspace_client.schemas.list(catalog_name=catalog.name)
-                )
+                schemas = list(workspace_client.schemas.list(catalog_name=catalog.name))
             except Exception as e:
                 self.logger.warning(f"Cannot access schemas in {catalog.name}: {e}")
                 continue
@@ -476,9 +484,7 @@ class DatabricksConnector(Connector):
                     full_name = f"{catalog.name}.{schema.name}.{table.name}"
 
                     # Validate query permission with LIMIT 0
-                    if not self._can_query_table(
-                        catalog.name, schema.name, table.name
-                    ):
+                    if not self._can_query_table(catalog.name, schema.name, table.name):
                         self.logger.debug(f"Skipping {full_name} - no query permission")
                         continue
 
