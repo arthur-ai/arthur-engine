@@ -105,14 +105,14 @@ class DatabaseAgentPollingData(Base):
     task: Mapped["DatabaseTask"] = relationship(back_populates="agent_polling_data")
 
 
-# Event listener to remove PostgreSQL-specific constraint from SQLite
+# Event listener to remove PostgreSQL-specific constraints and indexes from SQLite
 @event.listens_for(DatabaseAgentPollingData.__table__, "before_create")
 def _remove_postgres_constraint_for_sqlite(
     target: Any,
     connection: Any,
     **_kw: Any,
 ) -> None:
-    """Remove the JSONB check constraint for SQLite compatibility"""
+    """Remove the JSONB check constraint and indexes for SQLite compatibility"""
     if connection.dialect.name == "sqlite":
         # Remove the ck_gcp_credentials_fields constraint which uses PostgreSQL JSONB operators
         target.constraints = {
@@ -122,3 +122,5 @@ def _remove_postgres_constraint_for_sqlite(
                 isinstance(c, CheckConstraint) and c.name == "ck_gcp_credentials_fields"
             )
         }
+        # Remove the uq_gcp_resource_id index which uses PostgreSQL JSONB operators
+        target.indexes = {i for i in target.indexes if i.name != "uq_gcp_resource_id"}
