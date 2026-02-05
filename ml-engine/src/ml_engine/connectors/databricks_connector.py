@@ -63,12 +63,14 @@ class DatabricksConnector(Connector):
         connector_fields = {f.key: f.value for f in connector_config.fields}
 
         # Parse connection fields with env var fallback
-        self.server_hostname: str = connector_fields.get(
-            DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD
-        ) or os.getenv("DATABRICKS_HOST", "")
-        self.http_path: str = connector_fields.get(
-            DATABRICKS_CONNECTOR_HTTP_PATH_FIELD
-        ) or os.getenv("DATABRICKS_HTTP_PATH", "")
+        self.server_hostname: str = str(
+            connector_fields.get(DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD)
+            or os.getenv("DATABRICKS_HOST", "")
+        )
+        self.http_path: str = str(
+            connector_fields.get(DATABRICKS_CONNECTOR_HTTP_PATH_FIELD)
+            or os.getenv("DATABRICKS_HTTP_PATH", "")
+        )
 
         # Parse credentials with env var fallback
         access_token_raw = connector_fields.get(
@@ -146,14 +148,17 @@ class DatabricksConnector(Connector):
     def _get_access_token(self) -> str:
         """Get access token based on detected auth method."""
         if self._auth_method == AUTH_METHOD_PAT:
+            assert self.access_token is not None, "PAT token must be set"
             return self.access_token.get_secret_value()
         elif self._auth_method == AUTH_METHOD_OAUTH_M2M:
+            assert self.client_id is not None, "Client ID must be set"
+            assert self.client_secret is not None, "Client secret must be set"
             config = Config(
                 host=f"https://{self.server_hostname}",
                 client_id=self.client_id.get_secret_value(),
                 client_secret=self.client_secret.get_secret_value(),
             )
-            token = oauth_service_principal(config).oauth_token().access_token
+            token: str = oauth_service_principal(config).oauth_token().access_token
             self.logger.debug("Fetched fresh OAuth M2M token")
             return token
         else:
@@ -199,11 +204,14 @@ class DatabricksConnector(Connector):
 
         # Build Config based on detected auth method
         if self._auth_method == AUTH_METHOD_PAT:
+            assert self.access_token is not None, "PAT token must be set"
             config = Config(
                 host=f"https://{self.server_hostname}",
                 token=self.access_token.get_secret_value(),
             )
         elif self._auth_method == AUTH_METHOD_OAUTH_M2M:
+            assert self.client_id is not None, "Client ID must be set"
+            assert self.client_secret is not None, "Client secret must be set"
             config = Config(
                 host=f"https://{self.server_hostname}",
                 client_id=self.client_id.get_secret_value(),
@@ -357,11 +365,15 @@ class DatabricksConnector(Connector):
             try:
                 catalogs = list(workspace_client.catalogs.list())
                 for catalog in catalogs[:3]:  # Check up to 3 catalogs to avoid slowness
+                    if not catalog.name:
+                        continue
                     try:
                         schemas = list(
                             workspace_client.schemas.list(catalog_name=catalog.name)
                         )
                         for schema in schemas[:3]:  # Check up to 3 schemas per catalog
+                            if not schema.name:
+                                continue
                             try:
                                 tables = list(
                                     workspace_client.tables.list(
@@ -371,6 +383,8 @@ class DatabricksConnector(Connector):
                                 )
                                 # Try to query the first table
                                 for table in tables[:3]:  # Try up to 3 tables
+                                    if not table.name:
+                                        continue
                                     if self._can_query_table(
                                         catalog.name, schema.name, table.name
                                     ):
@@ -459,6 +473,8 @@ class DatabricksConnector(Connector):
         tables_queryable = 0
 
         for catalog in catalogs:
+            if not catalog.name:
+                continue
             try:
                 schemas = list(workspace_client.schemas.list(catalog_name=catalog.name))
             except Exception as e:
@@ -466,6 +482,8 @@ class DatabricksConnector(Connector):
                 continue
 
             for schema in schemas:
+                if not schema.name:
+                    continue
                 try:
                     tables = list(
                         workspace_client.tables.list(
@@ -480,6 +498,8 @@ class DatabricksConnector(Connector):
                     continue
 
                 for table in tables:
+                    if not table.name:
+                        continue
                     tables_discovered += 1
                     full_name = f"{catalog.name}.{schema.name}.{table.name}"
 
