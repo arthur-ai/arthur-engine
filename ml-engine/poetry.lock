@@ -243,13 +243,13 @@ trio = ["trio (>=0.31.0)", "trio (>=0.32.0)"]
 
 [[package]]
 name = "arthur-client"
-version = "1.4.1782"
+version = "1.4.1786"
 description = "Arthur Python API Client Library"
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "arthur_client-1.4.1782-py3-none-any.whl", hash = "sha256:fe3ee7d1ff8b7e11d2006bb242e7d6b451ef9df59c7370b8a05e52261f7822de"},
-    {file = "arthur_client-1.4.1782.tar.gz", hash = "sha256:c37b085d7e713169f59145726d6eedb5733e5fedb9487f5f6e270e3e3738152d"},
+    {file = "arthur_client-1.4.1786-py3-none-any.whl", hash = "sha256:91afce82b149ef3ff85857d3631b3e29bce9f962578d9624bcd8afcf30b3d6f5"},
+    {file = "arthur_client-1.4.1786.tar.gz", hash = "sha256:2ad088f2cc082bcc84a6293498933fbb6640bfb92effba9ae32f7ad4852e7884"},
 ]
 
 [package.dependencies]
@@ -264,13 +264,13 @@ urllib3 = ">=2.5.0,<3.0.0"
 
 [[package]]
 name = "arthur-common"
-version = "2.4.30"
+version = "2.4.34"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "arthur_common-2.4.30-py3-none-any.whl", hash = "sha256:657bc527f8036502f6a37f868f6d602115c1a81485d566e453ace4ba87d84fff"},
-    {file = "arthur_common-2.4.30.tar.gz", hash = "sha256:f2414e8723736fc39281d70791f4eb2c6856b14a4f42192c33ef362424868c09"},
+    {file = "arthur_common-2.4.34-py3-none-any.whl", hash = "sha256:04a761c7e09ce9139ae6c8928b4a402115dd2f773a026c76ff1a6ee78c4d4524"},
+    {file = "arthur_common-2.4.34.tar.gz", hash = "sha256:6b7dd9deec3fab03d9b082a37afd5fccaa71fd5dcd0732954d74835c610a31bf"},
 ]
 
 [package.dependencies]
@@ -951,13 +951,13 @@ all = ["adbc-driver-manager", "fsspec", "ipython", "numpy", "pandas", "pyarrow"]
 
 [[package]]
 name = "fastapi"
-version = "0.128.0"
+version = "0.128.1"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "fastapi-0.128.0-py3-none-any.whl", hash = "sha256:aebd93f9716ee3b4f4fcfe13ffb7cf308d99c9f3ab5622d8877441072561582d"},
-    {file = "fastapi-0.128.0.tar.gz", hash = "sha256:1cc179e1cef10a6be60ffe429f79b829dce99d8de32d7acb7e6c8dfdf7f2645a"},
+    {file = "fastapi-0.128.1-py3-none-any.whl", hash = "sha256:ee82146bbf91ea5bbf2bb8629e4c6e056c4fbd997ea6068501b11b15260b50fb"},
+    {file = "fastapi-0.128.1.tar.gz", hash = "sha256:ce5be4fa26d4ce6f54debcc873d1fb8e0e248f5c48d7502ba6c61457ab2dc766"},
 ]
 
 [package.dependencies]
@@ -1368,13 +1368,13 @@ tool = ["click (>=6.0.0)"]
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.135.0"
+version = "1.136.0"
 description = "Vertex AI API client library"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "google_cloud_aiplatform-1.135.0-py2.py3-none-any.whl", hash = "sha256:32b53ee61b3f51b14e21dc98fa9d9021c5db171cf7a407bd71abd3da46f5a6a4"},
-    {file = "google_cloud_aiplatform-1.135.0.tar.gz", hash = "sha256:1e42fc4c38147066ad05d93cb9208201514d359fb2a64663333cea2d1ec9ab42"},
+    {file = "google_cloud_aiplatform-1.136.0-py2.py3-none-any.whl", hash = "sha256:5c829f002b7b673dcd0e718f55cc0557b571bd10eb5cdb7882d72916cfbf8c0e"},
+    {file = "google_cloud_aiplatform-1.136.0.tar.gz", hash = "sha256:01e64a0d0861486e842bf7e904077c847bcc1b654a29883509d57476de915b7d"},
 ]
 
 [package.dependencies]
@@ -1576,13 +1576,13 @@ files = [
 
 [[package]]
 name = "google-genai"
-version = "1.61.0"
+version = "1.62.0"
 description = "GenAI Python SDK"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "google_genai-1.61.0-py3-none-any.whl", hash = "sha256:cb073ef8287581476c1c3f4d8e735426ee34478e500a56deef218fa93071e3ca"},
-    {file = "google_genai-1.61.0.tar.gz", hash = "sha256:5773a4e8ad5b2ebcd54a633a67d8e9c4f413032fef07977ee47ffa34a6d3bbdf"},
+    {file = "google_genai-1.62.0-py3-none-any.whl", hash = "sha256:4c3daeff3d05fafee4b9a1a31f9c07f01bc22051081aa58b4d61f58d16d1bcc0"},
+    {file = "google_genai-1.62.0.tar.gz", hash = "sha256:709468a14c739a080bc240a4f3191df597bf64485b1ca3728e0fb67517774c18"},
 ]
 
 [package.dependencies]
@@ -5195,4 +5195,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.13.*"
-content-hash = "d9917ce4bc459ff2765441c43d3849b012e5868114d8e0d0c0b855cbed515c0d"
+content-hash = "395d5b1bb5f778eac43200c8440e433d0835885cb193d9c78cc851f37f521791"
