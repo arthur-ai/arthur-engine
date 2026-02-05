@@ -377,15 +377,20 @@ class TestDatabricksConnectorDatasetDiscovery:
         mock_workspace_client_class.return_value = mock_client
 
         # Mock catalog structure
-        catalog1 = Mock(name="catalog1")
-        catalog2 = Mock(name="catalog2")
+        catalog1 = Mock()
+        catalog1.name = "catalog1"
+        catalog2 = Mock()
+        catalog2.name = "catalog2"
         mock_client.catalogs.list.return_value = [catalog1, catalog2]
 
-        schema1 = Mock(name="schema1")
+        schema1 = Mock()
+        schema1.name = "schema1"
         mock_client.schemas.list.return_value = [schema1]
 
-        table1 = Mock(name="table1")
-        table2 = Mock(name="table2")
+        table1 = Mock()
+        table1.name = "table1"
+        table2 = Mock()
+        table2.name = "table2"
         mock_client.tables.list.return_value = [table1, table2]
 
         # Mock query permission checks (all succeed)
@@ -413,13 +418,16 @@ class TestDatabricksConnectorDatasetDiscovery:
         mock_client = Mock()
         mock_workspace_client_class.return_value = mock_client
 
-        catalog = Mock(name="test_catalog")
+        catalog = Mock()
+        catalog.name = "test_catalog"
         mock_client.catalogs.list.return_value = [catalog]
 
-        schema = Mock(name="test_schema")
+        schema = Mock()
+        schema.name = "test_schema"
         mock_client.schemas.list.return_value = [schema]
 
-        table = Mock(name="test_table")
+        table = Mock()
+        table.name = "test_table"
         mock_client.tables.list.return_value = [table]
 
         # Mock successful query permission check
@@ -447,13 +455,16 @@ class TestDatabricksConnectorDatasetDiscovery:
         mock_client = Mock()
         mock_workspace_client_class.return_value = mock_client
 
-        catalog = Mock(name="my_catalog")
+        catalog = Mock()
+        catalog.name = "my_catalog"
         mock_client.catalogs.list.return_value = [catalog]
 
-        schema = Mock(name="my_schema")
+        schema = Mock()
+        schema.name = "my_schema"
         mock_client.schemas.list.return_value = [schema]
 
-        table = Mock(name="my_table")
+        table = Mock()
+        table.name = "my_table"
         mock_client.tables.list.return_value = [table]
 
         # Mock successful query permission check
@@ -486,14 +497,18 @@ class TestDatabricksConnectorDatasetDiscovery:
         mock_client = Mock()
         mock_workspace_client_class.return_value = mock_client
 
-        catalog = Mock(name="catalog1")
+        catalog = Mock()
+        catalog.name = "catalog1"
         mock_client.catalogs.list.return_value = [catalog]
 
-        schema = Mock(name="schema1")
+        schema = Mock()
+        schema.name = "schema1"
         mock_client.schemas.list.return_value = [schema]
 
-        table1 = Mock(name="queryable_table")
-        table2 = Mock(name="forbidden_table")
+        table1 = Mock()
+        table1.name = "queryable_table"
+        table2 = Mock()
+        table2.name = "forbidden_table"
         mock_client.tables.list.return_value = [table1, table2]
 
         # Mock query permission checks: first succeeds, second fails
@@ -652,13 +667,16 @@ class TestDatabricksConnectorConnectionRobust:
         mock_client = Mock()
         mock_workspace_client_class.return_value = mock_client
 
-        catalog = Mock(name="test_catalog")
+        catalog = Mock()
+        catalog.name = "test_catalog"
         mock_client.catalogs.list.return_value = [catalog]
 
-        schema = Mock(name="test_schema")
+        schema = Mock()
+        schema.name = "test_schema"
         mock_client.schemas.list.return_value = [schema]
 
-        table = Mock(name="test_table")
+        table = Mock()
+        table.name = "test_table"
         mock_client.tables.list.return_value = [table]
 
         spec = _make_connector_spec()
@@ -693,13 +711,16 @@ class TestDatabricksConnectorConnectionRobust:
         mock_client = Mock()
         mock_workspace_client_class.return_value = mock_client
 
-        catalog = Mock(name="test_catalog")
+        catalog = Mock()
+        catalog.name = "test_catalog"
         mock_client.catalogs.list.return_value = [catalog]
 
-        schema = Mock(name="test_schema")
+        schema = Mock()
+        schema.name = "test_schema"
         mock_client.schemas.list.return_value = [schema]
 
-        table = Mock(name="test_table")
+        table = Mock()
+        table.name = "test_table"
         mock_client.tables.list.return_value = [table]
 
         spec = _make_connector_spec()
