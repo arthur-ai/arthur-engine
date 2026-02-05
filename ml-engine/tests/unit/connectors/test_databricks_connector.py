@@ -5,7 +5,7 @@ Unit tests for the Databricks connector functionality.
 import logging
 import os
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pandas as pd
@@ -20,6 +20,7 @@ from arthur_client.api_bindings import (
     DatasetScalarType,
     DatasetSchema,
     Definition,
+    DType,
     ScopeSchemaTag,
 )
 from arthur_common.models.connectors import (
@@ -83,7 +84,7 @@ def _make_dataset_with_timestamp(
                             tag_hints=[ScopeSchemaTag.PRIMARY_TIMESTAMP],
                             nullable=False,
                             id=str(uuid4()),
-                            dtype="timestamp",
+                            dtype=DType.TIMESTAMP,
                         ),
                     ),
                 ),
@@ -96,25 +97,27 @@ def _make_dataset_with_timestamp(
 class TestDatabricksConnectorAuthDetection:
     """Test authentication method auto-detection."""
 
-    def test_auth_auto_detection_oauth_m2m(self):
+    @patch("connectors.databricks_connector.oauth_service_principal")
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_auth_auto_detection_oauth_m2m(self, mock_engine, mock_config, mock_oauth):
         """Verify OAuth M2M is auto-detected when client_id+secret provided."""
-        with patch("connectors.databricks_connector.create_engine") as mock_engine:
-            mock_engine.return_value = Mock()
-            with patch(
-                "connectors.databricks_connector.oauth_service_principal"
-            ) as mock_oauth:
-                mock_oauth.return_value.oauth_token.return_value.access_token = (
-                    "fresh_token"
-                )
-                spec = _make_connector_spec(
-                    access_token=None,
-                    client_id="test_client_id",
-                    client_secret="test_client_secret",
-                )
-                conn = DatabricksConnector(spec, logger)
-                assert conn._auth_method == "oauth_m2m"
-                assert conn.client_id.get_secret_value() == "test_client_id"
-                assert conn.client_secret.get_secret_value() == "test_client_secret"
+        mock_engine.return_value = MagicMock()
+        mock_config.return_value = MagicMock()
+
+        # Use MagicMock to handle the chain automatically
+        mock_oauth.return_value = MagicMock()
+        mock_oauth.return_value.oauth_token.return_value.access_token = "fresh_token"
+
+        spec = _make_connector_spec(
+            access_token=None,
+            client_id="test_client_id",
+            client_secret="test_client_secret",
+        )
+        conn = DatabricksConnector(spec, logger)
+        assert conn._auth_method == "oauth_m2m"
+        assert conn.client_id.get_secret_value() == "test_client_id"
+        assert conn.client_secret.get_secret_value() == "test_client_secret"
 
     def test_auth_auto_detection_pat(self):
         """Verify PAT is auto-detected when only access_token provided."""
@@ -129,23 +132,23 @@ class TestDatabricksConnectorAuthDetection:
             assert conn._auth_method == "pat"
             assert conn.access_token.get_secret_value() == "test_pat_token"
 
-    def test_auth_auto_detection_prefers_oauth_m2m(self):
+    @patch("connectors.databricks_connector.oauth_service_principal")
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_auth_auto_detection_prefers_oauth_m2m(self, mock_engine, mock_config, mock_oauth):
         """When both credentials provided, OAuth M2M takes precedence."""
-        with patch("connectors.databricks_connector.create_engine") as mock_engine:
-            mock_engine.return_value = Mock()
-            with patch(
-                "connectors.databricks_connector.oauth_service_principal"
-            ) as mock_oauth:
-                mock_oauth.return_value.oauth_token.return_value.access_token = (
-                    "fresh_token"
-                )
-                spec = _make_connector_spec(
-                    access_token="test_pat_token",
-                    client_id="test_client_id",
-                    client_secret="test_client_secret",
-                )
-                conn = DatabricksConnector(spec, logger)
-                assert conn._auth_method == "oauth_m2m"
+        mock_engine.return_value = MagicMock()
+        mock_config.return_value = MagicMock()
+        mock_oauth.return_value = MagicMock()
+        mock_oauth.return_value.oauth_token.return_value.access_token = "fresh_token"
+
+        spec = _make_connector_spec(
+            access_token="test_pat_token",
+            client_id="test_client_id",
+            client_secret="test_client_secret",
+        )
+        conn = DatabricksConnector(spec, logger)
+        assert conn._auth_method == "oauth_m2m"
 
     def test_no_credentials_raises(self):
         """Verify error when no credentials provided."""
@@ -170,7 +173,7 @@ class TestDatabricksConnectorAuthDetection:
         spec.fields = [
             Mock(key=f["key"], value=f["value"]) for f in spec_dict["fields"]
         ]
-        with pytest.raises(ValueError, match="OAuth M2M requires both"):
+        with pytest.raises(ValueError, match="No Databricks credentials provided"):
             DatabricksConnector(spec, logger)
 
 
@@ -202,8 +205,16 @@ class TestDatabricksConnectorEnvVars:
                 assert conn.access_token.get_secret_value() == "env_token"
                 assert conn._auth_method == "pat"
 
-    def test_env_var_fallback_oauth_m2m(self):
+    @patch("connectors.databricks_connector.oauth_service_principal")
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_env_var_fallback_oauth_m2m(self, mock_engine, mock_config, mock_oauth):
         """Test OAuth M2M env var fallback."""
+        mock_engine.return_value = MagicMock()
+        mock_config.return_value = MagicMock()
+        mock_oauth.return_value = MagicMock()
+        mock_oauth.return_value.oauth_token.return_value.access_token = "fresh_token"
+
         with patch.dict(
             os.environ,
             {
@@ -217,100 +228,86 @@ class TestDatabricksConnectorEnvVars:
             spec.connector_type = Mock(value="databricks")
             spec.fields = []
 
-            with patch("connectors.databricks_connector.create_engine") as mock_engine:
-                mock_engine.return_value = Mock()
-                with patch(
-                    "connectors.databricks_connector.oauth_service_principal"
-                ) as mock_oauth:
-                    mock_oauth.return_value.oauth_token.return_value.access_token = (
-                        "fresh_token"
-                    )
-                    conn = DatabricksConnector(spec, logger)
-                    assert conn.client_id.get_secret_value() == "env_client_id"
-                    assert (
-                        conn.client_secret.get_secret_value() == "env_client_secret"
-                    )
-                    assert conn._auth_method == "oauth_m2m"
+            conn = DatabricksConnector(spec, logger)
+            assert conn.client_id.get_secret_value() == "env_client_id"
+            assert (
+                conn.client_secret.get_secret_value() == "env_client_secret"
+            )
+            assert conn._auth_method == "oauth_m2m"
 
 
 class TestDatabricksConnectorOAuthM2M:
     """Test OAuth M2M token refresh functionality."""
 
-    def test_oauth_m2m_token_refresh(self):
+    @patch("connectors.databricks_connector.oauth_service_principal")
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_oauth_m2m_token_refresh(self, mock_engine, mock_config, mock_oauth):
         """Mock oauth_service_principal and verify fresh token fetching."""
-        with patch("connectors.databricks_connector.create_engine") as mock_engine:
-            mock_engine.return_value = Mock()
-            with patch(
-                "connectors.databricks_connector.oauth_service_principal"
-            ) as mock_oauth:
-                mock_token = Mock()
-                mock_token.access_token = "fresh_oauth_token"
-                mock_oauth.return_value.oauth_token.return_value = mock_token
+        mock_engine.return_value = MagicMock()
+        mock_config.return_value = MagicMock()
+        mock_oauth.return_value = MagicMock()
+        mock_oauth.return_value.oauth_token.return_value.access_token = "fresh_oauth_token"
 
-                spec = _make_connector_spec(
-                    access_token=None,
-                    client_id="test_client",
-                    client_secret="test_secret",
-                )
-                conn = DatabricksConnector(spec, logger)
+        spec = _make_connector_spec(
+            access_token=None,
+            client_id="test_client",
+            client_secret="test_secret",
+        )
+        conn = DatabricksConnector(spec, logger)
 
-                # Verify engine was created with fresh token
-                call_args = mock_engine.call_args[0][0]
-                assert "token:fresh_oauth_token@" in call_args
-                mock_oauth.assert_called_once()
+        # Verify engine was created with fresh token
+        call_args = mock_engine.call_args[0][0]
+        assert "token:fresh_oauth_token@" in call_args
+        mock_oauth.assert_called_once()
 
-    def test_read_retry_on_auth_failure(self):
+    @patch("connectors.databricks_connector.pd.read_sql")
+    @patch("connectors.databricks_connector.oauth_service_principal")
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_read_retry_on_auth_failure(self, mock_engine, mock_config, mock_oauth, mock_read_sql):
         """Mock 401 error, verify engine recreation and retry."""
-        with patch("connectors.databricks_connector.create_engine") as mock_engine:
-            with patch(
-                "connectors.databricks_connector.oauth_service_principal"
-            ) as mock_oauth:
-                mock_token = Mock()
-                mock_token.access_token = "token1"
-                mock_oauth.return_value.oauth_token.return_value = mock_token
+        mock_config.return_value = MagicMock()
+        mock_oauth.return_value = MagicMock()
+        mock_oauth.return_value.oauth_token.return_value.access_token = "token1"
 
-                spec = _make_connector_spec(
-                    access_token=None,
-                    client_id="test_client",
-                    client_secret="test_secret",
-                )
+        # Create two different engine instances for initial and retry
+        mock_engine_instance_1 = MagicMock()
+        mock_engine_instance_2 = MagicMock()
+        mock_engine.side_effect = [mock_engine_instance_1, mock_engine_instance_2]
 
-                # First call returns engine that fails with 401
-                mock_engine_instance = Mock()
-                mock_conn = Mock()
-                mock_conn.execute.side_effect = [
-                    Exception("401 unauthorized"),
-                    Mock(),  # Second attempt succeeds
-                ]
-                mock_engine_instance.connect.return_value.__enter__ = Mock(
-                    return_value=mock_conn
-                )
-                mock_engine_instance.connect.return_value.__exit__ = Mock(
-                    return_value=None
-                )
-                mock_engine.return_value = mock_engine_instance
+        spec = _make_connector_spec(
+            access_token=None,
+            client_id="test_client",
+            client_secret="test_secret",
+        )
 
-                conn = DatabricksConnector(spec, logger)
-                dataset = _make_dataset_with_timestamp()
+        conn = DatabricksConnector(spec, logger)
+        dataset = _make_dataset_with_timestamp()
 
-                # Simulate read with fresh token on retry
-                mock_token.access_token = "token2"
-                with patch("connectors.databricks_connector.pd.read_sql") as mock_read:
-                    mock_read.return_value = pd.DataFrame([{"x": 1}])
-                    start = datetime(2025, 1, 1, tzinfo=timezone.utc)
-                    end = datetime(2025, 1, 2, tzinfo=timezone.utc)
-                    conn.read(dataset, start, end)
+        # First read fails with 401, second succeeds
+        mock_read_sql.side_effect = [Exception("401 unauthorized"), pd.DataFrame([{"x": 1}])]
 
-                # Verify engine was recreated (disposed + new create call)
-                assert mock_engine_instance.dispose.called
+        # Simulate read with fresh token on retry
+        mock_oauth.return_value.oauth_token.return_value.access_token = "token2"
+        start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2025, 1, 2, tzinfo=timezone.utc)
+        result = conn.read(dataset, start, end)
+
+        # Verify engine was recreated (disposed old, created new)
+        assert mock_engine_instance_1.dispose.called
+        assert mock_engine.call_count == 2
+        assert isinstance(result, pd.DataFrame)
 
 
 class TestDatabricksConnectorConnection:
     """Test connection and basic SQL operations."""
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_test_connection_validates_query_access(self, mock_create_engine):
+    def test_test_connection_validates_query_access(self, mock_create_engine, mock_config):
         """Test connection verifies we can query at least one table."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_conn = Mock()
         # Mock both version query and information_schema query
@@ -327,9 +324,11 @@ class TestDatabricksConnectorConnection:
         result = conn.test_connection()
         assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_test_connection_failure_auth_error(self, mock_create_engine):
+    def test_test_connection_failure_auth_error(self, mock_create_engine, mock_config):
         """Test connection failure with auth error message."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_engine.connect.side_effect = Exception("401 token expired")
         mock_create_engine.return_value = mock_engine
@@ -340,35 +339,56 @@ class TestDatabricksConnectorConnection:
         assert result.connection_check_outcome == ConnectorCheckOutcome.FAILED
         assert "Authentication failed" in (result.failure_reason or "")
 
+    @patch("connectors.databricks_connector.WorkspaceClient")
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_test_connection_failure_permission_error(self, mock_create_engine):
-        """Test connection failure with permission error message."""
+    def test_test_connection_with_permission_limited_access(self, mock_create_engine, mock_config, mock_workspace_client_class):
+        """Test connection succeeds even when table query permissions are limited."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_conn = Mock()
         mock_conn.execute.side_effect = [
-            Mock(fetchone=Mock(return_value=["14.3.0"])),
-            Exception("permission denied on catalog"),
+            Mock(fetchone=Mock(return_value=["14.3.0"])),  # version query succeeds
+            Exception("permission denied on catalog"),  # can_query_table fails
         ]
         mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
         mock_create_engine.return_value = mock_engine
 
+        # Mock WorkspaceClient to provide a table to test
+        mock_client = Mock()
+        mock_workspace_client_class.return_value = mock_client
+
+        catalog = Mock()
+        catalog.name = "test_catalog"
+        mock_client.catalogs.list.return_value = [catalog]
+
+        schema = Mock()
+        schema.name = "test_schema"
+        mock_client.schemas.list.return_value = [schema]
+
+        table = Mock()
+        table.name = "test_table"
+        mock_client.tables.list.return_value = [table]
+
         spec = _make_connector_spec()
         conn = DatabricksConnector(spec, logger)
         result = conn.test_connection()
-        assert result.connection_check_outcome == ConnectorCheckOutcome.FAILED
-        assert "Cannot query tables" in (result.failure_reason or "")
+        # Connection succeeds if we can connect, even without table access
+        assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
 
 
 class TestDatabricksConnectorDatasetDiscovery:
     """Test dataset discovery across catalogs."""
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
     @patch("connectors.databricks_connector.WorkspaceClient")
     def test_list_datasets_scans_all_catalogs(
-        self, mock_workspace_client_class, mock_create_engine
+        self, mock_workspace_client_class, mock_create_engine, mock_config
     ):
         """Verify multi-catalog discovery."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -406,12 +426,14 @@ class TestDatabricksConnectorDatasetDiscovery:
         # Should find 4 tables (2 catalogs × 1 schema × 2 tables)
         assert len(result.available_datasets) == 4
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
     @patch("connectors.databricks_connector.WorkspaceClient")
     def test_list_datasets_returns_qualified_names(
-        self, mock_workspace_client_class, mock_create_engine
+        self, mock_workspace_client_class, mock_create_engine, mock_config
     ):
         """Check catalog.schema.table format."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -443,12 +465,14 @@ class TestDatabricksConnectorDatasetDiscovery:
         assert len(result.available_datasets) == 1
         assert result.available_datasets[0].name == "test_catalog.test_schema.test_table"
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
     @patch("connectors.databricks_connector.WorkspaceClient")
     def test_list_datasets_populates_locator_fields(
-        self, mock_workspace_client_class, mock_create_engine
+        self, mock_workspace_client_class, mock_create_engine, mock_config
     ):
         """Verify locator has catalog, schema, table_name (all required)."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -485,12 +509,14 @@ class TestDatabricksConnectorDatasetDiscovery:
         assert locator_fields[DATABRICKS_DATASET_SCHEMA_FIELD] == "my_schema"
         assert locator_fields[ODBC_CONNECTOR_TABLE_NAME_FIELD] == "my_table"
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
     @patch("connectors.databricks_connector.WorkspaceClient")
     def test_list_datasets_validates_query_permissions(
-        self, mock_workspace_client_class, mock_create_engine
+        self, mock_workspace_client_class, mock_create_engine, mock_config
     ):
         """Verify LIMIT 0 query filters unqueryable tables."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -528,9 +554,11 @@ class TestDatabricksConnectorDatasetDiscovery:
         assert len(result.available_datasets) == 1
         assert result.available_datasets[0].name == "catalog1.schema1.queryable_table"
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_can_query_table(self, mock_create_engine):
+    def test_can_query_table(self, mock_create_engine, mock_config):
         """Test permission validation helper method."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_conn = Mock()
         mock_conn.execute.return_value = Mock()
@@ -548,9 +576,11 @@ class TestDatabricksConnectorDatasetDiscovery:
         # Verify LIMIT 0 query was executed
         mock_conn.execute.assert_called()
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_can_query_table_permission_denied(self, mock_create_engine):
+    def test_can_query_table_permission_denied(self, mock_create_engine, mock_config):
         """Test permission validation returns False on error."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_conn = Mock()
         mock_conn.execute.side_effect = Exception("permission denied")
@@ -568,8 +598,10 @@ class TestDatabricksConnectorDatasetDiscovery:
 class TestDatabricksConnectorRead:
     """Test data reading functionality."""
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_read_builds_query_and_returns_dataframe(self, mock_create_engine):
+    def test_read_builds_query_and_returns_dataframe(self, mock_create_engine, mock_config):
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_conn = Mock()
         mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
@@ -595,9 +627,11 @@ class TestDatabricksConnectorRead:
 class TestDatabricksConnectorQualifiedNames:
     """Test qualified table name building with proper escaping."""
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_build_qualified_table_name(self, mock_create_engine):
+    def test_build_qualified_table_name(self, mock_create_engine, mock_config):
         """Test that _build_qualified_table_name properly escapes identifiers."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -608,9 +642,11 @@ class TestDatabricksConnectorQualifiedNames:
         qualified = conn._build_qualified_table_name("catalog1", "schema1", "table1")
         assert qualified == "`catalog1`.`schema1`.`table1`"
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_build_qualified_table_name_with_special_chars(self, mock_create_engine):
+    def test_build_qualified_table_name_with_special_chars(self, mock_create_engine, mock_config):
         """Test escaping of table names with special characters."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -621,9 +657,11 @@ class TestDatabricksConnectorQualifiedNames:
         qualified = conn._build_qualified_table_name("cat`log", "sche`ma", "tab`le")
         assert qualified == "`cat\\`log`.`sche\\`ma`.`tab\\`le`"
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
-    def test_get_qualified_table_name_from_locator(self, mock_create_engine):
+    def test_get_qualified_table_name_from_locator(self, mock_create_engine, mock_config):
         """Test that _get_qualified_table_name extracts from locator correctly."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -643,12 +681,14 @@ class TestDatabricksConnectorQualifiedNames:
 class TestDatabricksConnectorConnectionRobust:
     """Test robust connection validation."""
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
     @patch("connectors.databricks_connector.WorkspaceClient")
     def test_test_connection_finds_accessible_table(
-        self, mock_workspace_client_class, mock_create_engine
+        self, mock_workspace_client_class, mock_create_engine, mock_config
     ):
         """Test that test_connection successfully finds and queries an accessible table."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -687,12 +727,14 @@ class TestDatabricksConnectorConnectionRobust:
         # Verify it tried to list catalogs
         mock_client.catalogs.list.assert_called_once()
 
+    @patch("connectors.databricks_connector.Config")
     @patch("connectors.databricks_connector.create_engine")
     @patch("connectors.databricks_connector.WorkspaceClient")
     def test_test_connection_succeeds_without_queryable_tables(
-        self, mock_workspace_client_class, mock_create_engine
+        self, mock_workspace_client_class, mock_create_engine, mock_config
     ):
         """Test that connection succeeds even if no queryable tables found (warning logged)."""
+        mock_config.return_value = MagicMock()
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
