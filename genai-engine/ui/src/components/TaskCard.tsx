@@ -119,6 +119,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     navigate(`/tasks/${task.id}/traces`);
   };
 
+  const cardClassName =
+    "group bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-lg " +
+    "hover:bg-gradient-to-br hover:from-blue-50/30 hover:to-transparent transition-all duration-200 relative";
+
   return (
     <>
       <style>{`
@@ -127,10 +131,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div
-        onClick={handleTaskClick}
-        className="group bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-lg hover:bg-gradient-to-br hover:from-blue-50/30 hover:to-transparent transition-all duration-200 relative"
-      >
+      <div onClick={handleTaskClick} className={cardClassName}>
         <div className="p-5 h-full flex flex-col space-y-4">
           {/* Header with badge */}
           <div className="flex items-start justify-between gap-2">
