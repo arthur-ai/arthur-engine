@@ -73,7 +73,6 @@ class ExternalTraceRetrievalService:
         start_time: datetime,
         end_time: datetime,
         max_traces: Optional[int] = None,
-        verbose: bool = False,
         timeout: float = 300.0,
     ) -> List[Dict[str, Any]]:
         """
@@ -92,7 +91,7 @@ class ExternalTraceRetrievalService:
         Returns:
             List of traces in GenAI Engine format
         """
-        logger.info(
+        logger.debug(
             f"Fetching traces from Cloud Trace for Project: {project_id} with Resource ID: {resource_id}",
         )
 
@@ -113,7 +112,7 @@ class ExternalTraceRetrievalService:
             for trace in page_result:
                 trace_ids.append(trace.trace_id)
 
-            logger.info(f"  Found {len(trace_ids)} total trace ID(s)")
+            logger.debug(f"  Found {len(trace_ids)} total trace ID(s)")
 
             if max_traces:
                 trace_ids = trace_ids[:max_traces]
@@ -124,8 +123,8 @@ class ExternalTraceRetrievalService:
             # Fetch complete traces
             traces = []
             for i, trace_id in enumerate(trace_ids, 1):
-                if verbose and i % 10 == 0:
-                    logger.info(f"  Fetching trace {i}/{len(trace_ids)}...")
+                if i % 10 == 0:
+                    logger.debug(f"  Fetching trace {i}/{len(trace_ids)}...")
 
                 get_request = trace_v1.GetTraceRequest(
                     project_id=project_id,
@@ -136,17 +135,15 @@ class ExternalTraceRetrievalService:
                     trace = trace_client.get_trace(request=get_request, timeout=timeout)
                     traces.append(trace)
                 except Exception as e:
-                    if verbose:
-                        logger.warning(f"  Could not fetch trace {trace_id}: {e}")
+                    logger.debug(f"  Could not fetch trace {trace_id}: {e}")
                     continue
 
-            logger.info(f"  ✓ Fetched {len(traces)} complete trace(s)")
+            logger.debug(f"  ✓ Fetched {len(traces)} complete trace(s)")
 
             # Convert traces to GenAI format
             genai_traces = []
             for i, trace in enumerate(traces, 1):
-                if verbose:
-                    logger.info(f"  Sending trace {i}/{len(traces)}: {trace.trace_id}")
+                logger.debug(f"  Sending trace {i}/{len(traces)}: {trace.trace_id}")
 
                 genai_trace = self._convert_gcp_trace_to_genai_format(trace, task_id)
                 genai_traces.append(genai_trace)

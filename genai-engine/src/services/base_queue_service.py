@@ -112,34 +112,46 @@ class BaseQueueService(ABC, Generic[JobType]):
         """Schedule a job to be executed. Returns True if enqueued, False if already active."""
         job_key = self._get_job_key(job)
 
-        # Check if job is already active
-        with self.active_jobs_lock:
-            if job_key in self.active_jobs:
-                logger.debug(
-                    f"Job with key {job_key} is already active, skipping enqueue",
+        try:
+            # Check if job is already active
+            with self.active_jobs_lock:
+                if job_key in self.active_jobs:
+                    logger.debug(
+                        f"Job with key {job_key} is already active, skipping enqueue",
+                    )
+                    return False
+                self.active_jobs.add(job_key)
+
+            if self.override_execution_delay is not None:
+                wait_time = (
+                    job.execute_at - job.delay_seconds + self.override_execution_delay
                 )
-                return False
-            self.active_jobs.add(job_key)
+            else:
+                wait_time = job.execute_at
 
-        if self.override_execution_delay is not None:
-            wait_time = (
-                job.execute_at - job.delay_seconds + self.override_execution_delay
-            )
-        else:
-            wait_time = job.execute_at
+            wait_time = max(0, wait_time - time.time())
+            if not self.executor:
+                logger.error(
+                    f"Cannot submit job: executor is not initialized. Start the {self.service_name} first.",
+                )
+                # Remove from active jobs since we couldn't enqueue
+                with self.active_jobs_lock:
+                    self.active_jobs.discard(job_key)
+                raise ValueError(
+                    f"{self.service_name} is not initialized. Start the {self.service_name} first.",
+                )
 
-        wait_time = max(0, wait_time - time.time())
-        if not self.executor:
+            self.executor.submit(self._execute_job_wrapper, job)
+        except Exception as e:
+            # Executor might be shutting down or have other issues
             logger.error(
-                f"Cannot submit job: executor is not initialized. Start the {self.service_name} first.",
+                f"Failed to submit job wrapper for {job_key}: {e}",
+                exc_info=True,
             )
-            # Remove from active jobs since we couldn't enqueue
             with self.active_jobs_lock:
                 self.active_jobs.discard(job_key)
-            raise ValueError(
-                f"{self.service_name} is not initialized. Start the {self.service_name} first.",
-            )
-        self.executor.submit(self._submit_job, job, wait_time)
+            raise e
+
         return True
 
     @abstractmethod

@@ -2,20 +2,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
-    JSON,
     TIMESTAMP,
-    CheckConstraint,
     ForeignKey,
-    Index,
     Integer,
     String,
-    event,
-    text,
 )
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,36 +26,6 @@ class DatabaseAgentPollingData(Base):
 
     __tablename__ = "agent_polling_data"
 
-    # Table constraints
-    __table_args__ = (
-        # Unique constraint: only one row per GCP resource_id
-        Index(
-            "uq_gcp_resource_id",
-            text("(gcp_credentials->>'resource_id')"),
-            unique=True,
-            postgresql_where=text(
-                "provider = 'gcp' AND gcp_credentials->>'resource_id' IS NOT NULL",
-            ),
-        ),
-        # Check constraint: gcp_credentials must be non-null when provider is 'gcp'
-        CheckConstraint(
-            "provider != 'gcp' OR gcp_credentials IS NOT NULL",
-            name="ck_gcp_credentials_required",
-        ),
-        # Check constraint: gcp_credentials must contain project_id, region, and resource_id
-        CheckConstraint(
-            """provider != 'gcp' OR (
-                gcp_credentials ? 'project_id' AND
-                gcp_credentials ? 'region' AND
-                gcp_credentials ? 'resource_id' AND
-                gcp_credentials->>'project_id' IS NOT NULL AND
-                gcp_credentials->>'region' IS NOT NULL AND
-                gcp_credentials->>'resource_id' IS NOT NULL
-            )""",
-            name="ck_gcp_credentials_fields",
-        ),
-    )
-
     # Primary identifiers
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     task_id: Mapped[str] = mapped_column(
@@ -69,14 +33,6 @@ class DatabaseAgentPollingData(Base):
         ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-    )
-
-    provider: Mapped[str] = mapped_column(String, nullable=False)
-
-    # project id, resource id and region
-    gcp_credentials: Mapped[Optional[Dict[str, str]]] = mapped_column(
-        JSON().with_variant(postgresql.JSONB, "postgresql"),
-        nullable=True,
     )
 
     status: Mapped[str] = mapped_column(String, nullable=False)
@@ -103,24 +59,3 @@ class DatabaseAgentPollingData(Base):
 
     # Relationships
     task: Mapped["DatabaseTask"] = relationship(back_populates="agent_polling_data")
-
-
-# Event listener to remove PostgreSQL-specific constraints and indexes from SQLite
-@event.listens_for(DatabaseAgentPollingData.__table__, "before_create")
-def _remove_postgres_constraint_for_sqlite(
-    target: Any,
-    connection: Any,
-    **_kw: Any,
-) -> None:
-    """Remove the JSONB check constraint and indexes for SQLite compatibility"""
-    if connection.dialect.name == "sqlite":
-        # Remove the ck_gcp_credentials_fields constraint which uses PostgreSQL JSONB operators
-        target.constraints = {
-            c
-            for c in target.constraints
-            if not (
-                isinstance(c, CheckConstraint) and c.name == "ck_gcp_credentials_fields"
-            )
-        }
-        # Remove the uq_gcp_resource_id index which uses PostgreSQL JSONB operators
-        target.indexes = {i for i in target.indexes if i.name != "uq_gcp_resource_id"}

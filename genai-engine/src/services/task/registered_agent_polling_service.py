@@ -9,16 +9,30 @@ from sqlalchemy.orm import Session
 
 from db_models.agent_polling_models import DatabaseAgentPollingData
 from dependencies import get_db_session
+from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
+from repositories.tasks_repository import TaskRepository
 from schemas.internal_schemas import AgentPollingData
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from services.trace.external_trace_retrieval_service import (
     ExternalTraceRetrievalService,
 )
+from utils import constants
+from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
+
+# Time interval agentic polling jobs (defaults to 1 hour)
+AGENTIC_POLLING_INTERVAL_SECONDS: int = int(
+    get_env_var(
+        constants.GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR,
+        True,
+    )
+    or 3600,
+)
 
 
 class AgentPollingJob(BaseQueueJob):
@@ -27,7 +41,7 @@ class AgentPollingJob(BaseQueueJob):
     def __init__(
         self,
         agent_polling_data_id: uuid.UUID,
-        delay_seconds: int = 10,
+        delay_seconds: int = 0,
     ):
         super().__init__(delay_seconds)
         self.agent_polling_data_id = agent_polling_data_id
@@ -50,8 +64,8 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         while not self.shutdown_event.is_set():
             try:
-                # Checks for new traces once per hour
-                if self.shutdown_event.wait(timeout=3600):
+                # Checks for new traces once per AGENTIC_POLLING_INTERVAL_SECONDS
+                if self.shutdown_event.wait(timeout=AGENTIC_POLLING_INTERVAL_SECONDS):
                     break
 
                 # Poll all registered agents
@@ -121,7 +135,6 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
                 # Create a job to poll for new data
                 job = AgentPollingJob(
                     agent_polling_data_id=agent_data.id,
-                    delay_seconds=10,
                 )
                 if self.enqueue(job):
                     # Set status to PENDING only if successfully enqueued
@@ -176,6 +189,25 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
                 db_agent_polling_data,
             )
 
+            # Get the task
+            rule_repository = RuleRepository(db_session)
+            metric_repository = MetricRepository(db_session)
+            configuration_repository = ConfigurationRepository(db_session)
+            application_config = configuration_repository.get_configurations()
+            task_repository = TaskRepository(
+                db_session,
+                rule_repository,
+                metric_repository,
+                application_config,
+            )
+            task = task_repository.get_task_by_id(agent_polling_data.task_id)
+            if not task:
+                raise ValueError(f"Task {agent_polling_data.task_id} not found")
+            if task.task_metadata is None:
+                raise ValueError(
+                    f"Task {agent_polling_data.task_id} has no task metadata",
+                )
+
             # Determine the time range to poll
             now = datetime.now()
             if agent_polling_data.last_fetched is None:
@@ -202,26 +234,26 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
 
             # Check provider and call appropriate polling method
             traces = []
-            if agent_polling_data.provider == RegisteredAgentProvider.GCP.value:
+            if task.task_metadata.provider == RegisteredAgentProvider.GCP:
                 logger.info(
                     f"Polling GCP agent {job.agent_polling_data_id} for traces between {start_time} and {now}",
                 )
 
-                if agent_polling_data.gcp_credentials is None:
+                if task.task_metadata.gcp_metadata is None:
                     raise ValueError(
-                        "GCP credentials are required for GCP provider",
+                        "GCP metadata are required for GCP provider",
                     )
                 traces = external_trace_retrieval_service.fetch_traces_from_cloud_trace(
-                    task_id=agent_polling_data.task_id,
-                    project_id=agent_polling_data.gcp_credentials.project_id,
-                    resource_id=agent_polling_data.gcp_credentials.resource_id,
+                    task_id=task.id,
+                    project_id=task.task_metadata.gcp_metadata.project_id,
+                    resource_id=task.task_metadata.gcp_metadata.resource_id,
                     start_time=start_time,
                     end_time=now,
-                    timeout=300,
+                    timeout=60,  # 1 minute timeout
                 )
             else:
                 logger.warning(
-                    f"Unsupported provider '{agent_polling_data.provider}', skipping polling",
+                    f"Unsupported provider '{task.task_metadata.provider}', skipping polling",
                 )
 
             if len(traces) == 0:
@@ -241,7 +273,6 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
                 return
 
             tasks_metrics_repository = TasksMetricsRepository(db_session)
-            metric_repository = MetricRepository(db_session)
             span_repository = SpanRepository(
                 db_session,
                 tasks_metrics_repository,
@@ -249,8 +280,8 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
             )
             span_repository.convert_and_send_traces_from_external_provider(
                 traces=traces,
-                provider=agent_polling_data.provider,
-                task_id=agent_polling_data.task_id,
+                provider=task.task_metadata.provider,
+                task_id=task.id,
             )
 
             # Update last_fetched timestamp on the existing database record

@@ -1,4 +1,4 @@
-from services.agent_discovery.registered_agent_polling_service import (
+from services.task.registered_agent_polling_service import (
     AgentPollingJob,
     RegisteredAgentPollingService,
     get_registered_agent_polling_service,

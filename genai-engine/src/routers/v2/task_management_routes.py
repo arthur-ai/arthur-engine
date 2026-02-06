@@ -29,7 +29,7 @@ from clients.telemetry.telemetry_client import (
 )
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session
-from repositories.agent_discovery_repository import AgentDiscoveryRepository
+from repositories.agent_polling_repository import AgentPollingRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -86,12 +86,11 @@ def create_task(
         task = Task._from_request_model(request)
         task = tasks_repo.create_task(task)
 
-        if request.agent_metadata is not None:
+        if request.is_agentic and request.agent_metadata is not None:
             try:
-                agent_discovery_repo = AgentDiscoveryRepository(db_session)
-                agent_discovery_repo.start_polling_for_agent(
+                agent_polling_repo = AgentPollingRepository(db_session)
+                agent_polling_repo.start_polling_for_agent(
                     task.id,
-                    request.agent_metadata,
                 )
             except Exception as e:
                 tasks_repo.archive_task(task.id)

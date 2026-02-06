@@ -202,6 +202,14 @@ LEGACY_KEYCLOAK_ROLES: dict[str, str] = {
 TELEMETRY_ENABLED_ENV_VAR = "TELEMETRY_ENABLED"
 
 ##################################################################
+
+##################################################################
+# Agentic Platform
+GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR = (
+    "GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS"
+)
+
+##################################################################
 # CONTEXT WINDOW LENGTHS
 
 # Currently OpenAI doesn't offer a way of retrieving the context window length for a specific model programmatically

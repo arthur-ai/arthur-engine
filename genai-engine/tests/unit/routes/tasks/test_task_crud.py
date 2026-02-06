@@ -186,12 +186,12 @@ def test_create_task_with_agent_metadata_creates_agent_polling_data(
     )
 
     assert agent_polling_data is not None
-    assert agent_polling_data.provider == "gcp"
-    assert agent_polling_data.status == "pending"
-    assert agent_polling_data.gcp_credentials["project_id"] == "test-project"
-    assert agent_polling_data.gcp_credentials["region"] == "test-region"
-    assert agent_polling_data.gcp_credentials["resource_id"] == "test-resource"
+    assert agent_polling_data.task_id == task_response.id
     assert agent_polling_data.failed_runs == 0
+    assert task_response.agent_metadata.provider == RegisteredAgentProvider.GCP.value
+    assert task_response.agent_metadata.gcp_metadata.project_id == "test-project"
+    assert task_response.agent_metadata.gcp_metadata.region == "test-region"
+    assert task_response.agent_metadata.gcp_metadata.resource_id == "test-resource"
 
     # Clean up - delete agent polling data from db and task
     db_session.delete(agent_polling_data)

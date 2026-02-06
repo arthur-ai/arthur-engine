@@ -5,10 +5,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from arthur_common.models.enums import AgentPollingStatus, RegisteredAgentProvider
 from google.api_core.exceptions import GoogleAPIError
+from sqlalchemy.orm import Session
 
 from db_models.agent_polling_models import DatabaseAgentPollingData
+from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
-from services.agent_discovery.registered_agent_polling_service import (
+from services.task.registered_agent_polling_service import (
     AgentPollingJob,
     RegisteredAgentPollingService,
 )
@@ -41,9 +43,31 @@ def mock_fetch_traces_from_cloud_trace(*args, **kwargs):
     ]
 
 
+def create_task(db_session: Session) -> DatabaseTask:
+    task_response = DatabaseTask(
+        id=str(uuid.uuid4()),
+        name="test_registered_agent_polling_execution_success_task",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        is_agentic=True,
+        task_metadata={
+            "provider": RegisteredAgentProvider.GCP.value,
+            "gcp_metadata": {
+                "project_id": "test-project",
+                "region": "test-region",
+                "resource_id": "test-resource",
+            },
+        },
+    )
+    db_session.add(task_response)
+    db_session.commit()
+    db_session.expire_all()
+    return task_response
+
+
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 @patch(
@@ -59,11 +83,7 @@ def test_registered_agent_polling_execution_success(
 
     db_session = override_get_db_session()
 
-    status_code, task_response = client.create_task(
-        name="test_registered_agent_polling_execution_success_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
+    task_response = create_task(db_session)
 
     agent_polling_data = None
     try:
@@ -72,12 +92,6 @@ def test_registered_agent_polling_execution_success(
         agent_polling_data = DatabaseAgentPollingData(
             id=agent_polling_data_id,
             task_id=task_response.id,
-            provider=RegisteredAgentProvider.GCP.value,
-            gcp_credentials={
-                "project_id": "test-project",
-                "region": "test-region",
-                "resource_id": "test-resource",
-            },
             status=AgentPollingStatus.PENDING.value,
             failed_runs=0,
             error_message=None,
@@ -115,14 +129,14 @@ def test_registered_agent_polling_execution_success(
     finally:
         if agent_polling_data is not None:
             db_session.delete(agent_polling_data)
-            db_session.commit()
 
-        client.delete_task(task_response.id)
+        db_session.delete(task_response)
+        db_session.commit()
 
 
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 @patch(
@@ -136,11 +150,8 @@ def test_registered_agent_polling_execution_nonexistent_agent_polling_data(
 ):
     """Test the registered agent polling execution when agent polling data does not exist"""
 
-    status_code, task_response = client.create_task(
-        name="test_registered_agent_polling_execution_success_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
+    db_session = override_get_db_session()
+    task_response = create_task(db_session)
 
     try:
         # Create agent polling data
@@ -160,12 +171,13 @@ def test_registered_agent_polling_execution_nonexistent_agent_polling_data(
         ):
             registered_agent_polling_service._execute_job(job)
     finally:
-        client.delete_task(task_response.id)
+        db_session.delete(task_response)
+        db_session.commit()
 
 
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 @patch(
@@ -179,13 +191,9 @@ def test_registered_agent_polling_execution_no_traces_still_updates_last_fetched
 ):
     """Test the registered agent polling execution when no traces are found"""
 
-    status_code, task_response = client.create_task(
-        name="test_registered_agent_polling_execution_success_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
     db_session = override_get_db_session()
+    task_response = create_task(db_session)
+
     agent_polling_data = None
     try:
         # Create agent polling data
@@ -193,12 +201,6 @@ def test_registered_agent_polling_execution_no_traces_still_updates_last_fetched
         agent_polling_data = DatabaseAgentPollingData(
             id=agent_polling_data_id,
             task_id=task_response.id,
-            provider=RegisteredAgentProvider.GCP.value,
-            gcp_credentials={
-                "project_id": "test-project",
-                "region": "test-region",
-                "resource_id": "test-resource",
-            },
             status=AgentPollingStatus.PENDING.value,
             failed_runs=0,
             error_message=None,
@@ -234,14 +236,14 @@ def test_registered_agent_polling_execution_no_traces_still_updates_last_fetched
     finally:
         if agent_polling_data is not None:
             db_session.delete(agent_polling_data)
-            db_session.commit()
 
-        client.delete_task(task_response.id)
+        db_session.delete(task_response)
+        db_session.commit()
 
 
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 @patch(
@@ -255,13 +257,9 @@ def test_registered_agent_polling_execution_allows_five_failures_before_marking_
 ):
     """Test the registered agent polling execution when no traces are found"""
 
-    status_code, task_response = client.create_task(
-        name="test_registered_agent_polling_execution_success_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
     db_session = override_get_db_session()
+    task_response = create_task(db_session)
+
     agent_polling_data = None
     try:
         # Create agent polling data
@@ -269,12 +267,6 @@ def test_registered_agent_polling_execution_allows_five_failures_before_marking_
         agent_polling_data = DatabaseAgentPollingData(
             id=agent_polling_data_id,
             task_id=task_response.id,
-            provider=RegisteredAgentProvider.GCP.value,
-            gcp_credentials={
-                "project_id": "test-project",
-                "region": "test-region",
-                "resource_id": "test-resource",
-            },
             status=AgentPollingStatus.PENDING.value,
             failed_runs=0,
             error_message=None,
@@ -334,14 +326,14 @@ def test_registered_agent_polling_execution_allows_five_failures_before_marking_
     finally:
         if agent_polling_data is not None:
             db_session.delete(agent_polling_data)
-            db_session.commit()
 
-        client.delete_task(task_response.id)
+        db_session.delete(task_response)
+        db_session.commit()
 
 
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 @patch(
@@ -355,13 +347,9 @@ def test_registered_agent_polling_execution_errors_immediately_on_non_api_errors
 ):
     """Test the registered agent polling execution when an error is raised that is not an external service api error"""
 
-    status_code, task_response = client.create_task(
-        name="test_registered_agent_polling_execution_success_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
     db_session = override_get_db_session()
+    task_response = create_task(db_session)
+
     agent_polling_data = None
     try:
         # Create agent polling data
@@ -369,12 +357,6 @@ def test_registered_agent_polling_execution_errors_immediately_on_non_api_errors
         agent_polling_data = DatabaseAgentPollingData(
             id=agent_polling_data_id,
             task_id=task_response.id,
-            provider=RegisteredAgentProvider.GCP.value,
-            gcp_credentials={
-                "project_id": "test-project",
-                "region": "test-region",
-                "resource_id": "test-resource",
-            },
             status=AgentPollingStatus.PENDING.value,
             failed_runs=0,
             error_message=None,
@@ -414,14 +396,14 @@ def test_registered_agent_polling_execution_errors_immediately_on_non_api_errors
     finally:
         if agent_polling_data is not None:
             db_session.delete(agent_polling_data)
-            db_session.commit()
 
-        client.delete_task(task_response.id)
+        db_session.delete(task_response)
+        db_session.commit()
 
 
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 @patch(
@@ -436,13 +418,9 @@ def test_registered_agent_polling_execution_already_running(
 ):
     """Test the registered agent polling execution when the agent polling data is already running"""
 
-    status_code, task_response = client.create_task(
-        name="test_registered_agent_polling_execution_success_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
     db_session = override_get_db_session()
+    task_response = create_task(db_session)
+
     agent_polling_data = None
     try:
         # Create agent polling data
@@ -450,12 +428,6 @@ def test_registered_agent_polling_execution_already_running(
         agent_polling_data = DatabaseAgentPollingData(
             id=agent_polling_data_id,
             task_id=task_response.id,
-            provider=RegisteredAgentProvider.GCP.value,
-            gcp_credentials={
-                "project_id": "test-project",
-                "region": "test-region",
-                "resource_id": "test-resource",
-            },
             status=AgentPollingStatus.RUNNING.value,
             failed_runs=0,
             error_message=None,
@@ -496,14 +468,14 @@ def test_registered_agent_polling_execution_already_running(
     finally:
         if agent_polling_data is not None:
             db_session.delete(agent_polling_data)
-            db_session.commit()
 
-        client.delete_task(task_response.id)
+        db_session.delete(task_response)
+        db_session.commit()
 
 
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 @patch(
@@ -518,13 +490,9 @@ def test_registered_agent_polling_execution_already_failed(
 ):
     """Test the registered agent polling execution when the agent polling data is already failed"""
 
-    status_code, task_response = client.create_task(
-        name="test_registered_agent_polling_execution_success_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
     db_session = override_get_db_session()
+    task_response = create_task(db_session)
+
     agent_polling_data = None
     try:
         # Create agent polling data
@@ -532,12 +500,6 @@ def test_registered_agent_polling_execution_already_failed(
         agent_polling_data = DatabaseAgentPollingData(
             id=agent_polling_data_id,
             task_id=task_response.id,
-            provider=RegisteredAgentProvider.GCP.value,
-            gcp_credentials={
-                "project_id": "test-project",
-                "region": "test-region",
-                "resource_id": "test-resource",
-            },
             status=AgentPollingStatus.ERROR.value,
             failed_runs=0,
             error_message=None,
@@ -578,14 +540,14 @@ def test_registered_agent_polling_execution_already_failed(
     finally:
         if agent_polling_data is not None:
             db_session.delete(agent_polling_data)
-            db_session.commit()
 
-        client.delete_task(task_response.id)
+        db_session.delete(task_response)
+        db_session.commit()
 
 
 @pytest.mark.unit_tests
 @patch(
-    "services.agent_discovery.registered_agent_polling_service.get_db_session",
+    "services.task.registered_agent_polling_service.get_db_session",
     side_effect=mock_get_db_session_generator,
 )
 def test_registered_agent_polling_execution_stores_traces_in_database(
@@ -619,13 +581,9 @@ def test_registered_agent_polling_execution_stores_traces_in_database(
         mock_trace_client.get_trace.return_value = mock_full_trace
         mock_client_class.return_value = mock_trace_client
 
-        status_code, task_response = client.create_task(
-            name="test_registered_agent_polling_execution_stores_traces",
-            is_agentic=True,
-        )
-        assert status_code == 200
-
         db_session = override_get_db_session()
+        task_response = create_task(db_session)
+
         agent_polling_data = None
         try:
             # Create agent polling data
@@ -633,12 +591,6 @@ def test_registered_agent_polling_execution_stores_traces_in_database(
             agent_polling_data = DatabaseAgentPollingData(
                 id=agent_polling_data_id,
                 task_id=task_response.id,
-                provider=RegisteredAgentProvider.GCP.value,
-                gcp_credentials={
-                    "project_id": "test-project",
-                    "region": "test-region",
-                    "resource_id": "test-resource",
-                },
                 status=AgentPollingStatus.PENDING.value,
                 failed_runs=0,
                 error_message=None,
@@ -726,5 +678,5 @@ def test_registered_agent_polling_execution_stores_traces_in_database(
             if agent_polling_data is not None:
                 db_session.delete(agent_polling_data)
 
+            db_session.delete(task_response)
             db_session.commit()
-            client.delete_task(task_response.id)

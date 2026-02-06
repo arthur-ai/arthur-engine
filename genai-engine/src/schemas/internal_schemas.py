@@ -31,7 +31,6 @@ from arthur_common.models.enums import (
     ToxicityViolationType,
 )
 from arthur_common.models.request_schemas import (
-    AgentMetadata,
     NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
@@ -574,22 +573,61 @@ class TaskToMetricLink(BaseModel):
         )
 
 
+class RegisteredGCPAgentCredentials(BaseModel):
+    """
+    Credentials required for polling registered GCP agents.
+    """
+
+    region: str
+    project_id: str
+    resource_id: str
+
+
+class TaskMetadata(BaseModel):
+    """
+    Metadata for a task.
+    """
+
+    provider: RegisteredAgentProvider = Field(
+        ...,
+        description="Provider of the registered agent.",
+    )
+    gcp_metadata: Optional[RegisteredGCPAgentCredentials] = Field(
+        default=None,
+        description="Metadata for a registered GCP agent.",
+    )
+
+
 class Task(BaseModel):
     id: str
     name: str
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
-    task_metadata: Optional[dict[str, Any]] = None
+    task_metadata: Optional[TaskMetadata] = None
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
     def _from_request_model(x: NewTaskRequest) -> "Task":
         # Convert AgentMetadata to dict for database storage
-        task_metadata_dict = None
+        task_metadata = None
         if x.agent_metadata:
-            task_metadata_dict = x.agent_metadata.model_dump(exclude_none=True)
+            gcp_metadata = None
+            if x.agent_metadata.provider == RegisteredAgentProvider.GCP:
+                if x.agent_metadata.gcp_metadata is None:
+                    raise ValueError("GCP metadata is required when provider is GCP.")
+
+                gcp_metadata = RegisteredGCPAgentCredentials(
+                    region=x.agent_metadata.gcp_metadata.region,
+                    project_id=x.agent_metadata.gcp_metadata.project_id,
+                    resource_id=x.agent_metadata.gcp_metadata.resource_id,
+                )
+
+            task_metadata = TaskMetadata(
+                provider=x.agent_metadata.provider,
+                gcp_metadata=gcp_metadata,
+            )
 
         return Task(
             id=str(uuid.uuid4()),
@@ -597,7 +635,7 @@ class Task(BaseModel):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=x.is_agentic,
-            task_metadata=task_metadata_dict,
+            task_metadata=task_metadata,
         )
 
     @staticmethod
@@ -608,7 +646,11 @@ class Task(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             is_agentic=x.is_agentic,
-            task_metadata=x.task_metadata,
+            task_metadata=(
+                TaskMetadata.model_validate(x.task_metadata)
+                if x.task_metadata
+                else None
+            ),
             rule_links=[
                 TaskToRuleLink._from_database_model(link) for link in x.rule_links
             ],
@@ -624,7 +666,11 @@ class Task(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             is_agentic=self.is_agentic,
-            task_metadata=self.task_metadata,
+            task_metadata=(
+                self.task_metadata.model_dump(exclude_none=True)
+                if self.task_metadata
+                else None
+            ),
         )
 
     def _to_response_model(self) -> TaskResponse:
@@ -643,7 +689,9 @@ class Task(BaseModel):
         # Convert dict back to AgentMetadataResponse
         agent_metadata_response = None
         if self.task_metadata:
-            agent_metadata_response = AgentMetadataResponse(**self.task_metadata)
+            agent_metadata_response = AgentMetadataResponse(
+                **self.task_metadata.model_dump(exclude_none=True),
+            )
 
         return TaskResponse(
             id=self.id,
@@ -4362,16 +4410,6 @@ class AgenticNotebook(BaseModel):
         return state
 
 
-class RegisteredGCPAgentCredentials(BaseModel):
-    """
-    Credentials required for polling registered GCP agents.
-    """
-
-    region: str
-    project_id: str
-    resource_id: str
-
-
 class AgentPollingData(BaseModel):
     """
     Data required for polling registered agents.
@@ -4379,13 +4417,6 @@ class AgentPollingData(BaseModel):
 
     id: uuid.UUID = Field(description="ID of the agent polling data.")
     task_id: str = Field(description="ID of the parent task.")
-    provider: RegisteredAgentProvider = Field(
-        description="Provider of the registered agent.",
-    )
-    gcp_credentials: Optional[RegisteredGCPAgentCredentials] = Field(
-        default=None,
-        description="Optional GCP credentials for the agent.",
-    )
     created_at: datetime = Field(description="Time the agent polling data was created.")
     updated_at: datetime = Field(
         description="Time the agent polling data was last updated.",
@@ -4405,28 +4436,14 @@ class AgentPollingData(BaseModel):
     )
 
     @staticmethod
-    def from_metadata_request_model(
+    def from_task_id(
         task_id: str,
-        metadata_request: AgentMetadata,
     ) -> "AgentPollingData":
-        gcp_credentials = None
-        if metadata_request.provider == RegisteredAgentProvider.GCP:
-            if metadata_request.gcp_metadata is None:
-                raise ValueError("GCP metadata is required when provider is GCP.")
-
-            gcp_credentials = RegisteredGCPAgentCredentials(
-                region=metadata_request.gcp_metadata.region,
-                project_id=metadata_request.gcp_metadata.project_id,
-                resource_id=metadata_request.gcp_metadata.resource_id,
-            )
-
         now = datetime.now()
 
         return AgentPollingData(
             id=uuid.uuid4(),
             task_id=task_id,
-            provider=metadata_request.provider,
-            gcp_credentials=gcp_credentials,
             created_at=now,
             updated_at=now,
             last_fetched=None,
@@ -4439,26 +4456,9 @@ class AgentPollingData(BaseModel):
     def from_database_model(
         db_model: DatabaseAgentPollingData,
     ) -> "AgentPollingData":
-        gcp_credentials = None
-        if db_model.provider == RegisteredAgentProvider.GCP.value:
-            if db_model.gcp_credentials is None:
-                raise ValueError("GCP credentials cannot be null for GCP provider")
-            try:
-                gcp_credentials = RegisteredGCPAgentCredentials(
-                    region=db_model.gcp_credentials["region"],
-                    project_id=db_model.gcp_credentials["project_id"],
-                    resource_id=db_model.gcp_credentials["resource_id"],
-                )
-            except KeyError:
-                raise ValueError(
-                    f"GCP credentials are missing required fields: {db_model.gcp_credentials}",
-                )
-
         return AgentPollingData(
             id=db_model.id,
             task_id=db_model.task_id,
-            provider=RegisteredAgentProvider(db_model.provider),
-            gcp_credentials=gcp_credentials,
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
             last_fetched=db_model.last_fetched,
@@ -4471,10 +4471,6 @@ class AgentPollingData(BaseModel):
         return DatabaseAgentPollingData(
             id=self.id,
             task_id=self.task_id,
-            provider=self.provider.value,
-            gcp_credentials=(
-                self.gcp_credentials.model_dump() if self.gcp_credentials else None
-            ),
             created_at=self.created_at,
             updated_at=self.updated_at,
             last_fetched=self.last_fetched,

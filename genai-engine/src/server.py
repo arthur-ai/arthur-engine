@@ -44,6 +44,7 @@ from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agent_discovery_routes import agent_discovery_routes
+from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
@@ -69,13 +70,13 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
-from services.agent_discovery import (
-    initialize_registered_agent_polling_service,
-    shutdown_registered_agent_polling_service,
-)
 from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
+)
+from services.task import (
+    initialize_registered_agent_polling_service,
+    shutdown_registered_agent_polling_service,
 )
 from utils import constants as constants
 from utils import model_load
@@ -436,6 +437,7 @@ def get_app_with_routes() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_discovery_routes,
+            agent_polling_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -476,6 +478,7 @@ def get_test_app() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_discovery_routes,
+            agent_polling_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -526,6 +529,7 @@ def get_app() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_discovery_routes,
+            agent_polling_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:
