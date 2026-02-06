@@ -12,7 +12,7 @@ from db_models import (
     DatabaseTraceMetadata,
 )
 from repositories.resource_metadata_repository import ResourceMetadataRepository
-from utils.constants import SYSTEM_TASK_NAME
+from utils.task_utils import get_system_task_id
 
 logger = logging.getLogger(__name__)
 
@@ -33,34 +33,6 @@ class ServiceNameMappingRepository:
         self.resource_metadata_repo = (
             resource_metadata_repo or ResourceMetadataRepository(db_session)
         )
-        self._system_task_id_cache: Optional[str] = None
-
-    def _get_system_task_id(self) -> str:
-        """Get the system task ID for unregistered traces (cached).
-
-        Returns:
-            str: The system task ID
-
-        Raises:
-            RuntimeError: If system task not found
-        """
-        if self._system_task_id_cache is not None:
-            return self._system_task_id_cache
-
-        system_task = (
-            self.db_session.query(DatabaseTask)
-            .filter(
-                DatabaseTask.is_system_task == True,
-                DatabaseTask.name == SYSTEM_TASK_NAME,
-            )
-            .first()
-        )
-
-        if not system_task:
-            raise RuntimeError(f"System task '{SYSTEM_TASK_NAME}' not found.")
-
-        self._system_task_id_cache = system_task.id
-        return self._system_task_id_cache
 
     def create_mapping(
         self,
@@ -130,7 +102,7 @@ class ServiceNameMappingRepository:
             int: Number of traces updated
         """
         # Get system task ID
-        system_task_id = self._get_system_task_id()
+        system_task_id = get_system_task_id(self.db_session)
 
         # Get all resource_ids with this service.name
         resource_ids = self.resource_metadata_repo.get_resource_ids_by_service_name(

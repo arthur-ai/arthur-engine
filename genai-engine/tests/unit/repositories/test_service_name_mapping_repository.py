@@ -109,7 +109,7 @@ def test_retroactive_update_traces():
     task_id = "task-123"
 
     # Mock system task ID
-    with patch.object(repo, "_get_system_task_id", return_value="system-task-id"):
+    with patch("repositories.service_name_mapping_repository.get_system_task_id", return_value="system-task-id"):
         # Mock resource IDs
         resource_metadata_repo.get_resource_ids_by_service_name.return_value = [
             "res1",
@@ -142,7 +142,7 @@ def test_retroactive_update_traces_no_resources():
     task_id = "task-123"
 
     # Mock system task ID
-    with patch.object(repo, "_get_system_task_id", return_value="system-task-id"):
+    with patch("repositories.service_name_mapping_repository.get_system_task_id", return_value="system-task-id"):
         # Mock no resources found
         resource_metadata_repo.get_resource_ids_by_service_name.return_value = []
 
@@ -166,7 +166,7 @@ def test_retroactive_update_traces_no_system_task_traces():
     task_id = "task-123"
 
     # Mock system task ID
-    with patch.object(repo, "_get_system_task_id", return_value="system-task-id"):
+    with patch("repositories.service_name_mapping_repository.get_system_task_id", return_value="system-task-id"):
         # Mock resources found
         resource_metadata_repo.get_resource_ids_by_service_name.return_value = [
             "res1",
@@ -377,43 +377,3 @@ def test_delete_mapping_not_found():
         assert exc_info.value.status_code == 404
 
 
-@pytest.mark.unit_tests
-def test_get_system_task_id_cached():
-    """Test that system task ID is cached after first query."""
-    # Setup
-    db_session = MagicMock()
-    repo = ServiceNameMappingRepository(db_session)
-
-    # Mock system task
-    mock_task = MagicMock(spec=DatabaseTask)
-    mock_task.id = "system-task-123"
-    db_session.query.return_value.filter.return_value.first.return_value = mock_task
-
-    # Execute twice
-    result1 = repo._get_system_task_id()
-    result2 = repo._get_system_task_id()
-
-    # Verify
-    assert result1 == "system-task-123"
-    assert result2 == "system-task-123"
-
-    # Query should only be called once (cached)
-    assert db_session.query.call_count == 1
-
-
-@pytest.mark.unit_tests
-def test_get_system_task_id_not_found():
-    """Test that error is raised when system task not found."""
-    # Setup
-    db_session = MagicMock()
-    repo = ServiceNameMappingRepository(db_session)
-
-    # Mock system task not found
-    db_session.query.return_value.filter.return_value.first.return_value = None
-
-    # Execute & Verify
-    with pytest.raises(RuntimeError) as exc_info:
-        repo._get_system_task_id()
-
-    assert "System task" in str(exc_info.value)
-    assert "not found" in str(exc_info.value)

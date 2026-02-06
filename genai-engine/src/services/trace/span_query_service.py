@@ -48,6 +48,7 @@ from schemas.internal_schemas import (
 )
 from services.trace.filter_service import FilterService
 from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, SPAN_KIND_LLM
+from utils.task_utils import get_system_task_id
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -1281,7 +1282,7 @@ class SpanQueryService:
         end_time: Optional[datetime] = None,
     ) -> tuple[list[tuple[str, int]], int]:
         """
-        Query root spans (parent_span_id IS NULL) for traces without task_id (task_id IS NULL),
+        Query root spans (parent_span_id IS NULL) for traces assigned to the system task,
         grouped by span_name.
 
         Args:
@@ -1294,6 +1295,9 @@ class SpanQueryService:
                 (span_name, count) tuples ordered by count descending,
                 and total_count is the total number of root spans across ALL groups (before pagination)
         """
+        # Get the system task ID
+        system_task_id = get_system_task_id(self.db_session)
+
         # Base query for grouping
         base_query = (
             select(
@@ -1301,7 +1305,7 @@ class SpanQueryService:
                 func.count().label("count"),
             )
             .where(DatabaseSpan.parent_span_id.is_(None))
-            .where(DatabaseSpan.task_id.is_(None))
+            .where(DatabaseSpan.task_id == system_task_id)
         )
 
         # Apply time range filters if provided
