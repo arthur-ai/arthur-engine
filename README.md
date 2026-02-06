@@ -90,6 +90,29 @@ The Arthur Engine can prevent data-security and compliance risks from creating n
 
 _NB: We have provided open-source models for Prompt Injection and Toxicity evaluation as default in the free version of Arthur. In the case that you already have custom solutions for these evaluations and would like to use them, the models used for Prompt Injection and Toxicity are fully customizable and can be substituted out here ([PI Code Pointer](genai-engine/src/scorer/checks/prompt_injection/classifier.py#L20), [Toxicity Code Pointer](genai-engine/src/scorer/checks/toxicity/toxicity.py#L29)). If you are interested in higher performing and/or lower latency evaluations out of the box, please enquire about the enterprise version of Arthur Engine._
 
+## Broad Integration Support Through the OpenInference Specification
+
+Arthur Engine fully supports the OpenInference specification, which allows you to connect the Engine to a wide range of AI frameworks, libraries, and agent stacks without custom instrumentation.
+
+OpenInference provides a shared trace and data schema for AI systems. Since Arthur Engine follows this standard, you can immediately use any integration already built for the OpenInference ecosystem, including the large collection maintained by Arize Phoenix.
+
+This includes support for many popular frameworks such as:
+
+- LangChain  
+- LangGraph  
+- LlamaIndex  
+- Vercel AI SDK  
+- FastAPI and Flask apps instrumented with OpenInference  
+- OpenAI, Anthropic, Google, and other model providers aligned with the spec  
+- Agent frameworks, orchestration tools, and custom pipelines supported by Phoenix integrations  
+- And many others
+
+You can view the full and continuously updated list of supported integrations here:  
+https://github.com/Arize-ai/phoenix?tab=readme-ov-file#tracing-integrations
+
+By adopting OpenInference, Arthur Engine provides a flexible and future proof way to bring traces, spans, metrics, inputs, outputs, and evaluation signals into the Arthur platform. This makes it easy to collect data from diverse Gen AI apps, agents, and services with a single unified integration path.
+
+
 ## Contributing
 
 - Join the Arthur community on [Discord](https://discord.gg/tdfUAtaVHz) to get help and share your feedback.
