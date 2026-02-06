@@ -57,7 +57,7 @@ rules_types = [rule.value for rule in RuleType]
 @task_management_routes.post(
     "/tasks",
     description="Register a new task. When a new task is created, all existing default rules will be "
-    "auto-applied for this new task. Optionally specify if the task is agentic.",
+    "auto-applied for this new task. Optionally specify if the task is agentic. System tasks cannot be created via this API.",
     response_model=TaskResponse,
     tags=["Tasks"],
 )
@@ -74,6 +74,13 @@ def create_task(
             raise HTTPException(
                 status_code=400,
                 detail="Task names cannot contain only white space characters",
+            )
+
+        # Prevent creation of system tasks
+        if request.name == constants.SYSTEM_TASK_NAME:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot create task with name '{constants.SYSTEM_TASK_NAME}'. This is a reserved system task name.",
             )
 
         rules_repo = RuleRepository(db_session)
@@ -137,7 +144,7 @@ def get_all_tasks(
 
 @task_management_routes.delete(
     "/tasks/{task_id}",
-    description="Archive task. Also archives all task-scoped rules. Associated default rules are unaffected.",
+    description="Archive task. Also archives all task-scoped rules. Associated default rules are unaffected. System tasks cannot be deleted.",
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -155,6 +162,15 @@ def archive_task(
             MetricRepository(db_session),
             application_config,
         )
+
+        # Prevent deletion of system tasks
+        task = tasks_repo.get_task_by_id(str(task_id))
+        if task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete system tasks. System tasks are managed automatically.",
+            )
+
         tasks_repo.archive_task(str(task_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)

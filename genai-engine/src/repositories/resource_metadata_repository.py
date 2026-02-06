@@ -32,6 +32,9 @@ class ResourceMetadataRepository:
         Multiple spans/traces with identical resource attributes will reference
         the same resource_id.
 
+        Handles race conditions where multiple concurrent requests may try to
+        create the same resource by using insert-then-query-on-conflict pattern.
+
         Args:
             resource_attributes: Dictionary of OpenTelemetry resource attributes
             service_name: Extracted service.name value (can be None)
@@ -42,7 +45,7 @@ class ResourceMetadataRepository:
         # Generate deterministic ID based on resource attributes content
         resource_id = self._generate_resource_id(resource_attributes)
 
-        # Check if resource already exists
+        # Check if resource already exists (common case - avoid insert attempt)
         existing = self.get_by_id(resource_id)
         if existing:
             logger.debug(
@@ -51,21 +54,43 @@ class ResourceMetadataRepository:
             )
             return resource_id
 
-        # Create new resource
-        resource = DatabaseResourceMetadata(
-            id=resource_id,
-            service_name=service_name,
-            resource_attributes=resource_attributes,
-        )
-        self.db_session.add(resource)
-        self.db_session.commit()
+        # Try to create new resource
+        try:
+            resource = DatabaseResourceMetadata(
+                id=resource_id,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+            self.db_session.add(resource)
+            self.db_session.commit()
 
-        logger.debug(
-            f"Created resource metadata with id={resource_id}, "
-            f"service_name={service_name}"
-        )
+            logger.debug(
+                f"Created resource metadata with id={resource_id}, "
+                f"service_name={service_name}"
+            )
 
-        return resource_id
+            return resource_id
+
+        except Exception as e:
+            # Rollback failed insert
+            self.db_session.rollback()
+
+            # Handle race condition: another request created it between our check and insert
+            # Query again to get the existing record
+            existing = self.get_by_id(resource_id)
+            if existing:
+                logger.debug(
+                    f"Resource metadata created by concurrent request with id={resource_id}, "
+                    f"service_name={service_name}"
+                )
+                return resource_id
+
+            # If still doesn't exist, this is a different error - re-raise
+            logger.error(
+                f"Failed to create resource metadata with id={resource_id}, "
+                f"service_name={service_name}: {e}"
+            )
+            raise
 
     def _generate_resource_id(self, resource_attributes: dict[str, Any]) -> str:
         """Generate deterministic ID from resource attributes using SHA256 hash.

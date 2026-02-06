@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from datetime import datetime
 import uuid
 
+from utils import constants
 
 # revision identifiers, used by Alembic.
 revision = '516d579bd164'
@@ -19,7 +20,7 @@ depends_on = None
 
 # System task ID for unregistered/taskless traces
 SYSTEM_TASK_ID = str(uuid.uuid4())
-SYSTEM_TASK_NAME = "Unregistered Traces"
+SYSTEM_TASK_NAME = constants.SYSTEM_TASK_NAME
 
 
 def upgrade() -> None:
@@ -36,11 +37,11 @@ def upgrade() -> None:
     op.create_index(op.f('ix_resource_metadata_service_name'), 'resource_metadata', ['service_name'], unique=False)
     op.add_column('spans', sa.Column('resource_id', sa.String(), nullable=True))
     op.create_index(op.f('ix_spans_resource_id'), 'spans', ['resource_id'], unique=False)
-    op.create_foreign_key(None, 'spans', 'resource_metadata', ['resource_id'], ['id'])
+    op.create_foreign_key('fk_spans_resource_id', 'spans', 'resource_metadata', ['resource_id'], ['id'])
     op.add_column('tasks', sa.Column('is_system_task', sa.Boolean(), nullable=False, server_default=sa.text('false')))
     op.add_column('trace_metadata', sa.Column('root_span_resource_id', sa.String(), nullable=True))
     op.create_index(op.f('ix_trace_metadata_root_span_resource_id'), 'trace_metadata', ['root_span_resource_id'], unique=False)
-    op.create_foreign_key(None, 'trace_metadata', 'resource_metadata', ['root_span_resource_id'], ['id'])
+    op.create_foreign_key('fk_trace_metadata_root_span_resource_id', 'trace_metadata', 'resource_metadata', ['root_span_resource_id'], ['id'])
     # ### end Alembic commands ###
 
     # Create system task for unregistered traces
@@ -119,11 +120,11 @@ def downgrade() -> None:
         ).bindparams(system_task_id=SYSTEM_TASK_ID)
     )
 
-    op.drop_constraint(None, 'trace_metadata', type_='foreignkey')
+    op.drop_constraint('fk_trace_metadata_root_span_resource_id', 'trace_metadata', type_='foreignkey')
     op.drop_index(op.f('ix_trace_metadata_root_span_resource_id'), table_name='trace_metadata')
     op.drop_column('trace_metadata', 'root_span_resource_id')
     op.drop_column('tasks', 'is_system_task')
-    op.drop_constraint(None, 'spans', type_='foreignkey')
+    op.drop_constraint('fk_spans_resource_id', 'spans', type_='foreignkey')
     op.drop_index(op.f('ix_spans_resource_id'), table_name='spans')
     op.drop_column('spans', 'resource_id')
     op.drop_index(op.f('ix_resource_metadata_service_name'), table_name='resource_metadata')

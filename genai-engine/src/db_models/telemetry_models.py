@@ -37,7 +37,9 @@ class DatabaseTraceMetadata(Base):
     )
     root_span_resource_id: Mapped[str | None] = mapped_column(
         String,
-        ForeignKey("resource_metadata.id"),
+        ForeignKey(
+            "resource_metadata.id", name="fk_trace_metadata_root_span_resource_id"
+        ),
         nullable=True,
         index=True,
     )
@@ -159,7 +161,9 @@ class DatabaseServiceNameTaskMapping(Base):
     )
     task_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("tasks.id", ondelete="CASCADE"),
+        ForeignKey(
+            "tasks.id", name="fk_service_name_task_mappings_task_id", ondelete="CASCADE"
+        ),
         nullable=False,
         index=True,
     )
@@ -204,7 +208,7 @@ class DatabaseSpan(Base):
     )
     resource_id: Mapped[str | None] = mapped_column(
         String,
-        ForeignKey("resource_metadata.id"),
+        ForeignKey("resource_metadata.id", name="fk_spans_resource_id"),
         nullable=True,
         index=True,
     )
