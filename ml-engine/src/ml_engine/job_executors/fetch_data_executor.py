@@ -1,6 +1,6 @@
 import json
 import math
-from datetime import datetime
+from datetime import date, datetime
 from logging import Logger
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -34,6 +34,8 @@ def preprocess_data(obj: Any) -> Any:
     elif isinstance(obj, pd.Timestamp):
         return _preprocess_timestamp(obj)
     elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, date):
         return obj.isoformat()
     elif isinstance(obj, UUID):
         return str(obj)

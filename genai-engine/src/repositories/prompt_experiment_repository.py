@@ -4,8 +4,10 @@ from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.llm_model_providers import OpenAIMessage
 from fastapi import HTTPException
-from sqlalchemy import asc, desc, or_
+from sqlalchemy import asc, column, desc, exists, func, or_, select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, joinedload
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
@@ -48,6 +50,7 @@ from schemas.prompt_experiment_schemas import (
     UnsavedPromptConfig,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils.dataset_utils import dataset_row_matches_filter
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +119,7 @@ class PromptExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
@@ -184,9 +185,7 @@ class PromptExperimentRepository:
             name=db_experiment.name,
             description=db_experiment.description,
             created_at=(
-                db_experiment.created_at.isoformat()
-                if db_experiment.created_at
-                else None
+                db_experiment.created_at.isoformat() if db_experiment.created_at else ""
             ),
             finished_at=(
                 db_experiment.finished_at.isoformat()
@@ -330,7 +329,7 @@ class PromptExperimentRepository:
             )
 
         # Validate and process prompt configs (saved and unsaved)
-        validated_prompt_configs = []
+        validated_prompt_configs: list[PromptConfig] = []
         unsaved_prompt_counter = 1
         all_prompt_variables = set()
 
@@ -370,8 +369,11 @@ class PromptExperimentRepository:
                 if config.variables is None:
                     try:
                         missing_vars = self.chat_completion_service.find_missing_variables_in_messages(
-                            config.messages,
-                            {},
+                            variable_map={},
+                            messages=[
+                                OpenAIMessage.model_validate(message)
+                                for message in config.messages
+                            ],
                         )
                         detected_variables = list(missing_vars)
                     except Exception as e:
@@ -399,7 +401,7 @@ class PromptExperimentRepository:
                 validated_prompt_configs.append(updated_config)
 
         # Validate eval versions exist and collect their variables
-        llm_evals = []
+        llm_evals: list[tuple[EvalRef, DatabaseLLMEval]] = []
         for eval_ref in request.eval_list:
             llm_eval = (
                 self.db_session.query(DatabaseLLMEval)
@@ -466,10 +468,10 @@ class PromptExperimentRepository:
         # Check eval variable mappings - validate dataset columns exist and no duplicates
         for eval_ref in request.eval_list:
             eval_variable_names = []
-            for mapping in eval_ref.variable_mapping:
-                eval_variable_names.append(mapping.variable_name)
-                if mapping.source.type == "dataset_column":
-                    column_name = mapping.source.dataset_column.name
+            for eval_mapping in eval_ref.variable_mapping:
+                eval_variable_names.append(eval_mapping.variable_name)
+                if eval_mapping.source.type == "dataset_column":
+                    column_name = eval_mapping.source.dataset_column.name
                     if column_name not in dataset_columns:
                         raise ValueError(
                             f"Dataset column '{column_name}' referenced in eval '{eval_ref.name}' variable mapping not found in dataset version. "
@@ -527,22 +529,12 @@ class PromptExperimentRepository:
             .all()
         )
 
-        # Helper function to check if a row matches all filter conditions (AND logic)
-        def _row_matches_filter(db_row: DatabaseDatasetVersionRow) -> bool:
-            if not dataset_row_filter:
-                return True  # No filter means all rows match
-
-            # Row must match ALL filter conditions to be included
-            for filter_condition in dataset_row_filter:
-                row_value = db_row.data.get(filter_condition.column_name)
-                # Convert both to strings for comparison since row data can be any JSON type
-                # (int, bool, etc.) but filter values are always strings per the schema
-                if str(row_value) != str(filter_condition.column_value):
-                    return False
-            return True
-
         # Filter rows based on dataset_row_filter if provided
-        filtered_rows = [row for row in dataset_rows if _row_matches_filter(row)]
+        filtered_rows = [
+            row
+            for row in dataset_rows
+            if dataset_row_matches_filter(row, dataset_row_filter)
+        ]
 
         # Create a test case for each filtered row
         for row in filtered_rows:
@@ -557,10 +549,18 @@ class PromptExperimentRepository:
                 # Get the value from the dataset row
                 column_value = row_data.get(column_name)
 
+                # Convert None to empty string to match API schema requirement
+                if column_value is None:
+                    logger.warning(
+                        f"Dataset column '{column_name}' has None value for variable '{variable_name}' "
+                        f"in test case from row {row.id}. Converting to empty string for experiment execution.",
+                    )
+                    column_value = ""
+
                 prompt_input_variables.append(
                     {
                         "variable_name": variable_name,
-                        "value": column_value,
+                        "value": str(column_value),
                     },
                 )
 
@@ -613,21 +613,30 @@ class PromptExperimentRepository:
                 for eval_ref, llm_eval in eval_configs:
                     # Build eval input variables based on the mapping
                     eval_input_variables = []
-                    for mapping in eval_ref.variable_mapping:
-                        variable_name = mapping.variable_name
+                    for eval_mapping in eval_ref.variable_mapping:
+                        variable_name = eval_mapping.variable_name
 
                         # Check the source type
-                        if mapping.source.type == "dataset_column":
+                        if eval_mapping.source.type == "dataset_column":
                             # Get value from dataset row
-                            column_name = mapping.source.dataset_column.name
+                            column_name = eval_mapping.source.dataset_column.name
                             column_value = row_data.get(column_name)
+
+                            # Convert None to empty string to match API schema requirement
+                            if column_value is None:
+                                logger.warning(
+                                    f"Dataset column '{column_name}' has None value for eval variable '{variable_name}' "
+                                    f"in test case from row {row.id}. Converting to empty string for experiment execution.",
+                                )
+                                column_value = ""
+
                             eval_input_variables.append(
                                 {
                                     "variable_name": variable_name,
-                                    "value": column_value,
+                                    "value": str(column_value),
                                 },
                             )
-                        elif mapping.source.type == "experiment_output":
+                        elif eval_mapping.source.type == "experiment_output":
                             # Mark as placeholder - will be filled from prompt output when experiment runs
                             eval_input_variables.append(
                                 {
@@ -749,13 +758,39 @@ class PromptExperimentRepository:
                 DatabasePromptExperiment.dataset_id == DatabaseDataset.id,
             )
 
-            # Search across experiment name, description, prompt name, and dataset name
+            # Search across experiment name, description, prompt names (from JSON), and dataset name
             search_pattern = f"%{search_text}%"
+
+            # Create a subquery to search within the prompt_configs JSON array
+            # This checks if any prompt config (saved or unsaved) has a matching name
+            # Cast JSON to JSONB since jsonb_array_elements requires JSONB type
+            config_elem = (
+                func.jsonb_array_elements(
+                    func.cast(
+                        DatabasePromptExperiment.prompt_configs,
+                        postgresql.JSONB,
+                    ),
+                )
+                .table_valued(column("value", postgresql.JSONB))
+                .lateral("config_lateral")
+            )
+
+            prompt_name_condition = exists(
+                select(1)
+                .select_from(config_elem)
+                .where(
+                    or_(
+                        config_elem.c.value["name"].astext.ilike(search_pattern),
+                        config_elem.c.value["auto_name"].astext.ilike(search_pattern),
+                    ),
+                ),
+            )
+
             base_query = base_query.filter(
                 or_(
                     DatabasePromptExperiment.name.ilike(search_pattern),
                     DatabasePromptExperiment.description.ilike(search_pattern),
-                    DatabasePromptExperiment.prompt_name.ilike(search_pattern),
+                    prompt_name_condition,
                     DatabaseDataset.name.ilike(search_pattern),
                 ),
             )

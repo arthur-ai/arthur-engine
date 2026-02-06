@@ -8,9 +8,7 @@ export interface UseUpdateDatasetMutationReturn {
   isPending: boolean;
 }
 
-export function useUpdateDatasetMutation(
-  onSuccess: () => void
-): UseUpdateDatasetMutationReturn {
+export function useUpdateDatasetMutation(onSuccess: () => void): UseUpdateDatasetMutationReturn {
   const api = useApi();
 
   const { mutateAsync, isPending } = useApiMutation({

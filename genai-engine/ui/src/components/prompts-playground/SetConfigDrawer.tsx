@@ -14,31 +14,24 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
 
-import { usePromptExperiments } from "@/hooks/usePromptExperiments";
 import { useApi } from "@/hooks/useApi";
-import type { PromptExperimentSummary } from "@/lib/api-client/api-client";
+import { usePromptExperiments } from "@/hooks/usePromptExperiments";
+import type { PromptExperimentDetail, PromptExperimentSummary } from "@/lib/api-client/api-client";
 
 interface SetConfigDrawerProps {
   open: boolean;
   onClose: () => void;
   taskId: string | undefined;
-  onLoadConfig: (config: any, overwritePrompts: boolean) => void;
+  onLoadConfig: (config: Partial<PromptExperimentDetail>, overwritePrompts: boolean) => void;
   onCreateNewConfig: () => void;
   hasExistingPrompts: boolean;
 }
 
-const SetConfigDrawer = ({
-  open,
-  onClose,
-  taskId,
-  onLoadConfig,
-  onCreateNewConfig,
-  hasExistingPrompts,
-}: SetConfigDrawerProps) => {
+const SetConfigDrawer = ({ open, onClose, taskId, onLoadConfig, onCreateNewConfig, hasExistingPrompts }: SetConfigDrawerProps) => {
   const [selectedExperimentId, setSelectedExperimentId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
-  const [pendingConfig, setPendingConfig] = useState<any>(null);
+  const [pendingConfig, setPendingConfig] = useState<Partial<PromptExperimentDetail> | null>(null);
 
   const apiClient = useApi();
   const { experiments, isLoading: experimentsLoading } = usePromptExperiments(taskId, 0, 100);
@@ -49,9 +42,7 @@ const SetConfigDrawer = ({
     setIsLoading(true);
     try {
       // Fetch the full experiment details
-      const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(
-        selectedExperimentId
-      );
+      const response = await apiClient.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(selectedExperimentId);
 
       const experimentDetail = response.data;
 
@@ -83,14 +74,17 @@ const SetConfigDrawer = ({
     }
   }, [selectedExperimentId, apiClient, hasExistingPrompts, onLoadConfig, onClose]);
 
-  const handleOverwriteConfirm = useCallback((overwrite: boolean) => {
-    if (pendingConfig) {
-      onLoadConfig(pendingConfig, overwrite);
-      setPendingConfig(null);
-      setShowOverwriteDialog(false);
-      onClose();
-    }
-  }, [pendingConfig, onLoadConfig, onClose]);
+  const handleOverwriteConfirm = useCallback(
+    (overwrite: boolean) => {
+      if (pendingConfig) {
+        onLoadConfig(pendingConfig, overwrite);
+        setPendingConfig(null);
+        setShowOverwriteDialog(false);
+        onClose();
+      }
+    },
+    [pendingConfig, onLoadConfig, onClose]
+  );
 
   const handleOverwriteCancel = useCallback(() => {
     setPendingConfig(null);
@@ -138,11 +132,7 @@ const SetConfigDrawer = ({
               value={selectedExperimentId}
               onChange={(e) => setSelectedExperimentId(e.target.value)}
               disabled={experimentsLoading || experiments.length === 0}
-              helperText={
-                experiments.length === 0 && !experimentsLoading
-                  ? "No experiments available"
-                  : undefined
-              }
+              helperText={experiments.length === 0 && !experimentsLoading ? "No experiments available" : undefined}
             >
               {experiments.map((exp: PromptExperimentSummary) => {
                 // Build display string with only available data
@@ -160,13 +150,7 @@ const SetConfigDrawer = ({
                 );
               })}
             </TextField>
-            <Button
-              variant="outlined"
-              fullWidth
-              onClick={handleLoadConfig}
-              disabled={!selectedExperimentId || isLoading}
-              sx={{ mt: 1.5 }}
-            >
+            <Button variant="outlined" fullWidth onClick={handleLoadConfig} disabled={!selectedExperimentId || isLoading} sx={{ mt: 1.5 }}>
               {isLoading ? "Loading..." : "Load"}
             </Button>
           </Box>
@@ -190,16 +174,12 @@ const SetConfigDrawer = ({
       </Drawer>
 
       {/* Overwrite Confirmation Dialog */}
-      <Dialog
-        open={showOverwriteDialog}
-        onClose={handleOverwriteCancel}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={showOverwriteDialog} onClose={handleOverwriteCancel} maxWidth="sm" fullWidth>
         <DialogTitle>Overwrite Existing Prompts?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            This notebook already contains prompts. Would you like to overwrite them with the prompts from the selected experiment, or keep your existing prompts and only load the configuration?
+            This notebook already contains prompts. Would you like to overwrite them with the prompts from the selected experiment, or keep your
+            existing prompts and only load the configuration?
           </DialogContentText>
         </DialogContent>
         <DialogActions>

@@ -1,4 +1,4 @@
-import { ScrollArea } from "@base-ui-components/react/scroll-area";
+import { ScrollArea } from "@base-ui/react/scroll-area";
 import { Close, Search } from "@mui/icons-material";
 import { Button, Chip, Paper, Stack, SxProps, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
@@ -16,7 +16,7 @@ import { sharedFormOptions, validators } from "./shared";
 import { EnumOperators, Operator, Operators } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
-import { NumberField } from "@/components/common/form/NumberField";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 const ROW_SCROLL_OFFSET = 100;
 
@@ -69,8 +69,22 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
       onSubmit: async ({ value }) => {
         // Filter out incomplete filters before mapping and setting them
         const completeFilters = value.config.filter(isFilterComplete);
-
-        setFilters(completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[]);
+        const hadFilters = storeFilters.length > 0;
+        const nextFilters = completeFilters.map(({ id: _, ...item }) => item) as IncomingFilter[];
+        if (nextFilters.length > 0) {
+          track(EVENT_NAMES.TRACING_FILTERS_APPLIED, {
+            filter_count: nextFilters.length,
+            filter_fields: nextFilters.map((filter) => filter.name),
+            filter_operators: nextFilters.map((filter) => filter.operator),
+            source: "filters_row",
+          });
+        } else if (hadFilters) {
+          track(EVENT_NAMES.TRACING_FILTERS_CLEARED, {
+            previous_filter_count: storeFilters.length,
+            source: "filters_row",
+          });
+        }
+        setFilters(nextFilters);
       },
     });
 
@@ -373,18 +387,18 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
             if (fieldConfig.type === "numeric") {
               return (
                 <field.NumberField
+                  onValueChange={(value) => {
+                    field.handleChange(value?.toString() ?? "");
+                  }}
                   onBlur={() => {
                     field.handleBlur();
                     onClose();
                   }}
+                  value={field.state.value ? Number(field.state.value) : null}
                   min={fieldConfig.min}
                   max={fieldConfig.max}
-                  className=" overflow-hidden"
-                >
-                  <NumberField.Group className="flex h-full">
-                    <NumberField.Input className="h-full" render={<TextField variant="filled" label="Value" size="small" />} />
-                  </NumberField.Group>
-                </field.NumberField>
+                  className="overflow-hidden"
+                />
               );
             }
 

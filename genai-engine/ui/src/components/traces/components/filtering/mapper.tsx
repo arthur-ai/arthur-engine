@@ -21,7 +21,7 @@ const OPERATOR_TO_KEY_PART = new Map<Operator, string>([
 ]);
 
 export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
-  const request: Record<string, string | number | string[]> = {};
+  const request: Record<string, string | number | string[] | boolean> = {};
 
   filters.forEach((filter) => {
     let key = filter.name;
@@ -55,6 +55,28 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
 
     if (key === "continuous_eval_name" && filter.operator === Operators.CONTAINS) {
       return (request["continuous_eval_name"] = filter.value as string);
+    }
+
+    // Special handling for continuous_eval_id with EQUALS operator (backend expects "continuous_eval_id", not "continuous_eval_id_eq")
+    if (key === "continuous_eval_id" && filter.operator === Operators.EQUALS) {
+      return (request["continuous_eval_id"] = filter.value as string);
+    }
+
+    // Special handling for trace_id with EQUALS operator (backend expects "trace_id", not "trace_id_eq")
+    if (key === "trace_id" && filter.operator === Operators.EQUALS) {
+      return (request["trace_id"] = filter.value as string);
+    }
+
+    // Special handling for id with IN operator (backend expects "id_in")
+    if (key === "id" && filter.operator === Operators.IN) {
+      return (request["id_in"] = filter.value as string[]);
+    }
+
+    // Handle boolean fields
+    if (key === "include_experiment_traces" && filter.operator === Operators.EQUALS) {
+      const value = Array.isArray(filter.value) ? filter.value[0] : filter.value;
+      const boolValue = typeof value === "boolean" ? value : value === "true";
+      return (request["include_experiment_traces"] = boolValue);
     }
 
     const keyPart = OPERATOR_TO_KEY_PART.get(filter.operator);

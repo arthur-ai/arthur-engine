@@ -1,24 +1,17 @@
 import AddIcon from "@mui/icons-material/Add";
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Divider,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Autocomplete, Box, Button, Divider, FormControlLabel, Paper, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import z from "zod";
 
+import { VariableMappingSection } from "../components/variable-mapping";
+import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 
+import { EvaluatorSelector } from "./components/EvaluatorSelector";
+
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import { useEvals } from "@/components/evaluators/hooks/useEvals";
-import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
@@ -26,14 +19,15 @@ import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
+import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
-type Evaluator = {
-  name: string | null;
+type EvaluatorFormState = {
+  name: ContinuousEvalResponse["llm_eval_name"] | null;
   version: string | null;
 };
 
-type Transform = {
-  transformId: string | null;
+type TransformFormState = {
+  transformId: ContinuousEvalResponse["transform_id"] | null;
 };
 
 export const LiveEvalsNew = () => {
@@ -45,18 +39,21 @@ export const LiveEvalsNew = () => {
     defaultValues: {
       name: "",
       description: "",
+      enabled: true,
       evaluator: {
         name: null,
         version: null,
-      } as Evaluator,
+      } as EvaluatorFormState,
       transform: {
         transformId: null,
-      } as Transform,
+      } as TransformFormState,
+      variableMappings: [] as ContinuousEvalTransformVariableMappingRequest[],
     },
     validators: {
-      onChange: z.object({
+      onMount: z.object({
         name: z.string().min(1, "Name is required"),
         description: z.string(),
+        enabled: z.boolean(),
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
@@ -64,15 +61,41 @@ export const LiveEvalsNew = () => {
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
         }),
+        variableMappings: z.array(
+          z.object({
+            eval_variable: z.string(),
+            transform_variable: z.string(),
+          })
+        ),
+      }),
+      onChange: z.object({
+        name: z.string().min(1, "Name is required"),
+        description: z.string(),
+        enabled: z.boolean(),
+        evaluator: z.object({
+          name: z.string().min(1, "Evaluator name is required"),
+          version: z.string().min(1, "Evaluator version is required"),
+        }),
+        transform: z.object({
+          transformId: z.string().min(1, "Transform ID is required"),
+        }),
+        variableMappings: z.array(
+          z.object({
+            eval_variable: z.string(),
+            transform_variable: z.string(),
+          })
+        ),
       }),
     },
     onSubmit: async ({ value }) => {
       const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
         description: value.description,
+        enabled: value.enabled,
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
         transform_id: value.transform.transformId!,
+        transform_variable_mapping: value.variableMappings,
       });
 
       navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
@@ -82,8 +105,29 @@ export const LiveEvalsNew = () => {
   const createContinuousEval = useCreateContinuousEval();
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
+  const transform = useStore(form.store, (state) => state.values.transform);
 
   const { eval: evaluatorData } = useEval(task?.id, evaluator.name ?? undefined, evaluator.version ?? undefined);
+
+  const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+    task?.id,
+    transform.transformId ?? undefined,
+    evaluator.name ?? undefined,
+    evaluator.version ?? undefined
+  );
+
+  const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
+
+  const handleSelectionChange = () => {
+    form.setFieldValue("variableMappings", []);
+  };
+
+  const allVariablesMapped =
+    !variableMappingData ||
+    variableMappingData.eval_variables.length === 0 ||
+    variableMappingData.eval_variables.every((evalVar) => variableMappings.some((m) => m.eval_variable === evalVar && m.transform_variable));
+
+  const canShowVariableMapping = evaluator.name && evaluator.version && transform.transformId;
 
   return (
     <Stack
@@ -128,9 +172,19 @@ export const LiveEvalsNew = () => {
           }}
         />
 
+        <form.Field name="enabled">
+          {(field) => (
+            <FormControlLabel
+              control={<Switch checked={field.state.value} onChange={(e) => field.handleChange(e.target.checked)} />}
+              label="Enable continuous eval"
+              slotProps={{ typography: { color: "text.primary" } }}
+            />
+          )}
+        </form.Field>
+
         <Divider sx={{ my: 2 }} />
 
-        <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" />
+        <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
         {evaluatorData && (
           <Paper variant="outlined" sx={{ p: 2 }}>
@@ -143,13 +197,35 @@ export const LiveEvalsNew = () => {
 
         <Divider sx={{ my: 2 }} />
 
-        <TransformSelector taskId={task?.id ?? ""} form={form} fields="transform" />
+        <TransformSelector taskId={task?.id ?? ""} form={form} fields="transform" onSelectionChange={handleSelectionChange} />
+
+        {canShowVariableMapping && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <VariableMappingSection
+              form={form}
+              fields={{ variableMappings: "variableMappings" }}
+              eval_variables={variableMappingData?.eval_variables ?? []}
+              transform_variables={variableMappingData?.transform_variables ?? []}
+              matching_variables={variableMappingData?.matching_variables ?? []}
+              isLoading={isLoadingVariableMapping}
+            />
+          </>
+        )}
       </Stack>
 
       <Box sx={{ p: 3, borderTop: 1, borderColor: "divider" }} className="mt-auto w-full">
         <form.Subscribe selector={(state) => [state.canSubmit, state.isDirty, state.isSubmitting]}>
           {([canSubmit, isDirty, isSubmitting]) => (
-            <Button variant="contained" size="large" color="primary" disabled={!canSubmit || !isDirty} loading={isSubmitting} fullWidth type="submit">
+            <Button
+              variant="contained"
+              size="large"
+              color="primary"
+              disabled={!canSubmit || !isDirty || !allVariablesMapped}
+              loading={isSubmitting}
+              fullWidth
+              type="submit"
+            >
               Create Continuous Eval
             </Button>
           )}
@@ -207,82 +283,17 @@ export const DetailsFieldGroup = withFieldGroup({
   },
 });
 
-export const EvaluatorSelector = withFieldGroup({
-  defaultValues: {
-    name: null,
-    version: null,
-  } as Evaluator,
-  props: {} as {
-    taskId: string;
-  },
-  render: function Render({ group, taskId }) {
-    const evaluators = useEvals(taskId, {
-      page: 0,
-      pageSize: 10,
-      sort: "desc",
-    });
-
-    const name = useStore(group.store, (state) => state.values.name);
-
-    const versions = useEvalVersions(taskId, name ?? undefined, {
-      page: 0,
-      pageSize: 10,
-      sort: "desc",
-    });
-
-    return (
-      <Stack gap={2}>
-        <Typography variant="h6" color="text.primary" fontWeight="bold">
-          Evaluator and Version
-        </Typography>
-        <Stack direction="row" gap={2} width="100%">
-          <group.AppField
-            name="name"
-            listeners={{
-              onChange: () => {
-                group.setFieldValue("version", null);
-              },
-            }}
-            children={(field) => (
-              <field.MaterialAutocompleteField
-                sx={{ flex: 1 }}
-                options={evaluators?.evals.map((evaluator) => evaluator.name)}
-                renderInput={(params) => <TextField {...params} label="Evaluator" />}
-              />
-            )}
-          />
-
-          <group.AppField
-            name="version"
-            children={(field) => (
-              <field.MaterialAutocompleteField
-                multiple={false}
-                onBlur={() => {
-                  field.handleBlur();
-                }}
-                sx={{ width: 200 }}
-                loading={versions.isLoading}
-                disabled={!name}
-                options={versions.versions?.map((version) => version.version.toString())}
-                getOptionLabel={(option) => `v${option}`}
-                renderInput={(params) => <TextField {...params} label="Version" />}
-              />
-            )}
-          />
-        </Stack>
-      </Stack>
-    );
-  },
-});
+export { EvaluatorSelector } from "./components/EvaluatorSelector";
 
 export const TransformSelector = withFieldGroup({
   defaultValues: {
     transformId: null,
-  } as Transform,
+  } as TransformFormState,
   props: {} as {
     taskId: string;
+    onSelectionChange?: () => void;
   },
-  render: function Render({ group, taskId }) {
+  render: function Render({ group, taskId, onSelectionChange }) {
     const [openCreateTransformModal, setOpenCreateTransformModal] = useState(false);
     const transforms = useTransforms(taskId ?? undefined);
 
@@ -292,6 +303,7 @@ export const TransformSelector = withFieldGroup({
       setOpenCreateTransformModal(false);
 
       group.setFieldValue("transformId", data.id);
+      onSelectionChange?.();
     });
 
     return (
@@ -320,6 +332,11 @@ export const TransformSelector = withFieldGroup({
           <Stack direction="row" gap={2} width="100%">
             <group.AppField
               name="transformId"
+              listeners={{
+                onChange: () => {
+                  onSelectionChange?.();
+                },
+              }}
               children={(field) => {
                 const selected = transforms.data?.find((transform) => transform.id === field.state.value);
 

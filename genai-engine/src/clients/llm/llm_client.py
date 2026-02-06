@@ -1,15 +1,16 @@
 import logging
 import threading
 import time
-from typing import Any, List, Optional, Type, Union
+from typing import Any, List, Optional, Union
 
+import httpx
 import litellm
+from arthur_common.models.llm_model_providers import ModelProvider
+from fastapi import HTTPException
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel, ConfigDict, Field
-
-from schemas.enums import ModelProvider
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class LLMModelResponse(BaseModel):
         ...,
         description="The raw response from litellm",
     )
-    structured_output_response: Optional[Type[BaseModel]] = Field(
+    structured_output_response: Optional[BaseModel] = Field(
         None,
         description="The structured output base model response from the model",
     )
@@ -42,6 +43,13 @@ def supported_models() -> dict[str, list[str]]:
             model_name,
         ):
             continue
+
+        # Normalize all vertex_ai variants (vertex_ai-language-models, vertex_ai-anthropic_models, etc.)
+        # to single "vertex_ai" key for consistent lookup
+        if provider.startswith("vertex_ai"):
+            provider = "vertex_ai"
+
+        model_name = model_name.replace(f"{provider}/", "")
 
         if provider not in models:
             models[provider] = []
@@ -69,9 +77,80 @@ refresh_thread.start()
 
 
 class LLMClient:
-    def __init__(self, provider: ModelProvider, api_key: str):
+    def __init__(
+        self,
+        provider: ModelProvider,
+        api_key: str | None = None,
+        project_id: str | None = None,
+        region: str | None = None,
+        api_base: str | None = None,
+        vertex_credentials: dict[str, str] | None = None,
+        aws_bedrock_credentials: dict[str, str] | None = None,
+    ):
         self.provider = provider
         self.api_key = api_key
+        self.project_id = project_id
+        self.region = region
+        self.api_base = api_base
+        self.vertex_credentials = vertex_credentials
+        self.aws_bedrock_credentials = aws_bedrock_credentials
+
+    def _add_provider_credentials(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
+
+        if self.provider == ModelProvider.VERTEX_AI:
+            if self.project_id:
+                kwargs["vertex_project"] = self.project_id
+            if self.region:
+                kwargs["vertex_location"] = self.region
+            if self.vertex_credentials is not None:
+                kwargs["vertex_credentials"] = self.vertex_credentials
+            else:
+                logger.warning(
+                    "Using default credentials. If there is no attached service account or cli authenticated user this will fail",
+                )
+        elif self.provider == ModelProvider.BEDROCK:
+            if self.aws_bedrock_credentials is not None:
+                if self.aws_bedrock_credentials.get("aws_access_key_id"):
+                    kwargs["aws_access_key_id"] = self.aws_bedrock_credentials.get(
+                        "aws_access_key_id",
+                    )
+                if self.aws_bedrock_credentials.get("aws_secret_access_key"):
+                    kwargs["aws_secret_access_key"] = self.aws_bedrock_credentials.get(
+                        "aws_secret_access_key",
+                    )
+                if self.aws_bedrock_credentials.get("aws_bedrock_runtime_endpoint"):
+                    kwargs["aws_bedrock_runtime_endpoint"] = (
+                        self.aws_bedrock_credentials.get("aws_bedrock_runtime_endpoint")
+                    )
+                if self.aws_bedrock_credentials.get("aws_role_name"):
+                    kwargs["aws_role_name"] = self.aws_bedrock_credentials.get(
+                        "aws_role_name",
+                    )
+                if self.aws_bedrock_credentials.get("aws_session_name"):
+                    kwargs["aws_session_name"] = self.aws_bedrock_credentials.get(
+                        "aws_session_name",
+                    )
+
+            if self.region:
+                kwargs["aws_region_name"] = self.region
+
+            if (
+                "aws_access_key_id" in kwargs and "aws_secret_access_key" not in kwargs
+            ) or (
+                "aws_access_key_id" not in kwargs and "aws_secret_access_key" in kwargs
+            ):
+                raise ValueError(
+                    "aws_access_key_id and aws_secret_access_key must be provided together",
+                )
+        elif self.provider == ModelProvider.VLLM:
+            if self.api_base:
+                kwargs["api_base"] = self.api_base
+            else:
+                raise ValueError("api_base is required for this provider")
+
+        return kwargs
 
     def completion(
         self,
@@ -79,21 +158,89 @@ class LLMClient:
         **kwargs: Any,
     ) -> LLMModelResponse:
         # Delegate to the top-level function
-        response = litellm.completion(*args, api_key=self.api_key, **kwargs)
-        cost_float = completion_cost(response)
-        cost = f"{cost_float:.6f}" if cost_float is not None else None
+        kwargs = self._add_provider_credentials(kwargs)
 
-        llm_model_response = LLMModelResponse(response=response, cost=cost)
+        try:
+            response = litellm.completion(*args, **kwargs)
+        except litellm.NotFoundError as e:
+            # Model not found or not available
+            error_msg = str(e)
+            # Extract a cleaner error message
+            if "was not found" in error_msg or "NOT_FOUND" in error_msg:
+                model = kwargs.get("model", "unknown")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model '{model}' is not available or not found for provider '{self.provider}'. Please check that the model exists and you have access to it.",
+                )
+            raise HTTPException(status_code=404, detail=f"Model not found: {error_msg}")
+        except litellm.AuthenticationError as e:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Authentication failed for provider '{self.provider}': {str(e)}",
+            )
+        except litellm.RateLimitError as e:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded for provider '{self.provider}': {str(e)}",
+            )
+        except litellm.ServiceUnavailableError as e:
+            # ServiceUnavailableError can wrap other errors
+            error_msg = str(e)
+            if "NotFoundError" in error_msg and (
+                "was not found" in error_msg or "NOT_FOUND" in error_msg
+            ):
+                model = kwargs.get("model", "unknown")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model '{model}' is not available or not found for provider '{self.provider}'. Please check that the model exists and you have access to it.",
+                )
+            raise HTTPException(
+                status_code=503,
+                detail=f"Service unavailable for provider '{self.provider}': {error_msg}",
+            )
+        except litellm.APIError as e:
+            raise HTTPException(
+                status_code=e.status_code if hasattr(e, "status_code") else 500,
+                detail=f"API error from provider '{self.provider}': {str(e)}",
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error during completion: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error during completion: {str(e)}",
+            )
+
+        if self.provider != ModelProvider.VLLM:
+            cost_float = completion_cost(response)
+            cost = f"{cost_float:.6f}" if cost_float is not None else None
+        else:
+            cost = "0.00"
+            logger.warning("Cost calculation is not supported for this provider")
+
+        llm_model_response = LLMModelResponse(
+            response=response,
+            cost=cost,
+            structured_output_response=None,
+        )
+
+        message_content: Optional[str] = None
+        if (
+            response
+            and response.choices
+            and response.choices[0].message
+            and response.choices[0].message.get("content") is not None
+        ):
+            message_content = response.choices[0].message.get("content")
 
         if (
             "response_format" in kwargs
             and isinstance(kwargs["response_format"], type)
             and issubclass(kwargs["response_format"], BaseModel)
-            and response.choices[0].message.get("content") is not None
+            and message_content is not None
         ):
-            llm_model_response.structured_output_response = kwargs[
-                "response_format"
-            ].model_validate_json(response.choices[0].message.get("content"))
+            response_format: type[BaseModel] = kwargs["response_format"]
+            loaded_response = response_format.model_validate_json(message_content)
+            llm_model_response.structured_output_response = loaded_response
 
         return llm_model_response
 
@@ -103,16 +250,96 @@ class LLMClient:
         **kwargs: Any,
     ) -> ModelResponse | CustomStreamWrapper:
         # Delegate to the top-level function
-        response: ModelResponse | CustomStreamWrapper = await litellm.acompletion(
-            *args,
-            api_key=self.api_key,
-            **kwargs,
-        )
-        return response
+        kwargs = self._add_provider_credentials(kwargs)
+
+        try:
+            response: ModelResponse | CustomStreamWrapper = await litellm.acompletion(
+                *args,
+                **kwargs,
+            )
+            return response
+        except litellm.NotFoundError as e:
+            # Model not found or not available
+            error_msg = str(e)
+            # Extract a cleaner error message
+            if "was not found" in error_msg or "NOT_FOUND" in error_msg:
+                model = kwargs.get("model", "unknown")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model '{model}' is not available or not found for provider '{self.provider}'. Please check that the model exists and you have access to it.",
+                )
+            raise HTTPException(status_code=404, detail=f"Model not found: {error_msg}")
+        except litellm.AuthenticationError as e:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Authentication failed for provider '{self.provider}': {str(e)}",
+            )
+        except litellm.RateLimitError as e:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded for provider '{self.provider}': {str(e)}",
+            )
+        except litellm.ServiceUnavailableError as e:
+            # ServiceUnavailableError can wrap other errors
+            error_msg = str(e)
+            if "NotFoundError" in error_msg and (
+                "was not found" in error_msg or "NOT_FOUND" in error_msg
+            ):
+                model = kwargs.get("model", "unknown")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model '{model}' is not available or not found for provider '{self.provider}'. Please check that the model exists and you have access to it.",
+                )
+            raise HTTPException(
+                status_code=503,
+                detail=f"Service unavailable for provider '{self.provider}': {error_msg}",
+            )
+        except litellm.APIError as e:
+            raise HTTPException(
+                status_code=e.status_code if hasattr(e, "status_code") else 500,
+                detail=f"API error from provider '{self.provider}': {str(e)}",
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error during completion: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error during completion: {str(e)}",
+            )
 
     def get_available_models(self) -> List[str]:
         if self.provider in SUPPORTED_TEXT_MODELS:
             return SUPPORTED_TEXT_MODELS[self.provider]
+
+        # Special handling for vLLM - LiteLLM has a bug where get_models always fails
+        # because it checks if api_key is None, but get_api_key() always returns None for vLLM
+        # So we call the vLLM /v1/models endpoint directly
+        if self.provider == ModelProvider.VLLM:
+            if not self.api_base:
+                logger.error("api_base is required for vLLM provider")
+                return []
+
+            try:
+                # Construct the models endpoint URL
+                api_base = self.api_base.rstrip("/")
+                models_url = f"{api_base}/models"
+
+                # Prepare headers
+                headers = {}
+                if self.api_key:
+                    headers["Authorization"] = f"Bearer {self.api_key}"
+
+                # Make request to vLLM models endpoint
+                response = httpx.get(models_url, headers=headers, timeout=10.0)
+                response.raise_for_status()
+
+                # Parse the response - vLLM follows OpenAI API format
+                data = response.json()
+                models = [model["id"] for model in data.get("data", [])]
+                logger.info(f"Fetched {len(models)} models from vLLM endpoint")
+                return models
+            except Exception as e:
+                logger.error(f"Failed to fetch models from vLLM endpoint: {e}")
+                return []
 
         # if provider isn't in the pre-configured set of liteLLM cost
         # fallback to fetching from provider's API

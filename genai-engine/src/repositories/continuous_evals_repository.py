@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import (
@@ -9,26 +9,32 @@ from arthur_common.models.enums import (
     ContinuousEvalRunStatus,
     PaginationSortMethod,
 )
+from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import HTTPException
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, case, desc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 
 from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
-from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
+from schemas.internal_schemas import AgenticAnnotation, ContinuousEval, TraceTransform
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
     ContinuousEvalRunResultsListFilterRequest,
+    ContinuousEvalTransformVariableMappingRequest,
     UpdateContinuousEvalRequest,
 )
-from schemas.response_schemas import ContinuousEvalRerunResponse
+from schemas.response_schemas import (
+    ContinuousEvalRerunResponse,
+    DailyAgenticAnnotationStats,
+)
 from services.continuous_eval import (
     ContinuousEvalJob,
     get_continuous_eval_queue_service,
 )
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +45,10 @@ class ContinuousEvalsRepository:
 
     def _apply_sorting_and_pagination(
         self,
-        query: Query,
+        query: Query[Any],
         pagination_parameters: PaginationParameters,
-        sort_column: str,
-    ) -> Query:
+        sort_column: Any,
+    ) -> Query[Any]:
         """
         Apply sorting and pagination to a query and return the total count.
 
@@ -71,7 +77,7 @@ class ContinuousEvalsRepository:
     def _get_db_continuous_eval_by_id(
         self,
         eval_id: uuid.UUID,
-    ) -> DatabaseContinuousEval:
+    ) -> DatabaseContinuousEval | None:
         db_eval_transform = (
             self.db_session.query(DatabaseContinuousEval)
             .filter(DatabaseContinuousEval.id == eval_id)
@@ -80,11 +86,58 @@ class ContinuousEvalsRepository:
 
         return db_eval_transform
 
+    def validate_transform_variable_mapping(
+        self,
+        transform: TraceTransform,
+        eval: LLMEval,
+        transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest],
+    ) -> None:
+        transform_vars = {v.variable_name for v in transform.definition.variables}
+        eval_vars = set(eval.variables)
+
+        # Extract the mapped variables from the mapping
+        mapped_transform_vars = {
+            mapping.transform_variable for mapping in transform_variable_mapping
+        }
+        mapped_eval_vars = {
+            mapping.eval_variable for mapping in transform_variable_mapping
+        }
+
+        # Check that all transform variables in the mapping exist in the transform
+        invalid_transform_vars = mapped_transform_vars - transform_vars
+        if invalid_transform_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Transform variables in mapping do not exist in transform: {sorted(invalid_transform_vars)}",
+            )
+
+        # Check that all eval variables in the mapping exist in the eval
+        invalid_eval_vars = mapped_eval_vars - eval_vars
+        if invalid_eval_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Eval variables in mapping do not exist in eval: {sorted(invalid_eval_vars)}",
+            )
+
+        # Check that all eval variables are covered by the mapping
+        unmapped_eval_vars = eval_vars - mapped_eval_vars
+        if unmapped_eval_vars:
+            raise HTTPException(
+                status_code=400,
+                detail=f"All eval variables must be mapped. Missing mappings for: {sorted(unmapped_eval_vars)}",
+            )
+
     def create_continuous_eval(
         self,
         task_id: str,
         continuous_eval_request: ContinuousEvalCreateRequest,
     ) -> ContinuousEval:
+        # Convert Pydantic models to dicts for JSON serialization
+        transform_variable_mapping_dicts = [
+            mapping.model_dump()
+            for mapping in continuous_eval_request.transform_variable_mapping
+        ]
+
         db_continuous_eval = DatabaseContinuousEval(
             id=uuid.uuid4(),
             name=continuous_eval_request.name,
@@ -95,6 +148,8 @@ class ContinuousEvalsRepository:
             transform_id=continuous_eval_request.transform_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
+            transform_variable_mapping=transform_variable_mapping_dicts,
+            enabled=continuous_eval_request.enabled,
         )
 
         try:
@@ -139,13 +194,23 @@ class ContinuousEvalsRepository:
         if update_continuous_eval.llm_eval_name:
             db_continuous_eval.llm_eval_name = update_continuous_eval.llm_eval_name
             has_changes = True
-        if update_continuous_eval.llm_eval_version:
-            db_continuous_eval.llm_eval_version = (
-                update_continuous_eval.llm_eval_version
+        if update_continuous_eval.llm_eval_version is not None:
+            db_continuous_eval.llm_eval_version = int(
+                update_continuous_eval.llm_eval_version,
             )
             has_changes = True
         if update_continuous_eval.transform_id:
             db_continuous_eval.transform_id = update_continuous_eval.transform_id
+            has_changes = True
+        if update_continuous_eval.transform_variable_mapping:
+            # Convert Pydantic models to dicts for JSON serialization
+            db_continuous_eval.transform_variable_mapping = [
+                mapping.model_dump()
+                for mapping in update_continuous_eval.transform_variable_mapping
+            ]
+            has_changes = True
+        if update_continuous_eval.enabled is not None:
+            db_continuous_eval.enabled = update_continuous_eval.enabled
             has_changes = True
 
         if not has_changes:
@@ -174,7 +239,7 @@ class ContinuousEvalsRepository:
     def list_continuous_evals(
         self,
         task_id: str,
-        pagination_parameters: PaginationParameters = None,
+        pagination_parameters: Optional[PaginationParameters] = None,
         filter_request: Optional[ContinuousEvalListFilterRequest] = None,
     ) -> List[ContinuousEval]:
         base_query = self.db_session.query(DatabaseContinuousEval).filter(
@@ -206,6 +271,16 @@ class ContinuousEvalsRepository:
                     DatabaseContinuousEval.created_at < filter_request.created_before,
                 )
 
+            if filter_request.enabled is not None:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.enabled == filter_request.enabled,
+                )
+
+            if filter_request.continuous_eval_ids:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.id.in_(filter_request.continuous_eval_ids),
+                )
+
         if pagination_parameters:
             base_query = self._apply_sorting_and_pagination(
                 base_query,
@@ -223,7 +298,7 @@ class ContinuousEvalsRepository:
     def list_continuous_eval_run_results(
         self,
         task_id: str,
-        pagination_parameters: PaginationParameters = None,
+        pagination_parameters: Optional[PaginationParameters] = None,
         filter_request: Optional[ContinuousEvalRunResultsListFilterRequest] = None,
     ) -> List[AgenticAnnotation]:
         base_query = (
@@ -241,17 +316,31 @@ class ContinuousEvalsRepository:
         )
 
         if filter_request:
-            if filter_request.id:
+            if filter_request.ids:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.id == filter_request.id,
+                    DatabaseAgenticAnnotation.id.in_(filter_request.ids),
                 )
 
-            if filter_request.trace_id:
+            if filter_request.continuous_eval_ids:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.trace_id == filter_request.trace_id,
+                    DatabaseAgenticAnnotation.continuous_eval_id.in_(
+                        filter_request.continuous_eval_ids,
+                    ),
                 )
 
-            if filter_request.annotation_score:
+            if filter_request.eval_name:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.name.ilike(
+                        f"%{filter_request.eval_name}%",
+                    ),
+                )
+
+            if filter_request.trace_ids:
+                base_query = base_query.filter(
+                    DatabaseAgenticAnnotation.trace_id.in_(filter_request.trace_ids),
+                )
+
+            if filter_request.annotation_score is not None:
                 base_query = base_query.filter(
                     DatabaseAgenticAnnotation.annotation_score
                     == filter_request.annotation_score,
@@ -273,6 +362,12 @@ class ContinuousEvalsRepository:
                 base_query = base_query.filter(
                     DatabaseAgenticAnnotation.created_at
                     < filter_request.created_before,
+                )
+
+            if filter_request.continuous_eval_enabled is not None:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.enabled
+                    == filter_request.continuous_eval_enabled,
                 )
 
         if pagination_parameters:
@@ -324,6 +419,7 @@ class ContinuousEvalsRepository:
             continuous_evals = (
                 self.db_session.query(DatabaseContinuousEval)
                 .filter(DatabaseContinuousEval.task_id == task_id)
+                .filter(DatabaseContinuousEval.enabled == True)
                 .all()
             )
 
@@ -377,6 +473,12 @@ class ContinuousEvalsRepository:
             if root_span.parent_span_id is not None:
                 continue
 
+            # if trace comes from an agent experiment, do not run evals
+            if root_span.session_id is not None and root_span.session_id.startswith(
+                AGENT_EXPERIMENT_SESSION_PREFIX,
+            ):
+                continue
+
             if root_span.task_id and root_span.trace_id not in seen_trace_ids:
                 seen_trace_ids.add(root_span.trace_id)
                 self._enqueue_continuous_evals_for_trace(
@@ -413,7 +515,18 @@ class ContinuousEvalsRepository:
                 detail="Cannot rerun a non-failed continuous eval.",
             )
 
+        if annotation.continuous_eval_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Annotation is missing continuous_eval_id.",
+            )
         continuous_eval = self.get_continuous_eval_by_id(annotation.continuous_eval_id)
+
+        if continuous_eval.enabled is False:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot rerun this evaluation because continuous eval {continuous_eval.id} has been disabled.",
+            )
 
         queue_service = get_continuous_eval_queue_service()
         if not queue_service:
@@ -431,6 +544,12 @@ class ContinuousEvalsRepository:
         annotation.updated_at = datetime.now()
         self.db_session.commit()
 
+        if annotation.trace_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Annotation is missing trace_id.",
+            )
+
         # Re-queue the job with no delay
         job = ContinuousEvalJob(
             annotation_id=annotation.id,
@@ -442,3 +561,75 @@ class ContinuousEvalsRepository:
         queue_service.enqueue(job)
 
         return ContinuousEvalRerunResponse(run_id=run_id, trace_id=annotation.trace_id)
+
+    def get_daily_annotation_analytics(
+        self,
+        task_id: str,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> List[DailyAgenticAnnotationStats]:
+        """Get daily aggregated statistics for agentic annotations.
+
+        Includes both continuous eval annotations and human annotations.
+        """
+        # Use func.date() for database-agnostic date truncation
+        date_col = func.date(DatabaseAgenticAnnotation.created_at)
+
+        # Conditional counts using CASE WHEN
+        passed_count = func.count(
+            case((DatabaseAgenticAnnotation.annotation_score == 1, 1)),
+        )
+        failed_count = func.count(
+            case((DatabaseAgenticAnnotation.annotation_score == 0, 1)),
+        )
+        error_count = func.count(
+            case((DatabaseAgenticAnnotation.run_status == "error", 1)),
+        )
+        skipped_count = func.count(
+            case((DatabaseAgenticAnnotation.run_status == "skipped", 1)),
+        )
+        total_cost = func.coalesce(func.sum(DatabaseAgenticAnnotation.cost), 0.0)
+        total_count = func.count(DatabaseAgenticAnnotation.id)
+
+        # Build query with JOIN to continuous_evals for task_id filtering
+        # Note: This will only include annotations with a continuous_eval_id (not human annotations)
+        # If human annotations should be included, need to use LEFT JOIN and filter differently
+        query = (
+            self.db_session.query(
+                date_col.label("date"),
+                passed_count.label("passed_count"),
+                failed_count.label("failed_count"),
+                error_count.label("error_count"),
+                skipped_count.label("skipped_count"),
+                total_cost.label("total_cost"),
+                total_count.label("total_count"),
+            )
+            .join(
+                DatabaseContinuousEval,
+                DatabaseAgenticAnnotation.continuous_eval_id
+                == DatabaseContinuousEval.id,
+            )
+            .filter(
+                DatabaseContinuousEval.task_id == task_id,
+                DatabaseAgenticAnnotation.created_at >= start_time,
+                DatabaseAgenticAnnotation.created_at < end_time,
+            )
+            .group_by(date_col)
+            .order_by(desc(date_col))
+        )
+
+        results = query.all()
+
+        # Convert to response model instances
+        return [
+            DailyAgenticAnnotationStats(
+                date=str(row.date),
+                passed_count=row.passed_count,
+                failed_count=row.failed_count,
+                error_count=row.error_count,
+                skipped_count=row.skipped_count,
+                total_cost=float(row.total_cost),
+                total_count=row.total_count,
+            )
+            for row in results
+        ]

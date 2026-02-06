@@ -3,6 +3,11 @@ from unittest.mock import patch
 import pytest
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.routes.trace_api.conftest import (
+    _create_base_trace_request,
+    _create_span,
+)
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -406,3 +411,65 @@ def test_session_aggregation_consistency(
     actual_span_count = len(all_spans)
 
     assert actual_span_count == expected_span_count
+
+
+@pytest.mark.unit_tests
+def test_experiment_sessions_excluded_from_session_endpoint(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that experiment sessions are excluded from session endpoint by default."""
+
+    # Create a regular trace with regular session
+    regular_trace_request, regular_resource_span, regular_scope_span = (
+        _create_base_trace_request(task_id="exp_test_task")
+    )
+    regular_span = _create_span(
+        trace_id=b"regular_trace_session",
+        span_id=b"regular_span_session",
+        name="RegularSpan",
+        span_type="LLM",
+        session_id="regular_session_test",
+    )
+    regular_scope_span.spans.append(regular_span)
+    regular_resource_span.scope_spans.append(regular_scope_span)
+    regular_trace_request.resource_spans.append(regular_resource_span)
+
+    # Create an experiment trace (with session_id starting with AGENT_EXPERIMENT_SESSION_PREFIX)
+    experiment_session_id = f"{AGENT_EXPERIMENT_SESSION_PREFIX}-test-789"
+    experiment_trace_request, experiment_resource_span, experiment_scope_span = (
+        _create_base_trace_request(task_id="exp_test_task")
+    )
+    experiment_span = _create_span(
+        trace_id=b"experiment_trace_session",
+        span_id=b"experiment_span_session",
+        name="ExperimentSpan",
+        span_type="LLM",
+        session_id=experiment_session_id,
+    )
+    experiment_scope_span.spans.append(experiment_span)
+    experiment_resource_span.scope_spans.append(experiment_scope_span)
+    experiment_trace_request.resource_spans.append(experiment_resource_span)
+
+    # Send both traces via upload endpoint
+    status_code1, _ = client.trace_api_receive_traces(
+        regular_trace_request.SerializeToString(),
+    )
+    status_code2, _ = client.trace_api_receive_traces(
+        experiment_trace_request.SerializeToString(),
+    )
+
+    assert status_code1 == 200, "Regular trace should be accepted"
+    assert status_code2 == 200, "Experiment trace should be accepted"
+
+    # Query sessions - should only return the regular session (experiment session excluded by default)
+    status_code, response = client.trace_api_list_sessions_metadata(
+        task_ids=["exp_test_task"],
+    )
+    assert status_code == 200
+
+    # Verify only regular session is returned
+    session_ids = {session.session_id for session in response.sessions}
+    assert "regular_session_test" in session_ids, "Regular session should be included"
+    assert (
+        experiment_session_id not in session_ids
+    ), "Experiment session should be excluded by default"

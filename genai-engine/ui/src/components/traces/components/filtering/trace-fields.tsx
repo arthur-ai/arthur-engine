@@ -107,4 +107,9 @@ export const TRACE_FIELDS = [
     name: "continuous_eval_name",
     operators: [TextOperators.CONTAINS],
   }),
+  createPrimitiveField({
+    type: "boolean",
+    name: "include_experiment_traces",
+    operators: [EnumOperators.EQUALS],
+  }),
 ] as const satisfies Field[];

@@ -1,8 +1,8 @@
 import Editor from "@monaco-editor/react";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import GeneratingTokensIcon from "@mui/icons-material/GeneratingTokens"; // Probably change in future
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -17,6 +17,8 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { OutputFieldProps } from "../types";
+
+import { track, EVENT_NAMES } from "@/services/amplitude";
 
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   {
@@ -64,7 +66,7 @@ const skeletons = () => (
   </>
 );
 
-const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpen, onCloseDialog }: OutputFieldProps) => {
+const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpen, onCloseDialog, highlightCost = false }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
   const [isPopoutOpen, setIsPopoutOpen] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<string | undefined>(getFormatValue(responseFormat));
@@ -105,6 +107,26 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
       type: "updateResponseFormat",
       payload: { promptId, responseFormat: copiedFormat },
     });
+    // Track output field changed event
+    try {
+      if (copiedFormat) {
+        const parsedFormat = JSON.parse(copiedFormat);
+        track(EVENT_NAMES.OUTPUT_FIELD_CHANGED, {
+          prompt_id: promptId,
+          has_schema: !!parsedFormat?.json_schema,
+        });
+      } else {
+        track(EVENT_NAMES.OUTPUT_FIELD_CHANGED, {
+          prompt_id: promptId,
+          has_schema: false,
+        });
+      }
+    } catch {
+      track(EVENT_NAMES.OUTPUT_FIELD_CHANGED, {
+        prompt_id: promptId,
+        has_schema: false,
+      });
+    }
   };
 
   useEffect(() => {
@@ -168,30 +190,36 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
         </div>
         <Divider />
         <div className="flex gap-3 shrink-0">
-          {/* eslint-disable-next-line no-constant-condition */}
-          {false ? (
+          {runResponse?.input_tokens !== null && runResponse?.input_tokens !== undefined ? (
             <div className="flex items-center">
-              <Tooltip title="Total Tokens">
-                <GeneratingTokensIcon />
+              <Tooltip
+                title={`Input: ${runResponse.input_tokens.toLocaleString()}, Output: ${(runResponse.output_tokens ?? 0).toLocaleString()}, Total: ${(runResponse.total_tokens ?? 0).toLocaleString()}`}
+              >
+                <GeneratingTokensIcon sx={{ marginRight: 0.5 }} />
               </Tooltip>
-              <Typography variant="body1">{/* {SAMPLE_RESPONSE_OBJECT.data.span.tokenCountTotal} */}</Typography>
+              <Typography variant="body1">
+                {runResponse.input_tokens.toLocaleString()} / {(runResponse.output_tokens ?? 0).toLocaleString()}
+                {runResponse.total_tokens !== null && runResponse.total_tokens !== undefined && ` (${runResponse.total_tokens.toLocaleString()})`}
+              </Typography>
             </div>
           ) : null}
-          {/* eslint-disable-next-line no-constant-condition */}
-          {false ? (
-            <div className="flex items-center">
-              <Tooltip title="Latency (seconds)">
-                <HourglassEmptyIcon />
-              </Tooltip>
-              <Typography variant="body1">{/* {(latencyMs / 1000).toFixed(2)} */}</Typography>
-            </div>
-          ) : null}
-          <div className="flex items-center">
+          <Box
+            className="flex items-center"
+            sx={{
+              ...(highlightCost && runResponse?.cost
+                ? {
+                    backgroundColor: "#ffeb3b",
+                    borderRadius: 1,
+                    padding: "4px 8px",
+                  }
+                : {}),
+            }}
+          >
             <Tooltip title="Cost">
               <AttachMoneyIcon />
             </Tooltip>
             <Typography variant="body1">{running ? <Skeleton variant="text" width="100px" /> : runResponse?.cost || "-"}</Typography>
-          </div>
+          </Box>
         </div>
       </div>
       <Dialog open={dialogOpen} onClose={onCloseDialog} fullWidth>

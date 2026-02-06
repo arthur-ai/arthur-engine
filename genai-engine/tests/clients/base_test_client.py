@@ -22,6 +22,7 @@ from arthur_common.models.enums import (
     TokenUsageScope,
 )
 from arthur_common.models.request_schemas import (
+    AgentMetadata,
     ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
@@ -52,6 +53,14 @@ from arthur_common.models.response_schemas import (
     UserResponse,
     ValidationResult,
 )
+from arthur_common.models.task_eval_schemas import (
+    ContinuousEvalResponse,
+    ContinuousEvalVariableMappingResponse,
+    ListContinuousEvalsResponse,
+    ListTraceTransformsResponse,
+    LLMEval,
+    TraceTransformResponse,
+)
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
@@ -64,7 +73,6 @@ from schemas.enums import (
     RagProviderEnum,
 )
 from schemas.internal_schemas import AgenticAnnotation
-from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
@@ -97,17 +105,15 @@ from schemas.request_schemas import (
     WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
+    AgenticAnnotationAnalyticsResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
-    ContinuousEvalResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
-    ListContinuousEvalsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
-    ListTraceTransformsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -119,7 +125,6 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
-    TraceTransformResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
     TransformExtractionResponseList,
@@ -433,9 +438,14 @@ class GenaiEngineTestClientBase(httpx.Client):
         is_agentic: bool = False,
         empty_rules: bool = False,
         user_id: str = None,
+        agent_metadata: AgentMetadata = None,
     ) -> tuple[int, TaskResponse]:
         name = name if name else str(random.random())
-        request = NewTaskRequest(name=name, is_agentic=is_agentic)
+        request = NewTaskRequest(
+            name=name,
+            is_agentic=is_agentic,
+            agent_metadata=agent_metadata,
+        )
 
         resp = self.base_client.post(
             "/api/v2/tasks",
@@ -2139,6 +2149,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_ids: list[str],
         trace_ids: list[str] | None = None,
         span_types: list[str] | None = None,
+        span_ids: list[str] | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         page: int | None = None,
@@ -2173,6 +2184,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             task_ids: Task IDs to filter on (required)
             trace_ids: Trace IDs to filter on (optional)
             span_types: Span types to filter on (optional)
+            span_ids: Span IDs to filter on (optional)
             start_time: Filter by start time
             end_time: Filter by end time
             page: Page number for pagination
@@ -2205,6 +2217,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_ids"] = trace_ids
         if span_types is not None:
             params["span_types"] = span_types
+        if span_ids is not None:
+            params["span_ids"] = span_ids
         if start_time is not None:
             params["start_time"] = str(start_time)
         if end_time is not None:
@@ -3743,6 +3757,30 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_continuous_eval_variables_and_mappings(
+        self,
+        task_id: str,
+        transform_id: str,
+        eval_name: str,
+        eval_version: str,
+    ) -> tuple[int, ContinuousEvalVariableMappingResponse]:
+        """Get continuous eval variables and mappings."""
+        resp = self.base_client.get(
+            f"/api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalVariableMappingResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
     def list_continuous_eval_run_results(
         self,
         task_id: str,
@@ -3763,6 +3801,38 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 ListAgenticAnnotationsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_daily_annotation_analytics(
+        self,
+        task_id: str,
+        start_time: str = None,
+        end_time: str = None,
+    ) -> tuple[int, AgenticAnnotationAnalyticsResponse]:
+        """Get daily aggregated analytics for agentic annotations."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals/analytics/daily"
+        params = []
+        if start_time:
+            params.append(f"start_time={urllib.parse.quote(start_time)}")
+        if end_time:
+            params.append(f"end_time={urllib.parse.quote(end_time)}")
+        if params:
+            base_url = base_url + "?" + "&".join(params)
+
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                AgenticAnnotationAnalyticsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),
@@ -3906,6 +3976,220 @@ class GenaiEngineTestClientBase(httpx.Client):
         """Delete a RAG experiment."""
         resp = self.base_client.delete(
             f"/api/v1/rag_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def create_agentic_experiment(
+        self,
+        task_id: str,
+        experiment_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new agentic experiment."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/agentic_experiments",
+            json=experiment_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_agentic_experiment(
+        self,
+        experiment_id: str,
+    ) -> tuple[int, dict]:
+        """Get agentic experiment details."""
+        resp = self.base_client.get(
+            f"/api/v1/agentic_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_agentic_experiment_test_cases(
+        self,
+        experiment_id: str,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, dict]:
+        """Get paginated list of test case results for an agentic experiment."""
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = f"/api/v1/agentic_experiments/{experiment_id}/test_cases"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_agentic_experiments(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        search: str = None,
+        dataset_id: str = None,
+    ) -> tuple[int, dict]:
+        """List agentic experiments for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if search is not None:
+            params["search"] = search
+        if dataset_id is not None:
+            params["dataset_id"] = dataset_id
+
+        url = f"/api/v1/tasks/{task_id}/agentic_experiments"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def delete_agentic_experiment(self, experiment_id: str) -> int:
+        """Delete an agentic experiment."""
+        resp = self.base_client.delete(
+            f"/api/v1/agentic_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def create_prompt_experiment(
+        self,
+        task_id: str,
+        experiment_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new prompt experiment."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/prompt_experiments",
+            json=experiment_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_prompt_experiment(
+        self,
+        experiment_id: str,
+    ) -> tuple[int, dict]:
+        """Get prompt experiment details."""
+        resp = self.base_client.get(
+            f"/api/v1/prompt_experiments/{experiment_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def get_prompt_experiment_test_cases(
+        self,
+        experiment_id: str,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, dict]:
+        """Get paginated list of test case results for a prompt experiment."""
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = f"/api/v1/prompt_experiments/{experiment_id}/test_cases"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_prompt_experiments(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        search: str = None,
+        dataset_id: str = None,
+    ) -> tuple[int, dict]:
+        """List prompt experiments for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if search is not None:
+            params["search"] = search
+        if dataset_id is not None:
+            params["dataset_id"] = dataset_id
+
+        url = f"/api/v1/tasks/{task_id}/prompt_experiments"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def delete_prompt_experiment(self, experiment_id: str) -> int:
+        """Delete a prompt experiment."""
+        resp = self.base_client.delete(
+            f"/api/v1/prompt_experiments/{experiment_id}",
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -4086,6 +4370,201 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             resp.json() if resp.status_code == 200 else None,
+        )
+
+    def create_agentic_notebook(
+        self,
+        task_id: str,
+        notebook_request: dict,
+    ) -> tuple[int, dict]:
+        """Create a new agentic notebook."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/agentic_notebooks",
+            json=notebook_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def get_agentic_notebook(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get agentic notebook details."""
+        resp = self.base_client.get(
+            f"/api/v1/agentic_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def list_agentic_notebooks(
+        self,
+        task_id: str,
+        page: int = 0,
+        page_size: int = 10,
+        name: str = None,
+    ) -> tuple[int, dict]:
+        """List agentic notebooks for a task with optional filtering and pagination."""
+        params = {"page": page, "page_size": page_size}
+        if name is not None:
+            params["name"] = name
+
+        url = f"/api/v1/tasks/{task_id}/agentic_notebooks"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def update_agentic_notebook(
+        self,
+        notebook_id: str,
+        update_request: dict,
+    ) -> tuple[int, dict]:
+        """Update agentic notebook metadata."""
+        resp = self.base_client.put(
+            f"/api/v1/agentic_notebooks/{notebook_id}",
+            json=update_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def get_agentic_notebook_state(
+        self,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Get agentic notebook state."""
+        resp = self.base_client.get(
+            f"/api/v1/agentic_notebooks/{notebook_id}/state",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def set_agentic_notebook_state(
+        self,
+        notebook_id: str,
+        state_request: dict,
+    ) -> tuple[int, dict]:
+        """Set agentic notebook state."""
+        resp = self.base_client.put(
+            f"/api/v1/agentic_notebooks/{notebook_id}/state",
+            json=state_request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.content else None,
+        )
+
+    def delete_agentic_notebook(self, notebook_id: str) -> int:
+        """Delete an agentic notebook."""
+        resp = self.base_client.delete(
+            f"/api/v1/agentic_notebooks/{notebook_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def get_agentic_notebook_history(
+        self,
+        notebook_id: str,
+        page: int = 0,
+        page_size: int = 10,
+    ) -> tuple[int, dict]:
+        """Get paginated history of experiments run from this agentic notebook."""
+        params = {"page": page, "page_size": page_size}
+
+        url = f"/api/v1/agentic_notebooks/{notebook_id}/history"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def attach_notebook_to_agentic_experiment(
+        self,
+        experiment_id: str,
+        notebook_id: str,
+    ) -> tuple[int, dict]:
+        """Attach an agentic notebook to an existing experiment."""
+        url = f"/api/v1/agentic_experiments/{experiment_id}/notebook?notebook_id={notebook_id}"
+
+        resp = self.base_client.patch(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def retry_agent_polling_task(
+        self,
+        task_id: str,
+        agent_polling_data_id: str,
+    ) -> tuple[int, dict]:
+        """Retry an agent polling task"""
+        url = f"/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}"
+
+        resp = self.base_client.post(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
         )
 
 

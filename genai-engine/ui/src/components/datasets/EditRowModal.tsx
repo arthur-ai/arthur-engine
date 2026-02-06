@@ -26,6 +26,7 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({ open, onClose, onSub
     defaultValues: stringData,
     onSubmit: async ({ value }) => {
       await onSubmit(value);
+      form.reset();
     },
   });
 

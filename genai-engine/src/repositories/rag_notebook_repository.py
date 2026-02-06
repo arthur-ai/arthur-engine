@@ -35,8 +35,10 @@ from schemas.rag_notebook_schemas import (
     UpdateRagNotebookRequest,
 )
 
-RagConfigAdapter = TypeAdapter(RagConfig)
-RagConfigResponseAdapter = TypeAdapter(RagConfigResponse)
+RagConfigAdapter: TypeAdapter[RagConfig] = TypeAdapter(RagConfig)
+RagConfigResponseAdapter: TypeAdapter[RagConfigResponse] = TypeAdapter(
+    RagConfigResponse,
+)
 
 logger = logging.getLogger(__name__)
 

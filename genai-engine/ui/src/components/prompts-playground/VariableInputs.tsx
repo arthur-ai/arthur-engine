@@ -11,6 +11,9 @@ import React, { useRef, useState, useEffect } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
 
+import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
+import { track, EVENT_NAMES } from "@/services/amplitude";
+
 const VariableInputs = () => {
   const { state, dispatch, experimentConfig } = usePromptContext();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -18,23 +21,23 @@ const VariableInputs = () => {
 
   const handleKeywordValueChange = (keyword: string, value: string) => {
     dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
+    // Track variable value changed event
+    track(EVENT_NAMES.VARIABLE_VALUE_CHANGED, {
+      variable_name: keyword,
+      has_value: value.trim().length > 0,
+    });
   };
 
   const variables = Array.from(state.keywords.keys());
 
-  // Create a map of variable names to their source mappings (dataset column or experiment output)
-  const variableMappings = new Map<string, { type: 'dataset' | 'experiment'; value: string }>();
+  // Create a map of variable names to their source mappings (dataset column)
+  const variableMappings = new Map<string, { type: "dataset"; value: string }>();
   if (experimentConfig?.prompt_variable_mapping) {
-    experimentConfig.prompt_variable_mapping.forEach((mapping: any) => {
-      if (mapping.source?.type === 'dataset_column' && mapping.source?.dataset_column?.name) {
+    experimentConfig.prompt_variable_mapping.forEach((mapping: PromptVariableMappingOutput) => {
+      if (mapping.source?.type === "dataset_column" && mapping.source.type === "dataset_column") {
         variableMappings.set(mapping.variable_name, {
-          type: 'dataset',
+          type: "dataset",
           value: mapping.source.dataset_column.name,
-        });
-      } else if (mapping.source?.type === 'experiment_output' && mapping.source?.experiment_output?.json_path) {
-        variableMappings.set(mapping.variable_name, {
-          type: 'experiment',
-          value: mapping.source.experiment_output.json_path,
         });
       }
     });
@@ -135,12 +138,8 @@ const VariableInputs = () => {
 
               // Construct helper text based on mapping type
               let helperText: string | undefined = undefined;
-              if (isMapped) {
-                if (mapping.type === 'dataset') {
-                  helperText = `Mapped to dataset column: ${mapping.value}`;
-                } else if (mapping.type === 'experiment') {
-                  helperText = `Mapped to experiment output (path: ${mapping.value})`;
-                }
+              if (isMapped && mapping.type === "dataset") {
+                helperText = `Mapped to dataset column: ${mapping.value}`;
               }
 
               return (

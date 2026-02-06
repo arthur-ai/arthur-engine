@@ -74,6 +74,8 @@ class ODBCConnector(Connector):
             engine_url,
             echo=False,
             connect_args=connect_args,
+            pool_timeout=60,
+            pool_pre_ping=True,
         )
         self.metadata = MetaData()
         self.logger = logger
@@ -209,6 +211,9 @@ class ODBCConnector(Connector):
 
         if self.password:
             parts.append(f"PWD={self.password.get_secret_value()}")
+
+        parts.append("Connection Timeout=60")
+        parts.append("Login Timeout=60")
 
         return ";".join(parts) + ";"
 
@@ -453,9 +458,23 @@ class ODBCConnector(Connector):
                 conn.execute(text("SELECT 1"))
         except Exception as e:
             self.logger.error("Connection test failed.", exc_info=e)
+            error_str = str(e)
+            if "timeout" in error_str.lower():
+                failure_reason = (
+                    f"ODBC connection timeout: {e}. "
+                    "This may indicate network connectivity issues, firewall blocking, "
+                    "or the database server is not reachable. "
+                )
+            elif "login" in error_str.lower() and "failed" in error_str.lower():
+                failure_reason = (
+                    f"ODBC login failed: {e}. "
+                    "Please verify username and password are correct."
+                )
+            else:
+                failure_reason = f"ODBC connection failed: {e}"
             return ConnectorCheckResult(
                 connection_check_outcome=ConnectorCheckOutcome.FAILED,
-                failure_reason=f"ODBC connection failed: {e}",
+                failure_reason=failure_reason,
             )
         return ConnectorCheckResult(
             connection_check_outcome=ConnectorCheckOutcome.SUCCEEDED,

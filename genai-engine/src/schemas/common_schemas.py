@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from arthur_common.models.enums import (
@@ -14,10 +14,10 @@ class LLMTokenConsumption(BaseModel):
     prompt_tokens: int
     completion_tokens: int
 
-    def total_tokens(self):
+    def total_tokens(self) -> int:
         return self.prompt_tokens + self.completion_tokens
 
-    def add(self, token_consumption: LLMTokenConsumption):
+    def add(self, token_consumption: LLMTokenConsumption) -> "LLMTokenConsumption":
         self.prompt_tokens += token_consumption.prompt_tokens
         self.completion_tokens += token_consumption.completion_tokens
         return self
@@ -34,46 +34,11 @@ class UserPermission(BaseModel):
     action: UserPermissionAction
     resource: UserPermissionResource
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.action, self.resource))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, UserPermission) and self.__hash__() == other.__hash__()
-
-
-class JsonPropertySchema(BaseModel):
-    type: str = Field(
-        default="string",
-        description="The argument's type (e.g. string, boolean, etc.)",
-    )
-    description: Optional[str] = Field(
-        default=None,
-        description="A description of the argument",
-    )
-    enum: Optional[List[str]] = Field(
-        default=None,
-        description="An enum for the argument (e.g. ['celsius', 'fahrenheit'])",
-    )
-    items: Optional[Any] = Field(
-        default=None,
-        description="For array types, describes the items",
-    )
-
-
-class JsonSchema(BaseModel):
-    type: str = Field(default="object")
-    properties: Dict[str, JsonPropertySchema] = Field(
-        ...,
-        description="The name of the property and the property schema (e.g. {'topic': {'type': 'string', 'description': 'the topic to generate a joke for'})",
-    )
-    required: List[str] = Field(
-        default_factory=list,
-        description="The required properties of the function",
-    )
-    additionalProperties: Optional[bool] = Field(
-        default=None,
-        description="Whether the function definition should allow additional properties",
-    )
 
 
 class NewDatasetVersionRowColumnItemRequest(BaseModel):
@@ -86,6 +51,10 @@ class NewDatasetVersionRowColumnItemRequest(BaseModel):
 class NewDatasetVersionRowRequest(BaseModel):
     """Represents a row to be added to a dataset version."""
 
+    id: Optional[str] = Field(
+        default=None,
+        description="Optional ID for the row (used for synthetic data generation).",
+    )
     data: List[NewDatasetVersionRowColumnItemRequest] = Field(
         description="List of column-value pairs in the new dataset row.",
     )

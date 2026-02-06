@@ -6,6 +6,4 @@ export interface TaskContextType {
   task: TaskResponse | null;
 }
 
-export const TaskContext = createContext<TaskContextType | undefined>(
-  undefined
-);
+export const TaskContext = createContext<TaskContextType | undefined>(undefined);

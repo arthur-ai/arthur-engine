@@ -1,5 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import DownloadIcon from "@mui/icons-material/Download";
 import HistoryIcon from "@mui/icons-material/History";
 import SaveIcon from "@mui/icons-material/Save";
@@ -18,10 +19,12 @@ interface DatasetHeaderProps {
   description?: string | null;
   hasUnsavedChanges: boolean;
   isSaving: boolean;
+  isExporting: boolean;
   canSave: boolean;
   canAddRow: boolean;
   columnCount: number;
   rowCount: number;
+  totalRowCount: number;
   onBack: () => void;
   onSave: () => void;
   onConfigureColumns: () => void;
@@ -30,6 +33,7 @@ interface DatasetHeaderProps {
   onExport: () => void;
   onImport: () => void;
   onViewExperiments: () => void;
+  onGenerateSynthetic: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
@@ -40,10 +44,12 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   description,
   hasUnsavedChanges,
   isSaving,
+  isExporting,
   canSave,
   canAddRow,
   columnCount,
   rowCount,
+  totalRowCount,
   onBack,
   onSave,
   onConfigureColumns,
@@ -52,6 +58,7 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   onExport,
   onImport,
   onViewExperiments,
+  onGenerateSynthetic,
   searchValue,
   onSearchChange,
   onSearchClear,
@@ -79,35 +86,21 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flexGrow: 1 }}>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 600, color: "text.primary" }}
-          >
+          <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
             {datasetName}
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {hasUnsavedChanges && (
-              <Typography
-                variant="caption"
-                sx={{ color: "warning.main", fontWeight: 500 }}
-              >
+              <Typography variant="caption" sx={{ color: "warning.main", fontWeight: 500 }}>
                 • Unsaved changes
               </Typography>
             )}
             <Typography variant="body2" color="text.secondary">
-              {columnCount} column{columnCount !== 1 ? "s" : ""} •{" "}
-              {rowCount.toLocaleString()} / {MAX_DATASET_ROWS} rows
+              {columnCount} column{columnCount !== 1 ? "s" : ""} • {rowCount.toLocaleString()} / {MAX_DATASET_ROWS} rows
             </Typography>
           </Box>
         </Box>
-        <Button
-          variant="contained"
-          color="success"
-          size="small"
-          startIcon={<SaveIcon />}
-          onClick={onSave}
-          disabled={!canSave}
-        >
+        <Button variant="contained" color="success" size="small" startIcon={<SaveIcon />} onClick={onSave} disabled={!canSave}>
           {isSaving ? "Saving..." : "Save"}
         </Button>
         <Button
@@ -115,37 +108,22 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           size="small"
           startIcon={<DownloadIcon />}
           onClick={onExport}
-          disabled={rowCount === 0}
-          title={rowCount === 0 ? "No data to export" : "Export to CSV"}
+          disabled={totalRowCount === 0 || isExporting}
+          title={totalRowCount === 0 ? "No data to export" : `Export all ${totalRowCount} rows to CSV`}
         >
-          Export
+          {isExporting ? "Exporting..." : "Export"}
         </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<HistoryIcon />}
-          onClick={onOpenVersions}
-        >
+        <Button variant="outlined" size="small" startIcon={<HistoryIcon />} onClick={onOpenVersions}>
           Versions
         </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<ScienceIcon />}
-          onClick={onViewExperiments}
-          title="View experiments using this dataset"
-        >
+        <Button variant="outlined" size="small" startIcon={<ScienceIcon />} onClick={onViewExperiments} title="View experiments using this dataset">
           Experiments
         </Button>
       </Box>
 
       {/* Description */}
       {description && (
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mb: 2, ml: 6 }}
-        >
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, ml: 6 }}>
           {description}
         </Typography>
       )}
@@ -153,28 +131,23 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
       {/* Row 2: Search Bar and Data Manipulation Actions */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         <Box sx={{ flexGrow: 1 }}>
-          <DatasetSearchBar
-            value={searchValue}
-            onChange={onSearchChange}
-            onClear={onSearchClear}
-          />
+          <DatasetSearchBar value={searchValue} onChange={onSearchChange} onClear={onSearchClear} />
         </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<ViewColumnIcon />}
-          onClick={onConfigureColumns}
-        >
+        <Button variant="outlined" size="small" startIcon={<ViewColumnIcon />} onClick={onConfigureColumns}>
           Configure Columns
+        </Button>
+        <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={onImport} title="Import data from CSV">
+          Import
         </Button>
         <Button
           variant="outlined"
           size="small"
-          startIcon={<UploadIcon />}
-          onClick={onImport}
-          title="Import data from CSV"
+          startIcon={<AutoAwesomeIcon />}
+          onClick={onGenerateSynthetic}
+          disabled={rowCount === 0}
+          title={rowCount === 0 ? "Add at least one row first to generate synthetic data" : "Generate synthetic data using AI"}
         >
-          Import
+          Generate
         </Button>
         <Button
           variant="contained"

@@ -1,24 +1,32 @@
-import { Alert, Box, TablePagination } from "@mui/material";
+import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
-import { useState } from "react";
+import { SortingState } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 
-import { userLevelColumns } from "../../data/user-level-columns";
+import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
+import { createUserLevelColumns } from "../../data/create-user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
-import { TracesTable } from "../TracesTable";
 import { DataContentGate } from "../DataContentGate";
 
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
+import { TracesTable } from "./TracesTable";
+
+import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
+import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
+import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getUsers } from "@/services/tracing";
+import { formatDate } from "@/utils/formatters";
 
 interface UserLevelProps {
   welcomeDismissed: boolean;
 }
+
+const DEFAULT_DATA: TraceUserMetadataResponse[] = [];
 
 export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const api = useApi()!;
@@ -27,37 +35,58 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
-  const pagination = useDatasetPagination(FETCH_SIZE);
+  const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
-  const params = {
-    taskId: task?.id ?? "",
-    page: pagination.page,
-    pageSize: pagination.rowsPerPage,
-    filters: [],
-    timeRange,
-  };
+  const params = useMemo(
+    () => ({
+      taskId: task?.id ?? "",
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      filters: [],
+      timeRange,
+    }),
+    [task?.id, pagination.pageIndex, pagination.pageSize, timeRange]
+  );
 
-  const { data, isFetching, isPlaceholderData, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.users.listPaginated(params),
     placeholderData: keepPreviousData,
     queryFn: () => getUsers(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
+  const [sorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
 
-  const table = useReactTable({
-    data: data?.users ?? [],
-    columns: userLevelColumns,
-    getCoreRowModel: getCoreRowModel(),
-    state: {
-      sorting,
+  const handleRowClick = useCallback(
+    (row: { user_id: string }) => {
+      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+        task_id: task?.id ?? "",
+        level: "user",
+        user_id: row.user_id,
+        source: "table",
+      });
+      setDrawerTarget({ target: "user", id: row.user_id });
     },
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    manualPagination: true,
-    rowCount: data?.count ?? 0,
-  });
+    [setDrawerTarget, task?.id]
+  );
+
+  const columns = useMemo(
+    () =>
+      createUserLevelColumns({
+        formatDate,
+        formatCurrency: () => "", // Not used in user columns but required by type
+        onTrack: track,
+        Chip: CopyableChip,
+        DurationCell: () => null, // Not used in user columns
+        TraceContentCell: () => null, // Not used in user columns
+        AnnotationCell: () => null, // Not used in user columns
+        SpanStatusBadge: () => null, // Not used in user columns
+        TypeChip: () => null, // Not used in user columns
+        TokenCountTooltip,
+        TokenCostTooltip,
+      }),
+    []
+  );
 
   if (error) {
     return (
@@ -70,38 +99,21 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const hasData = Boolean(data?.users?.length);
 
   return (
-    <Box sx={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", overflow: "auto" }}>
-      <DataContentGate
-        welcomeDismissed={welcomeDismissed}
-        hasData={hasData}
-        hasActiveFilters={false}
-        dataType="users"
-      >
+    <Stack gap={1} overflow="hidden">
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={false} dataType="users">
         {hasData && (
-          <>
-            <TracesTable
-              table={table}
-              loading={isFetching}
-              onRowClick={(row) => {
-                setDrawerTarget({ target: "user", id: row.original.user_id });
-              }}
-            />
-            <TablePagination
-              component="div"
-              count={data?.count ?? 0}
-              onPageChange={pagination.handlePageChange}
-              page={pagination.page}
-              rowsPerPage={pagination.rowsPerPage}
-              onRowsPerPageChange={pagination.handleRowsPerPageChange}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              disabled={isPlaceholderData}
-              sx={{
-                overflow: "visible",
-              }}
-            />
-          </>
+          <TracesTable
+            data={data?.users ?? DEFAULT_DATA}
+            columns={columns}
+            rowCount={data?.count ?? 0}
+            pagination={pagination}
+            onPaginationChange={props.onPaginationChange}
+            isLoading={isLoading}
+            onRowClick={handleRowClick}
+            sorting={sorting}
+          />
         )}
       </DataContentGate>
-    </Box>
+    </Stack>
   );
 };

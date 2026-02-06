@@ -15,6 +15,13 @@ export const CONTINUOUS_EVAL_FILTER_FIELDS = [
     operators: [TextOperators.CONTAINS],
   }),
   createPrimitiveField({
+    name: "enabled",
+    type: "enum",
+    operators: [EnumOperators.EQUALS],
+    options: ["true", "false"],
+    itemToStringLabel: (option) => (option === "true" ? "Enabled" : "Disabled"),
+  }),
+  createPrimitiveField({
     name: "created_at",
     type: "date",
     operators: [Operators.GREATER_THAN, Operators.LESS_THAN],
@@ -23,9 +30,19 @@ export const CONTINUOUS_EVAL_FILTER_FIELDS = [
 
 export const CONTINUOUS_EVAL_RESULT_FIELDS = [
   createPrimitiveField({
-    name: "id",
+    name: "continuous_eval_id",
     type: "text",
     operators: [Operators.EQUALS, Operators.IN],
+  }),
+  createPrimitiveField({
+    name: "continuous_eval_id",
+    type: "text",
+    operators: [Operators.EQUALS, Operators.IN],
+  }),
+  createPrimitiveField({
+    name: "eval_name",
+    type: "text",
+    operators: [TextOperators.CONTAINS],
   }),
   createPrimitiveField({
     name: "trace_id",

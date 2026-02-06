@@ -2,6 +2,335 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/06/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+# 02/05/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+# 02/04/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+# 02/04/2026
+- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
+
+# 02/03/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'eval_name'
+
+# 02/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  deleted the 'query' request parameter 'continuous_eval_id'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals/results
+- **CHANGE**warning [request-parameter-removed] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'trace_ids'
+
+# 02/02/2026
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/id'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  Added new endpoint for generating synthetic dataset rows using LLM. Accepts dataset purpose, column descriptions, model configuration, and number of rows to generate.
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  Added new endpoint for conversational refinement of synthetic data generation. Supports iterative modification of generated rows via natural language instructions.
+- **CHANGE** Added new request schemas: `SyntheticDataGenerationRequest`, `SyntheticDataConversationRequest`, `SyntheticDataColumnDescription`
+- **CHANGE** Added new response schemas: `SyntheticDataGenerationResponse`, `SyntheticDataRowResponse`
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'include_experiment_traces'
+
+# 01/29/2026
+- **CHANGE** for **URL**: /api/v1/model_providers  added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/model_providers/{provider}/available_models
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  added the new 'hosted_vllm' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}/state
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/prompt_experiments/{experiment_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompt_experiments
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/completions  added the new 'hosted_vllm' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'api_base'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'hosted_vllm' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'hosted_vllm' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'hosted_vllm' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'hosted_vllm' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'hosted_vllm' enum value to the request property 'model_provider'
+
+# 01/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  the 'data/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/traces  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /api/v1/traces/spans  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/metrics/  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/query  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+
+# 01/27/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'enabled' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans/anyOf[subschema #1]/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+
+# 01/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  added the new 'session_id' enum value to the 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/agentic_experiments/{experiment_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/agentic_notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'session_id' enum value to the 'template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/agentic_notebooks/{notebook_id}/state
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/agentic_notebooks
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'session_id' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'uuid' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  added the new 'session_id' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  added the new 'uuid' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  added the new 'session_id' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  added the new 'uuid' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+
+# 01/22/2026
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'missing_spans' to the response with the '200' status
+
+# 01/21/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'password' to ''/''
+- **CHANGE** for **URL**: /api/v1/model_providers  added the new 'bedrock' enum value to the 'providers/items/provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/model_providers
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new 'vertex_ai' enum value to the 'provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'bedrock' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  added the new 'bedrock' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/notebooks/{notebook_id}/history
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the 'prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}/state
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}/state
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new 'vertex_ai' enum value to the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API PATCH /api/v1/prompt_experiments/{experiment_id}/notebook
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/notebooks
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/notebooks
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'vertex_ai' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompt_experiments
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/completions  added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/completions  added the new 'vertex_ai' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_access_key_id'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_bedrock_runtime_endpoint'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_role_name'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_secret_access_key'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_session_name'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'credentials_file'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'project_id'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'region'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added 'subschema #1, subschema #2' to the 'api_key' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request property 'api_key' became optional
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request required property 'api_key' became not write-only
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'bedrock' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'vertex_ai' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'bedrock' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'vertex_ai' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'bedrock' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'vertex_ai' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'vertex_ai' enum value to the request property 'model_provider'
+
+# 01/16/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases  the 'data/items/agentic_result/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history  the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'http_template/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/anyOf[subschema #1: AgenticNotebookState]/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
+
+# 01/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'evals/items/enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_enabled'
+
+# 01/07/2026
+- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'input_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'output_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'total_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'input_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'output_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'total_tokens' to the response with the '200' status
+
+# 01/06/2026
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  endpoint added
+
+# 01/06/2026
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
+
+# 01/05/2026
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional 'query' request parameter 'include_experiment_sessions'
+
+# 01/05/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_id'
+
 # 12/18/2025
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  endpoint added
@@ -23,6 +352,16 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/test_cases  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
+
+# 12/16/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new required request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the optional property 'missing_variables' to the response with the '200' status
 
 # 12/16/2025
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'

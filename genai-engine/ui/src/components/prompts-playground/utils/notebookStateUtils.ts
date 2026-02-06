@@ -1,7 +1,16 @@
 import { PromptType, PromptPlaygroundState } from "../types";
+
 import { toExperimentPromptConfig } from "./toExperimentPromptConfig";
 import toFrontendPrompt from "./toFrontendPrompt";
-import { NotebookStateInput, NotebookStateOutput, SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
+
+import {
+  Api,
+  NotebookStateInput,
+  NotebookStateOutput,
+  PromptExperimentDetail,
+  SavedPromptConfig,
+  UnsavedPromptConfig,
+} from "@/lib/api-client/api-client";
 
 /**
  * Serializes the current playground state to NotebookStateInput format
@@ -10,7 +19,7 @@ import { NotebookStateInput, NotebookStateOutput, SavedPromptConfig, UnsavedProm
  */
 export const serializePlaygroundState = (
   state: PromptPlaygroundState,
-  experimentConfig?: any
+  experimentConfig?: Partial<PromptExperimentDetail> | null
 ): NotebookStateInput => {
   // Convert prompts to experiment prompt configs
   const prompt_configs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
@@ -42,7 +51,7 @@ export const serializePlaygroundState = (
  */
 export const deserializeNotebookState = async (
   notebookState: NotebookStateOutput,
-  apiClient: any,
+  apiClient: Api<unknown>,
   taskId: string
 ): Promise<{
   prompts: PromptType[];
@@ -81,13 +90,14 @@ export const deserializeNotebookState = async (
           created_at: undefined,
           modelName: unsavedConfig.model_name || "",
           modelProvider: unsavedConfig.model_provider || "",
-          messages: unsavedConfig.messages?.map((msg, idx) => ({
-            id: `msg-${idx}`,
-            role: msg.role,
-            content: msg.content || "",
-            disabled: false,
-            ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}),
-          })) || [],
+          messages:
+            unsavedConfig.messages?.map((msg, idx) => ({
+              id: `msg-${idx}`,
+              role: msg.role,
+              content: msg.content || "",
+              disabled: false,
+              ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {}),
+            })) || [],
           modelParameters: {
             temperature: unsavedConfig.config?.temperature ?? null,
             top_p: unsavedConfig.config?.top_p ?? null,
@@ -108,12 +118,13 @@ export const deserializeNotebookState = async (
           },
           runResponse: null,
           responseFormat: unsavedConfig.config?.response_format,
-          tools: unsavedConfig.tools?.map((tool, idx) => ({
-            id: `tool-${idx}`,
-            type: tool.type,
-            function: tool.function,
-            strict: tool.strict ?? false,
-          })) || [],
+          tools:
+            unsavedConfig.tools?.map((tool, idx) => ({
+              id: `tool-${idx}`,
+              type: tool.type,
+              function: tool.function,
+              strict: tool.strict ?? false,
+            })) || [],
           toolChoice: unsavedConfig.config?.tool_choice,
           running: false,
           version: null,

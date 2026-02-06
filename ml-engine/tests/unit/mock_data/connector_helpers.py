@@ -26,9 +26,16 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
+    DATABRICKS_CONNECTOR_CLIENT_ID_FIELD,
+    DATABRICKS_CONNECTOR_CLIENT_SECRET_FIELD,
+    DATABRICKS_CONNECTOR_HTTP_PATH_FIELD,
+    DATABRICKS_CONNECTOR_PAT_FIELD,
+    DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD,
 )
 from arthur_common.models.datasets import DatasetFileType
-from arthur_common.models.enums import ModelProblemType
+from arthur_common.models.enums import (
+    ModelProblemType,
+)
 
 
 def mock_bucket_based_connector_spec(
@@ -48,6 +55,46 @@ def mock_bucket_based_connector_spec(
         "project_id": str(uuid4()),
         "data_plane_id": str(uuid4()),
     }
+
+
+def mock_databricks_connector_spec(
+    server_hostname: str = "dbc-xxx.cloud.databricks.com",
+    http_path: str = "/sql/1.0/warehouses/yyy",
+    access_token: str | None = "mock_token",
+    client_id: str | None = None,
+    client_secret: str | None = None,
+) -> dict:
+    """Build a mock Databricks connector spec for tests.
+
+    Auth method is auto-detected based on credentials:
+    - If client_id + client_secret provided: OAuth M2M
+    - Else if access_token provided: PAT
+    """
+    fields: List[Dict] = [
+        {"key": DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD, "value": server_hostname},
+        {"key": DATABRICKS_CONNECTOR_HTTP_PATH_FIELD, "value": http_path},
+    ]
+    if access_token:
+        fields.append({"key": DATABRICKS_CONNECTOR_PAT_FIELD, "value": access_token})
+    if client_id:
+        fields.append({"key": DATABRICKS_CONNECTOR_CLIENT_ID_FIELD, "value": client_id})
+    if client_secret:
+        fields.append({"key": DATABRICKS_CONNECTOR_CLIENT_SECRET_FIELD, "value": client_secret})
+
+    return mock_bucket_based_connector_spec(
+        connector_type=Mock(value="databricks"),
+        fields=[
+            {
+                **f,
+                "is_sensitive": f["key"] in (
+                    DATABRICKS_CONNECTOR_PAT_FIELD,
+                    DATABRICKS_CONNECTOR_CLIENT_SECRET_FIELD,
+                ),
+                "d_type": ConnectorFieldDataType.STRING.value,
+            }
+            for f in fields
+        ],
+    )
 
 
 def mock_expel_tabular_dataset(locator: DatasetLocator) -> dict:

@@ -27,8 +27,10 @@ import { PromptExperimentsViewHeader } from "../prompt-experiments/PromptExperim
 import { getContentHeight } from "@/constants/layout";
 import { useDataset } from "@/hooks/useDataset";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const DatasetExperimentsView: React.FC = () => {
   const { id: taskId, datasetId } = useParams<{ id: string; datasetId: string }>();
@@ -39,23 +41,20 @@ export const DatasetExperimentsView: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [searchText, setSearchText] = useState("");
-  const [debouncedSearchText, setDebouncedSearchText] = useState("");
+  const debouncedSearchText = useDebouncedValue(searchText, 300);
   const [modalSearchText, setModalSearchText] = useState("");
 
   // Fetch dataset and latest version
   const { dataset } = useDataset(datasetId);
   const { latestVersion } = useDatasetLatestVersion(datasetId);
 
-  // Debounce search text to avoid too many API calls
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchText(searchText);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchText]);
-
-  const { experiments, totalCount = 0, isLoading, error, refetch } = usePromptExperiments(
+  const {
+    experiments,
+    totalCount = 0,
+    isLoading,
+    error,
+    refetch,
+  } = usePromptExperiments(
     taskId,
     page,
     rowsPerPage,
@@ -82,9 +81,7 @@ export const DatasetExperimentsView: React.FC = () => {
   // Auto-refresh when any experiment is running
   useEffect(() => {
     // Check if any experiment is in a running state (queued or running)
-    const hasRunningExperiments = experiments.some(
-      (exp) => exp.status === "running" || exp.status === "queued"
-    );
+    const hasRunningExperiments = experiments.some((exp) => exp.status === "running" || exp.status === "queued");
 
     if (!hasRunningExperiments) {
       return;
@@ -129,8 +126,8 @@ export const DatasetExperimentsView: React.FC = () => {
 
   const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
     // Validate that datasetVersion is a number
-    if (typeof data.datasetVersion !== 'number') {
-      throw new Error('Dataset version must be selected');
+    if (typeof data.datasetVersion !== "number") {
+      throw new Error("Dataset version must be selected");
     }
 
     try {
@@ -146,10 +143,8 @@ export const DatasetExperimentsView: React.FC = () => {
       }));
 
       // Transform eval variable mappings to API format
-      const evalList = data.evaluators.map(evaluator => {
-        const evalMapping = data.evalVariableMappings?.find(
-          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-        );
+      const evalList = data.evaluators.map((evaluator) => {
+        const evalMapping = data.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
 
         const variableMapping = evalMapping
           ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
@@ -191,7 +186,7 @@ export const DatasetExperimentsView: React.FC = () => {
           id: data.datasetId,
           version: data.datasetVersion,
         },
-        prompt_configs: data.promptVersions.map(pv => ({
+        prompt_configs: data.promptVersions.map((pv) => ({
           type: "saved" as const,
           name: pv.promptName,
           version: pv.version,
@@ -226,42 +221,22 @@ export const DatasetExperimentsView: React.FC = () => {
     setPage(0); // Reset to first page when searching
   };
 
-  const getStatusChipSx = (status: PromptExperiment["status"]) => {
-    const colorMap = {
-      queued: { color: "text.secondary", borderColor: "text.secondary" },
-      running: { color: "primary.main", borderColor: "primary.main" },
-      evaluating: { color: "info.main", borderColor: "info.main" },
-      completed: { color: "success.main", borderColor: "success.main" },
-      failed: { color: "error.main", borderColor: "error.main" },
-    };
-    const colors = colorMap[status] || colorMap.queued;
-    return {
-      backgroundColor: "transparent",
-      color: colors.color,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
-      borderStyle: "solid",
-      textTransform: "capitalize",
-    };
-  };
-
   // Prepare initial data for modal with pre-filled dataset
   const initialDataWithDataset = experimentToClone
     ? experimentToClone
-    : (dataset && latestVersion ? {
-        dataset_ref: {
-          id: datasetId!,
-          name: dataset.name,
-          version: latestVersion.version_number,
-        }
-      } as Partial<PromptExperimentDetail> : undefined);
+    : dataset && latestVersion
+      ? ({
+          dataset_ref: {
+            id: datasetId!,
+            name: dataset.name,
+            version: latestVersion.version_number,
+          },
+        } as Partial<PromptExperimentDetail>)
+      : undefined;
 
   return (
     <>
-      <Box
-        className="w-full grid overflow-hidden"
-        style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}
-      >
+      <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
         <Box className="px-6 pt-6 pb-4 border-b border-gray-200 bg-white">
           <Typography variant="h5" className="font-semibold mb-2">
             Experiments for {dataset?.name || "Dataset"}
@@ -301,12 +276,7 @@ export const DatasetExperimentsView: React.FC = () => {
       </Box>
 
       {/* Select Existing Experiment Modal */}
-      <Dialog
-        open={isSelectExistingModalOpen}
-        onClose={handleCloseSelectExistingModal}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={isSelectExistingModalOpen} onClose={handleCloseSelectExistingModal} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box>
             <Typography variant="h6" className="font-semibold mb-1">
@@ -340,7 +310,8 @@ export const DatasetExperimentsView: React.FC = () => {
             const filteredExperiments = experiments.filter((exp) => {
               if (!modalSearchText) return true;
               const searchLower = modalSearchText.toLowerCase();
-              const firstPromptName = exp.prompt_configs?.[0]?.type === "saved" ? exp.prompt_configs[0].name : exp.prompt_configs?.[0]?.auto_name || "";
+              const firstPromptName =
+                exp.prompt_configs?.[0]?.type === "saved" ? exp.prompt_configs[0].name : exp.prompt_configs?.[0]?.auto_name || "";
               return (
                 exp.name.toLowerCase().includes(searchLower) ||
                 (exp.description && exp.description.toLowerCase().includes(searchLower)) ||
@@ -352,72 +323,69 @@ export const DatasetExperimentsView: React.FC = () => {
               return (
                 <Box className="py-8 text-center">
                   <Typography variant="body2" className="text-gray-500 italic">
-                    {experiments.length === 0
-                      ? "No experiments available to clone."
-                      : "No experiments match your search."}
+                    {experiments.length === 0 ? "No experiments available to clone." : "No experiments match your search."}
                   </Typography>
                 </Box>
               );
             }
 
             return (
-              <List sx={{ py: 0, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+              <List sx={{ py: 0, border: 1, borderColor: "divider", borderRadius: 1 }}>
                 {filteredExperiments.map((experiment, index) => (
-                <React.Fragment key={experiment.id}>
-                  {index > 0 && <Divider />}
-                  <ListItem disablePadding>
-                    <ListItemButton
-                      onClick={() => handleSelectExistingExperiment(experiment)}
-                      sx={{
-                        py: 2,
-                        px: 2,
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                        },
-                      }}
-                    >
-                      <ListItemText
-                        disableTypography
-                        primary={
-                          <Box className="flex items-center gap-2 mb-1">
-                            <Typography variant="subtitle1" className="font-semibold">
-                              {experiment.name}
-                            </Typography>
-                            <Chip
-                              label={experiment.status}
-                              size="small"
-                              sx={getStatusChipSx(experiment.status)}
-                            />
-                          </Box>
-                        }
-                        secondary={
-                          <Box>
-                            {experiment.description && (
-                              <Typography variant="body2" className="text-gray-700 mb-2">
-                                {experiment.description}
+                  <React.Fragment key={experiment.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem disablePadding>
+                      <ListItemButton
+                        onClick={() => handleSelectExistingExperiment(experiment)}
+                        sx={{
+                          py: 2,
+                          px: 2,
+                          "&:hover": {
+                            backgroundColor: "action.hover",
+                          },
+                        }}
+                      >
+                        <ListItemText
+                          disableTypography
+                          primary={
+                            <Box className="flex items-center gap-2 mb-1">
+                              <Typography variant="subtitle1" className="font-semibold">
+                                {experiment.name}
                               </Typography>
-                            )}
-                            <Box className="flex gap-4 text-sm">
-                              <Typography variant="caption" className="text-gray-600">
-                                <strong>Prompt:</strong> {experiment.prompt_configs?.[0]?.type === "saved" ? experiment.prompt_configs[0].name : experiment.prompt_configs?.[0]?.auto_name || "N/A"}
-                              </Typography>
-                              <Typography variant="caption" className="text-gray-600">
-                                <strong>Rows:</strong> {experiment.total_rows}
-                              </Typography>
-                              {experiment.total_cost && (
-                                <Typography variant="caption" className="text-gray-600">
-                                  <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                              <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
+                            </Box>
+                          }
+                          secondary={
+                            <Box>
+                              {experiment.description && (
+                                <Typography variant="body2" className="text-gray-700 mb-2">
+                                  {experiment.description}
                                 </Typography>
                               )}
+                              <Box className="flex gap-4 text-sm">
+                                <Typography variant="caption" className="text-gray-600">
+                                  <strong>Prompt:</strong>{" "}
+                                  {experiment.prompt_configs?.[0]?.type === "saved"
+                                    ? experiment.prompt_configs[0].name
+                                    : experiment.prompt_configs?.[0]?.auto_name || "N/A"}
+                                </Typography>
+                                <Typography variant="caption" className="text-gray-600">
+                                  <strong>Rows:</strong> {experiment.total_rows}
+                                </Typography>
+                                {experiment.total_cost && (
+                                  <Typography variant="caption" className="text-gray-600">
+                                    <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                                  </Typography>
+                                )}
+                              </Box>
                             </Box>
-                          </Box>
-                        }
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                </React.Fragment>
-              ))}
-            </List>
+                          }
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  </React.Fragment>
+                ))}
+              </List>
             );
           })()}
         </DialogContent>

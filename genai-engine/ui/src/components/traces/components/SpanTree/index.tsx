@@ -1,13 +1,13 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { Accordion } from "@base-ui-components/react/accordion";
+import { Accordion } from "@base-ui/react/accordion";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
-import { useSelection } from "../../hooks/useSelection";
 import { getSpanDuration, getSpanType } from "../../utils/spans";
-import { DurationCell } from "../DurationCell";
+import { DurationCellWithBucket } from "../DurationCell";
+import { SpanStatusBadge } from "../span-status-badge";
 
 import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
@@ -16,11 +16,11 @@ type Props = {
   level?: number;
   spans: NestedSpanWithMetricsResponse[];
   ancestors?: Set<string>;
+  selectedSpanId: string | null;
+  onSelectSpan: (spanId: string | null) => void;
 };
 
-export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => {
-  const [selectedSpanId, select] = useSelection("span");
-
+export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpanId, onSelectSpan }: Props) => {
   const values = spans.map((span) => span.span_id);
 
   return (
@@ -33,16 +33,22 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => 
           className="group data-selected:*:bg-gray-200"
           onClick={(e) => {
             e.stopPropagation();
-            select(span.span_id);
+            onSelectSpan(span.span_id);
           }}
         >
-          <SpanTreeItem span={span} level={level} />
+          <SpanTreeItem span={span} level={level} selectedSpanId={selectedSpanId} />
           <Accordion.Panel
             render={
               <Box className="h-(--accordion-panel-height) text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b overflow-hidden" />
             }
           >
-            <SpanTree spans={span.children ?? []} level={level + 1} ancestors={new Set(ancestors).add(span.span_id)} />
+            <SpanTree
+              spans={span.children ?? []}
+              level={level + 1}
+              ancestors={new Set(ancestors).add(span.span_id)}
+              selectedSpanId={selectedSpanId}
+              onSelectSpan={onSelectSpan}
+            />
           </Accordion.Panel>
         </Accordion.Item>
       ))}
@@ -50,9 +56,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => 
   );
 };
 
-const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; level: number }) => {
-  const [selectedSpanId] = useSelection("span");
-
+const SpanTreeItem = ({ span, level, selectedSpanId }: { span: NestedSpanWithMetricsResponse; level: number; selectedSpanId: string | null }) => {
   const isSelected = span.span_id === selectedSpanId;
   const hasChildren = span.children && span.children.length > 0;
 
@@ -107,7 +111,10 @@ const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; le
             <Typography variant="body2" fontWeight={500} fontSize={12}>
               {span.span_name}
             </Typography>
-            {typeof duration === "number" ? <DurationCell duration={duration} /> : null}
+            <Stack direction="row" alignItems="center" gap={0.5}>
+              {typeof duration === "number" ? <DurationCellWithBucket duration={duration} /> : null}
+              <SpanStatusBadge status={span.status_code ?? "Unset"} disableLabel />
+            </Stack>
           </Stack>
         </Stack>
       </Accordion.Header>

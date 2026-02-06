@@ -2,10 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
 
-export function useDeleteTransformMutation(
-  taskId: string | undefined,
-  onSuccess?: () => void
-) {
+export function useDeleteTransformMutation(taskId: string | undefined, onSuccess?: () => void) {
   const api = useApi();
   const queryClient = useQueryClient();
 
@@ -15,9 +12,7 @@ export function useDeleteTransformMutation(
         throw new Error("Task ID or API client not available");
       }
 
-      const response = await api.api.deleteTransformApiV1TracesTransformsTransformIdDelete(
-        transformId
-      );
+      const response = await api.api.deleteTransformApiV1TracesTransformsTransformIdDelete(transformId);
 
       return response.data;
     },

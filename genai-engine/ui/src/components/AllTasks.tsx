@@ -5,12 +5,12 @@ import IconButton from "@mui/material/IconButton";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { CopyableChip } from "./common";
 import { CreateTaskForm } from "./CreateTaskForm";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
-import { CopyableChip } from "./common";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -113,10 +113,9 @@ export const AllTasks: React.FC = () => {
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Arthur GenAI Engine</h1>
-              <p className="text-gray-600">All Tasks</p>
+          <div className="flex justify-between items-center py-3">
+            <div className="flex flex-col items-start">
+              <img src="/Arthur_Logo_PBW.svg" alt="Arthur" className="h-20 -ml-5" />
             </div>
             <div className="flex items-center space-x-4">
               {tasks.length > 0 && (
@@ -155,8 +154,8 @@ export const AllTasks: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto py-3 sm:px-6 lg:px-8">
+        <div className="px-4 py-3 sm:px-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -181,8 +180,8 @@ export const AllTasks: React.FC = () => {
           ) : (
             <>
               <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900">Tasks ({tasks.length})</h2>
-                <p className="text-sm text-gray-500">Click on any task to view details</p>
+                <h2 className="text-lg font-medium text-gray-900">All Tasks ({tasks.length})</h2>
+                <p className="text-sm text-gray-500">Click on any task to open the toolkit</p>
               </div>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {tasks.map((task) => (

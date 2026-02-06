@@ -25,11 +25,21 @@ import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFrom
 import type { PromptDetailViewProps } from "../types";
 
 import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { useCreateNotebookMutation } from "@/hooks/useNotebooks";
 import { useApi } from "@/hooks/useApi";
+import { useCreateNotebookMutation } from "@/hooks/useNotebooks";
 import { formatDate } from "@/utils/formatters";
 
-const PromptDetailView = ({ promptData, isLoading, error, promptName, version, latestVersion, taskId, onClose, onRefetch }: PromptDetailViewProps) => {
+const PromptDetailView = ({
+  promptData,
+  isLoading,
+  error,
+  promptName,
+  version,
+  latestVersion,
+  taskId,
+  onClose,
+  onRefetch,
+}: PromptDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
@@ -115,21 +125,24 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
 
   const tagPopoverOpen = Boolean(tagAnchorEl);
 
-  const handleDeleteTag = useCallback(async (tag: string) => {
-    if (!taskId || version === null) return;
+  const handleDeleteTag = useCallback(
+    async (tag: string) => {
+      if (!taskId || version === null) return;
 
-    try {
-      await deleteTagMutation.mutateAsync({
-        promptName,
-        promptVersion: version.toString(),
-        tag,
-        taskId,
-      });
-      onRefetch?.();
-    } catch (err) {
-      console.error("Failed to delete tag:", err);
-    }
-  }, [taskId, version, promptName, deleteTagMutation, onRefetch]);
+      try {
+        await deleteTagMutation.mutateAsync({
+          promptName,
+          promptVersion: version.toString(),
+          tag,
+          taskId,
+        });
+        onRefetch?.();
+      } catch (err) {
+        console.error("Failed to delete tag:", err);
+      }
+    },
+    [taskId, version, promptName, deleteTagMutation, onRefetch]
+  );
 
   const handleOpenInNotebook = useCallback(async () => {
     if (!taskId || version === null || !apiClient) return;
@@ -164,7 +177,7 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
     } catch (err) {
       console.error("Failed to open notebook:", err);
     }
-  }, [taskId, promptName, version, apiClient, createNotebookMutation]);
+  }, [taskId, promptName, version, apiClient, createNotebookMutation, navigate]);
 
   if (isLoading) {
     return (
@@ -232,13 +245,7 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {!promptData.deleted_at && version !== null && (
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleOpenInNotebook}
-              disabled={createNotebookMutation.isPending}
-              sx={{ minWidth: 80 }}
-            >
+            <Button variant="outlined" size="small" onClick={handleOpenInNotebook} disabled={createNotebookMutation.isPending} sx={{ minWidth: 80 }}>
               {createNotebookMutation.isPending ? "Opening..." : "Open in Notebook"}
             </Button>
           )}
@@ -308,8 +315,8 @@ const PromptDetailView = ({ promptData, isLoading, error, promptName, version, l
                     textTransform: "none",
                     "&:hover": {
                       backgroundColor: "transparent",
-                      textDecoration: "underline"
-                    }
+                      textDecoration: "underline",
+                    },
                   }}
                 >
                   View Config

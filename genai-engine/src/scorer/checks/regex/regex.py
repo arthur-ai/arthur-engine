@@ -16,11 +16,11 @@ TOKEN_COUNTER = TokenCounter()
 class RegexScorer(RuleScorer):
     def score(self, request: ScoreRequest) -> RuleScore:
         """checks if request contains any use provided blocked regex"""
-        text = request.scoring_text
+        text = request.scoring_text or ""
 
         regex_matched = False
         matches: list[ScorerRegexSpan] = []
-        for pattern in request.regex_patterns:
+        for pattern in request.regex_patterns or []:
             re_matches = pattern.finditer(text)
             for m in re_matches:
                 regex_matched = True

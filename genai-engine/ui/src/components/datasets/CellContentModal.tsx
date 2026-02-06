@@ -1,17 +1,5 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Portal,
-  Snackbar,
-  Typography,
-} from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Portal, Snackbar, Typography } from "@mui/material";
 import React from "react";
 
 import useSnackbar from "@/hooks/useSnackbar";
@@ -24,12 +12,7 @@ interface CellContentModalProps {
   value: unknown;
 }
 
-export const CellContentModal: React.FC<CellContentModalProps> = ({
-  open,
-  onClose,
-  columnName,
-  value,
-}) => {
+export const CellContentModal: React.FC<CellContentModalProps> = ({ open, onClose, columnName, value }) => {
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar({
     duration: "short",
   });
@@ -44,13 +27,7 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({
 
   return (
     <>
-      <Dialog
-        open={open}
-        onClose={onClose}
-        maxWidth="md"
-        fullWidth
-        onClick={(e) => e.stopPropagation()}
-      >
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth onClick={(e) => e.stopPropagation()}>
         <DialogTitle>
           <Box
             sx={{

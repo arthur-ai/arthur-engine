@@ -37,6 +37,7 @@ from schemas.rag_experiment_schemas import (
     RagTestCase,
     RagTestCaseListResponse,
 )
+from services.rag_experiment_executor import RagExperimentExecutor
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.mocks.mock_weaviate_client import MockWeaviateClientFactory
 from tests.unit.routes.conftest import setup_db_session_context_mock
@@ -119,6 +120,7 @@ def wait_for_experiment_completion(
 
 
 @pytest.mark.unit_tests
+@patch("services.experiment_executor.BaseExperimentExecutor.execute_experiment_async")
 @patch("services.experiment_executor.db_session_context")
 @patch("repositories.llm_evals_repository.supports_response_schema")
 @patch("services.rag_experiment_executor.RagClientConstructor")
@@ -130,6 +132,7 @@ def test_rag_experiment_routes_happy_path(
     mock_rag_client_constructor,
     mock_supports_response_schema,
     mock_db_session_context,
+    mock_execute_async,
     client: GenaiEngineTestClientBase,
 ):
     """
@@ -148,6 +151,12 @@ def test_rag_experiment_routes_happy_path(
 
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+
+    def sync_execute(experiment_id, request_time_parameters=None):
+        executor = RagExperimentExecutor()
+        return executor._execute_experiment(experiment_id, request_time_parameters)
+
+    mock_execute_async.side_effect = sync_execute
 
     # Setup: Create task
     task_name = f"rag_experiment_task_{random.random()}"
@@ -358,9 +367,10 @@ def test_rag_experiment_routes_happy_path(
                 "rag_provider_id": str(rag_provider_id),
                 "settings": {
                     "rag_provider": "weaviate",
-                    "search_kind": "keyword_search",
+                    "search_kind": "hybrid_search",
                     "collection_name": "test_collection",
                     "limit": 5,
+                    "alpha": 0.7,
                 },
                 "query_column": {
                     "type": "dataset_column",
@@ -389,8 +399,7 @@ def test_rag_experiment_routes_happy_path(
     assert experiment_summary["completed_rows"] == 0
     assert experiment_summary["failed_rows"] == 0
     assert "created_at" in experiment_summary
-    # finished_at may be excluded from response if None due to response_model_exclude_none=True
-    assert experiment_summary.get("finished_at") is None
+    assert experiment_summary.get("finished_at") == ""
     assert "rag_configs" in experiment_summary
     assert len(experiment_summary["rag_configs"]) == 1
     assert experiment_summary["rag_configs"][0]["type"] == "unsaved"

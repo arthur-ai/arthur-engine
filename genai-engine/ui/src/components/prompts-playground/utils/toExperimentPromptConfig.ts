@@ -1,4 +1,5 @@
 import { PromptType } from "../types";
+
 import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
 
 /**
@@ -29,20 +30,21 @@ export const toExperimentPromptConfig = (
     }));
 
   // Convert tools to the format expected by the backend
-  const tools = prompt.tools.length > 0
-    ? prompt.tools.map((tool) => ({
-        type: tool.type,
-        function: {
-          name: tool.function.name,
-          description: tool.function.description,
-          parameters: tool.function.parameters,
-        },
-        ...(tool.strict !== undefined ? { strict: tool.strict } : {}),
-      }))
-    : undefined;
+  const tools =
+    prompt.tools.length > 0
+      ? prompt.tools.map((tool) => ({
+          type: tool.type,
+          function: {
+            name: tool.function.name,
+            description: tool.function.description,
+            parameters: tool.function.parameters,
+          },
+          ...(tool.strict !== undefined ? { strict: tool.strict } : {}),
+        }))
+      : undefined;
 
   // Convert model parameters - only include non-null values
-  const config: Record<string, any> = {};
+  const config: Record<string, unknown> = {};
   if (prompt.modelParameters.temperature !== null) config.temperature = prompt.modelParameters.temperature;
   if (prompt.modelParameters.top_p !== null) config.top_p = prompt.modelParameters.top_p;
   if (prompt.modelParameters.timeout !== null) config.timeout = prompt.modelParameters.timeout;

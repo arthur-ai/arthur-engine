@@ -5,12 +5,12 @@ from utils import constants
 
 class BaseEnum(str, Enum):
     @classmethod
-    def values(self):
+    def values(self) -> list[str]:
         values: list[str] = [e for e in self]
         return values
 
-    def __str__(self):
-        return self.value
+    def __str__(self) -> str:
+        return str(self.value)
 
 
 class RuleDataType(str, Enum):
@@ -163,75 +163,6 @@ class SecretType(str, Enum):
     RAG_PROVIDER = "rag_provider"
 
 
-class ModelProvider(str, Enum):
-    ANTHROPIC = "anthropic"
-    OPENAI = "openai"
-    GEMINI = "gemini"
-
-    # not supporting for v0
-    # AZURE = "azure"
-    # BEDROCK = "bedrock"
-    # SAGEMAKER = "sagemaker"
-    # VERTEX_AI = "vertex_ai"
-    # MISTRAL = "mistral"
-    # META_LLAMA = "meta_llama"
-    # GROQ = "groq"
-    # HUGGINGFACE = "huggingface"
-    # CLOUDFLARE = "cloudflare"
-    # DEEPSEEK = "deepseek"
-    # AI21 = "ai21"
-    # BASETEN = "baseten"
-    # COHERE = "cohere"
-    # EMPOWER = "empower"
-    # FEATHERLESS_AI = "featherless_ai"
-    # FRIENDLIAI = "friendliai"
-    # GALADRIEL = "galadriel"
-    # NEBIUS = "nebius"
-    # NLP_CLOUD = "nlp_cloud"
-    # NOVITA = "novita"
-    # OPENROUTER = "openrouter"
-    # PETALS = "petals"
-    # REPLICATE = "replicate"
-    # TOGETHER_AI = "together_ai"
-    # VLLM = "vllm"
-    # WATSONX = "watsonx"
-
-
-class MessageRole(Enum):
-    DEVELOPER = "developer"
-    SYSTEM = "system"
-    USER = "user"
-    AI = "assistant"
-    TOOL = "tool"
-
-
-class OpenAIMessageType(str, Enum):
-    TEXT = "text"
-    IMAGE_URL = "image_url"
-    INPUT_AUDIO = "input_audio"
-
-
-class ReasoningEffortEnum(str, Enum):
-    NONE = "none"
-    MINIMAL = "minimal"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    DEFAULT = "default"
-
-
-class ToolChoiceEnum(str, Enum):
-    AUTO = "auto"
-    NONE = "none"
-    REQUIRED = "required"
-
-
-class LLMResponseFormatEnum(str, Enum):
-    TEXT = "text"
-    JSON_OBJECT = "json_object"
-    JSON_SCHEMA = "json_schema"
-
-
 class RagProviderAuthenticationMethodEnum(str, Enum):
     API_KEY_AUTHENTICATION = "api_key"
 
@@ -253,3 +184,8 @@ class RagSearchKind(str, Enum):
     VECTOR_SIMILARITY_TEXT_SEARCH = "vector_similarity_text_search"
     KEYWORD_SEARCH = "keyword_search"
     HYBRID_SEARCH = "hybrid_search"
+
+
+class AgenticExperimentGeneratorType(str, Enum):
+    UUID = "uuid"
+    SESSION_ID = "session_id"

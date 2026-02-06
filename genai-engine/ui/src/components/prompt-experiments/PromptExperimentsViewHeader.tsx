@@ -1,7 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import SearchIcon from "@mui/icons-material/Search";
-import { Box, Button, Typography, ButtonGroup, Menu, MenuItem, TextField, InputAdornment } from "@mui/material";
+import { Box, Button, Typography, Menu, MenuItem, TextField, InputAdornment } from "@mui/material";
 import React, { useState } from "react";
 
 interface PromptExperimentsViewHeaderProps {

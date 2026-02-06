@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
+from arthur_common.models.llm_model_providers import LLMBaseConfigSettings
 from sqlalchemy import (
     TIMESTAMP,
     UUID,
+    Boolean,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -15,6 +17,9 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
+
+if TYPE_CHECKING:
+    from db_models.task_models import DatabaseTask
 
 
 class DatabaseLLMEval(Base):
@@ -45,7 +50,7 @@ class DatabaseLLMEval(Base):
     )
 
     # Eval configurations
-    config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    config: Mapped[Optional[LLMBaseConfigSettings]] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
@@ -126,6 +131,13 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
 
+    transform_variable_mapping: Mapped[List[dict[str, str]]] = mapped_column(
+        JSON,
+        nullable=False,
+        server_default="[]",
+        default=list,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         default=datetime.now,
@@ -136,6 +148,7 @@ class DatabaseContinuousEval(Base):
         default=datetime.now,
         nullable=False,
     )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     __table_args__ = (
         ForeignKeyConstraint(

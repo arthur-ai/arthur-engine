@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
+from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
     ExternalInference,
@@ -23,14 +24,11 @@ from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
-    ModelProvider,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
 )
-from schemas.llm_schemas import OpenAIMessage
-from schemas.request_schemas import TraceTransformDefinition
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -72,7 +70,7 @@ class DatasetResponse(BaseModel):
         default=None,
         description="Description of the dataset.",
     )
-    metadata: Optional[dict] = Field(
+    metadata: Optional[dict[Any, Any]] = Field(
         default=None,
         description="Any metadata to include that describes additional information about the dataset.",
     )
@@ -145,31 +143,6 @@ class ListDatasetVersionsResponse(BaseModel):
     total_pages: int = Field(description="The total number of pages.")
     total_count: int = Field(
         description="The total number of rows in the dataset version.",
-    )
-
-
-class TraceTransformResponse(BaseModel):
-    id: UUID = Field(description="ID of the transform.")
-    task_id: str = Field(description="ID of the parent task.")
-    name: str = Field(description="Name of the transform.")
-    description: Optional[str] = Field(
-        default=None,
-        description="Description of the transform.",
-    )
-    definition: TraceTransformDefinition = Field(
-        description="Transform definition specifying extraction rules.",
-    )
-    created_at: datetime = Field(
-        description="Timestamp representing the time of transform creation",
-    )
-    updated_at: datetime = Field(
-        description="Timestamp representing the time of the last transform update",
-    )
-
-
-class ListTraceTransformsResponse(BaseModel):
-    transforms: List[TraceTransformResponse] = Field(
-        description="List of transforms for the task.",
     )
 
 
@@ -321,6 +294,9 @@ class AgenticPromptRunResponse(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
     cost: str
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
 
 
 class ModelProviderResponse(BaseModel):
@@ -763,34 +739,93 @@ class TransformExtractionResponseList(BaseModel):
     variables: list[VariableTemplateValue] = Field(
         description="List of extracted variables.",
     )
-
-
-class ContinuousEvalResponse(BaseModel):
-    id: UUID = Field(description="ID of the transform.")
-    name: str = Field(description="Name of the continuous eval.")
-    description: Optional[str] = Field(
-        default=None,
-        description="Description of the continuous eval.",
+    missing_variables: List[str] = Field(
+        description="List of variable names that had missing values (no matching span or attribute path).",
     )
-    task_id: str = Field(description="ID of the parent task.")
-    llm_eval_name: str = Field(description="Name of the llm eval.")
-    llm_eval_version: int = Field(description="Version of the llm eval.")
-    transform_id: UUID = Field(description="ID of the transform.")
-    created_at: datetime = Field(
-        description="Timestamp representing the time the transform was added to the llm eval.",
-    )
-    updated_at: datetime = Field(
-        description="Timestamp representing the time the continuous eval was last updated.",
+    missing_spans: list[str] = Field(
+        description="List of matching spans for the variables.",
     )
 
 
-class ListContinuousEvalsResponse(BaseModel):
-    evals: List[ContinuousEvalResponse] = Field(
-        description="List of continuous evals.",
+class ContinuousEvalVariableMappingResponse(BaseModel):
+    matching_variables: List[str] = Field(
+        description="List of matching variables.",
     )
-    count: int = Field(description="Total number of evals")
+    transform_variables: List[str] = Field(
+        description="List of transform variables.",
+    )
+    eval_variables: List[str] = Field(
+        description="List of eval variables.",
+    )
+
+
+class ContinuousEvalTransformVariableMappingResponse(BaseModel):
+    transform_variable: str
+    eval_variable: str
 
 
 class ContinuousEvalRerunResponse(BaseModel):
     run_id: UUID = Field(description="ID of the continuous eval run that was rerun.")
     trace_id: str = Field(description="ID of the trace that was rerun.")
+
+
+# ============================================================================
+# Synthetic Data Generation Response Schemas
+# ============================================================================
+
+
+class SyntheticDataRowResponse(BaseModel):
+    """A single generated row with a temporary client-side ID for tracking."""
+
+    id: str = Field(
+        description="Temporary client-side ID for tracking this row during the session.",
+    )
+    data: List[DatasetVersionRowColumnItemResponse] = Field(
+        description="List of column names and values in the generated row.",
+    )
+
+
+class SyntheticDataGenerationResponse(BaseModel):
+    """Response for synthetic data generation (both initial and conversation)."""
+
+    rows: List[SyntheticDataRowResponse] = Field(
+        description="Full current state of all generated rows.",
+    )
+    assistant_message: OpenAIMessage = Field(
+        description="The assistant's response message explaining what was done.",
+    )
+    rows_added: List[str] = Field(
+        default_factory=list,
+        description="IDs of newly added rows in this response.",
+    )
+    rows_modified: List[str] = Field(
+        default_factory=list,
+        description="IDs of rows that were modified in this response.",
+    )
+    rows_removed: List[str] = Field(
+        default_factory=list,
+        description="IDs of rows that were removed in this response.",
+    )
+
+
+class DailyAgenticAnnotationStats(BaseModel):
+    """Statistics for a single day of agentic annotations."""
+
+    date: str = Field(description="Date in YYYY-MM-DD format")
+    passed_count: int = Field(description="Count of annotations with score=1")
+    failed_count: int = Field(description="Count of annotations with score=0")
+    error_count: int = Field(description="Count of annotations with run_status='error'")
+    skipped_count: int = Field(
+        description="Count of annotations with run_status='skipped'"
+    )
+    total_cost: float = Field(description="Total cost for the day")
+    total_count: int = Field(description="Total annotations for the day")
+
+
+class AgenticAnnotationAnalyticsResponse(BaseModel):
+    """Response containing daily aggregated statistics."""
+
+    stats: List[DailyAgenticAnnotationStats] = Field(
+        description="Daily statistics ordered by date descending"
+    )
+    count: int = Field(description="Number of days with data")

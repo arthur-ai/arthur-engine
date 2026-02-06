@@ -19,7 +19,7 @@ from fastapi import HTTPException, Query
 from langchain_community.callbacks import OpenAICallbackHandler
 from opentelemetry import context as otel_context
 from opentelemetry import trace
-from opentelemetry.sdk.trace import Tracer
+from opentelemetry.trace import Tracer
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
@@ -54,6 +54,17 @@ def relevance_models_enabled() -> bool:
         default="false",
     ):
         return enable_relevance_models.lower() == "true"
+    return False
+
+
+def skip_model_loading() -> bool:
+    """Check if model downloading and loading should be skipped."""
+    if skip_loading := get_env_var(
+        constants.GENAI_ENGINE_SKIP_MODEL_LOADING_ENV_VAR,
+        none_on_missing=False,
+        default="false",
+    ):
+        return skip_loading.lower() == "true"
     return False
 
 
@@ -333,3 +344,23 @@ def public_endpoint(func: Callable[P, T]) -> Callable[P, T]:
     # Mark the function as intentionally public
     async_wrapper._is_public = True  # type: ignore[attr-defined]
     return async_wrapper  # type: ignore[return-value]
+
+
+def get_logger(
+    logger_name: str | None = None,
+    log_level: str = "INFO",
+) -> logging.Logger:
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(log_level)
+    # Only add handler if one doesn't already exist to prevent duplicate logs
+    if not logger.handlers:
+        stream_handler = logging.StreamHandler()
+        log_formatter = logging.Formatter(
+            fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
+            datefmt="%Y-%m-%d %H:%M:%S %z",
+        )
+        stream_handler.setFormatter(log_formatter)
+        logger.addHandler(stream_handler)
+    # Disable propagation to prevent duplicate logs from parent loggers
+    logger.propagate = False
+    return logger

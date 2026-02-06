@@ -46,6 +46,14 @@ const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       return (request[key] = filter.value as string);
     }
 
+    if (key === "enabled") {
+      return (request[key] = filter.value as string);
+    }
+
+    if (key === "continuous_eval_id") {
+      return (request["continuous_eval_ids"] = filter.value as string[]);
+    }
+
     if (key === "created_at") {
       if (filter.operator === Operators.GREATER_THAN) {
         return (request["created_after"] = filter.value as string);
