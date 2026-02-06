@@ -132,7 +132,7 @@ export function getTimeWindowAndBucketing(
         bucketMs: 60 * 60 * 1000,
         xLabelFormat: "time",
         suggestedPoints: 24,
-        tickStep: 2, // Show every 2nd hour
+        tickStep: 3, // Show every 3rd hour (8 labels: midnight, 3am, 6am, 9am, noon, 3pm, 6pm, 9pm)
       };
     }
 
