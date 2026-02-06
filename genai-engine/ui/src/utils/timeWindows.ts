@@ -125,56 +125,89 @@ export function getTimeWindowAndBucketing(
     case "day": {
       // From midnight to now
       const start = getStartOfDay(now);
+      const bucketMs = 60 * 60 * 1000;
+
+      // Calculate actual number of hours from midnight to now
+      const durationMs = now.getTime() - start.getTime();
+      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+
+      // Adjust tick step to show ~8 labels max
+      const tickStep = Math.max(1, Math.ceil(suggestedPoints / 8));
+
       return {
         start,
         end: now,
         bucketSize: "hour",
-        bucketMs: 60 * 60 * 1000,
+        bucketMs,
         xLabelFormat: "time",
-        suggestedPoints: 24,
-        tickStep: 3, // Show every 3rd hour (8 labels: midnight, 3am, 6am, 9am, noon, 3pm, 6pm, 9pm)
+        suggestedPoints,
+        tickStep,
       };
     }
 
     case "week": {
       // From start of calendar week to now
       const start = getStartOfWeek(now, firstDayOfWeek);
+      const bucketMs = 24 * 60 * 60 * 1000;
+
+      // Calculate actual number of days from week start to now
+      const durationMs = now.getTime() - start.getTime();
+      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+
       return {
         start,
         end: now,
         bucketSize: "day",
-        bucketMs: 24 * 60 * 60 * 1000,
+        bucketMs,
         xLabelFormat: "date",
-        suggestedPoints: 7,
-        tickStep: 1, // Show all days
+        suggestedPoints,
+        tickStep: 1, // Show all days (max 7)
       };
     }
 
     case "mtd": {
       // From 1st of month to now (Month-To-Date)
       const start = getStartOfMonth(now);
+      const bucketMs = 24 * 60 * 60 * 1000;
+
+      // Calculate actual number of days from 1st to now
+      const durationMs = now.getTime() - start.getTime();
+      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+
+      // Adjust tick step to show ~10 labels max
+      const tickStep = Math.max(1, Math.ceil(suggestedPoints / 10));
+
       return {
         start,
         end: now,
         bucketSize: "day",
-        bucketMs: 24 * 60 * 60 * 1000,
+        bucketMs,
         xLabelFormat: "date",
-        suggestedPoints: 31,
-        tickStep: 3, // Show every 3rd day
+        suggestedPoints,
+        tickStep,
       };
     }
 
     case "ytd": {
       // From Jan 1st to now (Year-To-Date)
       const start = getStartOfYear(now);
+      const bucketMs = 7 * 24 * 60 * 60 * 1000;
+
+      // Calculate actual number of weeks from Jan 1 to now
+      const durationMs = now.getTime() - start.getTime();
+      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+
+      // Adjust tick step to show ~13 labels max
+      const tickStep = Math.max(1, Math.ceil(suggestedPoints / 13));
+
       return {
         start,
         end: now,
         bucketSize: "week",
-        bucketMs: 7 * 24 * 60 * 60 * 1000,
+        bucketMs,
         xLabelFormat: "date",
-        suggestedPoints: 52,
-        tickStep: 4, // Show every 4th week
+        suggestedPoints,
+        tickStep,
       };
     }
 
