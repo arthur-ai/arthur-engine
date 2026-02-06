@@ -14416,6 +14416,62 @@
                 ]
             }
         },
+        "/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}": {
+            "post": {
+                "tags": [
+                    "Agent Discovery"
+                ],
+                "summary": "Retry Agent Polling",
+                "description": "Retry a failed agent polling job for a given agent polling data id.",
+                "operationId": "retry_agent_polling_api_v1_tasks__task_id__agent_polling_retry__agent_polling_data_id__post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "agent_polling_data_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Agent Polling Data Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
