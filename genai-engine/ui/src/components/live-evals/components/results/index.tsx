@@ -1,5 +1,19 @@
-import { Box, Button, Dialog, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
 import { Search } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Dialog,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TextField,
+} from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
@@ -11,8 +25,8 @@ import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEva
 import { Details } from "./components/details";
 import { FilterModal } from "./components/FilterModal";
 
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { TextOperators } from "@/components/traces/components/filtering/types";
+import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
@@ -64,7 +78,12 @@ export const Results = () => {
 
   return (
     <>
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}>
+      <Stack
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}
+      >
         <TextField
           size="small"
           placeholder="Search by eval name"

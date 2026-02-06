@@ -1,23 +1,12 @@
 import { Add, Close, FilterList } from "@mui/icons-material";
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  Paper,
-  Popover,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Autocomplete, Box, Button, Chip, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import { Dayjs } from "dayjs";
 import { useState } from "react";
 
-import { useFilterStore } from "@/components/traces/stores/filter.store";
-import { EnumOperators, Operators } from "@/components/traces/components/filtering/types";
 import type { IncomingFilter } from "@/components/traces/components/filtering/mapper";
+import { EnumOperators, Operators } from "@/components/traces/components/filtering/types";
+import { useFilterStore } from "@/components/traces/stores/filter.store";
 
 interface FilterState {
   runStatus: string | null;
@@ -207,12 +196,7 @@ export const FilterModal = () => {
 
   return (
     <>
-      <Button
-        variant="outlined"
-        startIcon={<FilterList />}
-        onClick={handleClick}
-        color={hasActiveFilters ? "primary" : "inherit"}
-      >
+      <Button variant="outlined" startIcon={<FilterList />} onClick={handleClick} color={hasActiveFilters ? "primary" : "inherit"}>
         Filter
       </Button>
       <Popover
@@ -245,9 +229,7 @@ export const FilterModal = () => {
                 <Autocomplete
                   options={RUN_STATUS_OPTIONS}
                   value={filterState.runStatus}
-                  onChange={(_, newValue) =>
-                    setFilterState((prev) => ({ ...prev, runStatus: newValue }))
-                  }
+                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, runStatus: newValue }))}
                   renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
                   getOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
                 />
@@ -261,9 +243,7 @@ export const FilterModal = () => {
                 <Autocomplete
                   options={ANNOTATION_SCORE_OPTIONS}
                   value={filterState.annotationScore}
-                  onChange={(_, newValue) =>
-                    setFilterState((prev) => ({ ...prev, annotationScore: newValue }))
-                  }
+                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, annotationScore: newValue }))}
                   renderInput={(params) => <TextField {...params} size="small" placeholder="Select score" />}
                 />
               </Box>
@@ -287,24 +267,13 @@ export const FilterModal = () => {
                     }}
                     placeholder="Enter ID"
                   />
-                  <IconButton
-                    size="small"
-                    onClick={handleAddContinuousEvalId}
-                    disabled={!continuousEvalIdInput.trim()}
-                    color="primary"
-                  >
+                  <IconButton size="small" onClick={handleAddContinuousEvalId} disabled={!continuousEvalIdInput.trim()} color="primary">
                     <Add />
                   </IconButton>
                 </Stack>
                 <Stack direction="row" flexWrap="wrap" gap={1}>
                   {filterState.continuousEvalIds.map((id) => (
-                    <Chip
-                      key={id}
-                      label={id}
-                      size="small"
-                      onDelete={() => handleRemoveContinuousEvalId(id)}
-                      deleteIcon={<Close />}
-                    />
+                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveContinuousEvalId(id)} deleteIcon={<Close />} />
                   ))}
                 </Stack>
               </Box>
@@ -328,24 +297,13 @@ export const FilterModal = () => {
                     }}
                     placeholder="Enter ID"
                   />
-                  <IconButton
-                    size="small"
-                    onClick={handleAddTraceId}
-                    disabled={!traceIdInput.trim()}
-                    color="primary"
-                  >
+                  <IconButton size="small" onClick={handleAddTraceId} disabled={!traceIdInput.trim()} color="primary">
                     <Add />
                   </IconButton>
                 </Stack>
                 <Stack direction="row" flexWrap="wrap" gap={1}>
                   {filterState.traceIds.map((id) => (
-                    <Chip
-                      key={id}
-                      label={id}
-                      size="small"
-                      onDelete={() => handleRemoveTraceId(id)}
-                      deleteIcon={<Close />}
-                    />
+                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveTraceId(id)} deleteIcon={<Close />} />
                   ))}
                 </Stack>
               </Box>
@@ -369,24 +327,13 @@ export const FilterModal = () => {
                     }}
                     placeholder="Enter ID"
                   />
-                  <IconButton
-                    size="small"
-                    onClick={handleAddAnnotationId}
-                    disabled={!annotationIdInput.trim()}
-                    color="primary"
-                  >
+                  <IconButton size="small" onClick={handleAddAnnotationId} disabled={!annotationIdInput.trim()} color="primary">
                     <Add />
                   </IconButton>
                 </Stack>
                 <Stack direction="row" flexWrap="wrap" gap={1}>
                   {filterState.annotationIds.map((id) => (
-                    <Chip
-                      key={id}
-                      label={id}
-                      size="small"
-                      onDelete={() => handleRemoveAnnotationId(id)}
-                      deleteIcon={<Close />}
-                    />
+                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveAnnotationId(id)} deleteIcon={<Close />} />
                   ))}
                 </Stack>
               </Box>
@@ -403,9 +350,7 @@ export const FilterModal = () => {
                     </Typography>
                     <DatePicker
                       value={filterState.createdAfter}
-                      onChange={(newValue) =>
-                        setFilterState((prev) => ({ ...prev, createdAfter: newValue }))
-                      }
+                      onChange={(newValue) => setFilterState((prev) => ({ ...prev, createdAfter: newValue }))}
                       slotProps={{
                         textField: {
                           size: "small",
@@ -423,9 +368,7 @@ export const FilterModal = () => {
                     </Typography>
                     <DatePicker
                       value={filterState.createdBefore}
-                      onChange={(newValue) =>
-                        setFilterState((prev) => ({ ...prev, createdBefore: newValue }))
-                      }
+                      onChange={(newValue) => setFilterState((prev) => ({ ...prev, createdBefore: newValue }))}
                       slotProps={{
                         textField: {
                           size: "small",

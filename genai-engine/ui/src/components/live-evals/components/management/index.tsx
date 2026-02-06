@@ -1,6 +1,19 @@
 import { Search } from "@mui/icons-material";
 import AddIcon from "@mui/icons-material/Add";
-import { Button, Paper, Table, TableCell, TableRow, TableHead, TableContainer, TableBody, TablePagination, Box, Stack, TextField } from "@mui/material";
+import {
+  Button,
+  Paper,
+  Table,
+  TableCell,
+  TableRow,
+  TableHead,
+  TableContainer,
+  TableBody,
+  TablePagination,
+  Box,
+  Stack,
+  TextField,
+} from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -77,7 +90,12 @@ export const Management = () => {
 
   return (
     <>
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}>
+      <Stack
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}
+      >
         <TextField
           size="small"
           placeholder="Search by name"

@@ -1,16 +1,5 @@
 import { Add, Close, FilterList } from "@mui/icons-material";
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  Paper,
-  Popover,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Autocomplete, Box, Button, Chip, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import { Dayjs } from "dayjs";
 import { useState } from "react";
@@ -146,12 +135,7 @@ export const FilterModal = () => {
 
   return (
     <>
-      <Button
-        variant="outlined"
-        startIcon={<FilterList />}
-        onClick={handleClick}
-        color={hasActiveFilters ? "primary" : "inherit"}
-      >
+      <Button variant="outlined" startIcon={<FilterList />} onClick={handleClick} color={hasActiveFilters ? "primary" : "inherit"}>
         Filter
       </Button>
       <Popover
@@ -184,9 +168,7 @@ export const FilterModal = () => {
                 <Autocomplete
                   options={ENABLED_OPTIONS}
                   value={filterState.enabled}
-                  onChange={(_, newValue) =>
-                    setFilterState((prev) => ({ ...prev, enabled: newValue }))
-                  }
+                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, enabled: newValue }))}
                   renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
                   getOptionLabel={(option) => (option === "true" ? "Enabled" : "Disabled")}
                 />
@@ -225,24 +207,13 @@ export const FilterModal = () => {
                     }}
                     placeholder="Enter ID"
                   />
-                  <IconButton
-                    size="small"
-                    onClick={handleAddContinuousEvalId}
-                    disabled={!continuousEvalIdInput.trim()}
-                    color="primary"
-                  >
+                  <IconButton size="small" onClick={handleAddContinuousEvalId} disabled={!continuousEvalIdInput.trim()} color="primary">
                     <Add />
                   </IconButton>
                 </Stack>
                 <Stack direction="row" flexWrap="wrap" gap={1}>
                   {filterState.continuousEvalIds.map((id) => (
-                    <Chip
-                      key={id}
-                      label={id}
-                      size="small"
-                      onDelete={() => handleRemoveContinuousEvalId(id)}
-                      deleteIcon={<Close />}
-                    />
+                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveContinuousEvalId(id)} deleteIcon={<Close />} />
                   ))}
                 </Stack>
               </Box>
@@ -259,9 +230,7 @@ export const FilterModal = () => {
                     </Typography>
                     <DatePicker
                       value={filterState.createdAfter}
-                      onChange={(newValue) =>
-                        setFilterState((prev) => ({ ...prev, createdAfter: newValue }))
-                      }
+                      onChange={(newValue) => setFilterState((prev) => ({ ...prev, createdAfter: newValue }))}
                       slotProps={{
                         textField: {
                           size: "small",
@@ -279,9 +248,7 @@ export const FilterModal = () => {
                     </Typography>
                     <DatePicker
                       value={filterState.createdBefore}
-                      onChange={(newValue) =>
-                        setFilterState((prev) => ({ ...prev, createdBefore: newValue }))
-                      }
+                      onChange={(newValue) => setFilterState((prev) => ({ ...prev, createdBefore: newValue }))}
                       slotProps={{
                         textField: {
                           size: "small",
