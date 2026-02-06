@@ -1,7 +1,7 @@
 """create_resource_meta_table_and_system_task
 
 Revision ID: 516d579bd164
-Revises: 4af384f67b6b
+Revises: 6bb9c3509892
 Create Date: 2026-02-06 10:43:22.438596
 
 """
@@ -13,7 +13,7 @@ import uuid
 
 # revision identifiers, used by Alembic.
 revision = '516d579bd164'
-down_revision = '4af384f67b6b'
+down_revision = '6bb9c3509892'
 branch_labels = None
 depends_on = None
 

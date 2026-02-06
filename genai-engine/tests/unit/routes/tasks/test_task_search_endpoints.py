@@ -25,31 +25,33 @@ def test_search_tasks(
     expected_count: int,
     client: GenaiEngineTestClientBase,
 ):
+    # Create tasks with unique prefix to avoid conflicts with other tests
+    unique_prefix = str(random.random())
     request_ids = []
     for i in range(20):
-        sc, task = client.create_task()
+        sc, task = client.create_task(name=f"{unique_prefix}_task_{i}")
         assert sc == 200
         request_ids.append(task.id)
 
-    sc, task_resp_base = client.search_tasks(sort=sort, page=page, page_size=page_size)
+    # Filter to only the tasks created by this test to ensure test isolation
+    sc, task_resp_base = client.search_tasks(
+        sort=sort, page=page, page_size=page_size, task_ids=request_ids
+    )
     assert sc == 200
     assert len(task_resp_base.tasks) == expected_count
 
     # Verify all tasks have is_agentic field (should default to False)
-    # TODO: this test fails when running tests in parallel with xdist
-    # modify how we create tasks to ensure that tests are independent/properly cleaned up
     for task in task_resp_base.tasks:
         assert hasattr(task, "is_agentic")
         # Since we didn't specify is_agentic in create_task, they should all be False
-        # Note: Exclude system task from this check (system task has is_agentic=True)
-        if not (hasattr(task, "is_system_task") and task.is_system_task):
-            assert task.is_agentic == False
+        assert task.is_agentic == False
 
     if page:
         sc, task_resp = client.search_tasks(
             sort=sort,
             page=page + 1,
             page_size=page_size,
+            task_ids=request_ids,
         )
         assert sc == 200
         page_1 = [t.id for t in task_resp_base.tasks]
@@ -79,7 +81,7 @@ def test_search_tasks(
             task_ids=sample,
         )
         assert len(task_resp.tasks) == 5
-        assert set([t.id for t in task_resp.tasks]) == set(request_ids)
+        assert set([t.id for t in task_resp.tasks]) == set(sample)
 
 
 @pytest.mark.unit_tests
