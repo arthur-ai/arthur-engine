@@ -577,16 +577,16 @@ class ContinuousEvalsRepository:
 
         # Conditional counts using CASE WHEN
         passed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 1, 1))
+            case((DatabaseAgenticAnnotation.annotation_score == 1, 1)),
         )
         failed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 0, 1))
+            case((DatabaseAgenticAnnotation.annotation_score == 0, 1)),
         )
         error_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "error", 1))
+            case((DatabaseAgenticAnnotation.run_status == "error", 1)),
         )
         skipped_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "skipped", 1))
+            case((DatabaseAgenticAnnotation.run_status == "skipped", 1)),
         )
         total_cost = func.coalesce(func.sum(DatabaseAgenticAnnotation.cost), 0.0)
         total_count = func.count(DatabaseAgenticAnnotation.id)
