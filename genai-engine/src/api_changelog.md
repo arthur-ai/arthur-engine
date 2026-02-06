@@ -4,6 +4,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 02/06/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
 
 # 02/05/2026
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
@@ -28,6 +36,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 02/03/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'eval_name'
+
+# 02/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  deleted the 'query' request parameter 'continuous_eval_id'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals/results
+- **CHANGE**warning [request-parameter-removed] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'trace_ids'
 
 # 02/02/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/id'
