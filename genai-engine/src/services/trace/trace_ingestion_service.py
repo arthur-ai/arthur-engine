@@ -18,7 +18,12 @@ from sqlalchemy.dialects.sqlite import (
 )
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
+from db_models import (
+    DatabaseServiceNameTaskMapping,
+    DatabaseSpan,
+    DatabaseTask,
+    DatabaseTraceMetadata,
+)
 from repositories.resource_metadata_repository import ResourceMetadataRepository
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
@@ -139,7 +144,16 @@ class TraceIngestionService:
                 )
                 resource_task_id = None
 
-            # If no task_id, assign to system task for unregistered traces
+            # Fallback: if no explicit task_id but service.name exists, check for mapping
+            if resource_task_id is None and service_name:
+                mapped_task_id = self._lookup_task_id_by_service_name(service_name)
+                if mapped_task_id:
+                    resource_task_id = mapped_task_id
+                    logger.debug(
+                        f"Resolved task_id {resource_task_id} from service.name mapping for {service_name}"
+                    )
+
+            # If still no task_id, assign to system task for unregistered traces
             if not resource_task_id:
                 logger.debug(
                     "Processing resource without task ID, assigning to system task"
@@ -223,6 +237,15 @@ class TraceIngestionService:
         """Create or retrieve resource metadata record."""
         resource_repo = ResourceMetadataRepository(self.db_session)
         return resource_repo.create_or_get_resource(resource_attributes, service_name)
+
+    def _lookup_task_id_by_service_name(self, service_name: str) -> str | None:
+        """Lookup task_id from service_name_task_mappings table."""
+        mapping = (
+            self.db_session.query(DatabaseServiceNameTaskMapping)
+            .filter(DatabaseServiceNameTaskMapping.service_name == service_name)
+            .first()
+        )
+        return mapping.task_id if mapping else None
 
     def _get_system_task_id(self) -> str:
         """Get the system task ID for unregistered traces (cached)."""

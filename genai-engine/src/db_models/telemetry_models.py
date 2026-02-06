@@ -144,6 +144,43 @@ class DatabaseResourceMetadata(Base):
     )
 
 
+class DatabaseServiceNameTaskMapping(Base):
+    """Maps service.name from resource attributes to task_id.
+
+    Allows automatic assignment of traces to tasks based on service.name
+    when explicit arthur.task attribute is not present.
+    """
+
+    __tablename__ = "service_name_task_mappings"
+
+    service_name: Mapped[str] = mapped_column(
+        String,
+        primary_key=True,
+    )
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    # Relationship
+    task: Mapped["DatabaseTask"] = relationship(lazy="joined")
+
+    __table_args__ = (
+        Index(
+            "idx_service_name_mapping_task",
+            "service_name",
+            "task_id",
+        ),
+    )
+
+
 class DatabaseSpan(Base):
     __tablename__ = "spans"
 

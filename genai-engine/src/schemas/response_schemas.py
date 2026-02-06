@@ -829,3 +829,37 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
         description="Daily statistics ordered by date descending"
     )
     count: int = Field(description="Number of days with data")
+
+
+class ServiceNameMappingResponse(BaseModel):
+    """Response for service.name → task_id mapping"""
+
+    service_name: str = Field(description="Service name from resource attributes")
+    task_id: str = Field(description="Task ID this service.name maps to")
+    task_name: str = Field(description="Name of the task")
+    created_at: datetime = Field(description="When the mapping was created")
+
+
+class ServiceNameMappingCreateResponse(ServiceNameMappingResponse):
+    """Response for creating a service.name mapping"""
+
+    traces_updated: int = Field(
+        description="Number of traces retroactively assigned to the task"
+    )
+
+
+class ServiceNameMappingUpdateResponse(ServiceNameMappingResponse):
+    """Response for updating a service.name mapping"""
+
+    traces_updated: int = Field(
+        description="Number of traces reassigned from old task to new task"
+    )
+
+
+class ServiceNameMappingListResponse(BaseModel):
+    """Response for listing service.name mappings"""
+
+    mappings: list[ServiceNameMappingResponse] = Field(
+        description="List of service.name mappings"
+    )
+    total_count: int = Field(description="Total number of mappings")

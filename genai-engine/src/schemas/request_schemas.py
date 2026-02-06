@@ -1323,3 +1323,18 @@ class SyntheticDataConversationRequest(BaseModel):
         default=None,
         description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
     )
+
+
+class CreateServiceNameMappingRequest(BaseModel):
+    """Request for creating a service.name → task_id mapping"""
+
+    service_name: str = Field(
+        description="Service name from OpenTelemetry resource attributes"
+    )
+    task_id: str = Field(description="Task ID to map this service.name to")
+
+
+class UpdateServiceNameMappingRequest(BaseModel):
+    """Request for updating a service.name → task_id mapping"""
+
+    task_id: str = Field(description="New task ID to map this service.name to")
