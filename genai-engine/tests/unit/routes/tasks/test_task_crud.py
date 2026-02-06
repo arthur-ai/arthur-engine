@@ -160,12 +160,13 @@ def test_create_task_with_agent_metadata_creates_agent_polling_data(
     mock_polling_service.enqueue.return_value = True
 
     with patch(
-        "repositories.agent_discovery_repository.get_registered_agent_polling_service",
+        "repositories.agent_polling_repository.get_registered_agent_polling_service",
         return_value=mock_polling_service,
     ):
         task_name = str(random.random())
         status_code, task_response = client.create_task(
             task_name,
+            is_agentic=True,
             agent_metadata=AgentMetadata(
                 provider=RegisteredAgentProvider.GCP,
                 gcp_metadata=GCPAgentMetadata(
