@@ -22,6 +22,7 @@ from arthur_common.models.enums import (
     TokenUsageScope,
 )
 from arthur_common.models.request_schemas import (
+    AgentMetadata,
     ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
@@ -437,9 +438,14 @@ class GenaiEngineTestClientBase(httpx.Client):
         is_agentic: bool = False,
         empty_rules: bool = False,
         user_id: str = None,
+        agent_metadata: AgentMetadata = None,
     ) -> tuple[int, TaskResponse]:
         name = name if name else str(random.random())
-        request = NewTaskRequest(name=name, is_agentic=is_agentic)
+        request = NewTaskRequest(
+            name=name,
+            is_agentic=is_agentic,
+            agent_metadata=agent_metadata,
+        )
 
         resp = self.base_client.post(
             "/api/v2/tasks",
@@ -4539,6 +4545,26 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             resp.json() if resp.status_code == 200 else None,
+        )
+
+    def retry_agent_polling_task(
+        self,
+        task_id: str,
+        agent_polling_data_id: str,
+    ) -> tuple[int, dict]:
+        """Retry an agent polling task"""
+        url = f"/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}"
+
+        resp = self.base_client.post(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
         )
 
 
