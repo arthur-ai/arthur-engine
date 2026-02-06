@@ -129,7 +129,7 @@ export function getTimeWindowAndBucketing(
 
       // Calculate actual number of hours from midnight to now
       const durationMs = now.getTime() - start.getTime();
-      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+      const suggestedPoints = Math.max(1, Math.ceil(durationMs / bucketMs));
 
       // Adjust tick step to show ~8 labels max
       const tickStep = Math.max(1, Math.ceil(suggestedPoints / 8));
@@ -152,7 +152,7 @@ export function getTimeWindowAndBucketing(
 
       // Calculate actual number of days from week start to now
       const durationMs = now.getTime() - start.getTime();
-      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+      const suggestedPoints = Math.max(1, Math.ceil(durationMs / bucketMs));
 
       return {
         start,
@@ -172,7 +172,7 @@ export function getTimeWindowAndBucketing(
 
       // Calculate actual number of days from 1st to now
       const durationMs = now.getTime() - start.getTime();
-      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+      const suggestedPoints = Math.max(1, Math.ceil(durationMs / bucketMs));
 
       // Adjust tick step to show ~10 labels max
       const tickStep = Math.max(1, Math.ceil(suggestedPoints / 10));
@@ -195,7 +195,7 @@ export function getTimeWindowAndBucketing(
 
       // Calculate actual number of weeks from Jan 1 to now
       const durationMs = now.getTime() - start.getTime();
-      const suggestedPoints = Math.ceil(durationMs / bucketMs);
+      const suggestedPoints = Math.max(1, Math.ceil(durationMs / bucketMs));
 
       // Adjust tick step to show ~13 labels max
       const tickStep = Math.max(1, Math.ceil(suggestedPoints / 13));
