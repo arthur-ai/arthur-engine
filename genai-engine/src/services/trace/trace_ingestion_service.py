@@ -18,7 +18,7 @@ from sqlalchemy.dialects.sqlite import (
 )
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
+from db_models import DatabaseSpan, DatabaseTraceMetadata
 from repositories.resource_metadata_repository import ResourceMetadataRepository
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
@@ -27,10 +27,10 @@ from utils.constants import (
     SERVICE_NAME_KEY,
     SPAN_KIND_KEY,
     SPAN_VERSION_KEY,
-    SYSTEM_TASK_NAME,
     TASK_ID_KEY,
     USER_ID_KEY,
 )
+from utils.task_utils import get_system_task_id
 from utils.token_count import safe_add
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,6 @@ class TraceIngestionService:
     def __init__(self, db_session: Session):
         self.db_session = db_session
         self.span_normalizer = SpanNormalizationService()
-        self._system_task_id_cache: str | None = None
 
     def process_trace_data(
         self,
@@ -144,7 +143,7 @@ class TraceIngestionService:
                 logger.debug(
                     "Processing resource without task ID, assigning to system task"
                 )
-                resource_task_id = self._get_system_task_id()
+                resource_task_id = get_system_task_id(self.db_session)
             else:
                 logger.debug(f"Found valid resource task ID: {resource_task_id}")
 
@@ -223,30 +222,6 @@ class TraceIngestionService:
         """Create or retrieve resource metadata record."""
         resource_repo = ResourceMetadataRepository(self.db_session)
         return resource_repo.create_or_get_resource(resource_attributes, service_name)
-
-    def _get_system_task_id(self) -> str:
-        """Get the system task ID for unregistered traces (cached)."""
-        if self._system_task_id_cache is not None:
-            return self._system_task_id_cache
-
-        # Query for the system task
-        system_task = (
-            self.db_session.query(DatabaseTask)
-            .filter(
-                DatabaseTask.is_system_task == True,
-                DatabaseTask.name == SYSTEM_TASK_NAME,
-            )
-            .first()
-        )
-
-        if not system_task:
-            raise RuntimeError(
-                f"System task '{SYSTEM_TASK_NAME}' not found. "
-                "Ensure the database migration has been run."
-            )
-
-        self._system_task_id_cache = system_task.id
-        return self._system_task_id_cache
 
     def _process_span_data(
         self,

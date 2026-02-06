@@ -36,7 +36,6 @@ from custom_types import QueryTSelect
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseSpan,
-    DatabaseTask,
     DatabaseTraceMetadata,
 )
 from db_models.llm_eval_models import DatabaseContinuousEval
@@ -48,11 +47,8 @@ from schemas.internal_schemas import (
     TraceUserMetadata,
 )
 from services.trace.filter_service import FilterService
-from utils.constants import (
-    AGENT_EXPERIMENT_SESSION_PREFIX,
-    SPAN_KIND_LLM,
-    SYSTEM_TASK_NAME,
-)
+from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, SPAN_KIND_LLM
+from utils.task_utils import get_system_task_id
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -69,29 +65,6 @@ class SpanQueryService:
     def __init__(self, db_session: Session):
         self.db_session = db_session
         self.filter_service = FilterService(db_session)
-        self._system_task_id_cache: Optional[str] = None
-
-    def _get_system_task_id(self) -> str:
-        """Get the system task ID for unregistered traces (cached)."""
-        if self._system_task_id_cache is not None:
-            return self._system_task_id_cache
-
-        system_task = (
-            self.db_session.query(DatabaseTask)
-            .filter(
-                DatabaseTask.is_system_task == True,
-                DatabaseTask.name == SYSTEM_TASK_NAME,
-            )
-            .first()
-        )
-        if not system_task:
-            raise RuntimeError(
-                f"System task '{SYSTEM_TASK_NAME}' not found. "
-                "Ensure database migrations have been run."
-            )
-
-        self._system_task_id_cache = system_task.id
-        return self._system_task_id_cache
 
     def get_paginated_trace_ids_with_filters(
         self,
@@ -1323,7 +1296,7 @@ class SpanQueryService:
                 and total_count is the total number of root spans across ALL groups (before pagination)
         """
         # Get the system task ID
-        system_task_id = self._get_system_task_id()
+        system_task_id = get_system_task_id(self.db_session)
 
         # Base query for grouping
         base_query = (
