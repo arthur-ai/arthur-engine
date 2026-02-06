@@ -680,3 +680,144 @@ def test_registered_agent_polling_execution_stores_traces_in_database(
 
             db_session.delete(task_response)
             db_session.commit()
+
+
+@pytest.mark.unit_tests
+@patch(
+    "services.task.registered_agent_polling_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
+@patch(
+    "services.trace.external_trace_retrieval_service.ExternalTraceRetrievalService.fetch_traces_from_cloud_trace",
+    side_effect=mock_fetch_traces_from_cloud_trace,
+)
+def test_registered_agent_polling_execution_success_resets_failed_runs(
+    mock_fetch_traces,
+    mock_get_db_session,
+    client: GenaiEngineTestClientBase,
+):
+    """Test a successful registered agent polling execution resets the failed runs count"""
+
+    db_session = override_get_db_session()
+
+    task_response = create_task(db_session)
+
+    agent_polling_data = None
+    try:
+        # Create agent polling data
+        agent_polling_data_id = uuid.uuid4()
+        agent_polling_data = DatabaseAgentPollingData(
+            id=agent_polling_data_id,
+            task_id=task_response.id,
+            status=AgentPollingStatus.PENDING.value,
+            failed_runs=4,
+            error_message="Test error",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            last_fetched=None,
+        )
+
+        db_session.add(agent_polling_data)
+        db_session.commit()
+
+        # Create the job
+        job = AgentPollingJob(
+            agent_polling_data_id=agent_polling_data.id,
+            delay_seconds=0,
+        )
+
+        registered_agent_polling_service = RegisteredAgentPollingService()
+        registered_agent_polling_service._execute_job(job)
+
+        # Refresh the session to get updated data
+        db_session.expire_all()
+
+        # Check the agent polling data
+        db_agent_polling_data = (
+            db_session.query(DatabaseAgentPollingData)
+            .filter(DatabaseAgentPollingData.id == agent_polling_data.id)
+            .first()
+        )
+        assert db_agent_polling_data is not None
+        assert db_agent_polling_data.status == AgentPollingStatus.IDLE.value
+        assert db_agent_polling_data.last_fetched is not None
+        assert db_agent_polling_data.error_message is None
+        assert db_agent_polling_data.failed_runs == 0
+    finally:
+        if agent_polling_data is not None:
+            db_session.delete(agent_polling_data)
+
+        db_session.delete(task_response)
+        db_session.commit()
+
+
+@pytest.mark.unit_tests
+@patch(
+    "services.task.registered_agent_polling_service.get_db_session",
+    side_effect=mock_get_db_session_generator,
+)
+@patch(
+    "services.trace.external_trace_retrieval_service.ExternalTraceRetrievalService.fetch_traces_from_cloud_trace",
+    return_value=[],
+)
+def test_registered_agent_polling_execution_no_trace_found_resets_failed_runs(
+    mock_fetch_traces,
+    mock_get_db_session,
+    client: GenaiEngineTestClientBase,
+):
+    """
+    Test that when no traces are found in a polling execution, the failed runs count still resets.
+    This is because no traces found is still a successful execution, just no new data was found.
+    """
+
+    db_session = override_get_db_session()
+
+    task_response = create_task(db_session)
+
+    agent_polling_data = None
+    try:
+        # Create agent polling data
+        agent_polling_data_id = uuid.uuid4()
+        agent_polling_data = DatabaseAgentPollingData(
+            id=agent_polling_data_id,
+            task_id=task_response.id,
+            status=AgentPollingStatus.PENDING.value,
+            failed_runs=4,
+            error_message="Test error",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            last_fetched=None,
+        )
+
+        db_session.add(agent_polling_data)
+        db_session.commit()
+
+        # Create the job
+        job = AgentPollingJob(
+            agent_polling_data_id=agent_polling_data.id,
+            delay_seconds=0,
+        )
+
+        registered_agent_polling_service = RegisteredAgentPollingService()
+        registered_agent_polling_service._execute_job(job)
+
+        # Refresh the session to get updated data
+        db_session.expire_all()
+
+        # Check the agent polling data
+        db_agent_polling_data = (
+            db_session.query(DatabaseAgentPollingData)
+            .filter(DatabaseAgentPollingData.id == agent_polling_data.id)
+            .first()
+        )
+        assert db_agent_polling_data is not None
+        assert db_agent_polling_data.status == AgentPollingStatus.IDLE.value
+        assert db_agent_polling_data.last_fetched is not None
+        assert db_agent_polling_data.error_message is None
+        assert db_agent_polling_data.failed_runs == 0
+    finally:
+        if agent_polling_data is not None:
+            db_session.delete(agent_polling_data)
+
+        db_session.delete(task_response)
+        db_session.commit()

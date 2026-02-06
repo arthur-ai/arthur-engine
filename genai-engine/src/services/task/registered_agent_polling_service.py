@@ -265,6 +265,7 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
                     job.agent_polling_data_id,
                     AgentPollingStatus.IDLE,
                     last_fetched=now,
+                    failed_runs=0,
                 )
                 logger.info(
                     f"Updated last_fetched for agent {job.agent_polling_data_id} to {now}",
@@ -290,6 +291,7 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
                 job.agent_polling_data_id,
                 AgentPollingStatus.IDLE,
                 last_fetched=now,
+                failed_runs=0,
             )
             logger.info(
                 f"Updated last_fetched for agent {job.agent_polling_data_id} to {now}",
