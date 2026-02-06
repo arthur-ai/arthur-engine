@@ -191,13 +191,20 @@ export const AllTasks: React.FC = () => {
                     className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200 hover:bg-gray-50"
                   >
                     <div className="px-4 py-5 sm:p-6 h-full flex flex-col">
-                      <div className="flex items-start">
+                      <div className="flex items-start gap-2">
                         <h3 className="text-lg font-medium text-gray-900 leading-none">{task.name}</h3>
-                        {task.is_agentic && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ml-auto">
-                            Agentic
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2 ml-auto">
+                          {task.is_agentic && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Agentic
+                            </span>
+                          )}
+                          {task.is_system_task && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              System
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm text-gray-500 mb-4">Created: {new Date(task.created_at).toLocaleDateString()}</p>
                       <div className="flex items-center mt-auto">
