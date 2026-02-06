@@ -2,9 +2,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { useApi } from "./useApi";
 
-import { getStartDate } from "@/components/traces/components/filtering/mapper";
-import { TimeRange } from "@/components/traces/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { getTimeWindowAndBucketing, TimeInterval } from "@/utils/timeWindows";
 
 export interface TimeSeriesDataPoint {
   timestamp: string;
@@ -25,52 +24,24 @@ export interface TaskOverviewMetrics {
 
 interface UseTaskOverviewMetricsParams {
   taskId: string;
-  timeRange: TimeRange;
-  viewType?: "hour" | "day" | "other";
+  interval: TimeInterval;
 }
 
-// Helper to get bucket size in milliseconds based on view type and time range
-const getBucketSize = (timeRange: TimeRange, viewType?: "hour" | "day" | "other"): number => {
-  // Special handling for Hour view (last 24 hours with 1-hour buckets)
-  if (viewType === "hour" && timeRange === "1 day") {
-    return 60 * 60 * 1000; // 1 hour buckets (24 buckets for 24 hours)
-  }
-
-  const ranges: Record<string, number> = {
-    "5 minutes": 30 * 1000, // 30 second buckets
-    "30 minutes": 2 * 60 * 1000, // 2 minute buckets
-    "1 day": 2 * 60 * 60 * 1000, // 2 hour buckets (for current day view)
-    "1 week": 24 * 60 * 60 * 1000, // 1 day buckets (7 buckets per week)
-    "1 month": 24 * 60 * 60 * 1000, // 1 day buckets (~30 buckets per month)
-    "3 months": 7 * 24 * 60 * 60 * 1000, // 1 week buckets (~13 buckets)
-    "1 year": 30 * 24 * 60 * 60 * 1000, // 1 month buckets (12 buckets per year)
-    "all time": 30 * 24 * 60 * 60 * 1000, // 1 month buckets
-  };
-  return ranges[timeRange] || 24 * 60 * 60 * 1000; // default to 1 day
-};
-
-export const useTaskOverviewMetrics = ({ taskId, timeRange, viewType = "other" }: UseTaskOverviewMetricsParams) => {
+export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetricsParams) => {
   const api = useApi()!;
 
   return useQuery({
-    queryKey: queryKeys.metrics.overview(taskId, timeRange, viewType),
+    queryKey: queryKeys.metrics.overview(taskId, interval),
     queryFn: async (): Promise<TaskOverviewMetrics> => {
-      let startTime: Date;
+      // Get canonical time window and bucketing parameters
+      const queryTime = new Date();
+      const timeWindow = getTimeWindowAndBucketing(interval, queryTime);
 
-      // For Hour view: last 24 hours
-      if (viewType === "hour" && timeRange === "1 day") {
-        const now = new Date();
-        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      }
-      // For Day view: midnight of current day
-      else if (viewType === "day" && timeRange === "1 day") {
-        const now = new Date();
-        startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      }
-      // All other views: use standard getStartDate
-      else {
-        startTime = getStartDate(timeRange);
-      }
+      const { start: startTime, end: endTime, bucketMs: bucketSize, suggestedPoints } = timeWindow;
+
+      // Calculate time boundaries in milliseconds
+      const startTimeMs = startTime.getTime();
+      const endTimeMs = endTime.getTime();
 
       // Fetch all traces for the task within the time range
       const pageSize = 1000;
@@ -102,14 +73,24 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange, viewType = "other" }
         }
       }
 
-      // Calculate aggregated metrics
+      // Calculate aggregated metrics - only for traces within our time window
       let totalTokens = 0;
       let totalCost = 0;
       let evalsCount = 0;
       let totalEvalResults = 0;
       let passedEvalResults = 0;
+      let tracesInWindow = 0;
 
       allTraces.forEach((trace) => {
+        const traceTime = new Date(trace.created_at).getTime();
+
+        // Skip traces outside our time window
+        if (traceTime < startTimeMs || traceTime > endTimeMs) {
+          return;
+        }
+
+        tracesInWindow++;
+
         // Sum up tokens
         const promptTokens = trace.prompt_token_count || 0;
         const completionTokens = trace.completion_token_count || 0;
@@ -137,14 +118,8 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange, viewType = "other" }
         }
       });
 
-      // Calculate time series data
-      const bucketSize = getBucketSize(timeRange, viewType);
-      const now = Date.now();
-      const startTimeMs = startTime.getTime();
-
-      // Create buckets - ensure at least 7 buckets for better visualization
-      const calculatedBuckets = Math.ceil((now - startTimeMs) / bucketSize);
-      const numBuckets = Math.max(calculatedBuckets, 7);
+      // Calculate time series data using suggested number of buckets
+      const numBuckets = suggestedPoints;
 
       // Initialize buckets using index as key for reliability
       const buckets = new Map<number, { traces: any[]; timestamp: number }>();
@@ -153,14 +128,19 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange, viewType = "other" }
         buckets.set(i, { traces: [], timestamp: bucketTime });
       }
 
-      // Assign traces to buckets
+      // Assign traces to buckets - only include traces within our time window
       allTraces.forEach((trace) => {
         const traceTime = new Date(trace.created_at).getTime();
+
+        // Skip traces outside our time window
+        if (traceTime < startTimeMs || traceTime > endTimeMs) {
+          return;
+        }
 
         // Calculate which bucket this trace belongs to
         let bucketIndex = Math.floor((traceTime - startTimeMs) / bucketSize);
 
-        // Clamp to valid range
+        // Clamp to valid range (should rarely be needed now)
         if (bucketIndex < 0) bucketIndex = 0;
         if (bucketIndex >= numBuckets) bucketIndex = numBuckets - 1;
 
@@ -211,7 +191,7 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange, viewType = "other" }
       const successRate = totalEvalResults > 0 ? (passedEvalResults / totalEvalResults) * 100 : 100;
 
       return {
-        tracesCount: allTraces.length,
+        tracesCount: tracesInWindow,
         totalTokens,
         totalCost,
         evalsCount,
@@ -219,7 +199,7 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange, viewType = "other" }
         timeSeriesData,
       };
     },
-    staleTime: 30000, // 30 seconds
+    staleTime: interval === "hour" ? 10000 : 30000, // 10 seconds for hour view, 30 seconds for others
     gcTime: 60000, // 1 minute
     placeholderData: keepPreviousData,
   });

@@ -10,21 +10,21 @@ import React, { useState } from "react";
 
 import { BarChart } from "./charts/BarChart";
 import { LineChart } from "./charts/LineChart";
-import { TimeRange, TIME_RANGES } from "./traces/constants";
 
 import { useTask } from "@/hooks/useTask";
 import { useTaskOverviewMetrics } from "@/hooks/useTaskOverviewMetrics";
+import { TimeInterval } from "@/utils/timeWindows";
 
 type TimeRangeButton = "Hour" | "Day" | "Week" | "Month" | "YTD" | "Year";
 
-// Map UI buttons to API time ranges
-const timeRangeMap: Record<TimeRangeButton, TimeRange> = {
-  Hour: "1 day", // Closest to 1 hour
-  Day: TIME_RANGES["1 day"],
-  Week: TIME_RANGES["1 week"],
-  Month: TIME_RANGES["1 month"],
-  YTD: TIME_RANGES["1 year"], // Approximate as 1 year
-  Year: TIME_RANGES["1 year"],
+// Map UI buttons to TimeInterval
+const timeIntervalMap: Record<TimeRangeButton, TimeInterval> = {
+  Hour: "hour",
+  Day: "day",
+  Week: "week",
+  Month: "mtd",
+  YTD: "ytd",
+  Year: "year",
 };
 
 const formatNumber = (num: number): string => {
@@ -71,15 +71,11 @@ export const TaskOverview: React.FC = () => {
   const { task } = useTask();
   const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Week");
 
-  const timeRange = timeRangeMap[selectedTimeRangeButton];
-
-  // Determine view type for metrics calculation
-  const viewType = selectedTimeRangeButton === "Hour" ? "hour" : selectedTimeRangeButton === "Day" ? "day" : "other";
+  const interval = timeIntervalMap[selectedTimeRangeButton];
 
   const { data: metrics, isLoading, error } = useTaskOverviewMetrics({
     taskId: task?.id || "",
-    timeRange,
-    viewType,
+    interval,
   });
 
   if (!task) {
@@ -108,7 +104,7 @@ export const TaskOverview: React.FC = () => {
   const displayLabel = getTimeRangeLabel(selectedTimeRangeButton);
 
   // Determine if we should show time labels (for Hour and Day views)
-  const showTimeLabels = selectedTimeRangeButton === "Hour" || selectedTimeRangeButton === "Day";
+  const showTimeLabels = interval === "hour" || interval === "day";
 
   // Prepare chart data with timestamps for axis labels
   const tracesChartData = metrics?.timeSeriesData.map((d) => ({ value: d.tracesCount, timestamp: d.timestamp })) || [];
