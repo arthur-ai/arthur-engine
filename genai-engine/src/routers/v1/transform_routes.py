@@ -64,13 +64,14 @@ def list_transforms_for_task(
 ) -> ListTraceTransformsResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        transforms = trace_transform_repo.list_transforms(
+        transforms, count = trace_transform_repo.list_transforms(
             task.id,
             pagination_parameters,
             filter_request,
         )
         return ListTraceTransformsResponse(
             transforms=[transform.to_response_model() for transform in transforms],
+            count=count,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -165,6 +165,8 @@ def test_list_all_transforms_success(
         status_code, retrieved_transforms = client.list_transforms(task_id=task.id)
         assert status_code == 200
         assert len(retrieved_transforms.transforms) == 10
+        # TODO: Uncomment once arthur-common is updated with count field
+        # assert retrieved_transforms.count == 10
 
         for i, transform in enumerate(retrieved_transforms.transforms):
             assert transform.id == transforms[i].id
@@ -223,6 +225,9 @@ def test_list_all_transforms_pagination(
         )
         assert status_code == 200
         assert len(retrieved_transforms.transforms) == 5
+        # TODO: Uncomment once arthur-common is updated with count field
+        # Count should still reflect total matching transforms, not page size
+        # assert retrieved_transforms.count == 10
 
         for i, transform in enumerate(retrieved_transforms.transforms):
             assert transform.id == transforms[i].id
