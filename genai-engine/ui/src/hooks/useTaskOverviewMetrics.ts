@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { useApi } from "./useApi";
 
@@ -200,5 +200,6 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange }: UseTaskOverviewMet
     },
     staleTime: 30000, // 30 seconds
     gcTime: 60000, // 1 minute
+    placeholderData: keepPreviousData,
   });
 };

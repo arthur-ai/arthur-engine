@@ -116,20 +116,20 @@ export const TaskOverview: React.FC = () => {
     <div className="py-6 px-6 bg-gray-50">
       <div className="max-w-[1400px] mx-auto space-y-6">
         {/* Header Section */}
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-end">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Task Overview</h1>
             <p className="text-sm text-gray-500 mt-1">Key performance metrics at a glance</p>
           </div>
-          <div className="inline-flex bg-white rounded-lg border border-gray-200 p-1">
+          <div className="inline-flex bg-white rounded-lg border border-gray-200 p-0.5">
             {timeRanges.map((range) => (
               <button
                 key={range}
                 onClick={() => setSelectedTimeRangeButton(range)}
-                className={`px-4 py-1.5 text-sm transition-colors ${
+                className={`px-3 py-1 text-xs rounded-md transition-all ${
                   selectedTimeRangeButton === range
-                    ? "font-semibold text-gray-900"
-                    : "font-normal text-gray-500 hover:text-gray-700"
+                    ? "font-semibold text-gray-900 bg-gray-100 shadow-sm"
+                    : "font-normal text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 {range}
