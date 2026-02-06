@@ -33,7 +33,7 @@ const getBucketSize = (timeRange: TimeRange): number => {
   const ranges: Record<string, number> = {
     "5 minutes": 30 * 1000, // 30 second buckets
     "30 minutes": 2 * 60 * 1000, // 2 minute buckets
-    "1 day": 2 * 60 * 60 * 1000, // 2 hour buckets (12 buckets per day)
+    "1 day": 2 * 60 * 60 * 1000, // 2 hour buckets (for current day view)
     "1 week": 24 * 60 * 60 * 1000, // 1 day buckets (7 buckets per week)
     "1 month": 24 * 60 * 60 * 1000, // 1 day buckets (~30 buckets per month)
     "3 months": 7 * 24 * 60 * 60 * 1000, // 1 week buckets (~13 buckets)
@@ -49,7 +49,14 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange }: UseTaskOverviewMet
   return useQuery({
     queryKey: queryKeys.metrics.overview(taskId, timeRange),
     queryFn: async (): Promise<TaskOverviewMetrics> => {
-      const startTime = getStartDate(timeRange);
+      // For "1 day" (Day view), use midnight of current day instead of last 24 hours
+      let startTime: Date;
+      if (timeRange === "1 day") {
+        const now = new Date();
+        startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      } else {
+        startTime = getStartDate(timeRange);
+      }
 
       // Fetch all traces for the task within the time range
       const pageSize = 1000;
