@@ -1,10 +1,12 @@
 import { Typography } from "@mui/material";
+import { useEffect } from "react";
+
+import { useWelcomeStore } from "../stores/welcome.store";
 
 import { TracesEmptyState } from "./TracesEmptyState";
 import { TracesWelcomePage } from "./TracesWelcomePage";
-import { useWelcomeStore } from "../stores/welcome.store";
+
 import { useTask } from "@/hooks/useTask";
-import { useEffect } from "react";
 
 interface DataContentGateProps {
   welcomeDismissed: boolean;
