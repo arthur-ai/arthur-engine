@@ -5,7 +5,7 @@ from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.enums import PaginationSortMethod, RegisteredAgentProvider
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
@@ -603,6 +603,19 @@ class SpanRepository:
             rejected_spans,
             rejected_reasons,
         )
+
+    def convert_and_send_traces_from_external_provider(
+        self,
+        traces: list[dict[str, Any]],
+        provider: RegisteredAgentProvider,
+        task_id: str,
+    ) -> None:
+        """Convert and send traces from a provider to the database."""
+        for trace in traces:
+            if provider == RegisteredAgentProvider.GCP:
+                self.create_traces_from_gcp(trace, task_id)
+            else:
+                raise ValueError(f"Unsupported provider '{provider}'")
 
     def query_spans(
         self,
