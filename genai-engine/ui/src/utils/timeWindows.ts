@@ -86,6 +86,14 @@ function getStartOfYear(now: Date): Date {
  * @param config Optional configuration
  * @returns TimeWindow with start, end, bucketing, and formatting info
  *
+ * Time interval definitions:
+ * - hour: Last 60 minutes up to now
+ * - day: Midnight of current day to now
+ * - week: Start of current calendar week to now
+ * - mtd: 1st of current month to now (Month-To-Date)
+ * - ytd: January 1st of current year to now (Year-To-Date)
+ * - year: January 1st of current year to now (full year)
+ *
  * @example
  * ```typescript
  * const window = getTimeWindowAndBucketing("day");
@@ -101,8 +109,8 @@ export function getTimeWindowAndBucketing(
 
   switch (interval) {
     case "hour": {
-      // From start of current hour to now
-      const start = getStartOfHour(now);
+      // Last 60 minutes up to now
+      const start = new Date(now.getTime() - 60 * 60 * 1000);
       return {
         start,
         end: now,
