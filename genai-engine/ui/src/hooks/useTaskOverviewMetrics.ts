@@ -26,10 +26,16 @@ export interface TaskOverviewMetrics {
 interface UseTaskOverviewMetricsParams {
   taskId: string;
   timeRange: TimeRange;
+  viewType?: "hour" | "day" | "other";
 }
 
-// Helper to get bucket size in milliseconds based on time range
-const getBucketSize = (timeRange: TimeRange): number => {
+// Helper to get bucket size in milliseconds based on view type and time range
+const getBucketSize = (timeRange: TimeRange, viewType?: "hour" | "day" | "other"): number => {
+  // Special handling for Hour view (last 24 hours with 1-hour buckets)
+  if (viewType === "hour" && timeRange === "1 day") {
+    return 60 * 60 * 1000; // 1 hour buckets (24 buckets for 24 hours)
+  }
+
   const ranges: Record<string, number> = {
     "5 minutes": 30 * 1000, // 30 second buckets
     "30 minutes": 2 * 60 * 1000, // 2 minute buckets
@@ -43,18 +49,26 @@ const getBucketSize = (timeRange: TimeRange): number => {
   return ranges[timeRange] || 24 * 60 * 60 * 1000; // default to 1 day
 };
 
-export const useTaskOverviewMetrics = ({ taskId, timeRange }: UseTaskOverviewMetricsParams) => {
+export const useTaskOverviewMetrics = ({ taskId, timeRange, viewType = "other" }: UseTaskOverviewMetricsParams) => {
   const api = useApi()!;
 
   return useQuery({
-    queryKey: queryKeys.metrics.overview(taskId, timeRange),
+    queryKey: queryKeys.metrics.overview(taskId, timeRange, viewType),
     queryFn: async (): Promise<TaskOverviewMetrics> => {
-      // For "1 day" (Day view), use midnight of current day instead of last 24 hours
       let startTime: Date;
-      if (timeRange === "1 day") {
+
+      // For Hour view: last 24 hours
+      if (viewType === "hour" && timeRange === "1 day") {
+        const now = new Date();
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      }
+      // For Day view: midnight of current day
+      else if (viewType === "day" && timeRange === "1 day") {
         const now = new Date();
         startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      } else {
+      }
+      // All other views: use standard getStartDate
+      else {
         startTime = getStartDate(timeRange);
       }
 
@@ -124,7 +138,7 @@ export const useTaskOverviewMetrics = ({ taskId, timeRange }: UseTaskOverviewMet
       });
 
       // Calculate time series data
-      const bucketSize = getBucketSize(timeRange);
+      const bucketSize = getBucketSize(timeRange, viewType);
       const now = Date.now();
       const startTimeMs = startTime.getTime();
 

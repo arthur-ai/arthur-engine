@@ -73,9 +73,13 @@ export const TaskOverview: React.FC = () => {
 
   const timeRange = timeRangeMap[selectedTimeRangeButton];
 
+  // Determine view type for metrics calculation
+  const viewType = selectedTimeRangeButton === "Hour" ? "hour" : selectedTimeRangeButton === "Day" ? "day" : "other";
+
   const { data: metrics, isLoading, error } = useTaskOverviewMetrics({
     taskId: task?.id || "",
     timeRange,
+    viewType,
   });
 
   if (!task) {

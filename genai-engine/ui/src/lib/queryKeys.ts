@@ -3,7 +3,7 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 
 export const queryKeys = {
   metrics: {
-    overview: (taskId: string, timeRange: TimeRange) => ["taskOverviewMetrics", { taskId, timeRange }] as const,
+    overview: (taskId: string, timeRange: TimeRange, viewType?: string) => ["taskOverviewMetrics", { taskId, timeRange, viewType }] as const,
   },
   datasets: {
     search: {
