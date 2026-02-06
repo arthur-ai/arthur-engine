@@ -80,25 +80,22 @@ def test_list_service_name_mappings(client: GenaiEngineTestClientBase):
     assert status_code == 200
 
     # Create mappings
-    client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json={"service_name": "service1", "task_id": task1.id},
-        headers=client.authorized_user_api_key_headers,
+    client.create_service_name_mapping(
+        service_name="service1",
+        task_id=task1.id,
     )
-    client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json={"service_name": "service2", "task_id": task2.id},
-        headers=client.authorized_user_api_key_headers,
+    client.create_service_name_mapping(
+        service_name="service2",
+        task_id=task2.id,
     )
 
     # List mappings
-    response = client.base_client.get(
-        "/api/v1/service_name_mappings?page=0&page_size=20",
-        headers=client.authorized_user_api_key_headers,
+    status_code, data = client.list_service_name_mappings(
+        page=0,
+        page_size=20,
     )
 
-    assert response.status_code == 200
-    data = response.json()
+    assert status_code == 200
     assert "mappings" in data
     assert "total_count" in data
     assert data["total_count"] >= 2
@@ -120,20 +117,15 @@ def test_get_service_name_mapping_by_name(client: GenaiEngineTestClientBase):
     assert status_code == 200
 
     service_name = "get-test-service"
-    client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json={"service_name": service_name, "task_id": task.id},
-        headers=client.authorized_user_api_key_headers,
+    client.create_service_name_mapping(
+        service_name=service_name,
+        task_id=task.id,
     )
 
     # Get the mapping
-    response = client.base_client.get(
-        f"/api/v1/service_name_mappings/{service_name}",
-        headers=client.authorized_user_api_key_headers,
-    )
+    status_code, data = client.get_service_name_mapping(service_name)
 
-    assert response.status_code == 200
-    data = response.json()
+    assert status_code == 200
     assert data["service_name"] == service_name
     assert data["task_id"] == task.id
     assert data["task_name"] == "test_task"
@@ -142,13 +134,12 @@ def test_get_service_name_mapping_by_name(client: GenaiEngineTestClientBase):
 @pytest.mark.unit_tests
 def test_get_service_name_mapping_not_found(client: GenaiEngineTestClientBase):
     """Test getting non-existent mapping returns 404."""
-    response = client.base_client.get(
-        "/api/v1/service_name_mappings/non-existent-service",
-        headers=client.authorized_user_api_key_headers,
-    )
+    status_code, response = client.get_service_name_mapping("non-existent-service")
 
-    assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert status_code == 404
+    import json
+    error_detail = json.loads(response)
+    assert "not found" in error_detail["detail"].lower()
 
 
 @pytest.mark.unit_tests
@@ -162,21 +153,18 @@ def test_update_service_name_mapping(client: GenaiEngineTestClientBase):
 
     # Create mapping
     service_name = "update-test-service"
-    client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json={"service_name": service_name, "task_id": task1.id},
-        headers=client.authorized_user_api_key_headers,
+    client.create_service_name_mapping(
+        service_name=service_name,
+        task_id=task1.id,
     )
 
     # Update mapping
-    response = client.base_client.put(
-        f"/api/v1/service_name_mappings/{service_name}",
-        json={"task_id": task2.id},
-        headers=client.authorized_user_api_key_headers,
+    status_code, data = client.update_service_name_mapping(
+        service_name=service_name,
+        task_id=task2.id,
     )
 
-    assert response.status_code == 200
-    data = response.json()
+    assert status_code == 200
     assert data["service_name"] == service_name
     assert data["task_id"] == task2.id
     assert data["task_name"] == "new_task"
@@ -189,13 +177,12 @@ def test_update_service_name_mapping_not_found(client: GenaiEngineTestClientBase
     status_code, task = client.create_task("test_task")
     assert status_code == 200
 
-    response = client.base_client.put(
-        "/api/v1/service_name_mappings/non-existent-service",
-        json={"task_id": task.id},
-        headers=client.authorized_user_api_key_headers,
+    status_code, _ = client.update_service_name_mapping(
+        service_name="non-existent-service",
+        task_id=task.id,
     )
 
-    assert response.status_code == 404
+    assert status_code == 404
 
 
 @pytest.mark.unit_tests
@@ -208,20 +195,18 @@ def test_update_service_name_mapping_new_task_not_found(
     assert status_code == 200
 
     service_name = "test-service"
-    client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json={"service_name": service_name, "task_id": task.id},
-        headers=client.authorized_user_api_key_headers,
+    client.create_service_name_mapping(
+        service_name=service_name,
+        task_id=task.id,
     )
 
     # Try to update with non-existent task
-    response = client.base_client.put(
-        f"/api/v1/service_name_mappings/{service_name}",
-        json={"task_id": "non-existent-task"},
-        headers=client.authorized_user_api_key_headers,
+    status_code, _ = client.update_service_name_mapping(
+        service_name=service_name,
+        task_id="non-existent-task",
     )
 
-    assert response.status_code == 404
+    assert status_code == 404
 
 
 @pytest.mark.unit_tests
@@ -232,37 +217,27 @@ def test_delete_service_name_mapping(client: GenaiEngineTestClientBase):
     assert status_code == 200
 
     service_name = "delete-test-service"
-    client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json={"service_name": service_name, "task_id": task.id},
-        headers=client.authorized_user_api_key_headers,
+    client.create_service_name_mapping(
+        service_name=service_name,
+        task_id=task.id,
     )
 
     # Delete mapping
-    response = client.base_client.delete(
-        f"/api/v1/service_name_mappings/{service_name}",
-        headers=client.authorized_user_api_key_headers,
-    )
+    status_code, _ = client.delete_service_name_mapping(service_name)
 
-    assert response.status_code == 204
+    assert status_code == 204
 
     # Verify it's deleted
-    response = client.base_client.get(
-        f"/api/v1/service_name_mappings/{service_name}",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 404
+    status_code, _ = client.get_service_name_mapping(service_name)
+    assert status_code == 404
 
 
 @pytest.mark.unit_tests
 def test_delete_service_name_mapping_not_found(client: GenaiEngineTestClientBase):
     """Test deleting non-existent mapping returns 404."""
-    response = client.base_client.delete(
-        "/api/v1/service_name_mappings/non-existent-service",
-        headers=client.authorized_user_api_key_headers,
-    )
+    status_code, _ = client.delete_service_name_mapping("non-existent-service")
 
-    assert response.status_code == 404
+    assert status_code == 404
 
 
 @pytest.mark.unit_tests
@@ -342,27 +317,24 @@ def test_list_mappings_pagination(client: GenaiEngineTestClientBase):
     for i in range(5):
         status_code, task = client.create_task(f"task_{i}")
         assert status_code == 200
-        client.base_client.post(
-            "/api/v1/service_name_mappings",
-            json={"service_name": f"service_{i}", "task_id": task.id},
-            headers=client.authorized_user_api_key_headers,
+        client.create_service_name_mapping(
+            service_name=f"service_{i}",
+            task_id=task.id,
         )
 
     # Get first page
-    response = client.base_client.get(
-        "/api/v1/service_name_mappings?page=0&page_size=2",
-        headers=client.authorized_user_api_key_headers,
+    status_code, data = client.list_service_name_mappings(
+        page=0,
+        page_size=2,
     )
-    assert response.status_code == 200
-    data = response.json()
+    assert status_code == 200
     assert len(data["mappings"]) <= 2
     assert data["total_count"] >= 5
 
     # Get second page
-    response = client.base_client.get(
-        "/api/v1/service_name_mappings?page=1&page_size=2",
-        headers=client.authorized_user_api_key_headers,
+    status_code, data = client.list_service_name_mappings(
+        page=1,
+        page_size=2,
     )
-    assert response.status_code == 200
-    data = response.json()
+    assert status_code == 200
     assert len(data["mappings"]) <= 2
