@@ -41,7 +41,9 @@ def test_search_tasks(
     for task in task_resp_base.tasks:
         assert hasattr(task, "is_agentic")
         # Since we didn't specify is_agentic in create_task, they should all be False
-        assert task.is_agentic == False
+        # Note: Exclude system task from this check (system task has is_agentic=True)
+        if not (hasattr(task, "is_system_task") and task.is_system_task):
+            assert task.is_agentic == False
 
     if page:
         sc, task_resp = client.search_tasks(
