@@ -2,6 +2,9 @@ import { Typography } from "@mui/material";
 
 import { TracesEmptyState } from "./TracesEmptyState";
 import { TracesWelcomePage } from "./TracesWelcomePage";
+import { useWelcomeStore } from "../stores/welcome.store";
+import { useTask } from "@/hooks/useTask";
+import { useEffect } from "react";
 
 interface DataContentGateProps {
   welcomeDismissed: boolean;
@@ -14,6 +17,20 @@ interface DataContentGateProps {
 export const DataContentGate = ({ welcomeDismissed, hasData, hasActiveFilters, dataType, children }: DataContentGateProps) => {
   // Show onboarding only if user hasn't dismissed it AND has no data AND no active filters
   // This ensures users with existing traces skip onboarding even if they never saw it before
+  const { task } = useTask();
+
+  const store = useWelcomeStore(task?.id ?? "");
+
+  const setDismissed = store((state) => state.setDismissed);
+
+  useEffect(() => {
+    if (welcomeDismissed) return;
+
+    if (hasData) {
+      setDismissed(true);
+    }
+  }, [hasData, setDismissed, welcomeDismissed]);
+
   if (!welcomeDismissed && !hasData && !hasActiveFilters) {
     return <TracesWelcomePage />;
   }
