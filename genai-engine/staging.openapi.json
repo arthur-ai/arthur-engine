@@ -22498,7 +22498,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Metadata for registered agents."
+                        "description": "Metadata to describe the creation source/provider for registered agents."
                     }
                 },
                 "type": "object",
@@ -27718,6 +27718,19 @@
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not"
                     },
+                    "is_system_task": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is System Task",
+                        "description": "Whether this is a system-managed task (e.g., for unregistered traces)",
+                        "default": false
+                    },
                     "agent_metadata": {
                         "anyOf": [
                             {
@@ -27727,7 +27740,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Metadata for registered agents."
+                        "description": "Metadata to describe the creation source/provider for registered agents."
                     },
                     "rules": {
                         "items": {
