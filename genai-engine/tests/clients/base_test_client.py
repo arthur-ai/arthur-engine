@@ -4541,6 +4541,151 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
+    def create_service_name_mapping(
+        self,
+        service_name: str,
+        task_id: str,
+    ) -> tuple[int, dict | str]:
+        """Create a service.name → task_id mapping.
+
+        Args:
+            service_name: The service name to map
+            task_id: The task ID to map to
+
+        Returns:
+            tuple: (status_code, response_dict or error_text)
+        """
+        url = "/api/v1/service_name_mappings"
+        payload = {
+            "service_name": service_name,
+            "task_id": task_id,
+        }
+
+        resp = self.base_client.post(
+            url,
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 201 else resp.text,
+        )
+
+    def list_service_name_mappings(
+        self,
+        page: int = 0,
+        page_size: int = 20,
+    ) -> tuple[int, dict | str]:
+        """List all service.name → task_id mappings with pagination.
+
+        Args:
+            page: Page number (0-indexed)
+            page_size: Number of results per page
+
+        Returns:
+            tuple: (status_code, response_dict or error_text)
+        """
+        url = f"/api/v1/service_name_mappings?page={page}&page_size={page_size}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else resp.text,
+        )
+
+    def get_service_name_mapping(
+        self,
+        service_name: str,
+    ) -> tuple[int, dict | str]:
+        """Get a specific service.name → task_id mapping.
+
+        Args:
+            service_name: The service name to look up
+
+        Returns:
+            tuple: (status_code, response_dict or error_text)
+        """
+        url = f"/api/v1/service_name_mappings/{service_name}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else resp.text,
+        )
+
+    def update_service_name_mapping(
+        self,
+        service_name: str,
+        task_id: str,
+    ) -> tuple[int, dict | str]:
+        """Update task_id for an existing service.name mapping.
+
+        Args:
+            service_name: The service name to update
+            task_id: The new task ID to map to
+
+        Returns:
+            tuple: (status_code, response_dict or error_text)
+        """
+        url = f"/api/v1/service_name_mappings/{service_name}"
+        payload = {
+            "task_id": task_id,
+        }
+
+        resp = self.base_client.put(
+            url,
+            json=payload,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else resp.text,
+        )
+
+    def delete_service_name_mapping(
+        self,
+        service_name: str,
+    ) -> tuple[int, str | None]:
+        """Delete a service.name → task_id mapping.
+
+        Args:
+            service_name: The service name to delete
+
+        Returns:
+            tuple: (status_code, error_text or None)
+        """
+        url = f"/api/v1/service_name_mappings/{service_name}"
+
+        resp = self.base_client.delete(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.text if resp.status_code != 204 else None,
+        )
+
 
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,

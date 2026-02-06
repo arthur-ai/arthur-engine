@@ -15,19 +15,12 @@ def test_create_service_name_mapping_success(client: GenaiEngineTestClientBase):
     assert status_code == 200
 
     # Create service name mapping
-    mapping_data = {
-        "service_name": "test-service",
-        "task_id": task.id,
-    }
-
-    response = client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json=mapping_data,
-        headers=client.authorized_user_api_key_headers,
+    status_code, data = client.create_service_name_mapping(
+        service_name="test-service",
+        task_id=task.id,
     )
 
-    assert response.status_code == 201
-    data = response.json()
+    assert status_code == 201
     assert data["service_name"] == "test-service"
     assert data["task_id"] == task.id
     assert data["task_name"] == task_name
@@ -39,19 +32,16 @@ def test_create_service_name_mapping_success(client: GenaiEngineTestClientBase):
 @pytest.mark.unit_tests
 def test_create_service_name_mapping_task_not_found(client: GenaiEngineTestClientBase):
     """Test creating mapping with non-existent task fails."""
-    mapping_data = {
-        "service_name": "test-service",
-        "task_id": "non-existent-task-id",
-    }
-
-    response = client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json=mapping_data,
-        headers=client.authorized_user_api_key_headers,
+    status_code, response = client.create_service_name_mapping(
+        service_name="test-service",
+        task_id="non-existent-task-id",
     )
 
-    assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert status_code == 404
+    # response will be error text since status != 201
+    import json
+    error_detail = json.loads(response)
+    assert "not found" in error_detail["detail"].lower()
 
 
 @pytest.mark.unit_tests
@@ -62,27 +52,22 @@ def test_create_service_name_mapping_duplicate(client: GenaiEngineTestClientBase
     assert status_code == 200
 
     # Create first mapping
-    mapping_data = {
-        "service_name": "duplicate-service",
-        "task_id": task.id,
-    }
-
-    response = client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json=mapping_data,
-        headers=client.authorized_user_api_key_headers,
+    status_code, _ = client.create_service_name_mapping(
+        service_name="duplicate-service",
+        task_id=task.id,
     )
-    assert response.status_code == 201
+    assert status_code == 201
 
     # Try to create duplicate
-    response = client.base_client.post(
-        "/api/v1/service_name_mappings",
-        json=mapping_data,
-        headers=client.authorized_user_api_key_headers,
+    status_code, response = client.create_service_name_mapping(
+        service_name="duplicate-service",
+        task_id=task.id,
     )
 
-    assert response.status_code == 409
-    assert "already exists" in response.json()["detail"].lower()
+    assert status_code == 409
+    import json
+    error_detail = json.loads(response)
+    assert "already exists" in error_detail["detail"].lower()
 
 
 @pytest.mark.unit_tests
