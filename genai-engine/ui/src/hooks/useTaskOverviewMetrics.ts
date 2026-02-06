@@ -20,6 +20,8 @@ export interface TaskOverviewMetrics {
   evalsCount: number;
   successRate: number;
   timeSeriesData: TimeSeriesDataPoint[];
+  xLabelFormat: "time" | "date" | "month";
+  tickStep: number;
 }
 
 interface UseTaskOverviewMetricsParams {
@@ -197,6 +199,8 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
         evalsCount,
         successRate,
         timeSeriesData,
+        xLabelFormat: timeWindow.xLabelFormat,
+        tickStep: timeWindow.tickStep,
       };
     },
     staleTime: interval === "hour" ? 10000 : 30000, // 10 seconds for hour view, 30 seconds for others

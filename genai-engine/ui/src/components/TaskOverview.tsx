@@ -103,8 +103,9 @@ export const TaskOverview: React.FC = () => {
 
   const displayLabel = getTimeRangeLabel(selectedTimeRangeButton);
 
-  // Determine if we should show time labels (for Hour and Day views)
-  const showTimeLabels = interval === "hour" || interval === "day";
+  // Get formatting parameters from metrics
+  const xLabelFormat = metrics?.xLabelFormat || "date";
+  const tickStep = metrics?.tickStep || 1;
 
   // Prepare chart data with timestamps for axis labels
   const tracesChartData = metrics?.timeSeriesData.map((d) => ({ value: d.tracesCount, timestamp: d.timestamp })) || [];
@@ -245,7 +246,7 @@ export const TaskOverview: React.FC = () => {
                 </div>
               ) : (
                 <div className="h-64">
-                  <LineChart data={tracesChartData} color="#3B82F6" height={256} metricLabel="Traces" showTimeLabels={showTimeLabels} />
+                  <LineChart data={tracesChartData} color="#3B82F6" height={256} metricLabel="Traces" xLabelFormat={xLabelFormat} tickStep={tickStep} />
                 </div>
               )}
             </div>
@@ -266,7 +267,7 @@ export const TaskOverview: React.FC = () => {
                 </div>
               ) : (
                 <div className="h-64">
-                  <BarChart data={tokensChartData} color="#9333EA" height={256} metricLabel="Tokens" showTimeLabels={showTimeLabels} />
+                  <BarChart data={tokensChartData} color="#9333EA" height={256} metricLabel="Tokens" xLabelFormat={xLabelFormat} tickStep={tickStep} />
                 </div>
               )}
             </div>
@@ -287,7 +288,7 @@ export const TaskOverview: React.FC = () => {
                 </div>
               ) : (
                 <div className="h-64">
-                  <LineChart data={costChartData} color="#F59E0B" height={256} formatValue={formatCostAxisValue} metricLabel="Cost" showTimeLabels={showTimeLabels} />
+                  <LineChart data={costChartData} color="#F59E0B" height={256} formatValue={formatCostAxisValue} metricLabel="Cost" xLabelFormat={xLabelFormat} tickStep={tickStep} />
                 </div>
               )}
             </div>
@@ -308,7 +309,7 @@ export const TaskOverview: React.FC = () => {
                 </div>
               ) : (
                 <div className="h-64">
-                  <LineChart data={successRateChartData} color="#10B981" height={256} formatValue={formatPercentValue} metricLabel="Success Rate" showTimeLabels={showTimeLabels} />
+                  <LineChart data={successRateChartData} color="#10B981" height={256} formatValue={formatPercentValue} metricLabel="Success Rate" xLabelFormat={xLabelFormat} tickStep={tickStep} />
                 </div>
               )}
             </div>

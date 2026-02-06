@@ -12,7 +12,8 @@ interface LineChartProps {
   height?: number;
   formatValue?: (value: number) => string;
   metricLabel?: string;
-  showTimeLabels?: boolean;
+  xLabelFormat?: "time" | "date" | "month";
+  tickStep?: number;
 }
 
 interface TooltipData {
@@ -36,35 +37,30 @@ const defaultFormatYAxisValue = (value: number): string => {
   return value.toFixed(2);
 };
 
-const formatXAxisLabel = (timestamp: string, index: number, total: number, showTimeLabels: boolean): string => {
+const formatXAxisLabel = (
+  timestamp: string,
+  index: number,
+  tickStep: number,
+  xLabelFormat: "time" | "date" | "month"
+): string => {
   const date = new Date(timestamp);
 
-  // For hour/day views, show time labels
-  if (showTimeLabels) {
-    // Show every other label for better readability
-    if (index % 2 === 0 || index === total - 1) {
-      return date.toLocaleTimeString("en-US", { hour: "numeric", hour12: true });
-    }
+  // Only show labels at the specified tick step
+  if (index % tickStep !== 0) {
     return "";
   }
 
-  // Show day of week for very small datasets
-  if (total <= 7) {
-    return date.toLocaleDateString("en-US", { weekday: "short" });
+  // Format based on xLabelFormat
+  switch (xLabelFormat) {
+    case "time":
+      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    case "date":
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    case "month":
+      return date.toLocaleDateString("en-US", { month: "short" });
+    default:
+      return "";
   }
-
-  // For small datasets (less than 15 points), show all labels
-  if (total <= 15) {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-
-  // For larger datasets, show labels at intervals
-  const interval = Math.ceil(total / 7); // Show approximately 7 labels
-  if (index % interval === 0 || index === total - 1) {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-
-  return "";
 };
 
 export const LineChart: React.FC<LineChartProps> = ({
@@ -73,7 +69,8 @@ export const LineChart: React.FC<LineChartProps> = ({
   height = 200,
   formatValue = defaultFormatYAxisValue,
   metricLabel = "Value",
-  showTimeLabels = false
+  xLabelFormat = "date",
+  tickStep = 1
 }) => {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
@@ -141,15 +138,26 @@ export const LineChart: React.FC<LineChartProps> = ({
     const date = point.timestamp ? new Date(point.timestamp) : null;
     let label = "";
     if (date) {
-      if (showTimeLabels) {
+      // Format tooltip based on xLabelFormat
+      if (xLabelFormat === "time") {
         label = date.toLocaleString("en-US", {
           month: "short",
           day: "numeric",
           hour: "numeric",
+          minute: "2-digit",
           hour12: true
         });
-      } else {
-        label = date.toLocaleDateString("en-US", { weekday: "short" });
+      } else if (xLabelFormat === "date") {
+        label = date.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric"
+        });
+      } else if (xLabelFormat === "month") {
+        label = date.toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric"
+        });
       }
     }
     setTooltip({ x, y, value: point.value, label });
@@ -193,7 +201,7 @@ export const LineChart: React.FC<LineChartProps> = ({
 
       {/* X-axis labels */}
       {data.map((point, index) => {
-        const label = point.timestamp ? formatXAxisLabel(point.timestamp, index, data.length, showTimeLabels) : "";
+        const label = point.timestamp ? formatXAxisLabel(point.timestamp, index, tickStep, xLabelFormat) : "";
         if (!label) return null;
 
         const x = paddingLeft + (data.length === 1 ? chartWidth / 2 : (index / (data.length - 1)) * chartWidth);

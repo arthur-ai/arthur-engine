@@ -11,7 +11,8 @@ interface BarChartProps {
   color?: string;
   height?: number;
   metricLabel?: string;
-  showTimeLabels?: boolean;
+  xLabelFormat?: "time" | "date" | "month";
+  tickStep?: number;
 }
 
 interface TooltipData {
@@ -31,33 +32,33 @@ const formatYAxisValue = (value: number): string => {
   return value.toFixed(0);
 };
 
-const formatXAxisLabel = (timestamp: string, index: number, total: number, showTimeLabels: boolean): string => {
+const formatXAxisLabel = (
+  timestamp: string,
+  index: number,
+  tickStep: number,
+  xLabelFormat: "time" | "date" | "month"
+): string => {
   const date = new Date(timestamp);
 
-  // For hour/day views, show time labels
-  if (showTimeLabels) {
-    // Show every other label for better readability
-    if (index % 2 === 0 || index === total - 1) {
-      return date.toLocaleTimeString("en-US", { hour: "numeric", hour12: true });
-    }
+  // Only show labels at the specified tick step
+  if (index % tickStep !== 0) {
     return "";
   }
 
-  // For small datasets (less than 15 points), show all labels
-  if (total <= 15) {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // Format based on xLabelFormat
+  switch (xLabelFormat) {
+    case "time":
+      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    case "date":
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    case "month":
+      return date.toLocaleDateString("en-US", { month: "short" });
+    default:
+      return "";
   }
-
-  // For larger datasets, show labels at intervals
-  const interval = Math.ceil(total / 7); // Show approximately 7 labels
-  if (index % interval === 0 || index === total - 1) {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-
-  return "";
 };
 
-export const BarChart: React.FC<BarChartProps> = ({ data, color = "#9333EA", height = 200, metricLabel = "Value", showTimeLabels = false }) => {
+export const BarChart: React.FC<BarChartProps> = ({ data, color = "#9333EA", height = 200, metricLabel = "Value", xLabelFormat = "date", tickStep = 1 }) => {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
   if (data.length === 0) {
@@ -109,15 +110,26 @@ export const BarChart: React.FC<BarChartProps> = ({ data, color = "#9333EA", hei
     const date = point.timestamp ? new Date(point.timestamp) : null;
     let label = "";
     if (date) {
-      if (showTimeLabels) {
+      // Format tooltip based on xLabelFormat
+      if (xLabelFormat === "time") {
         label = date.toLocaleString("en-US", {
           month: "short",
           day: "numeric",
           hour: "numeric",
+          minute: "2-digit",
           hour12: true
         });
-      } else {
-        label = date.toLocaleDateString("en-US", { weekday: "short" });
+      } else if (xLabelFormat === "date") {
+        label = date.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric"
+        });
+      } else if (xLabelFormat === "month") {
+        label = date.toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric"
+        });
       }
     }
     setTooltip({ x: x + barWidth / 2, y, value: point.value, label });
@@ -161,7 +173,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, color = "#9333EA", hei
 
       {/* X-axis labels */}
       {data.map((point, index) => {
-        const label = point.timestamp ? formatXAxisLabel(point.timestamp, index, data.length, showTimeLabels) : "";
+        const label = point.timestamp ? formatXAxisLabel(point.timestamp, index, tickStep, xLabelFormat) : "";
         if (!label) return null;
 
         const x = paddingLeft + index * barSpacing + barSpacing / 2;
