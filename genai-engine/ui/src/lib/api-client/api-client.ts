@@ -4809,10 +4809,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   continuous_eval_enabled?: string | null;
   /**
-   * Continuous Eval Id
-   * ID of the continuous eval to filter on.
+   * Continuous Eval Ids
+   * List of continuous eval IDs to filter on.
    */
-  continuous_eval_id?: string | null;
+  continuous_eval_ids?: string[] | null;
   /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
@@ -4824,10 +4824,15 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   created_before?: string | null;
   /**
-   * Id
-   * ID of the continuous eval to filter on.
+   * Eval Name
+   * Name of the continuous eval to filter on.
    */
-  id?: string | null;
+  eval_name?: string | null;
+  /**
+   * Ids
+   * List of agentic annotation IDs to filter on.
+   */
+  ids?: string[] | null;
   /**
    * Page
    * Page number
@@ -4856,10 +4861,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   taskId: string;
   /**
-   * Trace Id
-   * Trace ID to filter on.
+   * Trace Ids
+   * List of trace IDs to filter on.
    */
-  trace_id?: string | null;
+  trace_ids?: string[] | null;
 }
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
@@ -4867,6 +4872,11 @@ export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListCont
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
 
 export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
+  /**
+   * Continuous Eval Ids
+   * List of continuous eval IDs to filter on.
+   */
+  continuous_eval_ids?: string[] | null;
   /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
@@ -11985,7 +11995,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.357
+ * @version 2.1.358
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

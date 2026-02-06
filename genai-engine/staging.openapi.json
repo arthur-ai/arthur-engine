@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.357"
+        "version": "2.1.358"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -13837,6 +13837,27 @@
                             "title": "Enabled"
                         },
                         "description": "Whether the continuous eval is enabled."
+                    },
+                    {
+                        "name": "continuous_eval_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of continuous eval IDs to filter on.",
+                            "title": "Continuous Eval Ids"
+                        },
+                        "description": "List of continuous eval IDs to filter on."
                     }
                 ],
                 "responses": {
@@ -13980,43 +14001,49 @@
                         "description": "Page number"
                     },
                     {
-                        "name": "id",
+                        "name": "ids",
                         "in": "query",
                         "required": false,
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "ID of the continuous eval to filter on.",
-                            "title": "Id"
+                            "description": "List of agentic annotation IDs to filter on.",
+                            "title": "Ids"
                         },
-                        "description": "ID of the continuous eval to filter on."
+                        "description": "List of agentic annotation IDs to filter on."
                     },
                     {
-                        "name": "continuous_eval_id",
+                        "name": "continuous_eval_ids",
                         "in": "query",
                         "required": false,
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "ID of the continuous eval to filter on.",
-                            "title": "Continuous Eval Id"
+                            "description": "List of continuous eval IDs to filter on.",
+                            "title": "Continuous Eval Ids"
                         },
-                        "description": "ID of the continuous eval to filter on."
+                        "description": "List of continuous eval IDs to filter on."
                     },
                     {
-                        "name": "trace_id",
+                        "name": "eval_name",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -14028,10 +14055,31 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Trace ID to filter on.",
-                            "title": "Trace Id"
+                            "description": "Name of the continuous eval to filter on.",
+                            "title": "Eval Name"
                         },
-                        "description": "Trace ID to filter on."
+                        "description": "Name of the continuous eval to filter on."
+                    },
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of trace IDs to filter on.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "List of trace IDs to filter on."
                     },
                     {
                         "name": "annotation_score",
