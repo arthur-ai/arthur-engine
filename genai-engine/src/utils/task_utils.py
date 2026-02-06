@@ -49,7 +49,7 @@ def get_system_task_id(db_session: Session) -> str:
     return _system_task_id_cache
 
 
-def clear_system_task_cache():
+def clear_system_task_cache() -> None:
     """Clear the cached system task ID. Useful for testing."""
     global _system_task_id_cache
     _system_task_id_cache = None
