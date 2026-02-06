@@ -1,6 +1,7 @@
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -25,6 +26,7 @@ import React, { useState, useEffect } from "react";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { EvalInputsDialog } from "@/components/prompt-experiments/PromptResultDetailModal";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
 import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
@@ -63,6 +65,7 @@ interface TestCaseDetailModalProps {
   testCaseIndex: number;
   open: boolean;
   onClose: () => void;
+  onViewEvalInputs?: (evalExecution: EvalExecution) => void;
   promptKey?: string;
   datasetId?: string;
   datasetVersion?: number;
@@ -73,6 +76,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   testCaseIndex,
   open,
   onClose,
+  onViewEvalInputs,
   promptKey,
   datasetId,
   datasetVersion,
@@ -237,6 +241,11 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                   <Chip label="Pending" size="small" sx={getPendingChipSx()} />
                                 )}
                               </Box>
+                              {onViewEvalInputs && (
+                                <Button size="small" variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => onViewEvalInputs(evalData)}>
+                                  View Inputs
+                                </Button>
+                              )}
                             </Box>
                             {evalResult?.explanation && (
                               <Typography variant="body2" className="text-gray-700 mt-1">
@@ -279,6 +288,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
+  const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
 
   const prompt = state.prompts.find((p) => p.id === promptId);
 
@@ -319,6 +330,16 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   const handleCloseModal = () => {
     setModalOpen(false);
     setSelectedTestCase(null);
+  };
+
+  const handleViewEvalInputs = (evalExecution: EvalExecution) => {
+    setSelectedEvalExecution(evalExecution);
+    setEvalInputsDialogOpen(true);
+  };
+
+  const handleCloseEvalInputsDialog = () => {
+    setEvalInputsDialogOpen(false);
+    setSelectedEvalExecution(null);
   };
 
   return (
@@ -479,6 +500,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
       )}
 
       <TestCaseDetailModal
+        onViewEvalInputs={handleViewEvalInputs}
         testCase={selectedTestCase}
         testCaseIndex={selectedTestCaseIndex}
         open={modalOpen}
@@ -487,6 +509,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
         datasetId={experimentConfig?.dataset_ref?.id}
         datasetVersion={experimentConfig?.dataset_ref?.version}
       />
+
+      <EvalInputsDialog open={evalInputsDialogOpen} onClose={handleCloseEvalInputsDialog} evalExecution={selectedEvalExecution} />
     </Box>
   );
 };
