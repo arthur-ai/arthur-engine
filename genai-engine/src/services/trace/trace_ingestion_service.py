@@ -18,13 +18,16 @@ from sqlalchemy.dialects.sqlite import (
 )
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from db_models import DatabaseSpan, DatabaseTraceMetadata
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
+from repositories.resource_metadata_repository import ResourceMetadataRepository
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
+    SERVICE_NAME_KEY,
     SPAN_KIND_KEY,
     SPAN_VERSION_KEY,
+    SYSTEM_TASK_NAME,
     TASK_ID_KEY,
     USER_ID_KEY,
 )
@@ -38,6 +41,7 @@ class TraceUpdateDBBase(TypedDict):
 
     trace_id: str
     task_id: str | None
+    root_span_resource_id: str | None
     session_id: str | None
     user_id: str | None
     start_time: datetime
@@ -66,8 +70,8 @@ class TraceIngestionService:
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
-
         self.span_normalizer = SpanNormalizationService()
+        self._system_task_id_cache: str | None = None
 
     def process_trace_data(
         self,
@@ -105,13 +109,28 @@ class TraceIngestionService:
         spans_data = []
 
         for resource_span in json_traces.get("resourceSpans", []):
-            # Extract task ID from resource attributes (new format)
+            # Extract task ID from resource attributes (explicit arthur.task)
             resource_task_id = self._extract_task_id_from_resource_attributes(
                 resource_span,
             )
 
-            # Accept all traces - if task_id is invalid (empty string), treat as None
-            # If task_id doesn't exist in DB, foreign key constraint will handle it
+            # Extract all resource attributes
+            resource_attributes = self._extract_all_resource_attributes(resource_span)
+            service_name = resource_attributes.get(SERVICE_NAME_KEY)
+
+            # Create or retrieve resource metadata record
+            resource_id = None
+            if resource_attributes:
+                try:
+                    resource_id = self._create_or_get_resource_metadata(
+                        resource_attributes, service_name
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create resource metadata: {e}", exc_info=True
+                    )
+
+            # Validate task_id
             if resource_task_id is not None and not self._is_valid_task_id(
                 resource_task_id,
             ):
@@ -120,20 +139,25 @@ class TraceIngestionService:
                 )
                 resource_task_id = None
 
-            if resource_task_id:
-                logger.debug(f"Found valid resource task ID: {resource_task_id}")
+            # If no task_id, assign to system task for unregistered traces
+            if not resource_task_id:
+                logger.debug(
+                    "Processing resource without task ID, assigning to system task"
+                )
+                resource_task_id = self._get_system_task_id()
             else:
-                logger.debug("Processing resource without task ID (unregistered trace)")
+                logger.debug(f"Found valid resource task ID: {resource_task_id}")
 
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
 
                     try:
-                        # Pass the resource task ID to the span processing (can be None)
+                        # Pass the resource task ID and resource_id to the span processing
                         processed_span = self._process_span_data(
                             span_data,
                             resource_task_id,
+                            resource_id,
                         )
                         spans_data.append(processed_span)
                         accepted_spans += 1
@@ -174,10 +198,61 @@ class TraceIngestionService:
                 return str(value) if value is not None else None
         return None
 
+    def _extract_all_resource_attributes(
+        self,
+        resource_span: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Extract all resource attributes as a dictionary."""
+        attributes = resource_span.get("resource", {}).get("attributes", [])
+        result = {}
+
+        for attr in attributes:
+            if isinstance(attr, dict):
+                key = attr.get("key")
+                value = self._extract_value_from_otel_format(attr.get("value", {}))
+                if key and value is not None:
+                    result[key] = value
+
+        return result
+
+    def _create_or_get_resource_metadata(
+        self,
+        resource_attributes: dict[str, Any],
+        service_name: str | None,
+    ) -> str:
+        """Create or retrieve resource metadata record."""
+        resource_repo = ResourceMetadataRepository(self.db_session)
+        return resource_repo.create_or_get_resource(resource_attributes, service_name)
+
+    def _get_system_task_id(self) -> str:
+        """Get the system task ID for unregistered traces (cached)."""
+        if self._system_task_id_cache is not None:
+            return self._system_task_id_cache
+
+        # Query for the system task
+        system_task = (
+            self.db_session.query(DatabaseTask)
+            .filter(
+                DatabaseTask.is_system_task == True,
+                DatabaseTask.name == SYSTEM_TASK_NAME,
+            )
+            .first()
+        )
+
+        if not system_task:
+            raise RuntimeError(
+                f"System task '{SYSTEM_TASK_NAME}' not found. "
+                "Ensure the database migration has been run."
+            )
+
+        self._system_task_id_cache = system_task.id
+        return self._system_task_id_cache
+
     def _process_span_data(
         self,
         span_data: dict[str, Any],
         resource_task_id: str | None,
+        resource_id: str | None = None,
     ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
         span_data = self._normalize_span_attributes(span_data)
@@ -221,6 +296,7 @@ class TraceIngestionService:
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,
+            resource_id=resource_id,
             session_id=self._get_attribute_value(span_data, SpanAttributes.SESSION_ID),
             user_id=self._get_attribute_value(span_data, USER_ID_KEY),
             status_code=span_status_code,
@@ -370,6 +446,7 @@ class TraceIngestionService:
                 trace_updates[trace_id] = TraceUpdateDict(
                     trace_id=trace_id,
                     task_id=span.task_id,
+                    root_span_resource_id=None,  # Will be populated from earliest root span
                     session_id=span.session_id,
                     user_id=span.user_id,
                     start_time=span.start_time,
@@ -412,6 +489,13 @@ class TraceIngestionService:
             # Extract input/output from root spans (no parent_span_id)
             # Only use the earliest root span for each trace
             if not span.parent_span_id:
+                # Store root span's resource_id (first non-null value)
+                if (
+                    span.resource_id
+                    and not trace_updates[trace_id]["root_span_resource_id"]
+                ):
+                    trace_updates[trace_id]["root_span_resource_id"] = span.resource_id
+
                 earliest_time = trace_updates[trace_id]["earliest_root_start_time"]
                 if earliest_time is None or span.start_time < earliest_time:
                     # This is the earliest root span so far, extract its input/output

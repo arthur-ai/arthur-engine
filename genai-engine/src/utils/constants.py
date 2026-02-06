@@ -387,9 +387,13 @@ SPAN_KIND_TOOL = OpenInferenceSpanKindValues.TOOL.value
 SPAN_VERSION_KEY = "arthur_span_version"
 EXPECTED_SPAN_VERSION = "arthur_span_v1"
 TASK_ID_KEY = "arthur.task"
+SERVICE_NAME_KEY = "service.name"  # OpenTelemetry resource attribute for service name
 METADATA_KEY = SpanAttributes.METADATA
 SPAN_KIND_KEY = SpanAttributes.OPENINFERENCE_SPAN_KIND
 USER_ID_KEY = SpanAttributes.USER_ID
+
+# System task for unregistered/taskless traces
+SYSTEM_TASK_NAME = "Unregistered Traces"
 
 ##################################################################
 

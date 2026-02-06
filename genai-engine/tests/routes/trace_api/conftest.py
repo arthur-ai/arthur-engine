@@ -33,12 +33,44 @@ from services.trace.span_normalization_service import SpanNormalizationService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
+from utils.constants import SYSTEM_TASK_NAME
 
 
 @pytest.fixture(scope="function")
 def client():
     """Create a test client for the trace API endpoints."""
+    # Ensure system task exists for tests
+    _ensure_system_task_exists()
     return get_genai_engine_test_client()
+
+
+def _ensure_system_task_exists():
+    """Ensure the system task exists in the test database."""
+    db_session = override_get_db_session()
+
+    # Check if system task already exists
+    existing_system_task = (
+        db_session.query(DatabaseTask)
+        .filter(
+            DatabaseTask.is_system_task == True,
+            DatabaseTask.name == SYSTEM_TASK_NAME,
+        )
+        .first()
+    )
+
+    if not existing_system_task:
+        # Create system task
+        system_task = DatabaseTask(
+            id=str(uuid.uuid4()),
+            name=SYSTEM_TASK_NAME,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_agentic=True,
+            is_system_task=True,
+            archived=False,
+        )
+        db_session.add(system_task)
+        db_session.commit()
 
 
 @pytest.fixture(scope="function")

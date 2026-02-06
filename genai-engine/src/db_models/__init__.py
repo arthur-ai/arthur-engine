@@ -48,6 +48,7 @@ from db_models.telemetry_models import (
     DatabaseSpan,
     DatabaseTaskToMetrics,
     DatabaseTraceMetadata,
+    DatabaseResourceMetadata,
 )
 from db_models.agentic_prompt_models import (
     DatabaseAgenticPrompt,
@@ -126,6 +127,7 @@ __all__ = [
     "DatabaseMetric",
     "DatabaseTaskToMetrics",
     "DatabaseMetricResult",
+    "DatabaseResourceMetadata",
     # Annotation models
     "DatabaseAgenticAnnotation",
     # Agentic Prompt models

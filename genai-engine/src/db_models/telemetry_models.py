@@ -35,6 +35,12 @@ class DatabaseTraceMetadata(Base):
         nullable=True,
         index=True,
     )
+    root_span_resource_id: Mapped[str | None] = mapped_column(
+        String,
+        ForeignKey("resource_metadata.id"),
+        nullable=True,
+        index=True,
+    )
     session_id: Mapped[str | None] = mapped_column(String, nullable=True)
     user_id: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
@@ -100,6 +106,44 @@ class DatabaseTraceMetadata(Base):
     )
 
 
+class DatabaseResourceMetadata(Base):
+    """Stores OpenTelemetry resource attributes for traces.
+
+    Multiple spans/traces can reference the same resource_id when they
+    share identical resource attributes (normalized design).
+    """
+
+    __tablename__ = "resource_metadata"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    service_name: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        index=True,
+    )
+    resource_attributes: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index(
+            "idx_resource_metadata_service_name",
+            "service_name",
+        ),
+    )
+
+
 class DatabaseSpan(Base):
     __tablename__ = "spans"
 
@@ -118,6 +162,12 @@ class DatabaseSpan(Base):
     task_id: Mapped[str | None] = mapped_column(
         String,
         ForeignKey("tasks.id"),
+        nullable=True,
+        index=True,
+    )
+    resource_id: Mapped[str | None] = mapped_column(
+        String,
+        ForeignKey("resource_metadata.id"),
         nullable=True,
         index=True,
     )
