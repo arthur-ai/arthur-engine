@@ -12,6 +12,7 @@ import {
   ArrowBackOutlined,
   LogoutOutlined,
   LiveTvOutlined,
+  DashboardOutlined,
 } from "@mui/icons-material";
 import React from "react";
 
@@ -35,7 +36,7 @@ interface NavigationItem {
   onClick?: () => void;
 }
 
-export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, onLogout, activeSection = "task-details" }) => {
+export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, onLogout, activeSection = "overview" }) => {
   const navigationSections: NavigationSection[] = [
     {
       id: "observability",
@@ -103,6 +104,24 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
         </div>
 
         <div className="space-y-1">
+          {/* Overview item - appears at the top */}
+          <div className="mb-4">
+            <button
+              onClick={() => onNavigate("overview")}
+              className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
+                activeSection === "overview" ? "text-blue-700 bg-blue-50" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <span className="shrink-0">
+                <DashboardOutlined />
+              </span>
+              <span>Overview</span>
+              <svg className="ml-auto h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
           {navigationSections.map((section) => (
             <div key={section.id} className="mb-4">
               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{section.label}</div>

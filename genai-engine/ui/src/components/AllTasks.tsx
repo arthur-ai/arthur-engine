@@ -76,7 +76,7 @@ export const AllTasks: React.FC = () => {
   };
 
   const handleTaskClick = (taskId: string) => {
-    navigate(`/tasks/${taskId}/traces`);
+    navigate(`/tasks/${taskId}/overview`);
   };
 
   const handleTaskCreated = async (taskId: string) => {
@@ -105,7 +105,7 @@ export const AllTasks: React.FC = () => {
     await fetchTasks();
 
     // Navigate to the new task
-    navigate(`/tasks/${taskId}/traces`);
+    navigate(`/tasks/${taskId}/overview`);
   };
 
   return (

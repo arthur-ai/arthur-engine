@@ -1,6 +1,10 @@
+import type { TimeRange } from "@/components/traces/constants";
 import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams, GetUsersParams } from "@/services/tracing";
 
 export const queryKeys = {
+  metrics: {
+    overview: (taskId: string, timeRange: TimeRange) => ["taskOverviewMetrics", { taskId, timeRange }] as const,
+  },
   datasets: {
     search: {
       all: () => ["getDatasetsApiV2TasksTaskIdDatasetsSearchGet"] as const,

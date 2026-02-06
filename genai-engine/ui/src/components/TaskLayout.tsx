@@ -27,7 +27,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   const taskId = params.id as string;
 
   // Map the current route to the active section
-  let activeSection = "task-details";
+  let activeSection = "overview";
 
   // Extract the active section from the current path
   const pathSegments = location.pathname.split("/");
@@ -47,6 +47,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   // Map section IDs to display titles
   const getPageTitle = (section: string): string => {
     const titleMap: Record<string, string> = {
+      overview: "Overview",
       "task-details": "Task Details",
       "model-providers": "Model Providers",
       "api-keys": "API Keys",
