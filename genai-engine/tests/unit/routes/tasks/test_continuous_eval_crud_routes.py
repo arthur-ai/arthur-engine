@@ -979,6 +979,23 @@ def test_list_continuous_evals_filtering(client: GenaiEngineTestClientBase):
 
         continuous_evals = sorted(continuous_evals, key=lambda x: x.created_at)
 
+        # Test filtering by continuous eval ids
+        status_code, received_continuous_evals = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url=f"continuous_eval_ids={continuous_evals[0].id}",
+        )
+        assert status_code == 200
+        assert len(received_continuous_evals.evals) == 1
+        assert received_continuous_evals.count == 1
+
+        status_code, received_continuous_evals = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url=f"continuous_eval_ids={continuous_evals[0].id}&continuous_eval_ids={continuous_evals[1].id}",
+        )
+        assert status_code == 200
+        assert len(received_continuous_evals.evals) == 2
+        assert received_continuous_evals.count == 2
+
         # Test filtering by created after
         status_code, received_continuous_evals = client.list_continuous_evals(
             task_id=agentic_task.id,
@@ -1367,10 +1384,10 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         assert len(received_run_results.annotations) == 1
         assert received_run_results.count == 1
 
-        # Test filtering by llm eval name
+        # Test filtering by continuous eval name
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"eval_name={continuous_eval.llm_eval_name}",
+            search_url=f"eval_name={continuous_eval.name}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 3

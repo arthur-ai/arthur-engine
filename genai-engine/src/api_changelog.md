@@ -4,6 +4,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 02/06/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
 
 # 02/05/2026
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status

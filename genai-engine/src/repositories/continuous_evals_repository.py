@@ -276,6 +276,11 @@ class ContinuousEvalsRepository:
                     DatabaseContinuousEval.enabled == filter_request.enabled,
                 )
 
+            if filter_request.continuous_eval_ids:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.id.in_(filter_request.continuous_eval_ids),
+                )
+
         if pagination_parameters:
             base_query = self._apply_sorting_and_pagination(
                 base_query,
@@ -325,7 +330,7 @@ class ContinuousEvalsRepository:
 
             if filter_request.eval_name:
                 base_query = base_query.filter(
-                    DatabaseContinuousEval.llm_eval_name.ilike(
+                    DatabaseContinuousEval.name.ilike(
                         f"%{filter_request.eval_name}%",
                     ),
                 )

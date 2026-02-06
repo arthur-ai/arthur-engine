@@ -13837,6 +13837,27 @@
                             "title": "Enabled"
                         },
                         "description": "Whether the continuous eval is enabled."
+                    },
+                    {
+                        "name": "continuous_eval_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of continuous eval IDs to filter on.",
+                            "title": "Continuous Eval Ids"
+                        },
+                        "description": "List of continuous eval IDs to filter on."
                     }
                 ],
                 "responses": {
@@ -14034,10 +14055,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Name of the llm eval to filter on.",
+                            "description": "Name of the continuous eval to filter on.",
                             "title": "Eval Name"
                         },
-                        "description": "Name of the llm eval to filter on."
+                        "description": "Name of the continuous eval to filter on."
                     },
                     {
                         "name": "trace_ids",

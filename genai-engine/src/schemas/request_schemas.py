@@ -1027,6 +1027,10 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="Whether the continuous eval is enabled.",
     )
+    continuous_eval_ids: Optional[List[UUID]] = Field(
+        None,
+        description="List of continuous eval IDs to filter on",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1050,8 +1054,22 @@ class ContinuousEvalListFilterRequest(BaseModel):
             None,
             description="Whether the continuous eval is enabled.",
         ),
+        continuous_eval_ids: Optional[List[str]] = Query(
+            None,
+            description="List of continuous eval IDs to filter on.",
+        ),
     ) -> "ContinuousEvalListFilterRequest":
         """Create a ContinuousEvalListFilterRequest from query parameters."""
+        parsed_continuous_eval_ids = None
+        if continuous_eval_ids:
+            try:
+                parsed_continuous_eval_ids = [UUID(id) for id in continuous_eval_ids]
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid UUID format for parameter 'continuous_eval_ids': {e}",
+                )
+
         return ContinuousEvalListFilterRequest(
             name=name,
             llm_eval_name=llm_eval_name,
@@ -1062,6 +1080,7 @@ class ContinuousEvalListFilterRequest(BaseModel):
                 datetime.fromisoformat(created_before) if created_before else None
             ),
             enabled=enabled.lower() == "true" if enabled else None,
+            continuous_eval_ids=parsed_continuous_eval_ids,
         )
 
 
@@ -1079,7 +1098,7 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
     )
     eval_name: Optional[str] = Field(
         None,
-        description="Name of the llm eval to filter on",
+        description="Name of the continuous eval to filter on",
     )
     trace_ids: Optional[List[str]] = Field(
         None,
@@ -1118,7 +1137,7 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
         ),
         eval_name: Optional[str] = Query(
             None,
-            description="Name of the llm eval to filter on.",
+            description="Name of the continuous eval to filter on.",
         ),
         trace_ids: Optional[List[str]] = Query(
             None,
