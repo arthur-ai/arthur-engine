@@ -92,7 +92,7 @@ function getStartOfYear(now: Date): Date {
  * - week: Start of current calendar week to now
  * - mtd: 1st of current month to now (Month-To-Date)
  * - ytd: January 1st of current year to now (Year-To-Date)
- * - year: January 1st of current year to now (full year)
+ * - year: Last 12 months to now (rolling 12 months)
  *
  * @example
  * ```typescript
@@ -179,8 +179,8 @@ export function getTimeWindowAndBucketing(
     }
 
     case "year": {
-      // From Jan 1st to now (full year data up to now)
-      const start = getStartOfYear(now);
+      // Last 12 months to now (rolling 12 months)
+      const start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
       return {
         start,
         end: now,
