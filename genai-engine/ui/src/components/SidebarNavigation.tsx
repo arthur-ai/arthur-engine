@@ -12,7 +12,7 @@ import {
   ArrowBackOutlined,
   LogoutOutlined,
   LiveTvOutlined,
-  DashboardOutlined,
+  InsightsOutlined,
 } from "@mui/icons-material";
 import React from "react";
 
@@ -113,7 +113,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
               }`}
             >
               <span className="shrink-0">
-                <DashboardOutlined />
+                <InsightsOutlined />
               </span>
               <span>Overview</span>
               <svg className="ml-auto h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

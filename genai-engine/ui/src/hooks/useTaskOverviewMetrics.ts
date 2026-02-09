@@ -39,11 +39,15 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
       const queryTime = new Date();
       const timeWindow = getTimeWindowAndBucketing(interval, queryTime);
 
-      const { start: startTime, end: endTime, bucketMs: bucketSize, suggestedPoints } = timeWindow;
+      const { start: startTime, end: endTime, bucketMs: bucketSize } = timeWindow;
 
       // Calculate time boundaries in milliseconds
       const startTimeMs = startTime.getTime();
       const endTimeMs = endTime.getTime();
+
+      // Calculate exact number of buckets needed to cover the entire time range
+      const durationMs = endTimeMs - startTimeMs;
+      const numBuckets = Math.max(1, Math.ceil(durationMs / bucketSize));
 
       // Fetch all traces for the task within the time range
       const pageSize = 1000;
@@ -120,13 +124,12 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
         }
       });
 
-      // Calculate time series data using suggested number of buckets
-      const numBuckets = suggestedPoints;
-
       // Initialize buckets using index as key for reliability
       const buckets = new Map<number, { traces: any[]; timestamp: number }>();
       for (let i = 0; i < numBuckets; i++) {
-        const bucketTime = startTimeMs + i * bucketSize;
+        // For the last bucket, use the actual end time (now) instead of calculated bucket start
+        // This ensures the X-axis shows today's date for the current period
+        const bucketTime = i === numBuckets - 1 ? endTimeMs : startTimeMs + i * bucketSize;
         buckets.set(i, { traces: [], timestamp: bucketTime });
       }
 
