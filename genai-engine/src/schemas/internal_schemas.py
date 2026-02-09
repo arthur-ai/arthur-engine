@@ -17,11 +17,13 @@ from arthur_common.models.common_schemas import (
 )
 from arthur_common.models.enums import (
     AgenticAnnotationType,
+    AgentPollingStatus,
     ComparisonOperatorEnum,
     ContinuousEvalRunStatus,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
+    RegisteredAgentProvider,
     RuleResultEnum,
     RuleScope,
     RuleType,
@@ -36,6 +38,7 @@ from arthur_common.models.request_schemas import (
 )
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
+    AgentMetadataResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
     ChatDocumentContext,
@@ -84,6 +87,7 @@ from weaviate.types import INCLUDE_VECTOR
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseAgenticNotebook,
+    DatabaseAgentPollingData,
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
@@ -253,7 +257,7 @@ class Rule(BaseModel):
     archived: bool
 
     @staticmethod
-    def _from_request_model(x: NewRuleRequest, scope: RuleScope):
+    def _from_request_model(x: NewRuleRequest, scope: RuleScope) -> "Rule":
         rule_configurations = []
         scoring_method = RuleScoringMethod.BINARY
         if x.type in [rule_type.value for rule_type in RuleType]:
@@ -314,7 +318,16 @@ class Rule(BaseModel):
         )
 
     def _to_response_model(self) -> RuleResponse:
-        config = None
+        config: Optional[
+            Union[
+                RegexConfig,
+                KeywordsConfig,
+                ExamplesConfig,
+                ToxicityConfig,
+                PIIConfig,
+                None,
+            ]
+        ] = None
         if self.type == RuleType.REGEX:
             config = self.get_regex_config()
         elif self.type == RuleType.KEYWORD:
@@ -337,19 +350,19 @@ class Rule(BaseModel):
             scope=self.scope,
         )
 
-    def get_keywords_config(self):
+    def get_keywords_config(self) -> KeywordsConfig:
         return KeywordsConfig(
             keywords=[
                 d.data for d in self.rule_data if d.data_type == RuleDataType.KEYWORD
             ],
         )
 
-    def get_regex_config(self):
+    def get_regex_config(self) -> RegexConfig:
         regex_patterns = [rd.data for rd in self.rule_data]
         config = RegexConfig(regex_patterns=regex_patterns)
         return config
 
-    def get_examples_config(self):
+    def get_examples_config(self) -> ExamplesConfig:
         examples = []
         hint = ""
         for d in self.rule_data:
@@ -362,7 +375,7 @@ class Rule(BaseModel):
             hint=hint,
         )
 
-    def get_threshold_config(self):
+    def get_threshold_config(self) -> ToxicityConfig:
         thresholds = [
             d.data
             for d in self.rule_data
@@ -375,16 +388,18 @@ class Rule(BaseModel):
 
     """Converts a given rule and its rule_data to PIIConfig"""
 
-    def get_pii_config(self):
+    def get_pii_config(self) -> PIIConfig:
         allow_list = []
         disabled_pii_entities = []
-        confidence_threshold = constants.DEFAULT_PII_RULE_CONFIDENCE_SCORE_THRESHOLD
+        confidence_threshold = float(
+            constants.DEFAULT_PII_RULE_CONFIDENCE_SCORE_THRESHOLD,
+        )
         for config in self.rule_data:
             if config.data_type == RuleDataType.PII_DISABLED_PII:
                 disabled_pii_entities = config.data.split(",")
 
             if config.data_type == RuleDataType.PII_THRESHOLD:
-                confidence_threshold = config.data
+                confidence_threshold = float(config.data)
 
             if config.data_type == RuleDataType.PII_ALLOW_LIST:
                 allow_list = config.data.split(",")
@@ -451,7 +466,7 @@ class Metric(BaseModel):
             updated_at=self.updated_at,
             type=self.type,
             name=self.name,
-            metric_metadata=self.metric_metadata,
+            metric_metadata=self.metric_metadata or "",
             config=self.config,
         )
 
@@ -469,12 +484,12 @@ class MetricResult(BaseModel):
     metric_id: Optional[str] = None
 
     @staticmethod
-    def _from_database_model(x: DatabaseMetricResult):
+    def _from_database_model(x: DatabaseMetricResult) -> "MetricResult":
         return MetricResult(
             id=x.id,
             created_at=x.created_at,
             updated_at=x.updated_at,
-            metric_type=x.metric_type,
+            metric_type=MetricType(x.metric_type),
             details=(
                 MetricScoreDetails.model_validate(
                     json.loads(x.details) if isinstance(x.details, str) else x.details,
@@ -511,8 +526,7 @@ class MetricResult(BaseModel):
             metric_id=self.metric_id,
         )
 
-    def _to_response_model(self):
-
+    def _to_response_model(self) -> MetricResultResponse:
         return MetricResultResponse(
             id=self.id,
             metric_type=self.metric_type,
@@ -520,8 +534,8 @@ class MetricResult(BaseModel):
             prompt_tokens=self.prompt_tokens,
             completion_tokens=self.completion_tokens,
             latency_ms=self.latency_ms,
-            span_id=self.span_id,
-            metric_id=self.metric_id,
+            span_id=self.span_id or "",
+            metric_id=self.metric_id or "",
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -534,7 +548,7 @@ class TaskToRuleLink(BaseModel):
     rule: Rule
 
     @staticmethod
-    def _from_database_model(x: DatabaseTaskToRules):
+    def _from_database_model(x: DatabaseTaskToRules) -> "TaskToRuleLink":
         return TaskToRuleLink(
             task_id=x.task_id,
             rule_id=x.rule_id,
@@ -550,7 +564,7 @@ class TaskToMetricLink(BaseModel):
     metric: Metric
 
     @staticmethod
-    def _from_database_model(x: DatabaseTaskToMetrics):
+    def _from_database_model(x: DatabaseTaskToMetrics) -> "TaskToMetricLink":
         return TaskToMetricLink(
             task_id=x.task_id,
             metric_id=x.metric_id,
@@ -559,23 +573,69 @@ class TaskToMetricLink(BaseModel):
         )
 
 
+class RegisteredGCPAgentCredentials(BaseModel):
+    """
+    Credentials required for polling registered GCP agents.
+    """
+
+    region: str
+    project_id: str
+    resource_id: str
+
+
+class TaskMetadata(BaseModel):
+    """
+    Metadata for a task.
+    """
+
+    provider: RegisteredAgentProvider = Field(
+        ...,
+        description="Provider of the registered agent.",
+    )
+    gcp_metadata: Optional[RegisteredGCPAgentCredentials] = Field(
+        default=None,
+        description="Metadata for a registered GCP agent.",
+    )
+
+
 class Task(BaseModel):
     id: str
     name: str
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
+    task_metadata: Optional[TaskMetadata] = None
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
-    def _from_request_model(x: NewTaskRequest):
+    def _from_request_model(x: NewTaskRequest) -> "Task":
+        # Convert AgentMetadata to dict for database storage
+        task_metadata = None
+        if x.agent_metadata:
+            gcp_metadata = None
+            if x.agent_metadata.provider == RegisteredAgentProvider.GCP:
+                if x.agent_metadata.gcp_metadata is None:
+                    raise ValueError("GCP metadata is required when provider is GCP.")
+
+                gcp_metadata = RegisteredGCPAgentCredentials(
+                    region=x.agent_metadata.gcp_metadata.region,
+                    project_id=x.agent_metadata.gcp_metadata.project_id,
+                    resource_id=x.agent_metadata.gcp_metadata.resource_id,
+                )
+
+            task_metadata = TaskMetadata(
+                provider=x.agent_metadata.provider,
+                gcp_metadata=gcp_metadata,
+            )
+
         return Task(
             id=str(uuid.uuid4()),
             name=x.name,
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=x.is_agentic,
+            task_metadata=task_metadata,
         )
 
     @staticmethod
@@ -586,6 +646,11 @@ class Task(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             is_agentic=x.is_agentic,
+            task_metadata=(
+                TaskMetadata.model_validate(x.task_metadata)
+                if x.task_metadata
+                else None
+            ),
             rule_links=[
                 TaskToRuleLink._from_database_model(link) for link in x.rule_links
             ],
@@ -601,20 +666,32 @@ class Task(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             is_agentic=self.is_agentic,
+            task_metadata=(
+                self.task_metadata.model_dump(exclude_none=True)
+                if self.task_metadata
+                else None
+            ),
         )
 
     def _to_response_model(self) -> TaskResponse:
-        response_rules = []
-        for link in self.rule_links:
-            response_rule: RuleResponse = link.rule._to_response_model()
-            response_rule.enabled = link.enabled
+        response_rules: list[RuleResponse] = []
+        for rule_link in self.rule_links or []:
+            response_rule: RuleResponse = rule_link.rule._to_response_model()
+            response_rule.enabled = rule_link.enabled
             response_rules.append(response_rule)
 
-        response_metrics = []
-        for link in self.metric_links:
-            response_metric: MetricResponse = link.metric._to_response_model()
-            response_metric.enabled = link.enabled
+        response_metrics: list[MetricResponse] = []
+        for metric_link in self.metric_links or []:
+            response_metric: MetricResponse = metric_link.metric._to_response_model()
+            response_metric.enabled = metric_link.enabled
             response_metrics.append(response_metric)
+
+        # Convert dict back to AgentMetadataResponse
+        agent_metadata_response = None
+        if self.task_metadata:
+            agent_metadata_response = AgentMetadataResponse(
+                **self.task_metadata.model_dump(exclude_none=True),
+            )
 
         return TaskResponse(
             id=self.id,
@@ -622,6 +699,7 @@ class Task(BaseModel):
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             is_agentic=self.is_agentic,
+            agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,
         )
@@ -714,15 +792,22 @@ class AgenticAnnotation(BaseModel):
         return AgenticAnnotation(
             id=db_annotation.id,
             annotation_type=AgenticAnnotationType(db_annotation.annotation_type),
-            trace_id=db_annotation.trace_id,
+            trace_id=db_annotation.trace_id or "",
             continuous_eval_id=db_annotation.continuous_eval_id,
             continuous_eval_name=continuous_eval_name,
             eval_name=eval_name,
             eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
             annotation_description=db_annotation.annotation_description,
-            input_variables=db_annotation.input_variables,
-            run_status=db_annotation.run_status,
+            input_variables=[
+                VariableTemplateValue.model_validate(variable)
+                for variable in db_annotation.input_variables or []
+            ],
+            run_status=(
+                ContinuousEvalRunStatus(db_annotation.run_status)
+                if db_annotation.run_status
+                else None
+            ),
             cost=db_annotation.cost,
             created_at=db_annotation.created_at,
             updated_at=db_annotation.updated_at,
@@ -784,7 +869,7 @@ class TraceMetadata(TokenCountCostSchema):
     spans: Optional[List["Span"]] = None
 
     @staticmethod
-    def _from_database_model(x: DatabaseTraceMetadata):
+    def _from_database_model(x: DatabaseTraceMetadata) -> "TraceMetadata":
         # Add formatted annotations
         annotations = [
             AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
@@ -792,7 +877,7 @@ class TraceMetadata(TokenCountCostSchema):
 
         return TraceMetadata(
             trace_id=x.trace_id,
-            task_id=x.task_id,
+            task_id=x.task_id or "",
             user_id=x.user_id,
             session_id=x.session_id,
             start_time=x.start_time,
@@ -811,7 +896,7 @@ class TraceMetadata(TokenCountCostSchema):
             annotations=annotations,
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseTraceMetadata:
         return DatabaseTraceMetadata(
             trace_id=self.trace_id,
             task_id=self.task_id,
@@ -877,7 +962,7 @@ class HallucinationClaims(BaseModel):
     order_number: int = -1
 
     @staticmethod
-    def _from_database_model(x: DatabaseHallucinationClaim):
+    def _from_database_model(x: DatabaseHallucinationClaim) -> "HallucinationClaims":
         return HallucinationClaims(
             claim=x.claim,
             valid=x.valid,
@@ -885,7 +970,10 @@ class HallucinationClaims(BaseModel):
             order_number=x.order_number,
         )
 
-    def _to_database_model(self, rule_result_detail_id: str):
+    def _to_database_model(
+        self,
+        rule_result_detail_id: str,
+    ) -> DatabaseHallucinationClaim:
         return DatabaseHallucinationClaim(
             id=str(uuid.uuid4()),
             rule_result_detail_id=rule_result_detail_id,
@@ -895,7 +983,7 @@ class HallucinationClaims(BaseModel):
             order_number=self.order_number,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> HallucinationClaimResponse:
         return HallucinationClaimResponse(
             claim=self.claim,
             valid=self.valid,
@@ -904,7 +992,7 @@ class HallucinationClaims(BaseModel):
         )
 
     @staticmethod
-    def _from_scorer_model(x: ScorerHallucinationClaim):
+    def _from_scorer_model(x: ScorerHallucinationClaim) -> "HallucinationClaims":
         return HallucinationClaims(
             claim=x.claim,
             valid=x.valid,
@@ -919,10 +1007,14 @@ class PIIEntitySpan(BaseModel):
     confidence: Optional[float] = None
 
     @staticmethod
-    def _from_database_model(x: DatabasePIIEntity):
-        return PIIEntitySpan(entity=x.entity, span=x.span, confidence=x.confidence)
+    def _from_database_model(x: DatabasePIIEntity) -> "PIIEntitySpan":
+        return PIIEntitySpan(
+            entity=PIIEntityTypes(x.entity),
+            span=x.span,
+            confidence=x.confidence,
+        )
 
-    def _to_database_model(self, rule_result_detail_id: str):
+    def _to_database_model(self, rule_result_detail_id: str) -> DatabasePIIEntity:
         return DatabasePIIEntity(
             id=str(uuid.uuid4()),
             rule_result_detail_id=rule_result_detail_id,
@@ -931,7 +1023,7 @@ class PIIEntitySpan(BaseModel):
             confidence=self.confidence,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> PIIEntitySpanResponse:
         return PIIEntitySpanResponse(
             entity=self.entity,
             span=self.span,
@@ -939,7 +1031,7 @@ class PIIEntitySpan(BaseModel):
         )
 
     @staticmethod
-    def _from_scorer_model(x: ScorerPIIEntitySpan):
+    def _from_scorer_model(x: ScorerPIIEntitySpan) -> "PIIEntitySpan":
         return PIIEntitySpan(entity=x.entity, span=x.span, confidence=x.confidence)
 
 
@@ -947,23 +1039,23 @@ class KeywordSpan(BaseModel):
     keyword: str
 
     @staticmethod
-    def _from_database_model(x: DatabaseKeywordEntity):
+    def _from_database_model(x: DatabaseKeywordEntity) -> "KeywordSpan":
         return KeywordSpan(keyword=x.keyword)
 
-    def _to_database_model(self, rule_result_detail_id: str):
+    def _to_database_model(self, rule_result_detail_id: str) -> DatabaseKeywordEntity:
         return DatabaseKeywordEntity(
             id=str(uuid.uuid4()),
             rule_result_detail_id=rule_result_detail_id,
             keyword=self.keyword,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> KeywordSpanResponse:
         return KeywordSpanResponse(
             keyword=self.keyword,
         )
 
     @staticmethod
-    def _from_scorer_model(x: ScorerKeywordSpan):
+    def _from_scorer_model(x: ScorerKeywordSpan) -> "KeywordSpan":
         return KeywordSpan(keyword=x.keyword)
 
 
@@ -973,10 +1065,10 @@ class RegexSpan(BaseModel):
     pattern: Optional[str] = None
 
     @staticmethod
-    def _from_database_model(x: DatabaseRegexEntity):
+    def _from_database_model(x: DatabaseRegexEntity) -> "RegexSpan":
         return RegexSpan(matching_text=x.matching_text, pattern=x.pattern)
 
-    def _to_database_model(self, rule_result_detail_id: str):
+    def _to_database_model(self, rule_result_detail_id: str) -> DatabaseRegexEntity:
         return DatabaseRegexEntity(
             id=str(uuid.uuid4()),
             rule_result_detail_id=rule_result_detail_id,
@@ -984,14 +1076,14 @@ class RegexSpan(BaseModel):
             pattern=self.pattern,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> RegexSpanResponse:
         return RegexSpanResponse(
             matching_text=self.matching_text,
             pattern=self.pattern,
         )
 
     @staticmethod
-    def _from_scorer_model(x: ScorerRegexSpan):
+    def _from_scorer_model(x: ScorerRegexSpan) -> "RegexSpan":
         return RegexSpan(matching_text=x.matching_text, pattern=x.pattern)
 
 
@@ -1000,13 +1092,13 @@ class ToxicityScore(BaseModel):
     toxicity_violation_type: ToxicityViolationType
 
     @staticmethod
-    def _from_database_model(x: DatabaseToxicityScore):
+    def _from_database_model(x: DatabaseToxicityScore) -> "ToxicityScore":
         return ToxicityScore(
             toxicity_score=x.toxicity_score,
             toxicity_violation_type=ToxicityViolationType(x.toxicity_violation_type),
         )
 
-    def _to_database_model(self, rule_result_detail_id: str):
+    def _to_database_model(self, rule_result_detail_id: str) -> DatabaseToxicityScore:
         return DatabaseToxicityScore(
             id=str(uuid.uuid4()),
             rule_result_detail_id=rule_result_detail_id,
@@ -1015,7 +1107,7 @@ class ToxicityScore(BaseModel):
         )
 
     @staticmethod
-    def _from_scorer_model(x: ScorerToxicityScore):
+    def _from_scorer_model(x: ScorerToxicityScore) -> "ToxicityScore":
         return ToxicityScore(
             toxicity_score=x.toxicity_score,
             toxicity_violation_type=x.toxicity_violation_type,
@@ -1033,9 +1125,9 @@ class RuleDetails(BaseModel):
     regex_matches: Optional[list[RegexSpan]] = None
 
     @staticmethod
-    def _from_scorer_model(x: ScorerRuleDetails):
+    def _from_scorer_model(x: ScorerRuleDetails) -> "RuleDetails":
         return RuleDetails(
-            score=x.score,
+            score=x.score if isinstance(x.score, bool) else None,
             message=x.message,
             claims=(
                 [HallucinationClaims._from_scorer_model(h) for h in x.claims]
@@ -1066,12 +1158,12 @@ class RuleDetails(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(x: DatabaseRuleResultDetail):
+    def _from_database_model(x: DatabaseRuleResultDetail) -> "RuleDetails":
         return RuleDetails(
             score=x.score,
             message=x.message,
             claims=[HallucinationClaims._from_database_model(c) for c in x.claims],
-            pii_results=[c.entity for c in x.pii_entities],
+            pii_results=[PIIEntityTypes(c.entity) for c in x.pii_entities],
             pii_entities=[
                 PIIEntitySpan._from_database_model(c) for c in x.pii_entities
             ],
@@ -1090,7 +1182,7 @@ class RuleDetails(BaseModel):
         self,
         parent_prompt_rule_result_id: Optional[str] = None,
         parent_response_rule_result_id: Optional[str] = None,
-    ):
+    ) -> DatabaseRuleResultDetail:
         if not (parent_prompt_rule_result_id or parent_response_rule_result_id):
             raise ValueError("One of prompt or response result id must be supplied")
         id = str(uuid.uuid4())
@@ -1127,23 +1219,31 @@ class RuleDetails(BaseModel):
             ),
         )
 
-    def _to_response_model(self, rule_type: RuleType):
+    def _to_response_model(self, rule_type: RuleType) -> Union[
+        HallucinationDetailsResponse,
+        PIIDetailsResponse,
+        ToxicityDetailsResponse,
+        KeywordDetailsResponse,
+        RegexDetailsResponse,
+        BaseDetailsResponse,
+    ]:
         match rule_type:
             case RuleType.MODEL_HALLUCINATION_V2:
                 return HallucinationDetailsResponse(
                     score=self.score,
                     message=self.message,
                     claims=sorted(
-                        [c._to_response_model() for c in self.claims],
-                        key=lambda x: x.order_number,
+                        [c._to_response_model() for c in self.claims or []],
+                        key=lambda x: x.order_number or -1,
                     ),
                 )
             case RuleType.PII_DATA:
                 return PIIDetailsResponse(
                     score=self.score,
                     message=self.message,
-                    pii_results=[c.entity for c in self.pii_entities],
-                    pii_entities=[c._to_response_model() for c in self.pii_entities],
+                    pii_entities=[
+                        c._to_response_model() for c in self.pii_entities or []
+                    ],
                 )
             case RuleType.TOXICITY:
                 return ToxicityDetailsResponse(
@@ -1165,14 +1265,16 @@ class RuleDetails(BaseModel):
                     score=self.score,
                     message=self.message,
                     keyword_matches=[
-                        k._to_response_model() for k in self.keyword_matches
+                        k._to_response_model() for k in self.keyword_matches or []
                     ],
                 )
             case RuleType.REGEX:
                 return RegexDetailsResponse(
                     score=self.score,
                     message=self.message,
-                    regex_matches=[k._to_response_model() for k in self.regex_matches],
+                    regex_matches=[
+                        k._to_response_model() for k in self.regex_matches or []
+                    ],
                 )
             case _:
                 return BaseDetailsResponse(score=self.score, message=self.message)
@@ -1187,7 +1289,7 @@ class RuleResult(BaseModel):
     completion_tokens: int
     latency_ms: int
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> ExternalRuleResult:
         return ExternalRuleResult(
             id=self.rule.id,
             name=self.rule.name,
@@ -1211,11 +1313,11 @@ class RuleEngineResult(BaseModel):
 
 class PromptRuleResult(RuleResult):
     @staticmethod
-    def _from_database_model(x: DatabasePromptRuleResult):
+    def _from_database_model(x: DatabasePromptRuleResult) -> "PromptRuleResult":
         return PromptRuleResult(
             id=x.id,
             rule=Rule._from_database_model(x.rule),
-            rule_result=x.rule_result,
+            rule_result=RuleResultEnum(x.rule_result),
             rule_details=(
                 RuleDetails._from_database_model(x.rule_details)
                 if x.rule_details
@@ -1227,7 +1329,7 @@ class PromptRuleResult(RuleResult):
         )
 
     @staticmethod
-    def _from_rule_engine_model(x: RuleEngineResult):
+    def _from_rule_engine_model(x: RuleEngineResult) -> "PromptRuleResult":
         return PromptRuleResult(
             id=str(uuid.uuid4()),
             rule=x.rule,
@@ -1242,7 +1344,7 @@ class PromptRuleResult(RuleResult):
             latency_ms=x.latency_ms,
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabasePromptRuleResult:
         return DatabasePromptRuleResult(
             id=self.id,
             rule_id=self.rule.id,
@@ -1264,11 +1366,11 @@ class PromptRuleResult(RuleResult):
 
 class ResponseRuleResult(RuleResult):
     @staticmethod
-    def _from_database_model(x: DatabaseResponseRuleResult):
+    def _from_database_model(x: DatabaseResponseRuleResult) -> "ResponseRuleResult":
         return ResponseRuleResult(
             id=x.id,
             rule=Rule._from_database_model(x.rule),
-            rule_result=x.rule_result,
+            rule_result=RuleResultEnum(x.rule_result),
             rule_details=(
                 RuleDetails._from_database_model(x.rule_details)
                 if x.rule_details
@@ -1280,7 +1382,7 @@ class ResponseRuleResult(RuleResult):
         )
 
     @staticmethod
-    def _from_rule_engine_model(x: RuleEngineResult):
+    def _from_rule_engine_model(x: RuleEngineResult) -> "ResponseRuleResult":
         return ResponseRuleResult(
             id=str(uuid.uuid4()),
             rule=x.rule,
@@ -1295,7 +1397,7 @@ class ResponseRuleResult(RuleResult):
             latency_ms=x.latency_ms,
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseResponseRuleResult:
         return DatabaseResponseRuleResult(
             id=self.id,
             rule_id=self.rule.id,
@@ -1332,7 +1434,7 @@ class InferenceResponse(BaseModel):
         return InferenceResponse(
             id=x.id,
             inference_id=x.inference_id,
-            result=x.result,
+            result=RuleResultEnum(x.result),
             created_at=x.created_at,
             updated_at=x.updated_at,
             message=x.content.content,
@@ -1387,16 +1489,16 @@ class InferencePrompt(BaseModel):
     result: RuleResultEnum
     created_at: datetime
     updated_at: datetime
-    message: str = None
+    message: Optional[str] = None
     prompt_rule_results: List[PromptRuleResult] = []
     tokens: int | None = None
 
     @staticmethod
-    def _from_database_model(x: DatabaseInferencePrompt):
+    def _from_database_model(x: DatabaseInferencePrompt) -> "InferencePrompt":
         return InferencePrompt(
             id=x.id,
             inference_id=x.inference_id,
-            result=x.result,
+            result=RuleResultEnum(x.result),
             created_at=x.created_at,
             updated_at=x.updated_at,
             message=x.content.content,
@@ -1421,7 +1523,7 @@ class InferencePrompt(BaseModel):
             tokens=self.tokens,
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseInferencePrompt:
         return DatabaseInferencePrompt(
             id=self.id,
             inference_id=self.inference_id,
@@ -1446,11 +1548,11 @@ class InferenceFeedback(BaseModel):
     score: int
     reason: Optional[str] = None
     user_id: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
     @staticmethod
-    def from_database_model(dif: DatabaseInferenceFeedback):
+    def from_database_model(dif: DatabaseInferenceFeedback) -> "InferenceFeedback":
         return InferenceFeedback(
             id=dif.id,
             inference_id=dif.inference_id,
@@ -1462,9 +1564,9 @@ class InferenceFeedback(BaseModel):
             updated_at=dif.updated_at,
         )
 
-    def to_response_model(self):
+    def to_response_model(self) -> InferenceFeedbackResponse:
         return InferenceFeedbackResponse(
-            id=self.id,
+            id=self.id if self.id else "",
             inference_id=self.inference_id,
             target=self.target,
             score=self.score,
@@ -1510,7 +1612,7 @@ class Inference(BaseModel):
 
         return Inference(
             id=x.id,
-            result=x.result,
+            result=RuleResultEnum(x.result),
             created_at=x.created_at,
             updated_at=x.updated_at,
             task_id=x.task_id,
@@ -1526,6 +1628,18 @@ class Inference(BaseModel):
         )
 
     def _to_response_model(self) -> ExternalInference:
+        if self.inference_prompt:
+            inference_prompt = self.inference_prompt._to_response_model()
+        else:
+            inference_prompt = ExternalInferencePrompt(
+                id="",
+                inference_id="",
+                result=RuleResultEnum.UNAVAILABLE,
+                created_at=_serialize_datetime(datetime.now()),
+                updated_at=_serialize_datetime(datetime.now()),
+                message="",
+                prompt_rule_results=[],
+            )
         return ExternalInference(
             id=self.id,
             result=self.result,
@@ -1534,10 +1648,10 @@ class Inference(BaseModel):
             task_id=self.task_id,
             task_name=self.task_name,
             conversation_id=self.conversation_id,
-            inference_prompt=self.inference_prompt._to_response_model(),
+            inference_prompt=inference_prompt,
             inference_response=(
                 self.inference_response._to_response_model()
-                if self.inference_response != None
+                if self.inference_response
                 else None
             ),
             inference_feedback=[i.to_response_model() for i in self.inference_feedback],
@@ -1553,10 +1667,14 @@ class Inference(BaseModel):
             updated_at=self.updated_at,
             task_id=self.task_id,
             conversation_id=self.conversation_id,
-            inference_prompt=self.inference_prompt._to_database_model(),
+            inference_prompt=(
+                self.inference_prompt._to_database_model()
+                if self.inference_prompt
+                else None
+            ),
             inference_response=(
                 self.inference_response._to_database_model()
-                if self.inference_response != None
+                if self.inference_response
                 else None
             ),
             user_id=self.user_id,
@@ -1590,7 +1708,7 @@ class ValidationRequest(BaseModel):
         default=None,
     )
 
-    def get_scoring_text(self):
+    def get_scoring_text(self) -> Optional[str]:
         return self.response if self.response else self.prompt
 
 
@@ -1631,13 +1749,13 @@ class Embedding(BaseModel):
     owner_id: Optional[str] = None
 
     @classmethod
-    def _from_database_model(cls, e: DatabaseEmbedding):
+    def _from_database_model(cls, e: DatabaseEmbedding) -> "Embedding":
         return cls(
             id=e.id,
             document_id=e.document_id,
             text=e.text,
             seq_num=e.seq_num,
-            embedding=list(e.embedding),
+            embedding=[float(e.embedding)],
             owner_id=e.documents.owner_id,
         )
 
@@ -1676,11 +1794,13 @@ class User(BaseModel):
     roles: list[AuthUserRole]
 
     @staticmethod
-    def _from_database_model(user: DatabaseUser):
+    def _from_database_model(user: DatabaseUser) -> "User":
         return User(
+            id="00000000-0000-0000-0000-000000000000",
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
+            roles=[],
         )
 
     def _to_response_model(self) -> UserResponse:
@@ -1712,7 +1832,7 @@ class DocumentStorageConfiguration(BaseModel):
     bucket_name: Optional[str] = None
     assumable_role_arn: Optional[str] = None
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> DocumentStorageConfigurationResponse:
         return DocumentStorageConfigurationResponse(
             storage_environment=self.document_storage_environment,
             bucket_name=self.bucket_name,
@@ -1740,7 +1860,9 @@ class ApplicationConfiguration(BaseModel):
                 configs,
             )
             doc_storage = DocumentStorageConfiguration(
-                document_storage_environment=storage_env_config,
+                document_storage_environment=DocumentStorageEnvironment(
+                    storage_env_config,
+                ),
             )
 
             container_name_config = config_if_exists(
@@ -1772,12 +1894,13 @@ class ApplicationConfiguration(BaseModel):
                 doc_storage.assumable_role_arn = role_arn_config
 
         if ApplicationConfigurations.MAX_LLM_RULES_PER_TASK_COUNT in config_dict:
-            max_llm_rules_per_task_count = int(
-                config_if_exists(
-                    ApplicationConfigurations.MAX_LLM_RULES_PER_TASK_COUNT,
-                    configs,
-                ),
+            config_value = config_if_exists(
+                ApplicationConfigurations.MAX_LLM_RULES_PER_TASK_COUNT,
+                configs,
             )
+            if config_value is not None:
+                max_llm_rules_per_task_count = int(config_value)
+
         return ApplicationConfiguration(
             chat_task_id=config_if_exists(
                 ApplicationConfigurations.CHAT_TASK_ID,
@@ -1821,7 +1944,7 @@ class ApiKey(BaseModel):
             roles=api_key.roles,
         )
 
-    def _to_response_model(self, message="") -> ApiKeyResponse:
+    def _to_response_model(self, message: str = "") -> ApiKeyResponse:
         return ApiKeyResponse(
             id=self.id,
             key=self.key,
@@ -1833,7 +1956,7 @@ class ApiKey(BaseModel):
             roles=self.roles,
         )
 
-    def set_key(self, key: str):
+    def set_key(self, key: str) -> None:
         self.key = key
 
     def get_user_representation(self) -> User:
@@ -1860,7 +1983,7 @@ class Span(TokenCountCostSchema):
     session_id: Optional[str] = None
     user_id: Optional[str] = None
     status_code: str = "Unset"
-    raw_data: dict
+    raw_data: dict[str, Any]
     created_at: datetime
     updated_at: datetime
     metric_results: Optional[List[MetricResult]] = None
@@ -2056,7 +2179,7 @@ class Span(TokenCountCostSchema):
         )
 
     @staticmethod
-    def from_span_data(span_data: dict) -> "Span":
+    def from_span_data(span_data: dict[str, Any]) -> "Span":
         """Create a Span from raw span data received from OpenTelemetry"""
         return Span(
             id=str(uuid.uuid4()),
@@ -2160,10 +2283,13 @@ class TraceUserMetadata(TokenCountCostSchema):
         )
 
 
-def config_if_exists(key: str, configs: List[DatabaseApplicationConfiguration]):
-    configs = {c.name: c.value for c in configs}
-    if key in configs:
-        return configs[key]
+def config_if_exists(
+    key: str,
+    configs: List[DatabaseApplicationConfiguration],
+) -> str | None:
+    configs_dict = {c.name: c.value for c in configs}
+    if key in configs_dict:
+        return str(configs_dict[key])
     else:
         return None
 
@@ -2285,7 +2411,9 @@ class TraceQuerySchema(BaseModel):
             span_ids=request.span_ids,
             span_name=request.span_name,
             span_name_contains=request.span_name_contains,
-            status_code=request.status_code,
+            status_code=[
+                str(r_status_code) for r_status_code in request.status_code or []
+            ],
             include_experiment_traces=request.include_experiment_traces,
         )
 
@@ -2297,7 +2425,7 @@ class Dataset(BaseModel):
     updated_at: datetime
     name: str
     description: Optional[str]
-    metadata: Optional[dict]
+    metadata: Optional[dict[Any, Any]]
     latest_version_number: Optional[int]
 
     def to_response_model(self) -> DatasetResponse:
@@ -2645,7 +2773,7 @@ class DatasetVersion(DatasetVersionMetadata):
         )
 
     @staticmethod
-    def _from_database_model(
+    def _from_database_model(  # type: ignore[override]
         db_dataset_version: DatabaseDatasetVersion,
         total_count: int,
         pagination_params: PaginationParameters,
@@ -3010,7 +3138,7 @@ class RagProviderConfiguration(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(db_config) -> "RagProviderConfiguration":
+    def _from_database_model(db_config: Any) -> "RagProviderConfiguration":
         """Create from polymorphic database model"""
         if (
             db_config.authentication_method
@@ -3414,6 +3542,12 @@ class RagSearchSettingConfigurationVersion(BaseModel):
         new_version_number: int,
     ) -> "RagSearchSettingConfigurationVersion":
         curr_time = datetime.now()
+        settings: (
+            WeaviateHybridSearchSettingsConfiguration
+            | WeaviateVectorSimilarityTextSearchSettingsConfiguration
+            | WeaviateKeywordSearchSettingsConfiguration
+            | None
+        ) = None
 
         if isinstance(
             request.settings,
@@ -3487,6 +3621,12 @@ class RagSearchSettingConfigurationVersion(BaseModel):
     def _from_database_model(
         db_model: DatabaseRagSearchSettingConfigurationVersion,
     ) -> "RagSearchSettingConfigurationVersion":
+        settings: (
+            WeaviateHybridSearchSettingsConfiguration
+            | WeaviateVectorSimilarityTextSearchSettingsConfiguration
+            | WeaviateKeywordSearchSettingsConfiguration
+            | None
+        ) = None
         # Settings are stored as dict in database (JSON), so we need to discriminate by search_kind
         settings_dict = db_model.settings
         if settings_dict is None:
@@ -3520,7 +3660,7 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             settings=settings,
             tags=[
                 RagSearchSettingTag._from_database_model(db_tag)
-                for db_tag in db_model.tags
+                for db_tag in db_model.tags or []
             ],
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
@@ -3628,7 +3768,7 @@ class RagSearchSettingConfiguration(BaseModel):
             rag_provider_id=db_model.rag_provider_id,
             all_possible_tags=[
                 RagSearchSettingTag._from_database_model(db_tag)
-                for db_tag in db_model.all_possible_tags
+                for db_tag in db_model.all_possible_tags or []
             ],
             name=db_model.name,
             description=db_model.description,
@@ -3756,6 +3896,18 @@ class InternalSavedRagConfig(BaseModel):
             )
         elif config.type == "unsaved":
             # Convert request settings to response settings via internal model
+            internal: (
+                WeaviateHybridSearchSettingsConfiguration
+                | WeaviateKeywordSearchSettingsConfiguration
+                | WeaviateVectorSimilarityTextSearchSettingsConfiguration
+                | None
+            ) = None
+            response_settings: (
+                WeaviateHybridSearchSettingsConfigurationResponse
+                | WeaviateKeywordSearchSettingsConfigurationResponse
+                | WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
+                | None
+            ) = None
             if isinstance(
                 config.settings,
                 WeaviateHybridSearchSettingsConfigurationRequest,
@@ -3923,8 +4075,8 @@ class RagNotebook(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            created_at=self.created_at.isoformat() if self.created_at else None,
-            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            created_at=self.created_at.isoformat() if self.created_at else "",
+            updated_at=self.updated_at.isoformat() if self.updated_at else "",
             run_count=run_count,
             latest_run_id=latest_run_id,
             latest_run_status=latest_run_status,
@@ -3934,6 +4086,7 @@ class RagNotebook(BaseModel):
         """Convert internal RagNotebook to RagNotebookDetail response"""
         # Convert state from JSON to Pydantic models (request types first)
         state_request = RagNotebookState()
+        dataset_ref = None
 
         if self.rag_configs is not None:
             state_request.rag_configs = [
@@ -3945,7 +4098,7 @@ class RagNotebook(BaseModel):
             and self.dataset_version is not None
             and self.dataset_name is not None
         ):
-            state_request.dataset_ref = DatasetRef(
+            dataset_ref = DatasetRef(
                 id=self.dataset_id,
                 name=self.dataset_name,
                 version=self.dataset_version,
@@ -3969,7 +4122,7 @@ class RagNotebook(BaseModel):
                 InternalSavedRagConfig.to_response(config)
                 for config in state_request.rag_configs
             ]
-        state.dataset_ref = state_request.dataset_ref
+        state.dataset_ref = dataset_ref
         state.dataset_row_filter = state_request.dataset_row_filter
         state.eval_list = state_request.eval_list
 
@@ -3978,8 +4131,8 @@ class RagNotebook(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            created_at=self.created_at.isoformat() if self.created_at else None,
-            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            created_at=self.created_at.isoformat() if self.created_at else "",
+            updated_at=self.updated_at.isoformat() if self.updated_at else "",
             state=state,
             experiments=self.experiments,
         )
@@ -3988,6 +4141,7 @@ class RagNotebook(BaseModel):
         """Convert internal RagNotebook to RagNotebookStateResponse"""
         # Convert state from JSON to Pydantic models (request types first)
         state_request = RagNotebookState()
+        dataset_ref = None
 
         if self.rag_configs is not None:
             state_request.rag_configs = [
@@ -3999,7 +4153,7 @@ class RagNotebook(BaseModel):
             and self.dataset_version is not None
             and self.dataset_name is not None
         ):
-            state_request.dataset_ref = DatasetRef(
+            dataset_ref = DatasetRef(
                 id=self.dataset_id,
                 name=self.dataset_name,
                 version=self.dataset_version,
@@ -4023,7 +4177,7 @@ class RagNotebook(BaseModel):
                 InternalSavedRagConfig.to_response(config)
                 for config in state_request.rag_configs
             ]
-        state.dataset_ref = state_request.dataset_ref
+        state.dataset_ref = dataset_ref
         state.dataset_row_filter = state_request.dataset_row_filter
         state.eval_list = state_request.eval_list
 
@@ -4161,8 +4315,8 @@ class AgenticNotebook(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            created_at=self.created_at.isoformat() if self.created_at else None,
-            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            created_at=self.created_at.isoformat() if self.created_at else "",
+            updated_at=self.updated_at.isoformat() if self.updated_at else "",
             run_count=run_count,
             latest_run_id=latest_run_id,
             latest_run_status=latest_run_status,
@@ -4210,8 +4364,8 @@ class AgenticNotebook(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            created_at=self.created_at.isoformat() if self.created_at else None,
-            updated_at=self.updated_at.isoformat() if self.updated_at else None,
+            created_at=self.created_at.isoformat() if self.created_at else "",
+            updated_at=self.updated_at.isoformat() if self.updated_at else "",
             state=state,
             experiments=self.experiments,
         )
@@ -4254,3 +4408,73 @@ class AgenticNotebook(BaseModel):
             ]
 
         return state
+
+
+class AgentPollingData(BaseModel):
+    """
+    Data required for polling registered agents.
+    """
+
+    id: uuid.UUID = Field(description="ID of the agent polling data.")
+    task_id: str = Field(description="ID of the parent task.")
+    created_at: datetime = Field(description="Time the agent polling data was created.")
+    updated_at: datetime = Field(
+        description="Time the agent polling data was last updated.",
+    )
+    last_fetched: Optional[datetime] = Field(
+        default=None,
+        description="Time the registered agent was last polled.",
+    )
+    status: AgentPollingStatus = Field(description="Status of the agent polling data.")
+    error_message: Optional[str] = Field(
+        default=None,
+        description="Error message if the agent polling data failed.",
+    )
+    failed_runs: int = Field(
+        default=0,
+        description="Number of times the agent polling data ran into api errors",
+    )
+
+    @staticmethod
+    def from_task_id(
+        task_id: str,
+    ) -> "AgentPollingData":
+        now = datetime.now()
+
+        return AgentPollingData(
+            id=uuid.uuid4(),
+            task_id=task_id,
+            created_at=now,
+            updated_at=now,
+            last_fetched=None,
+            status=AgentPollingStatus.PENDING,
+            error_message=None,
+            failed_runs=0,
+        )
+
+    @staticmethod
+    def from_database_model(
+        db_model: DatabaseAgentPollingData,
+    ) -> "AgentPollingData":
+        return AgentPollingData(
+            id=db_model.id,
+            task_id=db_model.task_id,
+            created_at=db_model.created_at,
+            updated_at=db_model.updated_at,
+            last_fetched=db_model.last_fetched,
+            status=AgentPollingStatus(db_model.status),
+            error_message=db_model.error_message,
+            failed_runs=db_model.failed_runs,
+        )
+
+    def to_database_model(self) -> DatabaseAgentPollingData:
+        return DatabaseAgentPollingData(
+            id=self.id,
+            task_id=self.task_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            last_fetched=self.last_fetched,
+            status=self.status.value,
+            error_message=self.error_message,
+            failed_runs=self.failed_runs,
+        )

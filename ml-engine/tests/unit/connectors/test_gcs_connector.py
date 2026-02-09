@@ -10,6 +10,17 @@ from mock_data.connector_helpers import *
 logger = logging.getLogger("job_logger")
 
 
+def assert_column_names_are_strings(rows: list[dict]) -> None:
+    """Assert that all column names in the returned rows are strings, not integers."""
+    if not rows:
+        return  # Empty results are OK
+    for row in rows:
+        for key in row.keys():
+            assert isinstance(
+                key, str
+            ), f"Column name {key} is type {type(key)}, expected str. Row: {row}"
+
+
 MOCK_GCS_CONNECTOR_SPEC = mock_bucket_based_connector_spec(
     connector_type=ConnectorType.GCS,
     fields=[
@@ -181,3 +192,5 @@ def test_gcs_read_data(
             pagination_options=pagination_options,
         )
         assert len(rows) == expected_rows
+        # Verify all column names are strings, not integers
+        assert_column_names_are_strings(rows)

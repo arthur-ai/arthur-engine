@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleScope, RuleType
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import (
     NewMetricRequest,
     NewRuleRequest,
@@ -29,6 +29,7 @@ from clients.telemetry.telemetry_client import (
 )
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session
+from repositories.agent_polling_repository import AgentPollingRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -85,8 +86,19 @@ def create_task(
         task = Task._from_request_model(request)
         task = tasks_repo.create_task(task)
 
+        if request.is_agentic and request.agent_metadata is not None:
+            try:
+                agent_polling_repo = AgentPollingRepository(db_session)
+                agent_polling_repo.start_polling_for_agent(
+                    task.id,
+                )
+            except Exception as e:
+                tasks_repo.archive_task(task.id)
+                raise e
+
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
-        return task._to_response_model()
+        response = task._to_response_model()
+        return response
     except:
         raise
     finally:
@@ -228,7 +240,7 @@ def search_tasks(
             ids=request.task_ids,
             task_name=request.task_name,
             is_agentic=request.is_agentic,
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
         )

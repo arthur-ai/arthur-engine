@@ -50,7 +50,11 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
     assumable_role_arn: Optional[str] = None
 
     @model_validator(mode="before")
-    def check_azure_or_aws_complete_config(cls, values):
+    @classmethod
+    def check_azure_or_aws_complete_config(
+        cls,
+        values: dict[str, Any],
+    ) -> dict[str, Any]:
         if values.get("environment") == "azure":
             if (values.get("connection_string") is None) or (
                 values.get("container_name") is None
@@ -86,7 +90,7 @@ class NewDatasetRequest(BaseModel):
         default=None,
         description="Description of the dataset.",
     )
-    metadata: Optional[dict] = Field(
+    metadata: Optional[dict[Any, Any]] = Field(
         default=None,
         description="Any metadata to include that describes additional information about the dataset.",
     )
@@ -100,7 +104,7 @@ class DatasetUpdateRequest(BaseModel):
         default=None,
         description="Description of the dataset.",
     )
-    metadata: Optional[dict] = Field(
+    metadata: Optional[dict[Any, Any]] = Field(
         default=None,
         description="Any metadata to include that describes additional information about the dataset.",
         examples=[{"created_by": "John Doe"}],
@@ -202,6 +206,10 @@ class PutModelProviderCredentials(BaseModel):
     aws_session_name: Optional[SecretStr] = Field(
         default=None,
         description="The AWS session name.",
+    )
+    api_base: Optional[SecretStr] = Field(
+        default=None,
+        description="The API base URL. Used for VLLM models.",
     )
     credentials_file: Optional[GCPServiceAccountCredentialsRequest] = Field(
         default=None,
@@ -398,7 +406,9 @@ class WeaviateKeywordSearchSettingsBaseConfigurationRequest(
     )
 
     @model_validator(mode="after")
-    def check_operators(self):
+    def check_operators(
+        self,
+    ) -> "WeaviateKeywordSearchSettingsBaseConfigurationRequest":
         if self.and_operator and self.minimum_match_or_operator:
             raise HTTPException(
                 status_code=400,
@@ -509,7 +519,7 @@ class WeaviateHybridSearchSettingsBaseRequest(
     )
 
     @model_validator(mode="after")
-    def check_operators(self):
+    def check_operators(self) -> "WeaviateHybridSearchSettingsBaseRequest":
         if self.and_operator and self.minimum_match_or_operator:
             raise HTTPException(
                 status_code=400,
@@ -824,7 +834,7 @@ class BaseCompletionRequest(BaseModel):
     _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
 
     @model_validator(mode="after")
-    def _build_variable_map(self):
+    def _build_variable_map(self) -> "BaseCompletionRequest":
         """Construct a private lookup dictionary for variable substitution"""
         if self.variables:
             self._variable_map = {v.name: v.value for v in self.variables}
@@ -976,7 +986,7 @@ class UpdateContinuousEvalRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_request(self):
+    def validate_request(self) -> "UpdateContinuousEvalRequest":
         if self.llm_eval_name is not None and self.llm_eval_version is None:
             raise ValueError(
                 "Must specify which version of the llm eval this continuous eval should be associated with",
@@ -1017,6 +1027,10 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="Whether the continuous eval is enabled.",
     )
+    continuous_eval_ids: Optional[List[UUID]] = Field(
+        None,
+        description="List of continuous eval IDs to filter on",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1040,8 +1054,22 @@ class ContinuousEvalListFilterRequest(BaseModel):
             None,
             description="Whether the continuous eval is enabled.",
         ),
+        continuous_eval_ids: Optional[List[str]] = Query(
+            None,
+            description="List of continuous eval IDs to filter on.",
+        ),
     ) -> "ContinuousEvalListFilterRequest":
         """Create a ContinuousEvalListFilterRequest from query parameters."""
+        parsed_continuous_eval_ids = None
+        if continuous_eval_ids:
+            try:
+                parsed_continuous_eval_ids = [UUID(id) for id in continuous_eval_ids]
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid UUID format for parameter 'continuous_eval_ids': {e}",
+                )
+
         return ContinuousEvalListFilterRequest(
             name=name,
             llm_eval_name=llm_eval_name,
@@ -1052,6 +1080,7 @@ class ContinuousEvalListFilterRequest(BaseModel):
                 datetime.fromisoformat(created_before) if created_before else None
             ),
             enabled=enabled.lower() == "true" if enabled else None,
+            continuous_eval_ids=parsed_continuous_eval_ids,
         )
 
 
@@ -1059,17 +1088,21 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
     """Request schema for filtering continuous eval run results"""
 
     # Optional filters
-    id: Optional[UUID] = Field(
+    ids: Optional[List[UUID]] = Field(
         None,
-        description="ID of the agentic annotation to filter on",
+        description="List of agentic annotation IDs to filter on",
     )
-    continuous_eval_id: Optional[UUID] = Field(
+    continuous_eval_ids: Optional[List[UUID]] = Field(
         None,
-        description="ID of the continuous eval to filter on",
+        description="List of continuous eval IDs to filter on",
     )
-    trace_id: Optional[str] = Field(
+    eval_name: Optional[str] = Field(
         None,
-        description="Trace ID to filter on",
+        description="Name of the continuous eval to filter on",
+    )
+    trace_ids: Optional[List[str]] = Field(
+        None,
+        description="List of trace IDs to filter on",
     )
     annotation_score: Optional[int] = Field(
         None,
@@ -1094,17 +1127,21 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
 
     @staticmethod
     def from_query_parameters(
-        id: Optional[str] = Query(
+        ids: Optional[List[str]] = Query(
             None,
-            description="ID of the continuous eval to filter on.",
+            description="List of agentic annotation IDs to filter on.",
         ),
-        continuous_eval_id: Optional[str] = Query(
+        continuous_eval_ids: Optional[List[str]] = Query(
             None,
-            description="ID of the continuous eval to filter on.",
+            description="List of continuous eval IDs to filter on.",
         ),
-        trace_id: Optional[str] = Query(
+        eval_name: Optional[str] = Query(
             None,
-            description="Trace ID to filter on.",
+            description="Name of the continuous eval to filter on.",
+        ),
+        trace_ids: Optional[List[str]] = Query(
+            None,
+            description="List of trace IDs to filter on.",
         ),
         annotation_score: Optional[int] = Query(
             None,
@@ -1129,30 +1166,31 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
     ) -> "ContinuousEvalRunResultsListFilterRequest":
         """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
         # Validate UUID parameters
-        parsed_id = None
-        if id:
+        parsed_ids = None
+        if ids:
             try:
-                parsed_id = UUID(id)
-            except ValueError:
+                parsed_ids = [UUID(i) for i in ids]
+            except ValueError as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid UUID format for parameter 'id': {id}",
+                    detail=f"Invalid UUID format for parameter 'ids': {e}",
                 )
 
-        parsed_continuous_eval_id = None
-        if continuous_eval_id:
+        parsed_continuous_eval_ids = None
+        if continuous_eval_ids:
             try:
-                parsed_continuous_eval_id = UUID(continuous_eval_id)
-            except ValueError:
+                parsed_continuous_eval_ids = [UUID(i) for i in continuous_eval_ids]
+            except ValueError as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid UUID format for parameter 'continuous_eval_id': {continuous_eval_id}",
+                    detail=f"Invalid UUID format for parameter 'continuous_eval_ids': {e}",
                 )
 
         return ContinuousEvalRunResultsListFilterRequest(
-            id=parsed_id,
-            continuous_eval_id=parsed_continuous_eval_id,
-            trace_id=trace_id,
+            ids=parsed_ids,
+            continuous_eval_ids=parsed_continuous_eval_ids,
+            eval_name=eval_name,
+            trace_ids=trace_ids,
             annotation_score=annotation_score,
             run_status=run_status,
             created_after=(
@@ -1228,7 +1266,9 @@ class AgenticAnnotationListFilterRequest(BaseModel):
         """Create a AgenticAnnotationListFilterRequest from query parameters."""
         return AgenticAnnotationListFilterRequest(
             continuous_eval_id=UUID(continuous_eval_id) if continuous_eval_id else None,
-            annotation_type=annotation_type,
+            annotation_type=(
+                AgenticAnnotationType(annotation_type) if annotation_type else None
+            ),
             annotation_score=annotation_score,
             run_status=run_status,
             created_after=(
@@ -1238,3 +1278,76 @@ class AgenticAnnotationListFilterRequest(BaseModel):
                 datetime.fromisoformat(created_before) if created_before else None
             ),
         )
+
+
+# ============================================================================
+# Synthetic Data Generation Schemas
+# ============================================================================
+
+
+class SyntheticDataColumnDescription(BaseModel):
+    """Description of a column for synthetic data generation."""
+
+    column_name: str = Field(
+        description="Name of the column to generate data for.",
+    )
+    description: str = Field(
+        description="Description of what this column contains and how to generate realistic values.",
+    )
+
+
+class SyntheticDataGenerationRequest(BaseModel):
+    """Request for initial synthetic data generation."""
+
+    dataset_purpose: str = Field(
+        description="Description of the dataset's purpose and what the data represents.",
+    )
+    column_descriptions: List[SyntheticDataColumnDescription] = Field(
+        description="Descriptions for each column to guide generation.",
+    )
+    num_rows: int = Field(
+        default=10,
+        ge=1,
+        le=25,
+        description="Number of rows to generate (1-25).",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model to use for generation.",
+    )
+    model_name: str = Field(
+        description="Name of the LLM model to use for generation.",
+    )
+    config: Optional[LLMRequestConfigSettings] = Field(
+        default=None,
+        description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
+    )
+
+
+class SyntheticDataConversationRequest(BaseModel):
+    """Request for continuing a synthetic data generation conversation."""
+
+    message: str = Field(
+        description="User's message/instruction for refining the generated data.",
+    )
+    current_rows: List[NewDatasetVersionRowRequest] = Field(
+        description="Current state of generated rows (including any manual edits).",
+    )
+    conversation_history: List[OpenAIMessage] = Field(
+        description="Previous conversation messages for context.",
+    )
+    dataset_purpose: str = Field(
+        description="Original dataset purpose for context.",
+    )
+    column_descriptions: List[SyntheticDataColumnDescription] = Field(
+        description="Original column descriptions for context.",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model to use for generation.",
+    )
+    model_name: str = Field(
+        description="Name of the LLM model to use for generation.",
+    )
+    config: Optional[LLMRequestConfigSettings] = Field(
+        default=None,
+        description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
+    )

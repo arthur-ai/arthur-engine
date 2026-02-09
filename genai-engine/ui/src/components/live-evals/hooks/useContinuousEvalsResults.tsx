@@ -35,25 +35,39 @@ export const continuousEvalsResultsQueryOptions = ({
   });
 
 export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
-  const request: Record<string, string> = {};
+  const request: Record<string, string | string[] | number> = {};
 
   filters.forEach((filter) => {
     const key = filter.name;
 
     if (key === "id") {
-      return (request[key] = filter.value as string);
+      // Convert to array and use plural key
+      const value = Array.isArray(filter.value) ? filter.value : [filter.value];
+      return (request["ids"] = value as string[]);
+    }
+
+    if (key === "continuous_eval_id") {
+      // Convert to array and use plural key
+      const value = Array.isArray(filter.value) ? filter.value : [filter.value];
+      return (request["continuous_eval_ids"] = value as string[]);
     }
 
     if (key === "trace_id") {
-      return (request[key] = filter.value as string);
+      // Convert to array and use plural key
+      const value = Array.isArray(filter.value) ? filter.value : [filter.value];
+      return (request["trace_ids"] = value as string[]);
     }
 
     if (key === "annotation_score") {
-      return (request[key] = filter.value as string);
+      return (request[key] = Number(filter.value));
     }
 
     if (key === "run_status") {
       return (request[key] = filter.value as ContinuousEvalRunStatus);
+    }
+
+    if (key === "eval_name") {
+      return (request[key] = filter.value as string);
     }
 
     if (key === "created_at") {

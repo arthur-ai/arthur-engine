@@ -73,7 +73,7 @@ class ScoreRequest(BaseModel):
     examples: Optional[List[Example]] = None
     hint: Optional[str] = None
     keyword_list: Optional[List[str]] = None
-    regex_patterns: Optional[list[Pattern]] = None
+    regex_patterns: Optional[list[Pattern[str]]] = None
     toxicity_threshold: Optional[float] = None
     disabled_pii_entities: Optional[List[str]] = None
     pii_confidence_threshold: Optional[float] = None

@@ -2599,6 +2599,10 @@ export interface GCPServiceAccountCredentialsRequest {
   universe_domain: string;
 }
 
+export type GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostData = SyntheticDataGenerationResponse;
+
+export type GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostError = HTTPValidationError;
+
 /**
  * GeneratedVariableSource
  * Variable source for generated values (e.g., UUIDs, timestamps)
@@ -4547,10 +4551,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   continuous_eval_enabled?: string | null;
   /**
-   * Continuous Eval Id
-   * ID of the continuous eval to filter on.
+   * Continuous Eval Ids
+   * List of continuous eval IDs to filter on.
    */
-  continuous_eval_id?: string | null;
+  continuous_eval_ids?: string[] | null;
   /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
@@ -4562,10 +4566,15 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   created_before?: string | null;
   /**
-   * Id
-   * ID of the continuous eval to filter on.
+   * Eval Name
+   * Name of the llm eval to filter on.
    */
-  id?: string | null;
+  eval_name?: string | null;
+  /**
+   * Ids
+   * List of agentic annotation IDs to filter on.
+   */
+  ids?: string[] | null;
   /**
    * Page
    * Page number
@@ -4594,10 +4603,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   taskId: string;
   /**
-   * Trace Id
-   * Trace ID to filter on.
+   * Trace Ids
+   * List of trace IDs to filter on.
    */
-  trace_id?: string | null;
+  trace_ids?: string[] | null;
 }
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
@@ -4950,6 +4959,12 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -5058,7 +5073,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5071,7 +5086,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5165,6 +5180,12 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Include Spans
    * Include flat list of spans for each trace. Defaults to false for performance.
@@ -5280,7 +5301,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5293,7 +5314,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5598,7 +5619,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -6606,7 +6627,7 @@ export interface PromptOutput {
    * Tool Calls
    * Tool calls made by the prompt
    */
-  tool_calls?: any[];
+  tool_calls?: ChatCompletionMessageToolCall[];
 }
 
 /**
@@ -6765,6 +6786,11 @@ export interface PromptVersionResultListResponse {
 
 /** PutModelProviderCredentials */
 export interface PutModelProviderCredentials {
+  /**
+   * Api Base
+   * The API base URL. Used for VLLM models.
+   */
+  api_base?: string | null;
   /**
    * Api Key
    * The API key for the provider.
@@ -7054,7 +7080,7 @@ export interface QuerySpansByTypeV1SpansQueryGetParams {
   sort?: PaginationSortMethod;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7112,6 +7138,12 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Page
    * Page number
@@ -7221,7 +7253,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7234,7 +7266,7 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -7320,6 +7352,12 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -7428,7 +7466,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7441,7 +7479,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -8928,6 +8966,10 @@ export interface SearchUsersUsersGetParams {
   sort?: PaginationSortMethod;
 }
 
+export type SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostData = SyntheticDataGenerationResponse;
+
+export type SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostError = HTTPValidationError;
+
 /**
  * SessionListResponse
  * Response for session list endpoint
@@ -9336,6 +9378,9 @@ export interface SpanWithMetricsResponse {
   user_id?: string | null;
 }
 
+/** StatusCodeEnum */
+export type StatusCodeEnum = "Ok" | "Error" | "Unset";
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -9355,6 +9400,144 @@ export interface SummaryResults {
    * Summary for each prompt version tested
    */
   prompt_eval_summaries: PromptEvalResultSummaries[];
+}
+
+/**
+ * SyntheticDataColumnDescription
+ * Description of a column for synthetic data generation.
+ */
+export interface SyntheticDataColumnDescription {
+  /**
+   * Column Name
+   * Name of the column to generate data for.
+   */
+  column_name: string;
+  /**
+   * Description
+   * Description of what this column contains and how to generate realistic values.
+   */
+  description: string;
+}
+
+/**
+ * SyntheticDataConversationRequest
+ * Request for continuing a synthetic data generation conversation.
+ */
+export interface SyntheticDataConversationRequest {
+  /**
+   * Column Descriptions
+   * Original column descriptions for context.
+   */
+  column_descriptions: SyntheticDataColumnDescription[];
+  /** Optional LLM configuration settings (temperature, max_tokens, etc.). */
+  config?: LLMRequestConfigSettings | null;
+  /**
+   * Conversation History
+   * Previous conversation messages for context.
+   */
+  conversation_history: OpenAIMessageInput[];
+  /**
+   * Current Rows
+   * Current state of generated rows (including any manual edits).
+   */
+  current_rows: NewDatasetVersionRowRequest[];
+  /**
+   * Dataset Purpose
+   * Original dataset purpose for context.
+   */
+  dataset_purpose: string;
+  /**
+   * Message
+   * User's message/instruction for refining the generated data.
+   */
+  message: string;
+  /**
+   * Model Name
+   * Name of the LLM model to use for generation.
+   */
+  model_name: string;
+  /** Provider of the LLM model to use for generation. */
+  model_provider: ModelProvider;
+}
+
+/**
+ * SyntheticDataGenerationRequest
+ * Request for initial synthetic data generation.
+ */
+export interface SyntheticDataGenerationRequest {
+  /**
+   * Column Descriptions
+   * Descriptions for each column to guide generation.
+   */
+  column_descriptions: SyntheticDataColumnDescription[];
+  /** Optional LLM configuration settings (temperature, max_tokens, etc.). */
+  config?: LLMRequestConfigSettings | null;
+  /**
+   * Dataset Purpose
+   * Description of the dataset's purpose and what the data represents.
+   */
+  dataset_purpose: string;
+  /**
+   * Model Name
+   * Name of the LLM model to use for generation.
+   */
+  model_name: string;
+  /** Provider of the LLM model to use for generation. */
+  model_provider: ModelProvider;
+  /**
+   * Num Rows
+   * Number of rows to generate (1-25).
+   * @min 1
+   * @max 25
+   * @default 10
+   */
+  num_rows?: number;
+}
+
+/**
+ * SyntheticDataGenerationResponse
+ * Response for synthetic data generation (both initial and conversation).
+ */
+export interface SyntheticDataGenerationResponse {
+  /** The assistant's response message explaining what was done. */
+  assistant_message: OpenAIMessageOutput;
+  /**
+   * Rows
+   * Full current state of all generated rows.
+   */
+  rows: SyntheticDataRowResponse[];
+  /**
+   * Rows Added
+   * IDs of newly added rows in this response.
+   */
+  rows_added?: string[];
+  /**
+   * Rows Modified
+   * IDs of rows that were modified in this response.
+   */
+  rows_modified?: string[];
+  /**
+   * Rows Removed
+   * IDs of rows that were removed in this response.
+   */
+  rows_removed?: string[];
+}
+
+/**
+ * SyntheticDataRowResponse
+ * A single generated row with a temporary client-side ID for tracking.
+ */
+export interface SyntheticDataRowResponse {
+  /**
+   * Data
+   * List of column names and values in the generated row.
+   */
+  data: DatasetVersionRowColumnItemResponse[];
+  /**
+   * Id
+   * Temporary client-side ID for tracking this row during the session.
+   */
+  id: string;
 }
 
 /** TaskResponse */
@@ -11481,7 +11664,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.324
+ * @version 2.1.339
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12661,6 +12844,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/${traceId}/transforms/${transformId}/extractions`,
         method: "POST",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Generate synthetic data rows based on existing dataset patterns.
+     *
+     * @tags Datasets
+     * @name GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost
+     * @summary Generate Synthetic Data
+     * @request POST:/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic
+     * @secure
+     */
+    generateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPost: (
+      datasetId: string,
+      versionNumber: number,
+      data: SyntheticDataGenerationRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostData,
+        GenerateSyntheticDataApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticPostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/generate-synthetic`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -14525,6 +14736,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/tasks/search`,
         method: "POST",
         query: query,
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Send a message to refine synthetic data generation.
+     *
+     * @tags Datasets
+     * @name SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePost
+     * @summary Send Synthetic Data Message
+     * @request POST:/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message
+     * @secure
+     */
+    sendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePost: (
+      datasetId: string,
+      versionNumber: number,
+      data: SyntheticDataConversationRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostData,
+        SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}/generate-synthetic/message`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,

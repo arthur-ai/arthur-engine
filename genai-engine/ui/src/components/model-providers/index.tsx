@@ -311,6 +311,8 @@ const getProviderDisplayName = (provider: string): string => {
     openai: "OpenAI",
     gemini: "Google Gemini",
     vertex_ai: "Vertex AI",
+    bedrock: "Amazon Bedrock",
+    hosted_vllm: "vLLM",
   };
   return displayNames[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
 };
@@ -322,6 +324,7 @@ const getProviderIcon = (provider: string) => {
     gemini: <img src="/logos/model_providers/gemini-logo.svg" alt="Google Gemini" style={{ width: 20, height: 20 }} />,
     vertex_ai: <img src="/logos/model_providers/vertex-logo.svg" alt="Google Vertex AI" style={{ width: 20, height: 20 }} />,
     bedrock: <img src="/logos/model_providers/bedrock-logo.svg" alt="Amazon Bedrock" style={{ width: 20, height: 20 }} />,
+    hosted_vllm: <img src="/logos/model_providers/vllm-logo.svg" alt="vLLM" style={{ width: 20, height: 20 }} />,
   };
   return iconMap[provider] || <SmartToy sx={{ color: "primary.main" }} />;
 };

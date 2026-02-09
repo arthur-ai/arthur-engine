@@ -1,9 +1,15 @@
 import random
+from unittest.mock import MagicMock, patch
 
 import pytest
+from arthur_common.models.enums import RegisteredAgentProvider, RuleScope, RuleType
+from arthur_common.models.request_schemas import AgentMetadata, GCPAgentMetadata
 
-from arthur_common.models.enums import RuleScope, RuleType
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from db_models.agent_polling_models import DatabaseAgentPollingData
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 
 
 @pytest.mark.unit_tests
@@ -142,3 +148,55 @@ def test_search_tasks_by_agentic_status(client: GenaiEngineTestClientBase):
         if task.id in agentic_task_ids + non_agentic_task_ids
     ]
     assert len(all_test_tasks) == 6
+
+
+@pytest.mark.unit_tests
+def test_create_task_with_agent_metadata_creates_agent_polling_data(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that creating a task with agent metadata creates agent polling data"""
+    # Mock the polling service to avoid 503 error
+    mock_polling_service = MagicMock()
+    mock_polling_service.enqueue.return_value = True
+
+    with patch(
+        "repositories.agent_polling_repository.get_registered_agent_polling_service",
+        return_value=mock_polling_service,
+    ):
+        task_name = str(random.random())
+        status_code, task_response = client.create_task(
+            task_name,
+            is_agentic=True,
+            agent_metadata=AgentMetadata(
+                provider=RegisteredAgentProvider.GCP,
+                gcp_metadata=GCPAgentMetadata(
+                    project_id="test-project",
+                    region="test-region",
+                    resource_id="test-resource",
+                ),
+            ),
+        )
+        assert status_code == 200
+
+    # Query the database to verify agent polling data was created
+    db_session = override_get_db_session()
+    agent_polling_data = (
+        db_session.query(DatabaseAgentPollingData)
+        .filter(DatabaseAgentPollingData.task_id == task_response.id)
+        .first()
+    )
+
+    assert agent_polling_data is not None
+    assert agent_polling_data.task_id == task_response.id
+    assert agent_polling_data.failed_runs == 0
+    assert task_response.agent_metadata.provider == RegisteredAgentProvider.GCP.value
+    assert task_response.agent_metadata.gcp_metadata.project_id == "test-project"
+    assert task_response.agent_metadata.gcp_metadata.region == "test-region"
+    assert task_response.agent_metadata.gcp_metadata.resource_id == "test-resource"
+
+    # Clean up - delete agent polling data from db and task
+    db_session.delete(agent_polling_data)
+    db_session.commit()
+
+    status_code = client.delete_task(task_response.id)
+    assert status_code == 204

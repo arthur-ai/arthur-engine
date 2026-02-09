@@ -251,12 +251,16 @@ class KeycloakClient(ABCAuthClient):
         return user_id
 
     def create_ui_client(self) -> None:
+        ingress_uri = get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)
+        web_origins = ["/*"]
+        if ingress_uri:
+            web_origins.append(ingress_uri)
         genai_engine_ui_client_config = create_client_config(
             client_id=f"{get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR)}-ui",
             client_name="Arthur GenAI Engine UI",
             description="Default UI client for all GenAI Engine / Chat users",
             redirect_uris=["*"],
-            web_origins=["/*", get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)],
+            web_origins=web_origins,
             post_logout_redirect_uris="",
         )
         if not (
@@ -290,12 +294,17 @@ class KeycloakClient(ABCAuthClient):
         logger.info("GenAI Engine client for UI authentication flow created.")
 
     def create_admin_client(self) -> None:
+        client_secret = get_env_var(
+            constants.GENAI_ENGINE_AUTH_CLIENT_SECRET_ENV_VAR,
+        )
+        if not client_secret:
+            raise ValueError(
+                "GENAI_ENGINE_AUTH_CLIENT_SECRET_ENV_VAR is not set",
+            )
         genai_engine_admin_client = create_confidential_client_config(
             client_id=self.kc_settings.genai_engine_realm_admin_client_id,
             client_name="Arthur GenAI Engine Admin",
-            client_secret=get_env_var(
-                constants.GENAI_ENGINE_AUTH_CLIENT_SECRET_ENV_VAR,
-            ),
+            client_secret=client_secret,
             description="Default client for all GenAI Engine administration",
             standard_flow_enabled=False,
         )
@@ -330,12 +339,16 @@ class KeycloakClient(ABCAuthClient):
                 logger.info("GenAI Engine admin client config is up to date.")
 
     def create_api_client(self) -> None:
+        root_url = get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)
+        web_origins = ["/*"]
+        if root_url:
+            web_origins.append(root_url)
         genai_engine_api_client_config = create_client_config(
             client_id=f"{get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR)}-api",
             client_name="Arthur GenAI Engine API",
             description="Default API client for all GenAI Engine / Chat users",
             redirect_uris=["*"],
-            web_origins=["/*", get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)],
+            web_origins=web_origins,
             post_logout_redirect_uris="",
             direct_access_grants_enabled=True,
         )
@@ -491,6 +504,9 @@ def create_client_config(
     post_logout_redirect_uris: str = "*",
     direct_access_grants_enabled: bool = False,
 ) -> dict[str, Any]:
+    root_url = get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)
+    if root_url:
+        root_url = root_url.replace("https", "http")
     return {
         "clientId": client_id,
         "name": client_name,
@@ -501,12 +517,7 @@ def create_client_config(
         # result. This is a bit easier for local development and code hygiene so rely on the ALBs. That said
         # this information in the request must match what's in keycloak for valid urls, so setup keycloak to
         # accept these http variables by striping the https prefix:
-        "rootUrl": get_env_var(
-            constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
-        ).replace(
-            "https",
-            "http",
-        ),
+        "rootUrl": root_url,
         "adminUrl": get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR),
         "description": description,
         "baseUrl": "",
@@ -544,13 +555,13 @@ def create_confidential_client_config(
     web_origins: List[str] = ["/*"],
     post_logout_redirect_uris: str = "*",
 ) -> dict[str, Any]:
+    root_url = get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)
+    if root_url:
+        root_url = root_url.replace("https", "http")
     return {
         "clientId": client_id,
         "name": client_name,
-        "rootUrl": get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR).replace(
-            "https",
-            "http",
-        ),
+        "rootUrl": root_url,
         "description": description,
         "secret": client_secret,
         "baseUrl": "",
@@ -581,20 +592,17 @@ def update_client_config(
 ) -> dict[str, Any]:
     config = deepcopy(client_config)
     if "rootUrl" in config:
-        config["rootUrl"] = get_env_var(
-            constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
-        ).replace(
-            "https",
-            "http",
-        )
+        root_url = get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)
+        if root_url:
+            config["rootUrl"] = root_url.replace("https", "http")
     if "adminUrl" in config:
         config["adminUrl"] = get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)
     if "webOrigins" in config:
         config["webOrigins"] = ["/*"]
         if not admin_client:
-            config["webOrigins"].append(
-                get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR),
-            )
+            ingress_uri = get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)
+            if ingress_uri:
+                config["webOrigins"].append(ingress_uri)
     return config
 
 

@@ -24,8 +24,7 @@ cd scripts
 poetry run python src/ml_engine/job_agent.py
 
 # Linting
-cd scripts
-./lint.sh
+./scripts/lint.sh
 
 # Tests
 poetry run pytest tests/

@@ -22,6 +22,7 @@ from arthur_common.models.enums import (
     TokenUsageScope,
 )
 from arthur_common.models.request_schemas import (
+    AgentMetadata,
     ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
@@ -104,6 +105,7 @@ from schemas.request_schemas import (
     WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
+    AgenticAnnotationAnalyticsResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
     DatasetResponse,
@@ -436,9 +438,14 @@ class GenaiEngineTestClientBase(httpx.Client):
         is_agentic: bool = False,
         empty_rules: bool = False,
         user_id: str = None,
+        agent_metadata: AgentMetadata = None,
     ) -> tuple[int, TaskResponse]:
         name = name if name else str(random.random())
-        request = NewTaskRequest(name=name, is_agentic=is_agentic)
+        request = NewTaskRequest(
+            name=name,
+            is_agentic=is_agentic,
+            agent_metadata=agent_metadata,
+        )
 
         resp = self.base_client.post(
             "/api/v2/tasks",
@@ -3799,6 +3806,38 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_daily_annotation_analytics(
+        self,
+        task_id: str,
+        start_time: str = None,
+        end_time: str = None,
+    ) -> tuple[int, AgenticAnnotationAnalyticsResponse]:
+        """Get daily aggregated analytics for agentic annotations."""
+        base_url = f"/api/v1/tasks/{task_id}/continuous_evals/analytics/daily"
+        params = []
+        if start_time:
+            params.append(f"start_time={urllib.parse.quote(start_time)}")
+        if end_time:
+            params.append(f"end_time={urllib.parse.quote(end_time)}")
+        if params:
+            base_url = base_url + "?" + "&".join(params)
+
+        resp = self.base_client.get(
+            base_url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                AgenticAnnotationAnalyticsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
     def rerun_continuous_eval(
         self,
         run_id: str,
@@ -4506,6 +4545,26 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             resp.json() if resp.status_code == 200 else None,
+        )
+
+    def retry_agent_polling_task(
+        self,
+        task_id: str,
+        agent_polling_data_id: str,
+    ) -> tuple[int, dict]:
+        """Retry an agent polling task"""
+        url = f"/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}"
+
+        resp = self.base_client.post(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
         )
 
 

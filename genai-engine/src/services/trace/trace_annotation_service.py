@@ -8,8 +8,9 @@ from arthur_common.models.response_schemas import (
     TraceResponse,
 )
 from sqlalchemy import asc, desc
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.orm import Session
 
+from custom_types import QueryT
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.telemetry_models import DatabaseTraceMetadata
 from schemas.internal_schemas import AgenticAnnotation
@@ -25,10 +26,10 @@ class TraceAnnotationService:
 
     def _apply_sorting_and_pagination(
         self,
-        query: Query,
+        query: QueryT,
         pagination_parameters: PaginationParameters,
         sort_column: str,
-    ) -> Query:
+    ) -> QueryT:
         """
         Apply sorting and pagination to a query and return the total count.
 
@@ -105,7 +106,10 @@ class TraceAnnotationService:
 
         return AgenticAnnotation.from_db_model(db_annotation)
 
-    def get_annotation_by_id(self, annotation_id: uuid.UUID) -> AgenticAnnotation:
+    def get_annotation_by_id(
+        self,
+        annotation_id: uuid.UUID,
+    ) -> AgenticAnnotation | None:
         db_annotation = (
             self.db_session.query(DatabaseAgenticAnnotation)
             .filter(DatabaseAgenticAnnotation.id == annotation_id)
@@ -180,7 +184,7 @@ class TraceAnnotationService:
             base_query = self._apply_sorting_and_pagination(
                 base_query,
                 pagination_parameters,
-                DatabaseAgenticAnnotation.created_at,
+                DatabaseAgenticAnnotation.created_at.label("created_at").name,
             )
 
         db_annotations = base_query.all()

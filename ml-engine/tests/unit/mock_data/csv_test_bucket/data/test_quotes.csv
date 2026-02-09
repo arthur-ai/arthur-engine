@@ -1,0 +1,9 @@
+"customer_id"|"first_name"|"last_name"|"department"|"account_balance"|"tenure_months"|"support_tickets"|"last_login"|"is_premium"|"account_status"|"monthly_charges"|"total_charges"|"payment_method"|"contract_type"|"email_opt_in"|"phone_opt_in"|"customer_notes"|"satisfaction_score"|"referral_count"|"inference_id"|"timestamp"|"prediction"|"ground_truth"
+"5541"|"José"|"Johnson
+III"|"HR"|"N/A"|"2"|"10"|"2025-06-10"|"No"|"pending"|""|"pending calculation"|"Unknown"|"month-to-month"|"Y"|"TRUE"|"Great customer
+Very satisfied
+""Highly recommended"""|"4"|"11"|"033c8e6d-1b99-45e7-9e4a-c01237f142a2"|"2025-12-02 07:36:38"|"0.0"|"0"
+"8739"|"Sarah-Jane"|""|"Customer Success"|""|""|"3"|"08/31/2025"|"No"|"ACTIVE"|"184.14"|""|"Unknown"|"One year"|"yes"|"N"|"VIP Customer
+Priority: HIGH
+Special discount applied"|""|""|"d13a2d9a-cc5c-4767-a974-0fa535630a26"|"2025-12-02 05:52:01"|"0.8500764741273023"|"1"
+"8666"|"José"|"O'Connor"|"Operations"|""|"8"|"34"|"N/A"|"1"|"Active"|"495"|""|"Unknown"|""|"0"|"Yes"|"Says: ""Will cancel if not resolved"""|"1"|""|"aea175fb-f684-4fb2-a7a6-fc272e38a18f"|"2025-12-02 20:54:29"|"0.1621191094677358"|"0"

@@ -1,6 +1,8 @@
+# Generic repository for LLM items using TypeVar bound to Protocols for proper type safety.
+
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Tuple, Type
+from typing import Any, Generic, List, Optional, Protocol, Tuple, Type, TypeVar, cast
 
 import sqlalchemy as sa
 from arthur_common.models.common_schemas import PaginationParameters
@@ -8,10 +10,10 @@ from arthur_common.models.enums import PaginationSortMethod
 from pydantic import BaseModel
 from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import or_
 
-from db_models import Base
+from custom_types import QueryT
 from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
 from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
@@ -21,11 +23,62 @@ from schemas.response_schemas import (
 from services.prompt.chat_completion_service import ChatCompletionService
 
 
-class BaseLLMRepository(ABC):
-    # subclasses must set these parameters
-    db_model: Type[Base] = None
-    tag_db_model: Type[Base] = None
-    version_list_response_model: Type[BaseModel] = None
+# Protocols defining the required attributes for database models
+class _LLMItemProtocol(Protocol):
+    """Protocol for database models with LLM item attributes."""
+
+    task_id: Any
+    name: Any
+    version: Any
+    created_at: Any
+    deleted_at: Any
+    model_provider: Any
+    model_name: Any
+
+
+class _TagProtocol(Protocol):
+    """Protocol for database models with tag attributes."""
+
+    task_id: Any
+    name: Any
+    version: Any
+    tag: Any
+
+
+class _LLMItemRequestProtocol(Protocol):
+    """Protocol for request models that create LLM items."""
+
+    model_name: str
+
+    def model_dump(
+        self,
+        *,
+        mode: str = "python",
+        include: Any = None,
+        exclude: Any = None,
+        context: Any = None,
+        by_alias: bool = False,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        round_trip: bool = False,
+        warnings: bool = True,
+        fallback: Any = None,
+        serialize_as_any: bool = False,
+    ) -> dict[str, Any]: ...
+
+
+# TypeVars bound to Protocols for generic repository
+DBModelT = TypeVar("DBModelT", bound=_LLMItemProtocol)
+TagDBModelT = TypeVar("TagDBModelT", bound=_TagProtocol)
+RequestT = TypeVar("RequestT", bound=_LLMItemRequestProtocol)
+
+
+class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
+    # Subclasses must set these to their specific SQLAlchemy model types
+    db_model: Type[DBModelT]
+    tag_db_model: Type[TagDBModelT]
+    version_list_response_model: Type[BaseModel] = BaseModel
 
     def __init__(self, db_session: Session):
         if self.db_model is None:
@@ -40,7 +93,7 @@ class BaseLLMRepository(ABC):
         self.db_session = db_session
         self.chat_completion_service = ChatCompletionService()
 
-    def _get_all_tags_for_item_version(self, db_item: Base) -> List[str]:
+    def _get_all_tags_for_item_version(self, db_item: DBModelT) -> List[str]:
         tags = (
             self.db_session.query(self.tag_db_model.tag)
             .filter(
@@ -66,22 +119,22 @@ class BaseLLMRepository(ABC):
         return [t for (t,) in tags]
 
     @abstractmethod
-    def from_db_model(self, db_item: Base) -> BaseModel:
+    def from_db_model(self, db_item: DBModelT) -> BaseModel:
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
-    def _to_versions_reponse_item(self, db_item: Base) -> LLMVersionResponse:
+    def _to_versions_reponse_item(self, db_item: DBModelT) -> LLMVersionResponse:
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
-    def _clear_db_item_data(self, db_item: Base) -> None:
+    def _clear_db_item_data(self, db_item: DBModelT) -> None:
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
-    def _extract_variables_from_item(self, item: BaseModel) -> List[str]:
+    def _extract_variables_from_item(self, item: RequestT) -> List[str]:
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def _get_latest_db_item(self, base_query: Query) -> Base:
+    def _get_latest_db_item(self, base_query: QueryT) -> DBModelT | None:
         return (
             base_query.filter(self.db_model.deleted_at.is_(None))
             .order_by(self.db_model.version.desc())
@@ -90,25 +143,26 @@ class BaseLLMRepository(ABC):
 
     def _get_db_item_by_version_number(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
-    ) -> Base:
+    ) -> DBModelT | None:
         return base_query.filter(
             self.db_model.version == int(item_version),
         ).first()
 
     def _get_db_item_by_datetime(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
-    ) -> Base:
+    ) -> DBModelT | None:
         try:
             target_dt = datetime.fromisoformat(item_version)
+            start_epoch = sa.func.extract("epoch", self.db_model.created_at)
+            end_epoch = sa.func.extract("epoch", sa.literal(target_dt))
             return (
                 base_query.filter(
                     sa.func.abs(
-                        sa.func.extract("epoch", self.db_model.created_at)
-                        - sa.func.extract("epoch", target_dt),
+                        start_epoch - end_epoch,
                     )
                     < 1,
                 )
@@ -120,9 +174,9 @@ class BaseLLMRepository(ABC):
 
     def _get_db_item_by_tag(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
-    ) -> Optional[Base]:
+    ) -> Optional[DBModelT]:
         """
         Get a database item by tag.
 
@@ -143,10 +197,10 @@ class BaseLLMRepository(ABC):
 
     def _get_db_item_by_version(
         self,
-        base_query: Query,
+        base_query: QueryT,
         item_version: str,
         err_message: str = "Version not found",
-    ) -> Base:
+    ) -> DBModelT:
         db_item = None
 
         if item_version == "latest":
@@ -171,10 +225,10 @@ class BaseLLMRepository(ABC):
 
     def _apply_sorting_pagination_and_count(
         self,
-        query: Query,
+        query: QueryT,
         pagination_parameters: PaginationParameters,
         sort_column: str,
-    ) -> Tuple[Query, int]:
+    ) -> Tuple[QueryT, int]:
         """
         Apply sorting and pagination to a query and return the total count.
 
@@ -205,9 +259,9 @@ class BaseLLMRepository(ABC):
 
     def _apply_versions_filters_to_query(
         self,
-        query: Query,
+        query: QueryT,
         filter_request: LLMGetVersionsFilterRequest,
-    ) -> Query:
+    ) -> QueryT:
         """
         Apply filters to a query based on the filter request.
 
@@ -261,9 +315,9 @@ class BaseLLMRepository(ABC):
 
     def _apply_get_all_filters_to_query(
         self,
-        query: Query,
+        query: QueryT,
         filter_request: LLMGetAllFilterRequest,
-    ) -> Query:
+    ) -> QueryT:
         """
         Apply filters to a query based on the filter request.
 
@@ -462,7 +516,9 @@ class BaseLLMRepository(ABC):
             sa.func.max(self.db_model.created_at).label(
                 "latest_version_created_at",
             ),
-        ).filter(self.db_model.task_id == task_id)
+        ).filter(
+            self.db_model.task_id == task_id,
+        )
 
         # Apply filters BEFORE grouping
         if filter_request is not None:
@@ -527,7 +583,7 @@ class BaseLLMRepository(ABC):
         self,
         task_id: str,
         item_name: str,
-        item: BaseModel,
+        item: RequestT,
     ) -> BaseModel:
         """
         Save an llm item to the database.
@@ -551,7 +607,7 @@ class BaseLLMRepository(ABC):
         version = (latest_version + 1) if latest_version else 1
         variables = self._extract_variables_from_item(item)
 
-        db_item = self.db_model(
+        db_item = cast(type, self.db_model)(
             task_id=task_id,
             name=item_name,
             variables=variables,
@@ -577,7 +633,7 @@ class BaseLLMRepository(ABC):
         item_name: str,
         item_version: str,
         tag: str,
-    ) -> None:
+    ) -> BaseModel:
         """
         Add a tag to a specific version of an llm item.
         If the tag exists on a different version, remove it from that version
@@ -623,7 +679,7 @@ class BaseLLMRepository(ABC):
             self.db_session.commit()
 
         # Case 3: Add tag to this version
-        new_tag = self.tag_db_model(
+        new_tag = cast(type, self.tag_db_model)(
             task_id=task_id,
             name=item_name,
             version=retrieved_db_item.version,
