@@ -1,5 +1,6 @@
 from services.currency.currency_conversion_service import (
     CurrencyConversionService,
+    CurrencyRefreshJob,
     get_currency_conversion_service,
     initialize_currency_conversion_service,
     shutdown_currency_conversion_service,
@@ -7,6 +8,7 @@ from services.currency.currency_conversion_service import (
 
 __all__ = [
     "CurrencyConversionService",
+    "CurrencyRefreshJob",
     "get_currency_conversion_service",
     "initialize_currency_conversion_service",
     "shutdown_currency_conversion_service",

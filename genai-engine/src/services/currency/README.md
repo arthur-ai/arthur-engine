@@ -5,7 +5,7 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 ## Overview
 
 - **`CurrencyConversionService`** – Holds a thread-safe cache of rates (USD → other currencies). When using the Frankfurter provider, a background thread refreshes on a schedule; when using the static provider, rates are loaded once and no thread runs. Exposes `convert_usd_to(amount_usd, target_currency)`.
-- **Lifecycle** – The service is a singleton. The app starts or loads it in FastAPI lifespan via `initialize_currency_conversion_service()` and stops it via `shutdown_currency_conversion_service()` (no-op when no thread was started).
+- **Lifecycle** – The service is a singleton (global `CURRENCY_CONVERSION_SERVICE`). The app starts or loads it in FastAPI lifespan via `initialize_currency_conversion_service()` and stops it via `shutdown_currency_conversion_service()` (which calls `stop(timeout=30)` and sets the singleton to `None`). The service subclasses `BaseQueueService` (same as the continuous-eval and agent-polling services); for the static provider no background thread or executor is started, so `stop()` is a no-op.
 
 ## Behavior
 
@@ -32,7 +32,7 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 
 ## Usage in the app
 
-- **Dependency** – Use `get_currency_conversion_service()` (e.g. via FastAPI `Depends`) to get the singleton. Do not call `start()` in the getter; the thread is started only in lifespan.
+- **Dependency** – Use `get_currency_conversion_service()` (e.g. via FastAPI `Depends`) to get the singleton. It returns `None` until `initialize_currency_conversion_service()` has been called and is set back to `None` after `shutdown_currency_conversion_service()`. Do not call `start()` in the getter; the thread is started only in lifespan.
 - **Lifespan** – In `server.py`, after other init, call `initialize_currency_conversion_service()`. Before the lifespan context exits, call `shutdown_currency_conversion_service()` so the background thread exits cleanly.
 
 ## Configuration

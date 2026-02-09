@@ -38,18 +38,6 @@ from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from services.currency.currency_conversion_service import (
-    CurrencyConversionService,
-)
-from services.currency.currency_conversion_service import (
-    get_currency_conversion_service as _get_currency_conversion_service_singleton,
-)
-
-
-def get_currency_conversion_service() -> CurrencyConversionService:
-    """Return the singleton CurrencyConversionService. Thread is started in lifespan."""
-    return _get_currency_conversion_service_singleton()
-
 
 from schemas.enums import DocumentStorageEnvironment
 from schemas.internal_schemas import (

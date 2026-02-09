@@ -4,11 +4,17 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from clients.currency.abc_currency_rate_provider import ABCCurrencyRateProvider
+from clients.currency.frankfurter_provider import FrankfurterCurrencyRateProvider
+from clients.currency.static_provider import StaticCurrencyRateProvider
+from config.currency_config import currency_config
+from services.base_queue_service import BaseQueueJob, BaseQueueService
 
 logger = logging.getLogger(__name__)
 
 CONVERSION_PRECISION = 6
 SIX_HOURS_SECONDS = 6 * 3600
+
+CURRENCY_REFRESH_JOB_KEY = "currency_refresh"
 
 
 def _next_six_hour_boundary_utc() -> float:
@@ -25,19 +31,58 @@ def _next_six_hour_boundary_utc() -> float:
     return (next_run - now).total_seconds()
 
 
-class CurrencyConversionService:
+class CurrencyRefreshJob(BaseQueueJob):
+    """Job representing a single currency rate refresh."""
+
+    def __init__(self, delay_seconds: int = 0) -> None:
+        super().__init__(delay_seconds=delay_seconds)
+
+
+class CurrencyConversionService(BaseQueueService[CurrencyRefreshJob]):
     """
     In-memory cache of USD exchange rates with a background thread that refreshes
     every 6 hours at 00:00, 06:00, 12:00, 18:00 UTC. Falls back to USD on errors.
     """
 
-    def __init__(self) -> None:
+    job_model = CurrencyRefreshJob
+    service_name = "currency_conversion_service"
+    background_thread_name = "currency-conversion-refresh"
+
+    def __init__(
+        self,
+        num_workers: int = 1,
+        override_execution_delay: Optional[int] = None,
+    ) -> None:
+        super().__init__(
+            num_workers=num_workers,
+            override_execution_delay=override_execution_delay,
+        )
         self._rates: dict[str, float] = {}
         self._lock = threading.RLock()
         self._last_updated: Optional[datetime] = None
         self._provider: Optional[ABCCurrencyRateProvider] = None
-        self._shutdown_event = threading.Event()
-        self._background_thread: Optional[threading.Thread] = None
+
+    def _get_job_key(self, job: CurrencyRefreshJob) -> str:
+        """Use a constant key so at most one refresh job is active at a time."""
+        return CURRENCY_REFRESH_JOB_KEY
+
+    def _execute_job(self, job: CurrencyRefreshJob) -> None:
+        """Perform a single rate refresh."""
+        self._refresh()
+
+    def _background_loop(self) -> None:
+        """Run in background: fetch once immediately, then enqueue refresh at each 6-hour boundary UTC."""
+        logger.info(f"Background thread started for {self.service_name}")
+        self._refresh()
+        while not self.shutdown_event.is_set():
+            sleep_seconds = _next_six_hour_boundary_utc()
+            if sleep_seconds <= 0:
+                sleep_seconds = SIX_HOURS_SECONDS
+            wait_time = min(sleep_seconds, SIX_HOURS_SECONDS)
+            if self.shutdown_event.wait(timeout=wait_time):
+                break
+            self.enqueue(CurrencyRefreshJob(delay_seconds=0))
+        logger.info(f"Background thread stopped for {self.service_name}")
 
     def convert_usd_to(
         self, amount_usd: float, target_currency: str
@@ -88,20 +133,6 @@ class CurrencyConversionService:
                 "Failed to refresh currency rates, keeping previous cache: %s", e
             )
 
-    def _scheduler_loop(self) -> None:
-        """Run in background: fetch once immediately, then at each 6-hour boundary UTC."""
-        self._refresh()
-        while not self._shutdown_event.is_set():
-            sleep_seconds = _next_six_hour_boundary_utc()
-            if sleep_seconds <= 0:
-                sleep_seconds = SIX_HOURS_SECONDS
-            if self._shutdown_event.wait(timeout=sleep_seconds):
-                break
-            self._refresh()
-            if self._shutdown_event.wait(timeout=SIX_HOURS_SECONDS):
-                break
-        logger.info("Currency conversion scheduler thread exiting")
-
     def load_rates_from_provider(self, provider: ABCCurrencyRateProvider) -> None:
         """Load rates once from the provider without starting the background thread. Use for static provider."""
         with self._lock:
@@ -109,70 +140,43 @@ class CurrencyConversionService:
         self._refresh()
         logger.info("Currency conversion service loaded rates (no background thread)")
 
-    def start(self, provider: ABCCurrencyRateProvider) -> None:
-        """Start the service with the given provider and begin the refresh thread."""
+    def start(self) -> None:
+        """Start the service: load provider from config, then either load once (static) or start background thread (Frankfurter)."""
+        provider: ABCCurrencyRateProvider
+        if currency_config.CURRENCY_PROVIDER == "static":
+            if currency_config.CURRENCY_EXCHANGE_RATE is None:
+                logger.warning(
+                    "CURRENCY_PROVIDER=static but CURRENCY_EXCHANGE_RATE is not set; "
+                    "conversion will fall back to USD until configured."
+                )
+            provider = StaticCurrencyRateProvider(config=currency_config)
+            self.load_rates_from_provider(provider)
+            return
+        provider = FrankfurterCurrencyRateProvider(config=currency_config)
         with self._lock:
-            if (
-                self._background_thread is not None
-                and self._background_thread.is_alive()
-            ):
-                logger.info("Currency conversion service already started")
-                return
             self._provider = provider
-            self._shutdown_event.clear()
-        self._background_thread = threading.Thread(
-            target=self._scheduler_loop,
-            name="currency-conversion-refresh",
-            daemon=True,
-        )
-        self._background_thread.start()
-        logger.info("Currency conversion service started")
-
-    def shutdown(self, timeout: float = 30.0) -> None:
-        """Signal the background thread to exit and wait up to timeout seconds."""
-        self._shutdown_event.set()
-        if self._background_thread:
-            self._background_thread.join(timeout=timeout)
-            if self._background_thread.is_alive():
-                logger.warning("Currency conversion thread did not exit within timeout")
-            self._background_thread = None
-        logger.info("Currency conversion service stopped")
+        super().start()
 
 
-_singleton: Optional[CurrencyConversionService] = None
+CURRENCY_CONVERSION_SERVICE: CurrencyConversionService | None = None
 
 
-def get_currency_conversion_service() -> CurrencyConversionService:
-    """Return the singleton CurrencyConversionService (not started)."""
-    global _singleton
-    if _singleton is None:
-        _singleton = CurrencyConversionService()
-    return _singleton
+def get_currency_conversion_service() -> CurrencyConversionService | None:
+    """Get the global currency conversion service instance."""
+    return CURRENCY_CONVERSION_SERVICE
 
 
 def initialize_currency_conversion_service() -> None:
-    """Create the service singleton and start or load provider. Call from app lifespan."""
-    from clients.currency.frankfurter_provider import FrankfurterCurrencyRateProvider
-    from clients.currency.static_provider import StaticCurrencyRateProvider
-    from config.currency_config import currency_config
-
-    service = get_currency_conversion_service()
-    provider: ABCCurrencyRateProvider
-    if currency_config.CURRENCY_PROVIDER == "static":
-        if currency_config.CURRENCY_EXCHANGE_RATE is None:
-            logger.warning(
-                "CURRENCY_PROVIDER=static but CURRENCY_EXCHANGE_RATE is not set; "
-                "conversion will fall back to USD until configured."
-            )
-        provider = StaticCurrencyRateProvider(config=currency_config)
-        service.load_rates_from_provider(provider)
-    else:
-        provider = FrankfurterCurrencyRateProvider(config=currency_config)
-        service.start(provider)
+    """Initialize and start the global currency conversion service."""
+    global CURRENCY_CONVERSION_SERVICE
+    if CURRENCY_CONVERSION_SERVICE is None:
+        CURRENCY_CONVERSION_SERVICE = CurrencyConversionService(num_workers=1)
+        CURRENCY_CONVERSION_SERVICE.start()
 
 
-def shutdown_currency_conversion_service(timeout: float = 30.0) -> None:
-    """Stop the currency conversion refresh thread. Call from app lifespan before yield ends."""
-    global _singleton
-    if _singleton is not None:
-        _singleton.shutdown(timeout=timeout)
+def shutdown_currency_conversion_service() -> None:
+    """Shutdown the global currency conversion service."""
+    global CURRENCY_CONVERSION_SERVICE
+    if CURRENCY_CONVERSION_SERVICE is not None:
+        CURRENCY_CONVERSION_SERVICE.stop(timeout=30)
+        CURRENCY_CONVERSION_SERVICE = None
