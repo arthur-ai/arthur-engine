@@ -24,7 +24,10 @@ Arthur Engine is a Python-based AI/ML monitoring and governance platform with th
 **Frontend:**
 
 - React 19, TypeScript, Vite
-- Tailwind CSS, TanStack Query/Table
+- **MUI (Material UI) v7** - Primary component library (`@mui/material`, `@mui/icons-material`, `@mui/x-date-pickers`)
+- Emotion (`@emotion/react`, `@emotion/styled`) - Styling engine for MUI
+- Tailwind CSS - Utility classes for layout supplementing MUI
+- TanStack Query/Table, Material React Table
 - Zustand for state management
 
 **Infrastructure:**
@@ -227,6 +230,61 @@ The scorer system in [src/scorer/checks/](src/scorer/checks/) implements:
 - **Regex Checks**: Pattern-based validation
 - Custom rules support via extensible plugin system
 
+## Frontend UI Guidelines (MANDATORY)
+
+### Always Use MUI Components
+
+**All frontend UI work MUST use Material UI (MUI) components.** Do NOT use plain HTML elements or custom-styled replacements when an MUI component exists. This applies to every new component, feature, and bugfix.
+
+**Required:** Use MUI components from `@mui/material` for all UI elements:
+
+| Instead of...            | Always use...                                       |
+| ------------------------ | --------------------------------------------------- |
+| `<button>`               | `<Button>` from `@mui/material`                     |
+| `<input>`, `<textarea>`  | `<TextField>` from `@mui/material`                   |
+| `<select>`               | `<Select>` or `<Autocomplete>` from `@mui/material` |
+| `<table>`                | `<Table>` components or Material React Table         |
+| `<div>` for layout       | `<Box>`, `<Stack>`, `<Paper>`, `<Card>`             |
+| `<p>`, `<h1>`-`<h6>`     | `<Typography>` with appropriate `variant`           |
+| `<a>`                    | `<Link>` from `@mui/material`                        |
+| `<ul>/<li>` for menus    | `<List>`, `<ListItem>`, `<Menu>`, `<MenuItem>`      |
+| `<dialog>`, custom modal | `<Dialog>` with `DialogTitle`, `DialogContent`, `DialogActions` |
+| Custom alert/banner      | `<Alert>` from `@mui/material`                       |
+| Custom tooltip           | `<Tooltip>` from `@mui/material`                     |
+| Custom chip/badge        | `<Chip>`, `<Badge>` from `@mui/material`            |
+| Custom icon              | Icons from `@mui/icons-material`                     |
+| Custom date picker       | Components from `@mui/x-date-pickers`               |
+
+### Styling Rules
+
+1. **Use the MUI `sx` prop** as the primary styling method for MUI components. This is the established pattern across the codebase.
+2. **Use MUI theme color tokens** — never use raw hex/rgb colors. Use semantic tokens:
+   - `primary.main`, `primary.light`, `primary.dark`, `primary.50`
+   - `secondary.main`, `secondary.light`, `secondary.dark`
+   - `error.main`, `error.50`, `success.main`, `success.light`
+   - `warning.main`, `info.main`
+   - `text.primary`, `text.secondary`, `text.disabled`
+   - `divider`, `action.hover`
+3. **Tailwind CSS is only for supplementary layout utilities** (e.g., `min-h-screen`, `flex`, spacing). Never use Tailwind for colors, typography, or component styling that MUI handles.
+4. **Use `styled()` from `@mui/material/styles`** only when creating reusable custom-styled components that need to extend MUI components.
+
+### Component Patterns
+
+- **Buttons**: Use `variant="contained"` for primary actions, `variant="outlined"` for secondary, `variant="text"` for tertiary.
+- **Typography**: Use semantic variants — `h5`/`h6` for headings, `subtitle1`/`body1`/`body2` for body text, `caption` for helper text.
+- **Text Fields**: Use `variant="filled"` as the default text field style.
+- **Layout**: Use `<Stack>` for flex layouts, `<Box>` for general containers, `<Card>`/`<Paper>` for elevated surfaces.
+- **Icons**: Always source from `@mui/icons-material`. Size with `sx={{ fontSize: N }}` and color with theme tokens.
+- **Feedback**: Use `<Alert>` for inline messages, notistack's `enqueueSnackbar` for toast notifications, `<Tooltip>` for hover hints.
+
+### What NOT to Do
+
+- **Do NOT create custom-styled `<div>`, `<span>`, or `<button>` elements** when MUI provides an equivalent component.
+- **Do NOT use inline CSS styles** (`style={{ }}`) — use the `sx` prop instead.
+- **Do NOT use hardcoded color values** (`#ff0000`, `rgb(...)`) — use MUI theme tokens.
+- **Do NOT use Tailwind for colors or typography** — those are handled by MUI's design system.
+- **Do NOT introduce new UI libraries** that duplicate MUI functionality.
+
 ## Development Workflow
 
 ### GenAI Engine Development
@@ -380,3 +438,4 @@ GENAI_ENGINE_INTERNAL_API_KEY=<api-key>
 - API changes require changelog generation via `poetry run generate_changelog`
 - Model files are downloaded and cached on first use
 - GPU support optional but improves performance for model-based checks
+- **Frontend: Always use MUI components** — never use plain HTML elements when MUI provides an equivalent. See "Frontend UI Guidelines" section above for full details.

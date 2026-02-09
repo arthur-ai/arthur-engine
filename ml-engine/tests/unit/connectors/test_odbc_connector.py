@@ -354,13 +354,13 @@ class TestODBCConnectorInitialization:
             },
             {
                 "name": "Oracle Native",
-                "dialect": "Oracle Native (cx_oracle)",
+                "dialect": "Oracle Native (oracledb)",
                 "host": "oracle.example.com",
                 "port": "1521",
                 "database": "XE",
                 "username": "system",
                 "password": "secret",
-                "expected_url": "oracle+cx_oracle://system:secret@oracle.example.com:1521/XE",
+                "expected_url": "oracle+oracledb://system:secret@oracle.example.com:1521/XE",
             },
             {
                 "name": "Generic ODBC",
