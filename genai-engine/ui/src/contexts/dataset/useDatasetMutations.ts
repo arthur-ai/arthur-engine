@@ -110,9 +110,10 @@ export function useDatasetMutations({
 
       const allRows = await fetchAllDatasetRows(api, datasetId, currentVersion);
 
-      const updatedRows = allRows.map((row) => ({
-        id: row.id,
-        data: row.data.map((col) => {
+      const updatedRows = allRows.map((row) => {
+        const existingColumnNames = new Set(row.data.map((col) => col.column_name));
+
+        const existingData = row.data.map((col) => {
           const config = columnDefaults[col.column_name];
 
           if (!config || config.type === "none") {
@@ -134,8 +135,20 @@ export function useDatasetMutations({
           }
 
           return col;
-        }),
-      }));
+        });
+
+        const newColumns = columnsToApply
+          .filter(([columnName]) => !existingColumnNames.has(columnName))
+          .map(([columnName, config]) => ({
+            column_name: columnName,
+            column_value: config.type === "timestamp" ? new Date(row.created_at).toISOString() : config.type === "static" ? (config.value ?? "") : "",
+          }));
+
+        return {
+          id: row.id,
+          data: [...existingData, ...newColumns],
+        };
+      });
 
       await api.api.createDatasetVersionApiV2DatasetsDatasetIdVersionsPost(datasetId, {
         rows_to_add: [],
