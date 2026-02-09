@@ -3,7 +3,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import Tooltip from "@mui/material/Tooltip";
+import { Box, Card, CardContent, Chip, Stack, Tooltip, Typography } from "@mui/material";
+import { keyframes } from "@mui/system";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -56,45 +57,100 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     navigate(`/tasks/${task.id}/traces`);
   };
 
-  const cardClassName =
-    "group bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-lg " +
-    "hover:bg-gradient-to-br hover:from-blue-50/30 hover:to-transparent transition-all duration-200 relative";
+  const fadeIn = keyframes`
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  `;
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      <div onClick={handleTaskClick} className={cardClassName}>
-        <div className="p-5 h-full flex flex-col space-y-4">
+    <Card
+      onClick={handleTaskClick}
+      sx={{
+        cursor: "pointer",
+        transition: "all 0.2s",
+        border: "1px solid",
+        borderColor: "divider",
+        "&:hover": {
+          borderColor: "primary.main",
+          boxShadow: 3,
+          background: "linear-gradient(to bottom right, rgba(59, 130, 246, 0.03), transparent)",
+          "& .view-traces-text": {
+            opacity: 1,
+          },
+        },
+      }}
+    >
+      <CardContent sx={{ p: 2.5, height: "100%", display: "flex", flexDirection: "column" }}>
+        <Stack spacing={2} sx={{ height: "100%" }}>
           {/* Header with badge */}
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="text-base font-semibold text-gray-900 leading-tight flex-1">{task.name}</h3>
+          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 600,
+                lineHeight: 1.3,
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {task.name}
+            </Typography>
             {task.is_agentic !== null && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 flex-shrink-0">
-                {task.is_agentic ? "Agentic" : "Model"}
-              </span>
+              <Chip
+                label={task.is_agentic ? "Agentic" : "Model"}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: "0.6875rem",
+                  bgcolor: "primary.50",
+                  color: "primary.dark",
+                  fontWeight: 500,
+                  flexShrink: 0,
+                }}
+              />
             )}
-          </div>
+          </Box>
 
           {/* Metrics */}
-          <div className="flex gap-0 bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+          <Box
+            sx={{
+              display: "flex",
+              bgcolor: "grey.50",
+              borderRadius: 1,
+              border: 1,
+              borderColor: "grey.100",
+              overflow: "hidden",
+            }}
+          >
             <Tooltip title="Total traces recorded in the last 7 days" arrow placement="top">
-              <div className="flex-1 p-3 text-center border-r border-gray-200">
-                <TrendingUpIcon sx={{ fontSize: 20, color: "#3B82F6", mb: 0.5 }} />
-                <div className="text-xl font-semibold text-gray-900">{formatNumber(metrics.traceCount)}</div>
-                <div className="text-xs text-gray-500 mt-0.5">Traces</div>
-              </div>
+              <Box sx={{ flex: 1, p: 1.5, textAlign: "center", borderRight: 1, borderColor: "grey.200" }}>
+                <TrendingUpIcon sx={{ fontSize: 20, color: "primary.main", mb: 0.5 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {formatNumber(metrics.traceCount)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Traces
+                </Typography>
+              </Box>
             </Tooltip>
             <Tooltip title="Total tokens consumed in the last 7 days" arrow placement="top">
-              <div className="flex-1 p-3 text-center border-r border-gray-200">
+              <Box sx={{ flex: 1, p: 1.5, textAlign: "center", borderRight: 1, borderColor: "grey.200" }}>
                 <GeneratingTokensOutlinedIcon sx={{ fontSize: 20, color: "#A855F7", mb: 0.5 }} />
-                <div className="text-xl font-semibold text-gray-900">{formatNumber(metrics.totalTokens)}</div>
-                <div className="text-xs text-gray-500 mt-0.5">Tokens</div>
-              </div>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {formatNumber(metrics.totalTokens)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Tokens
+                </Typography>
+              </Box>
             </Tooltip>
             <Tooltip
               title={
@@ -105,46 +161,96 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               arrow
               placement="top"
             >
-              <div className={`flex-1 p-3 text-center ${metrics.successRate >= 1 && metrics.successRate < 50 ? "bg-red-50" : ""}`}>
+              <Box
+                sx={{
+                  flex: 1,
+                  p: 1.5,
+                  textAlign: "center",
+                  bgcolor: metrics.successRate >= 1 && metrics.successRate < 50 ? "error.50" : "transparent",
+                }}
+              >
                 {metrics.successRate >= 1 && metrics.successRate < 50 ? (
-                  <ErrorOutlineIcon sx={{ fontSize: 20, color: "#EF4444", mb: 0.5 }} />
+                  <ErrorOutlineIcon sx={{ fontSize: 20, color: "error.main", mb: 0.5 }} />
                 ) : (
-                  <CheckCircleIcon sx={{ fontSize: 20, color: "#22C55E", mb: 0.5 }} />
+                  <CheckCircleIcon sx={{ fontSize: 20, color: "success.main", mb: 0.5 }} />
                 )}
-                <div className={`text-xl font-semibold ${metrics.successRate >= 1 && metrics.successRate < 50 ? "text-red-600" : "text-gray-900"}`}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 600,
+                    color: metrics.successRate >= 1 && metrics.successRate < 50 ? "error.main" : "text.primary",
+                  }}
+                >
                   {metrics.successRate}%
-                </div>
-                <div className={`text-xs mt-0.5 ${metrics.successRate >= 1 && metrics.successRate < 50 ? "text-red-600" : "text-gray-500"}`}>
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    mt: 0.5,
+                    color: metrics.successRate >= 1 && metrics.successRate < 50 ? "error.main" : "text.secondary",
+                  }}
+                >
                   Success
-                </div>
-              </div>
+                </Typography>
+              </Box>
             </Tooltip>
-          </div>
+          </Box>
 
           {/* Metadata */}
-          <div className="flex gap-8 text-xs">
-            <div className="flex flex-col gap-1">
-              <span className="text-gray-400">Last active</span>
-              <span className={`font-medium ${metrics.lastActive ? "text-gray-900" : "text-gray-400"}`}>{formatLastActive(metrics.lastActive)}</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-gray-400">Created</span>
-              <span className="text-gray-900 font-medium">{new Date(task.created_at).toLocaleDateString()}</span>
-            </div>
-          </div>
+          <Stack direction="row" spacing={4}>
+            <Box>
+              <Typography variant="caption" color="text.disabled">
+                Last active
+              </Typography>
+              <Typography variant="caption" sx={{ display: "block", fontWeight: 500, color: metrics.lastActive ? "text.primary" : "text.disabled" }}>
+                {formatLastActive(metrics.lastActive)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.disabled">
+                Created
+              </Typography>
+              <Typography variant="caption" sx={{ display: "block", fontWeight: 500, color: "text.primary" }}>
+                {new Date(task.created_at).toLocaleDateString()}
+              </Typography>
+            </Box>
+          </Stack>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
-            <span className="text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-150">View traces →</span>
-            <div className="relative">
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pt: 1.5, borderTop: 1, borderColor: "grey.100", mt: "auto" }}>
+            <Typography
+              className="view-traces-text"
+              variant="body2"
+              color="primary"
+              sx={{
+                fontWeight: 500,
+                opacity: 0,
+                transition: "opacity 0.15s",
+              }}
+            >
+              View traces →
+            </Typography>
+            <Box sx={{ position: "relative" }}>
               {copiedTaskId === task.id ? (
-                <div
-                  className="bg-green-50 border border-green-200 rounded-md px-3 py-1 flex items-center gap-1.5"
-                  style={{ animation: "fadeIn 0.2s ease-in" }}
+                <Box
+                  sx={{
+                    bgcolor: "success.50",
+                    border: 1,
+                    borderColor: "success.light",
+                    borderRadius: 1,
+                    px: 1.5,
+                    py: 0.5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                    animation: `${fadeIn} 0.2s ease-in`,
+                  }}
                 >
-                  <CheckIcon sx={{ fontSize: 14, color: "#22C55E" }} />
-                  <span className="text-xs text-green-700 font-medium">Copied!</span>
-                </div>
+                  <CheckIcon sx={{ fontSize: 14, color: "success.main" }} />
+                  <Typography variant="caption" sx={{ color: "success.dark", fontWeight: 500 }}>
+                    Copied!
+                  </Typography>
+                </Box>
               ) : (
                 <CopyableChip
                   label={task.id}
@@ -171,10 +277,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   }}
                 />
               )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+            </Box>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 };
