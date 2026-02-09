@@ -96,7 +96,7 @@ class ODBCConnector(Connector):
             "generic odbc (pyodbc)": self._build_odbc_url,
             "postgresql native (psycopg)": self._build_postgresql_native_url,
             "mysql native (pymysql)": self._build_mysql_native_url,
-            "oracle native (cx_oracle)": self._build_oracle_native_url,
+            "oracle native (oracledb)": self._build_oracle_native_url,
         }
 
         # Find matching dialect handler
@@ -153,8 +153,8 @@ class ODBCConnector(Connector):
         return self._build_native_url("mysql+pymysql", "3306")
 
     def _build_oracle_native_url(self) -> Tuple[Union[str, URL], Dict[str, Any]]:
-        """Build Oracle native URL using cx_oracle."""
-        return self._build_native_url("oracle+cx_oracle", "1521")
+        """Build Oracle native URL using oracledb."""
+        return self._build_native_url("oracle+oracledb", "1521")
 
     def _build_native_url(
         self,
