@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { useApi } from "./useApi";
 
+import type { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { getTimeWindowAndBucketing, TimeInterval } from "@/utils/timeWindows";
 
@@ -20,7 +21,7 @@ export interface TaskOverviewMetrics {
   evalsCount: number;
   successRate: number;
   timeSeriesData: TimeSeriesDataPoint[];
-  xLabelFormat: "time" | "date" | "month";
+  xLabelFormat: "time" | "date";
   tickStep: number;
 }
 
@@ -29,29 +30,54 @@ interface UseTaskOverviewMetricsParams {
   interval: TimeInterval;
 }
 
+function getTraceTokens(trace: TraceMetadataResponse): number {
+  return trace.total_token_count ?? (trace.prompt_token_count || 0) + (trace.completion_token_count || 0);
+}
+
+function getTraceCost(trace: TraceMetadataResponse): number {
+  return trace.total_token_cost ?? (trace.prompt_token_cost || 0) + (trace.completion_token_cost || 0);
+}
+
+function getTraceEvalStats(trace: TraceMetadataResponse): { total: number; passed: number } {
+  let total = 0;
+  let passed = 0;
+
+  // Count from annotations (continuous_eval type with a definitive run_status)
+  if (trace.annotations && Array.isArray(trace.annotations)) {
+    trace.annotations.forEach((annotation) => {
+      if (annotation.annotation_type === "continuous_eval" && annotation.run_status) {
+        total++;
+        if (annotation.run_status === "passed") {
+          passed++;
+        }
+      }
+    });
+  }
+
+  return { total, passed };
+}
+
 export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetricsParams) => {
   const api = useApi()!;
 
   return useQuery({
     queryKey: queryKeys.metrics.overview(taskId, interval),
+    enabled: !!taskId,
     queryFn: async (): Promise<TaskOverviewMetrics> => {
-      // Get canonical time window and bucketing parameters
       const queryTime = new Date();
       const timeWindow = getTimeWindowAndBucketing(interval, queryTime);
 
       const { start: startTime, end: endTime, bucketMs: bucketSize } = timeWindow;
 
-      // Calculate time boundaries in milliseconds
       const startTimeMs = startTime.getTime();
       const endTimeMs = endTime.getTime();
 
-      // Calculate exact number of buckets needed to cover the entire time range
       const durationMs = endTimeMs - startTimeMs;
       const numBuckets = Math.max(1, Math.ceil(durationMs / bucketSize));
 
       // Fetch all traces for the task within the time range
       const pageSize = 1000;
-      let allTraces: any[] = [];
+      let allTraces: TraceMetadataResponse[] = [];
       let currentPage = 0;
       let hasMore = true;
 
@@ -64,88 +90,47 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
           sort: "desc",
         });
 
-        allTraces = [...allTraces, ...response.data.traces];
+        const traces = response.data.traces;
+        allTraces = [...allTraces, ...traces];
 
-        // Check if there are more pages
-        if (response.data.traces.length < pageSize) {
+        if (traces.length < pageSize) {
           hasMore = false;
         } else {
           currentPage++;
         }
 
-        // Safety check: don't fetch more than 10000 traces
         if (allTraces.length >= 10000) {
           hasMore = false;
         }
       }
 
-      // Calculate aggregated metrics - only for traces within our time window
+      // Aggregate metrics
       let totalTokens = 0;
       let totalCost = 0;
-      let evalsCount = 0;
       let totalEvalResults = 0;
       let passedEvalResults = 0;
-      let tracesInWindow = 0;
 
       allTraces.forEach((trace) => {
-        const traceTime = new Date(trace.created_at).getTime();
+        totalTokens += getTraceTokens(trace);
+        totalCost += getTraceCost(trace);
 
-        // Skip traces outside our time window
-        if (traceTime < startTimeMs || traceTime > endTimeMs) {
-          return;
-        }
-
-        tracesInWindow++;
-
-        // Sum up tokens
-        const promptTokens = trace.prompt_token_count || 0;
-        const completionTokens = trace.completion_token_count || 0;
-        totalTokens += promptTokens + completionTokens;
-
-        // Sum up costs
-        const promptCost = trace.prompt_token_cost || 0;
-        const completionCost = trace.completion_token_cost || 0;
-        totalCost += promptCost + completionCost;
-
-        // Count eval results from spans if available
-        if (trace.spans && Array.isArray(trace.spans)) {
-          trace.spans.forEach((span: any) => {
-            if (span.metric_results && Array.isArray(span.metric_results)) {
-              evalsCount += span.metric_results.length;
-
-              span.metric_results.forEach((result: any) => {
-                totalEvalResults++;
-                if (result.passed !== false) {
-                  passedEvalResults++;
-                }
-              });
-            }
-          });
-        }
+        const evalStats = getTraceEvalStats(trace);
+        totalEvalResults += evalStats.total;
+        passedEvalResults += evalStats.passed;
       });
 
-      // Initialize buckets using index as key for reliability
-      const buckets = new Map<number, { traces: any[]; timestamp: number }>();
+      // Initialize time buckets
+      const buckets = new Map<number, { traces: TraceMetadataResponse[]; timestamp: number }>();
       for (let i = 0; i < numBuckets; i++) {
-        // For the last bucket, use the actual end time (now) instead of calculated bucket start
-        // This ensures the X-axis shows today's date for the current period
         const bucketTime = i === numBuckets - 1 ? endTimeMs : startTimeMs + i * bucketSize;
         buckets.set(i, { traces: [], timestamp: bucketTime });
       }
 
-      // Assign traces to buckets - only include traces within our time window
+      // Assign traces to buckets
       allTraces.forEach((trace) => {
         const traceTime = new Date(trace.created_at).getTime();
 
-        // Skip traces outside our time window
-        if (traceTime < startTimeMs || traceTime > endTimeMs) {
-          return;
-        }
-
-        // Calculate which bucket this trace belongs to
         let bucketIndex = Math.floor((traceTime - startTimeMs) / bucketSize);
-
-        // Clamp to valid range (should rarely be needed now)
         if (bucketIndex < 0) bucketIndex = 0;
         if (bucketIndex >= numBuckets) bucketIndex = numBuckets - 1;
 
@@ -155,31 +140,22 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
         }
       });
 
-      // Calculate metrics for each bucket
+      // Calculate metrics per bucket
       const timeSeriesData: TimeSeriesDataPoint[] = Array.from(buckets.entries())
-        .sort((a, b) => a[0] - b[0]) // Sort by index
-        .map(([index, bucket]) => {
+        .sort((a, b) => a[0] - b[0])
+        .map(([_index, bucket]) => {
           let bucketTokens = 0;
           let bucketCost = 0;
           let bucketEvalResults = 0;
           let bucketPassedEvals = 0;
 
           bucket.traces.forEach((trace) => {
-            bucketTokens += (trace.prompt_token_count || 0) + (trace.completion_token_count || 0);
-            bucketCost += (trace.prompt_token_cost || 0) + (trace.completion_token_cost || 0);
+            bucketTokens += getTraceTokens(trace);
+            bucketCost += getTraceCost(trace);
 
-            if (trace.spans && Array.isArray(trace.spans)) {
-              trace.spans.forEach((span: any) => {
-                if (span.metric_results && Array.isArray(span.metric_results)) {
-                  span.metric_results.forEach((result: any) => {
-                    bucketEvalResults++;
-                    if (result.passed !== false) {
-                      bucketPassedEvals++;
-                    }
-                  });
-                }
-              });
-            }
+            const evalStats = getTraceEvalStats(trace);
+            bucketEvalResults += evalStats.total;
+            bucketPassedEvals += evalStats.passed;
           });
 
           const successRate = bucketEvalResults > 0 ? (bucketPassedEvals / bucketEvalResults) * 100 : 100;
@@ -196,18 +172,18 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
       const successRate = totalEvalResults > 0 ? (passedEvalResults / totalEvalResults) * 100 : 100;
 
       return {
-        tracesCount: tracesInWindow,
+        tracesCount: allTraces.length,
         totalTokens,
         totalCost,
-        evalsCount,
+        evalsCount: totalEvalResults,
         successRate,
         timeSeriesData,
         xLabelFormat: timeWindow.xLabelFormat,
         tickStep: timeWindow.tickStep,
       };
     },
-    staleTime: interval === "hour" ? 10000 : 30000, // 10 seconds for hour view, 30 seconds for others
-    gcTime: 60000, // 1 minute
+    staleTime: 30000,
+    gcTime: 60000,
     placeholderData: keepPreviousData,
   });
 };

@@ -1,340 +1,324 @@
-import {
-  TrendingUpOutlined,
-  OpenInNewOutlined,
-  BalanceOutlined,
-} from "@mui/icons-material";
+import { TrendingUpOutlined, OpenInNewOutlined, BalanceOutlined } from "@mui/icons-material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
+import { Alert, Box, Button, CircularProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { BarChart } from "@mui/x-charts/BarChart";
+import { LineChart } from "@mui/x-charts/LineChart";
 import React, { useState } from "react";
 
-import { BarChart } from "./charts/BarChart";
-import { LineChart } from "./charts/LineChart";
+import { ChartCard } from "./task-overview/ChartCard";
+import { METRIC_COLORS, formatCostAxisValue, formatCurrency, formatNumber, formatPercentValue, formatXLabel } from "./task-overview/constants";
+import { MetricCard } from "./task-overview/MetricCard";
 
 import { useTask } from "@/hooks/useTask";
 import { useTaskOverviewMetrics } from "@/hooks/useTaskOverviewMetrics";
 import { TimeInterval } from "@/utils/timeWindows";
 
-type TimeRangeButton = "Hour" | "Day" | "Week" | "Month" | "YTD" | "Year";
+type TimeRangeButton = "Day" | "Last 7 Days" | "MTD" | "YTD";
 
-// Map UI buttons to TimeInterval
 const timeIntervalMap: Record<TimeRangeButton, TimeInterval> = {
-  Hour: "hour",
   Day: "day",
-  Week: "week",
-  Month: "mtd",
+  "Last 7 Days": "week",
+  MTD: "mtd",
   YTD: "ytd",
-  Year: "year",
 };
 
-const formatNumber = (num: number): string => {
-  if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)}M`;
-  }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}K`;
-  }
-  return num.toString();
-};
+const timeRanges: TimeRangeButton[] = ["Day", "Last 7 Days", "MTD", "YTD"];
 
-const formatCurrency = (amount: number): string => {
-  return `$${amount.toFixed(2)}`;
-};
-
-const formatCostAxisValue = (value: number): string => {
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
-  }
-  if (value >= 1) {
-    return `$${value.toFixed(2)}`;
-  }
-  if (value >= 0.01) {
-    return `$${value.toFixed(2)}`;
-  }
-  if (value >= 0.001) {
-    return `$${value.toFixed(3)}`;
-  }
-  if (value >= 0.0001) {
-    return `$${value.toFixed(4)}`;
-  }
-  if (value === 0) {
-    return "$0";
-  }
-  return `$${value.toExponential(1)}`;
-};
-
-const formatPercentValue = (value: number): string => {
-  return `${value.toFixed(1)}%`;
+const getTimeRangeLabel = (button: TimeRangeButton): string => {
+  const labels: Record<TimeRangeButton, string> = {
+    Day: "Day",
+    "Last 7 Days": "Last 7 Days",
+    MTD: "MTD",
+    YTD: "YTD",
+  };
+  return labels[button];
 };
 
 export const TaskOverview: React.FC = () => {
   const { task } = useTask();
-  const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Week");
+  const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Last 7 Days");
 
   const interval = timeIntervalMap[selectedTimeRangeButton];
 
-  const { data: metrics, isLoading, error } = useTaskOverviewMetrics({
+  const {
+    data: metrics,
+    isLoading,
+    error,
+  } = useTaskOverviewMetrics({
     taskId: task?.id || "",
     interval,
   });
 
   if (!task) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
-  const timeRanges: TimeRangeButton[] = ["Hour", "Day", "Week", "Month", "YTD", "Year"];
-
-  // Get time range label for display
-  const getTimeRangeLabel = (button: TimeRangeButton): string => {
-    const labels: Record<TimeRangeButton, string> = {
-      Hour: "Day",
-      Day: "Day",
-      Week: "Week",
-      Month: "Month",
-      YTD: "YTD",
-      Year: "Year",
-    };
-    return labels[button];
-  };
-
   const displayLabel = getTimeRangeLabel(selectedTimeRangeButton);
-
-  // Get formatting parameters from metrics
   const xLabelFormat = metrics?.xLabelFormat || "date";
   const tickStep = metrics?.tickStep || 1;
 
-  // Prepare chart data with timestamps for axis labels
-  const tracesChartData = metrics?.timeSeriesData.map((d) => ({ value: d.tracesCount, timestamp: d.timestamp })) || [];
-  const tokensChartData = metrics?.timeSeriesData.map((d) => ({ value: d.tokens, timestamp: d.timestamp })) || [];
-  const costChartData = metrics?.timeSeriesData.map((d) => ({ value: d.cost, timestamp: d.timestamp })) || [];
-  const successRateChartData = metrics?.timeSeriesData.map((d) => ({ value: d.successRate, timestamp: d.timestamp })) || [];
+  const timeSeriesData = metrics?.timeSeriesData || [];
+  const xAxisLabels = timeSeriesData.map((d) => formatXLabel(new Date(d.timestamp), xLabelFormat));
+
+  const tracesValues = timeSeriesData.map((d) => d.tracesCount);
+  const tokensValues = timeSeriesData.map((d) => d.tokens);
+  const costValues = timeSeriesData.map((d) => d.cost);
+  const successRateValues = timeSeriesData.map((d) => d.successRate);
+
+  const sharedXAxis = [
+    {
+      scaleType: "band" as const,
+      data: xAxisLabels,
+      tickLabelInterval: (_value: string, index: number) => index % tickStep === 0,
+    },
+  ];
 
   return (
-    <div className="py-6 px-6 bg-gray-50">
-      <div className="max-w-[1400px] mx-auto space-y-6">
-        {/* Header Section */}
-        <div className="flex justify-between items-end">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Task Overview</h1>
-            <p className="text-sm text-gray-500 mt-1">Key performance metrics at a glance</p>
-          </div>
-          <div className="inline-flex bg-white rounded-lg border border-gray-200 p-0.5">
+    <Box sx={{ py: 3, px: 3, bgcolor: "grey.50" }}>
+      <Stack spacing={3} sx={{ maxWidth: 1400, mx: "auto" }}>
+        {/* Header */}
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
+          <Box>
+            <Typography variant="h5" fontWeight={600} color="text.primary">
+              Task Overview
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Key performance metrics at a glance
+            </Typography>
+          </Box>
+          <ToggleButtonGroup
+            size="small"
+            value={selectedTimeRangeButton}
+            exclusive
+            onChange={(_e, value) => {
+              if (value !== null) setSelectedTimeRangeButton(value);
+            }}
+          >
             {timeRanges.map((range) => (
-              <button
-                key={range}
-                onClick={() => setSelectedTimeRangeButton(range)}
-                className={`px-3 py-1 text-xs rounded-md transition-all ${
-                  selectedTimeRangeButton === range
-                    ? "font-semibold text-gray-900 bg-gray-100 shadow-sm"
-                    : "font-normal text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
-              >
+              <ToggleButton key={range} value={range} sx={{ px: 1.5, py: 0.5, fontSize: "0.75rem" }}>
                 {range}
-              </button>
+              </ToggleButton>
             ))}
-          </div>
-        </div>
+          </ToggleButtonGroup>
+        </Stack>
 
-        {/* Show error state */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm text-red-800">Failed to load metrics. Please try again.</p>
-          </div>
-        )}
+        {/* Error state */}
+        {error && <Alert severity="error">Failed to load metrics. Please try again.</Alert>}
 
-        {/* Metrics Cards Row */}
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Traces Card */}
-          <div className="bg-blue-50 rounded-lg p-5 border border-blue-100">
-            <div className="flex items-center gap-2 text-blue-600 mb-2">
-              <TrendingUpOutlined className="text-lg" />
-              <span className="text-sm font-medium">Traces</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {isLoading ? (
-                <div className="animate-pulse bg-gray-300 h-9 w-20 rounded"></div>
-              ) : (
-                formatNumber(metrics?.tracesCount || 0)
-              )}
-            </div>
-            <div className="text-xs text-gray-600 mt-1">{displayLabel} total</div>
-          </div>
+        {/* Metric Cards */}
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "repeat(5, 1fr)" } }}>
+          <MetricCard
+            icon={<TrendingUpOutlined fontSize="inherit" />}
+            label="Traces"
+            value={formatNumber(metrics?.tracesCount || 0)}
+            subLabel={`${displayLabel} total`}
+            color={METRIC_COLORS.traces.main}
+            bgColor={METRIC_COLORS.traces.light}
+            borderColor={METRIC_COLORS.traces.border}
+            isLoading={isLoading}
+          />
+          <MetricCard
+            icon={<GeneratingTokensOutlinedIcon fontSize="inherit" />}
+            label="Tokens"
+            value={formatNumber(metrics?.totalTokens || 0)}
+            subLabel={`${displayLabel} total`}
+            color={METRIC_COLORS.tokens.main}
+            bgColor={METRIC_COLORS.tokens.light}
+            borderColor={METRIC_COLORS.tokens.border}
+            isLoading={isLoading}
+          />
+          <MetricCard
+            icon={<TollOutlinedIcon fontSize="inherit" />}
+            label="Cost"
+            value={formatCurrency(metrics?.totalCost || 0)}
+            subLabel="est. spend"
+            color={METRIC_COLORS.cost.main}
+            bgColor={METRIC_COLORS.cost.light}
+            borderColor={METRIC_COLORS.cost.border}
+            isLoading={isLoading}
+          />
+          <MetricCard
+            icon={<BalanceOutlined fontSize="inherit" />}
+            label="Evals"
+            value={formatNumber(metrics?.evalsCount || 0)}
+            subLabel={`${displayLabel} total`}
+            color={METRIC_COLORS.evals.main}
+            bgColor={METRIC_COLORS.evals.light}
+            borderColor={METRIC_COLORS.evals.border}
+            isLoading={isLoading}
+          />
+          <MetricCard
+            icon={<CheckCircleIcon fontSize="inherit" />}
+            label="Success Rate"
+            value={`${metrics?.successRate.toFixed(1) || 0}%`}
+            subLabel="avg. rate"
+            color={METRIC_COLORS.successRate.main}
+            bgColor={METRIC_COLORS.successRate.light}
+            borderColor={METRIC_COLORS.successRate.border}
+            isLoading={isLoading}
+          />
+        </Box>
 
-          {/* Tokens Card */}
-          <div className="bg-purple-50 rounded-lg p-5 border border-purple-100">
-            <div className="flex items-center gap-2 text-purple-600 mb-2">
-              <GeneratingTokensOutlinedIcon className="text-lg" />
-              <span className="text-sm font-medium">Tokens</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {isLoading ? (
-                <div className="animate-pulse bg-gray-300 h-9 w-20 rounded"></div>
-              ) : (
-                formatNumber(metrics?.totalTokens || 0)
-              )}
-            </div>
-            <div className="text-xs text-gray-600 mt-1">{displayLabel} total</div>
-          </div>
+        {/* Charts */}
+        <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" } }}>
+          <ChartCard icon={<TrendingUpOutlined fontSize="inherit" />} title="Traces" iconColor={METRIC_COLORS.traces.main} isLoading={isLoading}>
+            {timeSeriesData.length > 0 ? (
+              <LineChart
+                height={256}
+                xAxis={sharedXAxis}
+                yAxis={[{ valueFormatter: (v: number) => formatNumber(v) }]}
+                series={[
+                  {
+                    data: tracesValues,
+                    color: METRIC_COLORS.traces.main,
+                    area: true,
+                    showMark: true,
+                    label: "Traces",
+                    valueFormatter: (v: number | null) => (v != null ? formatNumber(v) : ""),
+                  },
+                ]}
+                grid={{ horizontal: true }}
+                margin={{ left: 50, right: 20, top: 20, bottom: 30 }}
+                hideLegend
+                sx={{ "& .MuiAreaElement-root": { fillOpacity: 0.1 } }}
+              />
+            ) : (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No data available
+                </Typography>
+              </Box>
+            )}
+          </ChartCard>
 
-          {/* Cost Card */}
-          <div className="bg-amber-50 rounded-lg p-5 border border-amber-100">
-            <div className="flex items-center gap-2 text-amber-600 mb-2">
-              <TollOutlinedIcon className="text-lg" />
-              <span className="text-sm font-medium">Cost</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {isLoading ? (
-                <div className="animate-pulse bg-gray-300 h-9 w-20 rounded"></div>
-              ) : (
-                formatCurrency(metrics?.totalCost || 0)
-              )}
-            </div>
-            <div className="text-xs text-gray-600 mt-1">est. spend</div>
-          </div>
+          <ChartCard
+            icon={<GeneratingTokensOutlinedIcon fontSize="inherit" />}
+            title="Tokens"
+            iconColor={METRIC_COLORS.tokens.main}
+            isLoading={isLoading}
+          >
+            {timeSeriesData.length > 0 ? (
+              <BarChart
+                height={256}
+                xAxis={sharedXAxis}
+                yAxis={[{ valueFormatter: (v: number) => formatNumber(v) }]}
+                series={[
+                  {
+                    data: tokensValues,
+                    color: METRIC_COLORS.tokens.main,
+                    label: "Tokens",
+                    valueFormatter: (v: number | null) => (v != null ? formatNumber(v) : ""),
+                  },
+                ]}
+                grid={{ horizontal: true }}
+                margin={{ left: 50, right: 20, top: 20, bottom: 30 }}
+                borderRadius={4}
+                hideLegend
+              />
+            ) : (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No data available
+                </Typography>
+              </Box>
+            )}
+          </ChartCard>
 
-          {/* Evals Card */}
-          <div className="bg-teal-50 rounded-lg p-5 border border-teal-100">
-            <div className="flex items-center gap-2 text-teal-600 mb-2">
-              <BalanceOutlined className="text-lg" />
-              <span className="text-sm font-medium">Evals</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {isLoading ? (
-                <div className="animate-pulse bg-gray-300 h-9 w-20 rounded"></div>
-              ) : (
-                formatNumber(metrics?.evalsCount || 0)
-              )}
-            </div>
-            <div className="text-xs text-gray-600 mt-1">{displayLabel} total</div>
-          </div>
+          <ChartCard icon={<TollOutlinedIcon fontSize="inherit" />} title="Estimated Cost" iconColor={METRIC_COLORS.cost.main} isLoading={isLoading}>
+            {timeSeriesData.length > 0 ? (
+              <LineChart
+                height={256}
+                xAxis={sharedXAxis}
+                yAxis={[{ valueFormatter: (v: number) => formatCostAxisValue(v) }]}
+                series={[
+                  {
+                    data: costValues,
+                    color: METRIC_COLORS.cost.main,
+                    area: true,
+                    showMark: true,
+                    label: "Cost",
+                    valueFormatter: (v: number | null) => (v != null ? formatCostAxisValue(v) : ""),
+                  },
+                ]}
+                grid={{ horizontal: true }}
+                margin={{ left: 60, right: 20, top: 20, bottom: 30 }}
+                hideLegend
+                sx={{ "& .MuiAreaElement-root": { fillOpacity: 0.1 } }}
+              />
+            ) : (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No data available
+                </Typography>
+              </Box>
+            )}
+          </ChartCard>
 
-          {/* Success Rate Card */}
-          <div className="bg-green-50 rounded-lg p-5 border border-green-100">
-            <div className="flex items-center gap-2 text-green-600 mb-2">
-              <CheckCircleIcon className="text-lg" />
-              <span className="text-sm font-medium">Success Rate</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {isLoading ? (
-                <div className="animate-pulse bg-gray-300 h-9 w-20 rounded"></div>
-              ) : (
-                `${metrics?.successRate.toFixed(1) || 0}%`
-              )}
-            </div>
-            <div className="text-xs text-gray-600 mt-1">avg. rate</div>
-          </div>
-        </div>
+          <ChartCard
+            icon={<CheckCircleIcon fontSize="inherit" />}
+            title="Success Rate"
+            iconColor={METRIC_COLORS.successRate.main}
+            isLoading={isLoading}
+          >
+            {timeSeriesData.length > 0 ? (
+              <LineChart
+                height={256}
+                xAxis={sharedXAxis}
+                yAxis={[{ valueFormatter: (v: number) => formatPercentValue(v) }]}
+                series={[
+                  {
+                    data: successRateValues,
+                    color: METRIC_COLORS.successRate.main,
+                    area: true,
+                    showMark: true,
+                    label: "Success Rate",
+                    valueFormatter: (v: number | null) => (v != null ? formatPercentValue(v) : ""),
+                  },
+                ]}
+                grid={{ horizontal: true }}
+                margin={{ left: 50, right: 20, top: 20, bottom: 30 }}
+                hideLegend
+                sx={{ "& .MuiAreaElement-root": { fillOpacity: 0.1 } }}
+              />
+            ) : (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No data available
+                </Typography>
+              </Box>
+            )}
+          </ChartCard>
+        </Box>
 
-        {/* Charts Grid */}
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-          {/* Traces Chart */}
-          <div className="bg-white rounded-lg shadow border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center gap-2 text-blue-600">
-                <TrendingUpOutlined className="text-lg" />
-                <h3 className="text-base font-semibold text-gray-900">Traces</h3>
-              </div>
-            </div>
-            <div className="p-6">
-              {isLoading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <div className="h-64">
-                  <LineChart data={tracesChartData} color="#3B82F6" height={256} metricLabel="Traces" xLabelFormat={xLabelFormat} tickStep={tickStep} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Tokens Chart */}
-          <div className="bg-white rounded-lg shadow border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center gap-2 text-purple-600">
-                <GeneratingTokensOutlinedIcon className="text-lg" />
-                <h3 className="text-base font-semibold text-gray-900">Tokens</h3>
-              </div>
-            </div>
-            <div className="p-6">
-              {isLoading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                </div>
-              ) : (
-                <div className="h-64">
-                  <BarChart data={tokensChartData} color="#9333EA" height={256} metricLabel="Tokens" xLabelFormat={xLabelFormat} tickStep={tickStep} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Estimated Cost Chart */}
-          <div className="bg-white rounded-lg shadow border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center gap-2 text-amber-600">
-                <TollOutlinedIcon className="text-lg" />
-                <h3 className="text-base font-semibold text-gray-900">Estimated Cost</h3>
-              </div>
-            </div>
-            <div className="p-6">
-              {isLoading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                </div>
-              ) : (
-                <div className="h-64">
-                  <LineChart data={costChartData} color="#F59E0B" height={256} formatValue={formatCostAxisValue} metricLabel="Cost" xLabelFormat={xLabelFormat} tickStep={tickStep} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Success Rate Chart */}
-          <div className="bg-white rounded-lg shadow border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center gap-2 text-green-600">
-                <CheckCircleIcon className="text-lg" />
-                <h3 className="text-base font-semibold text-gray-900">Success Rate</h3>
-              </div>
-            </div>
-            <div className="p-6">
-              {isLoading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                </div>
-              ) : (
-                <div className="h-64">
-                  <LineChart data={successRateChartData} color="#10B981" height={256} formatValue={formatPercentValue} metricLabel="Success Rate" xLabelFormat={xLabelFormat} tickStep={tickStep} />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Banner */}
-        <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-medium text-gray-700">Need deeper analysis?</h3>
-              <p className="text-sm text-gray-500 mt-1">
+        {/* Bottom CTA Banner */}
+        <Paper variant="outlined" sx={{ p: 3, borderStyle: "dashed", borderWidth: 2, borderColor: "grey.300" }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Box>
+              <Typography variant="subtitle1" fontWeight={500} color="text.secondary">
+                Need deeper analysis?
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Create custom dashboards with advanced filters, breakdowns, and export options in the Arthur platform.
-              </p>
-            </div>
-            <button
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              color="inherit"
+              endIcon={<OpenInNewOutlined />}
               onClick={() => window.open("https://platform.arthur.ai/signup", "_blank", "noopener,noreferrer")}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium whitespace-nowrap"
+              sx={{ whiteSpace: "nowrap" }}
             >
-              <span>Open in Arthur Platform</span>
-              <OpenInNewOutlined className="text-base" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+              Open in Arthur Platform
+            </Button>
+          </Stack>
+        </Paper>
+      </Stack>
+    </Box>
   );
 };

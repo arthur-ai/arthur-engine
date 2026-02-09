@@ -8,8 +8,8 @@
  * DST handling: All calculations use timezone-aware date operations.
  */
 
-export type TimeInterval = "hour" | "day" | "week" | "mtd" | "ytd" | "year";
-export type BucketSize = "minute" | "5min" | "hour" | "day" | "week" | "month";
+export type TimeInterval = "day" | "week" | "mtd" | "ytd";
+export type BucketSize = "hour" | "day" | "week";
 
 export interface TimeWindow {
   /** Inclusive start boundary */
@@ -21,7 +21,7 @@ export interface TimeWindow {
   /** Bucket size in milliseconds */
   bucketMs: number;
   /** Format string for X-axis labels */
-  xLabelFormat: "time" | "date" | "month";
+  xLabelFormat: "time" | "date";
   /** Suggested number of data points for optimal visualization */
   suggestedPoints: number;
   /** Tick step for X-axis (show every Nth label) */
@@ -32,17 +32,8 @@ export interface TimeWindow {
  * Configuration options for time window calculation
  */
 export interface TimeWindowConfig {
-  /** First day of week (0 = Sunday, 1 = Monday). Default: 1 (Monday) */
-  firstDayOfWeek?: 0 | 1;
   /** Timezone (currently uses browser local timezone) */
   timezone?: string;
-}
-
-/**
- * Get the start of the current hour in local timezone
- */
-function getStartOfHour(now: Date): Date {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
 }
 
 /**
@@ -50,18 +41,6 @@ function getStartOfHour(now: Date): Date {
  */
 function getStartOfDay(now: Date): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-}
-
-/**
- * Get the start of the current calendar week in local timezone
- * @param firstDayOfWeek 0 = Sunday, 1 = Monday
- */
-function getStartOfWeek(now: Date, firstDayOfWeek: 0 | 1 = 1): Date {
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-  const diff = (dayOfWeek - firstDayOfWeek + 7) % 7;
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - diff);
-  return getStartOfDay(weekStart);
 }
 
 /**
@@ -87,12 +66,10 @@ function getStartOfYear(now: Date): Date {
  * @returns TimeWindow with start, end, bucketing, and formatting info
  *
  * Time interval definitions:
- * - hour: Last 60 minutes up to now
  * - day: Midnight of current day to now
- * - week: Start of current calendar week to now
+ * - week: Last 7 days up to now
  * - mtd: 1st of current month to now (Month-To-Date)
  * - ytd: January 1st of current year to now (Year-To-Date)
- * - year: Last 12 months to now (rolling 12 months)
  *
  * @example
  * ```typescript
@@ -100,28 +77,8 @@ function getStartOfYear(now: Date): Date {
  * // { start: 2026-02-06T00:00:00, end: 2026-02-06T17:30:00, bucketSize: "hour", ... }
  * ```
  */
-export function getTimeWindowAndBucketing(
-  interval: TimeInterval,
-  now: Date = new Date(),
-  config: TimeWindowConfig = {}
-): TimeWindow {
-  const { firstDayOfWeek = 1 } = config;
-
+export function getTimeWindowAndBucketing(interval: TimeInterval, now: Date = new Date(), _config: TimeWindowConfig = {}): TimeWindow {
   switch (interval) {
-    case "hour": {
-      // Last 60 minutes up to now
-      const start = new Date(now.getTime() - 60 * 60 * 1000);
-      return {
-        start,
-        end: now,
-        bucketSize: "minute",
-        bucketMs: 60 * 1000,
-        xLabelFormat: "time",
-        suggestedPoints: 60,
-        tickStep: 10, // Show every 10th minute
-      };
-    }
-
     case "day": {
       // From midnight to now
       const start = getStartOfDay(now);
@@ -146,13 +103,9 @@ export function getTimeWindowAndBucketing(
     }
 
     case "week": {
-      // From start of calendar week to now
-      const start = getStartOfWeek(now, firstDayOfWeek);
+      // Last 7 days up to now
+      const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const bucketMs = 24 * 60 * 60 * 1000;
-
-      // Calculate actual number of days from week start to now
-      const durationMs = now.getTime() - start.getTime();
-      const suggestedPoints = Math.max(1, Math.ceil(durationMs / bucketMs));
 
       return {
         start,
@@ -160,8 +113,8 @@ export function getTimeWindowAndBucketing(
         bucketSize: "day",
         bucketMs,
         xLabelFormat: "date",
-        suggestedPoints,
-        tickStep: 1, // Show all days (max 7)
+        suggestedPoints: 7,
+        tickStep: 1, // Show all days
       };
     }
 
@@ -211,20 +164,6 @@ export function getTimeWindowAndBucketing(
       };
     }
 
-    case "year": {
-      // Last 12 months to now (rolling 12 months)
-      const start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      return {
-        start,
-        end: now,
-        bucketSize: "month",
-        bucketMs: 30 * 24 * 60 * 60 * 1000, // Approximate
-        xLabelFormat: "month",
-        suggestedPoints: 12,
-        tickStep: 1, // Show all months
-      };
-    }
-
     default: {
       const exhaustiveCheck: never = interval;
       throw new Error(`Unhandled interval: ${exhaustiveCheck}`);
@@ -245,12 +184,10 @@ export function calculateBucketCount(start: Date, end: Date, bucketMs: number): 
  */
 export function getIntervalLabel(interval: TimeInterval): string {
   const labels: Record<TimeInterval, string> = {
-    hour: "Hour",
     day: "Day",
-    week: "Week",
+    week: "7 Days",
     mtd: "Month",
     ytd: "YTD",
-    year: "Year",
   };
   return labels[interval];
 }
@@ -260,12 +197,10 @@ export function getIntervalLabel(interval: TimeInterval): string {
  */
 export function getTimeRangeDescription(interval: TimeInterval): string {
   const descriptions: Record<TimeInterval, string> = {
-    hour: "this hour",
     day: "today",
-    week: "this week",
+    week: "last 7 days",
     mtd: "this month",
     ytd: "year to date",
-    year: "this year",
   };
   return descriptions[interval];
 }
