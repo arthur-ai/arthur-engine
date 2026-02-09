@@ -5,6 +5,7 @@ import {
   DatasetRefInput,
   HttpHeader,
   NewDatasetVersionRowColumnItemRequest,
+  RequestTimeParameter,
   TemplateVariableMappingInput,
 } from "@/lib/api-client/api-client";
 
@@ -23,6 +24,7 @@ export const agentNotebookStateFormOpts = formOptions({
     datasetRowFilter: [] as NewDatasetVersionRowColumnItemRequest[],
     templateVariableMapping: [] as TemplateVariableMappingInput[],
     evals: [] as AgenticEvalRefInput[],
+    requestTimeParameters: [] as RequestTimeParameter[],
   },
 });
 
