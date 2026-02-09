@@ -395,9 +395,14 @@ SPAN_KIND_TOOL = OpenInferenceSpanKindValues.TOOL.value
 SPAN_VERSION_KEY = "arthur_span_version"
 EXPECTED_SPAN_VERSION = "arthur_span_v1"
 TASK_ID_KEY = "arthur.task"
+SERVICE_NAME_KEY = "service.name"  # OpenTelemetry resource attribute for service name
 METADATA_KEY = SpanAttributes.METADATA
 SPAN_KIND_KEY = SpanAttributes.OPENINFERENCE_SPAN_KIND
 USER_ID_KEY = SpanAttributes.USER_ID
+
+# Service name mapping constants
+DEFAULT_SERVICE_NAME = "__unmapped__"
+AUTO_CREATED_TASK_PREFIX = "auto-created:"
 
 ##################################################################
 

@@ -207,6 +207,7 @@ def execute_trace_transform_extraction(
         # Fetch the trace
         tasks_metrics_repo = TasksMetricsRepository(db_session)
         metrics_repo = MetricRepository(db_session)
+
         span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
 
         trace = span_repo.get_trace_by_id(

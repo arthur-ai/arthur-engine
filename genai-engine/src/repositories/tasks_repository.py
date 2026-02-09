@@ -1,3 +1,5 @@
+import uuid
+from datetime import datetime
 from typing import Optional
 
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
@@ -134,6 +136,35 @@ class TaskRepository:
 
         result = Task._from_database_model(db_task)
         return result
+
+    def create_auto_task(self, service_name: str) -> Task:
+        """Create an auto-generated task for a service name.
+
+        Auto-created tasks:
+        - Have name prefixed with "auto-created:"
+        - Are agentic (is_agentic=True)
+        - Do NOT get default rules (with_default_rules=False)
+        - Have no task_metadata (not a registered agent)
+
+        Args:
+            service_name: The service name to create a task for
+
+        Returns:
+            Task: The created task
+        """
+        task_id = str(uuid.uuid4())
+        task_name = f"{constants.AUTO_CREATED_TASK_PREFIX}{service_name}"
+
+        task = Task(
+            id=task_id,
+            name=task_name,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_agentic=True,
+            task_metadata=None,
+        )
+
+        return self.create_task(task, with_default_rules=False)
 
     def link_rule_to_task(
         self,

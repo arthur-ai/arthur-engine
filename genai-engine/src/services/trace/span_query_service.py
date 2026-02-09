@@ -74,7 +74,7 @@ class SpanQueryService:
         Single-query strategy that combines all filters and uses database pagination.
         Returns tuple of (trace_ids, total_count).
         """
-        if not filters.task_ids:
+        if not filters.task_ids and not filters.include_orphaned:
             return [], 0
 
         # Build comprehensive query with all filters combined
@@ -184,9 +184,27 @@ class SpanQueryService:
             )
 
         # Start with base metadata query
-        query = select(DatabaseTraceMetadata).where(
-            DatabaseTraceMetadata.task_id.in_(filters.task_ids),
-        )
+        query = select(DatabaseTraceMetadata)
+
+        # Apply task_id filtering based on include_orphaned flag
+        if filters.task_ids:
+            if filters.include_orphaned:
+                # Include both registered (in task_ids) and orphaned (task_id IS NULL)
+                query = query.where(
+                    or_(
+                        DatabaseTraceMetadata.task_id.in_(filters.task_ids),
+                        DatabaseTraceMetadata.task_id.is_(None),
+                    )
+                )
+            else:
+                # Only include registered traces (default behavior)
+                query = query.where(DatabaseTraceMetadata.task_id.in_(filters.task_ids))
+        elif filters.include_orphaned:
+            # Only orphaned traces requested
+            query = query.where(DatabaseTraceMetadata.task_id.is_(None))
+        else:
+            # No task_ids and not including orphaned = empty result
+            return select(DatabaseTraceMetadata).where(False)
 
         # Apply trace-level filters (fast indexed operations)
         query = self._apply_trace_level_filters(query, filters)
@@ -196,6 +214,37 @@ class SpanQueryService:
             query = self._apply_span_level_filters_with_joins(query, filters)
 
         return query
+
+    def _build_task_id_condition(
+        self,
+        filters: TraceQuerySchema,
+        task_id_column: InstrumentedAttribute[str | None],
+    ) -> ColumnElement[bool]:
+        """Build task_id condition respecting include_orphaned flag.
+
+        Args:
+            filters: Query filters containing task_ids and include_orphaned
+            task_id_column: The task_id column to filter (e.g., DatabaseSpan.task_id)
+
+        Returns:
+            SQLAlchemy condition for task_id filtering
+        """
+        if filters.task_ids:
+            if filters.include_orphaned:
+                # Include both registered and orphaned
+                return or_(
+                    task_id_column.in_(filters.task_ids),
+                    task_id_column.is_(None),
+                )
+            else:
+                # Only registered traces
+                return task_id_column.in_(filters.task_ids)
+        elif filters.include_orphaned:
+            # Only orphaned traces
+            return task_id_column.is_(None)
+        else:
+            # Should not reach here based on query construction
+            return task_id_column.in_([])
 
     def _apply_trace_level_filters(
         self,
@@ -329,13 +378,17 @@ class SpanQueryService:
         if span_name_conditions:
             # Use EXISTS to find traces containing spans with matching names
             # Combine multiple span_name conditions with AND (both must match)
+            # Build task_id condition respecting include_orphaned flag
+            task_condition = self._build_task_id_condition(
+                filters, DatabaseSpan.task_id
+            )
             span_name_exists = exists(
                 select(1)
                 .select_from(DatabaseSpan)
                 .where(
                     and_(
                         DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
-                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        task_condition,
                         *span_name_conditions,  # AND all conditions together
                     ),
                 ),
@@ -345,13 +398,16 @@ class SpanQueryService:
         # Apply span_ids filter even when no span_types are detected
         # Use EXISTS clause to filter traces that contain spans with matching IDs
         if filters.span_ids:
+            task_condition = self._build_task_id_condition(
+                filters, DatabaseSpan.task_id
+            )
             span_ids_exists = exists(
                 select(1)
                 .select_from(DatabaseSpan)
                 .where(
                     and_(
                         DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
-                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        task_condition,
                         DatabaseSpan.span_id.in_(filters.span_ids),
                     ),
                 ),
@@ -361,13 +417,16 @@ class SpanQueryService:
         # Apply status_code filter even when no span_types are detected
         # Use EXISTS clause to filter traces that contain spans with matching status codes
         if filters.status_code:
+            task_condition = self._build_task_id_condition(
+                filters, DatabaseSpan.task_id
+            )
             status_code_exists = exists(
                 select(1)
                 .select_from(DatabaseSpan)
                 .where(
                     and_(
                         DatabaseSpan.trace_id == DatabaseTraceMetadata.trace_id,
-                        DatabaseSpan.task_id.in_(filters.task_ids),
+                        task_condition,
                         DatabaseSpan.status_code.in_(filters.status_code),
                     ),
                 ),
