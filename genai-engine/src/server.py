@@ -77,6 +77,7 @@ from services.continuous_eval import (
 from services.currency import (
     initialize_currency_conversion_service,
     shutdown_currency_conversion_service,
+)
 from services.task import (
     initialize_registered_agent_polling_service,
     shutdown_registered_agent_polling_service,
