@@ -41,6 +41,7 @@ export const mapTemplateToForm = (template?: AgenticNotebookStateResponse): Agen
     datasetRowFilter: template.dataset_row_filter ?? [],
     templateVariableMapping: template.template_variable_mapping ?? [],
     evals: template.eval_list ?? [],
+    requestTimeParameters: [],
   };
 };
 
@@ -58,5 +59,6 @@ export const mapFormToCreateAgenticExperimentRequest = (form: AgentNotebookState
       request_body: form.endpoint.body,
     },
     template_variable_mapping: form.templateVariableMapping,
+    request_time_parameters: form.requestTimeParameters,
   } as CreateAgenticExperimentRequest;
 };
