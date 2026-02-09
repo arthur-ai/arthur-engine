@@ -136,7 +136,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const selectedTransformId = useStore(form.store, (state) => state.values.transform);
 
   // Get columns from the selected transform
-  const selectedTransform = transformsQuery.data?.find((t) => t.id === selectedTransformId);
+  const selectedTransform = transformsQuery.data?.transforms?.find((t) => t.id === selectedTransformId);
   const transformColumns = selectedTransform?.definition.variables.map((varDef) => varDef.variable_name) || [];
 
   // Merge dataset columns with transform columns to get union of all columns

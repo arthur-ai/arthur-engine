@@ -22,7 +22,9 @@ export const TransformSelector = withFieldGroup({
     const transform = useStore(group.store, (state) => state.values.transform);
 
     const { latestVersion } = useDatasetLatestVersion(dataset);
-    const { data: transforms } = useTransforms();
+
+    const { data } = useTransforms();
+    const transforms = data?.transforms;
 
     const selectedTransform = transforms?.find((t) => t.id === transform);
 
