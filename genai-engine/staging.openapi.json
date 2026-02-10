@@ -21513,11 +21513,17 @@
                         "type": "array",
                         "title": "Transforms",
                         "description": "List of transforms for the task."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of transforms matching filters"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "transforms"
+                    "transforms",
+                    "count"
                 ],
                 "title": "ListTraceTransformsResponse"
             },
@@ -22546,7 +22552,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Metadata for registered agents."
+                        "description": "Metadata to describe the creation source/provider for registered agents."
                     }
                 },
                 "type": "object",
@@ -27766,6 +27772,32 @@
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not"
                     },
+                    "is_system_task": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is System Task",
+                        "description": "Whether this is a system-managed task (e.g., for traces without a task_id or service name, or for Arthur-created traces)",
+                        "default": false
+                    },
+                    "is_autocreated": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Autocreated",
+                        "description": "Whether this task was automatically created by Arthur",
+                        "default": false
+                    },
                     "agent_metadata": {
                         "anyOf": [
                             {
@@ -27775,7 +27807,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Metadata for registered agents."
+                        "description": "Metadata to describe the creation source/provider for registered agents."
                     },
                     "rules": {
                         "items": {
