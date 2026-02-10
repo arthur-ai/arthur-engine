@@ -21,10 +21,10 @@ services:
     user: root
     volumes:
       # Mount local directory for output (models will be copied here)
-      - ./models-output:/models-output
+      - ./model-storage:/model-storage
     environment:
       - SOURCE_DIR=/models
-      - TARGET_DIR=/models-output
+      - TARGET_DIR=/model-storage
       - LOG_LEVEL=INFO
     # Remove after completion (since this is a one-time copy job)
     restart: "no"

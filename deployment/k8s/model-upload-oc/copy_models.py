@@ -23,8 +23,9 @@ if TYPE_CHECKING:
     pass
 
 # Configure logging
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
+    level=getattr(logging, log_level, logging.INFO),
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
@@ -129,11 +130,73 @@ def copy_models(
     return stats
 
 
+def post_process_models(target_dir: Path) -> None:
+    """
+    Post-process copied models to fix common issues.
+
+    Args:
+        target_dir: Target directory where models were copied
+    """
+    import json
+
+    logger.info("🔧 Starting post-processing of models...")
+
+    # GLiNER model needs config.json (transformers convention)
+    # but we only download gliner_config.json, so copy it
+    gliner_model_dir = target_dir / "urchade" / "gliner_multi_pii-v1"
+    gliner_config = gliner_model_dir / "gliner_config.json"
+    config_json = gliner_model_dir / "config.json"
+
+    logger.info(f"Checking GLiNER model directory: {gliner_model_dir}")
+    logger.info(f"  - Directory exists: {gliner_model_dir.exists()}")
+
+    if gliner_model_dir.exists():
+        logger.info(f"  - Files in directory: {list(gliner_model_dir.iterdir())}")
+        logger.info(f"  - gliner_config.json exists: {gliner_config.exists()}")
+        logger.info(f"  - config.json exists: {config_json.exists()}")
+
+    # Update model_name to local path in both config files
+    # The path is where models will be mounted at runtime in genai-engine pods
+    local_model_path = f"/home/nonroot{target_dir}/microsoft/mdeberta-v3-base"
+
+    if gliner_config.exists():
+        try:
+            # Read and update gliner_config.json
+            with open(gliner_config, "r") as f:
+                gliner_data = json.load(f)
+
+            if gliner_data.get("model_name") != local_model_path:
+                logger.info(
+                    f"📝 Updating model_name in gliner_config.json from '{gliner_data.get('model_name')}' to '{local_model_path}'",
+                )
+                gliner_data["model_name"] = local_model_path
+                with open(gliner_config, "w") as f:
+                    json.dump(gliner_data, f, indent=2)
+                logger.info("✅ Updated gliner_config.json")
+            else:
+                logger.info("⏭️  gliner_config.json already has correct model_name")
+
+            # Create config.json
+            if not config_json.exists():
+                logger.info(
+                    "📋 Creating config.json from gliner_config.json for GLiNER model",
+                )
+                shutil.copy2(gliner_config, config_json)
+                logger.info("✅ Created config.json for GLiNER model")
+        except Exception as e:
+            logger.error(f"❌  Failed to update GLiNER config files: {e}")
+    elif not gliner_config.exists():
+        logger.error(
+            f"❌  Skipping GLiNER config updates: gliner_config.json not found at {gliner_config}",
+        )
+    logger.info("✅ Post-processing complete")
+
+
 def main() -> int:
     """Main entry point."""
     # Get configuration from environment
     source_dir = Path(os.getenv("SOURCE_DIR", "/models"))
-    target_dir = Path(os.getenv("TARGET_DIR", "/models-output"))
+    target_dir = Path(os.getenv("TARGET_DIR", "/model-storage"))
 
     logger.info("=" * 60)
     logger.info("Arthur Model Repository - Volume Copy Task")
@@ -145,9 +208,8 @@ def main() -> int:
     # Copy models
     stats = copy_models(source_dir, target_dir)
 
-    # Note: Post-processing is done during Docker build (in download_models.py)
-    # with the correct runtime path, so models are already correctly configured
-    # when copied here.
+    # Post-process models (fix common issues)
+    post_process_models(target_dir)
 
     # Print summary
     logger.info("=" * 60)

@@ -27,4 +27,4 @@ Thumbs.db
 models/
 *.log
 .env
-models-output/
+model-storage/
