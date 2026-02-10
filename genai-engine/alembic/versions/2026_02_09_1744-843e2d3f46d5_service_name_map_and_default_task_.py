@@ -33,7 +33,7 @@ def upgrade() -> None:
     sa.Column('service_name', sa.String(), nullable=False),
     sa.Column('task_id', sa.String(), nullable=False),
     sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], name='fk_service_name_task_mappings_task_id', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('service_name')
     )
     op.create_index('idx_service_name_mapping_task', 'service_name_task_mappings', ['service_name', 'task_id'], unique=False)

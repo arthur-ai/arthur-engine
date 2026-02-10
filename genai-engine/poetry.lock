@@ -250,13 +250,13 @@ trio = ["trio (>=0.31.0)", "trio (>=0.32.0)"]
 
 [[package]]
 name = "arthur-common"
-version = "2.4.37"
+version = "2.4.39"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "arthur_common-2.4.37-py3-none-any.whl", hash = "sha256:5bc95e5d1714ea8b49bb2e81d4bbd890dd877c8107959220ad60efb25d520ec8"},
-    {file = "arthur_common-2.4.37.tar.gz", hash = "sha256:d10bb7ea8377acd1cbec4f82f130a141e896a8f656488c9d11bd95114235409c"},
+    {file = "arthur_common-2.4.39-py3-none-any.whl", hash = "sha256:7262915149975839c1917379fee3d07176a305682dd82be2c0b051e7bd011498"},
+    {file = "arthur_common-2.4.39.tar.gz", hash = "sha256:dc1b90af512dfce83f3492aa7b82da9e04ad45baf6aed55dfa45ef0b31734b48"},
 ]
 
 [package.dependencies]
@@ -9274,4 +9274,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "ae931d9f4cd777dcca781bdb3692c5def36a157d47c2f43fe16cc285337a65a6"
+content-hash = "7dd0314e56d156f999267f0863c34ecd2ec453b26e6cf76ac41be6cdc3041749"
