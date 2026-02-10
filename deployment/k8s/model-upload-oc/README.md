@@ -2,6 +2,8 @@
 
 An Kubernetes/OpenShift job that copies pre-downloaded ML models to a PersistentVolumeClaim for airgapped deployments.
 
+> **Note**: For AWS S3, see `../../ecs/model-upload/`. For GCS, see `../../gcp/model-upload/`.
+
 ## Overview
 
 This is the **OpenShift PVC version** that:
@@ -14,7 +16,7 @@ This is the **OpenShift PVC version** that:
 
 ### Build the Docker Image
 
-**First, regenerate the poetry.lock file** (since dependencies changed):
+First, regenerate the poetry.lock file:
 ```bash
 rm -rf poetry.lock && poetry lock
 ```

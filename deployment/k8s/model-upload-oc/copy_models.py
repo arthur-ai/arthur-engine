@@ -176,37 +176,19 @@ def post_process_models(target_dir: Path) -> None:
             else:
                 logger.info("⏭️  gliner_config.json already has correct model_name")
 
-            # Create or update config.json
+            # Create config.json
             if not config_json.exists():
                 logger.info(
                     "📋 Creating config.json from gliner_config.json for GLiNER model",
                 )
                 shutil.copy2(gliner_config, config_json)
                 logger.info("✅ Created config.json for GLiNER model")
-
-            # Update config.json if it exists
-            if config_json.exists():
-                with open(config_json, "r") as f:
-                    config_data = json.load(f)
-
-                if config_data.get("model_name") != local_model_path:
-                    logger.info(
-                        f"📝 Updating model_name in config.json from '{config_data.get('model_name')}' to '{local_model_path}'",
-                    )
-                    config_data["model_name"] = local_model_path
-                    with open(config_json, "w") as f:
-                        json.dump(config_data, f, indent=2)
-                    logger.info("✅ Updated config.json")
-                else:
-                    logger.info("⏭️  config.json already has correct model_name")
-
         except Exception as e:
-            logger.error(f"⚠️  Failed to update GLiNER config files: {e}")
+            logger.error(f"❌  Failed to update GLiNER config files: {e}")
     elif not gliner_config.exists():
         logger.error(
-            f"⚠️  Skipping GLiNER config updates: gliner_config.json not found at {gliner_config}",
+            f"❌  Skipping GLiNER config updates: gliner_config.json not found at {gliner_config}",
         )
-
     logger.info("✅ Post-processing complete")
 
 

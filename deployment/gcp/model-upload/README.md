@@ -5,38 +5,33 @@ A Cloud Run Job that uploads pre-downloaded ML models to a Google Cloud Storage 
 > **Note**: For AWS S3, see `../../ecs/model-upload/`. For OpenShift/Kubernetes with PVC, see `../../k8s/model-upload-oc/`.
 
 ## Overview
-
-1. **Docker build**: Downloads ML models from Hugging Face into the image.
-2. **Cloud Run Job**: Runs once (or on demand), uploading all models from the image to a GCS bucket.
-3. **genai-engine**: Configure `MODEL_REPOSITORY_URL` to point at the GCS bucket (e.g. `gs://your-bucket/models`).
+This is the **GCS version** that:
+1. Downloads ML models from Hugging Face during Docker build
+2. When run as a Cloud Run job, copies all models to a GCS bucket
+3. Cloud Run services (like genai-engine) can mount the GCS bucket as a storage volume to access models
 
 ## Prerequisites
 
-- GCP project with billing enabled
 - **GCS bucket** for model storage (create in same or different project)
 - **Service account** with:
   - `roles/storage.objectCreator` (or `roles/storage.admin`) on the bucket
   - For Cloud Run: used as the job’s service account
-- **gcloud** CLI installed and authenticated
 
 ## Build and push image
-
-Build the image (includes all default models):
-
+First, regenerate the poetry.lock file:
 ```bash
-docker build -t arthur-model-upload-gcp:latest .
+rm -rf poetry.lock && poetry lock
 ```
 
-Push to **Google Container Registry (GCR)** or **Artifact Registry**:
-
+Then build and push to Docker Hub:
 ```bash
-# GCR
-docker tag arthur-model-upload-gcp:latest gcr.io/PROJECT_ID/arthur-model-upload-gcp:latest
-docker push gcr.io/PROJECT_ID/arthur-model-upload-gcp:latest
+docker build --platform linux/amd64 -t genai-engine-models-gcp:<genai_engine_models_version> .
 
-# Or Artifact Registry
-docker tag arthur-model-upload-gcp:latest REGION-docker.pkg.dev/PROJECT_ID/REPO_NAME/arthur-model-upload-gcp:latest
-docker push REGION-docker.pkg.dev/PROJECT_ID/REPO_NAME/arthur-model-upload-gcp:latest
+# Tag for Docker Hub (arthurplatform organization)
+docker tag genai-engine-models-gcp:<genai_engine_models_version> arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
+
+# Push to Docker Hub (requires: docker login)
+docker push arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
 ```
 
 ## Create and run the Cloud Run Job
@@ -44,7 +39,8 @@ docker push REGION-docker.pkg.dev/PROJECT_ID/REPO_NAME/arthur-model-upload-gcp:l
 2. Adjust the below GenAI envars accordingly:
   ```
   # specify the mount location
-  MODEL_STORAGE_PATH=/home/nonroot/gcs/models
+  # `MODEL_STORAGE_PATH` must be set to `/home/nonroot/{TARGET_DIR specified to model-upload container}`.
+  MODEL_STORAGE_PATH=/home/nonroot/model-storage
   # set HF models to offline mode
   HF_HUB_OFFLINE=1
   ```
