@@ -217,7 +217,17 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           </Stack>
 
           {/* Footer */}
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pt: 1.5, borderTop: 1, borderColor: "grey.100", mt: "auto" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              pt: 1.5,
+              borderTop: 1,
+              borderColor: "grey.100",
+              mt: "auto",
+            }}
+          >
             <Typography
               className="view-traces-text"
               variant="body2"
