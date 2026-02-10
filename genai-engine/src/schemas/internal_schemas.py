@@ -2374,10 +2374,6 @@ class TraceQuerySchema(BaseModel):
         default=False,
         description="Whether to include traces originating from Arthur experiments. Defaults to False.",
     )
-    include_orphaned: bool = Field(
-        default=False,
-        description="Whether to include orphaned traces (task_id IS NULL). Defaults to False.",
-    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -2419,7 +2415,6 @@ class TraceQuerySchema(BaseModel):
                 str(r_status_code) for r_status_code in request.status_code or []
             ],
             include_experiment_traces=request.include_experiment_traces,
-            include_orphaned=request.include_orphaned,
         )
 
 
