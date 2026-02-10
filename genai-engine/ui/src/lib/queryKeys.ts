@@ -1,6 +1,10 @@
 import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams, GetUsersParams } from "@/services/tracing";
+import type { TimeInterval } from "@/utils/timeWindows";
 
 export const queryKeys = {
+  metrics: {
+    overview: (taskId: string, interval: TimeInterval) => ["taskOverviewMetrics", { taskId, interval }] as const,
+  },
   datasets: {
     search: {
       all: () => ["getDatasetsApiV2TasksTaskIdDatasetsSearchGet"] as const,
