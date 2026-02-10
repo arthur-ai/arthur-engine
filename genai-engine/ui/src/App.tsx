@@ -35,6 +35,7 @@ import { RagConfigurationsPage } from "./components/retrievals/RagConfigurations
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
+import { TaskOverview } from "./components/TaskOverview";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -42,7 +43,7 @@ import { queryClient } from "./lib/queryClient";
 
 const TaskRedirect = () => {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/tasks/${id}/task-details`} replace />;
+  return <Navigate to={`/tasks/${id}/overview`} replace />;
 };
 
 function App() {
@@ -77,6 +78,17 @@ function App() {
 
                       {/* Task routes with layout */}
                       <Route path="/tasks/:id" element={<TaskRedirect />} />
+
+                      <Route
+                        path="/tasks/:id/overview"
+                        element={
+                          <ProtectedRoute>
+                            <TaskLayout>
+                              <TaskOverview />
+                            </TaskLayout>
+                          </ProtectedRoute>
+                        }
+                      />
 
                       <Route
                         path="/tasks/:id/task-details"
