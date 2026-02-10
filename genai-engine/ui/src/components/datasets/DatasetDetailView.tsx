@@ -235,7 +235,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     } finally {
       setIsExporting(false);
     }
-  }, [queries.dataset, api, datasetId, queries.currentVersion, queries.totalRowCount, showSnackbar]);
+  }, [queries.dataset, queries.currentVersion, queries.totalRowCount, api, datasetId, task?.id, showSnackbar]);
 
   const handleAcceptSyntheticRows = useCallback(
     (rows: { data: { column_name: string; column_value: string }[] }[]) => {
