@@ -7,8 +7,7 @@ Create Date: 2026-02-09 17:44:08.622651
 """
 from alembic import op
 import sqlalchemy as sa
-import uuid
-from utils.constants import DEFAULT_SERVICE_NAME
+from utils.constants import DEFAULT_SERVICE_NAME, UNMAPPED_TASK_ID
 
 
 # revision identifiers, used by Alembic.
@@ -17,7 +16,6 @@ down_revision = 'c6df714edd16'
 branch_labels = None
 depends_on = None
 
-unmapped_task_id = str(uuid.uuid4())
 BATCH_SIZE = 100
 
 def upgrade() -> None:
@@ -42,13 +40,13 @@ def upgrade() -> None:
     # Create __unmapped__ task (marked as system task)
     op.execute(f"""
         INSERT INTO tasks (id, name, created_at, updated_at, is_agentic, archived, is_autocreated, is_system_task, task_metadata)
-        VALUES ('{unmapped_task_id}', '{DEFAULT_SERVICE_NAME}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, false, false, true, NULL)
+        VALUES ('{UNMAPPED_TASK_ID}', '{DEFAULT_SERVICE_NAME}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, false, false, true, NULL)
     """)
 
     # Create mapping for __unmapped__ service name → __unmapped__ task
     op.execute(f"""
         INSERT INTO service_name_task_mappings (service_name, task_id, created_at)
-        VALUES ('{DEFAULT_SERVICE_NAME}', '{unmapped_task_id}', CURRENT_TIMESTAMP)
+        VALUES ('{DEFAULT_SERVICE_NAME}', '{UNMAPPED_TASK_ID}', CURRENT_TIMESTAMP)
     """)
 
     # Backfill NULL task_ids in spans table (batched, 100 rows at a time)
@@ -59,7 +57,7 @@ def upgrade() -> None:
     while True:
         result = connection.execute(sa.text(f"""
             UPDATE spans
-            SET task_id = '{unmapped_task_id}'
+            SET task_id = '{UNMAPPED_TASK_ID}'
             WHERE id IN (
                 SELECT id FROM spans
                 WHERE task_id IS NULL
@@ -81,7 +79,7 @@ def upgrade() -> None:
     while True:
         result = connection.execute(sa.text(f"""
             UPDATE trace_metadata
-            SET task_id = '{unmapped_task_id}'
+            SET task_id = '{UNMAPPED_TASK_ID}'
             WHERE trace_id IN (
                 SELECT trace_id FROM trace_metadata
                 WHERE task_id IS NULL
@@ -113,7 +111,7 @@ def downgrade() -> None:
             SET task_id = NULL
             WHERE id IN (
                 SELECT id FROM spans
-                WHERE task_id = '{unmapped_task_id}'
+                WHERE task_id = '{UNMAPPED_TASK_ID}'
                 LIMIT {BATCH_SIZE}
             )
         """))
@@ -135,7 +133,7 @@ def downgrade() -> None:
             SET task_id = NULL
             WHERE trace_id IN (
                 SELECT trace_id FROM trace_metadata
-                WHERE task_id = '{unmapped_task_id}'
+                WHERE task_id = '{UNMAPPED_TASK_ID}'
                 LIMIT {BATCH_SIZE}
             )
         """))
@@ -150,7 +148,7 @@ def downgrade() -> None:
 
     # Step 4: Delete __unmapped__ task (CASCADE will remove mapping)
     connection.execute(sa.text(f"""
-        DELETE FROM tasks WHERE id = '{unmapped_task_id}'
+        DELETE FROM tasks WHERE id = '{UNMAPPED_TASK_ID}'
     """))
 
     # Step 5: Drop indexes and table

@@ -34,6 +34,7 @@ from utils.constants import (
     SPAN_KIND_KEY,
     SPAN_VERSION_KEY,
     TASK_ID_KEY,
+    UNMAPPED_TASK_ID,
     USER_ID_KEY,
 )
 from utils.token_count import safe_add
@@ -246,22 +247,13 @@ class TraceIngestionService:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
             return explicit_task_id
 
-        mapping_repo = ServiceNameMappingRepository(self.db_session)
-
         # Step 2: No service name → lookup __unmapped__ task
         if not service_name or service_name.strip() == "":
             logger.debug(f"No service.name provided, using {DEFAULT_SERVICE_NAME} task")
-            unmapped_task_id = mapping_repo.get_task_id_by_service_name(
-                DEFAULT_SERVICE_NAME,
-            )
-            if not unmapped_task_id:
-                logger.error(
-                    f"{DEFAULT_SERVICE_NAME} task mapping not found! Migration may not have run.",
-                )
-                raise RuntimeError(f"{DEFAULT_SERVICE_NAME} task not configured")
-            return unmapped_task_id
+            return UNMAPPED_TASK_ID
 
         # Step 3: Check for existing mapping
+        mapping_repo = ServiceNameMappingRepository(self.db_session)
         existing_task_id = mapping_repo.get_task_id_by_service_name(service_name)
 
         if existing_task_id:
@@ -277,13 +269,10 @@ class TraceIngestionService:
 
             config_repo = ConfigurationRepository(self.db_session)
             app_config = config_repo.get_configurations()
-
             task_repo = get_task_repository(self.db_session, app_config)
 
-            # Create auto-task using TaskRepository
             new_task = task_repo.create_auto_task(service_name)
 
-            # Create mapping (idempotent - handles race conditions)
             mapping_repo.create_mapping(service_name, new_task.id)
 
             logger.info(f"Auto-created task '{new_task.name}' (id={new_task.id})")
@@ -295,13 +284,7 @@ class TraceIngestionService:
                 f"Failed to auto-create task for '{service_name}': {e}",
                 exc_info=True,
             )
-            unmapped_task_id = mapping_repo.get_task_id_by_service_name(
-                DEFAULT_SERVICE_NAME,
-            )
-            if not unmapped_task_id:
-                logger.error("__unmapped__ task not found as fallback!")
-                raise RuntimeError("Cannot resolve task_id - __unmapped__ task missing")
-            return unmapped_task_id
+            return UNMAPPED_TASK_ID
 
     def _process_span_data(
         self,
