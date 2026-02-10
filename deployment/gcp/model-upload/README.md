@@ -39,7 +39,9 @@ docker push arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
 1. Mount the GCS bucket as a storage volume on the Cloud Run service: https://docs.cloud.google.com/run/docs/configuring/services/cloud-storage-volume-mounts
 2. Run the model upload container with the below envars:
   ```
-    GCS_PREFIX: /gcs/model-storage
+    GCS_PREFIX: Prefix for GCS object names (e.g. /gcs/model-storage)
+    GCS_BUCKET: Target GCS bucket name (required)
+    GOOGLE_APPLICATION_CREDENTIALS: Path to service account JSON (optional, uses Workload Identity if unset)
   ```
 
 ### Run genai-engine container
