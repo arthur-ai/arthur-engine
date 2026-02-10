@@ -8,10 +8,10 @@ import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { CopyableChip } from "./common";
+
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
-
-import { CopyableChip } from "./common";
 
 interface TaskMetrics {
   traceCount: number;
@@ -30,7 +30,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
 
   const { data: metrics = { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null } } = useQuery({
-    queryKey: ["taskMetrics", task.id],
+    queryKey: ["taskMetrics", task.id, api],
     queryFn: async (): Promise<TaskMetrics> => {
       if (!api) {
         return { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null };
