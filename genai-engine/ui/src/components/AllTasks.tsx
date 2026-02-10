@@ -3,6 +3,8 @@ import MenuIcon from "@mui/icons-material/Menu";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -20,7 +22,7 @@ export const AllTasks: React.FC = () => {
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
@@ -54,23 +56,6 @@ export const AllTasks: React.FC = () => {
       fetchTasks();
     }
   }, [api]);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isMenuOpen) {
-        const target = event.target as Element;
-        if (!target.closest(".relative")) {
-          setIsMenuOpen(false);
-        }
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -107,12 +92,6 @@ export const AllTasks: React.FC = () => {
 
   return (
     <>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow">
@@ -128,13 +107,16 @@ export const AllTasks: React.FC = () => {
                   </Button>
                 )}
                 &nbsp;
-                <div className="relative">
+                <>
                   <IconButton
                     aria-label="menu"
-                    onClick={() => setIsMenuOpen((prev) => !prev)}
+                    aria-haspopup="true"
+                    aria-expanded={menuAnchorEl !== null ? "true" : undefined}
+                    onClick={(e) => setMenuAnchorEl(e.currentTarget)}
                     sx={{
-                      backgroundColor: "white",
-                      border: "1px solid #e0e0e0",
+                      backgroundColor: "background.paper",
+                      border: "1px solid",
+                      borderColor: "divider",
                       borderRadius: "4px",
                       padding: "8px",
                       width: "40px",
@@ -143,15 +125,49 @@ export const AllTasks: React.FC = () => {
                   >
                     <MenuIcon />
                   </IconButton>
-                  {/* Dropdown menu */}
-                  {isMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                      <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "black" }}>
-                        Logout
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                  <Menu
+                    anchorEl={menuAnchorEl}
+                    open={menuAnchorEl !== null}
+                    onClose={() => setMenuAnchorEl(null)}
+                    anchorOrigin={{
+                      vertical: "bottom",
+                      horizontal: "right",
+                    }}
+                    transformOrigin={{
+                      vertical: "top",
+                      horizontal: "right",
+                    }}
+                    slotProps={{
+                      paper: {
+                        sx: {
+                          width: "150px",
+                        },
+                      },
+                    }}
+                  >
+                    <MenuItem
+                      onClick={() => {
+                        setMenuAnchorEl(null);
+                      }}
+                      sx={{
+                        justifyContent: "end",
+                      }}
+                    >
+                      User Settings
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        setMenuAnchorEl(null);
+                        handleLogout();
+                      }}
+                      sx={{
+                        justifyContent: "end",
+                      }}
+                    >
+                      Logout
+                    </MenuItem>
+                  </Menu>
+                </>
               </div>
             </div>
           </div>

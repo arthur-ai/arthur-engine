@@ -14,6 +14,7 @@ import {
   LiveTvOutlined,
   InsightsOutlined,
 } from "@mui/icons-material";
+import Button from "@mui/material/Button";
 import React from "react";
 
 interface SidebarNavigationProps {
@@ -90,6 +91,21 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
     },
   ];
 
+  const footerButtonSx = {
+    justifyContent: "flex-start",
+    textAlign: "left",
+    px: 1.5,
+    py: 1,
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    color: "text.secondary",
+    borderRadius: 1,
+    "&:hover": {
+      bgcolor: "action.hover",
+      color: "text.primary",
+    },
+  } as const;
+
   return (
     <nav className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col h-full">
       <div className="p-4 overflow-y-auto flex-1 min-h-0">
@@ -150,18 +166,18 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
         </div>
       </div>
 
-      {/* Logout button at the bottom */}
-      {onLogout && (
-        <div className="p-4 border-t border-gray-200 shrink-0">
-          <button
-            onClick={onLogout}
-            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 flex items-center gap-2"
-          >
-            <LogoutOutlined fontSize="small" />
-            <span>Logout</span>
-          </button>
-        </div>
-      )}
+      {/* User Settings and Logout at the bottom */}
+
+      <div className="p-4 border-t border-gray-200 shrink-0 space-y-1">
+        <Button variant="text" fullWidth startIcon={<SettingsOutlined fontSize="small" />} sx={footerButtonSx}>
+          User Settings
+        </Button>
+        {onLogout && (
+          <Button variant="text" fullWidth startIcon={<LogoutOutlined fontSize="small" />} onClick={onLogout} sx={footerButtonSx}>
+            Logout
+          </Button>
+        )}
+      </div>
     </nav>
   );
 };
