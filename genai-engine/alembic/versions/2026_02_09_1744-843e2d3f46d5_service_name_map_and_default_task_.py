@@ -34,8 +34,8 @@ def upgrade() -> None:
 
     # Create __unmapped__ task
     op.execute(f"""
-        INSERT INTO tasks (id, name, created_at, updated_at, is_agentic, archived)
-        VALUES ('{unmapped_task_id}', '{DEFAULT_SERVICE_NAME}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, false)
+        INSERT INTO tasks (id, name, created_at, updated_at, is_agentic, archived, task_metadata)
+        VALUES ('{unmapped_task_id}', '{DEFAULT_SERVICE_NAME}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, false, NULL)
     """)
 
     # Create mapping for __unmapped__ service name → __unmapped__ task
@@ -57,7 +57,7 @@ def upgrade() -> None:
             WHERE id IN (
                 SELECT id FROM spans
                 WHERE task_id IS NULL
-                LIMIT {batch_size}
+                LIMIT {BATCH_SIZE}
             )
         """))
 
@@ -67,12 +67,12 @@ def upgrade() -> None:
         if rows_updated > 0:
             print(f"  Backfilled {rows_updated} spans (total: {total_updated})")
 
-        if rows_updated < batch_size:
+        if rows_updated < BATCH_SIZE:
             break
 
     print(f"Completed backfill of spans table: {total_updated} rows updated")
 
-    # Step 7: Backfill NULL task_ids in trace_metadata table (batched, 100 rows at a time)
+    # Backfill NULL task_ids in trace_metadata table (batched, 100 rows at a time)
     print("Starting backfill of NULL task_ids in trace_metadata table...")
 
     total_updated = 0
@@ -84,7 +84,7 @@ def upgrade() -> None:
             WHERE trace_id IN (
                 SELECT trace_id FROM trace_metadata
                 WHERE task_id IS NULL
-                LIMIT {batch_size}
+                LIMIT {BATCH_SIZE}
             )
         """))
 
@@ -94,81 +94,74 @@ def upgrade() -> None:
         if rows_updated > 0:
             print(f"  Backfilled {rows_updated} traces (total: {total_updated})")
 
-        if rows_updated < batch_size:
+        if rows_updated < BATCH_SIZE:
             break
 
     print(f"Completed backfill of trace_metadata table: {total_updated} rows updated")
 
 
 def downgrade() -> None:
-    # Step 1: Get the __unmapped__ task_id before deleting
+    # Get the __unmapped__ task_id before deleting
     connection = op.get_bind()
-    result = connection.execute(sa.text("""
-        SELECT task_id FROM service_name_task_mappings
-        WHERE service_name = '__unmapped__'
-    """))
-    row = result.fetchone()
 
-    if row:
-        unmapped_task_id = row[0]
+   
 
-        # Step 2: Revert task_ids back to NULL in spans table (batched)
-        print("Reverting task_ids to NULL in spans table...")
-        batch_size = 100
-        total_reverted = 0
+    # Revert task_ids back to NULL in spans table (batched)
+    print("Reverting task_ids to NULL in spans table...")
+    total_reverted = 0
 
-        while True:
-            result = connection.execute(sa.text(f"""
-                UPDATE spans
-                SET task_id = NULL
-                WHERE id IN (
-                    SELECT id FROM spans
-                    WHERE task_id = '{unmapped_task_id}'
-                    LIMIT {batch_size}
-                )
-            """))
-
-            rows_updated = result.rowcount
-            total_reverted += rows_updated
-
-            if rows_updated > 0:
-                print(f"  Reverted {rows_updated} spans (total: {total_reverted})")
-
-            if rows_updated < batch_size:
-                break
-
-        print(f"Completed revert of spans table: {total_reverted} rows updated")
-
-        # Step 3: Revert task_ids back to NULL in trace_metadata table (batched)
-        print("Reverting task_ids to NULL in trace_metadata table...")
-        total_reverted = 0
-
-        while True:
-            result = connection.execute(sa.text(f"""
-                UPDATE trace_metadata
-                SET task_id = NULL
-                WHERE trace_id IN (
-                    SELECT trace_id FROM trace_metadata
-                    WHERE task_id = '{unmapped_task_id}'
-                    LIMIT {batch_size}
-                )
-            """))
-
-            rows_updated = result.rowcount
-            total_reverted += rows_updated
-
-            if rows_updated > 0:
-                print(f"  Reverted {rows_updated} traces (total: {total_reverted})")
-
-            if rows_updated < batch_size:
-                break
-
-        print(f"Completed revert of trace_metadata table: {total_reverted} rows updated")
-
-        # Step 4: Delete __unmapped__ task (CASCADE will remove mapping)
-        connection.execute(sa.text(f"""
-            DELETE FROM tasks WHERE id = '{unmapped_task_id}'
+    while True:
+        result = connection.execute(sa.text(f"""
+            UPDATE spans
+            SET task_id = NULL
+            WHERE id IN (
+                SELECT id FROM spans
+                WHERE task_id = '{unmapped_task_id}'
+                LIMIT {BATCH_SIZE}
+            )
         """))
+
+        rows_updated = result.rowcount
+        total_reverted += rows_updated
+
+        if rows_updated > 0:
+            print(f"  Reverted {rows_updated} spans (total: {total_reverted})")
+
+        if rows_updated < BATCH_SIZE:
+            break
+
+    print(f"Completed revert of spans table: {total_reverted} rows updated")
+
+    # Revert task_ids back to NULL in trace_metadata table (batched)
+    print("Reverting task_ids to NULL in trace_metadata table...")
+    total_reverted = 0
+
+    while True:
+        result = connection.execute(sa.text(f"""
+            UPDATE trace_metadata
+            SET task_id = NULL
+            WHERE trace_id IN (
+                SELECT trace_id FROM trace_metadata
+                WHERE task_id = '{unmapped_task_id}'
+                LIMIT {BATCH_SIZE}
+            )
+        """))
+
+        rows_updated = result.rowcount
+        total_reverted += rows_updated
+
+        if rows_updated > 0:
+            print(f"  Reverted {rows_updated} traces (total: {total_reverted})")
+
+        if rows_updated < BATCH_SIZE:
+            break
+
+    print(f"Completed revert of trace_metadata table: {total_reverted} rows updated")
+
+    # Step 4: Delete __unmapped__ task (CASCADE will remove mapping)
+    connection.execute(sa.text(f"""
+        DELETE FROM tasks WHERE id = '{unmapped_task_id}'
+    """))
 
     # Step 5: Drop indexes and table
     op.drop_index(op.f('ix_service_name_task_mappings_task_id'), table_name='service_name_task_mappings')

@@ -161,7 +161,6 @@ class TaskRepository:
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=True,
-            task_metadata=None,
         )
 
         return self.create_task(task, with_default_rules=False)

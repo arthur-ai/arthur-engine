@@ -19,14 +19,12 @@ from sqlalchemy.dialects.sqlite import (
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from db_models import DatabaseSpan, DatabaseTraceMetadata
-from repositories.metrics_repository import MetricRepository
+from dependencies import get_task_repository
+from repositories.configuration_repository import ConfigurationRepository
 from repositories.resource_metadata_repository import ResourceMetadataRepository
-from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
-from repositories.tasks_repository import TaskRepository
-from schemas.internal_schemas import ApplicationConfiguration
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
 from utils.constants import (
@@ -276,17 +274,11 @@ class TraceIngestionService:
         )
 
         try:
-            # Initialize TaskRepository with required dependencies
-            rule_repo = RuleRepository(self.db_session)
-            metric_repo = MetricRepository(self.db_session)
-            app_config = ApplicationConfiguration(llm_rule_limit_per_task=10)
 
-            task_repo = TaskRepository(
-                self.db_session,
-                rule_repo,
-                metric_repo,
-                app_config,
-            )
+            config_repo = ConfigurationRepository(self.db_session)
+            app_config = config_repo.get_configurations()
+
+            task_repo = get_task_repository(self.db_session, app_config)
 
             # Create auto-task using TaskRepository
             new_task = task_repo.create_auto_task(service_name)
