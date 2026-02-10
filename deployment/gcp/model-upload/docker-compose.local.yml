@@ -29,18 +29,16 @@ services:
     user: root
     volumes:
       # Mount local directory for downloaded models
-      - ./models-output:/models
-    environment:
-      - LOG_LEVEL=INFO
-      # Set runtime model path for post-processing (where models will be at runtime)
-      - MODEL_RUNTIME_PATH=/models/microsoft/mdeberta-v3-base
+      - ./models:/models
     command: >
       sh -c "
         python download_models.py --output-dir /models --workers 4 &&
-        echo '✅ Download test complete - models saved to ./models-output'
+        echo '✅ Download test complete - models saved to ./models'
       "
     # Remove after completion (since this is a one-time download job)
     restart: "no"
+    profiles:
+      - download-test
 
   # Service to test uploading to GCS
   # Requires: GOOGLE_APPLICATION_CREDENTIALS and GCS_BUCKET environment variables
@@ -54,12 +52,10 @@ services:
     # In production (Cloud Run), the container runs as nonroot (uid 65532)
     user: root
     volumes:
-      # Mount local directory with pre-downloaded models (or use models from build)
-      - ./models-output:/models:ro
       # Mount service account credentials if using file-based auth
       - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:/tmp/gcp-credentials.json:ro
     environment:
-      - MODELS_DIR=/models
+      - MODELS_DIR=/model-storage
       - LOG_LEVEL=INFO
       # GCS configuration (required for upload)
       - GCS_BUCKET=${GCS_BUCKET:-}
@@ -68,6 +64,3 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/tmp/gcp-credentials.json}
     # Remove after completion (since this is a one-time upload job)
     restart: "no"
-    # Only run if GCS_BUCKET is set
-    profiles:
-      - upload
