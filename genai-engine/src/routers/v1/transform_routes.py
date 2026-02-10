@@ -71,6 +71,7 @@ def list_transforms_for_task(
         )
         return ListTraceTransformsResponse(
             transforms=[transform.to_response_model() for transform in transforms],
+            count=len(transforms),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
