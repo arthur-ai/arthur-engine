@@ -46,9 +46,8 @@ def upgrade() -> None:
 
     # Backfill NULL task_ids in spans table (batched, 100 rows at a time)
     connection = op.get_bind()
-    print("Starting backfill of NULL task_ids in spans table...")
 
-    total_updated = 0
+    total_spans_updated = 0
 
     while True:
         result = connection.execute(sa.text(f"""
@@ -62,20 +61,15 @@ def upgrade() -> None:
         """))
 
         rows_updated = result.rowcount
-        total_updated += rows_updated
-
-        if rows_updated > 0:
-            print(f"  Backfilled {rows_updated} spans (total: {total_updated})")
+        total_spans_updated += rows_updated
 
         if rows_updated < BATCH_SIZE:
             break
 
-    print(f"Completed backfill of spans table: {total_updated} rows updated")
+    print(f"Backfilled {total_spans_updated} spans with __unmapped__ task")
 
     # Backfill NULL task_ids in trace_metadata table (batched, 100 rows at a time)
-    print("Starting backfill of NULL task_ids in trace_metadata table...")
-
-    total_updated = 0
+    total_traces_updated = 0
 
     while True:
         result = connection.execute(sa.text(f"""
@@ -89,15 +83,12 @@ def upgrade() -> None:
         """))
 
         rows_updated = result.rowcount
-        total_updated += rows_updated
-
-        if rows_updated > 0:
-            print(f"  Backfilled {rows_updated} traces (total: {total_updated})")
+        total_traces_updated += rows_updated
 
         if rows_updated < BATCH_SIZE:
             break
 
-    print(f"Completed backfill of trace_metadata table: {total_updated} rows updated")
+    print(f"Backfilled {total_traces_updated} traces with __unmapped__ task")
 
 
 def downgrade() -> None:
@@ -107,8 +98,7 @@ def downgrade() -> None:
    
 
     # Revert task_ids back to NULL in spans table (batched)
-    print("Reverting task_ids to NULL in spans table...")
-    total_reverted = 0
+    total_spans_reverted = 0
 
     while True:
         result = connection.execute(sa.text(f"""
@@ -122,19 +112,15 @@ def downgrade() -> None:
         """))
 
         rows_updated = result.rowcount
-        total_reverted += rows_updated
-
-        if rows_updated > 0:
-            print(f"  Reverted {rows_updated} spans (total: {total_reverted})")
+        total_spans_reverted += rows_updated
 
         if rows_updated < BATCH_SIZE:
             break
 
-    print(f"Completed revert of spans table: {total_reverted} rows updated")
+    print(f"Reverted {total_spans_reverted} spans to NULL task_id")
 
     # Revert task_ids back to NULL in trace_metadata table (batched)
-    print("Reverting task_ids to NULL in trace_metadata table...")
-    total_reverted = 0
+    total_traces_reverted = 0
 
     while True:
         result = connection.execute(sa.text(f"""
@@ -148,15 +134,12 @@ def downgrade() -> None:
         """))
 
         rows_updated = result.rowcount
-        total_reverted += rows_updated
-
-        if rows_updated > 0:
-            print(f"  Reverted {rows_updated} traces (total: {total_reverted})")
+        total_traces_reverted += rows_updated
 
         if rows_updated < BATCH_SIZE:
             break
 
-    print(f"Completed revert of trace_metadata table: {total_reverted} rows updated")
+    print(f"Reverted {total_traces_reverted} traces to NULL task_id")
 
     # Step 4: Delete __unmapped__ task (CASCADE will remove mapping)
     connection.execute(sa.text(f"""
