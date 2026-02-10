@@ -95,6 +95,7 @@ export const TransformSelector = withFieldGroup({
         listeners={{
           onChange: async ({ value }) => {
             if (!traceId) return group.setFieldValue("columns", []);
+            if (!value) return;
 
             await executeTransformMutation.mutateAsync({ transformId: value });
           },
@@ -124,7 +125,7 @@ export const TransformSelector = withFieldGroup({
               renderOption={(props, option) => {
                 return (
                   <li {...props} key={option.id}>
-                    <SelectorOption option={option} dataset={latestVersion!} />
+                    <SelectorOption option={option} dataset={latestVersion} />
                   </li>
                 );
               }}
@@ -143,7 +144,7 @@ const STATUS_CONFIG: Record<MatchStatus, { backgroundColor: string; borderColor:
   "no-match": { backgroundColor: "var(--color-red-50)", borderColor: "var(--color-red-200)", color: "var(--color-red-700)" },
 };
 
-const SelectorOption = ({ option, dataset }: { option: TraceTransformResponse; dataset: DatasetVersionMetadataResponse }) => {
+const SelectorOption = ({ option, dataset }: { option: TraceTransformResponse; dataset: DatasetVersionMetadataResponse | undefined }) => {
   const { matchCount, matchStatus, unmatchedTransform } = useMatchingVariables({
     columnNames: dataset?.column_names ?? [],
     variables: option.definition.variables ?? [],
