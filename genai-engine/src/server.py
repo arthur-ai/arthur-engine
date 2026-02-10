@@ -74,6 +74,10 @@ from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
 )
+from services.currency import (
+    initialize_currency_conversion_service,
+    shutdown_currency_conversion_service,
+)
 from services.task import (
     initialize_registered_agent_polling_service,
     shutdown_registered_agent_polling_service,
@@ -223,6 +227,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Error initializing continuous eval queue service: {e}")
 
+    # Initialize currency conversion service (exchange rates, 6-hour refresh at 00/06/12/18 UTC)
+    try:
+        initialize_currency_conversion_service()
+    except Exception as e:
+        logger.error(f"Error initializing currency conversion service: {e}")
     # Initialize registered agent polling service
     try:
         initialize_registered_agent_polling_service(num_workers=4)
@@ -245,6 +254,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     cleanup_cuda_cache()
+    shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
     shutdown_registered_agent_polling_service()
 
