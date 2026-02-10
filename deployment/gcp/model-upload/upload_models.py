@@ -8,7 +8,6 @@ preserving the directory structure.
 Environment variables:
     GCS_BUCKET: Target GCS bucket name (required)
     GCS_PREFIX: Prefix for GCS object names (optional, default: empty)
-    MODELS_DIR: Local directory containing models (optional, default: /models)
     GOOGLE_APPLICATION_CREDENTIALS: Path to service account JSON (optional, uses Workload Identity if unset)
 """
 
@@ -134,21 +133,12 @@ def upload_models(
     return stats
 
 
-def pre_process_models(output_dir: Path) -> bool:
-    """
-    Pre-process downloaded models to fix common issues.
-
-    Args:
-        output_dir: Output directory where models will be copied to
-
-    Returns:
-        True if successful, False if any errors occurred
-    """
+def pre_process_models(models_dir: Path, prefix: str) -> bool:
     logger.info("🔧 Starting pre-processing of models...")
 
     # GLiNER model needs config.json (transformers convention)
     # but we only download gliner_config.json, so copy it
-    gliner_model_dir = Path("/models") / "urchade" / "gliner_multi_pii-v1"
+    gliner_model_dir = models_dir / "urchade" / "gliner_multi_pii-v1"
     gliner_config = gliner_model_dir / "gliner_config.json"
     config_json = gliner_model_dir / "config.json"
 
@@ -161,7 +151,7 @@ def pre_process_models(output_dir: Path) -> bool:
         logger.info(f"  - config.json exists: {config_json.exists()}")
 
     # Update model_name to local path in both config files
-    local_model_path = f"/home/nonroot{output_dir}/microsoft/mdeberta-v3-base"
+    local_model_path = f"/home/nonroot/{prefix}/microsoft/mdeberta-v3-base"
 
     if gliner_config.exists():
         try:
@@ -207,7 +197,7 @@ def main() -> int:
         return 1
 
     prefix = os.getenv("GCS_PREFIX", "").strip("/")
-    models_dir = Path(os.getenv("MODELS_DIR", "/model-storage"))
+    models_dir = Path(os.getenv("MODELS_DIR", "/models"))
 
     logger.info("=" * 60)
     logger.info("Arthur Model Repository - GCS Upload Task")
@@ -218,7 +208,7 @@ def main() -> int:
     logger.info("=" * 60)
 
     # Pre-process models (fix common issues)
-    pre_process_success = pre_process_models(models_dir)
+    pre_process_success = pre_process_models(models_dir, prefix)
 
     # Upload models
     stats = upload_models(models_dir, bucket, prefix)
