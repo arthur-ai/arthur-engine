@@ -109,4 +109,7 @@ export const queryKeys = {
   providers: {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
   },
+  taskMetrics: {
+    all: (taskId: string) => ["taskMetrics", "all", taskId] as const,
+  },
 } as const;
