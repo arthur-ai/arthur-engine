@@ -35,12 +35,21 @@ docker push arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
 ```
 
 ## Create and run the Cloud Run Job
+### Run genai-engine-models-gcp container
 1. Mount the GCS bucket as a storage volume on the Cloud Run service: https://docs.cloud.google.com/run/docs/configuring/services/cloud-storage-volume-mounts
-2. Adjust the below GenAI envars accordingly:
+2. Run the model upload container with the below envars:
+  ```
+    GCS_PREFIX: Prefix for GCS object names (e.g. /gcs/model-storage)
+    GCS_BUCKET: Target GCS bucket name (required)
+    GOOGLE_APPLICATION_CREDENTIALS: Path to service account JSON (optional, uses Workload Identity if unset)
+  ```
+
+### Run genai-engine container
+Adjust the below GenAI envars accordingly:
   ```
   # specify the mount location
-  # `MODEL_STORAGE_PATH` must be set to `/home/nonroot/{TARGET_DIR specified to model-upload container}`.
-  MODEL_STORAGE_PATH=/home/nonroot/model-storage
+  # `MODEL_STORAGE_PATH` must be set to `/home/nonroot{GCS_PREFIX specified to model-upload container}`.
+  MODEL_STORAGE_PATH=/home/nonroot/gcs/model-storage
   # set HF models to offline mode
   HF_HUB_OFFLINE=1
   ```
