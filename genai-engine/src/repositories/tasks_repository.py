@@ -111,6 +111,15 @@ class TaskRepository:
 
     def archive_task(self, task_id: str) -> None:
         db_task = self.get_db_task_by_id(task_id)
+
+        # Prevent archiving of system tasks
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot archive system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
                 self.rule_repository.archive_rule(link.rule_id)
@@ -257,6 +266,16 @@ class TaskRepository:
         self.db_session.commit()
 
     def delete_task(self, task_id: str) -> None:
+        db_task = self.get_db_task_by_id(task_id)
+
+        # Prevent deletion of system tasks
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
         self.db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
         self.db_session.commit()
 
