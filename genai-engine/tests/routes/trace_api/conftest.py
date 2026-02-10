@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from db_models import (
     DatabaseMetric,
     DatabaseMetricResult,
+    DatabaseServiceNameTaskMapping,
     DatabaseSpan,
     DatabaseTask,
     DatabaseTaskToMetrics,
@@ -35,9 +36,70 @@ from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
 
 
+@pytest.fixture(scope="session")
+def unmapped_task():
+    """Create the __unmapped__ task and mapping for tests.
+
+    This fixture runs once per test session and ensures the __unmapped__ task
+    exists for tests that ingest traces without service names.
+    """
+    from utils.constants import DEFAULT_SERVICE_NAME
+
+    db_session = override_get_db_session()
+
+    # Check if __unmapped__ task already exists
+    existing_mapping = (
+        db_session.query(DatabaseServiceNameTaskMapping)
+        .filter(DatabaseServiceNameTaskMapping.service_name == DEFAULT_SERVICE_NAME)
+        .first()
+    )
+
+    if existing_mapping:
+        # Already exists, return the task_id
+        yield existing_mapping.task_id
+        return
+
+    # Create __unmapped__ task
+    unmapped_task_id = str(uuid.uuid4())
+    current_time = datetime.now()
+    unmapped_task = DatabaseTask(
+        id=unmapped_task_id,
+        name=DEFAULT_SERVICE_NAME,
+        created_at=current_time,
+        updated_at=current_time,
+        is_agentic=True,
+        archived=False,
+    )
+    db_session.add(unmapped_task)
+    db_session.commit()
+
+    # Create mapping
+    mapping = DatabaseServiceNameTaskMapping(
+        service_name=DEFAULT_SERVICE_NAME,
+        task_id=unmapped_task_id,
+        created_at=current_time,
+    )
+    db_session.add(mapping)
+    db_session.commit()
+
+    yield unmapped_task_id
+
+    # Cleanup at end of session
+    db_session.query(DatabaseServiceNameTaskMapping).filter(
+        DatabaseServiceNameTaskMapping.service_name == DEFAULT_SERVICE_NAME
+    ).delete()
+    db_session.query(DatabaseTask).filter(
+        DatabaseTask.id == unmapped_task_id
+    ).delete()
+    db_session.commit()
+
+
 @pytest.fixture(scope="function")
-def client():
-    """Create a test client for the trace API endpoints."""
+def client(unmapped_task):
+    """Create a test client for the trace API endpoints.
+
+    Depends on unmapped_task to ensure __unmapped__ task exists.
+    """
     return get_genai_engine_test_client()
 
 
@@ -86,15 +148,22 @@ def _get_trace_metadata(db_session: Session, trace_id: str) -> DatabaseTraceMeta
     ).scalar_one_or_none()
 
 
-def _create_base_trace_request(task_id=None):
-    """Create a base ExportTraceServiceRequest with resource attributes."""
+def _create_base_trace_request(task_id=None, service_name="test_service"):
+    """Create a base ExportTraceServiceRequest with resource attributes.
+
+    Args:
+        task_id: Optional task ID to set in arthur.task attribute
+        service_name: Service name to set in service.name attribute.
+                     Pass None to create a trace without service.name.
+    """
     trace_request = ExportTraceServiceRequest()
     resource_span = ResourceSpans()
 
-    # Add service name attribute
-    resource_span.resource.attributes.extend(
-        [KeyValue(key="service.name", value=AnyValue(string_value="test_service"))],
-    )
+    # Add service name attribute if provided
+    if service_name is not None:
+        resource_span.resource.attributes.extend(
+            [KeyValue(key="service.name", value=AnyValue(string_value=service_name))],
+        )
 
     # Add task ID to resource attributes if provided
     if task_id:

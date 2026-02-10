@@ -39,6 +39,9 @@ from db_models import (
     DatabaseTraceMetadata,
 )
 from db_models.llm_eval_models import DatabaseContinuousEval
+from repositories.service_name_mapping_repository import (
+    ServiceNameMappingRepository,
+)
 from schemas.internal_schemas import (
     SessionMetadata,
     Span,
@@ -47,7 +50,11 @@ from schemas.internal_schemas import (
     TraceUserMetadata,
 )
 from services.trace.filter_service import FilterService
-from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, SPAN_KIND_LLM
+from utils.constants import (
+    AGENT_EXPERIMENT_SESSION_PREFIX,
+    DEFAULT_SERVICE_NAME,
+    SPAN_KIND_LLM,
+)
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -1281,7 +1288,7 @@ class SpanQueryService:
         end_time: Optional[datetime] = None,
     ) -> tuple[list[tuple[str, int]], int]:
         """
-        Query root spans (parent_span_id IS NULL) for traces without task_id (task_id IS NULL),
+        Query root spans (parent_span_id IS NULL) for traces assigned to __unmapped__ task,
         grouped by span_name.
 
         Args:
@@ -1294,6 +1301,16 @@ class SpanQueryService:
                 (span_name, count) tuples ordered by count descending,
                 and total_count is the total number of root spans across ALL groups (before pagination)
         """
+        # Get the __unmapped__ task_id from service name mappings
+        mapping_repo = ServiceNameMappingRepository(self.db_session)
+        unmapped_task_id = mapping_repo.get_task_id_by_service_name(
+            DEFAULT_SERVICE_NAME,
+        )
+
+        if not unmapped_task_id:
+            # If __unmapped__ task doesn't exist, return empty results
+            return [], 0
+
         # Base query for grouping
         base_query = (
             select(
@@ -1301,7 +1318,7 @@ class SpanQueryService:
                 func.count().label("count"),
             )
             .where(DatabaseSpan.parent_span_id.is_(None))
-            .where(DatabaseSpan.task_id.is_(None))
+            .where(DatabaseSpan.task_id == unmapped_task_id)
         )
 
         # Apply time range filters if provided
