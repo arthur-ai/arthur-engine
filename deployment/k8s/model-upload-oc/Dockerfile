@@ -26,7 +26,9 @@ RUN poetry config virtualenvs.create false && \
 COPY download_models.py .
 
 # Download all models during build (includes relevance models and PII v2)
-RUN python download_models.py --output-dir /models --workers 4
+# Set MODEL_RUNTIME_PATH to where models will be available at runtime (in genai-engine pods)
+RUN MODEL_RUNTIME_PATH=/home/nonroot/models/microsoft/mdeberta-v3-base \
+    python download_models.py --output-dir /models --workers 4
 
 # =============================================================================
 # Stage 2: Prepare runtime (copy_models.py uses only stdlib, no deps needed)
