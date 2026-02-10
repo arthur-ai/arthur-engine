@@ -1,6 +1,6 @@
-# Arthur Model Upload - OpenShift PVC Version
+# Arthur Model Upload - Kubernetes/OpenShift PVC Version
 
-An OpenShift/Kubernetes job that copies pre-downloaded ML models to a PersistentVolumeClaim for airgapped deployments.
+An Kubernetes/OpenShift job that copies pre-downloaded ML models to a PersistentVolumeClaim for airgapped deployments.
 
 ## Overview
 
@@ -8,17 +8,7 @@ This is the **OpenShift PVC version** that:
 1. Downloads ML models from Hugging Face during Docker build
 2. When run as a Kubernetes Job, copies all models to a PersistentVolumeClaim
 3. Other pods (like genai-engine) can mount the same PVC to access models
-4. **No S3 required** - uses OpenShift native storage
-
-## Differences from S3 Version
-
-| Feature | S3 Version (`model-upload`) | PVC Version (`model-upload-oc`) |
-|---------|---------------------------|--------------------------------|
-| Storage | AWS S3 | PersistentVolumeClaim |
-| Script | `upload_models.py` | `copy_models.py` |
-| Dependencies | boto3, AWS credentials | Python stdlib only |
-| Network | Requires S3 access | No external network needed |
-| Use Case | AWS/cloud deployments | Airgapped OpenShift |
+4. Uses Kubernetes/OpenShift native storage
 
 ## Quick Start
 
@@ -86,9 +76,17 @@ PersistentVolumeClaim
        │ Other pods mount PVC
        ▼
 genai-engine Pods
-  └── /home/nonroot/models/ (read models from PVC)
+  └── /home/nonroot/models-output/ (read models from PVC)
 ```
 
-## See Also
-
-For the S3 version, see `../model-upload/README.md`
+## GenAI Engine Configurations
+Refer to the Docker Compose example below.
+`MODEL_STORAGE_PATH` must be set to `/home/nonroot/{TARGET_DIR specified to model-upload container}`.
+```
+    environment:
+      - MODEL_STORAGE_PATH=/home/nonroot/model-storage
+      - HF_HUB_OFFLINE=1
+    volumes:
+      # Mount models directory to persist pre-downloaded models across container restarts
+      - ../deployment/k8s/model-upload-oc/model-storage:/home/nonroot/model-storage
+```

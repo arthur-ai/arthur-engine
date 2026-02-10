@@ -23,8 +23,9 @@ if TYPE_CHECKING:
     pass
 
 # Configure logging
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
+    level=getattr(logging, log_level, logging.INFO),
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
@@ -155,7 +156,8 @@ def post_process_models(target_dir: Path) -> None:
         logger.info(f"  - config.json exists: {config_json.exists()}")
 
     # Update model_name to local path in both config files
-    local_model_path = "/home/nonroot/models/microsoft/mdeberta-v3-base"
+    # The path is where models will be mounted at runtime in genai-engine pods
+    local_model_path = f"/home/nonroot{target_dir}/microsoft/mdeberta-v3-base"
 
     if gliner_config.exists():
         try:
@@ -181,8 +183,6 @@ def post_process_models(target_dir: Path) -> None:
                 )
                 shutil.copy2(gliner_config, config_json)
                 logger.info("✅ Created config.json for GLiNER model")
-            else:
-                logger.info("📝 Updating model_name in existing config.json")
 
             # Update config.json if it exists
             if config_json.exists():
@@ -201,10 +201,10 @@ def post_process_models(target_dir: Path) -> None:
                     logger.info("⏭️  config.json already has correct model_name")
 
         except Exception as e:
-            logger.warning(f"⚠️  Failed to update GLiNER config files: {e}")
+            logger.error(f"⚠️  Failed to update GLiNER config files: {e}")
     elif not gliner_config.exists():
-        logger.info(
-            f"⏭️  Skipping GLiNER config updates: gliner_config.json not found at {gliner_config}",
+        logger.error(
+            f"⚠️  Skipping GLiNER config updates: gliner_config.json not found at {gliner_config}",
         )
 
     logger.info("✅ Post-processing complete")
@@ -214,7 +214,7 @@ def main() -> int:
     """Main entry point."""
     # Get configuration from environment
     source_dir = Path(os.getenv("SOURCE_DIR", "/models"))
-    target_dir = Path(os.getenv("TARGET_DIR", "/models-output"))
+    target_dir = Path(os.getenv("TARGET_DIR", "/model-storage"))
 
     logger.info("=" * 60)
     logger.info("Arthur Model Repository - Volume Copy Task")
