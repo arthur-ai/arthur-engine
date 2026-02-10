@@ -9,8 +9,6 @@ with the structure expected by the model repository server.
 import argparse
 import json
 import logging
-import os
-import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -193,106 +191,6 @@ def load_models_config(config_path: str) -> dict[str, list[str]]:
         return json.load(f)
 
 
-def post_process_models(
-    output_dir: Path,
-    runtime_model_path: str | None = None,
-) -> bool:
-    """
-    Post-process downloaded models to fix common issues.
-
-    Args:
-        output_dir: Output directory where models were downloaded
-        runtime_model_path: Path where models will be available at runtime.
-                           If None, uses output_dir/microsoft/mdeberta-v3-base.
-                           Can be set via MODEL_RUNTIME_PATH environment variable.
-
-    Returns:
-        True if successful, False if any errors occurred
-    """
-    logger.info("🔧 Starting post-processing of models...")
-
-    # Determine the runtime model path
-    if runtime_model_path is None:
-        runtime_model_path = os.getenv(
-            "MODEL_RUNTIME_PATH",
-            str(output_dir / "microsoft" / "mdeberta-v3-base"),
-        )
-
-    # GLiNER model needs config.json (transformers convention)
-    # but we only download gliner_config.json, so copy it
-    gliner_model_dir = output_dir / "urchade" / "gliner_multi_pii-v1"
-    gliner_config = gliner_model_dir / "gliner_config.json"
-    config_json = gliner_model_dir / "config.json"
-
-    logger.info(f"Checking GLiNER model directory: {gliner_model_dir}")
-    logger.info(f"  - Directory exists: {gliner_model_dir.exists()}")
-
-    if gliner_model_dir.exists():
-        logger.info(f"  - Files in directory: {list(gliner_model_dir.iterdir())}")
-        logger.info(f"  - gliner_config.json exists: {gliner_config.exists()}")
-        logger.info(f"  - config.json exists: {config_json.exists()}")
-
-    success = True
-
-    if gliner_config.exists():
-        try:
-            # Read and update gliner_config.json
-            with open(gliner_config, "r") as f:
-                gliner_data = json.load(f)
-
-            if gliner_data.get("model_name") != runtime_model_path:
-                logger.info(
-                    f"📝 Updating model_name in gliner_config.json from '{gliner_data.get('model_name')}' to '{runtime_model_path}'",
-                )
-                gliner_data["model_name"] = runtime_model_path
-                with open(gliner_config, "w") as f:
-                    json.dump(gliner_data, f, indent=2)
-                logger.info("✅ Updated gliner_config.json")
-            else:
-                logger.info("⏭️  gliner_config.json already has correct model_name")
-
-            # Create or update config.json
-            if not config_json.exists():
-                logger.info(
-                    "📋 Creating config.json from gliner_config.json for GLiNER model",
-                )
-                shutil.copy2(gliner_config, config_json)
-                logger.info("✅ Created config.json for GLiNER model")
-            else:
-                logger.info("📝 Updating model_name in existing config.json")
-
-            # Update config.json if it exists
-            if config_json.exists():
-                with open(config_json, "r") as f:
-                    config_data = json.load(f)
-
-                if config_data.get("model_name") != runtime_model_path:
-                    logger.info(
-                        f"📝 Updating model_name in config.json from '{config_data.get('model_name')}' to '{runtime_model_path}'",
-                    )
-                    config_data["model_name"] = runtime_model_path
-                    with open(config_json, "w") as f:
-                        json.dump(config_data, f, indent=2)
-                    logger.info("✅ Updated config.json")
-                else:
-                    logger.info("⏭️  config.json already has correct model_name")
-
-        except Exception as e:
-            logger.error(f"❌ Failed to update GLiNER config files: {e}")
-            success = False
-    elif not gliner_config.exists():
-        logger.info(
-            f"⏭️  Skipping GLiNER config updates: gliner_config.json not found at {gliner_config}",
-        )
-
-    if success:
-        logger.info("✅ Post-processing complete")
-    else:
-        logger.error("❌ Post-processing failed")
-
-    return success
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Download Hugging Face models for airgapped deployment",
@@ -328,12 +226,6 @@ def main():
         action="store_true",
         help="Exclude relevance models to reduce image size",
     )
-    parser.add_argument(
-        "--runtime-model-path",
-        type=str,
-        help="Path where models will be available at runtime (for config updates). "
-        "Can also be set via MODEL_RUNTIME_PATH environment variable.",
-    )
 
     args = parser.parse_args()
 
@@ -357,9 +249,6 @@ def main():
     # Download models
     results = download_models(models, args.output_dir, args.workers)
 
-    # Post-process models (fix common issues)
-    post_process_success = post_process_models(args.output_dir, args.runtime_model_path)
-
     # Print summary
     print("\n" + "=" * 60)
     print("DOWNLOAD SUMMARY")
@@ -373,10 +262,6 @@ def main():
         print("\nFailed downloads:")
         for item in results["failed"]:
             print(f"  - {item['model']}/{item['file']}: {item['error']}")
-        sys.exit(1)
-
-    if not post_process_success:
-        logger.error("❌ Post-processing failed - build cannot continue")
         sys.exit(1)
 
     print("\n✓ All models downloaded successfully!")

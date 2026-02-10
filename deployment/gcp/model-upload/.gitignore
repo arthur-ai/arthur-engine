@@ -24,6 +24,6 @@ ENV/
 Thumbs.db
 
 # Project specific
-models-output/
+models/
 *.log
 .env
