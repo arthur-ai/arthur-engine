@@ -141,7 +141,8 @@ class TaskRepository:
         """Create an auto-generated task for a service name.
 
         Auto-created tasks:
-        - Have name prefixed with "auto-created:"
+        - Have name set to the service_name
+        - Have is_autocreated=True flag set
         - Are agentic (is_agentic=True)
         - Do NOT get default rules (with_default_rules=False)
         - Have no task_metadata (not a registered agent)
@@ -153,14 +154,14 @@ class TaskRepository:
             Task: The created task
         """
         task_id = str(uuid.uuid4())
-        task_name = f"{constants.AUTO_CREATED_TASK_PREFIX}{service_name}"
 
         task = Task(
             id=task_id,
-            name=task_name,
+            name=service_name,
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=True,
+            is_autocreated=True,
         )
 
         return self.create_task(task, with_default_rules=False)

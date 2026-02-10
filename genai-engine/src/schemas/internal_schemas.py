@@ -604,6 +604,7 @@ class Task(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
+    is_autocreated: bool = False
     task_metadata: Optional[TaskMetadata] = None
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
@@ -646,6 +647,7 @@ class Task(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             is_agentic=x.is_agentic,
+            is_autocreated=x.is_autocreated,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -666,6 +668,7 @@ class Task(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
             task_metadata=(
                 self.task_metadata.model_dump(exclude_none=True)
                 if self.task_metadata
@@ -699,6 +702,7 @@ class Task(BaseModel):
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
             agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,

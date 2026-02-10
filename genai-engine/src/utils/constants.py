@@ -402,7 +402,6 @@ USER_ID_KEY = SpanAttributes.USER_ID
 
 # Service name mapping constants
 DEFAULT_SERVICE_NAME = "__unmapped__"
-AUTO_CREATED_TASK_PREFIX = "auto-created:"
 
 ##################################################################
 
