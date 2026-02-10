@@ -46,7 +46,10 @@ def test_dataset_versions_basic_functionality(
     dataset_name = "Dataset for Versions"
     dataset_description = "dataset for version operations"
 
-    status_code, agentic_task = client.create_task(name="test_dataset_versions_crud_task", is_agentic=True)
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_versions_crud_task",
+        is_agentic=True,
+    )
     assert status_code == 200
 
     status_code, created_dataset = client.create_dataset(
@@ -270,6 +273,7 @@ def test_dataset_versions_basic_functionality(
 
     # Try to get a non-existent row ID
     import uuid
+
     fake_row_id = str(uuid.uuid4())
     status_code, _ = client.get_dataset_version_row(
         dataset_id=dataset_id,
@@ -388,7 +392,10 @@ def test_dataset_versions_with_rows_to_delete_filter(
     dataset_name = "Dataset for Filter Delete Test"
     dataset_description = "Testing rows_to_delete_filter parameter"
 
-    status_code, agentic_task = client.create_task(name="test_dataset_versions_with_rows_to_delete_filter_task", is_agentic=True)
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_versions_with_rows_to_delete_filter_task",
+        is_agentic=True,
+    )
     assert status_code == 200
 
     status_code, created_dataset = client.create_dataset(
@@ -404,37 +411,82 @@ def test_dataset_versions_with_rows_to_delete_filter(
     rows_to_add = [
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User1"),
-                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="active"),
-                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="User1",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="status",
+                    column_value="active",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="category",
+                    column_value="test",
+                ),
             ],
         ),
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User2"),
-                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
-                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="User2",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="status",
+                    column_value="inactive",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="category",
+                    column_value="test",
+                ),
             ],
         ),
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User3"),
-                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
-                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="User3",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="status",
+                    column_value="inactive",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="category",
+                    column_value="production",
+                ),
             ],
         ),
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User4"),
-                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="active"),
-                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="User4",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="status",
+                    column_value="active",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="category",
+                    column_value="production",
+                ),
             ],
         ),
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User5"),
-                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
-                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="User5",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="status",
+                    column_value="inactive",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="category",
+                    column_value="test",
+                ),
             ],
         ),
     ]
@@ -452,8 +504,14 @@ def test_dataset_versions_with_rows_to_delete_filter(
     # This should delete User2 and User5 (both have status='inactive' AND category='test')
     # User3 should NOT be deleted (status='inactive' but category='production')
     rows_to_delete_filter = [
-        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="inactive"),
-        NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+        NewDatasetVersionRowColumnItemRequest(
+            column_name="status",
+            column_value="inactive",
+        ),
+        NewDatasetVersionRowColumnItemRequest(
+            column_name="category",
+            column_value="test",
+        ),
     ]
 
     status_code, version_2 = client.create_dataset_version(
@@ -479,8 +537,14 @@ def test_dataset_versions_with_rows_to_delete_filter(
     user1_id = _get_id_by_row_name(version_2.rows, "User1")
 
     rows_to_delete_filter_2 = [
-        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="active"),
-        NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+        NewDatasetVersionRowColumnItemRequest(
+            column_name="status",
+            column_value="active",
+        ),
+        NewDatasetVersionRowColumnItemRequest(
+            column_name="category",
+            column_value="production",
+        ),
     ]
 
     status_code, version_3 = client.create_dataset_version(
@@ -500,8 +564,14 @@ def test_dataset_versions_with_rows_to_delete_filter(
 
     # Test 4: Test with filter that matches no rows
     rows_to_delete_filter_3 = [
-        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="pending"),
-        NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+        NewDatasetVersionRowColumnItemRequest(
+            column_name="status",
+            column_value="pending",
+        ),
+        NewDatasetVersionRowColumnItemRequest(
+            column_name="category",
+            column_value="test",
+        ),
     ]
 
     status_code, version_4 = client.create_dataset_version(
@@ -520,16 +590,34 @@ def test_dataset_versions_with_rows_to_delete_filter(
     new_rows = [
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User6"),
-                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="archived"),
-                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="test"),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="User6",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="status",
+                    column_value="archived",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="category",
+                    column_value="test",
+                ),
             ],
         ),
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="name", column_value="User7"),
-                NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="archived"),
-                NewDatasetVersionRowColumnItemRequest(column_name="category", column_value="production"),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="User7",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="status",
+                    column_value="archived",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="category",
+                    column_value="production",
+                ),
             ],
         ),
     ]
@@ -543,7 +631,10 @@ def test_dataset_versions_with_rows_to_delete_filter(
 
     # Now delete all 'archived' rows using a single condition filter
     rows_to_delete_filter_4 = [
-        NewDatasetVersionRowColumnItemRequest(column_name="status", column_value="archived"),
+        NewDatasetVersionRowColumnItemRequest(
+            column_name="status",
+            column_value="archived",
+        ),
     ]
 
     status_code, version_6 = client.create_dataset_version(
@@ -558,6 +649,131 @@ def test_dataset_versions_with_rows_to_delete_filter(
     assert "User3" in row_data
     assert "User6" not in row_data
     assert "User7" not in row_data
+
+    # Cleanup
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+
+    status_code = client.delete_task(agentic_task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_dataset_version_search(
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Test server-side search filtering on dataset version rows."""
+    status_code, agentic_task = client.create_task(
+        name="test_dataset_version_search_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    status_code, created_dataset = client.create_dataset(
+        name="Dataset for Search Test",
+        task_id=agentic_task.id,
+        description="Testing search parameter on get_dataset_version",
+    )
+    assert status_code == 200
+    dataset_id = created_dataset.id
+
+    # Create a version with rows containing searchable data
+    rows_to_add = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="city",
+                    column_value="Portland",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="Alice",
+                ),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="city",
+                    column_value="Seattle",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="Bob",
+                ),
+            ],
+        ),
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="city",
+                    column_value="Portland",
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="Charlie",
+                ),
+            ],
+        ),
+    ]
+
+    status_code, created_version = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_add=rows_to_add,
+    )
+    assert status_code == 200
+    assert created_version.total_count == 3
+
+    # Test 1: Search for "Portland" should return 2 rows
+    status_code, result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+        search="Portland",
+    )
+    assert status_code == 200
+    assert result.total_count == 2
+    assert len(result.rows) == 2
+
+    # Test 2: Case-insensitive search - "alice" should match "Alice"
+    status_code, result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+        search="alice",
+    )
+    assert status_code == 200
+    assert result.total_count == 1
+    assert len(result.rows) == 1
+
+    # Test 3: Search for nonexistent value should return 0 rows
+    status_code, result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+        search="nonexistent_value",
+    )
+    assert status_code == 200
+    assert result.total_count == 0
+    assert len(result.rows) == 0
+
+    # Test 4: No search parameter should return all rows
+    status_code, result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+    )
+    assert status_code == 200
+    assert result.total_count == 3
+    assert len(result.rows) == 3
+
+    # Test 5: Search with pagination - search for "Portland" with page_size=1
+    status_code, result = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
+        search="Portland",
+        page_size=1,
+        page=0,
+    )
+    assert status_code == 200
+    assert result.total_count == 2  # Total matching rows
+    assert len(result.rows) == 1  # Only 1 per page
 
     # Cleanup
     status_code = client.delete_dataset(dataset_id)

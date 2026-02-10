@@ -37,11 +37,6 @@ export interface AgentMetadataResponse {
   gcp_metadata?: GCPAgentMetadataResponse | null;
   /** Provider of the registered agent. */
   provider: RegisteredAgentProvider;
-  /**
-   * Service Names
-   * List of service names that send traces to this task
-   */
-  service_names?: string[] | null;
 }
 
 /**
@@ -3278,6 +3273,11 @@ export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
    */
   page_size?: number;
   /**
+   * Search
+   * Search query to filter rows. Performs case-insensitive search across all column values.
+   */
+  search?: string | null;
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
@@ -5415,11 +5415,6 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
 /** ListTraceTransformsResponse */
 export interface ListTraceTransformsResponse {
   /**
-   * Count
-   * Total number of transforms matching filters
-   */
-  count: number;
-  /**
    * Transforms
    * List of transforms for the task.
    */
@@ -6204,7 +6199,7 @@ export interface NewRuleRequest {
 
 /** NewTaskRequest */
 export interface NewTaskRequest {
-  /** Metadata to describe the creation source/provider for registered agents. */
+  /** Metadata for registered agents. */
   agent_metadata?: AgentMetadata | null;
   /**
    * Is Agentic
@@ -8796,7 +8791,7 @@ export interface RegexSpanResponse {
 }
 
 /** RegisteredAgentProvider */
-export type RegisteredAgentProvider = "gcp" | "external";
+export type RegisteredAgentProvider = "gcp";
 
 /**
  * RelevanceMetricConfig
@@ -9841,7 +9836,7 @@ export interface SyntheticDataRowResponse {
 
 /** TaskResponse */
 export interface TaskResponse {
-  /** Metadata to describe the creation source/provider for registered agents. */
+  /** Metadata for registered agents. */
   agent_metadata?: AgentMetadataResponse | null;
   /**
    * Created At
@@ -9858,18 +9853,6 @@ export interface TaskResponse {
    * Whether the task is agentic or not
    */
   is_agentic?: boolean | null;
-  /**
-   * Is Autocreated
-   * Whether this task was automatically created by Arthur
-   * @default false
-   */
-  is_autocreated?: boolean | null;
-  /**
-   * Is System Task
-   * Whether this is a system-managed task (e.g., for traces without a task_id or service name, or for Arthur-created traces)
-   * @default false
-   */
-  is_system_task?: boolean | null;
   /**
    * Metrics
    * List of all the metrics for the task.
@@ -12011,7 +11994,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.373
+ * @version 2.1.364
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
