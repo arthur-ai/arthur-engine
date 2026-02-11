@@ -39,9 +39,6 @@ from db_models import (
     DatabaseTraceMetadata,
 )
 from db_models.llm_eval_models import DatabaseContinuousEval
-from repositories.service_name_mapping_repository import (
-    ServiceNameMappingRepository,
-)
 from schemas.internal_schemas import (
     SessionMetadata,
     Span,
