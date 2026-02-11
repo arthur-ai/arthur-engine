@@ -17,31 +17,31 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
     switch (role) {
       case "system":
         return {
-          bg: "bg-gray-100",
-          border: "border-gray-300",
+          bg: "bg-gray-100 dark:bg-gray-800",
+          border: "border-gray-300 dark:border-gray-600",
           label: "System",
-          labelColor: "text-gray-700",
+          labelColor: "text-gray-700 dark:text-gray-300",
         };
       case "user":
         return {
-          bg: "bg-blue-50",
-          border: "border-blue-200",
+          bg: "bg-blue-50 dark:bg-blue-900/20",
+          border: "border-blue-200 dark:border-blue-800",
           label: "User",
-          labelColor: "text-blue-700",
+          labelColor: "text-blue-700 dark:text-blue-400",
         };
       case "assistant":
         return {
-          bg: "bg-green-50",
-          border: "border-green-200",
+          bg: "bg-green-50 dark:bg-green-900/20",
+          border: "border-green-200 dark:border-green-800",
           label: "Assistant",
-          labelColor: "text-green-700",
+          labelColor: "text-green-700 dark:text-green-400",
         };
       default:
         return {
-          bg: "bg-gray-50",
-          border: "border-gray-200",
+          bg: "bg-gray-50 dark:bg-gray-800",
+          border: "border-gray-200 dark:border-gray-700",
           label: role,
-          labelColor: "text-gray-700",
+          labelColor: "text-gray-700 dark:text-gray-300",
         };
     }
   };
@@ -53,7 +53,7 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
       <Typography variant="caption" className={`font-semibold ${styles.labelColor} block mb-1`}>
         {styles.label}
       </Typography>
-      <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+      <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
         {message.content}
       </Typography>
     </Box>
@@ -79,7 +79,7 @@ export const VariableTile: React.FC<VariableTileProps> = ({ variableName, value 
   return (
     <>
       <Box
-        className="p-3 bg-gray-50 border border-gray-200 rounded relative"
+        className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded relative"
         onClick={isTruncated ? () => setIsModalOpen(true) : undefined}
         sx={{
           cursor: isTruncated ? "pointer" : "default",
@@ -87,13 +87,13 @@ export const VariableTile: React.FC<VariableTileProps> = ({ variableName, value 
           overflow: "hidden",
         }}
       >
-        <Typography variant="caption" className="font-medium text-gray-700">
+        <Typography variant="caption" className="font-medium text-gray-700 dark:text-gray-300">
           {variableName}:
         </Typography>
         <Box className="flex items-start gap-1 mt-1" sx={{ minWidth: 0 }}>
           <Typography
             variant="body2"
-            className="text-gray-900 flex-1"
+            className="text-gray-900 dark:text-gray-100 flex-1"
             sx={{
               wordBreak: "break-word",
               overflowWrap: "break-word",
@@ -131,7 +131,7 @@ export const VariableTile: React.FC<VariableTileProps> = ({ variableName, value 
               <Typography variant="h6" gutterBottom>
                 {variableName}
               </Typography>
-              <Typography variant="caption" className="text-gray-600">
+              <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
                 {value.length.toLocaleString()} characters
               </Typography>
             </Box>

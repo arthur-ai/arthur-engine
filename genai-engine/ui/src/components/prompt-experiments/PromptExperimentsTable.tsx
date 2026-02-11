@@ -79,52 +79,52 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
         <Table stickyHeader size="small" aria-label="experiments table">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Experiment Name
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Description
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Prompts
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Dataset (Version)
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Test Cases
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Created At
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Finished At
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Duration
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                 <Box component="span" className="font-semibold">
                   Total Cost
                 </Box>

@@ -45,8 +45,10 @@ const renderToolChoiceOption = (value: string, toolName?: string) => {
         label={isSpecificTool ? "tool" : value}
         size="small"
         sx={{
-          backgroundColor: isSpecificTool ? "#dbeafe" : "#e5e7eb",
-          color: isSpecificTool ? "#1e40af" : "#374151",
+          backgroundColor: (theme) =>
+            isSpecificTool ? (theme.palette.mode === "dark" ? "#1e3a5f" : "#dbeafe") : theme.palette.mode === "dark" ? "#374151" : "#e5e7eb",
+          color: (theme) =>
+            isSpecificTool ? (theme.palette.mode === "dark" ? "#93c5fd" : "#1e40af") : theme.palette.mode === "dark" ? "#d1d5db" : "#374151",
           height: "20px",
           fontSize: "0.75rem",
         }}
@@ -254,9 +256,9 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
                 }
               }}
               sx={{
-                backgroundColor: "white",
+                backgroundColor: "background.paper",
                 "& .MuiOutlinedInput-root": {
-                  backgroundColor: "white",
+                  backgroundColor: "background.paper",
                 },
               }}
             >
@@ -278,8 +280,8 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 sx={{
-                  backgroundColor: "#d1d5db",
-                  color: "#374151",
+                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "#d1d5db"),
+                  color: (theme) => (theme.palette.mode === "dark" ? "grey.300" : "#374151"),
                   minHeight: "32px",
                   flexDirection: "row-reverse",
                   "& .MuiAccordionSummary-expandIconWrapper": {
@@ -297,7 +299,7 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
                       e.stopPropagation();
                       handleDeleteTool(tool.id);
                     }}
-                    className="p-1 rounded hover:bg-gray-300 cursor-pointer flex items-center justify-center"
+                    className="p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 cursor-pointer flex items-center justify-center"
                     style={{ color: "#374151", width: "24px", height: "24px" }}
                   >
                     <Tooltip title="Delete Tool" placement="top-start" arrow>

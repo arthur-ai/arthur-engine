@@ -45,7 +45,7 @@ export const TraceRenderer = ({ trace }: Props) => {
         </Tabs.Panel>
       </Tabs.Root>
 
-      <Box className="bg-gray-100 border-l p-2" sx={{ borderColor: "divider" }}>
+      <Box className="bg-gray-100 dark:bg-gray-800 border-l p-2" sx={{ borderColor: "divider" }}>
         <Stack gap={1} alignItems="flex-start" className="sticky top-2">
           <Stack component="button" color="primary.main" className="group cursor-pointer" onClick={onOpenTraceDrawer}>
             <Typography variant="body2" fontWeight={700} className="group-hover:underline">

@@ -225,7 +225,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                         sx={{
                           m: 0,
                           p: 1.5,
-                          backgroundColor: "white",
+                          backgroundColor: "background.paper",
                           borderRadius: 1,
                           border: "1px solid",
                           borderColor: "divider",

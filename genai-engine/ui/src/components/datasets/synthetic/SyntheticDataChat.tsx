@@ -112,7 +112,7 @@ export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({ conversati
             disabled={isLoading}
             sx={{
               "& .MuiOutlinedInput-root": {
-                bgcolor: "grey.50",
+                bgcolor: "background.default",
               },
             }}
           />

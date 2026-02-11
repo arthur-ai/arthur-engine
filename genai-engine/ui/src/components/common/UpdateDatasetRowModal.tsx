@@ -112,9 +112,10 @@ export const UpdateDatasetRowModal: React.FC<UpdateDatasetRowModalProps> = ({
             <Box
               sx={{
                 p: 2,
-                backgroundColor: "#f5f5f5",
+                backgroundColor: "action.hover",
                 borderRadius: 1,
-                border: "1px solid #e0e0e0",
+                border: "1px solid",
+                borderColor: "divider",
                 maxHeight: 200,
                 overflow: "auto",
               }}

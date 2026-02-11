@@ -252,7 +252,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
             sx={{
               px: 4,
               py: 2,
-              backgroundColor: "grey.100",
+              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
               borderBottom: "1px solid",
               borderColor: "divider",
             }}

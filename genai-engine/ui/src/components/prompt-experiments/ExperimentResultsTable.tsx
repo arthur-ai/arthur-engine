@@ -144,17 +144,17 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
   return (
     <Modal open={open} onClose={onClose} aria-labelledby="test-case-detail-modal">
-      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-6xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-auto">
+      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-6xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-auto">
         {/* Modal Header */}
-        <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+        <Box className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
           <Box className="flex items-center gap-3">
-            <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100">
+            <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowBackIcon />
             </IconButton>
-            <Typography variant="h6" className="font-semibold text-gray-900">
+            <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100">
               Test Case {currentIndex + 1} of {totalCount}
             </Typography>
-            <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1} className="hover:bg-gray-100">
+            <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1} className="hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowForwardIcon />
             </IconButton>
           </Box>
@@ -167,7 +167,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
         <Box className="p-6">
           {/* Input Variables Section */}
           <Box className="mb-6">
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
+            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               Input Variables
             </Typography>
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -179,7 +179,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
           {/* Prompt Results Section */}
           <Box>
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
+            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               Prompt Results
             </Typography>
             <Box className="space-y-4">
@@ -194,7 +194,9 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                       <Typography variant="h6" className="font-semibold text-indigo-900">
                         {promptDisplayName}
                       </Typography>
-                      {promptResult.output && <Chip label={`Cost: $${promptResult.output.cost}`} size="small" className="bg-white" />}
+                      {promptResult.output && (
+                        <Chip label={`Cost: $${promptResult.output.cost}`} size="small" className="bg-white dark:bg-gray-900" />
+                      )}
                     </Box>
 
                     <CardContent>
@@ -202,7 +204,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                       <Box className="grid grid-cols-2 gap-4 mb-4">
                         {/* Rendered Prompt Messages */}
                         <Box>
-                          <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                          <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Input Messages:
                           </Typography>
                           <Box className="max-h-96 overflow-auto">
@@ -213,8 +215,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                               } catch {
                                 // If not JSON, display as plain text
                                 return (
-                                  <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                                    <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+                                  <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
+                                    <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
                                       {promptResult.rendered_prompt}
                                     </Typography>
                                   </Box>
@@ -227,7 +229,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                         {/* Output */}
                         <Box>
                           <Box className="flex items-center justify-between mb-2">
-                            <Typography variant="subtitle2" className="font-medium text-gray-700">
+                            <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300">
                               Output Message:
                             </Typography>
                             {canUpdateDataset && promptResult.output?.content && (
@@ -255,7 +257,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                 )}
                               </>
                             ) : (
-                              <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
+                              <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
                                 <Typography variant="body2" className="text-gray-500 italic">
                                   No output available
                                 </Typography>
@@ -268,7 +270,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                       {/* Evals */}
                       {promptResult.evals.length > 0 && (
                         <Box>
-                          <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                          <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Evaluations:
                           </Typography>
                           <Box className="space-y-2">
@@ -276,7 +278,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                               <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
                                 <Box className="flex items-center justify-between mb-2">
                                   <Box className="flex items-center gap-2">
-                                    <Typography variant="body2" className="font-medium text-gray-900">
+                                    <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                                       {evalItem.eval_name} v{evalItem.eval_version}
                                     </Typography>
                                     {evalItem.eval_results ? (
@@ -304,7 +306,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                   )}
                                 </Box>
                                 {evalItem.eval_results?.explanation && (
-                                  <Typography variant="body2" className="text-gray-700 mt-1">
+                                  <Typography variant="body2" className="text-gray-700 dark:text-gray-300 mt-1">
                                     {evalItem.eval_results.explanation}
                                   </Typography>
                                 )}
@@ -447,7 +449,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
             key={`total-${evalGroup.evalName}-${evalGroup.evalVersion}`}
             align="center"
             sx={{
-              backgroundColor: "#f9fafb",
+              backgroundColor: "background.default",
               fontWeight: 500,
               fontSize: "0.8rem",
               borderRight: index === evalGroups.length - 1 ? 3 : 0,
@@ -515,10 +517,10 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
 
   return (
     <Modal open={open} onClose={onClose} aria-labelledby="dataset-row-modal">
-      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-4xl max-h-[80vh] bg-white rounded-lg shadow-xl overflow-auto">
+      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-4xl max-h-[80vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-auto">
         {/* Modal Header */}
-        <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
-          <Typography variant="h6" className="font-semibold text-gray-900">
+        <Box className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
+          <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100">
             Dataset Row Data
           </Typography>
           <IconButton onClick={onClose} size="small">
@@ -539,17 +541,17 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
           ) : rowData ? (
             <Box>
               <Box className="mb-4">
-                <Typography variant="body2" className="text-gray-600 mb-2">
+                <Typography variant="body2" className="text-gray-600 dark:text-gray-400 mb-2">
                   Dataset: {datasetId} | Version: {versionNumber} | Row ID: {rowId}
                 </Typography>
               </Box>
               <Box className="space-y-3">
                 {rowData.data.map((item, index) => (
-                  <Box key={index} className="p-4 bg-gray-50 rounded border border-gray-200">
-                    <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
+                  <Box key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                    <Typography variant="subtitle2" className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
                       {item.column_name}
                     </Typography>
-                    <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word">
+                    <Typography variant="body2" className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap wrap-break-word">
                       {item.column_value}
                     </Typography>
                   </Box>
@@ -895,7 +897,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
             ) : testCases.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3 + promptEvalColumns.length + evalGroups.length} align="center">
-                  <Typography className="text-gray-600">No test cases found</Typography>
+                  <Typography className="text-gray-600 dark:text-gray-400">No test cases found</Typography>
                 </TableCell>
               </TableRow>
             ) : (

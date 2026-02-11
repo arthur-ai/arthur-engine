@@ -30,7 +30,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpan
           value={span.span_id}
           key={span.span_id}
           data-selected={span.span_id === selectedSpanId ? "" : undefined}
-          className="group data-selected:*:bg-gray-200"
+          className="group data-selected:*:bg-gray-200 data-selected:*:dark:bg-gray-700"
           onClick={(e) => {
             e.stopPropagation();
             onSelectSpan(span.span_id);

@@ -235,7 +235,10 @@ const RagExperimentsContent: React.FC = () => {
   }
 
   return (
-    <Box className="flex flex-col" sx={{ height: getContentHeight(), backgroundColor: "#f1f5f9" }}>
+    <Box
+      className="flex flex-col"
+      sx={{ height: getContentHeight(), backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.default" : "#f1f5f9") }}
+    >
       <RagExperimentsHeader
         onManageProviders={handleManageProviders}
         onRunExperiment={handleOpenExperimentModal}

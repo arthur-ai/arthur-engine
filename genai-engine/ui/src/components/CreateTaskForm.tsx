@@ -75,7 +75,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({ onTaskCreated, o
     <div className="space-y-4">
       <div>
         <FormLabel htmlFor="taskName">
-          <Typography variant="body1" color="black">
+          <Typography variant="body1" color="text.primary">
             Task Name
           </Typography>
         </FormLabel>
@@ -91,13 +91,13 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({ onTaskCreated, o
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+          <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
         </div>
       )}
 
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-        <p className="text-sm text-blue-900">
+      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+        <p className="text-sm text-blue-900 dark:text-blue-200">
           <span className="font-medium">Note:</span> This will create an agentic task that can be used for AI agent experiments and evaluations.
         </p>
       </div>
@@ -106,8 +106,8 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({ onTaskCreated, o
 
   if (embedded) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
-        <h3 className="text-lg font-medium text-black mb-4">Create New Agent Task</h3>
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 max-w-md mx-auto">
+        <h3 className="text-lg font-medium text-black dark:text-white mb-4">Create New Agent Task</h3>
         <form onSubmit={handleSubmit}>
           {formContent}
           <div className="flex space-x-3 mt-4">
