@@ -15,7 +15,9 @@ import {
   InsightsOutlined,
 } from "@mui/icons-material";
 import Button from "@mui/material/Button";
-import React from "react";
+import React, { useState } from "react";
+
+import { UserSettingsModal } from "@/components/UserSettingsModal";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -38,6 +40,10 @@ interface NavigationItem {
 }
 
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, onLogout, activeSection = "overview" }) => {
+  const [userSettingsOpen, setUserSettingsOpen] = useState(false);
+
+  const openUserSettings = () => setUserSettingsOpen(true);
+
   const navigationSections: NavigationSection[] = [
     {
       id: "observability",
@@ -169,7 +175,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       {/* User Settings and Logout at the bottom */}
 
       <div className="p-4 border-t border-gray-200 shrink-0 space-y-1">
-        <Button variant="text" fullWidth startIcon={<SettingsOutlined fontSize="small" />} sx={footerButtonSx}>
+        <Button variant="text" fullWidth startIcon={<SettingsOutlined fontSize="small" />} onClick={openUserSettings} sx={footerButtonSx}>
           User Settings
         </Button>
         {onLogout && (
@@ -178,6 +184,12 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
           </Button>
         )}
       </div>
+
+      <UserSettingsModal
+        open={userSettingsOpen}
+        onClose={() => setUserSettingsOpen(false)}
+        onSave={() => setUserSettingsOpen(false)}
+      />
     </nav>
   );
 };
