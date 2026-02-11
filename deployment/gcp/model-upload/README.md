@@ -54,8 +54,19 @@ Adjust the below GenAI envars accordingly:
   HF_HUB_OFFLINE=1
   ```
 
-## Local testing
+## Local testing with Docker Compose
 Use `docker-compose.local.yml`: See the comments in the script for the usage deatils.
 ```
 docker compose -f docker-compose.local.yml up
+```
+
+## Local testing with direct Python code execution
+```
+gcloud config set project aa-dp-npr-01
+gcloud auth application-default login
+export GCS_BUCKET=arthur-models-bucket-01
+export GCS_PREFIX=models-storage-test
+poetry shell && poetry env use 3.12
+poetry install
+python upload_models.py
 ```

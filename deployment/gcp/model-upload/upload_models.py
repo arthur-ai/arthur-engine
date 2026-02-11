@@ -169,7 +169,10 @@ def post_process_models(
             config_data = json.load(f)
 
         # Update model_name with prefix
-        new_model_name = f"/home/nonroot/{prefix}/microsoft/mdeberta-v3-base"
+        if prefix:
+            new_model_name = f"/home/nonroot/{prefix}/microsoft/mdeberta-v3-base"
+        else:
+            new_model_name = "/home/nonroot/microsoft/mdeberta-v3-base"
         old_model_name = config_data.get("model_name", "")
         config_data["model_name"] = new_model_name
 
@@ -180,22 +183,43 @@ def post_process_models(
         # Upload to GCS
         client = get_storage_client()
         bucket = client.bucket(bucket_name)
+        json_content = json.dumps(config_data, indent=2)
 
-        # Construct GCS blob path: prefix/urchade/gliner_multi_pii-v1/config.json
+        # Construct base GCS blob path parts
         blob_path_parts = []
         if prefix:
             blob_path_parts.append(prefix.strip("/"))
-        blob_path_parts.extend(["urchade", "gliner_multi_pii-v1", "config.json"])
-        blob_name = "/".join(blob_path_parts)
+        blob_path_parts.extend(["urchade", "gliner_multi_pii-v1"])
 
-        logger.info(f"📤 Uploading config.json to gs://{bucket_name}/{blob_name}")
-
-        # Upload JSON content directly to GCS
-        blob = bucket.blob(blob_name)
-        json_content = json.dumps(config_data, indent=2)
-        blob.upload_from_string(json_content, content_type="application/json")
-
+        # Upload as config.json
+        config_blob_name = "/".join(blob_path_parts + ["config.json"])
+        logger.info(
+            f"📤 Uploading config.json to gs://{bucket_name}/{config_blob_name}",
+        )
+        config_blob = bucket.blob(config_blob_name)
+        config_blob.upload_from_string(json_content, content_type="application/json")
         logger.info("✅ Successfully created config.json in GCS")
+
+        # Upload as gliner_config.json to the same GCS path
+        gliner_config_blob_name = "/".join(blob_path_parts + ["gliner_config.json"])
+        gliner_config_blob = bucket.blob(gliner_config_blob_name)
+
+        # Check if gliner_config.json already exists (will be overwritten)
+        if gliner_config_blob.exists():
+            logger.info(
+                f"🔄 Replacing existing gliner_config.json at gs://{bucket_name}/{gliner_config_blob_name}",
+            )
+        else:
+            logger.info(
+                f"📤 Uploading gliner_config.json to gs://{bucket_name}/{gliner_config_blob_name}",
+            )
+
+        gliner_config_blob.upload_from_string(
+            json_content,
+            content_type="application/json",
+        )
+        logger.info("✅ Successfully created/updated gliner_config.json in GCS")
+
         return True
 
     except json.JSONDecodeError as e:
@@ -232,7 +256,7 @@ def main() -> int:
     logger.info("=" * 60)
 
     # Upload models
-    stats = upload_models(models_dir, bucket, prefix)
+    # stats = upload_models(models_dir, bucket, prefix)
 
     # Post-process models (fix common issues)
     post_process_success = post_process_models(models_dir, bucket, prefix)
