@@ -136,6 +136,7 @@ def post_process_models(
     models_dir: Path,
     bucket_name: str,
     prefix: str,
+    container_models_dir: str,
 ) -> bool:
     """
     Create and upload config.json to GCS for the GLiNER model.
@@ -147,6 +148,7 @@ def post_process_models(
         models_dir: Local directory containing models
         bucket_name: GCS bucket name
         prefix: GCS prefix for object names
+        container_models_dir: Location of the models the consumer application will mount
 
     Returns:
         True if successful, False otherwise
@@ -168,11 +170,9 @@ def post_process_models(
         with open(gliner_config_path, "r") as f:
             config_data = json.load(f)
 
-        # Update model_name with prefix
-        if prefix:
-            new_model_name = f"/home/nonroot/{prefix}/microsoft/mdeberta-v3-base"
-        else:
-            new_model_name = "/home/nonroot/microsoft/mdeberta-v3-base"
+        # Update model_name with container_models_dir
+        new_model_name = f"{container_models_dir}/microsoft/mdeberta-v3-base"
+
         old_model_name = config_data.get("model_name", "")
         config_data["model_name"] = new_model_name
 
@@ -246,6 +246,7 @@ def main() -> int:
 
     prefix = os.getenv("GCS_PREFIX", "").strip("/")
     models_dir = Path(os.getenv("MODELS_DIR", "/models"))
+    container_models_dir = Path(os.getenv("CONTAINER_MODELS_DIR", "/models-storage"))
 
     logger.info("=" * 60)
     logger.info("Arthur Model Repository - GCS Upload Task")
@@ -259,7 +260,12 @@ def main() -> int:
     # stats = upload_models(models_dir, bucket, prefix)
 
     # Post-process models (fix common issues)
-    post_process_success = post_process_models(models_dir, bucket, prefix)
+    post_process_success = post_process_models(
+        models_dir,
+        bucket,
+        prefix,
+        container_models_dir,
+    )
 
     # Print summary
     logger.info("=" * 60)

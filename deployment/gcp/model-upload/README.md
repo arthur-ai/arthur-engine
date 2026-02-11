@@ -41,6 +41,7 @@ docker push arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
   ```
     GCS_PREFIX: Prefix for GCS object names (e.g. /gcs/model-storage)
     GCS_BUCKET: Target GCS bucket name (required)
+    CONTAINER_MODELS_DIR: The location of the file system path the models will be hosted on the consumer container app
     GOOGLE_APPLICATION_CREDENTIALS: Path to service account JSON (optional, uses Workload Identity if unset)
   ```
 
