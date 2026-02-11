@@ -158,3 +158,19 @@ class ServiceNameMappingRepository:
 
         logger.warning(f"Deleted service name mapping: {service_name}")
         return True
+
+    def get_service_names_by_task_id(self, task_id: str) -> list[str]:
+        """Get all service names mapped to a task_id (reverse lookup).
+
+        Args:
+            task_id: The task ID to look up
+
+        Returns:
+            List of service names mapped to this task (empty list if none)
+        """
+        mappings = (
+            self.db_session.query(DatabaseServiceNameTaskMapping)
+            .filter(DatabaseServiceNameTaskMapping.task_id == task_id)
+            .all()
+        )
+        return [mapping.service_name for mapping in mappings]

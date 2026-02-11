@@ -16,6 +16,9 @@ from db_models import (
 )
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
+from repositories.service_name_mapping_repository import (
+    ServiceNameMappingRepository,
+)
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from utils import constants
 
@@ -89,7 +92,38 @@ class TaskRepository:
         return db_task
 
     def get_task_by_id(self, id: str) -> Task:
-        return Task._from_database_model(self.get_db_task_by_id(id))
+        db_task = self.get_db_task_by_id(id)
+        task = Task._from_database_model(db_task)
+
+        # Enrich with service names if task is agentic
+        if task.is_agentic and task.task_metadata:
+            service_name_repo = ServiceNameMappingRepository(self.db_session)
+            service_names = service_name_repo.get_service_names_by_task_id(id)
+
+            if service_names:
+                # Update the TaskMetadata with service_names
+                task.task_metadata.service_names = service_names
+
+        return task
+
+    def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
+        """Enrich tasks with service names from service_name_task_mappings.
+
+        Args:
+            tasks: List of tasks to enrich
+
+        Returns:
+            List of tasks with service_names populated in task_metadata
+        """
+        service_name_repo = ServiceNameMappingRepository(self.db_session)
+
+        for task in tasks:
+            if task.is_agentic and task.task_metadata:
+                service_names = service_name_repo.get_service_names_by_task_id(task.id)
+                if service_names:
+                    task.task_metadata.service_names = service_names
+
+        return tasks
 
     def get_all_tasks(self) -> list[Task]:
         # Continuously grab tasks until there are no more, DEFAULT_PAGE_SIZE at a time
@@ -106,6 +140,9 @@ class TaskRepository:
             page += 1
 
         tasks = [Task._from_database_model(op) for op in all_tasks]
+
+        # Enrich tasks with service names
+        tasks = self._enrich_tasks_with_service_names(tasks)
 
         return tasks
 

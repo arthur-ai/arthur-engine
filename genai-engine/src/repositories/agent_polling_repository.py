@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from arthur_common.models.enums import AgentPollingStatus
+from arthur_common.models.enums import AgentPollingStatus, RegisteredAgentProvider
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -59,6 +59,19 @@ class AgentPollingRepository:
             raise HTTPException(
                 status_code=400,
                 detail=f"Task {task_id} is not available for agent polling",
+            )
+
+        # Validate task is a GCP agent with required metadata
+        if task.task_metadata.provider != RegisteredAgentProvider.GCP:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Task {task_id} is not a GCP agent. Only GCP agents support polling.",
+            )
+
+        if task.task_metadata.gcp_metadata is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Task {task_id} does not have GCP metadata. Polling requires project_id, region, and resource_id.",
             )
 
         agent_polling_data = AgentPollingData.from_task_id(
@@ -135,6 +148,19 @@ class AgentPollingRepository:
             raise HTTPException(
                 status_code=400,
                 detail=f"Task {task_id} is not available for agent polling",
+            )
+
+        # Validate task is a GCP agent with required metadata
+        if task.task_metadata.provider != RegisteredAgentProvider.GCP:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Task {task_id} is not a GCP agent. Only GCP agents support polling.",
+            )
+
+        if task.task_metadata.gcp_metadata is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Task {task_id} does not have GCP metadata. Polling requires project_id, region, and resource_id.",
             )
 
         if db_agent_polling_data.status != AgentPollingStatus.ERROR.value:

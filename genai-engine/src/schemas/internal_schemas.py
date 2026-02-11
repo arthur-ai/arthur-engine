@@ -596,6 +596,10 @@ class TaskMetadata(BaseModel):
         default=None,
         description="Metadata for a registered GCP agent.",
     )
+    service_names: Optional[List[str]] = Field(
+        default=None,
+        description="List of service names that send traces to this task",
+    )
 
 
 class Task(BaseModel):
