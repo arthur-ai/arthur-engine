@@ -43,7 +43,7 @@ def unmapped_task():
     This fixture runs once per test session and ensures the __unmapped__ task
     exists for tests that ingest traces without service names.
     """
-    from utils.constants import DEFAULT_SERVICE_NAME
+    from utils.constants import DEFAULT_SERVICE_NAME, UNMAPPED_TASK_ID
 
     db_session = override_get_db_session()
 
@@ -59,8 +59,8 @@ def unmapped_task():
         yield existing_mapping.task_id
         return
 
-    # Create __unmapped__ task
-    unmapped_task_id = str(uuid.uuid4())
+    # Create __unmapped__ task with the predefined constant ID
+    unmapped_task_id = UNMAPPED_TASK_ID
     current_time = datetime.now()
     unmapped_task = DatabaseTask(
         id=unmapped_task_id,

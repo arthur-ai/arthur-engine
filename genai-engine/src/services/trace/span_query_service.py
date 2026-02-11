@@ -52,8 +52,8 @@ from schemas.internal_schemas import (
 from services.trace.filter_service import FilterService
 from utils.constants import (
     AGENT_EXPERIMENT_SESSION_PREFIX,
-    DEFAULT_SERVICE_NAME,
     SPAN_KIND_LLM,
+    UNMAPPED_TASK_ID,
 )
 from utils.trace import validate_span_version
 
@@ -1291,6 +1291,9 @@ class SpanQueryService:
         Query root spans (parent_span_id IS NULL) for traces assigned to __unmapped__ task,
         grouped by span_name.
 
+        This method provides specialized aggregation that the regular query methods don't support.
+        Regular methods return individual spans; this returns grouped counts by span_name.
+
         Args:
             pagination_parameters: Optional pagination parameters for limiting results
             start_time: Optional start time filter (inclusive). Recommended for performance.
@@ -1301,24 +1304,14 @@ class SpanQueryService:
                 (span_name, count) tuples ordered by count descending,
                 and total_count is the total number of root spans across ALL groups (before pagination)
         """
-        # Get the __unmapped__ task_id from service name mappings
-        mapping_repo = ServiceNameMappingRepository(self.db_session)
-        unmapped_task_id = mapping_repo.get_task_id_by_service_name(
-            DEFAULT_SERVICE_NAME,
-        )
-
-        if not unmapped_task_id:
-            # If __unmapped__ task doesn't exist, return empty results
-            return [], 0
-
-        # Base query for grouping
+        # Base query for grouping - uses UNMAPPED_TASK_ID constant directly
         base_query = (
             select(
                 DatabaseSpan.span_name,
                 func.count().label("count"),
             )
             .where(DatabaseSpan.parent_span_id.is_(None))
-            .where(DatabaseSpan.task_id == unmapped_task_id)
+            .where(DatabaseSpan.task_id == UNMAPPED_TASK_ID)
         )
 
         # Apply time range filters if provided
