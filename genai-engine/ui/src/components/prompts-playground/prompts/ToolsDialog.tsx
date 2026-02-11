@@ -16,6 +16,7 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
+import { useTheme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 
@@ -64,6 +65,7 @@ interface ToolEditorProps {
 }
 
 const ToolEditor = React.memo(({ tool, onToolChange }: ToolEditorProps) => {
+  const theme = useTheme();
   // Use a ref to track the current editor value to avoid re-renders
   const editorValueRef = useRef(
     JSON.stringify(
@@ -96,7 +98,7 @@ const ToolEditor = React.memo(({ tool, onToolChange }: ToolEditorProps) => {
       <Editor
         height="300px"
         defaultLanguage="json"
-        theme="light"
+        theme={theme.palette.mode === "dark" ? "vs-dark" : "light"}
         defaultValue={editorValueRef.current}
         onChange={handleChange}
         options={{
@@ -281,7 +283,7 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
                 expandIcon={<ExpandMoreIcon />}
                 sx={{
                   backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "#d1d5db"),
-                  color: (theme) => (theme.palette.mode === "dark" ? "grey.300" : "#374151"),
+                  color: "text.primary",
                   minHeight: "32px",
                   flexDirection: "row-reverse",
                   "& .MuiAccordionSummary-expandIconWrapper": {
@@ -300,7 +302,7 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
                       handleDeleteTool(tool.id);
                     }}
                     className="p-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 cursor-pointer flex items-center justify-center"
-                    style={{ color: "#374151", width: "24px", height: "24px" }}
+                    style={{ width: "24px", height: "24px" }}
                   >
                     <Tooltip title="Delete Tool" placement="top-start" arrow>
                       <DeleteIcon fontSize="small" color="error" />

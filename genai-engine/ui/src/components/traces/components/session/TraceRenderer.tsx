@@ -81,7 +81,11 @@ const MessageBubble = ({ label, content, align }: { label: string; content: stri
     <Stack
       component={Paper}
       variant="outlined"
-      sx={{ p: 1, maxWidth: "75%", backgroundColor: align === "left" ? "action.hover" : undefined }}
+      sx={{
+        p: 1,
+        maxWidth: "75%",
+        backgroundColor: align === "left" ? (theme) => (theme.palette.mode === "dark" ? "action.hover" : "#E8F5E9") : undefined,
+      }}
       alignSelf={align === "left" ? "flex-start" : "flex-end"}
       gap={1}
     >
