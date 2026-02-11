@@ -42,7 +42,7 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                 alignItems: "center",
                 gap: 1,
                 p: 1.5,
-                backgroundColor: "grey.50",
+                backgroundColor: "action.hover",
                 borderRadius: 1,
                 border: "1px solid",
                 borderColor: "divider",
@@ -94,7 +94,7 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                   key={idx}
                   sx={{
                     p: 2,
-                    backgroundColor: "grey.50",
+                    backgroundColor: "action.hover",
                     borderRadius: 1,
                     border: "1px solid",
                     borderColor: "divider",

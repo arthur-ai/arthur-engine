@@ -1,5 +1,4 @@
 import { Box, Paper, Stack, Typography } from "@mui/material";
-import { green } from "@mui/material/colors";
 
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { getSpanInput, getSpanOutput } from "../../utils/spans";
@@ -82,7 +81,7 @@ const MessageBubble = ({ label, content, align }: { label: string; content: stri
     <Stack
       component={Paper}
       variant="outlined"
-      sx={{ p: 1, maxWidth: "75%", backgroundColor: align === "left" ? green[50] : undefined }}
+      sx={{ p: 1, maxWidth: "75%", backgroundColor: align === "left" ? "action.hover" : undefined }}
       alignSelf={align === "left" ? "flex-start" : "flex-end"}
       gap={1}
     >

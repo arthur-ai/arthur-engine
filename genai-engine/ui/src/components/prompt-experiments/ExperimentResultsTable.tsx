@@ -786,7 +786,10 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
           <TableHead>
             {/* Top header row: Prompt versions and Totals */}
             <TableRow>
-              <TableCell rowSpan={2} sx={{ backgroundColor: "grey.50", borderRight: 1, borderColor: "divider" }}>
+              <TableCell
+                rowSpan={2}
+                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderRight: 1, borderColor: "divider" }}
+              >
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
@@ -801,7 +804,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                     colSpan={group.evalCount}
                     align="center"
                     sx={{
-                      backgroundColor: "grey.50",
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                       borderRight: index === promptGroups.length - 1 ? 3 : 1,
                       borderColor: "divider",
                     }}
@@ -816,7 +819,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                 colSpan={evalGroups.length}
                 align="center"
                 sx={{
-                  backgroundColor: "grey.50",
+                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                   borderRight: 3,
                   borderColor: "divider",
                 }}
@@ -825,12 +828,20 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Totals
                 </Box>
               </TableCell>
-              <TableCell rowSpan={2} align="right" sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}>
+              <TableCell
+                rowSpan={2}
+                align="right"
+                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
+              >
                 <Box component="span" className="font-semibold">
                   Cost
                 </Box>
               </TableCell>
-              <TableCell rowSpan={2} align="center" sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}>
+              <TableCell
+                rowSpan={2}
+                align="center"
+                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
+              >
                 <Box component="span" className="font-semibold">
                   View Data
                 </Box>
@@ -850,7 +861,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                     key={`${col.promptName}-${col.promptVersion}-${col.evalName}-${col.evalVersion}`}
                     align="center"
                     sx={{
-                      backgroundColor: "grey.50",
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                       borderRight: isLastInGroup ? (index === promptEvalColumns.length - 1 ? 3 : 1) : 0,
                       borderColor: "divider",
                       fontSize: "0.75rem",
@@ -868,7 +879,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   key={`total-header-${evalGroup.evalName}-${evalGroup.evalVersion}`}
                   align="center"
                   sx={{
-                    backgroundColor: "grey.50",
+                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                     borderRight: index === evalGroups.length - 1 ? 3 : 0,
                     borderColor: "divider",
                     fontSize: "0.75rem",

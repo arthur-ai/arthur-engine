@@ -202,7 +202,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
             p: 2,
             borderTop: 1,
             borderColor: "divider",
-            backgroundColor: "grey.50",
+            backgroundColor: "action.hover",
             flexShrink: 0,
           }}
         >

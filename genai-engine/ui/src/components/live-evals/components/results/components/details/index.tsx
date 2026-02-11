@@ -146,7 +146,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                   variant="outlined"
                   sx={{
                     p: 2,
-                    backgroundColor: "grey.50",
+                    backgroundColor: "action.hover",
                     borderRadius: 1,
                   }}
                 >
@@ -214,7 +214,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       variant="outlined"
                       sx={{
                         p: 2,
-                        backgroundColor: "grey.50",
+                        backgroundColor: "action.hover",
                       }}
                     >
                       <Box className="flex items-center gap-2 mb-2">

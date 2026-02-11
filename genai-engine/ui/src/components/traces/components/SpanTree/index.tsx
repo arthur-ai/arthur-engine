@@ -39,7 +39,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpan
           <SpanTreeItem span={span} level={level} selectedSpanId={selectedSpanId} />
           <Accordion.Panel
             render={
-              <Box className="h-(--accordion-panel-height) text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b overflow-hidden" />
+              <Box className="h-(--accordion-panel-height) text-base text-gray-600 dark:text-gray-400 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b overflow-hidden" />
             }
           >
             <SpanTree

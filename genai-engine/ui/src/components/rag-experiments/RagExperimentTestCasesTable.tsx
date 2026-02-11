@@ -259,7 +259,10 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
     <TableHead>
       {/* Top header row: Status, RAG configs, Totals, Cost */}
       <TableRow>
-        <TableCell rowSpan={2} sx={{ backgroundColor: "grey.50", borderRight: 1, borderColor: "divider" }}>
+        <TableCell
+          rowSpan={2}
+          sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderRight: 1, borderColor: "divider" }}
+        >
           <Box component="span" className="font-semibold">
             Status
           </Box>
@@ -271,7 +274,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
             colSpan={group.evalCount}
             align="center"
             sx={{
-              backgroundColor: "grey.50",
+              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
               borderRight: index === ragConfigGroups.size - 1 ? 3 : 1,
               borderColor: "divider",
             }}
@@ -286,7 +289,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
           colSpan={evalGroups.length}
           align="center"
           sx={{
-            backgroundColor: "grey.50",
+            backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
             borderRight: 3,
             borderColor: "divider",
           }}
@@ -296,7 +299,11 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
           </Box>
         </TableCell>
 
-        <TableCell rowSpan={2} align="right" sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}>
+        <TableCell
+          rowSpan={2}
+          align="right"
+          sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
+        >
           <Box component="span" className="font-semibold">
             Cost
           </Box>
@@ -336,7 +343,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
                   key={header.id}
                   align="center"
                   sx={{
-                    backgroundColor: "grey.50",
+                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                     borderRight,
                     borderColor: "divider",
                     fontSize: "0.75rem",
@@ -505,7 +512,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
                           padding: isEvalColumn ? "6px 8px" : undefined,
                           borderRight,
                           borderColor: "divider",
-                          backgroundColor: isTotalColumn ? "grey.50" : undefined,
+                          backgroundColor: isTotalColumn ? (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") : undefined,
                           fontWeight: isTotalColumn ? 500 : undefined,
                           fontSize: isTotalColumn ? "0.8rem" : undefined,
                         }}
