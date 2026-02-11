@@ -33,12 +33,15 @@ def test_search_tasks(
 
     sc, task_resp_base = client.search_tasks(sort=sort, page=page, page_size=page_size)
     assert sc == 200
-    assert len(task_resp_base.tasks) == expected_count
+
+    # Filter out system tasks (like __unmapped__) that shouldn't count toward test expectations
+    non_system_tasks = [task for task in task_resp_base.tasks if not task.is_system_task]
+    assert len(non_system_tasks) == expected_count
 
     # Verify all tasks have is_agentic field (should default to False)
     # TODO: this test fails when running tests in parallel with xdist
     # modify how we create tasks to ensure that tests are independent/properly cleaned up
-    for task in task_resp_base.tasks:
+    for task in non_system_tasks:
         assert hasattr(task, "is_agentic")
         # Since we didn't specify is_agentic in create_task, they should all be False
         assert task.is_agentic == False
@@ -50,14 +53,18 @@ def test_search_tasks(
             page_size=page_size,
         )
         assert sc == 200
-        page_1 = [t.id for t in task_resp_base.tasks]
-        page_2 = [t.id for t in task_resp.tasks]
+
+        # Filter out system tasks from both pages consistently
+        non_system_tasks_page2 = [t for t in task_resp.tasks if not t.is_system_task]
+
+        page_1 = [t.id for t in non_system_tasks]
+        page_2 = [t.id for t in non_system_tasks_page2]
         assert len(set(page_1).intersection(set(page_2))) == 0
 
     if page_size:
-        assert len(task_resp_base.tasks) <= page_size
+        assert len(non_system_tasks) <= page_size
 
-    base_tasks = task_resp_base.tasks
+    base_tasks = non_system_tasks
     t = base_tasks[0]
     if sort == PaginationSortMethod.DESCENDING or sort is None:
         for i in base_tasks[1:]:
