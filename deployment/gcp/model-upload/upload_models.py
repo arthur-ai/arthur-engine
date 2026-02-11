@@ -267,6 +267,9 @@ def main() -> int:
         container_models_dir,
     )
 
+    # Post-process models (fix common issues)
+    post_process_success = post_process_models(models_dir, bucket, prefix)
+
     # Print summary
     logger.info("=" * 60)
     logger.info("UPLOAD SUMMARY")
