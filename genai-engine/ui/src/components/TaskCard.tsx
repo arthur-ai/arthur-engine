@@ -1,7 +1,9 @@
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckIcon from "@mui/icons-material/Check";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
+import SettingsIcon from "@mui/icons-material/Settings";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { Box, Card, CardContent, Chip, Stack, Tooltip, Typography } from "@mui/material";
 import { keyframes } from "@mui/system";
@@ -103,20 +105,50 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             >
               {task.name}
             </Typography>
-            {task.is_agentic !== null && (
-              <Chip
-                label={task.is_agentic ? "Agentic" : "Model"}
-                size="small"
-                sx={{
-                  height: 20,
-                  fontSize: "0.6875rem",
-                  bgcolor: "primary.50",
-                  color: "primary.dark",
-                  fontWeight: 500,
-                  flexShrink: 0,
-                }}
-              />
-            )}
+            <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+              {task.is_system_task && (
+                <Tooltip title="System Task - Managed by Arthur" arrow placement="top">
+                  <Chip
+                    icon={<SettingsIcon />}
+                    size="small"
+                    sx={{
+                      height: 24,
+                      bgcolor: "grey.100",
+                      color: "grey.700",
+                      "& .MuiChip-icon": {
+                        fontSize: 16,
+                        color: "grey.600",
+                        ml: 0.5,
+                      },
+                      "& .MuiChip-label": {
+                        px: 0.5,
+                      },
+                    }}
+                  />
+                </Tooltip>
+              )}
+              {task.is_autocreated && (
+                <Tooltip title="Auto-created - Created automatically by Arthur" arrow placement="top">
+                  <Chip
+                    icon={<AutoAwesomeIcon />}
+                    size="small"
+                    sx={{
+                      height: 24,
+                      bgcolor: "primary.50",
+                      color: "primary.dark",
+                      "& .MuiChip-icon": {
+                        fontSize: 16,
+                        color: "primary.main",
+                        ml: 0.5,
+                      },
+                      "& .MuiChip-label": {
+                        px: 0.5,
+                      },
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Stack>
           </Box>
 
           {/* Metrics */}

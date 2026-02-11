@@ -402,7 +402,7 @@ USER_ID_KEY = SpanAttributes.USER_ID
 
 # Service name mapping constants
 DEFAULT_SERVICE_NAME = "__unmapped__"
-UNMAPPED_TASK_ID = "539b1da6-ebf8-4fe2-91e5-db2dc8ff626d3"
+UNMAPPED_TASK_ID = "539b1da6-ebf8-4fe2-91e5-db2dc8ff626d"
 
 ##################################################################
 
