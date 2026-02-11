@@ -29,10 +29,10 @@ class DatabaseTraceMetadata(Base):
     __tablename__ = "trace_metadata"
 
     trace_id: Mapped[str] = mapped_column(String, primary_key=True)
-    task_id: Mapped[str | None] = mapped_column(
+    task_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("tasks.id", name="fk_trace_metadata_task_id"),
-        nullable=True,
+        ForeignKey("tasks.id"),
+        nullable=False,
         index=True,
     )
     root_span_resource_id: Mapped[str | None] = mapped_column(
@@ -138,8 +138,6 @@ class DatabaseResourceMetadata(Base):
         nullable=False,
     )
 
-    __table_args__ = (Index("idx_resource_metadata_service_name", "service_name"),)
-
 
 class DatabaseServiceNameTaskMapping(Base):
     """Maps service names to task IDs.
@@ -189,10 +187,10 @@ class DatabaseSpan(Base):
     span_kind: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
-    task_id: Mapped[str | None] = mapped_column(
+    task_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("tasks.id", name="fk_spans_task_id"),
-        nullable=True,
+        ForeignKey("tasks.id"),
+        nullable=False,
         index=True,
     )
     resource_id: Mapped[str | None] = mapped_column(
@@ -277,13 +275,13 @@ class DatabaseTaskToMetrics(Base):
     __tablename__ = "tasks_to_metrics"
     task_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("tasks.id", name="fk_tasks_to_metrics_task_id"),
+        ForeignKey("tasks.id"),
         index=True,
         primary_key=True,
     )
     metric_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("metrics.id", name="fk_tasks_to_metrics_metric_id"),
+        ForeignKey("metrics.id"),
         index=True,
         primary_key=True,
     )
@@ -307,13 +305,13 @@ class DatabaseMetricResult(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     span_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("spans.id", name="fk_metric_results_span_id"),
+        ForeignKey("spans.id"),
         nullable=False,
         index=True,
     )
     metric_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("metrics.id", name="fk_metric_results_metric_id"),
+        ForeignKey("metrics.id"),
         nullable=False,
         index=True,
     )

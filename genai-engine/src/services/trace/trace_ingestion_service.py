@@ -28,7 +28,6 @@ from repositories.service_name_mapping_repository import (
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
 from utils.constants import (
-    DEFAULT_SERVICE_NAME,
     EXPECTED_SPAN_VERSION,
     SERVICE_NAME_KEY,
     SPAN_KIND_KEY,
@@ -46,7 +45,7 @@ class TraceUpdateDBBase(TypedDict):
     """Base dictionary structure for trace metadata updates during ingestion."""
 
     trace_id: str
-    task_id: str | None
+    task_id: str
     root_span_resource_id: str | None
     session_id: str | None
     user_id: str | None
@@ -242,54 +241,56 @@ class TraceIngestionService:
         Returns:
             Resolved task_id (never None after migration)
         """
-        # Step 1: Explicit task_id always wins
+        # Step 1: If explicit_task_id (arthur.task) present → use it
         if explicit_task_id:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
             return explicit_task_id
 
-        # Step 2: No service name → lookup __unmapped__ task
-        if not service_name or service_name.strip() == "":
-            logger.debug(f"No service.name provided, using {DEFAULT_SERVICE_NAME} task")
-            return UNMAPPED_TASK_ID
+        # Step 2: If no task_id but service.name present → lookup in mapping
+        if service_name and service_name.strip() != "":
+            mapping_repo = ServiceNameMappingRepository(self.db_session)
+            existing_task_id = mapping_repo.get_task_id_by_service_name(service_name)
 
-        # Step 3: Check for existing mapping
-        mapping_repo = ServiceNameMappingRepository(self.db_session)
-        existing_task_id = mapping_repo.get_task_id_by_service_name(service_name)
+            # Step 3: If lookup finds mapping → return mapped task_id
+            if existing_task_id:
+                logger.debug(
+                    f"Found existing mapping: {service_name} → {existing_task_id}"
+                )
+                return existing_task_id
 
-        if existing_task_id:
-            logger.debug(f"Found existing mapping: {service_name} → {existing_task_id}")
-            return existing_task_id
-
-        # Step 4: No mapping exists → auto-create task and mapping
-        logger.info(
-            f"No mapping found for service.name='{service_name}'. Auto-creating task.",
-        )
-
-        try:
-
-            config_repo = ConfigurationRepository(self.db_session)
-            app_config = config_repo.get_configurations()
-            task_repo = get_task_repository(self.db_session, app_config)
-
-            new_task = task_repo.create_auto_task(service_name)
-
-            mapping_repo.create_mapping(service_name, new_task.id)
-
-            logger.info(f"Auto-created task '{new_task.name}' (id={new_task.id})")
-            return new_task.id
-
-        except Exception as e:
-            # Fall back to __unmapped__ task - never reject traces
-            logger.error(
-                f"Failed to auto-create task for '{service_name}': {e}",
-                exc_info=True,
+            # Step 4: If no mapping → auto-create task and mapping, return new task_id
+            logger.info(
+                f"No mapping found for service.name='{service_name}'. Auto-creating task.",
             )
-            return UNMAPPED_TASK_ID
+
+            try:
+                config_repo = ConfigurationRepository(self.db_session)
+                app_config = config_repo.get_configurations()
+                task_repo = get_task_repository(self.db_session, app_config)
+
+                new_task = task_repo.create_auto_task(service_name)
+
+                mapping_repo.create_mapping(service_name, new_task.id)
+
+                logger.info(f"Auto-created task '{new_task.name}' (id={new_task.id})")
+                return new_task.id
+
+            except Exception as e:
+                # Fall back to __unmapped__ task - never reject traces
+                logger.error(
+                    f"Failed to auto-create task for '{service_name}': {e}",
+                    exc_info=True,
+                )
+                return UNMAPPED_TASK_ID
+
+        # Step 5: If no service.name → return __unmapped__ task_id
+        logger.debug(f"No service.name provided, using UNMAPPED_TASK_ID")
+        return UNMAPPED_TASK_ID
 
     def _process_span_data(
         self,
         span_data: dict[str, Any],
-        resource_task_id: str | None,
+        resource_task_id: str,
         resource_id: str | None = None,
     ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""

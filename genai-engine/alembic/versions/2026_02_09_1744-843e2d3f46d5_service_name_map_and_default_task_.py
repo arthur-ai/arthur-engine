@@ -95,12 +95,28 @@ def upgrade() -> None:
 
     print(f"Backfilled {total_traces_updated} traces with __unmapped__ task")
 
+    # After backfilling, make task_id NOT NULL in both tables
+    op.alter_column('spans', 'task_id',
+                   existing_type=sa.String(),
+                   nullable=False)
+
+    op.alter_column('trace_metadata', 'task_id',
+                   existing_type=sa.String(),
+                   nullable=False)
+
 
 def downgrade() -> None:
     # Get the __unmapped__ task_id before deleting
     connection = op.get_bind()
 
-   
+    # First, revert NOT NULL constraints
+    op.alter_column('spans', 'task_id',
+                   existing_type=sa.String(),
+                   nullable=True)
+
+    op.alter_column('trace_metadata', 'task_id',
+                   existing_type=sa.String(),
+                   nullable=True)
 
     # Revert task_ids back to NULL in spans table (batched)
     total_spans_reverted = 0

@@ -26,7 +26,7 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.TIMESTAMP(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index('idx_resource_metadata_service_name', 'resource_metadata', ['service_name'], unique=False)
+    op.create_index(op.f('ix_resource_metadata_service_name'), 'resource_metadata', ['service_name'], unique=False)
     op.add_column('spans', sa.Column('resource_id', sa.String(), nullable=True))
     op.create_index(op.f('ix_spans_resource_id'), 'spans', ['resource_id'], unique=False)
     op.create_foreign_key('fk_spans_resource_id', 'spans', 'resource_metadata', ['resource_id'], ['id'])
@@ -44,6 +44,6 @@ def downgrade() -> None:
     op.drop_constraint('fk_spans_resource_id', 'spans', type_='foreignkey')
     op.drop_index(op.f('ix_spans_resource_id'), table_name='spans')
     op.drop_column('spans', 'resource_id')
-    op.drop_index('idx_resource_metadata_service_name', table_name='resource_metadata')
+    op.drop_index(op.f('ix_resource_metadata_service_name'), table_name='resource_metadata')
     op.drop_table('resource_metadata')
     # ### end Alembic commands ###
