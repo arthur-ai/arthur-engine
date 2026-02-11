@@ -257,7 +257,7 @@ def main() -> int:
     logger.info("=" * 60)
 
     # Upload models
-    # stats = upload_models(models_dir, bucket, prefix)
+    stats = upload_models(models_dir, bucket, prefix)
 
     # Post-process models (fix common issues)
     post_process_success = post_process_models(
@@ -266,9 +266,6 @@ def main() -> int:
         prefix,
         container_models_dir,
     )
-
-    # Post-process models (fix common issues)
-    post_process_success = post_process_models(models_dir, bucket, prefix)
 
     # Print summary
     logger.info("=" * 60)
