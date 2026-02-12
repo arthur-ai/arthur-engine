@@ -6,7 +6,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from logging import Logger
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 
 import boto3
@@ -110,9 +110,9 @@ class DatabricksConnector(Connector):
         )
 
         # Parse auth_method override (optional — None means auto-detect)
-        self._explicit_auth_method: Optional[str] = connector_fields.get(
-            DATABRICKS_CONNECTOR_AUTH_METHOD_FIELD
-        ) or None
+        self._explicit_auth_method: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_AUTH_METHOD_FIELD) or None
+        )
 
         # Parse AWS token exchange fields with env var fallback
         self.ida_resource_uri: Optional[str] = (
@@ -164,7 +164,9 @@ class DatabricksConnector(Connector):
             or AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA
         """
         if self._explicit_auth_method:
-            self.logger.info(f"Using explicitly configured auth method: {self._explicit_auth_method}")
+            self.logger.info(
+                f"Using explicitly configured auth method: {self._explicit_auth_method}"
+            )
             return self._explicit_auth_method
         elif self.client_id and self.client_secret:
             self.logger.info("Using OAuth M2M authentication")
@@ -199,17 +201,29 @@ class DatabricksConnector(Connector):
         elif self._auth_method == AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA:
             missing_fields = []
             if not self.ida_resource_uri:
-                missing_fields.append("ida_resource_uri (or ARTHUR_ENGINE_DATABRICKS_IDA_RESOURCE_URI)")
+                missing_fields.append(
+                    "ida_resource_uri (or ARTHUR_ENGINE_DATABRICKS_IDA_RESOURCE_URI)"
+                )
             if not self.ida_provider_uri:
-                missing_fields.append("ida_provider_uri (or ARTHUR_ENGINE_DATABRICKS_IDA_PROVIDER_URI)")
+                missing_fields.append(
+                    "ida_provider_uri (or ARTHUR_ENGINE_DATABRICKS_IDA_PROVIDER_URI)"
+                )
             if not self.c2c_audience_uri:
-                missing_fields.append("c2c_audience_uri (or ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_URI)")
+                missing_fields.append(
+                    "c2c_audience_uri (or ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_URI)"
+                )
             if not self.c2c_token_endpoint:
-                missing_fields.append("c2c_token_endpoint (or ARTHUR_ENGINE_DATABRICKS_C2C_TOKEN_ENDPOINT)")
+                missing_fields.append(
+                    "c2c_token_endpoint (or ARTHUR_ENGINE_DATABRICKS_C2C_TOKEN_ENDPOINT)"
+                )
             if not self.c2c_audience_header_name:
-                missing_fields.append("c2c_audience_header_name (or ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_HEADER_NAME)")
+                missing_fields.append(
+                    "c2c_audience_header_name (or ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_HEADER_NAME)"
+                )
             if not self.c2c_subject_token_type:
-                missing_fields.append("c2c_subject_token_type (or ARTHUR_ENGINE_DATABRICKS_C2C_SUBJECT_TOKEN_TYPE)")
+                missing_fields.append(
+                    "c2c_subject_token_type (or ARTHUR_ENGINE_DATABRICKS_C2C_SUBJECT_TOKEN_TYPE)"
+                )
             if missing_fields:
                 raise ValueError(
                     "aws_token_exchange_ida requires the following fields: "
@@ -332,7 +346,7 @@ class DatabricksConnector(Connector):
             f"SignedHeaders={signed_headers}, Signature={signature}"
         )
 
-        headers: dict[str, list] = {
+        headers: Dict[str, List[Any]] = {
             "Authorization": [authorization_header],
             "Content-Length": [content_length_value],
             "Content-Type": [content_type_value],
@@ -357,6 +371,14 @@ class DatabricksConnector(Connector):
         session = boto3.Session()
         credentials = session.get_credentials().get_frozen_credentials()
         region = session.region_name
+
+        # These are validated non-None by _validate_auth_config
+        assert self.c2c_audience_uri is not None
+        assert self.c2c_audience_header_name is not None
+        assert self.c2c_token_endpoint is not None
+        assert self.ida_provider_uri is not None
+        assert self.ida_resource_uri is not None
+        assert self.c2c_subject_token_type is not None
 
         # Step 1: Build GCI token
         self.logger.info("Building GCI token for AWS token exchange")
@@ -428,7 +450,8 @@ class DatabricksConnector(Connector):
             raise ValueError(error_msg)
 
         self.logger.debug("Successfully obtained IDA OAuth token")
-        return ida_response.json()["access_token"]
+        token: str = ida_response.json()["access_token"]
+        return token
 
     def _get_access_token(self) -> str:
         """Get access token based on detected auth method."""
