@@ -105,20 +105,25 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
 
   return (
     <Modal open={open} onClose={onClose} aria-labelledby="prompt-result-detail-modal">
-      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-6xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-auto">
+      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-6xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-auto">
         {/* Modal Header */}
-        <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+        <Box className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
           <Box className="flex items-center gap-3">
             {onPrevious && (
-              <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100">
+              <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100 dark:hover:bg-gray-800">
                 <ArrowBackIcon />
               </IconButton>
             )}
-            <Typography variant="h6" className="font-semibold text-gray-900">
+            <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100">
               Result {currentIndex + 1} of {totalCount} - {promptName} (v{promptVersion})
             </Typography>
             {onNext && (
-              <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1} className="hover:bg-gray-100">
+              <IconButton
+                onClick={onNext}
+                size="small"
+                disabled={currentIndex >= totalCount - 1}
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
                 <ArrowForwardIcon />
               </IconButton>
             )}
@@ -132,7 +137,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
         <Box className="p-6">
           {/* Input Variables Section */}
           <Box className="mb-6">
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
+            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               Input Variables
             </Typography>
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -144,7 +149,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
 
           {/* Messages: Rendered Prompt and Output */}
           <Box className="mb-6">
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
+            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               Messages
             </Typography>
             <Box className="grid grid-cols-2 gap-4">
@@ -160,8 +165,8 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                       return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                     } catch {
                       return (
-                        <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                          <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+                        <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
+                          <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
                             {renderedPrompt}
                           </Typography>
                         </Box>
@@ -174,7 +179,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
               {/* Output */}
               <Box>
                 <Box className="flex items-center justify-between mb-2">
-                  <Typography variant="subtitle2" className="font-medium text-gray-700">
+                  <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300">
                     Output Message:
                   </Typography>
                   {canUpdateDataset && (
@@ -194,16 +199,16 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                     <>
                       {output.content && <MessageDisplay message={{ role: "assistant", content: output.content }} />}
                       {output.tool_calls && output.tool_calls.length > 0 && (
-                        <Box className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
-                          <Typography variant="caption" className="font-medium text-purple-700">
+                        <Box className="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded">
+                          <Typography variant="caption" className="font-medium text-purple-700 dark:text-purple-400">
                             Tool Calls: {output.tool_calls.length}
                           </Typography>
                         </Box>
                       )}
                     </>
                   ) : (
-                    <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                      <Typography variant="body2" className="text-gray-500 italic">
+                    <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
+                      <Typography variant="body2" className="text-gray-500 dark:text-gray-400 italic">
                         No output available
                       </Typography>
                     </Box>
@@ -216,15 +221,18 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
           {/* Evals */}
           {evals.length > 0 && (
             <Box>
-              <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
+              <Typography
+                variant="h6"
+                className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+              >
                 Evaluations
               </Typography>
               <Box className="space-y-2">
                 {evals.map((evalItem, evalIndex) => (
-                  <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
+                  <Box key={evalIndex} className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
                     <Box className="flex items-center justify-between mb-2">
                       <Box className="flex items-center gap-2">
-                        <Typography variant="body2" className="font-medium text-gray-900">
+                        <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                           {evalItem.eval_name} v{evalItem.eval_version}
                         </Typography>
                         {evalItem.eval_results ? (
@@ -247,7 +255,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                       )}
                     </Box>
                     {evalItem.eval_results?.explanation && (
-                      <Typography variant="body2" className="text-gray-700 mt-1">
+                      <Typography variant="body2" className="text-gray-700 dark:text-gray-300 mt-1">
                         {evalItem.eval_results.explanation}
                       </Typography>
                     )}
@@ -306,7 +314,7 @@ export const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClos
             ))}
           </Box>
         ) : (
-          <Typography variant="body2" className="text-gray-600 italic">
+          <Typography variant="body2" className="text-gray-600 dark:text-gray-400 italic">
             No input variables for this evaluation.
           </Typography>
         )}

@@ -236,17 +236,25 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
     >
       <Box className="h-full flex flex-col">
         {/* Header */}
-        <Box className="p-6 border-b border-gray-200 bg-gray-50">
+        <Box className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <Box className="flex items-center justify-between mb-4">
             <Box className="flex-1">
               <Box className="flex items-center gap-2 mb-1">
-                <Typography variant="h5" className="font-semibold text-gray-900">
+                <Typography variant="h5" className="font-semibold text-gray-900 dark:text-gray-100">
                   {promptDetails && (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type)
                     ? `${promptDetails.prompt_name || "Unknown"} (v${promptDetails.prompt_version || "?"})`
                     : promptDetails?.prompt_name || "Unsaved Prompt"}
                 </Typography>
                 {promptDetails?.prompt_type === "unsaved" && (
-                  <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} />
+                  <Chip
+                    label="Unsaved"
+                    size="small"
+                    sx={(theme) => ({
+                      backgroundColor: theme.palette.mode === "dark" ? "rgba(255,152,0,0.12)" : "#fff3e0",
+                      color: theme.palette.mode === "dark" ? "#ffb74d" : "#f57c00",
+                      fontWeight: 600,
+                    })}
+                  />
                 )}
                 {promptDetails &&
                   (promptDetails.prompt_type === "saved" || !promptDetails.prompt_type) &&
@@ -290,7 +298,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <Typography variant="caption" className="text-gray-500 font-medium">
                     Created At
                   </Typography>
-                  <Typography variant="body2" className="text-gray-900">
+                  <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
                     {prompt.created_at ? formatUTCTimestamp(prompt.created_at) : "N/A"}
                   </Typography>
                 </Box>
@@ -298,7 +306,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <Typography variant="caption" className="text-gray-500 font-medium">
                     Model
                   </Typography>
-                  <Typography variant="body2" className="text-gray-900 font-mono">
+                  <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
                     {prompt.model_name}
                   </Typography>
                 </Box>
@@ -306,7 +314,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <Typography variant="caption" className="text-gray-500 font-medium">
                     Provider
                   </Typography>
-                  <Typography variant="body2" className="text-gray-900">
+                  <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
                     {prompt.model_provider}
                   </Typography>
                 </Box>
@@ -314,7 +322,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <Typography variant="caption" className="text-gray-500 font-medium">
                     Messages
                   </Typography>
-                  <Typography variant="body2" className="text-gray-900">
+                  <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
                     {prompt.messages.length}
                   </Typography>
                 </Box>
@@ -328,8 +336,8 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
         </Box>
 
         {/* Prompt Details Section */}
-        <Box className="p-6 border-b border-gray-200 bg-white">
-          <Typography variant="h6" className="font-semibold text-gray-900 mb-4">
+        <Box className="p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+          <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Evaluation Performance
           </Typography>
           <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
@@ -337,18 +345,18 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
               const percentage = (evalResult.pass_count / evalResult.total_count) * 100;
 
               return (
-                <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`} className="p-4 border border-gray-200 rounded">
+                <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`} className="p-4 border border-gray-200 dark:border-gray-700 rounded">
                   <Box className="flex justify-between items-center mb-2">
                     <Link
                       component={RouterLink}
                       to={`/tasks/${taskId}/evaluators/${evalResult.eval_name}/versions/${evalResult.eval_version}`}
                       sx={{ textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
                     >
-                      <Typography variant="subtitle2" className="font-medium text-gray-800">
+                      <Typography variant="subtitle2" className="font-medium text-gray-800 dark:text-gray-200">
                         {evalResult.eval_name} (v{evalResult.eval_version})
                       </Typography>
                     </Link>
-                    <Typography variant="body2" className="font-semibold text-gray-700">
+                    <Typography variant="body2" className="font-semibold text-gray-700 dark:text-gray-300">
                       {percentage.toFixed(0)}%
                     </Typography>
                   </Box>
@@ -363,7 +371,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                       },
                     }}
                   />
-                  <Typography variant="caption" className="text-gray-600">
+                  <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
                     {evalResult.pass_count} / {evalResult.total_count} test cases passed
                   </Typography>
                 </Box>
@@ -374,7 +382,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
 
         {/* Test Cases Table */}
         <Box className="flex-1 flex flex-col overflow-hidden p-6">
-          <Typography variant="h6" className="font-semibold text-gray-900 mb-4">
+          <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Test Case Results
           </Typography>
           <Box className="flex-1 overflow-hidden">
@@ -400,7 +408,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                         <TableCell colSpan={5} align="center">
                           <Box className="py-8">
                             <CircularProgress size={32} />
-                            <Typography variant="body2" className="mt-2 text-gray-600">
+                            <Typography variant="body2" className="mt-2 text-gray-600 dark:text-gray-400">
                               Loading results...
                             </Typography>
                           </Box>
@@ -426,7 +434,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                             <TableCell>
                               <Typography
                                 variant="body2"
-                                className="text-gray-700 text-xs"
+                                className="text-gray-700 dark:text-gray-300 text-xs"
                                 sx={{
                                   overflow: "hidden",
                                   display: "-webkit-box",
@@ -441,7 +449,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                             <TableCell>
                               <Typography
                                 variant="body2"
-                                className="text-gray-700 text-xs"
+                                className="text-gray-700 dark:text-gray-300 text-xs"
                                 sx={{
                                   overflow: "hidden",
                                   display: "-webkit-box",
@@ -456,7 +464,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                             <TableCell>
                               <Typography
                                 variant="body2"
-                                className="text-gray-700 text-xs"
+                                className="text-gray-700 dark:text-gray-300 text-xs"
                                 sx={{
                                   overflow: "hidden",
                                   display: "-webkit-box",
@@ -543,15 +551,15 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
             <>
               {/* Model Configuration */}
               <Box className="mb-6">
-                <Typography variant="subtitle1" className="font-semibold text-gray-900 mb-3">
+                <Typography variant="subtitle1" className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Model Configuration
                 </Typography>
-                <Box className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded">
+                <Box className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded">
                   <Box>
                     <Typography variant="caption" className="text-gray-500 font-medium">
                       Model
                     </Typography>
-                    <Typography variant="body2" className="text-gray-900 font-mono">
+                    <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
                       {prompt.model_name}
                     </Typography>
                   </Box>
@@ -559,7 +567,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                     <Typography variant="caption" className="text-gray-500 font-medium">
                       Provider
                     </Typography>
-                    <Typography variant="body2" className="text-gray-900 font-mono">
+                    <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
                       {prompt.model_provider}
                     </Typography>
                   </Box>
@@ -568,7 +576,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                       <Typography variant="caption" className="text-gray-500 font-medium">
                         Temperature
                       </Typography>
-                      <Typography variant="body2" className="text-gray-900 font-mono">
+                      <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
                         {String(prompt.config.temperature)}
                       </Typography>
                     </Box>
@@ -578,7 +586,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                       <Typography variant="caption" className="text-gray-500 font-medium">
                         Max Tokens
                       </Typography>
-                      <Typography variant="body2" className="text-gray-900 font-mono">
+                      <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
                         {String(prompt.config.max_tokens)}
                       </Typography>
                     </Box>
@@ -588,7 +596,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
 
               {/* Messages */}
               <Box>
-                <Typography variant="subtitle1" className="font-semibold text-gray-900 mb-3">
+                <Typography variant="subtitle1" className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Messages
                 </Typography>
                 <Box>

@@ -133,7 +133,7 @@ export const SyntheticDataCanvas: React.FC<SyntheticDataCanvasProps> = ({
           justifyContent: "space-between",
           alignItems: "center",
           p: 2,
-          bgcolor: "grey.50",
+          bgcolor: "background.default",
         }}
       >
         <Button startIcon={<ArrowBack />} onClick={onBack} disabled={isLoading} variant="outlined">

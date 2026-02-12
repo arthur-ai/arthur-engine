@@ -47,7 +47,7 @@ export const RagConfigurationSelector: React.FC<RagConfigurationSelectorProps> =
         );
       }}
       renderInput={(params) => (
-        <TextField {...params} label="Saved Configuration" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+        <TextField {...params} label="Saved Configuration" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
       )}
       sx={{ flex: 1, minWidth: 0 }}
     />

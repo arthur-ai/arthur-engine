@@ -134,7 +134,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
         >
           <ScrollArea.Viewport
             ref={scrollableRef}
-            className="p-2 bg-gray-50 border border-gray-200 rounded h-full has-[input:hover]:bg-gray-100 transition-colors duration-100"
+            className="p-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded h-full has-[input:hover]:bg-gray-100 dark:has-[input:hover]:bg-gray-700 transition-colors duration-100"
           >
             <ScrollArea.Content className="flex flex-row gap-2 h-full text-xs">
               <form.Field mode="array" name="config">
@@ -156,7 +156,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                 {(field) => (
                   <input
                     placeholder={!field.state.value.length ? `Add filters to narrow down the results...` : undefined}
-                    className="min-w-[200px] flex-1 outline-none placeholder:text-gray-600 text-xs h-full"
+                    className="min-w-[200px] flex-1 outline-none bg-transparent placeholder:text-gray-600 dark:placeholder:text-gray-400 dark:text-gray-100 text-xs h-full"
                     onFocus={() => field.pushValue({ name: "", operator: "", value: "", id: uuidv4() })}
                   />
                 )}

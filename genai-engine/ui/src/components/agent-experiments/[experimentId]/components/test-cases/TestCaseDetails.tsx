@@ -212,7 +212,7 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
         </Stack>
 
         {hasResults && eval_results.explanation && (
-          <Paper variant="outlined" className="p-3 bg-gray-50">
+          <Paper variant="outlined" className="p-3 bg-gray-50 dark:bg-gray-800">
             <Typography variant="body2" color="text.secondary">
               <strong>Explanation:</strong> {eval_results.explanation}
             </Typography>

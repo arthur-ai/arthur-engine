@@ -135,10 +135,24 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               key={idx}
                               label={config.type === "saved" ? `${config.name} (v${config.version})` : config.auto_name || "Unsaved Prompt"}
                               size="small"
-                              sx={{
-                                backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
-                                borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
-                              }}
+                              sx={(theme) => ({
+                                backgroundColor:
+                                  config.type === "saved"
+                                    ? theme.palette.mode === "dark"
+                                      ? "rgba(33, 150, 243, 0.15)"
+                                      : "#e3f2fd"
+                                    : theme.palette.mode === "dark"
+                                      ? "rgba(255, 152, 0, 0.15)"
+                                      : "#fff3e0",
+                                borderColor:
+                                  config.type === "saved"
+                                    ? theme.palette.mode === "dark"
+                                      ? "rgba(33, 150, 243, 0.5)"
+                                      : "#2196f3"
+                                    : theme.palette.mode === "dark"
+                                      ? "rgba(255, 152, 0, 0.5)"
+                                      : "#ff9800",
+                              })}
                               onClick={
                                 config.type === "saved"
                                   ? () => {
@@ -176,10 +190,10 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                             : notebook.state.dataset_ref.name || notebook.state.dataset_ref.id
                         }
                         size="small"
-                        sx={{
-                          backgroundColor: "#fce4ec",
-                          borderColor: "#e91e63",
-                        }}
+                        sx={(theme) => ({
+                          backgroundColor: theme.palette.mode === "dark" ? "rgba(233, 30, 99, 0.15)" : "#fce4ec",
+                          borderColor: theme.palette.mode === "dark" ? "rgba(233, 30, 99, 0.5)" : "#e91e63",
+                        })}
                         onClick={
                           notebook.state.dataset_ref.id
                             ? () => {
@@ -213,10 +227,10 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                             key={idx}
                             label={`${evalRef.name} (v${evalRef.version})`}
                             size="small"
-                            sx={{
-                              backgroundColor: "#e8f5e9",
-                              borderColor: "#4caf50",
-                            }}
+                            sx={(theme) => ({
+                              backgroundColor: theme.palette.mode === "dark" ? "rgba(76, 175, 80, 0.15)" : "#e8f5e9",
+                              borderColor: theme.palette.mode === "dark" ? "rgba(76, 175, 80, 0.5)" : "#4caf50",
+                            })}
                             onClick={() => {
                               navigate(`/tasks/${taskId}/evaluators/${evalRef.name}/versions/${evalRef.version}`);
                               onClose();

@@ -76,7 +76,7 @@ interface SelectionPosition {
   isCollapsed: boolean;
 }
 
-const EditableDiv = styled("div")(() => ({
+const EditableDiv = styled("div")(({ theme }) => ({
   width: "100%",
   height: "100%",
   minHeight: "80px",
@@ -85,16 +85,19 @@ const EditableDiv = styled("div")(() => ({
   fontSize: "0.8125rem",
   fontFamily: "monospace",
   lineHeight: "1.4375em",
-  color: "rgba(0, 0, 0, 0.87)",
-  backgroundColor: "white",
-  border: "1px solid rgba(0, 0, 0, 0.23)",
+  color: theme.palette.text.primary,
+  backgroundColor: theme.palette.background.paper,
+  border: `1px solid ${theme.palette.divider}`,
   borderRadius: "4px",
   outline: "none",
   whiteSpace: "pre-wrap",
   wordWrap: "break-word",
   transition: "border-color 0.2s",
   "&:hover": {
-    borderColor: "rgba(0, 0, 0, 0.87)",
+    borderColor: theme.palette.text.primary,
+  },
+  '&[aria-disabled="true"]': {
+    backgroundColor: theme.palette.action.disabledBackground,
   },
   "&:focus": {
     borderColor: "#1976d2",
@@ -103,7 +106,7 @@ const EditableDiv = styled("div")(() => ({
   },
   "&[data-placeholder]:empty:before": {
     content: "attr(data-placeholder)",
-    color: "rgba(0, 0, 0, 0.38)",
+    color: theme.palette.text.disabled,
     pointerEvents: "none",
   },
   "& .nunjucks-var": {
@@ -505,10 +508,11 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         data-placeholder={placeholder}
+        aria-disabled={disabled || undefined}
         suppressContentEditableWarning
         style={{
           cursor: disabled || readOnly ? "default" : "text",
-          backgroundColor: disabled ? "#f5f5f5" : readOnly ? "transparent" : "white",
+          backgroundColor: readOnly ? "transparent" : undefined,
           border: readOnly ? "none" : undefined,
           padding: readOnly ? "0" : undefined,
         }}

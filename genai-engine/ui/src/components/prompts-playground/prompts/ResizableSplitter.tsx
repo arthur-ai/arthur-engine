@@ -100,7 +100,7 @@ const ResizableSplitter = ({ onResize, minTopRatio, minBottomRatio }: ResizableS
     <div
       ref={splitterRef}
       onMouseDown={handleMouseDown}
-      className="group cursor-row-resize bg-gray-200 hover:bg-gray-400 hover:shadow-sm active:bg-gray-500 transition-all"
+      className="group cursor-row-resize bg-gray-200 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 hover:shadow-sm active:bg-gray-500 dark:active:bg-gray-400 transition-all"
       style={{
         height: "4px",
         width: "100%",
@@ -114,7 +114,7 @@ const ResizableSplitter = ({ onResize, minTopRatio, minBottomRatio }: ResizableS
       aria-label="Resize messages and response sections"
     >
       <div
-        className="transition-all group-hover:opacity-100 group-hover:bg-gray-600"
+        className="transition-all group-hover:opacity-100 group-hover:bg-gray-600 dark:group-hover:bg-gray-300 bg-gray-500 dark:bg-gray-400"
         style={{
           position: "absolute",
           top: "calc(50% - 1.5px)",
@@ -122,12 +122,11 @@ const ResizableSplitter = ({ onResize, minTopRatio, minBottomRatio }: ResizableS
           transform: "translateX(-50%)",
           width: "40px",
           height: "1px",
-          backgroundColor: "#4b5563",
           opacity: 0.9,
         }}
       />
       <div
-        className="transition-all group-hover:opacity-100 group-hover:bg-gray-600"
+        className="transition-all group-hover:opacity-100 group-hover:bg-gray-600 dark:group-hover:bg-gray-300 bg-gray-500 dark:bg-gray-400"
         style={{
           position: "absolute",
           top: "calc(50% + 1.5px)",
@@ -135,7 +134,6 @@ const ResizableSplitter = ({ onResize, minTopRatio, minBottomRatio }: ResizableS
           transform: "translateX(-50%)",
           width: "40px",
           height: "1px",
-          backgroundColor: "#4b5563",
           opacity: 0.9,
         }}
       />

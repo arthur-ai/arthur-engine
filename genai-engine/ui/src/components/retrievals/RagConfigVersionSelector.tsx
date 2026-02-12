@@ -60,7 +60,7 @@ export const RagConfigVersionSelector: React.FC<RagConfigVersionSelectorProps> =
           </Box>
         );
       }}
-      renderInput={(params) => <TextField {...params} label="Version" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />}
+      renderInput={(params) => <TextField {...params} label="Version" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />}
       sx={{ flex: 1, minWidth: 0 }}
     />
   );

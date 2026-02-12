@@ -12,16 +12,16 @@ export const DrawerPagination = ({ currentTarget, currentId, contextType, contex
   if (!currentTarget || !currentId) return null;
   if (contextType !== currentTarget)
     return (
-      <span className="text-sm text-gray-400">
-        Currently navigating on <code className="font-mono bg-gray-700 text-white px-1 py-0.5 rounded-md">{contextType}</code> level.
+      <span className="text-sm text-gray-400 dark:text-gray-500">
+        Currently navigating on <code className="font-mono bg-gray-700 dark:bg-gray-600 text-white px-1 py-0.5 rounded-md">{contextType}</code> level.
       </span>
     );
 
-  if (!contextIds.length) return <span className="text-sm text-gray-400">No context available.</span>;
+  if (!contextIds.length) return <span className="text-sm text-gray-400 dark:text-gray-500">No context available.</span>;
 
   const idx = currentId ? contextIds.indexOf(currentId) : -1;
 
-  if (idx === -1) return <span className="text-sm text-gray-400">Current item not found in context.</span>;
+  if (idx === -1) return <span className="text-sm text-gray-400 dark:text-gray-500">Current item not found in context.</span>;
 
   const hasNext = idx < contextIds.length - 1;
   const hasPrevious = idx > 0;

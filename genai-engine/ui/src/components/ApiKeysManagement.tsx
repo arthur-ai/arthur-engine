@@ -285,7 +285,7 @@ export const ApiKeysManagement: React.FC = () => {
                   <TableCell
                     sx={{
                       fontWeight: "bold",
-                      backgroundColor: "grey.100",
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                       width: "30%",
                     }}
                   >
@@ -294,7 +294,7 @@ export const ApiKeysManagement: React.FC = () => {
                   <TableCell
                     sx={{
                       fontWeight: "bold",
-                      backgroundColor: "grey.100",
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                       width: "25%",
                     }}
                   >
@@ -303,7 +303,7 @@ export const ApiKeysManagement: React.FC = () => {
                   <TableCell
                     sx={{
                       fontWeight: "bold",
-                      backgroundColor: "grey.100",
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                       width: "30%",
                     }}
                   >
@@ -312,7 +312,7 @@ export const ApiKeysManagement: React.FC = () => {
                   <TableCell
                     sx={{
                       fontWeight: "bold",
-                      backgroundColor: "grey.100",
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                       width: "15%",
                     }}
                     align="right"
@@ -449,11 +449,11 @@ export const ApiKeysManagement: React.FC = () => {
           </Alert>
           <Box
             sx={{
-              backgroundColor: "grey.100",
+              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
               borderRadius: 2,
               p: 2.5,
               border: "1px solid",
-              borderColor: "grey.300",
+              borderColor: "divider",
               fontFamily: "monospace",
               fontSize: "0.875rem",
               wordBreak: "break-all",

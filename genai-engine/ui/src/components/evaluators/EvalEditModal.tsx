@@ -221,11 +221,11 @@ const EvalEditModal = ({
                 value={evalName}
                 disabled
                 size="small"
-                sx={{
+                sx={(theme) => ({
                   "& .MuiInputBase-input.Mui-disabled": {
-                    WebkitTextFillColor: "rgba(0, 0, 0, 0.6)",
+                    WebkitTextFillColor: theme.palette.text.secondary,
                   },
-                }}
+                })}
               />
               <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
                 Eval name cannot be changed. Saving will create a new version.
@@ -265,7 +265,7 @@ const EvalEditModal = ({
                     onChange={handleProviderChange}
                     disabled={providerDisabled || isLoading}
                     renderInput={(params) => (
-                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                     )}
                   />
                 </Tooltip>
@@ -283,7 +283,7 @@ const EvalEditModal = ({
                   onChange={handleModelChange}
                   disabled={modelDisabled || isLoading}
                   renderInput={(params) => (
-                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                   )}
                 />
               </FormControl>

@@ -372,7 +372,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           <Box
             component="pre"
             sx={{
-              backgroundColor: "grey.50",
+              backgroundColor: "action.hover",
               p: 2,
               borderRadius: 1,
               overflow: "auto",
