@@ -16,7 +16,7 @@ const NotebooksHeader = ({ onCreateNotebook }: NotebooksHeaderProps) => {
           justifyContent: "space-between",
           alignItems: "center",
           p: 2,
-          backgroundColor: "white",
+          backgroundColor: "background.paper",
         }}
       >
         <Box>

@@ -6,6 +6,8 @@ import IconButton from "@mui/material/IconButton";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { ArthurLogo } from "./common/ArthurLogo";
+import { ThemeToggle } from "./common/ThemeToggle";
 import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
@@ -113,13 +115,13 @@ export const AllTasks: React.FC = () => {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* Header */}
-        <header className="bg-white shadow">
+        <header className="bg-white dark:bg-gray-900 shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-3">
               <div className="flex flex-col items-start">
-                <img src="/Arthur_Logo_PBW.svg" alt="Arthur" className="h-20 -ml-5" />
+                <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
               </div>
               <div className="flex items-center space-x-4">
                 {tasks.length > 0 && (
@@ -133,8 +135,9 @@ export const AllTasks: React.FC = () => {
                     aria-label="menu"
                     onClick={() => setIsMenuOpen((prev) => !prev)}
                     sx={{
-                      backgroundColor: "white",
-                      border: "1px solid #e0e0e0",
+                      bgcolor: "background.paper",
+                      border: 1,
+                      borderColor: "divider",
                       borderRadius: "4px",
                       padding: "8px",
                       width: "40px",
@@ -145,10 +148,15 @@ export const AllTasks: React.FC = () => {
                   </IconButton>
                   {/* Dropdown menu */}
                   {isMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                      <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "black" }}>
-                        Logout
-                      </Button>
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">
+                      <div className="px-4 py-2">
+                        <ThemeToggle />
+                      </div>
+                      <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
+                        <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "text.primary" }}>
+                          Logout
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -165,11 +173,11 @@ export const AllTasks: React.FC = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
             ) : error ? (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
                 <div className="flex">
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">Error loading tasks</h3>
-                    <div className="mt-2 text-sm text-red-700">
+                    <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error loading tasks</h3>
+                    <div className="mt-2 text-sm text-red-700 dark:text-red-400">
                       <p>{error}</p>
                     </div>
                   </div>
@@ -177,17 +185,17 @@ export const AllTasks: React.FC = () => {
               </div>
             ) : tasks.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-gray-500 text-lg font-medium mb-2">No tasks found</div>
-                <p className="text-gray-400 mb-8">Get started by creating your first agent task.</p>
+                <div className="text-gray-500 dark:text-gray-400 text-lg font-medium mb-2">No tasks found</div>
+                <p className="text-gray-400 dark:text-gray-500 mb-8">Get started by creating your first agent task.</p>
                 <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
               </div>
             ) : (
               <>
                 <div className="mb-4">
-                  <h2 className="text-lg font-medium text-gray-900">All Tasks ({tasks.length})</h2>
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Tasks ({tasks.length})</h2>
                   <div className="flex justify-between items-center mt-2">
-                    <p className="text-sm text-gray-500">Click on any task to open the toolkit</p>
-                    <div className="flex items-center text-gray-500 text-sm">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Click on any task to open the toolkit</p>
+                    <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
                       <ShowChartIcon sx={{ fontSize: 18, mr: 0.5 }} />
                       <span>Metrics from last 7 days</span>
                     </div>

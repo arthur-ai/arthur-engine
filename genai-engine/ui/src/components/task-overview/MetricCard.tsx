@@ -7,18 +7,31 @@ export interface MetricCardProps {
   subLabel: string;
   color: string;
   bgColor: string;
+  darkBgColor?: string;
   borderColor: string;
+  darkBorderColor?: string;
   isLoading: boolean;
 }
 
-export const MetricCard = ({ icon, label, value, subLabel, color, bgColor, borderColor, isLoading }: MetricCardProps) => {
+export const MetricCard = ({
+  icon,
+  label,
+  value,
+  subLabel,
+  color,
+  bgColor,
+  darkBgColor,
+  borderColor,
+  darkBorderColor,
+  isLoading,
+}: MetricCardProps) => {
   return (
     <Paper
       variant="outlined"
       sx={{
         p: 2.5,
-        bgcolor: bgColor,
-        borderColor: borderColor,
+        bgcolor: (theme) => (theme.palette.mode === "dark" && darkBgColor ? darkBgColor : bgColor),
+        borderColor: (theme) => (theme.palette.mode === "dark" && darkBorderColor ? darkBorderColor : borderColor),
       }}
     >
       <Stack spacing={1}>

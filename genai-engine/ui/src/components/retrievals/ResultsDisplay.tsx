@@ -21,7 +21,11 @@ interface EmptyStateContainerProps {
 }
 
 const EmptyStateContainer: React.FC<EmptyStateContainerProps> = ({ children, centered = true }) => {
-  return <div className={`bg-white rounded-lg shadow ${centered ? "flex items-center justify-center" : ""} p-6`}>{children}</div>;
+  return (
+    <div className={`bg-white dark:bg-gray-900 rounded-lg shadow dark:shadow-gray-900/50 ${centered ? "flex items-center justify-center" : ""} p-6`}>
+      {children}
+    </div>
+  );
 };
 
 interface VectorEmbeddingDisplayProps {
@@ -36,9 +40,9 @@ const VectorEmbeddingDisplay: React.FC<VectorEmbeddingDisplayProps> = ({ vector 
 
   return (
     <div>
-      <h4 className="text-sm font-medium text-gray-900 mb-2">Vector Embedding ({vectorArray.length} dimensions)</h4>
-      <div className="bg-white rounded border p-3">
-        <div className="text-xs text-gray-600">
+      <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Vector Embedding ({vectorArray.length} dimensions)</h4>
+      <div className="bg-white dark:bg-gray-900 rounded border dark:border-gray-700 p-3">
+        <div className="text-xs text-gray-600 dark:text-gray-400">
           <div className="mb-2">First 10 dimensions: {formatVectorPreview(vectorArray, 10)}</div>
           {stats && (
             <div className="text-gray-500">
@@ -139,28 +143,28 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
       <EmptyStateContainer>
         <div className="text-center">
           <Search className="mx-auto text-gray-400" sx={{ fontSize: 48 }} />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No results yet</h3>
-          <p className="mt-1 text-sm text-gray-600">Execute a search query to see results here.</p>
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No results yet</h3>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Execute a search query to see results here.</p>
         </div>
       </EmptyStateContainer>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow dark:shadow-gray-900/50 p-6">
       {query && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-md">
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
           <div className="text-sm">
-            <span className="font-medium text-gray-900">Query:</span>
-            <span className="ml-2 text-gray-600">&quot;{query}&quot;</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">Query:</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">&quot;{query}&quot;</span>
           </div>
           <div className="text-sm mt-1">
-            <span className="font-medium text-gray-900">Method:</span>
-            <span className="ml-2 text-gray-600 capitalize">{searchMethod}</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">Method:</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400 capitalize">{searchMethod}</span>
           </div>
           <div className="text-sm mt-1">
-            <span className="font-medium text-gray-900">Results:</span>
-            <span className="ml-2 text-gray-600">{results.objects.length} results</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">Results:</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">{results.objects.length} results</span>
           </div>
         </div>
       )}
@@ -169,8 +173,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
             <SearchOff className="mx-auto text-gray-400" sx={{ fontSize: 48 }} />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No results found</h3>
-            <p className="mt-1 text-sm text-gray-600">Try adjusting your search query or settings.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No results found</h3>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Try adjusting your search query or settings.</p>
           </div>
         </div>
       ) : (
@@ -186,15 +190,18 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
             const { _additional, ...properties } = result.properties || {};
 
             return (
-              <div key={resultId} className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleExpanded(result.uuid)}>
+              <div key={resultId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div
+                  className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
+                  onClick={() => toggleExpanded(result.uuid)}
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                           #{index + 1}
                         </span>
-                        <span className="text-sm text-gray-500">ID: {result.uuid}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">ID: {result.uuid}</span>
                       </div>
 
                       {/* Show first few properties as preview */}
@@ -204,8 +211,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                             .slice(0, 3)
                             .map(([key, value]) => (
                               <div key={key} className="text-sm">
-                                <span className="font-medium text-gray-900">{key}:</span>
-                                <span className="ml-2 text-gray-600">{formatValue(value)}</span>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{key}:</span>
+                                <span className="ml-2 text-gray-600 dark:text-gray-400">{formatValue(value)}</span>
                               </div>
                             ))}
                         {properties && Object.keys(properties).length > 3 && (
@@ -248,21 +255,21 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                 </div>
 
                 {isExpanded && (
-                  <div className="border-t border-gray-200 bg-gray-50 p-4">
+                  <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
                     <div className="space-y-4">
                       {properties && Object.keys(properties).length > 0 && (
                         <div>
-                          <h4 className="text-sm font-medium text-gray-900 mb-2">Properties</h4>
-                          <div className="bg-white rounded border p-3">
-                            <pre className="text-xs text-gray-600 overflow-x-auto">{JSON.stringify(properties, null, 2)}</pre>
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Properties</h4>
+                          <div className="bg-white dark:bg-gray-900 rounded border dark:border-gray-700 p-3">
+                            <pre className="text-xs text-gray-600 dark:text-gray-400 overflow-x-auto">{JSON.stringify(properties, null, 2)}</pre>
                           </div>
                         </div>
                       )}
 
                       {result.metadata && (
                         <div>
-                          <h4 className="text-sm font-medium text-gray-900 mb-2">Metadata</h4>
-                          <div className="bg-white rounded border p-3">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Metadata</h4>
+                          <div className="bg-white dark:bg-gray-900 rounded border dark:border-gray-700 p-3">
                             <div className="space-y-2 text-sm">
                               {result.metadata.distance !== undefined && (
                                 <div className="flex justify-between">
@@ -302,7 +309,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                               {result.metadata.explain_score && (
                                 <div>
                                   <span className="text-gray-600">Explain Score:</span>
-                                  <div className="mt-1 text-xs text-gray-500 bg-gray-100 p-2 rounded">{result.metadata.explain_score}</div>
+                                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                                    {result.metadata.explain_score}
+                                  </div>
                                 </div>
                               )}
                             </div>

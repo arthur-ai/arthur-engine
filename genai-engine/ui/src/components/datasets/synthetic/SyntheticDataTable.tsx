@@ -174,13 +174,13 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox" sx={{ bgcolor: "grey.100" }}>
+                <TableCell padding="checkbox" sx={{ bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100") }}>
                   <Checkbox checked={allSelected} indeterminate={someSelected} onChange={(e) => handleSelectAll(e.target.checked)} />
                 </TableCell>
                 <TableCell
                   sx={{
                     fontWeight: "bold",
-                    bgcolor: "grey.100",
+                    bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
                     width: 60,
                   }}
                 >
@@ -191,7 +191,7 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                     key={column}
                     sx={{
                       fontWeight: "bold",
-                      bgcolor: "grey.100",
+                      bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
                       minWidth: 150,
                     }}
                   >
@@ -207,7 +207,16 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
                   hover
                   selected={selectedRows.has(row.id)}
                   sx={{
-                    bgcolor: row.locked ? "grey.100" : row.status === "added" ? "success.50" : row.status === "modified" ? "warning.50" : "inherit",
+                    bgcolor: (theme) =>
+                      row.locked
+                        ? theme.palette.mode === "dark"
+                          ? "grey.800"
+                          : "grey.100"
+                        : row.status === "added"
+                          ? "success.50"
+                          : row.status === "modified"
+                            ? "warning.50"
+                            : "inherit",
                     opacity: row.locked ? 0.7 : 1,
                   }}
                 >

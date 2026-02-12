@@ -1,5 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Alert, Autocomplete, Button, Drawer, Snackbar, Stack, TextField, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useControlled } from "@mui/material/utils";
 import { useStore } from "@tanstack/react-form";
 import { AxiosError } from "axios";
@@ -37,6 +38,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const api = useApi()!;
   const { task } = useTask();
   const snackbar = useSnackbar();
+  const theme = useTheme();
 
   const [open, setOpen] = useControlled({
     controlled: openProp,
@@ -252,7 +254,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
             sx={{
               px: 4,
               py: 2,
-              backgroundColor: "grey.100",
+              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
               borderBottom: "1px solid",
               borderColor: "divider",
             }}
@@ -295,7 +297,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                       renderOption={(props, option) => {
                         const isCreateNew = "id" in option && option.id === "__create_new__";
                         return (
-                          <li {...props} key={option.id} style={isCreateNew ? { fontWeight: 500, color: "#1976d2" } : undefined}>
+                          <li {...props} key={option.id} style={isCreateNew ? { fontWeight: 500, color: theme.palette.primary.main } : undefined}>
                             {option.name}
                           </li>
                         );

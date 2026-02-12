@@ -80,7 +80,7 @@ export const TaskOverview: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ py: 3, px: 3, bgcolor: "grey.50" }}>
+    <Box sx={{ py: 3, px: 3, bgcolor: "background.default" }}>
       <Stack spacing={3} sx={{ maxWidth: 1400, mx: "auto" }}>
         {/* Header */}
         <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
@@ -120,7 +120,9 @@ export const TaskOverview: React.FC = () => {
             subLabel={`${displayLabel} total`}
             color={METRIC_COLORS.traces.main}
             bgColor={METRIC_COLORS.traces.light}
+            darkBgColor={METRIC_COLORS.traces.dark}
             borderColor={METRIC_COLORS.traces.border}
+            darkBorderColor={METRIC_COLORS.traces.darkBorder}
             isLoading={isLoading}
           />
           <MetricCard
@@ -130,7 +132,9 @@ export const TaskOverview: React.FC = () => {
             subLabel={`${displayLabel} total`}
             color={METRIC_COLORS.tokens.main}
             bgColor={METRIC_COLORS.tokens.light}
+            darkBgColor={METRIC_COLORS.tokens.dark}
             borderColor={METRIC_COLORS.tokens.border}
+            darkBorderColor={METRIC_COLORS.tokens.darkBorder}
             isLoading={isLoading}
           />
           <MetricCard
@@ -140,7 +144,9 @@ export const TaskOverview: React.FC = () => {
             subLabel="est. spend"
             color={METRIC_COLORS.cost.main}
             bgColor={METRIC_COLORS.cost.light}
+            darkBgColor={METRIC_COLORS.cost.dark}
             borderColor={METRIC_COLORS.cost.border}
+            darkBorderColor={METRIC_COLORS.cost.darkBorder}
             isLoading={isLoading}
           />
           <MetricCard
@@ -150,7 +156,9 @@ export const TaskOverview: React.FC = () => {
             subLabel={`${displayLabel} total`}
             color={METRIC_COLORS.evals.main}
             bgColor={METRIC_COLORS.evals.light}
+            darkBgColor={METRIC_COLORS.evals.dark}
             borderColor={METRIC_COLORS.evals.border}
+            darkBorderColor={METRIC_COLORS.evals.darkBorder}
             isLoading={isLoading}
           />
           <MetricCard
@@ -160,7 +168,9 @@ export const TaskOverview: React.FC = () => {
             subLabel="avg. rate"
             color={METRIC_COLORS.successRate.main}
             bgColor={METRIC_COLORS.successRate.light}
+            darkBgColor={METRIC_COLORS.successRate.dark}
             borderColor={METRIC_COLORS.successRate.border}
+            darkBorderColor={METRIC_COLORS.successRate.darkBorder}
             isLoading={isLoading}
           />
         </Box>
@@ -297,7 +307,7 @@ export const TaskOverview: React.FC = () => {
         </Box>
 
         {/* Bottom CTA Banner */}
-        <Paper variant="outlined" sx={{ p: 3, borderStyle: "dashed", borderWidth: 2, borderColor: "grey.300" }}>
+        <Paper variant="outlined" sx={{ p: 3, borderStyle: "dashed", borderWidth: 2, borderColor: "divider" }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Box>
               <Typography variant="subtitle1" fontWeight={500} color="text.secondary">

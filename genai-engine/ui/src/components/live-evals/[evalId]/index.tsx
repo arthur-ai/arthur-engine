@@ -164,7 +164,7 @@ export const LiveEvalDetail = () => {
                   </Typography>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: "grey.50" }}>
+                      <TableRow sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                         <TableCell sx={{ fontWeight: 600 }}>Eval Variable</TableCell>
                         <TableCell sx={{ width: 40 }} />
                         <TableCell sx={{ fontWeight: 600 }}>Transform Variable</TableCell>
@@ -209,7 +209,7 @@ export const LiveEvalDetail = () => {
             {/* <TableContainer>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: "grey.50" }}>
+                  <TableRow sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
                     <TableCell sx={{ fontWeight: 600 }}>Trace</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Evaluated</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Result</TableCell>

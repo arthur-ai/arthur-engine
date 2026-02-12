@@ -94,7 +94,7 @@ export const TraceDrawerBody = ({
           sx={{
             px: 4,
             py: 2,
-            backgroundColor: "grey.100",
+            backgroundColor: "action.hover",
             borderBottom: "1px solid",
             borderColor: "divider",
           }}
@@ -158,7 +158,7 @@ export const TraceDrawerBody = ({
           direction="row"
           alignItems="center"
           gap={2}
-          sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}
+          sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "action.selected" }}
         >
           {currentTarget && currentId && paginationContext && onNavigate && (
             <DrawerPagination
@@ -188,7 +188,7 @@ export const TraceDrawerBody = ({
               borderRight: "1px solid",
               borderColor: "divider",
               p: 2,
-              backgroundColor: "grey.100",
+              backgroundColor: "action.hover",
               overflow: "auto",
               maxHeight: "100%",
             }}

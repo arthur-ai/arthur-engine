@@ -237,7 +237,7 @@ export const DatasetExperimentsView: React.FC = () => {
   return (
     <>
       <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
-        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 bg-white">
+        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <Typography variant="h5" className="font-semibold mb-2">
             Experiments for {dataset?.name || "Dataset"}
           </Typography>
@@ -252,7 +252,7 @@ export const DatasetExperimentsView: React.FC = () => {
         <Box className="overflow-auto min-h-0">
           {isLoading ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-gray-600">Loading experiments...</p>
+              <p className="text-gray-600 dark:text-gray-400">Loading experiments...</p>
             </Box>
           ) : error ? (
             <Box className="flex items-center justify-center h-full">
