@@ -1,6 +1,13 @@
+import uuid
+from datetime import datetime
 from typing import Optional
 
-from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
+from arthur_common.models.enums import (
+    PaginationSortMethod,
+    RegisteredAgentProvider,
+    RuleScope,
+    RuleType,
+)
 from fastapi import HTTPException
 from opentelemetry import trace
 from sqlalchemy import asc, desc
@@ -14,7 +21,15 @@ from db_models import (
 )
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
+from repositories.service_name_mapping_repository import (
+    ServiceNameMappingRepository,
+)
+from schemas.internal_schemas import (
+    ApplicationConfiguration,
+    Rule,
+    Task,
+    TaskMetadata,
+)
 from utils import constants
 
 tracer = trace.get_tracer(__name__)
@@ -87,7 +102,53 @@ class TaskRepository:
         return db_task
 
     def get_task_by_id(self, id: str) -> Task:
-        return Task._from_database_model(self.get_db_task_by_id(id))
+        db_task = self.get_db_task_by_id(id)
+        task = Task._from_database_model(db_task)
+
+        # Enrich with service names if task is agentic
+        if task.is_agentic:
+            service_name_repo = ServiceNameMappingRepository(self.db_session)
+            service_names = service_name_repo.get_service_names_by_task_id(id)
+
+            if service_names:
+                if task.task_metadata:
+                    # Update existing TaskMetadata with service_names
+                    task.task_metadata.service_names = service_names
+                else:
+                    # Create TaskMetadata with EXTERNAL provider for autocreated tasks
+                    task.task_metadata = TaskMetadata(
+                        provider=RegisteredAgentProvider.EXTERNAL,
+                        service_names=service_names,
+                    )
+
+        return task
+
+    def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
+        """Enrich tasks with service names from service_name_task_mappings.
+
+        Args:
+            tasks: List of tasks to enrich
+
+        Returns:
+            List of tasks with service_names populated in task_metadata
+        """
+        service_name_repo = ServiceNameMappingRepository(self.db_session)
+
+        for task in tasks:
+            if task.is_agentic:
+                service_names = service_name_repo.get_service_names_by_task_id(task.id)
+                if service_names:
+                    if task.task_metadata:
+                        # Update existing TaskMetadata with service_names
+                        task.task_metadata.service_names = service_names
+                    else:
+                        # Create TaskMetadata with EXTERNAL provider for autocreated tasks
+                        task.task_metadata = TaskMetadata(
+                            provider=RegisteredAgentProvider.EXTERNAL,
+                            service_names=service_names,
+                        )
+
+        return tasks
 
     def get_all_tasks(self) -> list[Task]:
         # Continuously grab tasks until there are no more, DEFAULT_PAGE_SIZE at a time
@@ -105,10 +166,22 @@ class TaskRepository:
 
         tasks = [Task._from_database_model(op) for op in all_tasks]
 
+        # Enrich tasks with service names
+        tasks = self._enrich_tasks_with_service_names(tasks)
+
         return tasks
 
     def archive_task(self, task_id: str) -> None:
         db_task = self.get_db_task_by_id(task_id)
+
+        # Prevent archiving of system tasks
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot archive system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
                 self.rule_repository.archive_rule(link.rule_id)
@@ -134,6 +207,35 @@ class TaskRepository:
 
         result = Task._from_database_model(db_task)
         return result
+
+    def create_auto_task(self, service_name: str) -> Task:
+        """Create an auto-generated task for a service name.
+
+        Auto-created tasks:
+        - Have name set to the service_name
+        - Have is_autocreated=True flag set
+        - Are agentic (is_agentic=True)
+        - Do NOT get default rules (with_default_rules=False)
+        - Have no task_metadata (not a registered agent)
+
+        Args:
+            service_name: The service name to create a task for
+
+        Returns:
+            Task: The created task
+        """
+        task_id = str(uuid.uuid4())
+
+        task = Task(
+            id=task_id,
+            name=service_name,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_agentic=True,
+            is_autocreated=True,
+        )
+
+        return self.create_task(task, with_default_rules=False)
 
     def link_rule_to_task(
         self,
@@ -226,6 +328,16 @@ class TaskRepository:
         self.db_session.commit()
 
     def delete_task(self, task_id: str) -> None:
+        db_task = self.get_db_task_by_id(task_id)
+
+        # Prevent deletion of system tasks
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
         self.db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
         self.db_session.commit()
 

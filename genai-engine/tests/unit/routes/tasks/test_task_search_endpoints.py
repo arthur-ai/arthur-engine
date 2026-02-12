@@ -31,13 +31,14 @@ def test_search_tasks(
         assert sc == 200
         request_ids.append(task.id)
 
-    sc, task_resp_base = client.search_tasks(sort=sort, page=page, page_size=page_size)
+    # Filter by task IDs we created to isolate test from system tasks and ensure proper pagination
+    sc, task_resp_base = client.search_tasks(
+        sort=sort, page=page, page_size=page_size, task_ids=request_ids
+    )
     assert sc == 200
     assert len(task_resp_base.tasks) == expected_count
 
     # Verify all tasks have is_agentic field (should default to False)
-    # TODO: this test fails when running tests in parallel with xdist
-    # modify how we create tasks to ensure that tests are independent/properly cleaned up
     for task in task_resp_base.tasks:
         assert hasattr(task, "is_agentic")
         # Since we didn't specify is_agentic in create_task, they should all be False
@@ -48,8 +49,10 @@ def test_search_tasks(
             sort=sort,
             page=page + 1,
             page_size=page_size,
+            task_ids=request_ids,
         )
         assert sc == 200
+
         page_1 = [t.id for t in task_resp_base.tasks]
         page_2 = [t.id for t in task_resp.tasks]
         assert len(set(page_1).intersection(set(page_2))) == 0
@@ -77,7 +80,7 @@ def test_search_tasks(
             task_ids=sample,
         )
         assert len(task_resp.tasks) == 5
-        assert set([t.id for t in task_resp.tasks]) == set(request_ids)
+        assert set([t.id for t in task_resp.tasks]) == set(sample)
 
 
 @pytest.mark.unit_tests

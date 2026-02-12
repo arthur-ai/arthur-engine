@@ -47,7 +47,11 @@ from schemas.internal_schemas import (
     TraceUserMetadata,
 )
 from services.trace.filter_service import FilterService
-from utils.constants import AGENT_EXPERIMENT_SESSION_PREFIX, SPAN_KIND_LLM
+from utils.constants import (
+    AGENT_EXPERIMENT_SESSION_PREFIX,
+    SPAN_KIND_LLM,
+    UNMAPPED_TASK_ID,
+)
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -1281,8 +1285,11 @@ class SpanQueryService:
         end_time: Optional[datetime] = None,
     ) -> tuple[list[tuple[str, int]], int]:
         """
-        Query root spans (parent_span_id IS NULL) for traces without task_id (task_id IS NULL),
+        Query root spans (parent_span_id IS NULL) for traces assigned to __unmapped__ task,
         grouped by span_name.
+
+        This method provides specialized aggregation that the regular query methods don't support.
+        Regular methods return individual spans; this returns grouped counts by span_name.
 
         Args:
             pagination_parameters: Optional pagination parameters for limiting results
@@ -1294,14 +1301,14 @@ class SpanQueryService:
                 (span_name, count) tuples ordered by count descending,
                 and total_count is the total number of root spans across ALL groups (before pagination)
         """
-        # Base query for grouping
+        # Base query for grouping - uses UNMAPPED_TASK_ID constant directly
         base_query = (
             select(
                 DatabaseSpan.span_name,
                 func.count().label("count"),
             )
             .where(DatabaseSpan.parent_span_id.is_(None))
-            .where(DatabaseSpan.task_id.is_(None))
+            .where(DatabaseSpan.task_id == UNMAPPED_TASK_ID)
         )
 
         # Apply time range filters if provided
