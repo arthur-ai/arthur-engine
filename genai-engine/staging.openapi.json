@@ -15251,6 +15251,21 @@
                             }
                         ],
                         "description": "Metadata for the agent."
+                    },
+                    "service_names": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Service Names",
+                        "description": "List of service names that send traces to this task"
                     }
                 },
                 "type": "object",

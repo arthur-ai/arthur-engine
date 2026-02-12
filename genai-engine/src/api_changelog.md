@@ -2,6 +2,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/12/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
+
 # 02/10/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'count' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_autocreated' to the response with the '200' status
