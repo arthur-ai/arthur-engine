@@ -36,60 +36,60 @@ interface NavigationItem {
   onClick?: () => void;
 }
 
-export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, onLogout, activeSection = "overview" }) => {
-  const navigationSections: NavigationSection[] = [
-    {
-      id: "observability",
-      label: "Observability",
-      items: [{ id: "traces", label: "Traces", icon: <TrendingUpOutlined /> }],
-    },
-    {
-      id: "prompts",
-      label: "Prompts",
-      items: [
-        { id: "notebooks", label: "Prompt Notebooks", icon: <MenuBookOutlined /> },
-        { id: "prompts-management", label: "Prompt Management", icon: <DescriptionOutlined /> },
-        { id: "prompt-experiments", label: "Prompt Experiments", icon: <ScienceOutlined /> },
-      ],
-    },
-    {
-      id: "rag",
-      label: "RAG",
-      items: [
-        { id: "rag-notebooks", label: "RAG Notebooks", icon: <MenuBookOutlined /> },
-        { id: "rag-experiments", label: "RAG Experiments", icon: <ScienceOutlined /> },
-        { id: "rag-configurations", label: "RAG Configurations", icon: <StorageOutlined /> },
-      ],
-    },
-    {
-      id: "evals",
-      label: "Evals",
-      items: [
-        { id: "evaluators", label: "Evals Management", icon: <BalanceOutlined /> },
-        { id: "continuous-evals", label: "Continuous Evals", icon: <LiveTvOutlined /> },
-        { id: "datasets", label: "Datasets", icon: <TableChartOutlined /> },
-        { id: "transforms", label: "Transforms", icon: <StorageOutlined /> },
-      ],
-    },
-    {
-      id: "agents",
-      label: "Agents",
-      items: [
-        { id: "agent-experiments", label: "Agentic Experiments", icon: <ScienceOutlined /> },
-        { id: "agentic-notebooks", label: "Agentic Notebooks", icon: <MenuBookOutlined /> },
-      ],
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      items: [
-        { id: "task-details", label: "Task Details", icon: <SettingsOutlined /> },
-        { id: "model-providers", label: "Model Providers", icon: <AppsOutlined /> },
-        { id: "api-keys", label: "API Keys", icon: <KeyOutlined /> },
-      ],
-    },
-  ];
+const navigationSections: NavigationSection[] = [
+  {
+    id: "observability",
+    label: "Observability",
+    items: [{ id: "traces", label: "Traces", icon: <TrendingUpOutlined /> }],
+  },
+  {
+    id: "prompts",
+    label: "Prompts",
+    items: [
+      { id: "notebooks", label: "Prompt Notebooks", icon: <MenuBookOutlined /> },
+      { id: "prompts-management", label: "Prompt Management", icon: <DescriptionOutlined /> },
+      { id: "prompt-experiments", label: "Prompt Experiments", icon: <ScienceOutlined /> },
+    ],
+  },
+  {
+    id: "rag",
+    label: "RAG",
+    items: [
+      { id: "rag-notebooks", label: "RAG Notebooks", icon: <MenuBookOutlined /> },
+      { id: "rag-experiments", label: "RAG Experiments", icon: <ScienceOutlined /> },
+      { id: "rag-configurations", label: "RAG Configurations", icon: <StorageOutlined /> },
+    ],
+  },
+  {
+    id: "evals",
+    label: "Evals",
+    items: [
+      { id: "evaluators", label: "Evals Management", icon: <BalanceOutlined /> },
+      { id: "continuous-evals", label: "Continuous Evals", icon: <LiveTvOutlined /> },
+      { id: "datasets", label: "Datasets", icon: <TableChartOutlined /> },
+      { id: "transforms", label: "Transforms", icon: <StorageOutlined /> },
+    ],
+  },
+  {
+    id: "agents",
+    label: "Agents",
+    items: [
+      { id: "agent-experiments", label: "Agentic Experiments", icon: <ScienceOutlined /> },
+      { id: "agentic-notebooks", label: "Agentic Notebooks", icon: <MenuBookOutlined /> },
+    ],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    items: [
+      { id: "task-details", label: "Task Details", icon: <SettingsOutlined /> },
+      { id: "model-providers", label: "Model Providers", icon: <AppsOutlined /> },
+      { id: "api-keys", label: "API Keys", icon: <KeyOutlined /> },
+    ],
+  },
+];
 
+export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, onLogout, activeSection = "overview" }) => {
   return (
     <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
       <div className="p-4 overflow-y-auto flex-1 min-h-0">
