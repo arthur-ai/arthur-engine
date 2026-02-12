@@ -275,7 +275,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({ open, on
                     border: "1px solid",
                     borderColor: "divider",
                     borderRadius: 1,
-                    backgroundColor: "grey.50",
+                    backgroundColor: "action.hover",
                   }}
                 >
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>

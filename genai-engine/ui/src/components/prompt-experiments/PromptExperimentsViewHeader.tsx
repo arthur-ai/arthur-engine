@@ -42,10 +42,10 @@ export const PromptExperimentsViewHeader: React.FC<PromptExperimentsViewHeaderPr
     <Box className="flex flex-col gap-4">
       <Box className="flex justify-between items-center">
         <Box>
-          <Typography variant="h5" className="font-semibold mb-1 text-gray-900">
+          <Typography variant="h5" className="font-semibold mb-1 text-gray-900 dark:text-gray-100">
             Prompt Experiments
           </Typography>
-          <Typography variant="body2" className="text-gray-600">
+          <Typography variant="body2" className="text-gray-600 dark:text-gray-400">
             Test and compare different prompt variations and their effectiveness
           </Typography>
         </Box>

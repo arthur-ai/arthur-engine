@@ -73,7 +73,7 @@ export const RagExperimentsListView: React.FC = () => {
   return (
     <>
       <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
-        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 bg-white">
+        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <RagExperimentsViewHeader onCreateExperiment={handleCreateExperiment} searchValue={searchText} onSearchChange={handleSearchChange} />
         </Box>
 

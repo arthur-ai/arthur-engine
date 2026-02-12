@@ -194,7 +194,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                 {/* Provider Selection */}
                 <Box>
                   <Box className="flex items-center justify-between mb-1">
-                    <label htmlFor="provider-select" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="provider-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Provider
                     </label>
                     <Button size="small" startIcon={<Add />} onClick={() => setCreateProviderModalOpen(true)} sx={{ textTransform: "none" }}>
@@ -219,7 +219,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                 {/* Collection Selection */}
                 {selectedProviderId && (
                   <Box>
-                    <label htmlFor="collection-select" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="collection-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Collection
                     </label>
                     <Box className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                         value={selectedCollection?.identifier ?? ""}
                         onChange={handleCollectionChange}
                         disabled={isLoadingCollections}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800"
                       >
                         {isLoadingCollections ? (
                           <option value="">Loading collections...</option>
@@ -253,7 +253,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                 {/* Search Method */}
                 {hasRequiredSelections && (
                   <Box>
-                    <label htmlFor="method-select" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="method-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Search Method
                     </label>
                     <select
@@ -272,10 +272,10 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                 {/* Search Settings */}
                 {hasRequiredSelections && (
                   <Box>
-                    <Typography variant="subtitle2" className="text-gray-700 mb-2">
+                    <Typography variant="subtitle2" className="text-gray-700 dark:text-gray-300 mb-2">
                       Search Settings
                     </Typography>
-                    <Box className="bg-gray-50 p-3 rounded-md">
+                    <Box className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
                       <SearchSettings
                         searchMethod={searchMethod}
                         settings={searchSettings}

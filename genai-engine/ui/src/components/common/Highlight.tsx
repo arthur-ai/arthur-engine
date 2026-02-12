@@ -1,10 +1,14 @@
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
+import { useTheme } from "@mui/material/styles";
 import { Highlight as PrismHighlight, themes } from "prism-react-renderer";
 
 export const Highlight = ({ code, language, unwrapped = false }: { code: string; language: string; unwrapped?: boolean }) => {
+  const theme = useTheme();
+  const prismTheme = theme.palette.mode === "dark" ? themes.vsDark : themes.github;
+
   return (
-    <PrismHighlight theme={themes.github} code={code} language={language}>
+    <PrismHighlight theme={prismTheme} code={code} language={language}>
       {({ tokens, getLineProps, getTokenProps }) => {
         const content = tokens.map((line, i) => (
           <Box key={i} {...getLineProps({ line, key: i })}>

@@ -350,7 +350,7 @@ const PromptFormModal = ({ open, onClose, onSubmit, isLoading = false }: PromptF
                     onChange={handleProviderChange}
                     disabled={providerDisabled || isLoading}
                     renderInput={(params) => (
-                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                     )}
                   />
                 </Tooltip>
@@ -368,7 +368,7 @@ const PromptFormModal = ({ open, onClose, onSubmit, isLoading = false }: PromptF
                   onChange={handleModelChange}
                   disabled={modelDisabled || isLoading}
                   renderInput={(params) => (
-                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                   )}
                 />
               </FormControl>

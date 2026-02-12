@@ -69,7 +69,7 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
       sx={{
         px: 3,
         py: 1.5,
-        backgroundColor: "white",
+        backgroundColor: "background.paper",
         borderBottom: 1,
         borderColor: "divider",
         gap: 1.5,
@@ -78,7 +78,7 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
       {/* Row 1: Title + Query Input + Run */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {/* Title */}
-        <Typography variant="h6" sx={{ fontWeight: 600, whiteSpace: "nowrap", color: "black", minWidth: "fit-content" }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, whiteSpace: "nowrap", color: "text.primary", minWidth: "fit-content" }}>
           {notebookName || "RAG Playground"}
         </Typography>
 
@@ -92,7 +92,7 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
           fullWidth
           sx={{
             "& .MuiOutlinedInput-root": {
-              backgroundColor: "white",
+              backgroundColor: "background.paper",
             },
           }}
           slotProps={{

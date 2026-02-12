@@ -58,9 +58,9 @@ export function getCost(span: NestedSpanWithMetricsResponse) {
 export function getRoleAccentColor(role: Message["role"]) {
   switch (role) {
     case "user":
-      return "grey.100";
+      return "action.hover";
     default:
-      return "white";
+      return "background.paper";
   }
 }
 

@@ -106,7 +106,7 @@ const NavigationHeader = ({ selectedSpan, navigationPath, onGoBack }: Navigation
         borderBottom: "1px solid",
         borderColor: "divider",
         p: 1,
-        backgroundColor: "grey.100",
+        backgroundColor: "action.hover",
       }}
     >
       <IconButton size="small" onClick={onGoBack}>

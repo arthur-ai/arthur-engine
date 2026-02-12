@@ -1,4 +1,4 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Typography, Alert, Stack } from "@mui/material";
+import { Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Typography, Alert, Stack } from "@mui/material";
 import { useState } from "react";
 
 import { Column, TransformDefinition } from "./form/shared";
@@ -100,19 +100,21 @@ export function SaveTransformDialog({ open, onClose, columns, onSave }: SaveTran
             <Typography variant="caption" color="text.secondary" gutterBottom display="block">
               This JSON will be saved and can be reused on future traces
             </Typography>
-            <pre
-              style={{
-                backgroundColor: "#f5f5f5",
-                padding: 16,
-                borderRadius: 4,
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: "action.hover",
+                padding: 2,
+                borderRadius: 1,
                 overflow: "auto",
                 maxHeight: 300,
                 fontSize: 12,
-                border: "1px solid #e0e0e0",
+                border: "1px solid",
+                borderColor: "divider",
               }}
             >
               {JSON.stringify(transformDef, null, 2)}
-            </pre>
+            </Box>
           </div>
         </Stack>
       </DialogContent>

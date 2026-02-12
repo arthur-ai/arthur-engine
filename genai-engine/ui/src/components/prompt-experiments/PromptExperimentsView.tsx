@@ -211,7 +211,7 @@ export const PromptExperimentsView: React.FC = () => {
   return (
     <>
       <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
-        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 bg-white">
+        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <PromptExperimentsViewHeader
             onCreateExperiment={handleCreateExperiment}
             onCreateFromExisting={handleCreateFromExisting}
@@ -355,8 +355,15 @@ export const PromptExperimentsView: React.FC = () => {
                                       sx={{
                                         height: "20px",
                                         fontSize: "0.688rem",
-                                        backgroundColor: config.type === "saved" ? "#e3f2fd" : "#fff3e0",
-                                        borderColor: config.type === "saved" ? "#2196f3" : "#ff9800",
+                                        backgroundColor: (theme) =>
+                                          config.type === "saved"
+                                            ? theme.palette.mode === "dark"
+                                              ? "rgba(33, 150, 243, 0.15)"
+                                              : "#e3f2fd"
+                                            : theme.palette.mode === "dark"
+                                              ? "rgba(255, 152, 0, 0.15)"
+                                              : "#fff3e0",
+                                        borderColor: config.type === "saved" ? "primary.main" : "warning.main",
                                       }}
                                     />
                                   ))}
