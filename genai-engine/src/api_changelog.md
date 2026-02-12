@@ -2,39 +2,19 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 02/12/2026
-- **CHANGE** for **URL**: /api/v2/tasks  added the new 'external' enum value to the '/items/agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/provider' response property for the response status '200'
-- **CHANGE** in API POST /api/v2/tasks
-- **CHANGE**warning [response-property-enum-value-added] at /Users/videetparekh/Desktop/arthur-core/arthur-engine-resource-metadata/genai-engine/new.openapi.json 
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the new 'external' enum value to the 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/provider' response property for the response status '200'
-- **CHANGE** in API PATCH /api/v2/tasks/{task_id}/metrics/{metric_id}
-- **CHANGE**warning [response-property-enum-value-added] at /Users/videetparekh/Desktop/arthur-core/arthur-engine-resource-metadata/genai-engine/new.openapi.json 
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v2/tasks  added the new 'external' enum value to the request property 'agent_metadata/anyOf[subschema #1: AgentMetadata]/provider'
+02/12/2026
 
-# 02/12/2026
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata/anyOf[subschema #1: AgentMetadataResponse]/service_names' to the response with the '200' status
+CHANGE for multiple endpoints: Added new 'external' enum value to 'agent_metadata/provider' in responses and requests for POST /api/v2/tasks, GET /api/v2/tasks/{task_id}, and PATCH /api/v2/tasks/{task_id}/metrics/{metric_id}
+CHANGE warning: Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead
 
-# 02/10/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'count' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_autocreated' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_system_task' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_autocreated' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_system_task' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_autocreated' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_system_task' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_autocreated' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_system_task' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_autocreated' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_system_task' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_autocreated' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_system_task' to the response with the '200' status
+02/12/2026
+
+CHANGE for multiple endpoints: Added optional property 'service_names' to 'agent_metadata' in responses for /api/v2/tasks, /api/v2/tasks/search, /api/v2/tasks/{task_id}, /api/v2/tasks/{task_id}/metrics/{metric_id}, and /api/v2/tasks/{task_id}/rules/{rule_id}
+
+02/10/2026
+
+CHANGE for /api/v1/tasks/{task_id}/traces/transforms: Added required property 'count' to response with status '200'
+CHANGE for multiple endpoints: Added optional properties 'is_autocreated' and 'is_system_task' to responses for /api/v2/tasks, /api/v2/tasks/search, /api/v2/tasks/{task_id}, /api/v2/tasks/{task_id}/metrics/{metric_id}, and /api/v2/tasks/{task_id}/rules/{rule_id}
 
 # 02/06/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  endpoint added
