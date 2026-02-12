@@ -2346,6 +2346,18 @@ export interface DiscoveredAgent {
 }
 
 /**
+ * DisplaySettingsResponse
+ * Public display settings (e.g. default currency for cost formatting).
+ */
+export interface DisplaySettingsResponse {
+  /**
+   * Default Currency
+   * @default "USD"
+   */
+  default_currency?: string;
+}
+
+/**
  * EvalExecution
  * Details of an eval execution
  */
@@ -3372,6 +3384,8 @@ export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
+
+export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
@@ -9268,6 +9282,11 @@ export interface SessionListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Sessions
    * List of session metadata
    */
@@ -9369,6 +9388,11 @@ export interface SessionTracesResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Session Id
    * Session identifier
    */
@@ -9437,6 +9461,11 @@ export interface SpanListResponse {
    * Total number of spans matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Spans
    * List of span metadata
@@ -10226,6 +10255,11 @@ export interface TraceListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Traces
    * List of trace metadata
    */
@@ -10516,6 +10550,11 @@ export interface TraceUserListResponse {
    * Total number of users matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Users
    * List of user metadata
@@ -12011,7 +12050,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.373
+ * @version 2.1.374
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13759,6 +13798,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
       this.request<GetDefaultTaskApiChatDefaultTaskGetData, any>({
         path: `/api/chat/default_task`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get display settings (e.g. default currency for cost formatting).
+     *
+     * @tags Settings
+     * @name GetDisplaySettingsApiV2DisplaySettingsGet
+     * @summary Get Display Settings
+     * @request GET:/api/v2/display-settings
+     */
+    getDisplaySettingsApiV2DisplaySettingsGet: (params: RequestParams = {}) =>
+      this.request<GetDisplaySettingsApiV2DisplaySettingsGetData, any>({
+        path: `/api/v2/display-settings`,
         method: "GET",
         format: "json",
         ...params,

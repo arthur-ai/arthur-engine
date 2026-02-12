@@ -2,9 +2,7 @@ import axios from "axios";
 
 import { Api } from "./api-client/api-client";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 
 // Configure axios to serialize array parameters without brackets
 axios.defaults.paramsSerializer = {

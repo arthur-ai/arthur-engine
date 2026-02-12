@@ -2,6 +2,15 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/12/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/display-settings  endpoint added
+
 02/12/2026
 
 CHANGE for multiple endpoints: Added new 'external' enum value to 'agent_metadata/provider' in responses and requests for POST /api/v2/tasks, GET /api/v2/tasks/{task_id}, and PATCH /api/v2/tasks/{task_id}/metrics/{metric_id}

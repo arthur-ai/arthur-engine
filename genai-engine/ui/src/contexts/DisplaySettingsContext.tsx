@@ -1,24 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
 import React, { createContext, useContext, ReactNode } from "react";
 
-import { API_BASE_URL } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { DisplaySettingsResponse } from "@/lib/api-client/api-client";
 
-export const DISPLAY_SETTINGS_QUERY_KEY = ["displaySettings"] as const;
+/** Query key used by the display settings API call (for cache invalidation). */
+export const DISPLAY_SETTINGS_QUERY_KEY = ["getDisplaySettingsApiV2DisplaySettingsGet"] as const;
 
-interface DisplaySettings {
-  default_currency: string;
-}
-
-const defaultDisplaySettings: DisplaySettings = { default_currency: "USD" };
-
-async function fetchDisplaySettings(): Promise<DisplaySettings> {
-  const res = await fetch(`${API_BASE_URL}/api/v2/display-settings`);
-  if (!res.ok) return defaultDisplaySettings;
-  const data = await res.json();
-  return {
-    default_currency: (data.default_currency ?? "USD").toString().trim().toUpperCase() || "USD",
-  };
-}
+const defaultDisplaySettings: DisplaySettingsResponse = { default_currency: "USD" };
 
 interface DisplaySettingsContextValue {
   defaultCurrency: string;
@@ -40,20 +29,19 @@ interface DisplaySettingsProviderProps {
 }
 
 export const DisplaySettingsProvider: React.FC<DisplaySettingsProviderProps> = ({ children }) => {
-  const { data = defaultDisplaySettings, isPending } = useQuery({
-    queryKey: DISPLAY_SETTINGS_QUERY_KEY,
-    queryFn: fetchDisplaySettings,
-    staleTime: 5 * 60 * 1000,
+  const api = useApi();
+  const { data, isPending } = useApiQuery<"getDisplaySettingsApiV2DisplaySettingsGet">({
+    method: "getDisplaySettingsApiV2DisplaySettingsGet",
+    args: [],
+    enabled: !!api,
+    queryOptions: { staleTime: 5 * 60 * 1000 },
   });
+  const settings: DisplaySettingsResponse = data ?? defaultDisplaySettings;
 
   const value: DisplaySettingsContextValue = {
-    defaultCurrency: data.default_currency,
+    defaultCurrency: settings.default_currency ?? "USD",
     isLoading: isPending,
   };
 
-  return (
-    <DisplaySettingsContext.Provider value={value}>
-      {children}
-    </DisplaySettingsContext.Provider>
-  );
+  return <DisplaySettingsContext.Provider value={value}>{children}</DisplaySettingsContext.Provider>;
 };
