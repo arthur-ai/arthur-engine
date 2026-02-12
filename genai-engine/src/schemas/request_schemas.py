@@ -76,6 +76,7 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
 
 class ApplicationConfigurationUpdateRequest(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[
         DocumentStorageConfigurationUpdateRequest
     ] = None

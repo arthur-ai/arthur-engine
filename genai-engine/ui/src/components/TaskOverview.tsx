@@ -8,11 +8,13 @@ import { LineChart } from "@mui/x-charts/LineChart";
 import React, { useState } from "react";
 
 import { ChartCard } from "./task-overview/ChartCard";
-import { METRIC_COLORS, formatCostAxisValue, formatCurrency, formatNumber, formatPercentValue, formatXLabel } from "./task-overview/constants";
+import { METRIC_COLORS, formatCostAxisValue, formatNumber, formatPercentValue, formatXLabel } from "./task-overview/constants";
 import { MetricCard } from "./task-overview/MetricCard";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { useTaskOverviewMetrics } from "@/hooks/useTaskOverviewMetrics";
+import { formatCurrency } from "@/utils/formatters";
 import { TimeInterval } from "@/utils/timeWindows";
 
 type TimeRangeButton = "Day" | "Last 7 Days" | "MTD" | "YTD";
@@ -38,6 +40,7 @@ const getTimeRangeLabel = (button: TimeRangeButton): string => {
 
 export const TaskOverview: React.FC = () => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Last 7 Days");
 
   const interval = timeIntervalMap[selectedTimeRangeButton];
@@ -136,7 +139,7 @@ export const TaskOverview: React.FC = () => {
           <MetricCard
             icon={<TollOutlinedIcon fontSize="inherit" />}
             label="Cost"
-            value={formatCurrency(metrics?.totalCost || 0)}
+            value={formatCurrency(metrics?.totalCost ?? 0, defaultCurrency)}
             subLabel="est. spend"
             color={METRIC_COLORS.cost.main}
             bgColor={METRIC_COLORS.cost.light}

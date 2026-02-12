@@ -9,12 +9,23 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 5,
-  maximumFractionDigits: 5,
-});
+function getCurrencyFormatter(currency: string): Intl.NumberFormat {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency || "USD",
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
+  });
+}
+
+export function formatCurrency(amount: number, currencyCode: string = "USD"): string {
+  const formatter = getCurrencyFormatter(currencyCode);
+  const smallThreshold = 0.00001;
+  if (amount < smallThreshold) {
+    return `< ${formatter.format(smallThreshold)}`;
+  }
+  return formatter.format(amount);
+}
 
 export function formatDate(date: string | null | undefined) {
   if (!date) return "-";
@@ -44,11 +55,6 @@ export function formatDate(date: string | null | undefined) {
  */
 export function formatUTCTimestamp(dateString: string | null | undefined): string {
   return formatDate(dateString);
-}
-
-export function formatCurrency(amount: number) {
-  if (amount < 0.00001) return `< ${currencyFormatter.format(0.00001)}`;
-  return currencyFormatter.format(amount);
 }
 
 export function formatDuration(duration: number) {

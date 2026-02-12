@@ -39,6 +39,7 @@ import { TaskOverview } from "./components/TaskOverview";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
+import { DisplaySettingsProvider } from "./contexts/DisplaySettingsContext";
 import { queryClient } from "./lib/queryClient";
 
 const TaskRedirect = () => {
@@ -59,8 +60,9 @@ function App() {
           >
             <>
               <ReactQueryDevtools />
-              <AuthProvider>
-                <Router>
+              <DisplaySettingsProvider>
+                <AuthProvider>
+                  <Router>
                   <div className="min-h-screen bg-gray-50">
                     <Routes>
                       {/* Public routes */}
@@ -444,7 +446,8 @@ function App() {
                     </Routes>
                   </div>
                 </Router>
-              </AuthProvider>
+                </AuthProvider>
+              </DisplaySettingsProvider>
             </>
           </SnackbarProvider>
         </NuqsAdapter>
