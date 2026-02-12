@@ -26164,7 +26164,8 @@
             "RegisteredAgentProvider": {
                 "type": "string",
                 "enum": [
-                    "gcp"
+                    "gcp",
+                    "external"
                 ],
                 "title": "RegisteredAgentProvider"
             },

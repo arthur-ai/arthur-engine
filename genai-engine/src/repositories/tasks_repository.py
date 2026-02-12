@@ -2,7 +2,12 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
+from arthur_common.models.enums import (
+    PaginationSortMethod,
+    RegisteredAgentProvider,
+    RuleScope,
+    RuleType,
+)
 from fastapi import HTTPException
 from opentelemetry import trace
 from sqlalchemy import asc, desc
@@ -19,7 +24,12 @@ from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
-from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
+from schemas.internal_schemas import (
+    ApplicationConfiguration,
+    Rule,
+    Task,
+    TaskMetadata,
+)
 from utils import constants
 
 tracer = trace.get_tracer(__name__)
@@ -96,13 +106,20 @@ class TaskRepository:
         task = Task._from_database_model(db_task)
 
         # Enrich with service names if task is agentic
-        if task.is_agentic and task.task_metadata:
+        if task.is_agentic:
             service_name_repo = ServiceNameMappingRepository(self.db_session)
             service_names = service_name_repo.get_service_names_by_task_id(id)
 
             if service_names:
-                # Update the TaskMetadata with service_names
-                task.task_metadata.service_names = service_names
+                if task.task_metadata:
+                    # Update existing TaskMetadata with service_names
+                    task.task_metadata.service_names = service_names
+                else:
+                    # Create TaskMetadata with EXTERNAL provider for autocreated tasks
+                    task.task_metadata = TaskMetadata(
+                        provider=RegisteredAgentProvider.EXTERNAL,
+                        service_names=service_names,
+                    )
 
         return task
 
@@ -118,10 +135,18 @@ class TaskRepository:
         service_name_repo = ServiceNameMappingRepository(self.db_session)
 
         for task in tasks:
-            if task.is_agentic and task.task_metadata:
+            if task.is_agentic:
                 service_names = service_name_repo.get_service_names_by_task_id(task.id)
                 if service_names:
-                    task.task_metadata.service_names = service_names
+                    if task.task_metadata:
+                        # Update existing TaskMetadata with service_names
+                        task.task_metadata.service_names = service_names
+                    else:
+                        # Create TaskMetadata with EXTERNAL provider for autocreated tasks
+                        task.task_metadata = TaskMetadata(
+                            provider=RegisteredAgentProvider.EXTERNAL,
+                            service_names=service_names,
+                        )
 
         return tasks
 

@@ -8796,7 +8796,7 @@ export interface RegexSpanResponse {
 }
 
 /** RegisteredAgentProvider */
-export type RegisteredAgentProvider = "gcp";
+export type RegisteredAgentProvider = "gcp" | "external";
 
 /**
  * RelevanceMetricConfig

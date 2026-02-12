@@ -250,13 +250,13 @@ trio = ["trio (>=0.31.0)", "trio (>=0.32.0)"]
 
 [[package]]
 name = "arthur-common"
-version = "2.4.40"
+version = "2.4.41"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "arthur_common-2.4.40-py3-none-any.whl", hash = "sha256:44e720da562779bb83c632217a131dcb6d3f9e61dfc86246198f2172ee895df4"},
-    {file = "arthur_common-2.4.40.tar.gz", hash = "sha256:52c8575ab5a013db3429a9ec7a2a99e65e485e47e6d7209289e2d1c5c79195cc"},
+    {file = "arthur_common-2.4.41-py3-none-any.whl", hash = "sha256:8f912196bebc94d22827ad9494fdf703dc2f5ea99a00e82239a83fca66d19134"},
+    {file = "arthur_common-2.4.41.tar.gz", hash = "sha256:31490a90dd281d63407ad2f8d22bd9be09d3790f030b7e8a5134819dc8efb006"},
 ]
 
 [package.dependencies]
@@ -1873,13 +1873,13 @@ files = [
 
 [[package]]
 name = "filelock"
-version = "3.20.4"
+version = "3.21.0"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "filelock-3.20.4-py3-none-any.whl", hash = "sha256:3334d8af34a55fbebfceeee137220e844799d75650d2d6140e4a9ed536e5f7f5"},
-    {file = "filelock-3.20.4.tar.gz", hash = "sha256:92b98bb6be1a4e6c1b00f8aedae011c6e2d367c195000a049daa34f554af3d94"},
+    {file = "filelock-3.21.0-py3-none-any.whl", hash = "sha256:0f90eee4c62101243df3007db3cf8fc3ebf1bb13541d3e72c687d6e0f3f7d531"},
+    {file = "filelock-3.21.0.tar.gz", hash = "sha256:48c739c73c6fcacd381ed532226991150947c4a76dcd674f84d6807fd55dbaf2"},
 ]
 
 [[package]]
@@ -9359,4 +9359,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "f6b1ef310fd73f51db1e4c38003452b64e5e5f24ceb7c1aefb0fa9d56e951fba"
+content-hash = "1b18f26c5c0ffde93e9056fa8d03808ecc4d9558287de7256ecb3daa13b50197"

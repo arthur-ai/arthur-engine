@@ -589,7 +589,6 @@ class TaskMetadata(BaseModel):
     """
 
     provider: RegisteredAgentProvider = Field(
-        ...,
         description="Provider of the registered agent.",
     )
     gcp_metadata: Optional[RegisteredGCPAgentCredentials] = Field(
