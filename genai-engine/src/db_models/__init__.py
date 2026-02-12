@@ -46,6 +46,8 @@ from db_models.agent_polling_models import DatabaseAgentPollingData
 from db_models.telemetry_models import (
     DatabaseMetric,
     DatabaseMetricResult,
+    DatabaseResourceMetadata,
+    DatabaseServiceNameTaskMapping,
     DatabaseSpan,
     DatabaseTaskToMetrics,
     DatabaseTraceMetadata,
@@ -127,6 +129,8 @@ __all__ = [
     "DatabaseMetric",
     "DatabaseTaskToMetrics",
     "DatabaseMetricResult",
+    "DatabaseResourceMetadata",
+    "DatabaseServiceNameTaskMapping",
     # Annotation models
     "DatabaseAgenticAnnotation",
     # Agentic Prompt models

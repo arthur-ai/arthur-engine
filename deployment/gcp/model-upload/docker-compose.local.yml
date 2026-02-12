@@ -61,5 +61,6 @@ services:
       - GCS_PREFIX=${GCS_PREFIX:-gcs/model-storage}
       # Use mounted credentials if provided, otherwise use default credentials
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/tmp/gcp-credentials.json}
+      - CONTAINER_MODELS_DIR=${CONTAINER_MODELS_DIR:-/home/nonroot/model-storage}
     # Remove after completion (since this is a one-time upload job)
     restart: "no"

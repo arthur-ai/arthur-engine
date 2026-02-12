@@ -57,8 +57,8 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
 
   return (
     <div className="flex-1 px-4 py-4">
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b flex gap-3 items-center">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-3 items-center">
           <TextField
             placeholder="Search configurations..."
             value={searchQuery}

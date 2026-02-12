@@ -41,6 +41,7 @@ docker push arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
   ```
     GCS_PREFIX: Prefix for GCS object names (e.g. /gcs/model-storage)
     GCS_BUCKET: Target GCS bucket name (required)
+    CONTAINER_MODELS_DIR: The location of the file system path the models will be hosted on the consumer container app
     GOOGLE_APPLICATION_CREDENTIALS: Path to service account JSON (optional, uses Workload Identity if unset)
   ```
 
@@ -54,8 +55,19 @@ Adjust the below GenAI envars accordingly:
   HF_HUB_OFFLINE=1
   ```
 
-## Local testing
+## Local testing with Docker Compose
 Use `docker-compose.local.yml`: See the comments in the script for the usage deatils.
 ```
 docker compose -f docker-compose.local.yml up
+```
+
+## Local testing with direct Python code execution
+```
+gcloud config set project <your GCP project>
+gcloud auth application-default login
+export GCS_BUCKET=<your GCP bucket>
+export GCS_PREFIX=models-storage-test
+poetry shell && poetry env use 3.12
+poetry install
+python upload_models.py
 ```

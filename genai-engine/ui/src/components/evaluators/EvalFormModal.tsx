@@ -365,7 +365,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                               variant="caption"
                               component="span"
                               sx={{
-                                color: "rgba(0, 0, 0, 0.3)",
+                                color: "text.disabled",
                                 fontSize: "0.75rem",
                                 fontWeight: 400,
                                 fontStyle: "italic",
@@ -431,7 +431,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                     onChange={handleProviderChange}
                     disabled={providerDisabled || isLoading}
                     renderInput={(params) => (
-                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                     )}
                   />
                 </Tooltip>
@@ -449,7 +449,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   onChange={handleModelChange}
                   disabled={modelDisabled || isLoading}
                   renderInput={(params) => (
-                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                   )}
                 />
               </FormControl>

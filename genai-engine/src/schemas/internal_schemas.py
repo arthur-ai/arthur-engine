@@ -590,12 +590,15 @@ class TaskMetadata(BaseModel):
     """
 
     provider: RegisteredAgentProvider = Field(
-        ...,
         description="Provider of the registered agent.",
     )
     gcp_metadata: Optional[RegisteredGCPAgentCredentials] = Field(
         default=None,
         description="Metadata for a registered GCP agent.",
+    )
+    service_names: Optional[List[str]] = Field(
+        default=None,
+        description="List of service names that send traces to this task",
     )
 
 
@@ -605,6 +608,8 @@ class Task(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
+    is_autocreated: bool = False
+    is_system_task: bool = False
     task_metadata: Optional[TaskMetadata] = None
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
@@ -647,6 +652,8 @@ class Task(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             is_agentic=x.is_agentic,
+            is_autocreated=x.is_autocreated,
+            is_system_task=x.is_system_task,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -667,6 +674,8 @@ class Task(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
+            is_system_task=self.is_system_task,
             task_metadata=(
                 self.task_metadata.model_dump(exclude_none=True)
                 if self.task_metadata
@@ -700,6 +709,8 @@ class Task(BaseModel):
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
+            is_system_task=self.is_system_task,
             agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,

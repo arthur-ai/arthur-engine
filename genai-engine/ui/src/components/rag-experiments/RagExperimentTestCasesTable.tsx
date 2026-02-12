@@ -91,7 +91,7 @@ const createEvalCell = (ragConfigKey: string, evalName: string, evalVersion: str
           justifyContent: "center",
           width: "20px",
           height: "20px",
-          color: "#6b7280",
+          color: "text.secondary",
           fontWeight: 600,
           fontSize: "0.8rem",
         }}
@@ -106,7 +106,7 @@ const createEvalCell = (ragConfigKey: string, evalName: string, evalVersion: str
           justifyContent: "center",
           width: "20px",
           height: "20px",
-          color: "#ef4444",
+          color: "error.main",
           fontWeight: 600,
           fontSize: "0.8rem",
         }}
@@ -141,7 +141,7 @@ const createTotalCell = (evalGroup: EvalGroup) => {
         sx={{
           fontSize: "0.8rem",
           fontWeight: 500,
-          color: passCount === 0 && totalCount > 0 ? "#ef4444" : "#6b7280",
+          color: passCount === 0 && totalCount > 0 ? "error.main" : "text.secondary",
         }}
       >
         {passCount}/{totalCount}
@@ -259,7 +259,10 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
     <TableHead>
       {/* Top header row: Status, RAG configs, Totals, Cost */}
       <TableRow>
-        <TableCell rowSpan={2} sx={{ backgroundColor: "grey.50", borderRight: 1, borderColor: "divider" }}>
+        <TableCell
+          rowSpan={2}
+          sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderRight: 1, borderColor: "divider" }}
+        >
           <Box component="span" className="font-semibold">
             Status
           </Box>
@@ -271,7 +274,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
             colSpan={group.evalCount}
             align="center"
             sx={{
-              backgroundColor: "grey.50",
+              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
               borderRight: index === ragConfigGroups.size - 1 ? 3 : 1,
               borderColor: "divider",
             }}
@@ -286,7 +289,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
           colSpan={evalGroups.length}
           align="center"
           sx={{
-            backgroundColor: "grey.50",
+            backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
             borderRight: 3,
             borderColor: "divider",
           }}
@@ -296,7 +299,11 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
           </Box>
         </TableCell>
 
-        <TableCell rowSpan={2} align="right" sx={{ backgroundColor: "grey.50", borderLeft: 1, borderColor: "divider" }}>
+        <TableCell
+          rowSpan={2}
+          align="right"
+          sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
+        >
           <Box component="span" className="font-semibold">
             Cost
           </Box>
@@ -336,7 +343,7 @@ const TableHeader: React.FC<TableHeaderProps> = ({ headerGroups, ragConfigGroups
                   key={header.id}
                   align="center"
                   sx={{
-                    backgroundColor: "grey.50",
+                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                     borderRight,
                     borderColor: "divider",
                     fontSize: "0.75rem",
@@ -439,8 +446,8 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
   // If no summaries yet, show placeholder
   if (ragEvalSummaries.length === 0) {
     return (
-      <Box className="p-6 bg-gray-50 border border-gray-200 rounded">
-        <Typography variant="body1" className="text-gray-600 italic">
+      <Box className="p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">
+        <Typography variant="body1" className="text-gray-600 dark:text-gray-400 italic">
           Test case results will be shown when the experiment finishes executing.
         </Typography>
       </Box>
@@ -470,7 +477,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
             ) : testCases.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2 + evalColumns.length + evalGroups.length} align="center">
-                  <Typography className="text-gray-600">No test cases found</Typography>
+                  <Typography className="text-gray-600 dark:text-gray-400">No test cases found</Typography>
                 </TableCell>
               </TableRow>
             ) : (
@@ -505,7 +512,7 @@ export const RagExperimentTestCasesTable: React.FC<RagExperimentTestCasesTablePr
                           padding: isEvalColumn ? "6px 8px" : undefined,
                           borderRight,
                           borderColor: "divider",
-                          backgroundColor: isTotalColumn ? "#f9fafb" : undefined,
+                          backgroundColor: isTotalColumn ? (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") : undefined,
                           fontWeight: isTotalColumn ? 500 : undefined,
                           fontSize: isTotalColumn ? "0.8rem" : undefined,
                         }}

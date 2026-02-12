@@ -72,7 +72,7 @@ export const TransformsTable: React.FC<TransformsTableProps> = ({ transforms, so
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {transform.description || <em style={{ color: "#999" }}>No description</em>}
+                  {transform.description || <em style={{ color: "inherit", opacity: 0.5 }}>No description</em>}
                 </Box>
               </TableCell>
               <TableCell>{formatDate(transform.created_at)}</TableCell>

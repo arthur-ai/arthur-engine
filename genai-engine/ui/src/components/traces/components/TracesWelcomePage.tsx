@@ -82,10 +82,10 @@ export const TracesWelcomePage: React.FC = () => {
           maxWidth: 750,
           borderRadius: 3,
           p: { xs: 2.5, sm: 3, md: 3.5 },
-          backgroundColor: "#ffffff",
-          boxShadow: "0 4px 24px rgba(0, 0, 0, 0.06)",
+          backgroundColor: "background.paper",
+          boxShadow: (theme) => (theme.palette.mode === "dark" ? "0 4px 24px rgba(0, 0, 0, 0.3)" : "0 4px 24px rgba(0, 0, 0, 0.06)"),
           border: "1px solid",
-          borderColor: "#e5e7eb",
+          borderColor: "divider",
         }}
       >
         <Box
@@ -113,12 +113,15 @@ export const TracesWelcomePage: React.FC = () => {
                 width: 42,
                 height: 42,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
+                background: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "linear-gradient(135deg, #1A237E 0%, #283593 100%)"
+                    : "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 mb: 0.75,
-                boxShadow: "0 4px 12px rgba(33, 150, 243, 0.2)",
+                boxShadow: (theme) => (theme.palette.mode === "dark" ? "0 4px 12px rgba(33, 150, 243, 0.3)" : "0 4px 12px rgba(33, 150, 243, 0.2)"),
                 transition: "transform 0.3s ease-in-out",
                 "&:hover": {
                   transform: "scale(1.05)",
@@ -184,7 +187,7 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: "success.main",
-                  backgroundColor: "#F1F8F4",
+                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(46, 125, 50, 0.08)" : "#F1F8F4"),
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   "&:hover": {
@@ -244,7 +247,12 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: stepStatus.apiKeyClicked ? "success.main" : "divider",
-                  backgroundColor: stepStatus.apiKeyClicked ? "#F1F8F4" : "background.paper",
+                  backgroundColor: (theme) =>
+                    stepStatus.apiKeyClicked
+                      ? theme.palette.mode === "dark"
+                        ? "rgba(46, 125, 50, 0.08)"
+                        : "#F1F8F4"
+                      : theme.palette.background.paper,
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   cursor: stepStatus.apiKeyClicked ? "default" : "pointer",
@@ -287,7 +295,7 @@ export const TracesWelcomePage: React.FC = () => {
                             px: 0.875,
                             py: 0.25,
                             borderRadius: 1,
-                            backgroundColor: "#F5F5F5",
+                            backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "#F5F5F5"),
                             color: "text.primary",
                             display: "flex",
                             alignItems: "center",
@@ -345,7 +353,12 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: stepStatus.taskIdCopied ? "success.main" : "divider",
-                  backgroundColor: stepStatus.taskIdCopied ? "#F1F8F4" : "background.paper",
+                  backgroundColor: (theme) =>
+                    stepStatus.taskIdCopied
+                      ? theme.palette.mode === "dark"
+                        ? "rgba(46, 125, 50, 0.08)"
+                        : "#F1F8F4"
+                      : theme.palette.background.paper,
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   "&:hover": {
@@ -385,7 +398,7 @@ export const TracesWelcomePage: React.FC = () => {
                             px: 0.875,
                             py: 0.25,
                             borderRadius: 1,
-                            backgroundColor: "#F5F5F5",
+                            backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "#F5F5F5"),
                             color: "text.primary",
                             display: "flex",
                             alignItems: "center",
@@ -420,7 +433,7 @@ export const TracesWelcomePage: React.FC = () => {
                         sx={{
                           px: 0.3,
                           py: 0.05,
-                          backgroundColor: "grey.200",
+                          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.700" : "grey.200"),
                           borderRadius: 0.5,
                           fontFamily: "monospace",
                           fontSize: "0.625rem",
@@ -436,13 +449,13 @@ export const TracesWelcomePage: React.FC = () => {
                         alignItems: "center",
                         gap: 0.4,
                         p: 0.75,
-                        backgroundColor: "#F5F5F5",
+                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "#F5F5F5"),
                         border: "1px solid",
                         borderColor: "divider",
                         borderRadius: 1,
                         transition: "all 0.2s ease-in-out",
                         "&:hover": {
-                          backgroundColor: "#EEEEEE",
+                          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.700" : "#EEEEEE"),
                           borderColor: "primary.light",
                         },
                       }}
@@ -495,7 +508,12 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: stepStatus.taskIdCopied ? "success.main" : "divider",
-                  backgroundColor: stepStatus.taskIdCopied ? "#F1F8F4" : "background.paper",
+                  backgroundColor: (theme) =>
+                    stepStatus.taskIdCopied
+                      ? theme.palette.mode === "dark"
+                        ? "rgba(46, 125, 50, 0.08)"
+                        : "#F1F8F4"
+                      : theme.palette.background.paper,
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   "&:hover": {
@@ -535,7 +553,7 @@ export const TracesWelcomePage: React.FC = () => {
                             px: 0.875,
                             py: 0.25,
                             borderRadius: 1,
-                            backgroundColor: "#F5F5F5",
+                            backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "#F5F5F5"),
                             color: "text.primary",
                             display: "flex",
                             alignItems: "center",

@@ -394,3 +394,295 @@ def test_trace_api_token_count_calculation_from_messages(
     assert db_span.prompt_token_cost == 0.00039
     assert db_span.completion_token_cost == 0.00102
     assert db_span.total_token_cost == 0.00141
+
+
+# ============================================================================
+# RESOURCE METADATA TESTS
+# ============================================================================
+
+
+@pytest.mark.unit_tests
+def test_trace_api_resource_metadata_deduplication(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that traces with identical resource attributes share the same resource_id."""
+
+    # Create two traces with identical resource attributes
+    task_id = "resource_dedup_test"
+
+    # First trace
+    trace_request_1, resource_span_1, scope_span_1 = _create_base_trace_request(
+        task_id=task_id,
+    )
+    span_1 = _create_span(
+        trace_id=b"trace_dedup_1",
+        span_id=b"span_dedup_1",
+        name="dedup_span_1",
+        span_type="LLM",
+    )
+    scope_span_1.spans.append(span_1)
+    resource_span_1.scope_spans.append(scope_span_1)
+    trace_request_1.resource_spans.append(resource_span_1)
+
+    # Second trace with identical resource attributes
+    trace_request_2, resource_span_2, scope_span_2 = _create_base_trace_request(
+        task_id=task_id,
+    )
+    span_2 = _create_span(
+        trace_id=b"trace_dedup_2",
+        span_id=b"span_dedup_2",
+        name="dedup_span_2",
+        span_type="LLM",
+    )
+    scope_span_2.spans.append(span_2)
+    resource_span_2.scope_spans.append(scope_span_2)
+    trace_request_2.resource_spans.append(resource_span_2)
+
+    # Send both traces
+    status_code_1, _ = client.trace_api_receive_traces(
+        trace_request_1.SerializeToString(),
+    )
+    assert status_code_1 == 200
+
+    status_code_2, _ = client.trace_api_receive_traces(
+        trace_request_2.SerializeToString(),
+    )
+    assert status_code_2 == 200
+
+    # Query database to verify both spans reference the same resource_id
+    from db_models import DatabaseResourceMetadata
+
+    db_session = override_get_db_session()
+
+    db_span_1 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_1.span_id.hex())
+        .first()
+    )
+    db_span_2 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_2.span_id.hex())
+        .first()
+    )
+
+    assert db_span_1 is not None
+    assert db_span_2 is not None
+    assert db_span_1.resource_id is not None
+    assert db_span_2.resource_id is not None
+
+    # Both spans should reference the same resource_id
+    assert db_span_1.resource_id == db_span_2.resource_id
+
+    # Verify only one resource metadata entry exists for this resource_id
+    resource_count = (
+        db_session.query(DatabaseResourceMetadata)
+        .filter(DatabaseResourceMetadata.id == db_span_1.resource_id)
+        .count()
+    )
+    assert resource_count == 1
+
+
+@pytest.mark.unit_tests
+def test_trace_api_resource_metadata_different_attributes(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that traces with different resource attributes get different resource_ids."""
+
+    # First trace with task_id_1
+    task_id_1 = "resource_diff_test_1"
+    trace_request_1, resource_span_1, scope_span_1 = _create_base_trace_request(
+        task_id=task_id_1,
+    )
+    span_1 = _create_span(
+        trace_id=b"trace_diff_1",
+        span_id=b"span_diff_1",
+        name="diff_span_1",
+        span_type="LLM",
+    )
+    scope_span_1.spans.append(span_1)
+    resource_span_1.scope_spans.append(scope_span_1)
+    trace_request_1.resource_spans.append(resource_span_1)
+
+    # Second trace with task_id_2 (different resource attributes)
+    task_id_2 = "resource_diff_test_2"
+    trace_request_2, resource_span_2, scope_span_2 = _create_base_trace_request(
+        task_id=task_id_2,
+    )
+    span_2 = _create_span(
+        trace_id=b"trace_diff_2",
+        span_id=b"span_diff_2",
+        name="diff_span_2",
+        span_type="LLM",
+    )
+    scope_span_2.spans.append(span_2)
+    resource_span_2.scope_spans.append(scope_span_2)
+    trace_request_2.resource_spans.append(resource_span_2)
+
+    # Send both traces
+    status_code_1, _ = client.trace_api_receive_traces(
+        trace_request_1.SerializeToString(),
+    )
+    assert status_code_1 == 200
+
+    status_code_2, _ = client.trace_api_receive_traces(
+        trace_request_2.SerializeToString(),
+    )
+    assert status_code_2 == 200
+
+    # Query database to verify spans have different resource_ids
+    db_session = override_get_db_session()
+
+    db_span_1 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_1.span_id.hex())
+        .first()
+    )
+    db_span_2 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_2.span_id.hex())
+        .first()
+    )
+
+    assert db_span_1 is not None
+    assert db_span_2 is not None
+    assert db_span_1.resource_id is not None
+    assert db_span_2.resource_id is not None
+
+    # Spans should have different resource_ids
+    assert db_span_1.resource_id != db_span_2.resource_id
+
+
+@pytest.mark.unit_tests
+def test_trace_api_resource_metadata_storage(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that resource attributes are correctly stored in resource_metadata table."""
+
+    task_id = "resource_storage_test"
+    service_name = "test_service"
+
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
+    )
+
+    # Verify resource attributes include service.name and arthur.task
+    resource_attrs = {
+        attr.key: attr.value.string_value for attr in resource_span.resource.attributes
+    }
+    assert resource_attrs.get("service.name") == service_name
+    assert resource_attrs.get("arthur.task") == task_id
+
+    span = _create_span(
+        trace_id=b"trace_storage",
+        span_id=b"span_storage",
+        name="storage_span",
+        span_type="LLM",
+    )
+    scope_span.spans.append(span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+
+    # Send trace
+    status_code, _ = client.trace_api_receive_traces(
+        trace_request.SerializeToString(),
+    )
+    assert status_code == 200
+
+    # Query database to verify resource metadata storage
+    from db_models import DatabaseResourceMetadata
+
+    db_session = override_get_db_session()
+
+    db_span = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span.span_id.hex())
+        .first()
+    )
+    assert db_span is not None
+    assert db_span.resource_id is not None
+
+    # Retrieve resource metadata
+    resource_metadata = (
+        db_session.query(DatabaseResourceMetadata)
+        .filter(DatabaseResourceMetadata.id == db_span.resource_id)
+        .first()
+    )
+    assert resource_metadata is not None
+    assert resource_metadata.service_name == service_name
+    assert resource_metadata.resource_attributes is not None
+
+    # Verify resource attributes are stored as JSON
+    stored_attrs = resource_metadata.resource_attributes
+    assert stored_attrs.get("service.name") == service_name
+    assert stored_attrs.get("arthur.task") == task_id
+
+
+@pytest.mark.unit_tests
+def test_trace_api_trace_metadata_root_span_resource_id(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that trace_metadata correctly links to root span's resource_id."""
+
+    task_id = "trace_metadata_resource_test"
+    trace_id = b"trace_with_resource"
+    parent_span_id = b"parent_span_resource"
+    child_span_id = b"child_span_resource"
+
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
+    )
+
+    # Create parent span (root span)
+    parent_span = _create_span(
+        trace_id=trace_id,
+        span_id=parent_span_id,
+        name="parent_span",
+        span_type="LLM",
+    )
+
+    # Create child span
+    child_span = _create_span(
+        trace_id=trace_id,
+        parent_span_id=parent_span_id,
+        span_id=child_span_id,
+        name="child_span",
+        span_type="CHAIN",
+    )
+
+    scope_span.spans.append(parent_span)
+    scope_span.spans.append(child_span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+
+    # Send trace
+    status_code, _ = client.trace_api_receive_traces(
+        trace_request.SerializeToString(),
+    )
+    assert status_code == 200
+
+    # Query database to verify trace_metadata links to root span's resource_id
+    from db_models import DatabaseTraceMetadata
+
+    db_session = override_get_db_session()
+
+    # Get the parent (root) span
+    db_parent_span = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == parent_span_id.hex())
+        .first()
+    )
+    assert db_parent_span is not None
+    assert db_parent_span.resource_id is not None
+    assert db_parent_span.parent_span_id is None  # Verify it's the root span
+
+    # Get trace metadata
+    trace_metadata = (
+        db_session.query(DatabaseTraceMetadata)
+        .filter(DatabaseTraceMetadata.trace_id == trace_id.hex())
+        .first()
+    )
+    assert trace_metadata is not None
+    assert trace_metadata.root_span_resource_id is not None
+
+    # Verify trace_metadata.root_span_resource_id matches root span's resource_id
+    assert trace_metadata.root_span_resource_id == db_parent_span.resource_id

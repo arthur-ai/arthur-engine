@@ -1,5 +1,4 @@
 import { Box, Paper, Stack, Typography } from "@mui/material";
-import { green } from "@mui/material/colors";
 
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { getSpanInput, getSpanOutput } from "../../utils/spans";
@@ -45,7 +44,7 @@ export const TraceRenderer = ({ trace }: Props) => {
         </Tabs.Panel>
       </Tabs.Root>
 
-      <Box className="bg-gray-100 border-l p-2" sx={{ borderColor: "divider" }}>
+      <Box className="bg-gray-100 dark:bg-gray-800 border-l p-2" sx={{ borderColor: "divider" }}>
         <Stack gap={1} alignItems="flex-start" className="sticky top-2">
           <Stack component="button" color="primary.main" className="group cursor-pointer" onClick={onOpenTraceDrawer}>
             <Typography variant="body2" fontWeight={700} className="group-hover:underline">
@@ -82,7 +81,11 @@ const MessageBubble = ({ label, content, align }: { label: string; content: stri
     <Stack
       component={Paper}
       variant="outlined"
-      sx={{ p: 1, maxWidth: "75%", backgroundColor: align === "left" ? green[50] : undefined }}
+      sx={{
+        p: 1,
+        maxWidth: "75%",
+        backgroundColor: align === "left" ? (theme) => (theme.palette.mode === "dark" ? "action.hover" : "#E8F5E9") : undefined,
+      }}
       alignSelf={align === "left" ? "flex-start" : "flex-end"}
       gap={1}
     >
