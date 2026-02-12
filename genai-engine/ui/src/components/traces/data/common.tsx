@@ -74,5 +74,5 @@ export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) 
 };
 
 export const TruncatedText = ({ text }: { text: string }) => {
-  return <span className="truncate p-2 bg-gray-100 rounded-md">{text}</span>;
+  return <span className="truncate p-2 bg-gray-100 dark:bg-gray-800 rounded-md">{text}</span>;
 };

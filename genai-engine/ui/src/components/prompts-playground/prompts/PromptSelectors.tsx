@@ -222,7 +222,7 @@ const PromptSelectors = ({
             );
           }}
           renderInput={(params) => (
-            <TextField {...params} label={PROMPT_NAME_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+            <TextField {...params} label={PROMPT_NAME_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
           )}
         />
       </div>
@@ -242,7 +242,7 @@ const PromptSelectors = ({
             onChange={handleProviderChange}
             disabled={providerDisabled}
             renderInput={(params) => (
-              <TextField {...params} label={PROVIDER_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+              <TextField {...params} label={PROVIDER_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
             )}
           />
         </Tooltip>
@@ -254,7 +254,9 @@ const PromptSelectors = ({
           value={prompt.modelName || ""}
           onChange={handleModelChange}
           disabled={modelDisabled}
-          renderInput={(params) => <TextField {...params} label={MODEL_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />}
+          renderInput={(params) => (
+            <TextField {...params} label={MODEL_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
+          )}
         />
       </div>
       <Snackbar {...snackbarProps}>

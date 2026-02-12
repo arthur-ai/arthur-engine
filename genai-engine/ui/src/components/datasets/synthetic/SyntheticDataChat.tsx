@@ -112,7 +112,7 @@ export const SyntheticDataChat: React.FC<SyntheticDataChatProps> = ({ conversati
             disabled={isLoading}
             sx={{
               "& .MuiOutlinedInput-root": {
-                bgcolor: "grey.50",
+                bgcolor: "background.default",
               },
             }}
           />
@@ -160,7 +160,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          bgcolor: isAssistant ? "primary.main" : "grey.300",
+          bgcolor: isAssistant ? "primary.main" : "grey.500",
           color: isAssistant ? "white" : "grey.700",
           flexShrink: 0,
         }}
@@ -172,7 +172,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         sx={{
           p: 1.5,
           maxWidth: "85%",
-          bgcolor: isAssistant ? "grey.100" : "primary.50",
+          bgcolor: isAssistant ? "action.hover" : "primary.50",
           borderRadius: 2,
         }}
       >

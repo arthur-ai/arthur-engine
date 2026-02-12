@@ -198,7 +198,7 @@ const PromptVersionDrawer = ({
                             variant="body2"
                             sx={{
                               fontWeight: 500,
-                              color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.primary",
+                              color: isDeleted ? "text.disabled" : "text.primary",
                               textDecoration: isDeleted ? "line-through" : "none",
                             }}
                           >
@@ -236,7 +236,7 @@ const PromptVersionDrawer = ({
                             variant="caption"
                             color="text.secondary"
                             component="span"
-                            sx={{ color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary" }}
+                            sx={{ color: isDeleted ? "text.disabled" : "text.secondary" }}
                           >
                             {version.model_provider} / {version.model_name}
                           </Typography>
@@ -247,7 +247,7 @@ const PromptVersionDrawer = ({
                             sx={{
                               display: "block",
                               mt: 0.5,
-                              color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary",
+                              color: isDeleted ? "text.disabled" : "text.secondary",
                             }}
                           >
                             {formatDate(version.created_at)}
@@ -259,7 +259,7 @@ const PromptVersionDrawer = ({
                               sx={{
                                 display: "block",
                                 mt: 0.5,
-                                color: "rgba(0, 0, 0, 0.55)",
+                                color: "text.disabled",
                               }}
                             >
                               Deleted at: {formatDate(version.deleted_at)}

@@ -113,11 +113,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                     size="small"
                     sx={{
                       height: 24,
-                      bgcolor: "grey.100",
-                      color: "grey.700",
+                      bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
+                      color: (theme) => (theme.palette.mode === "dark" ? "grey.300" : "grey.700"),
                       "& .MuiChip-icon": {
                         fontSize: 16,
-                        color: "grey.600",
+                        color: (theme) => (theme.palette.mode === "dark" ? "grey.400" : "grey.600"),
                         ml: 0.5,
                       },
                       "& .MuiChip-label": {
@@ -134,8 +134,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                     size="small"
                     sx={{
                       height: 24,
-                      bgcolor: "primary.50",
-                      color: "primary.dark",
+                      bgcolor: (theme) => (theme.palette.mode === "dark" ? "rgba(99, 102, 241, 0.15)" : "primary.50"),
+                      color: (theme) => (theme.palette.mode === "dark" ? "primary.light" : "primary.dark"),
                       "& .MuiChip-icon": {
                         fontSize: 16,
                         color: "primary.main",
@@ -155,15 +155,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           <Box
             sx={{
               display: "flex",
-              bgcolor: "grey.50",
+              bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.900" : "grey.50"),
               borderRadius: 1,
               border: 1,
-              borderColor: "grey.100",
+              borderColor: "divider",
               overflow: "hidden",
             }}
           >
             <Tooltip title="Total traces recorded in the last 7 days" arrow placement="top">
-              <Box sx={{ flex: 1, p: 1.5, textAlign: "center", borderRight: 1, borderColor: "grey.200" }}>
+              <Box sx={{ flex: 1, p: 1.5, textAlign: "center", borderRight: 1, borderColor: "divider" }}>
                 <TrendingUpIcon sx={{ fontSize: 20, color: "primary.main", mb: 0.5 }} />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   {formatNumber(metrics.traceCount)}
@@ -174,7 +174,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               </Box>
             </Tooltip>
             <Tooltip title="Total tokens consumed in the last 7 days" arrow placement="top">
-              <Box sx={{ flex: 1, p: 1.5, textAlign: "center", borderRight: 1, borderColor: "grey.200" }}>
+              <Box sx={{ flex: 1, p: 1.5, textAlign: "center", borderRight: 1, borderColor: "divider" }}>
                 <GeneratingTokensOutlinedIcon sx={{ fontSize: 20, color: "#A855F7", mb: 0.5 }} />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   {formatNumber(metrics.totalTokens)}
@@ -198,7 +198,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   flex: 1,
                   p: 1.5,
                   textAlign: "center",
-                  bgcolor: metrics.successRate >= 1 && metrics.successRate < 50 ? "error.50" : "transparent",
+                  bgcolor: (theme) =>
+                    metrics.successRate >= 1 && metrics.successRate < 50
+                      ? theme.palette.mode === "dark"
+                        ? "rgba(239, 68, 68, 0.1)"
+                        : "error.50"
+                      : "transparent",
                 }}
               >
                 {metrics.successRate >= 1 && metrics.successRate < 50 ? (
@@ -256,7 +261,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               justifyContent: "space-between",
               pt: 1.5,
               borderTop: 1,
-              borderColor: "grey.100",
+              borderColor: "divider",
               mt: "auto",
             }}
           >
@@ -276,7 +281,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               {copiedTaskId === task.id ? (
                 <Box
                   sx={{
-                    bgcolor: "success.50",
+                    bgcolor: (theme) => (theme.palette.mode === "dark" ? "rgba(34, 197, 94, 0.1)" : "success.50"),
                     border: 1,
                     borderColor: "success.light",
                     borderRadius: 1,
@@ -305,7 +310,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                     maxWidth: "140px",
                     height: "24px",
                     fontSize: "0.6875rem",
-                    backgroundColor: "#F9FAFB",
+                    bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                     "& .MuiChip-label": {
                       overflow: "hidden",
                       textOverflow: "ellipsis",

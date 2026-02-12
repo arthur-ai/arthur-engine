@@ -109,7 +109,7 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
       </ListItem>
 
       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-        <Box sx={{ px: 2, pb: 2, backgroundColor: "grey.50" }}>
+        <Box sx={{ px: 2, pb: 2, backgroundColor: "action.hover" }}>
           {/* Progress bar for running experiments */}
           {isRunning && (
             <Box sx={{ mb: 2 }}>

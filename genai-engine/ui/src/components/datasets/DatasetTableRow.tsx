@@ -30,7 +30,7 @@ export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row
           right: 0,
           backgroundColor: "background.paper",
           zIndex: 1,
-          boxShadow: "-2px 0 4px rgba(0, 0, 0, 0.1)",
+          boxShadow: (theme) => (theme.palette.mode === "dark" ? "-2px 0 4px rgba(0, 0, 0, 0.3)" : "-2px 0 4px rgba(0, 0, 0, 0.1)"),
         }}
       >
         <Box

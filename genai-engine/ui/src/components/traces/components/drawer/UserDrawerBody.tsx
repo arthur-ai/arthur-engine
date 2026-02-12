@@ -52,7 +52,7 @@ export const UserDrawerBody = ({ user, timeRange, onTimeRangeChange, taskId, onR
         sx={{
           px: 4,
           py: 2,
-          backgroundColor: "grey.100",
+          backgroundColor: "action.hover",
           borderBottom: "1px solid",
           borderColor: "divider",
         }}

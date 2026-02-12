@@ -91,12 +91,12 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
   ];
 
   return (
-    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col h-full">
+    <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
       <div className="p-4 overflow-y-auto flex-1 min-h-0">
         <div className="mb-4">
           <button
             onClick={onBackToDashboard}
-            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 flex items-center gap-2"
+            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-200 flex items-center gap-2"
           >
             <ArrowBackOutlined fontSize="small" />
             <span>Back to All Tasks</span>
@@ -109,7 +109,9 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
             <button
               onClick={() => onNavigate("overview")}
               className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
-                activeSection === "overview" ? "text-blue-700 bg-blue-50" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                activeSection === "overview"
+                  ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
               }`}
             >
               <span className="shrink-0">
@@ -124,7 +126,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
 
           {navigationSections.map((section) => (
             <div key={section.id} className="mb-4">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{section.label}</div>
+              <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{section.label}</div>
 
               <ul className="mt-1 space-y-1">
                 {section.items.map((item) => {
@@ -135,7 +137,9 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                       <button
                         onClick={() => onNavigate(item.id)}
                         className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
-                          isActive ? "text-blue-700 bg-blue-50" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                          isActive
+                            ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
                         }`}
                       >
                         <span className="shrink-0">{item.icon}</span>
@@ -150,18 +154,18 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
         </div>
       </div>
 
-      {/* Logout button at the bottom */}
-      {onLogout && (
-        <div className="p-4 border-t border-gray-200 shrink-0">
+      {/* Logout at the bottom */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+        {onLogout && (
           <button
             onClick={onLogout}
-            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 flex items-center gap-2"
+            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-200 flex items-center gap-2"
           >
             <LogoutOutlined fontSize="small" />
             <span>Logout</span>
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </nav>
   );
 };

@@ -113,7 +113,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
       elevation={2}
       className="h-full flex flex-col overflow-hidden"
       sx={{
-        backgroundColor: "#f8fafc",
+        backgroundColor: "background.default",
         borderRadius: 2,
       }}
     >
@@ -123,7 +123,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
           py: 1,
           borderBottom: 1,
           borderColor: "divider",
-          backgroundColor: "white",
+          backgroundColor: "background.paper",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -182,7 +182,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
 
       <Box sx={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
         <Collapse in={configExpanded}>
-          <Box sx={{ p: 2, backgroundColor: "white", borderBottom: 1, borderColor: "divider" }}>
+          <Box sx={{ p: 2, backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
               <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                 <Box sx={{ flex: 1 }}>
@@ -306,7 +306,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
             sx={{
               px: 2,
               py: 1,
-              backgroundColor: "white",
+              backgroundColor: "background.paper",
               borderBottom: 1,
               borderColor: "divider",
               display: "flex",

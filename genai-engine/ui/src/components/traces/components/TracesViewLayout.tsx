@@ -24,7 +24,7 @@ export const TracesViewLayout = ({ level, timeRange, onLevelChange, onTimeRangeC
         width: "100%",
         display: "flex",
         flexDirection: "column",
-        bgcolor: "#f9fafb",
+        bgcolor: "background.default",
         overflow: "hidden",
       }}
     >

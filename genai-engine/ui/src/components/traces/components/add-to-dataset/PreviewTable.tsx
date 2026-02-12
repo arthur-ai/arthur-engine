@@ -29,7 +29,7 @@ export const PreviewTable = withForm({
     if (!hasData) return null;
 
     return (
-      <Stack sx={{ mt: "auto", backgroundColor: "grey.100", px: 4, py: 2 }} gap={1}>
+      <Stack sx={{ mt: "auto", backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"), px: 4, py: 2 }} gap={1}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="body2" color="text.primary" fontWeight="medium">
             Preview: 1 row will be added

@@ -157,16 +157,16 @@ const VariableInputs = () => {
                   helperText={helperText}
                   sx={{
                     "& .MuiInputBase-input.Mui-disabled": {
-                      WebkitTextFillColor: "rgba(0, 0, 0, 0.5)",
-                      color: "rgba(0, 0, 0, 0.5)",
+                      WebkitTextFillColor: "text.disabled",
+                      color: "text.disabled",
                     },
                     "& .MuiInputLabel-root.Mui-disabled": {
-                      color: "rgba(0, 0, 0, 0.5)",
+                      color: "text.disabled",
                     },
                     ...(isMissing && {
                       "& .MuiInputLabel-root": {
                         fontWeight: 600,
-                        color: "rgba(0, 0, 0, 0.87)",
+                        color: "text.primary",
                       },
                     }),
                   }}
@@ -186,7 +186,10 @@ const VariableInputs = () => {
             left: 0,
             right: 0,
             height: "40px",
-            background: "linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)",
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "linear-gradient(to top, rgba(18,18,18,0.95) 0%, rgba(18,18,18,0) 100%)"
+                : "linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)",
             pointerEvents: "none",
             display: "flex",
             alignItems: "flex-end",

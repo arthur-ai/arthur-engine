@@ -56,7 +56,7 @@ export const SpanDrawerBody = ({
         sx={{
           px: 4,
           py: 2,
-          backgroundColor: "grey.100",
+          backgroundColor: "action.hover",
           borderBottom: "1px solid",
           borderColor: "divider",
         }}
@@ -102,7 +102,7 @@ export const SpanDrawerBody = ({
         </Stack>
       </Stack>
 
-      <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
+      <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "action.selected" }}>
         {currentTarget && currentId && paginationContext && onNavigate && (
           <DrawerPagination
             currentTarget={currentTarget}
