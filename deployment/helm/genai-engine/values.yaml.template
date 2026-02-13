@@ -151,8 +151,8 @@ gcpDiscoveryConfig:
   isEnabled: false
   # Google Cloud project ID for Vertex AI integration
   # googleCloudProject: ""
-  # (Optional) Path to GCP credentials file mounted in the container. 
-  # googleApplicationCredentials: ""
+  # Path to GCP credentials file (must match mountPath /var/secrets/google/ + secret key name)
+  # googleApplicationCredentials: "/var/secrets/google/google-credentials.json"
   # (Optional) Google Cloud region/location
   # googleCloudLocation: ""
   # (Optional) Name of the K8s secret containing the GCP service account JSON key
