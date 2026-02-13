@@ -5,6 +5,7 @@ from typing import Optional
 
 from arthur_common.models.enums import AgentPollingStatus, RegisteredAgentProvider
 from google.api_core.exceptions import GoogleAPIError
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from db_models.agent_polling_models import DatabaseAgentPollingData
@@ -114,11 +115,13 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
         db_session = next(get_db_session())
         try:
             # Get all agent polling data where last_fetched is not null and status is IDLE
+            # Use FOR UPDATE SKIP LOCKED to prevent race conditions when multiple nodes poll
             registered_agent_polling_data = (
                 db_session.query(DatabaseAgentPollingData)
                 .filter(
                     DatabaseAgentPollingData.status == AgentPollingStatus.IDLE,
                 )
+                .with_for_update(skip_locked=True)
                 .all()
             )
 
@@ -156,6 +159,7 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         except Exception as e:
             logger.error(f"Error polling registered agents: {e}", exc_info=True)
+            db_session.rollback()
         finally:
             db_session.close()
 
@@ -163,10 +167,11 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
         """Execute a single polling job."""
         db_session = next(get_db_session())
         try:
-            # Get the agent polling data
+            # Get the agent polling data with row lock to prevent concurrent modifications
             db_agent_polling_data = (
                 db_session.query(DatabaseAgentPollingData)
                 .filter(DatabaseAgentPollingData.id == job.agent_polling_data_id)
+                .with_for_update(nowait=True)
                 .first()
             )
             if not db_agent_polling_data:
@@ -298,6 +303,13 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
             )
             logger.info(f"Polling completed for {job.agent_polling_data_id}")
 
+        except OperationalError:
+            # Row is locked by another process, skip this job
+            logger.error(
+                f"Agent polling data {job.agent_polling_data_id} is locked, skipping execution",
+            )
+            db_session.rollback()
+            raise
         except GoogleAPIError as e:
             logger.error(
                 f"Error while fetching traces for agent {job.agent_polling_data_id}: {e}",
