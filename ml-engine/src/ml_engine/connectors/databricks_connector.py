@@ -618,23 +618,28 @@ class DatabricksConnector(Connector):
         qualified = self._get_qualified_table_name(locator)
         query = f"SELECT * FROM {qualified}"
 
-        try:
-            ts_col = primary_timestamp_col_name(dataset)
-            query += (
-                f" WHERE {self._escape_identifier(ts_col)} >= '{start_time}'"
-                f" AND {self._escape_identifier(ts_col)} < '{end_time}'"
+        if dataset.is_static:
+            self.logger.info(
+                "Static dataset detected, skipping time range filtering."
             )
-            query += f" ORDER BY {self._escape_identifier(ts_col)} DESC"
-        except ValueError:
-            self.logger.warning(
-                f"Primary timestamp column with {ScopeSchemaTag.PRIMARY_TIMESTAMP} tag not found. "
-                "Using pagination only.",
-            )
-            if not pagination_options:
-                raise ValueError(
-                    "Pagination options not provided and timestamp range not set. "
-                    "Cannot fetch all data without a limit or time range.",
-                ) from None
+        else:
+            try:
+                ts_col = primary_timestamp_col_name(dataset)
+                query += (
+                    f" WHERE {self._escape_identifier(ts_col)} >= '{start_time}'"
+                    f" AND {self._escape_identifier(ts_col)} < '{end_time}'"
+                )
+                query += f" ORDER BY {self._escape_identifier(ts_col)} DESC"
+            except ValueError:
+                self.logger.warning(
+                    f"Primary timestamp column with {ScopeSchemaTag.PRIMARY_TIMESTAMP} tag not found. "
+                    "Using pagination only.",
+                )
+                if not pagination_options:
+                    raise ValueError(
+                        "Pagination options not provided and timestamp range not set. "
+                        "Cannot fetch all data without a limit or time range.",
+                    ) from None
 
         query = self._paginate_sql(query, pagination_options)
         return query
