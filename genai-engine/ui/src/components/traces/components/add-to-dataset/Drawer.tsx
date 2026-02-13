@@ -6,18 +6,20 @@ import { useStore } from "@tanstack/react-form";
 import { AxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
 
-import { flattenSpans, getNestedValue } from "../../utils/spans";
+import { flattenSpans } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
 
 import { AddColumnDialog } from "./AddColumnDialog";
+import { Matcher } from "./components/matcher";
+import { TransformSelector } from "./components/transform-selector";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
 import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
-import { useTransforms } from "./hooks/useTransforms";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
+import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
@@ -128,13 +130,13 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
 
   const { latestVersion } = useDatasetLatestVersion(selectedDataset?.id);
-  const transformsQuery = useTransforms(selectedDataset?.id);
+  const transformsQuery = useTransforms();
 
   // Get the selected transform ID from form state
   const selectedTransformId = useStore(form.store, (state) => state.values.transform);
 
   // Get columns from the selected transform
-  const selectedTransform = transformsQuery.data?.find((t) => t.id === selectedTransformId);
+  const selectedTransform = transformsQuery.data?.transforms?.find((t) => t.id === selectedTransformId);
   const transformColumns = selectedTransform?.definition.variables.map((varDef) => varDef.variable_name) || [];
 
   // Merge dataset columns with transform columns to get union of all columns
@@ -204,6 +206,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       });
 
       setSavedTransformId(response.data.id);
+      form.setFieldValue("transform", response.data.id);
       transformsQuery.refetch();
 
       setTimeout(() => {
@@ -307,114 +310,25 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                 }}
               </form.Field>
 
-              <form.Field name="transform">
-                {(field) => {
-                  const hasTransforms = selectedDataset && transformsQuery.data && transformsQuery.data.length > 0;
-                  const options = hasTransforms ? transformsQuery.data : [];
-                  const isDisabled = !selectedDataset || !hasTransforms;
-
-                  return (
-                    <Autocomplete
-                      options={options}
-                      value={options.find((opt) => opt.id === field.state.value) || null}
-                      disabled={isDisabled}
-                      disablePortal
-                      sx={{ flex: 1 }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Transform"
-                          helperText={
-                            !selectedDataset
-                              ? "Select a dataset first"
-                              : !hasTransforms
-                                ? "No transforms available for this dataset"
-                                : "Select a saved transform"
-                          }
-                        />
-                      )}
-                      onChange={async (_event, value) => {
-                        const transformId = value?.id ?? "";
-                        field.handleChange(transformId);
-
-                        if (transformId && value && selectedDataset && traceId) {
-                          try {
-                            const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
-                              traceId,
-                              transformId
-                            );
-
-                            if (response.data.variables && response.data.variables.length > 0) {
-                              // Map extracted variables with path information from transform definition
-                              const executedColumns = response.data.variables.map((variable) => {
-                                const variableDef = value.definition.variables.find((v) => v.variable_name === variable.name);
-
-                                if (!variableDef) {
-                                  return {
-                                    name: variable.name,
-                                    value: variable.value,
-                                    path: "",
-                                    span_name: "",
-                                    attribute_path: "",
-                                  };
-                                }
-
-                                // Validate that the path exists in the trace data
-                                const span = flatSpans.find((s) => s.span_name === variableDef.span_name);
-                                let validatedPath = "";
-                                let validatedSpanName = "";
-                                let validatedAttributePath = "";
-
-                                if (span) {
-                                  // Check if the attribute path exists
-                                  const data = getNestedValue(span.raw_data, variableDef.attribute_path);
-                                  if (data !== undefined) {
-                                    validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
-                                    validatedSpanName = variableDef.span_name;
-                                    validatedAttributePath = variableDef.attribute_path;
-                                  }
-                                }
-
-                                return {
-                                  name: variable.name,
-                                  value: variable.value,
-                                  path: validatedPath,
-                                  span_name: validatedSpanName,
-                                  attribute_path: validatedAttributePath,
-                                };
-                              });
-
-                              const existingDatasetColumns = latestVersion?.column_names || [];
-                              const executedColumnNames = new Set(executedColumns.map((col) => col.name));
-
-                              // Create columns for dataset columns that aren't in the transform
-                              const datasetOnlyColumns = existingDatasetColumns
-                                .filter((columnName) => !executedColumnNames.has(columnName))
-                                .map((columnName) => ({
-                                  name: columnName,
-                                  value: "",
-                                  path: "",
-                                  span_name: "",
-                                  attribute_path: "",
-                                }));
-
-                              form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
-                            }
-                          } catch (error) {
-                            console.error("Failed to execute transform:", error);
-                            snackbar.showSnackbar("Failed to execute transform", "error");
-                            form.setFieldValue("columns", []);
-                          }
-                        } else {
-                          form.setFieldValue("columns", []);
-                        }
-                      }}
-                      getOptionLabel={(option) => option.name}
-                    />
-                  );
+              <TransformSelector
+                form={form}
+                fields={{
+                  dataset: "dataset",
+                  transform: "transform",
+                  columns: "columns",
                 }}
-              </form.Field>
+                traceId={traceId}
+                flatSpans={flatSpans}
+              />
             </Stack>
+
+            <Matcher
+              form={form}
+              fields={{
+                dataset: "dataset",
+                transform: "transform",
+              }}
+            />
 
             {selectedDataset && (
               <>
