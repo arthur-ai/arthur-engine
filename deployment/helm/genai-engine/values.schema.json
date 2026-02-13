@@ -462,7 +462,7 @@
                 },
                 "googleApplicationCredentials": {
                     "type": "string",
-                    "description": "Path to the mounted GCP credentials file"
+                    "description": "Path to the mounted GCP credentials file (must match mountPath /var/secrets/google/ + secret key name)"
                 },
                 "googleCloudLocation": {
                     "type": "string",
