@@ -129,6 +129,18 @@ spec:
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
             {{- end }}
+            {{- if .Values.googleCloudProject }}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: {{ .Values.googleCloudProject | quote }}
+            {{- end }}
+            {{- if .Values.googleApplicationCredentials }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: {{ .Values.googleApplicationCredentials | quote }}
+            {{- end }}
+            {{- if .Values.googleCloudLocation }}
+            - name: GOOGLE_CLOUD_LOCATION
+              value: {{ .Values.googleCloudLocation | quote }}
+            {{- end }}
             {{- if .Values.genaiEngineInternalHost }}
             - name: GENAI_ENGINE_INTERNAL_HOST
               value: {{ .Values.genaiEngineInternalHost | quote }}
@@ -144,6 +156,18 @@ spec:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
             {{- end }}
+          {{- if .Values.googleCredentialsSecretName }}
+          volumeMounts:
+            - name: gcp-credentials
+              mountPath: /credentials
+              readOnly: true
+          {{- end }}
+      {{- if .Values.googleCredentialsSecretName }}
+      volumes:
+        - name: gcp-credentials
+          secret:
+            secretName: {{ .Values.googleCredentialsSecretName }}
+      {{- end }}      
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
