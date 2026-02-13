@@ -227,7 +227,7 @@ export const TracingFilterModal = () => {
     if (value.trim()) {
       setFilterState((prev) => ({
         ...prev,
-        [`${type}Ids`]: [...prev[`${type}Ids` as keyof FilterState] as string[], value.trim()],
+        [`${type}Ids`]: [...(prev[`${type}Ids` as keyof FilterState] as string[]), value.trim()],
       }));
       if (type === "trace") setTraceIdInput("");
       if (type === "session") setSessionIdInput("");
@@ -281,7 +281,11 @@ export const TracingFilterModal = () => {
     }
 
     // Response Relevance
-    if (filterState.responseRelevanceMin && filterState.responseRelevanceMax && filterState.responseRelevanceMin === filterState.responseRelevanceMax) {
+    if (
+      filterState.responseRelevanceMin &&
+      filterState.responseRelevanceMax &&
+      filterState.responseRelevanceMin === filterState.responseRelevanceMax
+    ) {
       // If min and max are the same, use EQUALS
       filters.push({
         name: "response_relevance",
@@ -1077,11 +1081,7 @@ export const TracingFilterModal = () => {
                   slotProps={{
                     input: {
                       endAdornment: filterState.continuousEvalName && (
-                        <IconButton
-                          size="small"
-                          onClick={() => setFilterState((prev) => ({ ...prev, continuousEvalName: "" }))}
-                          sx={{ mr: -1 }}
-                        >
+                        <IconButton size="small" onClick={() => setFilterState((prev) => ({ ...prev, continuousEvalName: "" }))} sx={{ mr: -1 }}>
                           <Close fontSize="small" />
                         </IconButton>
                       ),
