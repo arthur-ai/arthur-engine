@@ -26,9 +26,16 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
+    DATABRICKS_CONNECTOR_AUTH_METHOD_FIELD,
+    DATABRICKS_CONNECTOR_C2C_AUDIENCE_HEADER_NAME_FIELD,
+    DATABRICKS_CONNECTOR_C2C_AUDIENCE_URI_FIELD,
+    DATABRICKS_CONNECTOR_C2C_SUBJECT_TOKEN_TYPE_FIELD,
+    DATABRICKS_CONNECTOR_C2C_TOKEN_ENDPOINT_FIELD,
     DATABRICKS_CONNECTOR_CLIENT_ID_FIELD,
     DATABRICKS_CONNECTOR_CLIENT_SECRET_FIELD,
     DATABRICKS_CONNECTOR_HTTP_PATH_FIELD,
+    DATABRICKS_CONNECTOR_IDA_PROVIDER_URI_FIELD,
+    DATABRICKS_CONNECTOR_IDA_RESOURCE_URI_FIELD,
     DATABRICKS_CONNECTOR_PAT_FIELD,
     DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD,
 )
@@ -63,10 +70,18 @@ def mock_databricks_connector_spec(
     access_token: str | None = "mock_token",
     client_id: str | None = None,
     client_secret: str | None = None,
+    auth_method: str | None = None,
+    ida_resource_uri: str | None = None,
+    ida_provider_uri: str | None = None,
+    c2c_audience_uri: str | None = None,
+    c2c_token_endpoint: str | None = None,
+    c2c_audience_header_name: str | None = None,
+    c2c_subject_token_type: str | None = None,
 ) -> dict:
     """Build a mock Databricks connector spec for tests.
 
-    Auth method is auto-detected based on credentials:
+    Auth method is auto-detected based on credentials unless auth_method is set:
+    - If auth_method is explicitly set: use that value
     - If client_id + client_secret provided: OAuth M2M
     - Else if access_token provided: PAT
     """
@@ -80,6 +95,20 @@ def mock_databricks_connector_spec(
         fields.append({"key": DATABRICKS_CONNECTOR_CLIENT_ID_FIELD, "value": client_id})
     if client_secret:
         fields.append({"key": DATABRICKS_CONNECTOR_CLIENT_SECRET_FIELD, "value": client_secret})
+    if auth_method:
+        fields.append({"key": DATABRICKS_CONNECTOR_AUTH_METHOD_FIELD, "value": auth_method})
+    if ida_resource_uri:
+        fields.append({"key": DATABRICKS_CONNECTOR_IDA_RESOURCE_URI_FIELD, "value": ida_resource_uri})
+    if ida_provider_uri:
+        fields.append({"key": DATABRICKS_CONNECTOR_IDA_PROVIDER_URI_FIELD, "value": ida_provider_uri})
+    if c2c_audience_uri:
+        fields.append({"key": DATABRICKS_CONNECTOR_C2C_AUDIENCE_URI_FIELD, "value": c2c_audience_uri})
+    if c2c_token_endpoint:
+        fields.append({"key": DATABRICKS_CONNECTOR_C2C_TOKEN_ENDPOINT_FIELD, "value": c2c_token_endpoint})
+    if c2c_audience_header_name:
+        fields.append({"key": DATABRICKS_CONNECTOR_C2C_AUDIENCE_HEADER_NAME_FIELD, "value": c2c_audience_header_name})
+    if c2c_subject_token_type:
+        fields.append({"key": DATABRICKS_CONNECTOR_C2C_SUBJECT_TOKEN_TYPE_FIELD, "value": c2c_subject_token_type})
 
     return mock_bucket_based_connector_spec(
         connector_type=Mock(value="databricks"),

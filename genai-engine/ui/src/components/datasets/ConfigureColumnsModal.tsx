@@ -23,6 +23,7 @@ import { z } from "zod";
 import { DefaultValueSelector } from "./DefaultValueSelector";
 
 import { columnNameSchema } from "@/schemas/datasetSchemas";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { ColumnDefaultConfig, ColumnDefaults } from "@/types/dataset";
 
 interface ConfigureColumnsModalProps {
@@ -32,6 +33,8 @@ interface ConfigureColumnsModalProps {
   currentColumns: string[];
   currentColumnDefaults?: ColumnDefaults;
   existingRowCount?: number;
+  datasetId: string;
+  taskId?: string;
 }
 
 export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
@@ -41,6 +44,8 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
   currentColumns,
   currentColumnDefaults = {},
   existingRowCount = 0,
+  datasetId,
+  taskId,
 }) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
@@ -53,6 +58,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       columns: currentColumns,
     },
     onSubmit: async ({ value }) => {
+      track(EVENT_NAMES.DATASET_COLUMNS_SAVED, { dataset_id: datasetId, task_id: taskId });
       onSave(value.columns, columnDefaults, applyToExisting);
       onClose();
       setEditingIndex(null);
@@ -100,6 +106,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
 
     const currentColumns = form.getFieldValue("columns");
     form.setFieldValue("columns", [...currentColumns, newColumnName.trim()]);
+    track(EVENT_NAMES.DATASET_COLUMN_ADDED, { dataset_id: datasetId, task_id: taskId });
     setNewColumnName("");
     setError(null);
   };
@@ -117,6 +124,9 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
 
     const updated = columns.map((col: string, idx: number) => (idx === index ? newColumnName : col));
     form.setFieldValue("columns", updated);
+    if (oldColumnName !== newColumnName) {
+      track(EVENT_NAMES.DATASET_COLUMN_RENAMED, { dataset_id: datasetId, task_id: taskId });
+    }
 
     // Transfer defaults from old column name to new column name
     if (oldColumnName !== newColumnName && columnDefaults[oldColumnName]) {
@@ -139,6 +149,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       "columns",
       columns.filter((_: string, idx: number) => idx !== index)
     );
+    track(EVENT_NAMES.DATASET_COLUMN_DELETED, { dataset_id: datasetId, task_id: taskId });
     // Clean up the default config for the deleted column
     if (deletedColumn && columnDefaults[deletedColumn]) {
       setColumnDefaults((prev) => {

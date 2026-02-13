@@ -1,10 +1,17 @@
+import base64
+import hashlib
+import hmac
+import json
 import os
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from logging import Logger
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 
+import boto3
 import pandas as pd
+import requests
 from arthur_client.api_bindings import (
     AvailableDataset,
     ConnectorCheckOutcome,
@@ -19,9 +26,16 @@ from arthur_client.api_bindings import (
     ScopeSchemaTag,
 )
 from arthur_common.models.connectors import (
+    DATABRICKS_CONNECTOR_AUTH_METHOD_FIELD,
+    DATABRICKS_CONNECTOR_C2C_AUDIENCE_HEADER_NAME_FIELD,
+    DATABRICKS_CONNECTOR_C2C_AUDIENCE_URI_FIELD,
+    DATABRICKS_CONNECTOR_C2C_SUBJECT_TOKEN_TYPE_FIELD,
+    DATABRICKS_CONNECTOR_C2C_TOKEN_ENDPOINT_FIELD,
     DATABRICKS_CONNECTOR_CLIENT_ID_FIELD,
     DATABRICKS_CONNECTOR_CLIENT_SECRET_FIELD,
     DATABRICKS_CONNECTOR_HTTP_PATH_FIELD,
+    DATABRICKS_CONNECTOR_IDA_PROVIDER_URI_FIELD,
+    DATABRICKS_CONNECTOR_IDA_RESOURCE_URI_FIELD,
     DATABRICKS_CONNECTOR_PAT_FIELD,
     DATABRICKS_CONNECTOR_SERVER_HOSTNAME_FIELD,
     DATABRICKS_DATASET_CATALOG_FIELD,
@@ -41,6 +55,7 @@ from tools.schema_interpreters import primary_timestamp_col_name
 # Authentication method constants
 AUTH_METHOD_OAUTH_M2M = "oauth_m2m"
 AUTH_METHOD_PAT = "pat"
+AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA = "aws_token_exchange_ida"
 
 
 class DatabricksConnector(Connector):
@@ -94,6 +109,37 @@ class DatabricksConnector(Connector):
             SecretStr(client_secret_raw) if client_secret_raw else None
         )
 
+        # Parse auth_method override (optional — None means auto-detect)
+        self._explicit_auth_method: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_AUTH_METHOD_FIELD) or None
+        )
+
+        # Parse AWS token exchange fields with env var fallback
+        self.ida_resource_uri: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_IDA_RESOURCE_URI_FIELD)
+            or os.getenv("ARTHUR_ENGINE_DATABRICKS_IDA_RESOURCE_URI")
+        ) or None
+        self.ida_provider_uri: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_IDA_PROVIDER_URI_FIELD)
+            or os.getenv("ARTHUR_ENGINE_DATABRICKS_IDA_PROVIDER_URI")
+        ) or None
+        self.c2c_audience_uri: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_C2C_AUDIENCE_URI_FIELD)
+            or os.getenv("ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_URI")
+        ) or None
+        self.c2c_token_endpoint: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_C2C_TOKEN_ENDPOINT_FIELD)
+            or os.getenv("ARTHUR_ENGINE_DATABRICKS_C2C_TOKEN_ENDPOINT")
+        ) or None
+        self.c2c_audience_header_name: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_C2C_AUDIENCE_HEADER_NAME_FIELD)
+            or os.getenv("ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_HEADER_NAME")
+        ) or None
+        self.c2c_subject_token_type: Optional[str] = (
+            connector_fields.get(DATABRICKS_CONNECTOR_C2C_SUBJECT_TOKEN_TYPE_FIELD)
+            or os.getenv("ARTHUR_ENGINE_DATABRICKS_C2C_SUBJECT_TOKEN_TYPE")
+        ) or None
+
         # Workspace client for catalog discovery (lazy init)
         self._workspace_client: Optional[WorkspaceClient] = None
 
@@ -108,14 +154,21 @@ class DatabricksConnector(Connector):
         """Determine authentication method based on provided credentials.
 
         Resolution order:
-        1. If client_id AND client_secret provided → OAuth M2M
-        2. Else if access_token provided → PAT
-        3. Else → Error (no credentials)
+        1. If auth_method is explicitly set → use that value
+        2. If client_id AND client_secret provided → OAuth M2M
+        3. Else if access_token provided → PAT
+        4. Else → Error (no credentials)
 
         Returns:
-            Auth method string: AUTH_METHOD_OAUTH_M2M or AUTH_METHOD_PAT
+            Auth method string: AUTH_METHOD_OAUTH_M2M, AUTH_METHOD_PAT,
+            or AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA
         """
-        if self.client_id and self.client_secret:
+        if self._explicit_auth_method:
+            self.logger.info(
+                f"Using explicitly configured auth method: {self._explicit_auth_method}"
+            )
+            return self._explicit_auth_method
+        elif self.client_id and self.client_secret:
             self.logger.info("Using OAuth M2M authentication")
             return AUTH_METHOD_OAUTH_M2M
         elif self.access_token:
@@ -124,8 +177,9 @@ class DatabricksConnector(Connector):
         else:
             raise ValueError(
                 "No Databricks credentials provided. "
-                "Set either (client_id + client_secret) for OAuth M2M "
-                "or access_token for PAT authentication. "
+                "Set either (client_id + client_secret) for OAuth M2M, "
+                "access_token for PAT authentication, "
+                "or auth_method=aws_token_exchange_ida for AWS token exchange. "
                 "Credentials can be provided via connector config or environment variables: "
                 "DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET, or DATABRICKS_TOKEN"
             )
@@ -144,6 +198,260 @@ class DatabricksConnector(Connector):
                     "PAT authentication requires access_token. "
                     "Provide via connector config or DATABRICKS_TOKEN env var."
                 )
+        elif self._auth_method == AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA:
+            missing_fields = []
+            if not self.ida_resource_uri:
+                missing_fields.append(
+                    "ida_resource_uri (or ARTHUR_ENGINE_DATABRICKS_IDA_RESOURCE_URI)"
+                )
+            if not self.ida_provider_uri:
+                missing_fields.append(
+                    "ida_provider_uri (or ARTHUR_ENGINE_DATABRICKS_IDA_PROVIDER_URI)"
+                )
+            if not self.c2c_audience_uri:
+                missing_fields.append(
+                    "c2c_audience_uri (or ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_URI)"
+                )
+            if not self.c2c_token_endpoint:
+                missing_fields.append(
+                    "c2c_token_endpoint (or ARTHUR_ENGINE_DATABRICKS_C2C_TOKEN_ENDPOINT)"
+                )
+            if not self.c2c_audience_header_name:
+                missing_fields.append(
+                    "c2c_audience_header_name (or ARTHUR_ENGINE_DATABRICKS_C2C_AUDIENCE_HEADER_NAME)"
+                )
+            if not self.c2c_subject_token_type:
+                missing_fields.append(
+                    "c2c_subject_token_type (or ARTHUR_ENGINE_DATABRICKS_C2C_SUBJECT_TOKEN_TYPE)"
+                )
+            if missing_fields:
+                raise ValueError(
+                    "aws_token_exchange_ida requires the following fields: "
+                    + ", ".join(missing_fields)
+                )
+            try:
+                session = boto3.Session()
+                credentials = session.get_credentials()
+                if credentials is None:
+                    raise ValueError("No AWS credentials available")
+                if not session.region_name:
+                    raise ValueError("No AWS region configured")
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(
+                    "aws_token_exchange_ida requires an AWS environment with IAM credentials "
+                    f"and region configured: {e}"
+                )
+
+    @staticmethod
+    def _sigv4_sign(key: bytes, msg: str) -> bytes:
+        """HMAC-SHA256 sign a message with the given key."""
+        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+
+    @staticmethod
+    def _sigv4_get_signature_key(
+        secret_key: str, datestamp: str, region: str, service: str
+    ) -> bytes:
+        """Derive the SigV4 signing key."""
+        k_date = DatabricksConnector._sigv4_sign(
+            ("AWS4" + secret_key).encode("utf-8"), datestamp
+        )
+        k_region = DatabricksConnector._sigv4_sign(k_date, region)
+        k_service = DatabricksConnector._sigv4_sign(k_region, service)
+        k_signing = DatabricksConnector._sigv4_sign(k_service, "aws4_request")
+        return k_signing
+
+    @staticmethod
+    def _build_gci_token(
+        region: str,
+        audience: str,
+        access_key_id: str,
+        secret_access_key: str,
+        audience_header_name: str,
+        session_token: Optional[str] = None,
+    ) -> str:
+        """Build a signed AWS STS GetCallerIdentity token for C2C exchange.
+
+        Creates a SigV4-signed POST request to STS and encodes it as a
+        base64 JSON payload that the C2C token endpoint can verify.
+
+        Args:
+            region: AWS region
+            audience: Audience URI value to include in the signed request
+            access_key_id: AWS access key ID
+            secret_access_key: AWS secret access key
+            audience_header_name: Header name for the audience (e.g. "x-custom-audience")
+            session_token: Optional AWS session token (for temporary credentials)
+        """
+        service = "sts"
+        host = f"sts.{region}.amazonaws.com"
+        endpoint = f"https://{host}"
+        request_parameters = "Action=GetCallerIdentity&Version=2011-06-15"
+        content_type_value = "application/x-www-form-urlencoded; charset=utf-8"
+        content_length_value = len(request_parameters)
+
+        # Normalize audience header name for canonical headers (lowercase)
+        audience_header_lower = audience_header_name.lower()
+        # Title-case for the response headers dict
+        audience_header_title = "-".join(
+            part.capitalize() for part in audience_header_name.split("-")
+        )
+
+        t = datetime.now(timezone.utc)
+        amzdate = t.strftime("%Y%m%dT%H%M%SZ")
+        datestamp = t.strftime("%Y%m%d")
+
+        # Build canonical headers (must be sorted by header name)
+        header_pairs = [
+            (f"content-length", str(content_length_value)),
+            (f"content-type", content_type_value),
+            (f"host", host),
+            (f"x-amz-date", amzdate),
+        ]
+        if session_token is not None:
+            header_pairs.append(("x-amz-security-token", session_token))
+        header_pairs.append((audience_header_lower, audience))
+
+        # Sort by header name for canonical request
+        header_pairs.sort(key=lambda x: x[0])
+
+        canonical_headers = "".join(f"{k}:{v}\n" for k, v in header_pairs)
+        signed_headers = ";".join(k for k, _ in header_pairs)
+
+        # Create canonical request
+        payload_hash = hashlib.sha256(request_parameters.encode("utf-8")).hexdigest()
+        canonical_request = (
+            f"POST\n/\n\n{canonical_headers}\n{signed_headers}\n{payload_hash}"
+        )
+
+        # Create string to sign
+        algorithm = "AWS4-HMAC-SHA256"
+        credential_scope = f"{datestamp}/{region}/{service}/aws4_request"
+        string_to_sign = (
+            f"{algorithm}\n{amzdate}\n{credential_scope}\n"
+            + hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()
+        )
+
+        # Calculate signature
+        signing_key = DatabricksConnector._sigv4_get_signature_key(
+            secret_access_key, datestamp, region, service
+        )
+        signature = hmac.new(
+            signing_key, string_to_sign.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        authorization_header = (
+            f"{algorithm} Credential={access_key_id}/{credential_scope}, "
+            f"SignedHeaders={signed_headers}, Signature={signature}"
+        )
+
+        headers: Dict[str, List[Any]] = {
+            "Authorization": [authorization_header],
+            "Content-Length": [content_length_value],
+            "Content-Type": [content_type_value],
+            "Host": [host],
+            "X-Amz-Date": [amzdate],
+            audience_header_title: [audience],
+        }
+        if session_token is not None:
+            headers["X-Amz-Security-Token"] = [session_token]
+
+        gci_token = {"uri": endpoint, "headers": headers}
+        token_str = json.dumps(gci_token)
+        return base64.b64encode(token_str.encode("utf-8")).decode("utf-8")
+
+    def _get_aws_exchange_token(self) -> str:
+        """Perform the 3-step AWS token exchange flow to get a Databricks OAuth token.
+
+        1. Build GCI token (signed STS GetCallerIdentity request)
+        2. Exchange GCI token at C2C endpoint for intermediary token
+        3. Exchange intermediary token at IDA endpoint for final OAuth token
+        """
+        session = boto3.Session()
+        credentials = session.get_credentials().get_frozen_credentials()
+        region = session.region_name
+
+        # These are validated non-None by _validate_auth_config
+        assert self.c2c_audience_uri is not None
+        assert self.c2c_audience_header_name is not None
+        assert self.c2c_token_endpoint is not None
+        assert self.ida_provider_uri is not None
+        assert self.ida_resource_uri is not None
+        assert self.c2c_subject_token_type is not None
+
+        # Step 1: Build GCI token
+        self.logger.info("Building GCI token for AWS token exchange")
+        gci_token = self._build_gci_token(
+            region=region,
+            audience=self.c2c_audience_uri,
+            access_key_id=credentials.access_key,
+            secret_access_key=credentials.secret_key,
+            audience_header_name=self.c2c_audience_header_name,
+            session_token=credentials.token,
+        )
+
+        # Step 2: Exchange GCI for intermediary token via C2C
+        # c2c_token_endpoint supports optional {region} placeholder
+        c2c_token_endpoint = self.c2c_token_endpoint.format(region=region)
+        client_request_id = str(uuid.uuid4())
+        self.logger.info(
+            f"Exchanging GCI token at C2C endpoint (request_id={client_request_id})"
+        )
+
+        c2c_response = requests.post(
+            c2c_token_endpoint,
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "audience": self.ida_provider_uri,
+                "requested_token_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                "subject_token": gci_token,
+                "subject_token_type": self.c2c_subject_token_type,
+            },
+            headers={
+                "x-client-request-id": client_request_id,
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+
+        if c2c_response.status_code != 200:
+            c2c_body = c2c_response.json()
+            error_msg = (
+                f"C2C token exchange failed: {c2c_body.get('error', 'unknown')} - "
+                f"{c2c_body.get('error_description', 'no description')}"
+            )
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        intermediary_token = c2c_response.json()["access_token"]
+
+        # Step 3: Exchange intermediary for IDA OAuth token
+        self.logger.info("Exchanging intermediary token at IDA endpoint")
+        ida_response = requests.post(
+            self.ida_provider_uri,
+            data={
+                "grant_type": "client_credentials",
+                "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                "resource": self.ida_resource_uri,
+                "client_assertion": intermediary_token,
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+
+        if ida_response.status_code != 200:
+            ida_body = ida_response.json()
+            error_msg = (
+                f"IDA token exchange failed: {ida_body.get('error', 'unknown')} - "
+                f"{ida_body.get('error_description', 'no description')}"
+            )
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        self.logger.debug("Successfully obtained IDA OAuth token")
+        token: str = ida_response.json()["access_token"]
+        return token
 
     def _get_access_token(self) -> str:
         """Get access token based on detected auth method."""
@@ -161,6 +469,8 @@ class DatabricksConnector(Connector):
             token: str = oauth_service_principal(config).oauth_token().access_token
             self.logger.debug("Fetched fresh OAuth M2M token")
             return token
+        elif self._auth_method == AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA:
+            return self._get_aws_exchange_token()
         else:
             raise ValueError(f"Unsupported auth method: {self._auth_method}")
 
@@ -176,7 +486,7 @@ class DatabricksConnector(Connector):
     def _recreate_engine_if_needed(self, error: Exception) -> bool:
         """Recreate engine with fresh token if auth error detected.
 
-        Only recreates for OAuth M2M (PAT tokens don't expire).
+        Only recreates for OAuth M2M and AWS token exchange (PAT tokens don't expire).
 
         Args:
             error: The exception that occurred
@@ -184,7 +494,10 @@ class DatabricksConnector(Connector):
         Returns:
             True if engine was recreated, False otherwise
         """
-        if self._auth_method != AUTH_METHOD_OAUTH_M2M:
+        if self._auth_method not in (
+            AUTH_METHOD_OAUTH_M2M,
+            AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA,
+        ):
             return False
 
         error_msg = str(error).lower()
@@ -216,6 +529,12 @@ class DatabricksConnector(Connector):
                 host=f"https://{self.server_hostname}",
                 client_id=self.client_id.get_secret_value(),
                 client_secret=self.client_secret.get_secret_value(),
+            )
+        elif self._auth_method == AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA:
+            exchange_token = self._get_aws_exchange_token()
+            config = Config(
+                host=f"https://{self.server_hostname}",
+                token=exchange_token,
             )
         else:
             raise ValueError(f"Unsupported auth method: {self._auth_method}")
