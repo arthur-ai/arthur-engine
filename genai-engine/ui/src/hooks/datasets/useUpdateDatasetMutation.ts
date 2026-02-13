@@ -2,6 +2,7 @@ import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import type { NewDatasetRequest } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 export interface UseUpdateDatasetMutationReturn {
   mutateAsync: (data: NewDatasetRequest & { id: string }) => Promise<void>;
@@ -22,7 +23,10 @@ export function useUpdateDatasetMutation(onSuccess: () => void): UseUpdateDatase
       });
     },
     invalidateQueries: [{ queryKey: queryKeys.datasets.search.all() }],
-    onSuccess,
+    onSuccess: (_, data) => {
+      track(EVENT_NAMES.DATASET_UPDATED, { dataset_id: data.id });
+      onSuccess();
+    },
     onError: (err) => {
       console.error("Failed to update dataset:", err);
     },
