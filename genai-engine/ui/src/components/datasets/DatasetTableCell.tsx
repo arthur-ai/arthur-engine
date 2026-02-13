@@ -5,15 +5,17 @@ import React, { useState } from "react";
 import { CellContentModal } from "./CellContentModal";
 
 import { CELL_TRUNCATION_LENGTH } from "@/constants/datasetConstants";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { formatCellValue, formatFullValue } from "@/utils/datasetFormatters";
 
 interface DatasetTableCellProps {
   value: unknown;
   columnName: string;
+  datasetId: string;
   maxLength?: number;
 }
 
-export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({ value, columnName, maxLength = CELL_TRUNCATION_LENGTH }) => {
+export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({ value, columnName, datasetId, maxLength = CELL_TRUNCATION_LENGTH }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const displayValue = formatCellValue(value, maxLength);
@@ -22,6 +24,7 @@ export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({ value, colum
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.stopPropagation();
+    track(EVENT_NAMES.DATASET_CELL_MODAL_OPENED, { dataset_id: datasetId });
     setIsModalOpen(true);
   };
 
@@ -62,7 +65,7 @@ export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({ value, colum
         </Box>
       </TableCell>
 
-      <CellContentModal open={isModalOpen} onClose={() => setIsModalOpen(false)} columnName={columnName} value={value} />
+      <CellContentModal open={isModalOpen} onClose={() => setIsModalOpen(false)} columnName={columnName} value={value} datasetId={datasetId} />
     </>
   );
 };

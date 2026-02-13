@@ -3,6 +3,7 @@ import type { DatasetAction, DatasetUpdateParams, PendingChanges, UseDatasetMuta
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { ColumnDefaults } from "@/types/dataset";
 import { fetchAllDatasetRows } from "@/utils/datasetApi";
 
@@ -59,6 +60,7 @@ export function useDatasetMutations({
     onSuccess: () => {
       dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "VERSION/RESET_TO_LATEST" });
+      track(EVENT_NAMES.DATASET_SAVE_VERSION, { dataset_id: datasetId });
       showSnackbar("Changes saved successfully!", "success");
     },
     onError: (error) => {
@@ -89,6 +91,7 @@ export function useDatasetMutations({
     onSuccess: () => {
       dispatch({ type: "UI/CLOSE_FILL_MODAL" });
       dispatch({ type: "VERSION/RESET_TO_LATEST" });
+      track(EVENT_NAMES.DATASET_FILL_COLUMN_APPLIED, { dataset_id: datasetId });
       showSnackbar("Column filled successfully!", "success");
     },
     onError: (error) => {

@@ -3,6 +3,7 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
 import React from "react";
 
 import useSnackbar from "@/hooks/useSnackbar";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import { formatFullValue } from "@/utils/datasetFormatters";
 
 interface CellContentModalProps {
@@ -10,9 +11,10 @@ interface CellContentModalProps {
   onClose: () => void;
   columnName: string;
   value: unknown;
+  datasetId: string;
 }
 
-export const CellContentModal: React.FC<CellContentModalProps> = ({ open, onClose, columnName, value }) => {
+export const CellContentModal: React.FC<CellContentModalProps> = ({ open, onClose, columnName, value, datasetId }) => {
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar({
     duration: "short",
   });
@@ -21,6 +23,7 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({ open, onClos
   const charCount = fullValue.length;
 
   const handleCopy = () => {
+    track(EVENT_NAMES.DATASET_CELL_COPIED, { dataset_id: datasetId });
     navigator.clipboard.writeText(fullValue);
     showSnackbar("Copied to clipboard!", "success");
   };
