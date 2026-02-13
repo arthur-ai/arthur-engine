@@ -12,16 +12,17 @@ interface DatasetTableRowProps {
   columns: string[];
   onEdit: (row: DatasetVersionRowResponse) => void;
   onDelete: (rowId: string) => void;
+  datasetId: string;
 }
 
-export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row, columns, onEdit, onDelete }) => {
+export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(({ row, columns, onEdit, onDelete, datasetId }) => {
   return (
     <TableRow hover>
       {columns.map((column) => {
         const columnData = row.data.find((col) => col.column_name === column);
         const value = columnData?.column_value;
 
-        return <DatasetTableCell key={column} value={value} columnName={column} />;
+        return <DatasetTableCell key={column} value={value} columnName={column} datasetId={datasetId} />;
       })}
       <TableCell
         sx={{

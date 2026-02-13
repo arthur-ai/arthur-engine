@@ -6,11 +6,15 @@ import { autoDetectDelimiter, parseCSVFull, parseCSVPreview } from "./import/csv
 import { ImportConfigurationStep } from "./import/ImportConfigurationStep";
 import { ImportPreviewStep } from "./import/ImportPreviewStep";
 
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
 interface ImportDatasetModalProps {
   open: boolean;
   onClose: () => void;
   onImport: (columns: string[], rows: Record<string, string>[]) => void;
   currentRowCount: number;
+  datasetId: string;
+  taskId?: string;
 }
 
 type AutoDetectStatus = "idle" | "detecting" | "detected";
@@ -21,7 +25,7 @@ interface PreviewState {
   validation: ValidationResult;
 }
 
-export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, onClose, onImport, currentRowCount }) => {
+export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, onClose, onImport, currentRowCount, datasetId, taskId }) => {
   const [step, setStep] = useState<0 | 1>(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [config, setConfig] = useState<CsvParseConfig>(DEFAULT_CONFIG);
@@ -75,18 +79,21 @@ export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, on
         setPreviewState({ data, validation });
 
         if (validation.isValid) {
+          track(EVENT_NAMES.DATASET_IMPORT_PREVIEWED, { dataset_id: datasetId, task_id: taskId });
           setStep(1);
         } else {
+          track(EVENT_NAMES.DATASET_IMPORT_FAILED, { dataset_id: datasetId, task_id: taskId });
           setProcessingStatus("error");
           setErrorMessage(validation.errors.join("; "));
         }
       },
       (error) => {
+        track(EVENT_NAMES.DATASET_IMPORT_FAILED, { dataset_id: datasetId, task_id: taskId });
         setProcessingStatus("error");
         setErrorMessage(error);
       }
     );
-  }, [selectedFile, config, currentRowCount]);
+  }, [selectedFile, config, currentRowCount, datasetId, taskId]);
 
   const handleFinalImport = useCallback(() => {
     if (!selectedFile) return;
@@ -100,16 +107,18 @@ export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, on
       currentRowCount,
       (columns, rows) => {
         setProcessingStatus("idle");
+        track(EVENT_NAMES.DATASET_IMPORT_COMPLETED, { dataset_id: datasetId, task_id: taskId });
         onImport(columns, rows);
         resetState();
         onClose();
       },
       (error) => {
+        track(EVENT_NAMES.DATASET_IMPORT_FAILED, { dataset_id: datasetId, task_id: taskId });
         setProcessingStatus("error");
         setErrorMessage(error);
       }
     );
-  }, [selectedFile, config, currentRowCount, onImport, onClose, resetState]);
+  }, [selectedFile, config, currentRowCount, onImport, onClose, resetState, datasetId, taskId]);
 
   const handleClose = useCallback(() => {
     if (processingStatus !== "processing") {

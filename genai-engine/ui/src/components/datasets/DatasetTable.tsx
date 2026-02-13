@@ -27,6 +27,7 @@ import { DatasetTableRow } from "./DatasetTableRow";
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 interface DatasetTableProps {
+  datasetId: string;
   columns: string[];
   rows: DatasetVersionRowResponse[];
   isLoading: boolean;
@@ -47,6 +48,7 @@ interface ColumnMenuState {
 }
 
 export const DatasetTable: React.FC<DatasetTableProps> = ({
+  datasetId,
   columns,
   rows,
   isLoading,
@@ -187,7 +189,9 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
               </TableCell>
             </TableRow>
           ) : (
-            rows.map((row) => <DatasetTableRow key={row.id} row={row} columns={columns} onEdit={onEditRow} onDelete={onDeleteRow} />)
+            rows.map((row) => (
+              <DatasetTableRow key={row.id} row={row} columns={columns} onEdit={onEditRow} onDelete={onDeleteRow} datasetId={datasetId} />
+            ))
           )}
         </TableBody>
       </Table>

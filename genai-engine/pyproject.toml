@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.375"
+version = "2.1.378"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -111,7 +111,7 @@ pre-commit = "4.5.1"
 
 
 [tool.poetry.group.performance.dependencies]
-locust = "2.43.2"
+locust = "2.43.3"
 black = "25.11.0"
 mypy = "^1.13.0"
 isort = "^7.0.0"
