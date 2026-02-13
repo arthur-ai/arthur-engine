@@ -48,6 +48,7 @@ class MetricsEngine:
         num_threads = int(
             get_env_var(
                 constants.GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR,
+                none_on_missing=True,
             )
             or constants.DEFAULT_THREAD_POOL_MAX_WORKERS,
         )
