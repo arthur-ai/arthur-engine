@@ -111,8 +111,7 @@ const PromptsPlaygroundWrapper = () => {
 
       sourceType = "experiment";
       sourceLabel = `Opened experiment for ${promptName}`;
-    }
-    else if (notebookId && nbPrompts && nbKeywords) {
+    } else if (notebookId && nbPrompts && nbKeywords) {
       const hasPromptUrlParams = promptName && promptVersionParam;
       const notebookIsEmpty = nbPrompts.length === 0;
 
@@ -147,14 +146,12 @@ const PromptsPlaygroundWrapper = () => {
         };
         configModeActive = true;
       }
-    }
-    else if (spanData) {
+    } else if (spanData) {
       const spanPrompt = apiToFrontendPrompt(spanData);
       prompts = [spanPrompt];
       sourceType = "span";
       sourceLabel = `Opened playground for ${spanPrompt.name || "span"}`;
-    }
-    else if (!isConfigMode && urlPromptData) {
+    } else if (!isConfigMode && urlPromptData) {
       const frontendPrompt = toFrontendPrompt(urlPromptData);
       prompts = [frontendPrompt];
       sourceType = "url-prompt";
