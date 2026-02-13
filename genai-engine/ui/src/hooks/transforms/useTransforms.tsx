@@ -10,7 +10,7 @@ type Params = Omit<ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetParam
 
 export const transformsQueryOptions = ({ api, params = { page_size: 1000 }, taskId }: { api: Api<unknown>; taskId: string; params?: Params }) =>
   queryOptions({
-    queryKey: [queryKeys.transforms.list(taskId), params],
+    queryKey: [...queryKeys.transforms.list(taskId), params],
     queryFn: () =>
       api.api.listTransformsForTaskApiV1TasksTaskIdTracesTransformsGet({
         taskId,
