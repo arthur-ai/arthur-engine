@@ -129,17 +129,13 @@ spec:
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
             {{- end }}
-            {{- if .Values.googleCloudProject }}
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
             - name: GOOGLE_CLOUD_PROJECT
-              value: {{ .Values.googleCloudProject | quote }}
-            {{- end }}
-            {{- if .Values.googleApplicationCredentials }}
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: {{ .Values.googleApplicationCredentials | quote }}
-            {{- end }}
-            {{- if .Values.googleCloudLocation }}
+              value: {{ .Values.gcpDiscoveryConfig.googleApplicationCredentials | quote }}
             - name: GOOGLE_CLOUD_LOCATION
-              value: {{ .Values.googleCloudLocation | quote }}
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudLocation | quote }}
             {{- end }}
             {{- if .Values.genaiEngineInternalHost }}
             - name: GENAI_ENGINE_INTERNAL_HOST
@@ -156,17 +152,18 @@ spec:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
             {{- end }}
-          {{- if .Values.googleCredentialsSecretName }}
+          {{- if .Values.gcpDiscoveryConfig.isEnabled }}
           volumeMounts:
             - name: gcp-credentials
-              mountPath: /credentials
+              mountPath: /var/secrets/google
               readOnly: true
           {{- end }}
-      {{- if .Values.googleCredentialsSecretName }}
+      {{- if .Values.gcpDiscoveryConfig.isEnabled }}
       volumes:
         - name: gcp-credentials
           secret:
-            secretName: {{ .Values.googleCredentialsSecretName }}
+            secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
+            defaultMode: 420
       {{- end }}    
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
