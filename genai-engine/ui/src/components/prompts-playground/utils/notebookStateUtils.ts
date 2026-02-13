@@ -21,8 +21,14 @@ export const serializePlaygroundState = (
   state: PromptPlaygroundState,
   experimentConfig?: Partial<PromptExperimentDetail> | null
 ): NotebookStateInput => {
-  // Convert prompts to experiment prompt configs
-  const prompt_configs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
+  const prompt_configs = state.prompts.flatMap((prompt) => {
+    try {
+      return [toExperimentPromptConfig(prompt)];
+    } catch {
+      // Skip prompts that can't be serialized (e.g. new prompts without a model provider)
+      return [];
+    }
+  });
 
   // If experimentConfig is provided, include it in the serialized state (Experiment Mode)
   if (experimentConfig && experimentConfig.dataset_ref) {

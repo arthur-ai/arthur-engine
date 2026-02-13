@@ -4,6 +4,7 @@ import {
   MessageType,
   MESSAGE_ROLE_OPTIONS,
   ModelParametersType,
+  PlaygroundInitialData,
   PromptAction,
   promptClassificationEnum,
   PromptPlaygroundState,
@@ -12,7 +13,7 @@ import {
 } from "./types";
 import { generateId, arrayUtils, cleanupAndRecalculateKeywords } from "./utils";
 
-import { LLMGetAllMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
+import { LLMGetAllMetadataResponse, MessageRole, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
 /****************************
  * Message factory functions *
@@ -133,8 +134,6 @@ const initialState: PromptPlaygroundState = {
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
   backendPrompts: new Array<LLMGetAllMetadataResponse>(),
-  enabledProviders: new Array<ModelProvider>(),
-  availableModels: new Map<ModelProvider, string[]>(),
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
@@ -279,20 +278,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         backendPrompts: prompts,
-      };
-    }
-    case "updateProviders": {
-      const { providers } = action.payload;
-      return {
-        ...state,
-        enabledProviders: providers as ModelProvider[],
-      };
-    }
-    case "updateAvailableModels": {
-      const { availableModels } = action.payload;
-      return {
-        ...state,
-        availableModels,
       };
     }
     case "addMessage": {
@@ -613,4 +598,16 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
   }
 };
 
-export { promptsReducer, initialState };
+/**
+ * Builds a PromptPlaygroundState from pre-resolved initial data.
+ * Used by the inner playground component to initialize useReducer
+ * with data that the wrapper already fetched, avoiding hydration effects.
+ */
+const buildInitialReducerState = (data: PlaygroundInitialData): PromptPlaygroundState => ({
+  keywords: data.keywords,
+  keywordTracker: new Map<string, Array<string>>(),
+  prompts: data.prompts.length > 0 ? data.prompts : [newPrompt()],
+  backendPrompts: new Array<LLMGetAllMetadataResponse>(),
+});
+
+export { promptsReducer, initialState, buildInitialReducerState };

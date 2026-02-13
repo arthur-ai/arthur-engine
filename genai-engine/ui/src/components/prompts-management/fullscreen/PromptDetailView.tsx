@@ -17,6 +17,7 @@ import Popover from "@mui/material/Popover";
 import Radio from "@mui/material/Radio";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { useSnackbar } from "notistack";
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +27,7 @@ import type { PromptDetailViewProps } from "../types";
 
 import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { useApi } from "@/hooks/useApi";
-import { useCreateNotebookMutation } from "@/hooks/useNotebooks";
+import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { formatDate } from "@/utils/formatters";
 
 const PromptDetailView = ({
@@ -50,12 +51,10 @@ const PromptDetailView = ({
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
   const apiClient = useApi();
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
+  const setNotebookStateMutation = useSetNotebookStateMutation();
 
-  const createNotebookMutation = useCreateNotebookMutation(taskId, (notebook) => {
-    // Navigate to the notebook with the prompt loaded (same tab)
-    const url = `/tasks/${taskId}/playgrounds/prompts?notebookId=${notebook.id}&promptName=${encodeURIComponent(promptName)}&version=${version}`;
-    navigate(url);
-  });
+  const createNotebookMutation = useCreateNotebookMutation(taskId);
 
   const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setTagAnchorEl(event.currentTarget);
@@ -144,40 +143,58 @@ const PromptDetailView = ({
     [taskId, version, promptName, deleteTagMutation, onRefetch]
   );
 
-  const handleOpenInNotebook = useCallback(async () => {
+  const handleOpenInPlayground = useCallback(async () => {
     if (!taskId || version === null || !apiClient) return;
 
     try {
       const notebookName = `${promptName} v${version}`;
 
       // Search for a notebook with this exact name using the name filter
-      // This is more efficient than fetching all notebooks and filtering client-side
       const response = await apiClient.api.listNotebooksApiV1TasksTaskIdNotebooksGet({
         taskId,
         page: 0,
-        page_size: 1, // Only need to check if one exists
-        name: notebookName, // Filter by exact name match
+        page_size: 1,
+        name: notebookName,
       });
 
-      // Check if we found a matching notebook
       const existingNotebook = response.data.data?.[0];
+      let targetNotebookId: string;
 
       if (existingNotebook && existingNotebook.name === notebookName) {
-        // Navigate to existing notebook (same tab)
-        const url = `/tasks/${taskId}/playgrounds/prompts?notebookId=${existingNotebook.id}`;
-        navigate(url);
+        targetNotebookId = existingNotebook.id;
       } else {
         // Create a new notebook with a descriptive name
-        await createNotebookMutation.mutateAsync({
+        const notebook = await createNotebookMutation.mutateAsync({
           name: notebookName,
-          description: `Notebook for prompt ${promptName} version ${version}`,
+          description: `Playground for prompt ${promptName} version ${version}`,
         });
-        // Navigation happens in the onSuccess callback
+        targetNotebookId = notebook.id;
       }
+
+      // Write the target prompt to notebook state before navigating.
+      // This ensures the playground always loads the correct prompt, even for reused notebooks.
+      // Fetch existing state first to preserve any experiment config (dataset, evals, mappings).
+      const existingStateResponse = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(targetNotebookId);
+      const existingState = existingStateResponse.data;
+
+      await setNotebookStateMutation.mutateAsync({
+        notebookId: targetNotebookId,
+        request: {
+          state: {
+            ...existingState,
+            prompt_configs: [{ type: "saved" as const, name: promptName, version }],
+          },
+        },
+      });
+
+      // Navigate with prompt params so the playground can also fetch the prompt directly
+      const url = `/tasks/${taskId}/playgrounds/prompts?notebookId=${targetNotebookId}&promptName=${encodeURIComponent(promptName)}&version=${version}`;
+      navigate(url);
     } catch (err) {
-      console.error("Failed to open notebook:", err);
+      console.error("Failed to open in playground:", err);
+      enqueueSnackbar("Failed to open in playground", { variant: "error" });
     }
-  }, [taskId, promptName, version, apiClient, createNotebookMutation, navigate]);
+  }, [taskId, promptName, version, apiClient, createNotebookMutation, setNotebookStateMutation, navigate, enqueueSnackbar]);
 
   if (isLoading) {
     return (
@@ -245,8 +262,14 @@ const PromptDetailView = ({
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {!promptData.deleted_at && version !== null && (
-            <Button variant="outlined" size="small" onClick={handleOpenInNotebook} disabled={createNotebookMutation.isPending} sx={{ minWidth: 80 }}>
-              {createNotebookMutation.isPending ? "Opening..." : "Open in Notebook"}
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleOpenInPlayground}
+              disabled={createNotebookMutation.isPending || setNotebookStateMutation.isPending}
+              sx={{ minWidth: 80 }}
+            >
+              {createNotebookMutation.isPending || setNotebookStateMutation.isPending ? "Opening..." : "Open in Playground"}
             </Button>
           )}
           {onClose && (

@@ -2,12 +2,14 @@ import { ReactNode, createContext, useContext } from "react";
 
 import { PromptPlaygroundState, PromptAction } from "./types";
 
-import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import type { ModelProvider, PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 interface PromptProviderProps {
   children: ReactNode;
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
+  enabledProviders: ModelProvider[];
+  availableModels: Map<ModelProvider, string[]>;
   experimentConfig?: Partial<PromptExperimentDetail> | null;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
   isRunningExperiment?: boolean;
@@ -18,6 +20,8 @@ interface PromptProviderProps {
 const PromptContext = createContext<{
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
+  enabledProviders: ModelProvider[];
+  availableModels: Map<ModelProvider, string[]>;
   experimentConfig?: Partial<PromptExperimentDetail> | null;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
   isRunningExperiment?: boolean;
@@ -35,6 +39,8 @@ export const PromptProvider = ({
   children,
   state,
   dispatch,
+  enabledProviders,
+  availableModels,
   experimentConfig,
   handleRunSingleWithConfig,
   isRunningExperiment,
@@ -46,6 +52,8 @@ export const PromptProvider = ({
       value={{
         state,
         dispatch,
+        enabledProviders,
+        availableModels,
         experimentConfig,
         handleRunSingleWithConfig,
         isRunningExperiment,
