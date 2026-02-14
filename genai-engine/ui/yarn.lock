@@ -454,10 +454,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@biomejs/wasm-nodejs@npm:2.3.14":
-  version: 2.3.14
-  resolution: "@biomejs/wasm-nodejs@npm:2.3.14"
-  checksum: 10c0/8adacedd56c75c51bf5d2d0aa9f7636cf5498df9a3209a9e26501f0b789272919363cf5494c3c3df9fe4a7b4bcc79c34ba655f30d6e26add43cf1678d1118f1c
+"@biomejs/wasm-nodejs@npm:2.3.15":
+  version: 2.3.15
+  resolution: "@biomejs/wasm-nodejs@npm:2.3.15"
+  checksum: 10c0/2919267517f9f4b40c2b011e336e7b25384097c35ddb7fd2e4b4b3d0cd61e18e6999747092ded691e8516904ad165bcdb21c1749ae83cb84ed044f41a33ab3ae
   languageName: node
   linkType: hard
 
@@ -3206,10 +3206,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"citty@npm:^0.2.0":
-  version: 0.2.0
-  resolution: "citty@npm:0.2.0"
-  checksum: 10c0/da72051262ec0e0390dc9800e16bae72a5c85d61982e4f74e3c502d08a3099428964405eb1b4cdc07a7fd5658f78db97c0111c503cde592a41e75a299ac45fb5
+"citty@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "citty@npm:0.2.1"
+  checksum: 10c0/504ac5aeb076f750bf5f25d40c730083e8ed6112eac2f00dbe341a223c46ad16893ce73dfdb55b2d0da505100b9678968ee0443637c45b21917db48daa5a6977
   languageName: node
   linkType: hard
 
@@ -3831,7 +3831,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"es-toolkit@npm:^1.43.0":
+"es-toolkit@npm:^1.44.0":
   version: 1.44.0
   resolution: "es-toolkit@npm:1.44.0"
   dependenciesMeta:
@@ -7803,27 +7803,28 @@ __metadata:
   linkType: hard
 
 "swagger-typescript-api@npm:^13.2.13":
-  version: 13.2.17
-  resolution: "swagger-typescript-api@npm:13.2.17"
+  version: 13.2.18
+  resolution: "swagger-typescript-api@npm:13.2.18"
   dependencies:
     "@biomejs/js-api": "npm:4.0.0"
-    "@biomejs/wasm-nodejs": "npm:2.3.14"
+    "@biomejs/wasm-nodejs": "npm:2.3.15"
     "@types/swagger-schema-official": "npm:^2.0.25"
     c12: "npm:^3.3.3"
-    citty: "npm:^0.2.0"
+    citty: "npm:^0.2.1"
     consola: "npm:^3.4.2"
-    es-toolkit: "npm:^1.43.0"
+    es-toolkit: "npm:^1.44.0"
     eta: "npm:^3.5.0"
     nanoid: "npm:^5.1.6"
     openapi-types: "npm:^12.1.3"
     swagger-schema-official: "npm:2.0.0-bab6bed"
     swagger2openapi: "npm:^7.0.8"
+    type-fest: "npm:^5.4.4"
     typescript: "npm:~5.9.3"
     yaml: "npm:^2.8.2"
   bin:
     sta: dist/cli.mjs
     swagger-typescript-api: dist/cli.mjs
-  checksum: 10c0/991268466c4b0149fbc71f81d7d7262e6f785ef5b854ee25f99ed33c426eead500d1651bf1197d2149ebc236f1427c9382cbedb98f07692aea531d0613ce5b76
+  checksum: 10c0/2ac401ce0d20a39f62ef0a7cba79f2cfe1d8141a3c4f479314b172cd3bf9066fafa6bf24c14203b15d8bc5f706749b8d006aff2f0bbad8a9eec17417e412094e
   languageName: node
   linkType: hard
 
@@ -7854,6 +7855,13 @@ __metadata:
   version: 6.3.0
   resolution: "tabbable@npm:6.3.0"
   checksum: 10c0/57ba019d29b5cfa0c862248883bcec0e6d29d8f156ba52a1f425e7cfeca4a0fc701ab8d035c4c86ddf74ecdbd0e9f454a88d9b55d924a51f444038e9cd14d7a0
+  languageName: node
+  linkType: hard
+
+"tagged-tag@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "tagged-tag@npm:1.0.0"
+  checksum: 10c0/91d25c9ffb86a91f20522cefb2cbec9b64caa1febe27ad0df52f08993ff60888022d771e868e6416cf2e72dab68449d2139e8709ba009b74c6c7ecd4000048d1
   languageName: node
   linkType: hard
 
@@ -7979,6 +7987,15 @@ __metadata:
   dependencies:
     prelude-ls: "npm:^1.2.1"
   checksum: 10c0/7b3fd0ed43891e2080bf0c5c504b418fbb3e5c7b9708d3d015037ba2e6323a28152ec163bcb65212741fa5d2022e3075ac3c76440dbd344c9035f818e8ecee58
+  languageName: node
+  linkType: hard
+
+"type-fest@npm:^5.4.4":
+  version: 5.4.4
+  resolution: "type-fest@npm:5.4.4"
+  dependencies:
+    tagged-tag: "npm:^1.0.0"
+  checksum: 10c0/bf9c6d7df5383fd720aac71da8ce8690ff1c554459d19cf3c72d61eac98255dba57abe20c628f91f4116f66211791462fdafa90b2be2d7405a5a4c295e4d849d
   languageName: node
   linkType: hard
 
