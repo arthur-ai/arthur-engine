@@ -111,7 +111,11 @@ class DatasetLoader:
         static_ts_col = None
         if dataset.is_static and schema:
             static_ts_col = next(
-                (col for col in schema.columns if col.source_name == STATIC_DATASET_TIMESTAMP_COL),
+                (
+                    col
+                    for col in schema.columns
+                    if col.source_name == STATIC_DATASET_TIMESTAMP_COL
+                ),
                 None,
             )
             schema.columns = [
@@ -131,7 +135,9 @@ class DatasetLoader:
             now_utc = datetime.now(timezone.utc).isoformat()
             # load_data_to_duckdb renames columns from source_name to column UUID.
             # We must use the column UUID here so apply_alias_mask can find it later.
-            col_id = str(static_ts_col.id) if static_ts_col else STATIC_DATASET_TIMESTAMP_COL
+            col_id = (
+                str(static_ts_col.id) if static_ts_col else STATIC_DATASET_TIMESTAMP_COL
+            )
             conn.execute(
                 f'ALTER TABLE "{table_name}" ADD COLUMN "{col_id}" TIMESTAMP',
             )

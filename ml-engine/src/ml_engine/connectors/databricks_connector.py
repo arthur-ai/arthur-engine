@@ -619,9 +619,7 @@ class DatabricksConnector(Connector):
         query = f"SELECT * FROM {qualified}"
 
         if dataset.is_static:
-            self.logger.info(
-                "Static dataset detected, skipping time range filtering."
-            )
+            self.logger.info("Static dataset detected, skipping time range filtering.")
         else:
             try:
                 ts_col = primary_timestamp_col_name(dataset)

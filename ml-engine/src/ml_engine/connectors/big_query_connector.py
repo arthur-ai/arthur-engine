@@ -108,7 +108,9 @@ class BigQueryConnector(Connector):
                     f" WHERE {self._escape_identifier(timestamp_col)} >= '{start_time}' AND "
                     f"{self._escape_identifier(timestamp_col)} < '{end_time}'"
                 )
-                basic_query += f" ORDER BY {self._escape_identifier(timestamp_col)} DESC"
+                basic_query += (
+                    f" ORDER BY {self._escape_identifier(timestamp_col)} DESC"
+                )
             except ValueError:
                 # timestamp column not found
                 self.logger.warning(
