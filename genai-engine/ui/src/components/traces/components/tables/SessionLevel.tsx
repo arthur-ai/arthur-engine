@@ -57,7 +57,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     queryFn: () => getFilteredSessions(api, params),
   });
 
-  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+  const [sorting] = useState<SortingState>([{ id: "earliest_start_time", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: { session_id: string }) => {

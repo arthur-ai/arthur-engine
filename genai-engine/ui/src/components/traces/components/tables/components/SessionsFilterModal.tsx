@@ -1,6 +1,6 @@
 import { Add, Close, FilterList } from "@mui/icons-material";
 import { Box, Button, Chip, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useFilterStore } from "../../../stores/filter.store";
 import type { IncomingFilter } from "../../filtering/mapper";
@@ -11,7 +11,8 @@ interface FilterState {
 }
 
 export const SessionsFilterModal = () => {
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const anchorElRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
   const setFilters = useFilterStore((state) => state.setFilters);
   const currentFilters = useFilterStore((state) => state.filters);
 
@@ -21,8 +22,6 @@ export const SessionsFilterModal = () => {
 
   const [userIdInput, setUserIdInput] = useState("");
   const [pendingFilters, setPendingFilters] = useState<IncomingFilter[] | null>(null);
-
-  const open = Boolean(anchorEl);
 
   // Populate filter state from currentFilters when modal opens
   useEffect(() => {
@@ -41,12 +40,8 @@ export const SessionsFilterModal = () => {
     }
   }, [open, currentFilters]);
 
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
   const handleClose = () => {
-    setAnchorEl(null);
+    setOpen(false);
   };
 
   const handleExited = () => {
@@ -99,12 +94,18 @@ export const SessionsFilterModal = () => {
 
   return (
     <>
-      <Button variant="outlined" startIcon={<FilterList />} onClick={handleClick} color={hasActiveFilters ? "primary" : "inherit"}>
+      <Button
+        ref={anchorElRef}
+        variant="outlined"
+        startIcon={<FilterList />}
+        onClick={() => setOpen(true)}
+        color={hasActiveFilters ? "primary" : "inherit"}
+      >
         Filter
       </Button>
       <Popover
         open={open}
-        anchorEl={anchorEl}
+        anchorEl={anchorElRef.current}
         onClose={handleClose}
         anchorOrigin={{
           vertical: "bottom",
