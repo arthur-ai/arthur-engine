@@ -5,7 +5,6 @@ from typing import Optional
 
 from arthur_common.models.enums import AgentPollingStatus, RegisteredAgentProvider
 from google.api_core.exceptions import GoogleAPIError
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from db_models.agent_polling_models import DatabaseAgentPollingData
@@ -37,7 +36,12 @@ AGENTIC_POLLING_INTERVAL_SECONDS: int = int(
 
 
 class AgentPollingJob(BaseQueueJob):
-    """Represents a registered agent polling job to be executed."""
+    """
+    Represents a registered agent polling job to be executed.
+    
+    *Note: The delay_seconds is not currently used for this job. It is kept for compatibility with the base class
+    and for potential future use cases that may require a delay to be implemented.
+    """
 
     def __init__(
         self,
@@ -167,11 +171,10 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
         """Execute a single polling job."""
         db_session = next(get_db_session())
         try:
-            # Get the agent polling data with row lock to prevent concurrent modifications
+            # Get the agent polling data
             db_agent_polling_data = (
                 db_session.query(DatabaseAgentPollingData)
                 .filter(DatabaseAgentPollingData.id == job.agent_polling_data_id)
-                .with_for_update(nowait=True)
                 .first()
             )
             if not db_agent_polling_data:
@@ -303,13 +306,6 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
             )
             logger.info(f"Polling completed for {job.agent_polling_data_id}")
 
-        except OperationalError:
-            # Row is locked by another process, skip this job
-            logger.error(
-                f"Agent polling data {job.agent_polling_data_id} is locked, skipping execution",
-            )
-            db_session.rollback()
-            raise
         except GoogleAPIError as e:
             logger.error(
                 f"Error while fetching traces for agent {job.agent_polling_data_id}: {e}",
