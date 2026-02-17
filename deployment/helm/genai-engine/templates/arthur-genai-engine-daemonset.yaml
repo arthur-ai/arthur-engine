@@ -133,7 +133,7 @@ spec:
             - name: GOOGLE_CLOUD_PROJECT
               value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: {{ .Values.gcpDiscoveryConfig.googleApplicationCredentials | quote }}
+              value: "/var/secrets/google/credentials.json"
             - name: GOOGLE_CLOUD_LOCATION
               value: {{ .Values.gcpDiscoveryConfig.googleCloudLocation | quote }}
             {{- end }}

@@ -460,10 +460,6 @@
                     "type": "string",
                     "description": "Google Cloud project ID for Vertex AI integration"
                 },
-                "googleApplicationCredentials": {
-                    "type": "string",
-                    "description": "Path to the mounted GCP credentials file (must match mountPath /var/secrets/google/ + secret key name)"
-                },
                 "googleCloudLocation": {
                     "type": "string",
                     "description": "Google Cloud region/location"
