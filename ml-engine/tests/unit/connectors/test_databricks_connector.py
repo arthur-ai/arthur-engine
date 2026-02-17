@@ -630,6 +630,50 @@ class TestDatabricksConnectorRead:
         assert len(result) == 1
         assert result.iloc[0]["x"] == 1
 
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_read_static_dataset_skips_timestamp_filter(self, mock_create_engine, mock_config):
+        """Static datasets must produce a SELECT without WHERE or ORDER BY clauses."""
+        mock_config.return_value = MagicMock()
+        mock_engine = Mock()
+        mock_conn = Mock()
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
+        mock_create_engine.return_value = mock_engine
+
+        expected_df = pd.DataFrame([{"value": 1.0}])
+        static_dataset = Mock(
+            spec=Dataset,
+            id=str(uuid4()),
+            is_static=True,
+            dataset_locator=DatasetLocator(
+                fields=[
+                    DatasetLocatorField(key=DATABRICKS_DATASET_CATALOG_FIELD, value="cat"),
+                    DatasetLocatorField(key=DATABRICKS_DATASET_SCHEMA_FIELD, value="schema"),
+                    DatasetLocatorField(key=ODBC_CONNECTOR_TABLE_NAME_FIELD, value="tbl"),
+                ],
+            ),
+            dataset_schema=None,
+        )
+
+        captured_queries = []
+
+        def capture_read_sql(query, conn):
+            captured_queries.append(str(query))
+            return expected_df
+
+        with patch("connectors.databricks_connector.pd.read_sql", side_effect=capture_read_sql):
+            spec = _make_connector_spec()
+            conn = DatabricksConnector(spec, logger)
+            start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+            end = datetime(2025, 1, 2, tzinfo=timezone.utc)
+            result = conn.read(static_dataset, start, end)
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(captured_queries) == 1
+        assert "WHERE" not in captured_queries[0]
+        assert "ORDER BY" not in captured_queries[0]
+
 
 class TestDatabricksConnectorQualifiedNames:
     """Test qualified table name building with proper escaping."""
