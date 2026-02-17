@@ -38,7 +38,7 @@ AGENTIC_POLLING_INTERVAL_SECONDS: int = int(
 class AgentPollingJob(BaseQueueJob):
     """
     Represents a registered agent polling job to be executed.
-    
+
     *Note: The delay_seconds is not currently used for this job. It is kept for compatibility with the base class
     and for potential future use cases that may require a delay to be implemented.
     """
