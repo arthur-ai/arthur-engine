@@ -37,6 +37,7 @@ def _make_static_dataset_dict() -> dict:
         "project_id": str(uuid4()),
         "connector": DatasetConnector(
             id=str(uuid4()),
+            name="test-s3-connector",
             connector_type=ConnectorType.S3,
         ),
         "data_plane_id": str(uuid4()),

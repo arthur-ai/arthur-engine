@@ -19,6 +19,11 @@ def mock_process_job_executor_execute_failure(job_run: JobRun) -> None:
     sys.exit(1)
 
 
+def mock_thread_job_executor_execute_failure(job_run: JobRun, thread_result_holder) -> None:
+    time.sleep(0.1)
+    sys.exit(1)
+
+
 def mock_process_job_executor_execute(job_run: JobRun) -> None:
     time.sleep(0.1)
 
@@ -160,9 +165,11 @@ def test_handle_process_failure(
     job_agent = JobAgent()
     job_agent.data_plane_id = test_data_plane_user.data_plane_id
     job_agent.total_memory_mb = 10000
+    # Keep memory_requirements_mb at the default (40 MB) so ThreadJobRunner is used.
+    # ProcessJobRunner uses multiprocessing.get_context("spawn"), which creates a fresh
+    # interpreter where unittest.mock.patch is not active — the mock never executes in the
+    # child process. ThreadJobRunner runs in the same process, so mocks work correctly.
     job, job_run = random_job_job_run(test_data_plane_user.data_plane_id)
-
-    job.memory_requirements_mb = 5000
 
     dequeue_job_matcher = expect_dequeue_job_request(
         app_plane_http_server,
@@ -184,8 +191,8 @@ def test_handle_process_failure(
     )
 
     with patch(
-        "job_runner.ProcessJobRunner._job_executor_wrapper",
-        mock_process_job_executor_execute_failure,
+        "job_runner.ThreadJobRunner._job_executor_wrapper",
+        mock_thread_job_executor_execute_failure,
     ):
         job_agent.handle()
 

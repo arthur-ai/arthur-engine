@@ -64,6 +64,7 @@ def _make_dataset_with_timestamp(
     return Mock(
         spec=Dataset,
         id=str(uuid4()),
+        is_static=False,
         dataset_locator=DatasetLocator(
             fields=[
                 DatasetLocatorField(
