@@ -25,9 +25,10 @@ import type { RagSearchSettingConfigurationResponse } from "@/lib/api-client/api
 
 interface ConfigurationsListViewProps {
   onConfigDelete: (configId: string) => void;
+  onConfigClick?: (configId: string) => void;
 }
 
-export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ onConfigDelete }) => {
+export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ onConfigDelete, onConfigClick }) => {
   const { task } = useTask();
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -108,7 +109,7 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
               </TableHead>
               <TableBody>
                 {configs.map((config) => (
-                  <TableRow key={config.id} hover>
+                  <TableRow key={config.id} hover onClick={() => onConfigClick?.(config.id)} sx={{ cursor: onConfigClick ? "pointer" : "default" }}>
                     <TableCell>{config.name}</TableCell>
                     <TableCell>{config.description || "-"}</TableCell>
                     <TableCell>{config.latest_version_number}</TableCell>
@@ -121,10 +122,24 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
                     </TableCell>
                     <TableCell>{new Date(config.updated_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <IconButton size="small" onClick={() => handleViewVersions(config)} title="View versions">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewVersions(config);
+                        }}
+                        title="View versions"
+                      >
                         <HistoryIcon />
                       </IconButton>
-                      <IconButton size="small" onClick={() => onConfigDelete(config.id)} title="Delete configuration">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onConfigDelete(config.id);
+                        }}
+                        title="Delete configuration"
+                      >
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
