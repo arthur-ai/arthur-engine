@@ -1,6 +1,7 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Add, Close, FilterList } from "@mui/icons-material";
 import { Autocomplete, Box, Button, Checkbox, Chip, FormControlLabel, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 
 import { useFilterStore } from "../../../stores/filter.store";
@@ -36,28 +37,136 @@ const ANNOTATION_TYPE_OPTIONS = ["human", "continuous_eval"];
 const CONTINUOUS_EVAL_RUN_STATUS_OPTIONS = ["pending", "passed", "running", "failed", "skipped", "error"];
 const INCLUDE_EXPERIMENT_TRACES_OPTIONS = ["true", "false"];
 
+// Helper function to build filters from form values
+const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
+  const filters: IncomingFilter[] = [];
+
+  // Span Types
+  if (value.spanTypes.length > 0) {
+    filters.push({
+      name: "span_types",
+      operator: Operators.IN,
+      value: value.spanTypes,
+    });
+  }
+
+  // Trace Duration
+  if (value.traceDurationMin && value.traceDurationMax && value.traceDurationMin === value.traceDurationMax) {
+    // If min and max are the same, use EQUALS
+    filters.push({
+      name: "trace_duration",
+      operator: Operators.EQUALS,
+      value: value.traceDurationMin,
+    });
+  } else {
+    if (value.traceDurationMin) {
+      filters.push({
+        name: "trace_duration",
+        operator: value.traceDurationInclusive ? Operators.GREATER_THAN_OR_EQUAL : Operators.GREATER_THAN,
+        value: value.traceDurationMin,
+      });
+    }
+    if (value.traceDurationMax) {
+      filters.push({
+        name: "trace_duration",
+        operator: value.traceDurationInclusive ? Operators.LESS_THAN_OR_EQUAL : Operators.LESS_THAN,
+        value: value.traceDurationMax,
+      });
+    }
+  }
+
+  // IDs
+  if (value.traceIds.length > 0) {
+    filters.push({
+      name: "trace_ids",
+      operator: Operators.IN,
+      value: value.traceIds,
+    });
+  }
+  if (value.sessionIds.length > 0) {
+    filters.push({
+      name: "session_ids",
+      operator: Operators.IN,
+      value: value.sessionIds,
+    });
+  }
+  if (value.spanIds.length > 0) {
+    filters.push({
+      name: "span_ids",
+      operator: Operators.IN,
+      value: value.spanIds,
+    });
+  }
+  if (value.userIds.length > 0) {
+    filters.push({
+      name: "user_ids",
+      operator: Operators.IN,
+      value: value.userIds,
+    });
+  }
+
+  // Annotation Score
+  if (value.annotationScore !== null) {
+    filters.push({
+      name: "annotation_score",
+      operator: EnumOperators.EQUALS,
+      value: value.annotationScore,
+    });
+  }
+
+  // Status Code
+  if (value.statusCode !== null) {
+    filters.push({
+      name: "status_code",
+      operator: EnumOperators.EQUALS,
+      value: value.statusCode,
+    });
+  }
+
+  // Annotation Type
+  if (value.annotationType !== null) {
+    filters.push({
+      name: "annotation_type",
+      operator: EnumOperators.EQUALS,
+      value: value.annotationType,
+    });
+  }
+
+  // Continuous Eval Run Status
+  if (value.continuousEvalRunStatus !== null) {
+    filters.push({
+      name: "continuous_eval_run_status",
+      operator: EnumOperators.EQUALS,
+      value: value.continuousEvalRunStatus,
+    });
+  }
+
+  // Continuous Eval Name
+  if (value.continuousEvalName.trim()) {
+    filters.push({
+      name: "continuous_eval_name",
+      operator: TextOperators.CONTAINS,
+      value: value.continuousEvalName.trim(),
+    });
+  }
+
+  // Include Experiment Traces
+  if (value.includeExperimentTraces !== null) {
+    filters.push({
+      name: "include_experiment_traces",
+      operator: EnumOperators.EQUALS,
+      value: value.includeExperimentTraces,
+    });
+  }
+
+  return filters;
+};
+
 export const TracingFilterModal = () => {
   const anchorElRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const setFilters = useFilterStore((state) => state.setFilters);
   const currentFilters = useFilterStore((state) => state.filters);
-
-  const [filterState, setFilterState] = useState<FilterState>({
-    spanTypes: [],
-    traceDurationMin: "",
-    traceDurationMax: "",
-    traceDurationInclusive: false,
-    traceIds: [],
-    sessionIds: [],
-    spanIds: [],
-    userIds: [],
-    annotationScore: null,
-    statusCode: null,
-    annotationType: null,
-    continuousEvalRunStatus: null,
-    continuousEvalName: "",
-    includeExperimentTraces: null,
-  });
 
   const [traceIdInput, setTraceIdInput] = useState("");
   const [sessionIdInput, setSessionIdInput] = useState("");
@@ -66,79 +175,106 @@ export const TracingFilterModal = () => {
   const [pendingFilters, setPendingFilters] = useState<IncomingFilter[] | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
-  // Populate filter state from currentFilters when modal opens
+  // Initialize form with @tanstack/react-form
+  const form = useForm({
+    defaultValues: {
+      spanTypes: [] as string[],
+      traceDurationMin: "",
+      traceDurationMax: "",
+      traceDurationInclusive: false,
+      traceIds: [] as string[],
+      sessionIds: [] as string[],
+      spanIds: [] as string[],
+      userIds: [] as string[],
+      annotationScore: null as string | null,
+      statusCode: null as string | null,
+      annotationType: null as string | null,
+      continuousEvalRunStatus: null as string | null,
+      continuousEvalName: "",
+      includeExperimentTraces: null as string | null,
+    },
+    onSubmit: async ({ value }) => {
+      const filters = buildFiltersFromFormValues(value as FilterState);
+      setPendingFilters(filters);
+      handleClose();
+    },
+  });
+
+  // Populate form from currentFilters when modal opens
   useEffect(() => {
-    if (open) {
-      const newFilterState: FilterState = {
-        spanTypes: [],
-        traceDurationMin: "",
-        traceDurationMax: "",
-        traceDurationInclusive: false,
-        traceIds: [],
-        sessionIds: [],
-        spanIds: [],
-        userIds: [],
-        annotationScore: null,
-        statusCode: null,
-        annotationType: null,
-        continuousEvalRunStatus: null,
-        continuousEvalName: "",
-        includeExperimentTraces: null,
-      };
+    if (!open) return;
 
-      currentFilters.forEach((filter) => {
-        switch (filter.name) {
-          case "span_types":
-            newFilterState.spanTypes = Array.isArray(filter.value) ? filter.value : [];
-            break;
-          case "trace_duration":
-            if (filter.operator === Operators.GREATER_THAN || filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
-              newFilterState.traceDurationMin = String(filter.value);
-              newFilterState.traceDurationInclusive = filter.operator === Operators.GREATER_THAN_OR_EQUAL;
-            } else if (filter.operator === Operators.LESS_THAN || filter.operator === Operators.LESS_THAN_OR_EQUAL) {
-              newFilterState.traceDurationMax = String(filter.value);
-              newFilterState.traceDurationInclusive = filter.operator === Operators.LESS_THAN_OR_EQUAL;
-            } else if (filter.operator === Operators.EQUALS) {
-              newFilterState.traceDurationMin = String(filter.value);
-              newFilterState.traceDurationMax = String(filter.value);
-            }
-            break;
-          case "trace_ids":
-            newFilterState.traceIds = Array.isArray(filter.value) ? filter.value : [];
-            break;
-          case "session_ids":
-            newFilterState.sessionIds = Array.isArray(filter.value) ? filter.value : [];
-            break;
-          case "span_ids":
-            newFilterState.spanIds = Array.isArray(filter.value) ? filter.value : [];
-            break;
-          case "user_ids":
-            newFilterState.userIds = Array.isArray(filter.value) ? filter.value : [];
-            break;
-          case "annotation_score":
-            newFilterState.annotationScore = String(filter.value);
-            break;
-          case "status_code":
-            newFilterState.statusCode = String(filter.value);
-            break;
-          case "annotation_type":
-            newFilterState.annotationType = String(filter.value);
-            break;
-          case "continuous_eval_run_status":
-            newFilterState.continuousEvalRunStatus = String(filter.value);
-            break;
-          case "continuous_eval_name":
-            newFilterState.continuousEvalName = String(filter.value);
-            break;
-          case "include_experiment_traces":
-            newFilterState.includeExperimentTraces = String(filter.value);
-            break;
-        }
-      });
+    const newFilterState: FilterState = {
+      spanTypes: [],
+      traceDurationMin: "",
+      traceDurationMax: "",
+      traceDurationInclusive: false,
+      traceIds: [],
+      sessionIds: [],
+      spanIds: [],
+      userIds: [],
+      annotationScore: null,
+      statusCode: null,
+      annotationType: null,
+      continuousEvalRunStatus: null,
+      continuousEvalName: "",
+      includeExperimentTraces: null,
+    };
 
-      setFilterState(newFilterState);
-    }
-  }, [open, currentFilters]);
+    currentFilters.forEach((filter) => {
+      switch (filter.name) {
+        case "span_types":
+          newFilterState.spanTypes = Array.isArray(filter.value) ? filter.value : [];
+          break;
+        case "trace_duration":
+          if (filter.operator === Operators.GREATER_THAN || filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
+            newFilterState.traceDurationMin = String(filter.value);
+            newFilterState.traceDurationInclusive = filter.operator === Operators.GREATER_THAN_OR_EQUAL;
+          } else if (filter.operator === Operators.LESS_THAN || filter.operator === Operators.LESS_THAN_OR_EQUAL) {
+            newFilterState.traceDurationMax = String(filter.value);
+            newFilterState.traceDurationInclusive = filter.operator === Operators.LESS_THAN_OR_EQUAL;
+          } else if (filter.operator === Operators.EQUALS) {
+            newFilterState.traceDurationMin = String(filter.value);
+            newFilterState.traceDurationMax = String(filter.value);
+          }
+          break;
+        case "trace_ids":
+          newFilterState.traceIds = Array.isArray(filter.value) ? filter.value : [];
+          break;
+        case "session_ids":
+          newFilterState.sessionIds = Array.isArray(filter.value) ? filter.value : [];
+          break;
+        case "span_ids":
+          newFilterState.spanIds = Array.isArray(filter.value) ? filter.value : [];
+          break;
+        case "user_ids":
+          newFilterState.userIds = Array.isArray(filter.value) ? filter.value : [];
+          break;
+        case "annotation_score":
+          newFilterState.annotationScore = String(filter.value);
+          break;
+        case "status_code":
+          newFilterState.statusCode = String(filter.value);
+          break;
+        case "annotation_type":
+          newFilterState.annotationType = String(filter.value);
+          break;
+        case "continuous_eval_run_status":
+          newFilterState.continuousEvalRunStatus = String(filter.value);
+          break;
+        case "continuous_eval_name":
+          newFilterState.continuousEvalName = String(filter.value);
+          break;
+        case "include_experiment_traces":
+          newFilterState.includeExperimentTraces = String(filter.value);
+          break;
+      }
+    });
+
+    Object.entries(newFilterState).forEach(([key, value]) => {
+      form.setFieldValue(key as keyof FilterState, value as never);
+    });
+  }, [open, currentFilters, form]);
 
   const handleClose = () => {
     setOpen(false);
@@ -156,10 +292,10 @@ export const TracingFilterModal = () => {
 
   const handleAddId = (type: "trace" | "session" | "span" | "user", value: string) => {
     if (value.trim()) {
-      setFilterState((prev) => ({
-        ...prev,
-        [`${type}Ids`]: [...(prev[`${type}Ids` as keyof FilterState] as string[]), value.trim()],
-      }));
+      const fieldName = `${type}Ids` as keyof FilterState;
+      const currentValue = form.getFieldValue(fieldName) as string[];
+      form.setFieldValue(fieldName, [...currentValue, value.trim()] as never);
+
       if (type === "trace") setTraceIdInput("");
       if (type === "session") setSessionIdInput("");
       if (type === "span") setSpanIdInput("");
@@ -168,175 +304,35 @@ export const TracingFilterModal = () => {
   };
 
   const handleRemoveId = (type: "trace" | "session" | "span" | "user", id: string) => {
-    setFilterState((prev) => ({
-      ...prev,
-      [`${type}Ids`]: (prev[`${type}Ids` as keyof FilterState] as string[]).filter((item) => item !== id),
-    }));
-  };
-
-  const handleApplyFilters = () => {
-    const filters: IncomingFilter[] = [];
-
-    // Span Types
-    if (filterState.spanTypes.length > 0) {
-      filters.push({
-        name: "span_types",
-        operator: Operators.IN,
-        value: filterState.spanTypes,
-      });
-    }
-
-    // Trace Duration
-    if (filterState.traceDurationMin && filterState.traceDurationMax && filterState.traceDurationMin === filterState.traceDurationMax) {
-      // If min and max are the same, use EQUALS
-      filters.push({
-        name: "trace_duration",
-        operator: Operators.EQUALS,
-        value: filterState.traceDurationMin,
-      });
-    } else {
-      if (filterState.traceDurationMin) {
-        filters.push({
-          name: "trace_duration",
-          operator: filterState.traceDurationInclusive ? Operators.GREATER_THAN_OR_EQUAL : Operators.GREATER_THAN,
-          value: filterState.traceDurationMin,
-        });
-      }
-      if (filterState.traceDurationMax) {
-        filters.push({
-          name: "trace_duration",
-          operator: filterState.traceDurationInclusive ? Operators.LESS_THAN_OR_EQUAL : Operators.LESS_THAN,
-          value: filterState.traceDurationMax,
-        });
-      }
-    }
-
-    // IDs
-    if (filterState.traceIds.length > 0) {
-      filters.push({
-        name: "trace_ids",
-        operator: Operators.IN,
-        value: filterState.traceIds,
-      });
-    }
-    if (filterState.sessionIds.length > 0) {
-      filters.push({
-        name: "session_ids",
-        operator: Operators.IN,
-        value: filterState.sessionIds,
-      });
-    }
-    if (filterState.spanIds.length > 0) {
-      filters.push({
-        name: "span_ids",
-        operator: Operators.IN,
-        value: filterState.spanIds,
-      });
-    }
-    if (filterState.userIds.length > 0) {
-      filters.push({
-        name: "user_ids",
-        operator: Operators.IN,
-        value: filterState.userIds,
-      });
-    }
-
-    // Annotation Score
-    if (filterState.annotationScore !== null) {
-      filters.push({
-        name: "annotation_score",
-        operator: EnumOperators.EQUALS,
-        value: filterState.annotationScore,
-      });
-    }
-
-    // Status Code
-    if (filterState.statusCode !== null) {
-      filters.push({
-        name: "status_code",
-        operator: EnumOperators.EQUALS,
-        value: filterState.statusCode,
-      });
-    }
-
-    // Annotation Type
-    if (filterState.annotationType !== null) {
-      filters.push({
-        name: "annotation_type",
-        operator: EnumOperators.EQUALS,
-        value: filterState.annotationType,
-      });
-    }
-
-    // Continuous Eval Run Status
-    if (filterState.continuousEvalRunStatus !== null) {
-      filters.push({
-        name: "continuous_eval_run_status",
-        operator: EnumOperators.EQUALS,
-        value: filterState.continuousEvalRunStatus,
-      });
-    }
-
-    // Continuous Eval Name
-    if (filterState.continuousEvalName.trim()) {
-      filters.push({
-        name: "continuous_eval_name",
-        operator: TextOperators.CONTAINS,
-        value: filterState.continuousEvalName.trim(),
-      });
-    }
-
-    // Include Experiment Traces
-    if (filterState.includeExperimentTraces !== null) {
-      filters.push({
-        name: "include_experiment_traces",
-        operator: EnumOperators.EQUALS,
-        value: filterState.includeExperimentTraces,
-      });
-    }
-
-    setPendingFilters(filters);
-    handleClose();
+    const fieldName = `${type}Ids` as keyof FilterState;
+    const currentValue = form.getFieldValue(fieldName) as string[];
+    form.setFieldValue(fieldName, currentValue.filter((item) => item !== id) as never);
   };
 
   const handleClearFilters = () => {
-    setFilterState({
-      spanTypes: [],
-      traceDurationMin: "",
-      traceDurationMax: "",
-      traceDurationInclusive: false,
-      traceIds: [],
-      sessionIds: [],
-      spanIds: [],
-      userIds: [],
-      annotationScore: null,
-      statusCode: null,
-      annotationType: null,
-      continuousEvalRunStatus: null,
-      continuousEvalName: "",
-      includeExperimentTraces: null,
-    });
-    // Clear all validation errors
+    form.reset();
     setValidationErrors({});
     // Preserve span_name filter from search bar
     const spanNameFilter = currentFilters.find((f) => f.name === "span_name");
     setFilters(spanNameFilter ? [spanNameFilter] : []);
   };
 
+  // Subscribe to form state to check for active filters
+  const formState = useStore(form.store, (state) => state.values);
   const hasActiveFilters =
-    filterState.spanTypes.length > 0 ||
-    filterState.traceDurationMin !== "" ||
-    filterState.traceDurationMax !== "" ||
-    filterState.traceIds.length > 0 ||
-    filterState.sessionIds.length > 0 ||
-    filterState.spanIds.length > 0 ||
-    filterState.userIds.length > 0 ||
-    filterState.annotationScore !== null ||
-    filterState.statusCode !== null ||
-    filterState.annotationType !== null ||
-    filterState.continuousEvalRunStatus !== null ||
-    filterState.continuousEvalName.trim() !== "" ||
-    filterState.includeExperimentTraces !== null;
+    formState.spanTypes.length > 0 ||
+    formState.traceDurationMin !== "" ||
+    formState.traceDurationMax !== "" ||
+    formState.traceIds.length > 0 ||
+    formState.sessionIds.length > 0 ||
+    formState.spanIds.length > 0 ||
+    formState.userIds.length > 0 ||
+    formState.annotationScore !== null ||
+    formState.statusCode !== null ||
+    formState.annotationType !== null ||
+    formState.continuousEvalRunStatus !== null ||
+    formState.continuousEvalName.trim() !== "" ||
+    formState.includeExperimentTraces !== null;
 
   return (
     <>
@@ -376,14 +372,18 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Span Types
                 </Typography>
-                <Autocomplete
-                  multiple
-                  options={SPAN_TYPE_OPTIONS}
-                  value={filterState.spanTypes}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, spanTypes: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select span types" />}
-                  disableCloseOnSelect
-                />
+                <form.Field name="spanTypes">
+                  {(field) => (
+                    <Autocomplete
+                      multiple
+                      options={SPAN_TYPE_OPTIONS}
+                      value={field.state.value}
+                      onChange={(_, newValue) => field.handleChange(newValue)}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select span types" />}
+                      disableCloseOnSelect
+                    />
+                  )}
+                </form.Field>
               </Box>
 
               {/* Trace Duration */}
@@ -393,94 +393,101 @@ export const TracingFilterModal = () => {
                 </Typography>
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <TextField
-                      size="small"
-                      type="number"
-                      placeholder="Min"
-                      value={filterState.traceDurationMin}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // Clear errors when user makes any change
-                        setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
-
-                        if (val === "") {
-                          setFilterState((prev) => ({ ...prev, traceDurationMin: val }));
-                          return;
-                        }
-                        const numVal = parseFloat(val);
-                        if (numVal < 0) {
-                          setFilterState((prev) => ({ ...prev, traceDurationMin: "0" }));
-                          setValidationErrors((prev) => ({ ...prev, traceDurationMin: "Value cannot be less than 0. Reset to 0." }));
-                        } else {
-                          setFilterState((prev) => ({ ...prev, traceDurationMin: val }));
-                        }
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          min: 0,
-                          step: 1,
-                          style: { MozAppearance: "textfield" },
-                        },
-                      }}
-                      sx={{
-                        width: 100,
-                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                          WebkitAppearance: "none",
-                          margin: 0,
-                        },
-                      }}
-                    />
-                    <TextField
-                      size="small"
-                      type="number"
-                      placeholder="Max"
-                      value={filterState.traceDurationMax}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // Clear errors when user makes any change
-                        setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
-
-                        if (val === "") {
-                          setFilterState((prev) => ({ ...prev, traceDurationMax: val }));
-                          return;
-                        }
-                        const numVal = parseFloat(val);
-                        if (numVal < 0) {
-                          setFilterState((prev) => ({ ...prev, traceDurationMax: "0" }));
-                          setValidationErrors((prev) => ({ ...prev, traceDurationMax: "Value cannot be less than 0. Reset to 0." }));
-                        } else if (filterState.traceDurationMin && numVal < parseFloat(filterState.traceDurationMin)) {
-                          setValidationErrors((prev) => ({ ...prev, traceDurationMax: "Max cannot be less than min." }));
-                          setFilterState((prev) => ({ ...prev, traceDurationMax: val }));
-                        } else {
-                          setFilterState((prev) => ({ ...prev, traceDurationMax: val }));
-                        }
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          min: 0,
-                          step: 1,
-                          style: { MozAppearance: "textfield" },
-                        },
-                      }}
-                      sx={{
-                        width: 100,
-                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                          WebkitAppearance: "none",
-                          margin: 0,
-                        },
-                      }}
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={filterState.traceDurationInclusive}
-                          onChange={(e) => setFilterState((prev) => ({ ...prev, traceDurationInclusive: e.target.checked }))}
+                    <form.Field name="traceDurationMin">
+                      {(field) => (
+                        <TextField
                           size="small"
+                          type="number"
+                          placeholder="Min"
+                          value={field.state.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            // Clear errors when user makes any change
+                            setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
+
+                            if (val === "") {
+                              field.handleChange(val);
+                              return;
+                            }
+                            const numVal = parseFloat(val);
+                            if (numVal < 0) {
+                              field.handleChange("0");
+                              setValidationErrors((prev) => ({ ...prev, traceDurationMin: "Value cannot be less than 0. Reset to 0." }));
+                            } else {
+                              field.handleChange(val);
+                            }
+                          }}
+                          slotProps={{
+                            htmlInput: {
+                              min: 0,
+                              step: 1,
+                              style: { MozAppearance: "textfield" },
+                            },
+                          }}
+                          sx={{
+                            width: 100,
+                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                              WebkitAppearance: "none",
+                              margin: 0,
+                            },
+                          }}
                         />
-                      }
-                      label="Inclusive"
-                      sx={{ whiteSpace: "nowrap" }}
-                    />
+                      )}
+                    </form.Field>
+                    <form.Field name="traceDurationMax">
+                      {(field) => (
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="Max"
+                          value={field.state.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const minVal = form.getFieldValue("traceDurationMin");
+                            // Clear errors when user makes any change
+                            setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
+
+                            if (val === "") {
+                              field.handleChange(val);
+                              return;
+                            }
+                            const numVal = parseFloat(val);
+                            if (numVal < 0) {
+                              field.handleChange("0");
+                              setValidationErrors((prev) => ({ ...prev, traceDurationMax: "Value cannot be less than 0. Reset to 0." }));
+                            } else if (minVal && numVal < parseFloat(minVal)) {
+                              setValidationErrors((prev) => ({ ...prev, traceDurationMax: "Max cannot be less than min." }));
+                              field.handleChange(val);
+                            } else {
+                              field.handleChange(val);
+                            }
+                          }}
+                          slotProps={{
+                            htmlInput: {
+                              min: 0,
+                              step: 1,
+                              style: { MozAppearance: "textfield" },
+                            },
+                          }}
+                          sx={{
+                            width: 100,
+                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                              WebkitAppearance: "none",
+                              margin: 0,
+                            },
+                          }}
+                        />
+                      )}
+                    </form.Field>
+                    <form.Field name="traceDurationInclusive">
+                      {(field) => (
+                        <FormControlLabel
+                          control={<Checkbox checked={field.state.value} onChange={(e) => field.handleChange(e.target.checked)} size="small" />}
+                          label="Inclusive"
+                          sx={{ whiteSpace: "nowrap" }}
+                        />
+                      )}
+                    </form.Field>
                   </Stack>
                   {(validationErrors.traceDurationMin || validationErrors.traceDurationMax) && (
                     <Typography variant="caption" color="error">
@@ -513,11 +520,15 @@ export const TracingFilterModal = () => {
                     <Add />
                   </IconButton>
                 </Stack>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {filterState.traceIds.map((id) => (
-                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("trace", id)} deleteIcon={<Close />} />
-                  ))}
-                </Stack>
+                <form.Field name="traceIds">
+                  {(field) => (
+                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                      {field.state.value.map((id) => (
+                        <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("trace", id)} deleteIcon={<Close />} />
+                      ))}
+                    </Stack>
+                  )}
+                </form.Field>
               </Box>
 
               {/* Session IDs */}
@@ -543,11 +554,15 @@ export const TracingFilterModal = () => {
                     <Add />
                   </IconButton>
                 </Stack>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {filterState.sessionIds.map((id) => (
-                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("session", id)} deleteIcon={<Close />} />
-                  ))}
-                </Stack>
+                <form.Field name="sessionIds">
+                  {(field) => (
+                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                      {field.state.value.map((id) => (
+                        <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("session", id)} deleteIcon={<Close />} />
+                      ))}
+                    </Stack>
+                  )}
+                </form.Field>
               </Box>
 
               {/* Span IDs */}
@@ -573,11 +588,15 @@ export const TracingFilterModal = () => {
                     <Add />
                   </IconButton>
                 </Stack>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {filterState.spanIds.map((id) => (
-                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("span", id)} deleteIcon={<Close />} />
-                  ))}
-                </Stack>
+                <form.Field name="spanIds">
+                  {(field) => (
+                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                      {field.state.value.map((id) => (
+                        <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("span", id)} deleteIcon={<Close />} />
+                      ))}
+                    </Stack>
+                  )}
+                </form.Field>
               </Box>
 
               {/* User IDs */}
@@ -603,11 +622,15 @@ export const TracingFilterModal = () => {
                     <Add />
                   </IconButton>
                 </Stack>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {filterState.userIds.map((id) => (
-                    <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("user", id)} deleteIcon={<Close />} />
-                  ))}
-                </Stack>
+                <form.Field name="userIds">
+                  {(field) => (
+                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                      {field.state.value.map((id) => (
+                        <Chip key={id} label={id} size="small" onDelete={() => handleRemoveId("user", id)} deleteIcon={<Close />} />
+                      ))}
+                    </Stack>
+                  )}
+                </form.Field>
               </Box>
 
               {/* Annotation Score */}
@@ -615,13 +638,17 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Annotation Score
                 </Typography>
-                <Autocomplete
-                  options={ANNOTATION_SCORE_OPTIONS}
-                  value={filterState.annotationScore}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, annotationScore: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select score" />}
-                  getOptionLabel={(option) => (option === "0" ? "Unhelpful" : "Helpful")}
-                />
+                <form.Field name="annotationScore">
+                  {(field) => (
+                    <Autocomplete
+                      options={ANNOTATION_SCORE_OPTIONS}
+                      value={field.state.value}
+                      onChange={(_, newValue) => field.handleChange(newValue)}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select score" />}
+                      getOptionLabel={(option) => (option === "0" ? "Unhelpful" : "Helpful")}
+                    />
+                  )}
+                </form.Field>
               </Box>
 
               {/* Status Code */}
@@ -629,13 +656,17 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Status Code
                 </Typography>
-                <Autocomplete
-                  options={STATUS_CODE_OPTIONS}
-                  value={filterState.statusCode}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, statusCode: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
-                  getOptionLabel={(option) => (option === "Ok" ? "Pass" : "Fail")}
-                />
+                <form.Field name="statusCode">
+                  {(field) => (
+                    <Autocomplete
+                      options={STATUS_CODE_OPTIONS}
+                      value={field.state.value}
+                      onChange={(_, newValue) => field.handleChange(newValue)}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
+                      getOptionLabel={(option) => (option === "Ok" ? "Pass" : "Fail")}
+                    />
+                  )}
+                </form.Field>
               </Box>
 
               {/* Annotation Type */}
@@ -643,13 +674,17 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Annotation Type
                 </Typography>
-                <Autocomplete
-                  options={ANNOTATION_TYPE_OPTIONS}
-                  value={filterState.annotationType}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, annotationType: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select type" />}
-                  getOptionLabel={(option) => (option === "human" ? "Human" : "Continuous Eval")}
-                />
+                <form.Field name="annotationType">
+                  {(field) => (
+                    <Autocomplete
+                      options={ANNOTATION_TYPE_OPTIONS}
+                      value={field.state.value}
+                      onChange={(_, newValue) => field.handleChange(newValue)}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select type" />}
+                      getOptionLabel={(option) => (option === "human" ? "Human" : "Continuous Eval")}
+                    />
+                  )}
+                </form.Field>
               </Box>
 
               {/* Continuous Eval Run Status */}
@@ -657,13 +692,17 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Continuous Eval Run Status
                 </Typography>
-                <Autocomplete
-                  options={CONTINUOUS_EVAL_RUN_STATUS_OPTIONS}
-                  value={filterState.continuousEvalRunStatus}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, continuousEvalRunStatus: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
-                  getOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
-                />
+                <form.Field name="continuousEvalRunStatus">
+                  {(field) => (
+                    <Autocomplete
+                      options={CONTINUOUS_EVAL_RUN_STATUS_OPTIONS}
+                      value={field.state.value}
+                      onChange={(_, newValue) => field.handleChange(newValue)}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select status" />}
+                      getOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
+                    />
+                  )}
+                </form.Field>
               </Box>
 
               {/* Continuous Eval Name */}
@@ -671,22 +710,26 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Continuous Eval Name
                 </Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={filterState.continuousEvalName}
-                  onChange={(e) => setFilterState((prev) => ({ ...prev, continuousEvalName: e.target.value }))}
-                  placeholder="Enter continuous eval name"
-                  slotProps={{
-                    input: {
-                      endAdornment: filterState.continuousEvalName && (
-                        <IconButton size="small" onClick={() => setFilterState((prev) => ({ ...prev, continuousEvalName: "" }))} sx={{ mr: -1 }}>
-                          <Close fontSize="small" />
-                        </IconButton>
-                      ),
-                    },
-                  }}
-                />
+                <form.Field name="continuousEvalName">
+                  {(field) => (
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      placeholder="Enter continuous eval name"
+                      slotProps={{
+                        input: {
+                          endAdornment: field.state.value && (
+                            <IconButton size="small" onClick={() => field.handleChange("")} sx={{ mr: -1 }}>
+                              <Close fontSize="small" />
+                            </IconButton>
+                          ),
+                        },
+                      }}
+                    />
+                  )}
+                </form.Field>
               </Box>
 
               {/* Include Experiment Traces */}
@@ -694,13 +737,17 @@ export const TracingFilterModal = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                   Include Experiment Traces
                 </Typography>
-                <Autocomplete
-                  options={INCLUDE_EXPERIMENT_TRACES_OPTIONS}
-                  value={filterState.includeExperimentTraces}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, includeExperimentTraces: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select option" />}
-                  getOptionLabel={(option) => (option === "true" ? "Yes" : "No")}
-                />
+                <form.Field name="includeExperimentTraces">
+                  {(field) => (
+                    <Autocomplete
+                      options={INCLUDE_EXPERIMENT_TRACES_OPTIONS}
+                      value={field.state.value}
+                      onChange={(_, newValue) => field.handleChange(newValue)}
+                      renderInput={(params) => <TextField {...params} size="small" placeholder="Select option" />}
+                      getOptionLabel={(option) => (option === "true" ? "Yes" : "No")}
+                    />
+                  )}
+                </form.Field>
               </Box>
             </Stack>
           </Box>
@@ -718,7 +765,13 @@ export const TracingFilterModal = () => {
               <Button variant="outlined" onClick={handleClearFilters} disabled={!hasActiveFilters}>
                 Clear
               </Button>
-              <Button variant="contained" onClick={handleApplyFilters}>
+              <Button
+                variant="contained"
+                onClick={(e) => {
+                  e.preventDefault();
+                  form.handleSubmit();
+                }}
+              >
                 Apply Filters
               </Button>
             </Stack>
