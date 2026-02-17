@@ -9,17 +9,9 @@ import { EnumOperators, Operators, TextOperators } from "../../filtering/types";
 
 interface FilterState {
   spanTypes: string[];
-  queryRelevanceMin: string;
-  queryRelevanceMax: string;
-  queryRelevanceInclusive: boolean;
-  responseRelevanceMin: string;
-  responseRelevanceMax: string;
-  responseRelevanceInclusive: boolean;
   traceDurationMin: string;
   traceDurationMax: string;
   traceDurationInclusive: boolean;
-  toolSelection: string | null;
-  toolUsage: string | null;
   traceIds: string[];
   sessionIds: string[];
   spanIds: string[];
@@ -33,26 +25,16 @@ interface FilterState {
 }
 
 interface ValidationErrors {
-  queryRelevanceMin?: string;
-  queryRelevanceMax?: string;
-  responseRelevanceMin?: string;
-  responseRelevanceMax?: string;
   traceDurationMin?: string;
   traceDurationMax?: string;
 }
 
 const SPAN_TYPE_OPTIONS = Object.values(OpenInferenceSpanKind);
-const TOOL_OPTIONS = ["0", "1", "2"];
 const ANNOTATION_SCORE_OPTIONS = ["0", "1"];
 const STATUS_CODE_OPTIONS = ["Ok", "Error"];
 const ANNOTATION_TYPE_OPTIONS = ["human", "continuous_eval"];
 const CONTINUOUS_EVAL_RUN_STATUS_OPTIONS = ["pending", "passed", "running", "failed", "skipped", "error"];
 const INCLUDE_EXPERIMENT_TRACES_OPTIONS = ["true", "false"];
-
-const getToolLabel = (option: string) => {
-  const labels: Record<string, string> = { "0": "NOT RELEVANT", "1": "RELEVANT", "2": "N/A" };
-  return labels[option] || option;
-};
 
 export const TracingFilterModal = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -61,17 +43,9 @@ export const TracingFilterModal = () => {
 
   const [filterState, setFilterState] = useState<FilterState>({
     spanTypes: [],
-    queryRelevanceMin: "",
-    queryRelevanceMax: "",
-    queryRelevanceInclusive: false,
-    responseRelevanceMin: "",
-    responseRelevanceMax: "",
-    responseRelevanceInclusive: false,
     traceDurationMin: "",
     traceDurationMax: "",
     traceDurationInclusive: false,
-    toolSelection: null,
-    toolUsage: null,
     traceIds: [],
     sessionIds: [],
     spanIds: [],
@@ -98,17 +72,9 @@ export const TracingFilterModal = () => {
     if (open) {
       const newFilterState: FilterState = {
         spanTypes: [],
-        queryRelevanceMin: "",
-        queryRelevanceMax: "",
-        queryRelevanceInclusive: false,
-        responseRelevanceMin: "",
-        responseRelevanceMax: "",
-        responseRelevanceInclusive: false,
         traceDurationMin: "",
         traceDurationMax: "",
         traceDurationInclusive: false,
-        toolSelection: null,
-        toolUsage: null,
         traceIds: [],
         sessionIds: [],
         spanIds: [],
@@ -126,30 +92,6 @@ export const TracingFilterModal = () => {
           case "span_types":
             newFilterState.spanTypes = Array.isArray(filter.value) ? filter.value : [];
             break;
-          case "query_relevance":
-            if (filter.operator === Operators.GREATER_THAN || filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
-              newFilterState.queryRelevanceMin = String(filter.value);
-              newFilterState.queryRelevanceInclusive = filter.operator === Operators.GREATER_THAN_OR_EQUAL;
-            } else if (filter.operator === Operators.LESS_THAN || filter.operator === Operators.LESS_THAN_OR_EQUAL) {
-              newFilterState.queryRelevanceMax = String(filter.value);
-              newFilterState.queryRelevanceInclusive = filter.operator === Operators.LESS_THAN_OR_EQUAL;
-            } else if (filter.operator === Operators.EQUALS) {
-              newFilterState.queryRelevanceMin = String(filter.value);
-              newFilterState.queryRelevanceMax = String(filter.value);
-            }
-            break;
-          case "response_relevance":
-            if (filter.operator === Operators.GREATER_THAN || filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
-              newFilterState.responseRelevanceMin = String(filter.value);
-              newFilterState.responseRelevanceInclusive = filter.operator === Operators.GREATER_THAN_OR_EQUAL;
-            } else if (filter.operator === Operators.LESS_THAN || filter.operator === Operators.LESS_THAN_OR_EQUAL) {
-              newFilterState.responseRelevanceMax = String(filter.value);
-              newFilterState.responseRelevanceInclusive = filter.operator === Operators.LESS_THAN_OR_EQUAL;
-            } else if (filter.operator === Operators.EQUALS) {
-              newFilterState.responseRelevanceMin = String(filter.value);
-              newFilterState.responseRelevanceMax = String(filter.value);
-            }
-            break;
           case "trace_duration":
             if (filter.operator === Operators.GREATER_THAN || filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
               newFilterState.traceDurationMin = String(filter.value);
@@ -161,12 +103,6 @@ export const TracingFilterModal = () => {
               newFilterState.traceDurationMin = String(filter.value);
               newFilterState.traceDurationMax = String(filter.value);
             }
-            break;
-          case "tool_selection":
-            newFilterState.toolSelection = String(filter.value);
-            break;
-          case "tool_usage":
-            newFilterState.toolUsage = String(filter.value);
             break;
           case "trace_ids":
             newFilterState.traceIds = Array.isArray(filter.value) ? filter.value : [];
@@ -255,60 +191,6 @@ export const TracingFilterModal = () => {
       });
     }
 
-    // Query Relevance
-    if (filterState.queryRelevanceMin && filterState.queryRelevanceMax && filterState.queryRelevanceMin === filterState.queryRelevanceMax) {
-      // If min and max are the same, use EQUALS
-      filters.push({
-        name: "query_relevance",
-        operator: Operators.EQUALS,
-        value: filterState.queryRelevanceMin,
-      });
-    } else {
-      if (filterState.queryRelevanceMin) {
-        filters.push({
-          name: "query_relevance",
-          operator: filterState.queryRelevanceInclusive ? Operators.GREATER_THAN_OR_EQUAL : Operators.GREATER_THAN,
-          value: filterState.queryRelevanceMin,
-        });
-      }
-      if (filterState.queryRelevanceMax) {
-        filters.push({
-          name: "query_relevance",
-          operator: filterState.queryRelevanceInclusive ? Operators.LESS_THAN_OR_EQUAL : Operators.LESS_THAN,
-          value: filterState.queryRelevanceMax,
-        });
-      }
-    }
-
-    // Response Relevance
-    if (
-      filterState.responseRelevanceMin &&
-      filterState.responseRelevanceMax &&
-      filterState.responseRelevanceMin === filterState.responseRelevanceMax
-    ) {
-      // If min and max are the same, use EQUALS
-      filters.push({
-        name: "response_relevance",
-        operator: Operators.EQUALS,
-        value: filterState.responseRelevanceMin,
-      });
-    } else {
-      if (filterState.responseRelevanceMin) {
-        filters.push({
-          name: "response_relevance",
-          operator: filterState.responseRelevanceInclusive ? Operators.GREATER_THAN_OR_EQUAL : Operators.GREATER_THAN,
-          value: filterState.responseRelevanceMin,
-        });
-      }
-      if (filterState.responseRelevanceMax) {
-        filters.push({
-          name: "response_relevance",
-          operator: filterState.responseRelevanceInclusive ? Operators.LESS_THAN_OR_EQUAL : Operators.LESS_THAN,
-          value: filterState.responseRelevanceMax,
-        });
-      }
-    }
-
     // Trace Duration
     if (filterState.traceDurationMin && filterState.traceDurationMax && filterState.traceDurationMin === filterState.traceDurationMax) {
       // If min and max are the same, use EQUALS
@@ -332,24 +214,6 @@ export const TracingFilterModal = () => {
           value: filterState.traceDurationMax,
         });
       }
-    }
-
-    // Tool Selection
-    if (filterState.toolSelection !== null) {
-      filters.push({
-        name: "tool_selection",
-        operator: EnumOperators.EQUALS,
-        value: filterState.toolSelection,
-      });
-    }
-
-    // Tool Usage
-    if (filterState.toolUsage !== null) {
-      filters.push({
-        name: "tool_usage",
-        operator: EnumOperators.EQUALS,
-        value: filterState.toolUsage,
-      });
     }
 
     // IDs
@@ -443,17 +307,9 @@ export const TracingFilterModal = () => {
   const handleClearFilters = () => {
     setFilterState({
       spanTypes: [],
-      queryRelevanceMin: "",
-      queryRelevanceMax: "",
-      queryRelevanceInclusive: false,
-      responseRelevanceMin: "",
-      responseRelevanceMax: "",
-      responseRelevanceInclusive: false,
       traceDurationMin: "",
       traceDurationMax: "",
       traceDurationInclusive: false,
-      toolSelection: null,
-      toolUsage: null,
       traceIds: [],
       sessionIds: [],
       spanIds: [],
@@ -474,14 +330,8 @@ export const TracingFilterModal = () => {
 
   const hasActiveFilters =
     filterState.spanTypes.length > 0 ||
-    filterState.queryRelevanceMin !== "" ||
-    filterState.queryRelevanceMax !== "" ||
-    filterState.responseRelevanceMin !== "" ||
-    filterState.responseRelevanceMax !== "" ||
     filterState.traceDurationMin !== "" ||
     filterState.traceDurationMax !== "" ||
-    filterState.toolSelection !== null ||
-    filterState.toolUsage !== null ||
     filterState.traceIds.length > 0 ||
     filterState.sessionIds.length > 0 ||
     filterState.spanIds.length > 0 ||
@@ -533,230 +383,6 @@ export const TracingFilterModal = () => {
                   renderInput={(params) => <TextField {...params} size="small" placeholder="Select span types" />}
                   disableCloseOnSelect
                 />
-              </Box>
-
-              {/* Query Relevance */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Query Relevance (0-1)
-                </Typography>
-                <Stack spacing={1}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <TextField
-                      size="small"
-                      type="number"
-                      placeholder="Min"
-                      value={filterState.queryRelevanceMin}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // Clear errors when user makes any change
-                        setValidationErrors((prev) => ({ ...prev, queryRelevanceMin: undefined, queryRelevanceMax: undefined }));
-
-                        if (val === "") {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMin: val }));
-                          return;
-                        }
-                        const numVal = parseFloat(val);
-                        if (numVal < 0) {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMin: "0" }));
-                          setValidationErrors((prev) => ({ ...prev, queryRelevanceMin: "Value cannot be less than 0. Reset to 0." }));
-                        } else if (numVal > 1) {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMin: "1" }));
-                          setValidationErrors((prev) => ({ ...prev, queryRelevanceMin: "Value cannot be greater than 1. Reset to 1." }));
-                        } else {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMin: val }));
-                        }
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          min: 0,
-                          max: 1,
-                          step: 0.1,
-                          style: { MozAppearance: "textfield" },
-                        },
-                      }}
-                      sx={{
-                        width: 100,
-                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                          WebkitAppearance: "none",
-                          margin: 0,
-                        },
-                      }}
-                    />
-                    <TextField
-                      size="small"
-                      type="number"
-                      placeholder="Max"
-                      value={filterState.queryRelevanceMax}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // Clear errors when user makes any change
-                        setValidationErrors((prev) => ({ ...prev, queryRelevanceMin: undefined, queryRelevanceMax: undefined }));
-
-                        if (val === "") {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMax: val }));
-                          return;
-                        }
-                        const numVal = parseFloat(val);
-                        if (numVal < 0) {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMax: "0" }));
-                          setValidationErrors((prev) => ({ ...prev, queryRelevanceMax: "Value cannot be less than 0. Reset to 0." }));
-                        } else if (numVal > 1) {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMax: "1" }));
-                          setValidationErrors((prev) => ({ ...prev, queryRelevanceMax: "Value cannot be greater than 1. Reset to 1." }));
-                        } else if (filterState.queryRelevanceMin && numVal < parseFloat(filterState.queryRelevanceMin)) {
-                          setValidationErrors((prev) => ({ ...prev, queryRelevanceMax: "Max cannot be less than min." }));
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMax: val }));
-                        } else {
-                          setFilterState((prev) => ({ ...prev, queryRelevanceMax: val }));
-                        }
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          min: 0,
-                          max: 1,
-                          step: 0.1,
-                          style: { MozAppearance: "textfield" },
-                        },
-                      }}
-                      sx={{
-                        width: 100,
-                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                          WebkitAppearance: "none",
-                          margin: 0,
-                        },
-                      }}
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={filterState.queryRelevanceInclusive}
-                          onChange={(e) => setFilterState((prev) => ({ ...prev, queryRelevanceInclusive: e.target.checked }))}
-                          size="small"
-                        />
-                      }
-                      label="Inclusive"
-                      sx={{ whiteSpace: "nowrap" }}
-                    />
-                  </Stack>
-                  {(validationErrors.queryRelevanceMin || validationErrors.queryRelevanceMax) && (
-                    <Typography variant="caption" color="error">
-                      {validationErrors.queryRelevanceMin || validationErrors.queryRelevanceMax}
-                    </Typography>
-                  )}
-                </Stack>
-              </Box>
-
-              {/* Response Relevance */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Response Relevance (0-1)
-                </Typography>
-                <Stack spacing={1}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <TextField
-                      size="small"
-                      type="number"
-                      placeholder="Min"
-                      value={filterState.responseRelevanceMin}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // Clear errors when user makes any change
-                        setValidationErrors((prev) => ({ ...prev, responseRelevanceMin: undefined, responseRelevanceMax: undefined }));
-
-                        if (val === "") {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMin: val }));
-                          return;
-                        }
-                        const numVal = parseFloat(val);
-                        if (numVal < 0) {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMin: "0" }));
-                          setValidationErrors((prev) => ({ ...prev, responseRelevanceMin: "Value cannot be less than 0. Reset to 0." }));
-                        } else if (numVal > 1) {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMin: "1" }));
-                          setValidationErrors((prev) => ({ ...prev, responseRelevanceMin: "Value cannot be greater than 1. Reset to 1." }));
-                        } else {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMin: val }));
-                        }
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          min: 0,
-                          max: 1,
-                          step: 0.1,
-                          style: { MozAppearance: "textfield" },
-                        },
-                      }}
-                      sx={{
-                        width: 100,
-                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                          WebkitAppearance: "none",
-                          margin: 0,
-                        },
-                      }}
-                    />
-                    <TextField
-                      size="small"
-                      type="number"
-                      placeholder="Max"
-                      value={filterState.responseRelevanceMax}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // Clear errors when user makes any change
-                        setValidationErrors((prev) => ({ ...prev, responseRelevanceMin: undefined, responseRelevanceMax: undefined }));
-
-                        if (val === "") {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMax: val }));
-                          return;
-                        }
-                        const numVal = parseFloat(val);
-                        if (numVal < 0) {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMax: "0" }));
-                          setValidationErrors((prev) => ({ ...prev, responseRelevanceMax: "Value cannot be less than 0. Reset to 0." }));
-                        } else if (numVal > 1) {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMax: "1" }));
-                          setValidationErrors((prev) => ({ ...prev, responseRelevanceMax: "Value cannot be greater than 1. Reset to 1." }));
-                        } else if (filterState.responseRelevanceMin && numVal < parseFloat(filterState.responseRelevanceMin)) {
-                          setValidationErrors((prev) => ({ ...prev, responseRelevanceMax: "Max cannot be less than min." }));
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMax: val }));
-                        } else {
-                          setFilterState((prev) => ({ ...prev, responseRelevanceMax: val }));
-                        }
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          min: 0,
-                          max: 1,
-                          step: 0.1,
-                          style: { MozAppearance: "textfield" },
-                        },
-                      }}
-                      sx={{
-                        width: 100,
-                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                          WebkitAppearance: "none",
-                          margin: 0,
-                        },
-                      }}
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={filterState.responseRelevanceInclusive}
-                          onChange={(e) => setFilterState((prev) => ({ ...prev, responseRelevanceInclusive: e.target.checked }))}
-                          size="small"
-                        />
-                      }
-                      label="Inclusive"
-                      sx={{ whiteSpace: "nowrap" }}
-                    />
-                  </Stack>
-                  {(validationErrors.responseRelevanceMin || validationErrors.responseRelevanceMax) && (
-                    <Typography variant="caption" color="error">
-                      {validationErrors.responseRelevanceMin || validationErrors.responseRelevanceMax}
-                    </Typography>
-                  )}
-                </Stack>
               </Box>
 
               {/* Trace Duration */}
@@ -861,34 +487,6 @@ export const TracingFilterModal = () => {
                     </Typography>
                   )}
                 </Stack>
-              </Box>
-
-              {/* Tool Selection */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Tool Selection
-                </Typography>
-                <Autocomplete
-                  options={TOOL_OPTIONS}
-                  value={filterState.toolSelection}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, toolSelection: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select tool selection" />}
-                  getOptionLabel={getToolLabel}
-                />
-              </Box>
-
-              {/* Tool Usage */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Tool Usage
-                </Typography>
-                <Autocomplete
-                  options={TOOL_OPTIONS}
-                  value={filterState.toolUsage}
-                  onChange={(_, newValue) => setFilterState((prev) => ({ ...prev, toolUsage: newValue }))}
-                  renderInput={(params) => <TextField {...params} size="small" placeholder="Select tool usage" />}
-                  getOptionLabel={getToolLabel}
-                />
               </Box>
 
               {/* Trace IDs */}
