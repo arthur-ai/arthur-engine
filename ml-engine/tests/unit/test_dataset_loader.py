@@ -15,6 +15,7 @@ from arthur_client.api_bindings import (
     Dataset,
     Definition,
 )
+from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.schema_definitions import STATIC_DATASET_TIMESTAMP_COL
 from arthur_common.tools.functions import uuid_to_base26
 
@@ -43,6 +44,7 @@ def _make_static_dataset_dict() -> dict:
         "data_plane_id": str(uuid4()),
         "dataset_locator": DatasetLocator(fields=[]),
         "is_static": True,
+        "model_problem_type": ModelProblemType.REGRESSION.value,
         "dataset_schema": DatasetSchema(
             alias_mask={},
             columns=[
