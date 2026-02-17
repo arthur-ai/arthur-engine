@@ -2,5 +2,5 @@ apiVersion: v2
 name: arthur-genai-engine
 description: A Helm chart for deploying OSS Arthur GenAI Engine in Kubernetes
 type: application
-version: 2.1.380
-appVersion: 2.1.380
+version: 2.1.381
+appVersion: 2.1.381

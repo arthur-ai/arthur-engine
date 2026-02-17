@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.380"
+version = "2.1.381"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -33,7 +33,7 @@ types-psutil = "7.0.0.20251116"
 types-requests = "2.32.4.20250913"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
-arthur-client = {path = "/Users/ianmcgraw/dev/arthur-stack/arthur-scope/scope/arthur-client/python", develop = true}
+arthur-client = "1.4.1789"
 arthur-common = "2.4.44"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.45"
@@ -46,7 +46,7 @@ genai-client = {path = "src/genai_client"}
 [tool.poetry.group.dev.dependencies]
 pytest = "8.4.2"
 responses = "0.25.8"
-pytest-httpserver = "1.1.4"
+pytest-httpserver = "1.1.5"
 pytest-asyncio = "1.2.0"
 pytest-httpx = "0.35.0"
 pre-commit = "4.5.1"
