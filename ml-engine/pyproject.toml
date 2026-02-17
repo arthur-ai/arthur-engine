@@ -40,7 +40,6 @@ sqlalchemy = "2.0.45"
 snowflake-sqlalchemy = "1.7.7"
 databricks-sqlalchemy = "^2.0"
 databricks-sdk = "^0.84.0"
-genai-client = {path = "src/genai_client"}
 
 
 [tool.poetry.group.dev.dependencies]

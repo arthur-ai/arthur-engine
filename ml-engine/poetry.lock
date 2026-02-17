@@ -1388,26 +1388,6 @@ crc = ["crcmod"]
 gcsfuse = ["fusepy"]
 
 [[package]]
-name = "genai-client"
-version = "2.1.375"
-description = "Arthur GenAI Engine"
-optional = false
-python-versions = "^3.8"
-groups = ["main"]
-files = []
-develop = false
-
-[package.dependencies]
-pydantic = ">= 2"
-python-dateutil = ">= 2.8.2"
-typing-extensions = ">= 4.7.1"
-urllib3 = ">= 1.25.3, < 3.0.0"
-
-[package.source]
-type = "directory"
-url = "src/genai_client"
-
-[[package]]
 name = "google-api-core"
 version = "2.29.0"
 description = "Google API client core library"
@@ -5595,4 +5575,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "41af41a099ee95000aaf168454926ee2d02210325e980d69f0b26760dde4235b"
+content-hash = "dbbeea29b0bfa858331dafd8521c155fcfbc11322b856173298abe1f060222a9"
