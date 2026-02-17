@@ -368,9 +368,10 @@ class BucketBasedConnector(Connector, ABC):
         file_type = DatasetFileType(
             dataset_locator_fields[BUCKET_BASED_DATASET_FILE_TYPE_FIELD],
         )
-        timezone = pytz.timezone(
-            dataset_locator_fields[BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD],
+        tz_value = dataset_locator_fields.get(
+            BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
         )
+        timezone = pytz.timezone(tz_value) if tz_value else pytz.UTC
 
         # Create CSV configuration if file type is CSV
         csv_config = None
@@ -416,6 +417,59 @@ class BucketBasedConnector(Connector, ABC):
                 matching_files.append(file_path)
         return matching_files
 
+    def _read_static_dataset(
+        self,
+        locator_fields: _BucketBasedDatasetLocatorFields,
+        filters: list[DataResultFilter] | None = None,
+        pagination_options: ConnectorPaginationOptions | None = None,
+    ) -> list[dict[str, Any]]:
+        """Reads all data for a static dataset (no time partitioning)."""
+        inferences: list[dict[str, Any]] = []
+        file_search_str = f"{self.bucket_name}/{locator_fields.file_prefix}"
+        try:
+            matching_files = self._get_matching_files(
+                file_search_str,
+                locator_fields.file_suffix,
+            )
+        except FileNotFoundError:
+            self.logger.info(
+                f"Found no files matching prefix {file_search_str}.",
+            )
+            return inferences
+
+        self.logger.info(
+            f"Static dataset: found {len(matching_files)} files under {file_search_str}.",
+        )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+            future_to_file = {
+                executor.submit(
+                    read_file,
+                    self.file_system,
+                    file_name,
+                    locator_fields.file_type,
+                    locator_fields.csv_config,
+                ): file_name
+                for file_name in matching_files
+            }
+            results = []
+            for future in concurrent.futures.as_completed(future_to_file):
+                file_name = future_to_file[future]
+                result = future.result()
+                results.append((file_name, result))
+
+            for _, result in sorted(results, key=lambda x: x[0]):
+                inferences += result
+
+        if filters:
+            inferences = apply_filters_to_retrieved_inferences(inferences, filters)
+
+        return (
+            self._paginate_inferences(inferences, pagination_options)
+            if pagination_options
+            else inferences
+        )
+
     def read(
         self,
         dataset: Dataset | AvailableDataset,
@@ -431,8 +485,17 @@ class BucketBasedConnector(Connector, ABC):
             dataset,
             pagination_options,
         )
-        inferences: list[dict[str, Any]] = []
         locator_fields = self._extract_dataset_locator_fields(dataset)
+
+        # Static dataset: load all files without time-based partitioning
+        if dataset.is_static:
+            return self._read_static_dataset(
+                locator_fields,
+                filters,
+                pagination_options,
+            )
+
+        inferences: list[dict[str, Any]] = []
 
         # adjust start_time and end_time to the file timezones. if the timestamps are naive local tz will be assumed
         start_time_tz_aware = start_time.astimezone(locator_fields.timezone)
