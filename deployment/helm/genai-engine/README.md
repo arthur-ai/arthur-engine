@@ -366,6 +366,14 @@ aws cloudwatch put-metric-alarm \
     # "DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2"
     kubectl -n arthur create secret generic genai-engine-secret-open-ai-gpt-model-names-endpoints-keys \
         --from-literal=keys='<your_gpt_keys>'
+
+    # (Optional) GCP service account credentials for Vertex AI integration.
+    # The secret key MUST be named 'credentials.json' — this becomes the filename
+    # mounted inside the container at /var/secrets/google/credentials.json.
+    # Set gcpDiscoveryConfig.isEnabled=true and gcpDiscoveryConfig.googleCredentialsSecretName
+    # in your values.yaml to enable.
+    kubectl -n arthur create secret generic gcp-sa-key \
+        --from-file credentials.json='<path_to_your_gcp_service_account_key.json>'
     ```
 
 2. Prepare an Arthur GenAI Engine Helm Chart configuration file, `values.yaml` from [values.yaml.template](values.yaml.template) in the directory where you will run Helm install and populate the values accordingly. For GPU deployment, please review the "Additional Required Configurations For GPU Deployment" section in the [values.yaml.template](values.yaml.template) file.

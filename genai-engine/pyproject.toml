@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.381"
+version = "2.1.383"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -24,7 +24,7 @@ pydantic = "2.11.10"
 sse-starlette = "3.0.4"
 fastapi-sqlalchemy = "0.2.1"
 alembic = "1.17.2"
-boto3 = "1.42.49"
+boto3 = "1.42.51"
 python-dotenv = "1.1.1"
 psycopg2-binary = "2.9.11"
 sqlalchemy = "2.0.45"
