@@ -38,7 +38,7 @@ export const AgentExperiments = () => {
               New Endpoint
             </Button> */}
             <Button startIcon={<AddIcon />} to={`./new`} component={Link}>
-              New Experiment
+              Experiment
             </Button>
           </ButtonGroup>
         </Box>

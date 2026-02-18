@@ -1,8 +1,11 @@
+import AddIcon from "@mui/icons-material/Add";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
+import Typography from "@mui/material/Typography";
 import React, { useCallback, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -160,28 +163,24 @@ const RagNotebooks: React.FC = () => {
           <Box
             sx={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              flex: 1,
-              p: 3,
+              height: "100%",
+              textAlign: "center",
+              py: 8,
             }}
           >
-            <Box sx={{ textAlign: "center" }}>
-              <Box
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "1.25rem",
-                  color: "text.primary",
-                  mb: 1,
-                }}
-              >
-                No RAG notebooks found
-              </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first notebook to start experimenting with RAG configurations.</Box>
-              <Button variant="contained" onClick={handleCreateNotebook} sx={{ mt: 1 }}>
-                Create Notebook
-              </Button>
-            </Box>
+            <MenuBookOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+              No RAG notebooks yet
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Get started by creating your first RAG notebook
+            </Typography>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreateNotebook} size="large">
+              Notebook
+            </Button>
           </Box>
         ) : (
           <RagNotebooksTable
