@@ -1,9 +1,11 @@
 import AddIcon from "@mui/icons-material/Add";
 import MenuIcon from "@mui/icons-material/Menu";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import React, { useState, useEffect } from "react";
+import SortIcon from "@mui/icons-material/Sort";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import { Box, Button, FormControl, IconButton, MenuItem, Select, Stack, Tooltip, Typography } from "@mui/material";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ArthurLogo } from "./common/ArthurLogo";
@@ -14,6 +16,7 @@ import { TaskCard } from "./TaskCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +27,27 @@ export const AllTasks: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
+
+  const filteredTasks = useMemo(() => {
+    let result = [...tasks];
+
+    if (hideSystemTasks) {
+      result = result.filter((t) => !t.is_system_task);
+    }
+
+    if (inactiveDays > 0) {
+      const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
+      result = result.filter((t) => t.updated_at >= cutoff);
+    }
+
+    result.sort((a, b) => {
+      const field = sortBy === "updated" ? "updated_at" : "created_at";
+      return b[field] - a[field];
+    });
+
+    return result;
+  }, [tasks, hideSystemTasks, sortBy, inactiveDays]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -193,16 +217,75 @@ export const AllTasks: React.FC = () => {
               <>
                 <div className="mb-4">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Tasks ({tasks.length})</h2>
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Click on any task to open the toolkit</p>
-                    <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                      <ShowChartIcon sx={{ fontSize: 18, mr: 0.5 }} />
-                      <span>Metrics from last 7 days</span>
-                    </div>
-                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {filteredTasks.length < tasks.length
+                      ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                      : "Click on any task to open the toolkit"}
+                  </p>
                 </div>
+
+                {/* Filter & Sort Toolbar */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                      <FormControl size="small" variant="standard">
+                        <Select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as SortBy)}
+                          disableUnderline
+                          sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+                        >
+                          <MenuItem value="updated">Recently updated</MenuItem>
+                          <MenuItem value="created">Recently created</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <FormControl size="small" variant="standard">
+                        <Select
+                          value={inactiveDays}
+                          onChange={(e) => setInactiveDays(e.target.value as InactiveDays)}
+                          disableUnderline
+                          sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+                        >
+                          <MenuItem value={0}>All time</MenuItem>
+                          <MenuItem value={7}>Active in last 7 days</MenuItem>
+                          <MenuItem value={14}>Active in last 14 days</MenuItem>
+                          <MenuItem value={30}>Active in last 30 days</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Stack>
+
+                    <Tooltip title={hideSystemTasks ? "Show system tasks" : "Hide system tasks"}>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        alignItems="center"
+                        onClick={() => setHideSystemTasks(!hideSystemTasks)}
+                        sx={{ cursor: "pointer", "&:hover": { opacity: 0.7 } }}
+                      >
+                        {hideSystemTasks ? (
+                          <VisibilityOffIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        ) : (
+                          <VisibilityIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        )}
+                        <Typography variant="body2" color="text.secondary">
+                          {hideSystemTasks ? "System tasks hidden" : "System tasks visible"}
+                        </Typography>
+                      </Stack>
+                    </Tooltip>
+                  </Stack>
+
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Metrics from last 7 days
+                    </Typography>
+                  </Stack>
+                </Box>
+
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {tasks.map((task) => (
+                  {filteredTasks.map((task) => (
                     <TaskCard key={task.id} task={task} />
                   ))}
                 </div>
