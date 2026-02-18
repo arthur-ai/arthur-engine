@@ -1183,57 +1183,29 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get tasks with enriched agent metadata (tools, sub-agents, models). Optionally filter by agentic status.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "is_agentic",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "boolean"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Is Agentic"
-                        }
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
                                     "items": {
                                         "$ref": "#/components/schemas/EnrichedTaskResponse"
                                     },
+                                    "type": "array",
                                     "title": "Response Get Agent Tasks Api V2 Agent Tasks Get"
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/task": {
@@ -18943,14 +18915,6 @@
                         "type": "array",
                         "title": "Rules",
                         "description": "Rules associated with this task"
-                    },
-                    "metrics": {
-                        "items": {
-                            "$ref": "#/components/schemas/MetricResponse"
-                        },
-                        "type": "array",
-                        "title": "Metrics",
-                        "description": "Metrics associated with this task"
                     }
                 },
                 "type": "object",

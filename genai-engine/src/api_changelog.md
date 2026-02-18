@@ -3,6 +3,11 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 02/18/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  deleted the 'query' request parameter 'is_agentic'
+- **CHANGE** in API GET /api/v2/agent-tasks
+- **CHANGE** in API GET /api/v2/agent-tasks
+
+# 02/18/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  endpoint added
 
 02/12/2026
