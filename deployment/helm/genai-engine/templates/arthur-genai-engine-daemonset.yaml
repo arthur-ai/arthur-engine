@@ -129,6 +129,14 @@ spec:
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
             {{- end }}
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/var/secrets/google/credentials.json"
+            - name: GOOGLE_CLOUD_LOCATION
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudLocation | quote }}
+            {{- end }}
             {{- if .Values.genaiEngineInternalHost }}
             - name: GENAI_ENGINE_INTERNAL_HOST
               value: {{ .Values.genaiEngineInternalHost | quote }}
@@ -144,6 +152,19 @@ spec:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
             {{- end }}
+          {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+          volumeMounts:
+            - name: gcp-credentials
+              mountPath: /var/secrets/google
+              readOnly: true
+          {{- end }}
+      {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+      volumes:
+        - name: gcp-credentials
+          secret:
+            secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
+            defaultMode: 420
+      {{- end }}    
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

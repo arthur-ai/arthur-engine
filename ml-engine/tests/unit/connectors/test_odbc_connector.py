@@ -571,6 +571,39 @@ class TestODBCConnectorDataReading:
 
     @patch("ml_engine.connectors.odbc_connector.create_engine")
     @patch("ml_engine.connectors.odbc_connector.pd.read_sql")
+    def test_read_static_dataset_skips_timestamp_filter(
+        self,
+        mock_read_sql,
+        mock_create_engine,
+    ):
+        """Static datasets must not apply a timestamp WHERE clause and must not raise even
+        when no pagination options are provided."""
+        from ml_engine.connectors.odbc_connector import ODBCConnector
+
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        mock_read_sql.return_value = pd.DataFrame({"id": [1, 2]})
+
+        metadata = MetaData()
+        table = SQLATable("test_table", metadata, Column("id", Integer))
+
+        static_dataset = Dataset.model_validate({**BASE_DATASET, "is_static": True})
+
+        spec = ConnectorSpec.model_validate(MOCK_ODBC_CONNECTOR_SPEC)
+        connector = ODBCConnector(spec, logger)
+        connector.metadata = metadata
+
+        with patch("ml_engine.connectors.odbc_connector.Table", return_value=table):
+            with patch.object(connector, "_build_fetch_stmt") as mock_build_fetch_stmt:
+                result = connector.read(static_dataset, start_timestamp, end_timestamp)
+
+        assert isinstance(result, pd.DataFrame)
+        mock_read_sql.assert_called_once()
+        # Timestamp-based fetch statement must not be built for static datasets
+        mock_build_fetch_stmt.assert_not_called()
+
+    @patch("ml_engine.connectors.odbc_connector.create_engine")
+    @patch("ml_engine.connectors.odbc_connector.pd.read_sql")
     @patch("ml_engine.connectors.odbc_connector.primary_timestamp_col_name")
     @patch("ml_engine.connectors.odbc_connector.inspect")
     def test_read_without_timestamp_column(
