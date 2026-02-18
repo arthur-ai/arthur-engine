@@ -392,17 +392,27 @@ class ODBCConnector(Connector):
         table_name = locator[ODBC_CONNECTOR_TABLE_NAME_FIELD]
         table = Table(table_name, self.metadata, autoload_with=self.engine)
 
+        if dataset.is_static:
+            self.logger.info(
+                "Static dataset detected, skipping time range filtering.",
+            )
+
         try:
             ts_col_name = primary_timestamp_col_name(dataset)
-            # Timestamp column found - use timestamp range filtering
-            stmt = self._build_fetch_stmt(
-                table,
-                ts_col_name,
-                start_time,
-                end_time,
-                filters,
-                pagination_options,
-            )
+            if not dataset.is_static:
+                stmt = self._build_fetch_stmt(
+                    table,
+                    ts_col_name,
+                    start_time,
+                    end_time,
+                    filters,
+                    pagination_options,
+                )
+            else:
+                stmt = select(table)
+                if filters:
+                    stmt = self._apply_filters(table, stmt, filters)
+                stmt = self._paginate_query(stmt, pagination_options)
         except ValueError:
             # No timestamp column found - use fallback logic with pagination
             self.logger.warning(
