@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Arthur GenAI Engine",
-    "version": "2.1.364"
+    "version": "2.1.390"
   },
   "paths": {
     "/api/v2/usage/tokens": {
@@ -1175,6 +1175,37 @@
             }
           }
         }
+      }
+    },
+    "/api/v2/agent-tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Get Agent Tasks",
+        "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.",
+        "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EnrichedTaskResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Agent Tasks Api V2 Agent Tasks Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API Key": []
+          }
+        ]
       }
     },
     "/api/v2/task": {
@@ -15269,6 +15300,21 @@
               }
             ],
             "description": "Metadata for the agent."
+          },
+          "service_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Names",
+            "description": "List of service names that send traces to this task"
           }
         },
         "type": "object",
@@ -18757,6 +18803,148 @@
         "title": "DiscoveredAgent",
         "description": "A discovered agent from infrastructure."
       },
+      "EnrichedTaskResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Task ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Task name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Task creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "Task last update timestamp"
+          },
+          "is_agentic": {
+            "type": "boolean",
+            "title": "Is Agentic",
+            "description": "Whether this is an agentic task",
+            "default": false
+          },
+          "is_autocreated": {
+            "type": "boolean",
+            "title": "Is Autocreated",
+            "description": "Whether this task was auto-created (vs manually created)",
+            "default": false
+          },
+          "infrastructure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Infrastructure",
+            "description": "Infrastructure where agent is running (e.g., 'GCP', 'AWS')"
+          },
+          "creation_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GCPCreationSource"
+              },
+              {
+                "$ref": "#/components/schemas/OTELCreationSource"
+              },
+              {
+                "$ref": "#/components/schemas/ManualCreationSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creation Source",
+            "description": "Information about how this task/agent was created"
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Tool"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools",
+            "description": "Tools used by this agent (computed from spans)"
+          },
+          "sub_agents": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SubAgent"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sub Agents",
+            "description": "Sub-agents used by this agent (computed from spans)"
+          },
+          "models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models",
+            "description": "Models used by this agent (computed from spans)"
+          },
+          "num_spans": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Spans",
+            "description": "Number of spans associated with this task"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResponse"
+            },
+            "type": "array",
+            "title": "Rules",
+            "description": "Rules associated with this task"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EnrichedTaskResponse",
+        "description": "Response model for agent-tasks endpoint with enriched metadata."
+      },
       "EvalExecution": {
         "properties": {
           "eval_name": {
@@ -19571,6 +19759,60 @@
         ],
         "title": "GCPAgentMetadataResponse",
         "description": "GCP-specific agent metadata for responses."
+      },
+      "GCPCreationSource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "GCP",
+            "title": "Type",
+            "default": "GCP"
+          },
+          "gcp_project_id": {
+            "type": "string",
+            "title": "Gcp Project Id",
+            "description": "GCP project ID"
+          },
+          "gcp_region": {
+            "type": "string",
+            "title": "Gcp Region",
+            "description": "GCP region"
+          },
+          "gcp_reasoning_engine_id": {
+            "type": "string",
+            "title": "Gcp Reasoning Engine Id",
+            "description": "GCP Vertex AI Reasoning Engine ID"
+          },
+          "service_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Service Names",
+            "description": "List of service names that send traces to this task"
+          },
+          "last_fetched": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fetched",
+            "description": "Timestamp of last successful trace fetch"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gcp_project_id",
+          "gcp_region",
+          "gcp_reasoning_engine_id"
+        ],
+        "title": "GCPCreationSource",
+        "description": "Creation source for GCP-discovered agents."
       },
       "GCPServiceAccountCredentialsRequest": {
         "properties": {
@@ -21531,11 +21773,17 @@
             "type": "array",
             "title": "Transforms",
             "description": "List of transforms for the task."
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Total number of transforms matching filters"
           }
         },
         "type": "object",
         "required": [
-          "transforms"
+          "transforms",
+          "count"
         ],
         "title": "ListTraceTransformsResponse"
       },
@@ -21560,6 +21808,27 @@
           "bias"
         ],
         "title": "LogitBiasItem"
+      },
+      "ManualCreationSource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "manual",
+            "title": "Type",
+            "default": "manual"
+          },
+          "service_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Service Names",
+            "description": "List of service names that send traces to this task"
+          }
+        },
+        "type": "object",
+        "title": "ManualCreationSource",
+        "description": "Creation source for manually created tasks."
       },
       "MessageRole": {
         "type": "string",
@@ -22564,7 +22833,7 @@
                 "type": "null"
               }
             ],
-            "description": "Metadata for registered agents."
+            "description": "Metadata to describe the creation source/provider for registered agents."
           }
         },
         "type": "object",
@@ -22974,6 +23243,27 @@
         ],
         "title": "NotebookSummary",
         "description": "Summary of a notebook"
+      },
+      "OTELCreationSource": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "OTEL",
+            "title": "Type",
+            "default": "OTEL"
+          },
+          "service_name": {
+            "type": "string",
+            "title": "Service Name",
+            "description": "Service name from OTEL trace"
+          }
+        },
+        "type": "object",
+        "required": [
+          "service_name"
+        ],
+        "title": "OTELCreationSource",
+        "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
       },
       "OpenAIMessage-Input": {
         "properties": {
@@ -26161,7 +26451,8 @@
       "RegisteredAgentProvider": {
         "type": "string",
         "enum": [
-          "gcp"
+          "gcp",
+          "external"
         ],
         "title": "RegisteredAgentProvider"
       },
@@ -27784,6 +28075,32 @@
             "title": "Is Agentic",
             "description": "Whether the task is agentic or not"
           },
+          "is_system_task": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is System Task",
+            "description": "Whether this is a system-managed task (e.g., for traces without a task_id or service name, or for Arthur-created traces)",
+            "default": false
+          },
+          "is_autocreated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Autocreated",
+            "description": "Whether this task was automatically created by Arthur",
+            "default": false
+          },
           "agent_metadata": {
             "anyOf": [
               {
@@ -27793,7 +28110,7 @@
                 "type": "null"
               }
             ],
-            "description": "Metadata for registered agents."
+            "description": "Metadata to describe the creation source/provider for registered agents."
           },
           "rules": {
             "items": {
@@ -31774,67 +32091,5 @@
         "scheme": "bearer"
       }
     }
-  },
-  "tags": [
-    {
-      "name": "Rules",
-      "description": "Endpoints to manage rules"
-    },
-    {
-      "name": "Tasks",
-      "description": "Endpoints to manage tasks and their rules"
-    },
-    {
-      "name": "Default Validation",
-      "description": "Endpoints to validate prompt and response on default rules"
-    },
-    {
-      "name": "Task Based Validation",
-      "description": "Endpoints to validate prompt and response for a task"
-    },
-    {
-      "name": "Feedback",
-      "description": "Endpoints to manage user feedback on inferences"
-    },
-    {
-      "name": "Usage",
-      "description": "Endpoints for retrieving token usage"
-    },
-    {
-      "name": "Inferences",
-      "description": "Endpoints for querying past inferences"
-    },
-    {
-      "name": "API Keys",
-      "description": "Endpoints for API keys management"
-    },
-    {
-      "name": "Secrets",
-      "description": "Endpoints for secrets management"
-    },
-    {
-      "name": "Model Providers",
-      "description": "Endpoints for model provider management"
-    },
-    {
-      "name": "RAG Settings",
-      "description": "Endpoints for RAG setting management"
-    },
-    {
-      "name": "RAG Providers",
-      "description": "Endpoints for RAG provider management"
-    },
-    {
-      "name": "Prompt Experiments",
-      "description": "Endpoints for managing prompt experiments"
-    },
-    {
-      "name": "RAG Experiments",
-      "description": "Endpoints for managing RAG experiments"
-    },
-    {
-      "name": "Notebooks",
-      "description": "Endpoints for managing experiment notebooks"
-    }
-  ]
+  }
 }
