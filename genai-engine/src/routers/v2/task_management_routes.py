@@ -201,21 +201,20 @@ def get_task(
 
 @task_management_routes.get(
     "/agent-tasks",
-    description="Get tasks with enriched agent metadata (tools, sub-agents, models). "
-    "Optionally filter by agentic status.",
+    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models). "
+    "Returns only agentic tasks.",
     response_model=list[EnrichedTaskResponse],
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agent_tasks(
-    is_agentic: bool | None = None,
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> list[EnrichedTaskResponse]:
-    """Get tasks with enriched agent metadata.
+    """Get agentic tasks with enriched agent metadata.
 
-    For agentic tasks, returns additional metadata computed from spans:
+    Returns tasks with additional metadata computed from spans:
     - tools: List of tools used by the agent
     - sub_agents: List of sub-agents used
     - models: List of models used
@@ -224,13 +223,12 @@ def get_agent_tasks(
     Also includes creation_source information (GCP, OTEL, or manual).
 
     Args:
-        is_agentic: Optional filter to get only agentic (True) or non-agentic (False) tasks
         db_session: Database session
         application_config: Application configuration
         current_user: Current authenticated user
 
     Returns:
-        List of EnrichedTaskResponse objects
+        List of EnrichedTaskResponse objects (agentic tasks only)
     """
     try:
         rules_repo = RuleRepository(db_session)
@@ -242,9 +240,9 @@ def get_agent_tasks(
             application_config,
         )
 
-        # Query tasks (optionally filtered by is_agentic)
+        # Query only agentic tasks
         db_tasks, _ = tasks_repo.query_tasks(
-            is_agentic=is_agentic,
+            is_agentic=True,
             include_archived=False,
             page_size=1000,  # Large page size for now, add pagination later if needed
             page=0,
@@ -274,18 +272,12 @@ def get_agent_tasks(
                 models = agent_metadata["models"]
                 num_spans = agent_metadata["num_spans"]
 
-            # Convert rule and metric links to response models
+            # Convert rule links to response models
             response_rules = []
             for rule_link in task.rule_links or []:
                 response_rule = rule_link.rule._to_response_model()
                 response_rule.enabled = rule_link.enabled
                 response_rules.append(response_rule)
-
-            response_metrics = []
-            for metric_link in task.metric_links or []:
-                response_metric = metric_link.metric._to_response_model()
-                response_metric.enabled = metric_link.enabled
-                response_metrics.append(response_metric)
 
             enriched_response = EnrichedTaskResponse(
                 id=task.id,
@@ -301,7 +293,6 @@ def get_agent_tasks(
                 models=models,
                 num_spans=num_spans,
                 rules=response_rules,
-                metrics=response_metrics,
             )
             enriched_responses.append(enriched_response)
 

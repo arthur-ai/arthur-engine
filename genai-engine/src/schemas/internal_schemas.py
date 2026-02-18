@@ -809,10 +809,6 @@ class EnrichedTaskResponse(BaseModel):
         default_factory=list,
         description="Rules associated with this task",
     )
-    metrics: List[MetricResponse] = Field(
-        default_factory=list,
-        description="Metrics associated with this task",
-    )
 
 
 class AgenticAnnotation(BaseModel):
