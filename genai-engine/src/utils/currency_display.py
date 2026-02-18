@@ -23,7 +23,9 @@ def get_display_currency(application_config: ApplicationConfiguration) -> str:
     return (raw or "USD").strip().upper()
 
 
-def convert_cost_for_display(amount_usd: float, target_currency: str) -> tuple[float, str]:
+def convert_cost_for_display(
+    amount_usd: float, target_currency: str
+) -> tuple[float, str]:
     """Convert a USD amount to the target currency. Returns (amount, code); on failure returns (amount_usd, 'USD')."""
     if not target_currency or target_currency.upper() == "USD":
         return (amount_usd, "USD")

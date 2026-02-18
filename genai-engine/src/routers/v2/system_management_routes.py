@@ -19,7 +19,10 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import ApplicationConfigurationUpdateRequest
-from schemas.response_schemas import ApplicationConfigurationResponse, DisplaySettingsResponse
+from schemas.response_schemas import (
+    ApplicationConfigurationResponse,
+    DisplaySettingsResponse,
+)
 from utils.currency_display import get_display_currency
 from utils.users import permission_checker
 from utils.utils import public_endpoint

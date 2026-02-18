@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -41,7 +41,10 @@ from schemas.response_schemas import (
     UnregisteredRootSpanGroup,
     UnregisteredRootSpansResponse,
 )
-from utils.currency_display import apply_currency_to_token_cost_item, get_display_currency
+from utils.currency_display import (
+    apply_currency_to_token_cost_item,
+    get_display_currency,
+)
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -625,8 +628,11 @@ def get_user_details(
             )
 
         display_currency = get_display_currency(application_config)
-        return apply_currency_to_token_cost_item(
-            user_details._to_metadata_response_model(), display_currency
+        return cast(
+            TraceUserMetadataResponse,
+            apply_currency_to_token_cost_item(
+                user_details._to_metadata_response_model(), display_currency
+            ),
         )
     except HTTPException:
         raise
