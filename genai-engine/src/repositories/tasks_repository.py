@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, TypedDict
+from typing import Optional
 
 from arthur_common.models.enums import (
     PaginationSortMethod,
@@ -28,6 +28,7 @@ from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
 from schemas.internal_schemas import (
+    AgentMetadata,
     ApplicationConfiguration,
     CreationSource,
     GCPCreationSource,
@@ -51,15 +52,6 @@ LLM_RULE_TYPES = set(
         RuleType.MODEL_SENSITIVE_DATA,
     ],
 )
-
-
-class AgentMetadata(TypedDict):
-    """Type definition for agent metadata extracted from spans."""
-
-    tools: list[Tool]
-    sub_agents: list[SubAgent]
-    models: list[str]
-    num_spans: int
 
 
 class TaskRepository:

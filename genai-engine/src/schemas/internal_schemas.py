@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
 
 from arthur_common.models.common_schemas import (
     AuthUserRole,
@@ -756,6 +756,15 @@ class ManualCreationSource(BaseModel):
 
 # Union type for creation source (discriminated by 'type' field)
 CreationSource = Union[GCPCreationSource, OTELCreationSource, ManualCreationSource]
+
+
+class AgentMetadata(TypedDict):
+    """Type definition for agent metadata extracted from spans."""
+
+    tools: list[Tool]
+    sub_agents: list[SubAgent]
+    models: list[str]
+    num_spans: int
 
 
 class EnrichedTaskResponse(BaseModel):
