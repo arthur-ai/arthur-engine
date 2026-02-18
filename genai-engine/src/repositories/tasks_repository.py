@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from arthur_common.models.enums import (
@@ -9,12 +9,15 @@ from arthur_common.models.enums import (
     RuleType,
 )
 from fastapi import HTTPException
+from openinference.semconv.trace import OpenInferenceSpanKindValues
 from opentelemetry import trace
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from db_models import (
+    DatabaseAgentPollingData,
     DatabaseRule,
+    DatabaseSpan,
     DatabaseTask,
     DatabaseTaskToMetrics,
     DatabaseTaskToRules,
@@ -25,12 +28,21 @@ from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
 from schemas.internal_schemas import (
+    AgentMetadata,
     ApplicationConfiguration,
+    CreationSource,
+    GCPCreationSource,
+    ManualCreationSource,
+    OTELCreationSource,
     Rule,
+    SubAgent,
     Task,
     TaskMetadata,
+    Tool,
 )
+from services.agent_discovery_service import parse_gcp_resource_path
 from utils import constants
+from utils.trace import get_nested_value
 
 tracer = trace.get_tracer(__name__)
 
@@ -122,6 +134,157 @@ class TaskRepository:
                     )
 
         return task
+
+    def _extract_agent_metadata(self, task_id: str) -> AgentMetadata:
+        """Extract tools, sub-agents, models, and span count from spans for an agent task.
+
+        Queries the spans table for the given task_id and extracts:
+        - Tools: spans where span_kind == TOOL
+        - Sub-agents: spans where span_kind == AGENT
+        - Models: extracted from LLM spans at attributes.llm.model_name
+        - Total number of spans (limited to last 30 days)
+
+        Args:
+            task_id: UUID of the task to extract metadata for
+
+        Returns:
+            AgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
+        """
+        # Query all relevant spans (AGENT, TOOL, LLM) for this task within last 30 days
+        relevant_span_kinds = [
+            OpenInferenceSpanKindValues.AGENT.value,
+            OpenInferenceSpanKindValues.TOOL.value,
+            OpenInferenceSpanKindValues.LLM.value,
+        ]
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        spans = (
+            self.db_session.query(DatabaseSpan)
+            .filter(
+                DatabaseSpan.task_id == task_id,
+                DatabaseSpan.span_kind.in_(relevant_span_kinds),
+                DatabaseSpan.created_at >= thirty_days_ago,
+            )
+            .all()
+        )
+
+        tools_set = set()
+        sub_agents_set = set()
+        models_set = set()
+
+        for span in spans:
+            # Filter by span_kind to categorize
+            if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
+                # Tools: use span name
+                if span.span_name:
+                    tools_set.add(span.span_name)
+
+            elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
+                # Sub-agents: use span name
+                if span.span_name:
+                    sub_agents_set.add(span.span_name)
+
+            elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
+                # Models: extract from attributes.llm.model_name
+                raw_data = span.raw_data or {}
+                attributes = raw_data.get("attributes", {})
+                model_name = get_nested_value(attributes, "llm.model_name")
+                if model_name:
+                    models_set.add(model_name)
+
+        # Convert sets to sorted lists and create schema objects
+        return {
+            "tools": [Tool(name=name, arguments=[]) for name in sorted(tools_set)],
+            "sub_agents": [SubAgent(name=name) for name in sorted(sub_agents_set)],
+            "models": sorted(list(models_set)),
+            "num_spans": len(spans),
+        }
+
+    def _map_task_metadata_to_creation_source(
+        self, task: Task
+    ) -> tuple[Optional[str], Optional[CreationSource]]:
+        """Map old task_metadata format to new creation_source format.
+
+        This is a temporary helper for Phase 1 to work with the existing database schema.
+        Will be removed in Phase 3 after database migration.
+
+        Args:
+            task: Task object with old-format task_metadata
+
+        Returns:
+            Tuple of (infrastructure, creation_source) where:
+            - infrastructure: "GCP", "AWS", etc. or None
+            - creation_source: GCPCreationSource, OTELCreationSource, or ManualCreationSource
+        """
+        # If no task_metadata, this is either a manual task or an auto-created task
+        if not task.task_metadata:
+            if task.is_autocreated:
+                # Auto-created from OTEL traces
+                return None, OTELCreationSource(
+                    type="OTEL",
+                    service_name=task.name,
+                )
+            elif task.is_agentic:
+                # Manually created agentic task
+                return None, ManualCreationSource(type="manual")
+            else:
+                # Non-agentic task
+                return None, None
+
+        # Extract old format fields
+        provider = task.task_metadata.provider
+        gcp_metadata = task.task_metadata.gcp_metadata
+        service_names = task.task_metadata.service_names or []
+
+        # Set infrastructure based on provider (uppercase for API response)
+        infrastructure = provider.value.upper() if provider else None
+
+        # Query agent_polling_data for last_fetched timestamp
+        polling_data = (
+            self.db_session.query(DatabaseAgentPollingData)
+            .filter(DatabaseAgentPollingData.task_id == task.id)
+            .first()
+        )
+        last_fetched = polling_data.last_fetched if polling_data else None
+
+        # Map to new format based on provider
+        creation_source: CreationSource
+
+        if provider == RegisteredAgentProvider.GCP:
+            if not gcp_metadata:
+                # Fallback for missing GCP metadata
+                return infrastructure, ManualCreationSource(type="manual")
+
+            # Parse resource_id to extract reasoning_engine_id
+            resource_id = gcp_metadata.resource_id or ""
+            _, gcp_region, gcp_reasoning_engine_id = parse_gcp_resource_path(
+                resource_id
+            )
+
+            creation_source = GCPCreationSource(
+                type="GCP",
+                gcp_project_id=gcp_metadata.project_id or "",
+                gcp_region=gcp_region or gcp_metadata.region or "",
+                gcp_reasoning_engine_id=gcp_reasoning_engine_id or "",
+                service_names=service_names,
+                last_fetched=last_fetched,
+            )
+            return infrastructure, creation_source
+
+        elif task.is_autocreated:
+            # Auto-created from OTEL traces
+            creation_source = OTELCreationSource(
+                type="OTEL",
+                service_name=task.name,  # Use task name as service name
+            )
+            return infrastructure, creation_source
+
+        else:
+            # Manually created task
+            creation_source = ManualCreationSource(
+                type="manual",
+                service_names=service_names,
+            )
+            return infrastructure, creation_source
 
     def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
         """Enrich tasks with service names from service_name_task_mappings.
