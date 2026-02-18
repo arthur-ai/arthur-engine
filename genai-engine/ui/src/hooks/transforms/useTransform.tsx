@@ -9,7 +9,7 @@ export const useTransform = (id?: string) => {
 
   return useQuery({
     enabled: !!id,
-    queryKey: [queryKeys.transforms.byId(id!)],
+    queryKey: queryKeys.transforms.byId(id!),
     queryFn: () => api.api.getTransformApiV1TracesTransformsTransformIdGet(id!),
     select: (data) => data.data,
   });

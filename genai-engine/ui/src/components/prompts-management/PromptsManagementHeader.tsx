@@ -16,7 +16,7 @@ const PromptsManagementHeader = ({ onCreatePrompt }: PromptsManagementHeaderProp
           justifyContent: "space-between",
           alignItems: "center",
           p: 2,
-          backgroundColor: "white",
+          backgroundColor: "background.paper",
         }}
       >
         <Box>

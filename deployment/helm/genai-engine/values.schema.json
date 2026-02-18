@@ -448,6 +448,28 @@
         "modelRepositoryURL": {
             "type": "string",
             "description": "(Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used."
+        },
+        "gcpDiscoveryConfig": {
+            "type": "object",
+            "properties": {
+                "isEnabled": {
+                    "type": "boolean",
+                    "description": "Enable GCP Vertex AI discovery configuration"
+                },
+                "googleCloudProject": {
+                    "type": "string",
+                    "description": "Google Cloud project ID for Vertex AI integration"
+                },
+                "googleCloudLocation": {
+                    "type": "string",
+                    "description": "Google Cloud region/location"
+                },
+                "googleCredentialsSecretName": {
+                    "type": "string",
+                    "description": "Name of the K8s secret containing the GCP service account JSON key"
+                }
+            },
+            "required": ["isEnabled"]
         }
     },
     "required": [

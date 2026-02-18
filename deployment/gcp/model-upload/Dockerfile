@@ -64,7 +64,6 @@ COPY --from=downloader /models /models
 
 # Set Python path to include our dependencies
 ENV PYTHONPATH=/app/site-packages
-ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
 
 # Create non-root user for Cloud Run

@@ -22,7 +22,7 @@ export const TracesTable = <TTable,>({ table, ref, loading, onScroll, onRowClick
                   key={header.id}
                   colSpan={header.colSpan}
                   sx={{
-                    backgroundColor: "grey.50",
+                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                   }}
                   sortDirection={header.column.getIsSorted()}
                 >

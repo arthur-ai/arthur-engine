@@ -93,7 +93,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
           loading={isFetchingVersions.current}
           noOptionsText={isFetchingVersions.current ? "Loading versions..." : "No versions available"}
           sx={{
-            backgroundColor: "white",
+            backgroundColor: "background.paper",
             "& .MuiOutlinedInput-root": {
               "& fieldset": {
                 borderColor: isDirty ? "#f97316" : undefined, // Orange border when dirty
@@ -129,7 +129,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
               variant="outlined"
               size="small"
               sx={{
-                backgroundColor: "white",
+                backgroundColor: "background.paper",
               }}
             />
           )}

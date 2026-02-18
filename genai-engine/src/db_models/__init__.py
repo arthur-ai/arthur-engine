@@ -42,9 +42,12 @@ from db_models.rule_result_models import (
 )
 from db_models.task_models import DatabaseTask, DatabaseTaskToRules
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.agent_polling_models import DatabaseAgentPollingData
 from db_models.telemetry_models import (
     DatabaseMetric,
     DatabaseMetricResult,
+    DatabaseResourceMetadata,
+    DatabaseServiceNameTaskMapping,
     DatabaseSpan,
     DatabaseTaskToMetrics,
     DatabaseTraceMetadata,
@@ -126,6 +129,8 @@ __all__ = [
     "DatabaseMetric",
     "DatabaseTaskToMetrics",
     "DatabaseMetricResult",
+    "DatabaseResourceMetadata",
+    "DatabaseServiceNameTaskMapping",
     # Annotation models
     "DatabaseAgenticAnnotation",
     # Agentic Prompt models
@@ -167,4 +172,6 @@ __all__ = [
     "DatabaseAgenticExperimentTestCaseAgenticResultEvalScore",
     # Transform models
     "DatabaseTraceTransform",
+    # Agent Discovery models
+    "DatabaseAgentPollingData",
 ]

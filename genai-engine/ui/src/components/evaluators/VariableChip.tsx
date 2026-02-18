@@ -15,7 +15,7 @@ export const VariableChip = ({ variable, sx, ...props }: VariableChipProps) => {
           fontSize: "0.7rem",
           fontFamily: "monospace",
           backgroundColor: "rgba(180, 190, 165, 0.2)",
-          color: "#1976d2",
+          color: "primary.main",
           fontWeight: 400,
           cursor: "pointer",
           "&:hover": {

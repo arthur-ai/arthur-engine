@@ -44,6 +44,7 @@ from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agent_discovery_routes import agent_discovery_routes
+from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
@@ -72,6 +73,14 @@ from routers.v2.routers import (
 from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
+)
+from services.currency import (
+    initialize_currency_conversion_service,
+    shutdown_currency_conversion_service,
+)
+from services.task import (
+    initialize_registered_agent_polling_service,
+    shutdown_registered_agent_polling_service,
 )
 from utils import constants as constants
 from utils import model_load
@@ -218,6 +227,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Error initializing continuous eval queue service: {e}")
 
+    # Initialize currency conversion service (exchange rates, 6-hour refresh at 00/06/12/18 UTC)
+    try:
+        initialize_currency_conversion_service()
+    except Exception as e:
+        logger.error(f"Error initializing currency conversion service: {e}")
+    # Initialize registered agent polling service
+    try:
+        initialize_registered_agent_polling_service(num_workers=4)
+    except Exception as e:
+        logger.error(f"Error initializing registered agent polling service: {e}")
+
     # Conditionally load relevance models
     if relevance_models_enabled():
         model_load.get_bert_scorer()
@@ -234,7 +254,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     cleanup_cuda_cache()
+    shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
+    shutdown_registered_agent_polling_service()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -425,6 +447,7 @@ def get_app_with_routes() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_discovery_routes,
+            agent_polling_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -465,6 +488,7 @@ def get_test_app() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_discovery_routes,
+            agent_polling_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -515,6 +539,7 @@ def get_app() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_discovery_routes,
+            agent_polling_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:

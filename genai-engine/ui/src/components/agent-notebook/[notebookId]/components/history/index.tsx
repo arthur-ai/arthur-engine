@@ -128,7 +128,7 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
           />
         </Accordion.Trigger>
       </Accordion.Header>
-      <Accordion.Panel render={<Stack direction="column" gap={1} p={2} className="bg-gray-100 border-t border-gray-200" />}>
+      <Accordion.Panel render={<Stack direction="column" gap={1} p={2} className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200" />}>
         {isRunning && (
           <Box mb={2}>
             <Stack mb={0.5}>

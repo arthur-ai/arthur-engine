@@ -21,7 +21,7 @@ export const TextMessageRenderer = ({ text, unwrapped = false }: { text: string;
         thead: ({ children }) => (
           <TableHead
             sx={{
-              backgroundColor: "grey.50",
+              backgroundColor: "action.hover",
             }}
           >
             {children}

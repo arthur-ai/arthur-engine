@@ -10,7 +10,8 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { withForm } from "../filtering/hooks/form";
 
-import { addToDatasetFormOptions } from "./form/shared";
+import { FillFromObjectButton } from "./FillFromObjectButton";
+import { addToDatasetFormOptions, Column } from "./form/shared";
 import { SpanSelector } from "./SpanSelector";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
@@ -74,8 +75,13 @@ export const Configurator = withForm({
       );
     }
 
+    const handleFillColumns = (updatedColumns: Column[]) => {
+      form.setFieldValue("columns", updatedColumns);
+    };
+
     return (
       <Stack direction="column" gap={2}>
+        {field.state.value.length > 0 && <FillFromObjectButton spans={spans} columns={field.state.value} onFillColumns={handleFillColumns} />}
         <div className="grid grid-cols-[1fr_2fr] gap-2" ref={ref}>
           {field.state.value.map((column, index) => (
             <form.Field mode="array" name={`columns[${index}].value` as const} key={column.name || index}>

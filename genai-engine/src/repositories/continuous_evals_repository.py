@@ -276,6 +276,11 @@ class ContinuousEvalsRepository:
                     DatabaseContinuousEval.enabled == filter_request.enabled,
                 )
 
+            if filter_request.continuous_eval_ids:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.id.in_(filter_request.continuous_eval_ids),
+                )
+
         if pagination_parameters:
             base_query = self._apply_sorting_and_pagination(
                 base_query,
@@ -311,23 +316,31 @@ class ContinuousEvalsRepository:
         )
 
         if filter_request:
-            if filter_request.id:
+            if filter_request.ids:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.id == filter_request.id,
+                    DatabaseAgenticAnnotation.id.in_(filter_request.ids),
                 )
 
-            if filter_request.continuous_eval_id:
+            if filter_request.continuous_eval_ids:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.continuous_eval_id
-                    == filter_request.continuous_eval_id,
+                    DatabaseAgenticAnnotation.continuous_eval_id.in_(
+                        filter_request.continuous_eval_ids,
+                    ),
                 )
 
-            if filter_request.trace_id:
+            if filter_request.eval_name:
                 base_query = base_query.filter(
-                    DatabaseAgenticAnnotation.trace_id == filter_request.trace_id,
+                    DatabaseContinuousEval.name.ilike(
+                        f"%{filter_request.eval_name}%",
+                    ),
                 )
 
-            if filter_request.annotation_score:
+            if filter_request.trace_ids:
+                base_query = base_query.filter(
+                    DatabaseAgenticAnnotation.trace_id.in_(filter_request.trace_ids),
+                )
+
+            if filter_request.annotation_score is not None:
                 base_query = base_query.filter(
                     DatabaseAgenticAnnotation.annotation_score
                     == filter_request.annotation_score,
@@ -564,16 +577,16 @@ class ContinuousEvalsRepository:
 
         # Conditional counts using CASE WHEN
         passed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 1, 1))
+            case((DatabaseAgenticAnnotation.annotation_score == 1, 1)),
         )
         failed_count = func.count(
-            case((DatabaseAgenticAnnotation.annotation_score == 0, 1))
+            case((DatabaseAgenticAnnotation.annotation_score == 0, 1)),
         )
         error_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "error", 1))
+            case((DatabaseAgenticAnnotation.run_status == "error", 1)),
         )
         skipped_count = func.count(
-            case((DatabaseAgenticAnnotation.run_status == "skipped", 1))
+            case((DatabaseAgenticAnnotation.run_status == "skipped", 1)),
         )
         total_cost = func.coalesce(func.sum(DatabaseAgenticAnnotation.cost), 0.0)
         total_count = func.count(DatabaseAgenticAnnotation.id)

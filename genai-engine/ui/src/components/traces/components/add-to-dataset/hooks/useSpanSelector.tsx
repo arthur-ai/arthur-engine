@@ -71,8 +71,8 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
   }, [path, spans]);
 
   // Use manual navigation if available, otherwise use path-derived state
-  const selectedSpanId = manualNavigation?.spanId ?? pathState.spanId;
-  const selectedKeys = manualNavigation?.keys ?? pathState.keys;
+  const selectedSpanId = manualNavigation !== null ? manualNavigation.spanId : pathState.spanId;
+  const selectedKeys = manualNavigation !== null ? manualNavigation.keys : pathState.keys;
 
   const navigationPath = selectedKeys.join(".");
 

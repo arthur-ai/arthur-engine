@@ -105,7 +105,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
   }, []);
 
   return (
-    <div ref={outerRef} className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
+    <div ref={outerRef} className="h-full shadow-md rounded-lg p-1 bg-gray-200 dark:bg-gray-800 flex flex-col">
       <Container component="div" ref={containerRef} className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
         <div className="flex justify-between items-center gap-1 mb-2 shrink-0">
           <div className="flex justify-start items-center gap-1 min-w-0">

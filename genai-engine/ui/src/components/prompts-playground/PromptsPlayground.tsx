@@ -1213,9 +1213,9 @@ const PromptsPlayground = () => {
       runningExperimentId={runningExperimentId}
       lastCompletedExperimentId={lastCompletedExperimentId}
     >
-      <Box className="flex flex-col h-full bg-gray-300" sx={{ position: "relative" }}>
+      <Box className="flex flex-col h-full bg-gray-300 dark:bg-gray-900" sx={{ position: "relative" }}>
         {/* Header with action buttons */}
-        <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 shrink-0">
+        <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 dark:bg-gray-900 shrink-0">
           <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
             {/* Left side: Notebook info */}
             <Stack direction="row" alignItems="center" spacing={2}>
@@ -1226,7 +1226,7 @@ const PromptsPlayground = () => {
                     onClick={() => navigate(`/tasks/${task?.id}/notebooks`)}
                     sx={{
                       color: "text.secondary",
-                      "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                      "&:hover": { backgroundColor: "action.hover" },
                     }}
                   >
                     <ArrowBackIcon fontSize="small" />
@@ -1301,7 +1301,7 @@ const PromptsPlayground = () => {
                             color: "text.secondary",
                             "&:hover": {
                               color: "text.primary",
-                              backgroundColor: "rgba(0, 0, 0, 0.04)",
+                              backgroundColor: "action.hover",
                             },
                           }}
                         >
@@ -1458,10 +1458,10 @@ const PromptsPlayground = () => {
                               onClick={() => navigate(`/tasks/${task?.id}/prompt-experiments/${experimentConfig.id}`)}
                               sx={{
                                 padding: 0.5,
-                                color: "#9ca3af",
+                                color: "text.disabled",
                                 "&:hover": {
-                                  color: "#6b7280",
-                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                  color: "text.secondary",
+                                  backgroundColor: "action.hover",
                                 },
                               }}
                             >
@@ -1494,10 +1494,10 @@ const PromptsPlayground = () => {
                               }}
                               sx={{
                                 padding: 0.5,
-                                color: "#9ca3af",
+                                color: "text.disabled",
                                 "&:hover": {
-                                  color: "#6b7280",
-                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                  color: "text.secondary",
+                                  backgroundColor: "action.hover",
                                 },
                               }}
                             >
@@ -1527,7 +1527,7 @@ const PromptsPlayground = () => {
                               <Box
                                 key={idx}
                                 sx={{
-                                  backgroundColor: "#e3f2fd",
+                                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(33,150,243,0.12)" : "#e3f2fd"),
                                   borderLeft: "3px solid #2196f3",
                                   px: 1.5,
                                   py: 1,
@@ -1581,10 +1581,10 @@ const PromptsPlayground = () => {
                                     onClick={() => navigate(`/tasks/${task?.id}/evaluators/${encodeURIComponent(evalRef.name)}`)}
                                     sx={{
                                       padding: 0.25,
-                                      color: "#9ca3af",
+                                      color: "text.disabled",
                                       "&:hover": {
-                                        color: "#6b7280",
-                                        backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                        color: "text.secondary",
+                                        backgroundColor: "action.hover",
                                       },
                                     }}
                                   >
@@ -1598,7 +1598,14 @@ const PromptsPlayground = () => {
                                       <Box
                                         key={mapIdx}
                                         sx={{
-                                          backgroundColor: isDatasetColumn ? "#e3f2fd" : "#fff3e0",
+                                          backgroundColor: (theme) =>
+                                            theme.palette.mode === "dark"
+                                              ? isDatasetColumn
+                                                ? "rgba(33,150,243,0.12)"
+                                                : "rgba(255,152,0,0.12)"
+                                              : isDatasetColumn
+                                                ? "#e3f2fd"
+                                                : "#fff3e0",
                                           borderLeft: isDatasetColumn ? "3px solid #2196f3" : "3px solid #ff9800",
                                           px: 1.5,
                                           py: 1,
@@ -1676,7 +1683,18 @@ const PromptsPlayground = () => {
                                   borderColor: "divider",
                                   borderRadius: 1,
                                   overflow: "hidden",
-                                  backgroundColor: isCompleted ? "#f1f8f4" : isFailed ? "#fef3f2" : "background.paper",
+                                  backgroundColor: (theme) =>
+                                    theme.palette.mode === "dark"
+                                      ? isCompleted
+                                        ? "rgba(16,185,129,0.08)"
+                                        : isFailed
+                                          ? "rgba(239,68,68,0.08)"
+                                          : "background.paper"
+                                      : isCompleted
+                                        ? "#f1f8f4"
+                                        : isFailed
+                                          ? "#fef3f2"
+                                          : "background.paper",
                                 }}
                               >
                                 <Box
@@ -1735,7 +1753,7 @@ const PromptsPlayground = () => {
                                       borderColor: "divider",
                                       px: 1.5,
                                       py: 1.5,
-                                      backgroundColor: "rgba(0, 0, 0, 0.02)",
+                                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"),
                                     }}
                                   >
                                     <Stack spacing={1.5}>
@@ -1760,10 +1778,10 @@ const PromptsPlayground = () => {
                                               }}
                                               sx={{
                                                 padding: 0.25,
-                                                color: "#9ca3af",
+                                                color: "text.disabled",
                                                 "&:hover": {
-                                                  color: "#6b7280",
-                                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                                  color: "text.secondary",
+                                                  backgroundColor: "action.hover",
                                                 },
                                               }}
                                             >

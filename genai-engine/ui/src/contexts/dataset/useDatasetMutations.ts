@@ -3,6 +3,7 @@ import type { DatasetAction, DatasetUpdateParams, PendingChanges, UseDatasetMuta
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { ColumnDefaults } from "@/types/dataset";
 import { fetchAllDatasetRows } from "@/utils/datasetApi";
 
@@ -59,6 +60,7 @@ export function useDatasetMutations({
     onSuccess: () => {
       dispatch({ type: "DATA/CLEAR_CHANGES" });
       dispatch({ type: "VERSION/RESET_TO_LATEST" });
+      track(EVENT_NAMES.DATASET_SAVE_VERSION, { dataset_id: datasetId });
       showSnackbar("Changes saved successfully!", "success");
     },
     onError: (error) => {
@@ -89,6 +91,7 @@ export function useDatasetMutations({
     onSuccess: () => {
       dispatch({ type: "UI/CLOSE_FILL_MODAL" });
       dispatch({ type: "VERSION/RESET_TO_LATEST" });
+      track(EVENT_NAMES.DATASET_FILL_COLUMN_APPLIED, { dataset_id: datasetId });
       showSnackbar("Column filled successfully!", "success");
     },
     onError: (error) => {
@@ -110,9 +113,10 @@ export function useDatasetMutations({
 
       const allRows = await fetchAllDatasetRows(api, datasetId, currentVersion);
 
-      const updatedRows = allRows.map((row) => ({
-        id: row.id,
-        data: row.data.map((col) => {
+      const updatedRows = allRows.map((row) => {
+        const existingColumnNames = new Set(row.data.map((col) => col.column_name));
+
+        const existingData = row.data.map((col) => {
           const config = columnDefaults[col.column_name];
 
           if (!config || config.type === "none") {
@@ -134,8 +138,20 @@ export function useDatasetMutations({
           }
 
           return col;
-        }),
-      }));
+        });
+
+        const newColumns = columnsToApply
+          .filter(([columnName]) => !existingColumnNames.has(columnName))
+          .map(([columnName, config]) => ({
+            column_name: columnName,
+            column_value: config.type === "timestamp" ? new Date(row.created_at).toISOString() : config.type === "static" ? (config.value ?? "") : "",
+          }));
+
+        return {
+          id: row.id,
+          data: [...existingData, ...newColumns],
+        };
+      });
 
       await api.api.createDatasetVersionApiV2DatasetsDatasetIdVersionsPost(datasetId, {
         rows_to_add: [],

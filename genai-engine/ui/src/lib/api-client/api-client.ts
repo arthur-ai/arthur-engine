@@ -20,6 +20,47 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
+/** AgentMetadata */
+export interface AgentMetadata {
+  /** Metadata for the agent. */
+  gcp_metadata?: GCPAgentMetadata | null;
+  /** Provider of the registered agent. */
+  provider: RegisteredAgentProvider;
+}
+
+/**
+ * AgentMetadataResponse
+ * Agent metadata for responses.
+ */
+export interface AgentMetadataResponse {
+  /** Metadata for the agent. */
+  gcp_metadata?: GCPAgentMetadataResponse | null;
+  /** Provider of the registered agent. */
+  provider: RegisteredAgentProvider;
+  /**
+   * Service Names
+   * List of service names that send traces to this task
+   */
+  service_names?: string[] | null;
+}
+
+/**
+ * AgenticAnnotationAnalyticsResponse
+ * Response containing daily aggregated statistics.
+ */
+export interface AgenticAnnotationAnalyticsResponse {
+  /**
+   * Count
+   * Number of days with data
+   */
+  count: number;
+  /**
+   * Stats
+   * Daily statistics ordered by date descending
+   */
+  stats: DailyAgenticAnnotationStats[];
+}
+
 /** AgenticAnnotationRequest */
 export interface AgenticAnnotationRequest {
   /**
@@ -1810,6 +1851,80 @@ export type CreateUserUsersPostData = any;
 export type CreateUserUsersPostError = HTTPValidationError;
 
 /**
+ * CreationSource
+ * Source information for how an unregistered agent was created.
+ */
+export interface CreationSource {
+  /**
+   * Gcp Project Id
+   * Optional GCP project ID where the agent is running.
+   */
+  gcp_project_id?: string | null;
+  /**
+   * Gcp Reasoning Engine Id
+   * Optional GCP Vertex AI Reasoning Engine ID.
+   */
+  gcp_reasoning_engine_id?: string | null;
+  /**
+   * Gcp Region
+   * Optional GCP region where the agent is running.
+   */
+  gcp_region?: string | null;
+  /**
+   * Task Id
+   * Optional UUID of the task that created this agent.
+   */
+  task_id?: string | null;
+  /**
+   * Top Level Span Name
+   * Optional top-level span name (legacy field, prefer GCP fields for GCP agents).
+   */
+  top_level_span_name?: string | null;
+}
+
+/**
+ * DailyAgenticAnnotationStats
+ * Statistics for a single day of agentic annotations.
+ */
+export interface DailyAgenticAnnotationStats {
+  /**
+   * Date
+   * Date in YYYY-MM-DD format
+   */
+  date: string;
+  /**
+   * Error Count
+   * Count of annotations with run_status='error'
+   */
+  error_count: number;
+  /**
+   * Failed Count
+   * Count of annotations with score=0
+   */
+  failed_count: number;
+  /**
+   * Passed Count
+   * Count of annotations with score=1
+   */
+  passed_count: number;
+  /**
+   * Skipped Count
+   * Count of annotations with run_status='skipped'
+   */
+  skipped_count: number;
+  /**
+   * Total Cost
+   * Total cost for the day
+   */
+  total_cost: number;
+  /**
+   * Total Count
+   * Total annotations for the day
+   */
+  total_count: number;
+}
+
+/**
  * DatasetColumnSource
  * Reference to a dataset column
  */
@@ -2144,6 +2259,91 @@ export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPVal
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
+
+export type DiscoverAgentsApiV1DiscoverAgentsPostData = DiscoverAgentsResponse;
+
+export type DiscoverAgentsApiV1DiscoverAgentsPostError = HTTPValidationError;
+
+/**
+ * DiscoverAgentsRequest
+ * Request to discover agents from infrastructure.
+ */
+export interface DiscoverAgentsRequest {
+  /**
+   * Data Plane Id
+   * UUID of the data plane to discover agents from
+   * @format uuid
+   */
+  data_plane_id: string;
+  /**
+   * Lookback Hours
+   * Number of hours to look back for traces (default 30 days)
+   * @default 720
+   */
+  lookback_hours?: number;
+}
+
+/**
+ * DiscoverAgentsResponse
+ * Response containing discovered agents.
+ */
+export interface DiscoverAgentsResponse {
+  /**
+   * Agents
+   * List of discovered agents
+   */
+  agents: DiscoveredAgent[];
+  /**
+   * Metadata
+   * Discovery metadata (e.g., traces processed, errors)
+   */
+  metadata?: Record<string, any>;
+}
+
+/**
+ * DiscoveredAgent
+ * A discovered agent from infrastructure.
+ */
+export interface DiscoveredAgent {
+  /** Information about how this agent was created. */
+  creation_source: CreationSource;
+  /**
+   * Data Plane Id
+   * UUID of the data plane where this agent was detected.
+   * @format uuid
+   */
+  data_plane_id: string;
+  /**
+   * First Detected
+   * ISO 8601 timestamp when agent was first detected.
+   */
+  first_detected: string;
+  /**
+   * Infrastructure
+   * Infrastructure where this agent is running (e.g., 'GCP').
+   */
+  infrastructure: string;
+  /**
+   * Name
+   * Name of the agent.
+   */
+  name: string;
+  /**
+   * Num Spans
+   * Number of spans associated with this agent.
+   */
+  num_spans?: number | null;
+  /**
+   * Sub Agents
+   * List of sub-agents used by this agent.
+   */
+  sub_agents?: SubAgent[];
+  /**
+   * Tools
+   * List of tools used by this agent.
+   */
+  tools?: Tool[];
+}
 
 /**
  * EvalExecution
@@ -2538,6 +2738,47 @@ export interface FileUploadResult {
   type: string;
   /** Word Count */
   word_count: number;
+}
+
+/** GCPAgentMetadata */
+export interface GCPAgentMetadata {
+  /**
+   * Project Id
+   * Project ID of the agent.
+   */
+  project_id: string;
+  /**
+   * Region
+   * Region of the agent.
+   */
+  region: string;
+  /**
+   * Resource Id
+   * Resource ID of the agent.
+   */
+  resource_id: string;
+}
+
+/**
+ * GCPAgentMetadataResponse
+ * GCP-specific agent metadata for responses.
+ */
+export interface GCPAgentMetadataResponse {
+  /**
+   * Project Id
+   * Project ID of the agent.
+   */
+  project_id: string;
+  /**
+   * Region
+   * Region of the agent.
+   */
+  region: string;
+  /**
+   * Resource Id
+   * Resource ID of the agent.
+   */
+  resource_id: string;
 }
 
 /** GCPServiceAccountCredentialsRequest */
@@ -2985,6 +3226,28 @@ export interface GetConversationsApiChatConversationsGetParams {
    * @default 50
    */
   size?: number;
+}
+
+export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData = AgenticAnnotationAnalyticsResponse;
+
+export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetError = HTTPValidationError;
+
+export interface GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetParams {
+  /**
+   * End Time
+   * End time (exclusive). Defaults to now.
+   */
+  end_time?: string | null;
+  /**
+   * Start Time
+   * Start time (inclusive). Defaults to 30 days ago.
+   */
+  start_time?: string | null;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
 }
 
 export type GetDatasetApiV2DatasetsDatasetIdGetData = DatasetResponse;
@@ -4551,10 +4814,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   continuous_eval_enabled?: string | null;
   /**
-   * Continuous Eval Id
-   * ID of the continuous eval to filter on.
+   * Continuous Eval Ids
+   * List of continuous eval IDs to filter on.
    */
-  continuous_eval_id?: string | null;
+  continuous_eval_ids?: string[] | null;
   /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
@@ -4566,10 +4829,15 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   created_before?: string | null;
   /**
-   * Id
-   * ID of the continuous eval to filter on.
+   * Eval Name
+   * Name of the continuous eval to filter on.
    */
-  id?: string | null;
+  eval_name?: string | null;
+  /**
+   * Ids
+   * List of agentic annotation IDs to filter on.
+   */
+  ids?: string[] | null;
   /**
    * Page
    * Page number
@@ -4598,10 +4866,10 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    */
   taskId: string;
   /**
-   * Trace Id
-   * Trace ID to filter on.
+   * Trace Ids
+   * List of trace IDs to filter on.
    */
-  trace_id?: string | null;
+  trace_ids?: string[] | null;
 }
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
@@ -4609,6 +4877,11 @@ export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListCont
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
 
 export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
+  /**
+   * Continuous Eval Ids
+   * List of continuous eval IDs to filter on.
+   */
+  continuous_eval_ids?: string[] | null;
   /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
@@ -4954,6 +5227,12 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -5062,7 +5341,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5075,7 +5354,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5136,6 +5415,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
 /** ListTraceTransformsResponse */
 export interface ListTraceTransformsResponse {
   /**
+   * Count
+   * Total number of transforms matching filters
+   */
+  count: number;
+  /**
    * Transforms
    * List of transforms for the task.
    */
@@ -5169,6 +5453,12 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Include Spans
    * Include flat list of spans for each trace. Defaults to false for performance.
@@ -5284,7 +5574,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -5297,7 +5587,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -5840,6 +6130,11 @@ export interface NewDatasetVersionRowRequest {
    * List of column-value pairs in the new dataset row.
    */
   data: NewDatasetVersionRowColumnItemRequest[];
+  /**
+   * Id
+   * Optional ID for the row (used for synthetic data generation).
+   */
+  id?: string | null;
 }
 
 /**
@@ -5909,6 +6204,8 @@ export interface NewRuleRequest {
 
 /** NewTaskRequest */
 export interface NewTaskRequest {
+  /** Metadata to describe the creation source/provider for registered agents. */
+  agent_metadata?: AgentMetadata | null;
   /**
    * Is Agentic
    * Whether the task is agentic or not.
@@ -6610,7 +6907,7 @@ export interface PromptOutput {
    * Tool Calls
    * Tool calls made by the prompt
    */
-  tool_calls?: any[];
+  tool_calls?: ChatCompletionMessageToolCall[];
 }
 
 /**
@@ -7063,7 +7360,7 @@ export interface QuerySpansByTypeV1SpansQueryGetParams {
   sort?: PaginationSortMethod;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7121,6 +7418,12 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @format date-time
    */
   end_time?: string;
+  /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
   /**
    * Page
    * Page number
@@ -7230,7 +7533,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7243,7 +7546,7 @@ export interface QuerySpansV1TracesQueryGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -7329,6 +7632,12 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   end_time?: string;
   /**
+   * Include Experiment Traces
+   * Include traces originating from Arthur experiments. Defaults to true.
+   * @default true
+   */
+  include_experiment_traces?: boolean;
+  /**
    * Page
    * Page number
    * @default 0
@@ -7437,7 +7746,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   span_name_contains?: string;
   /**
    * Span Types
-   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, PROMPT, RERANKER, RETRIEVER, TOOL, UNKNOWN
    */
   span_types?: string[];
   /**
@@ -7450,7 +7759,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * Status Code
    * Status codes to filter on. Optional. Valid values: Ok, Error, Unset.
    */
-  status_code?: string[];
+  status_code?: StatusCodeEnum[] | null;
   /**
    * Task Ids
    * Task IDs to filter on. At least one is required.
@@ -8486,6 +8795,9 @@ export interface RegexSpanResponse {
   pattern?: string | null;
 }
 
+/** RegisteredAgentProvider */
+export type RegisteredAgentProvider = "gcp" | "external";
+
 /**
  * RelevanceMetricConfig
  * Configuration for relevance metrics including QueryRelevance and ResponseRelevance
@@ -8576,6 +8888,10 @@ export interface ResponseValidationRequest {
    */
   response: string;
 }
+
+export type RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostData = any;
+
+export type RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostError = HTTPValidationError;
 
 export type RotateSecretsApiV1SecretsRotationPostData = any;
 
@@ -9349,6 +9665,9 @@ export interface SpanWithMetricsResponse {
   user_id?: string | null;
 }
 
+/** StatusCodeEnum */
+export type StatusCodeEnum = "Ok" | "Error" | "Unset";
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -9356,6 +9675,18 @@ export interface StreamOptions {
    * Whether to include usage information in the stream
    */
   include_usage?: boolean | null;
+}
+
+/**
+ * SubAgent
+ * Sub-agent definition.
+ */
+export interface SubAgent {
+  /**
+   * Name
+   * Name of the sub-agent.
+   */
+  name: string;
 }
 
 /**
@@ -9510,6 +9841,8 @@ export interface SyntheticDataRowResponse {
 
 /** TaskResponse */
 export interface TaskResponse {
+  /** Metadata to describe the creation source/provider for registered agents. */
+  agent_metadata?: AgentMetadataResponse | null;
   /**
    * Created At
    * Time the task was created in unix milliseconds
@@ -9525,6 +9858,18 @@ export interface TaskResponse {
    * Whether the task is agentic or not
    */
   is_agentic?: boolean | null;
+  /**
+   * Is Autocreated
+   * Whether this task was automatically created by Arthur
+   * @default false
+   */
+  is_autocreated?: boolean | null;
+  /**
+   * Is System Task
+   * Whether this is a system-managed task (e.g., for traces without a task_id or service name, or for Arthur-created traces)
+   * @default false
+   */
+  is_system_task?: boolean | null;
   /**
    * Metrics
    * List of all the metrics for the task.
@@ -9718,6 +10063,40 @@ export interface TokenUsageResponse {
 
 /** TokenUsageScope */
 export type TokenUsageScope = "rule_type" | "task";
+
+/**
+ * Tool
+ * Tool definition with arguments.
+ */
+export interface Tool {
+  /**
+   * Arguments
+   * List of arguments for this tool.
+   */
+  arguments?: ToolArgument[];
+  /**
+   * Name
+   * Name of the tool.
+   */
+  name: string;
+}
+
+/**
+ * ToolArgument
+ * Argument definition for a tool.
+ */
+export interface ToolArgument {
+  /**
+   * Name
+   * Name of the tool argument.
+   */
+  name: string;
+  /**
+   * Type
+   * Type of the tool argument.
+   */
+  type: string;
+}
 
 /** ToolCall */
 export interface ToolCall {
@@ -11632,7 +12011,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.335
+ * @version 2.1.373
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12711,6 +13090,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Discover agents from infrastructure (e.g., GCP Vertex AI). This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.
+     *
+     * @tags Agent Discovery
+     * @name DiscoverAgentsApiV1DiscoverAgentsPost
+     * @summary Discover Agents
+     * @request POST:/api/v1/discover-agents
+     * @secure
+     */
+    discoverAgentsApiV1DiscoverAgentsPost: (data: DiscoverAgentsRequest, params: RequestParams = {}) =>
+      this.request<DiscoverAgentsApiV1DiscoverAgentsPostData, DiscoverAgentsApiV1DiscoverAgentsPostError>({
+        path: `/api/v1/discover-agents`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Execute a RAG provider hybrid (keyword and vector similarity) search.
      *
      * @tags RAG Providers
@@ -13189,6 +13588,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/chat/conversations`,
         method: "GET",
         query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns daily counts of passed/failed/error/skipped annotations and total cost per day
+     *
+     * @tags Continuous Evals
+     * @name GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGet
+     * @summary Get daily aggregated analytics for agentic annotations
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/analytics/daily
+     * @secure
+     */
+    getDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGet: (
+      { taskId, ...query }: GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData,
+        GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/analytics/daily`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -14523,6 +14947,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError
       >({
         path: `/api/v1/continuous_evals/results/${runId}/rerun`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retry a failed agent polling job for a given agent polling data id.
+     *
+     * @tags Agent Discovery
+     * @name RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPost
+     * @summary Retry Agent Polling
+     * @request POST:/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}
+     * @secure
+     */
+    retryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPost: (
+      taskId: string,
+      agentPollingDataId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostData,
+        RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/agent-polling/retry/${agentPollingDataId}`,
         method: "POST",
         secure: true,
         format: "json",

@@ -12,7 +12,7 @@ export const IncludeOptions: React.FC<IncludeOptionsProps> = React.memo(
   ({ includeMetadata, includeVector, onIncludeMetadataChange, onIncludeVectorChange, isExecuting }) => {
     return (
       <div>
-        <h4 className="text-sm font-medium text-gray-900 mb-3">Include in Results</h4>
+        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Include in Results</h4>
         <div className="space-y-2">
           <div className="flex items-center">
             <input
@@ -23,7 +23,7 @@ export const IncludeOptions: React.FC<IncludeOptionsProps> = React.memo(
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               disabled={isExecuting}
             />
-            <label htmlFor="includeMetadata" className="ml-2 text-sm text-gray-900">
+            <label htmlFor="includeMetadata" className="ml-2 text-sm text-gray-900 dark:text-gray-100">
               Metadata (distance, score, explainScore)
             </label>
           </div>
@@ -37,7 +37,7 @@ export const IncludeOptions: React.FC<IncludeOptionsProps> = React.memo(
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               disabled={isExecuting}
             />
-            <label htmlFor="includeVector" className="ml-2 text-sm text-gray-900">
+            <label htmlFor="includeVector" className="ml-2 text-sm text-gray-900 dark:text-gray-100">
               Vector embeddings
             </label>
           </div>

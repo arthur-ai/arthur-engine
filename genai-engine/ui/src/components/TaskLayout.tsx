@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
@@ -10,11 +10,7 @@ import { TaskProvider } from "@/contexts/TaskContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
 
-interface TaskLayoutProps {
-  children: React.ReactNode;
-}
-
-export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
+export const TaskLayout: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,7 +23,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   const taskId = params.id as string;
 
   // Map the current route to the active section
-  let activeSection = "task-details";
+  let activeSection = "overview";
 
   // Extract the active section from the current path
   const pathSegments = location.pathname.split("/");
@@ -47,6 +43,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   // Map section IDs to display titles
   const getPageTitle = (section: string): string => {
     const titleMap: Record<string, string> = {
+      overview: "Overview",
       "task-details": "Task Details",
       "model-providers": "Model Providers",
       "api-keys": "API Keys",
@@ -106,44 +103,46 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
     navigate(`/tasks/${taskId}/${sectionId}`);
   };
 
-  if (loading) {
-    return <TaskLoadingState onBackToDashboard={handleBack} onLogout={handleLogout} onNavigate={handleNavigate} activeSection={activeSection} />;
-  }
-
-  if (error) {
-    return (
-      <TaskErrorState
-        error={error}
-        onBackToDashboard={handleBack}
-        onLogout={handleLogout}
-        onNavigate={handleNavigate}
-        activeSection={activeSection}
-      />
-    );
-  }
-
-  if (!task) {
-    return <TaskNotFoundState onBackToDashboard={handleBack} onLogout={handleLogout} onNavigate={handleNavigate} activeSection={activeSection} />;
-  }
+  const pageTitle = task ? getPageTitle(activeSection) : "Task Details";
+  const pageSubtitle = task ? task.name : null;
 
   return (
-    <TaskProvider task={task}>
-      <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="py-4">
-              <h1 className="text-2xl font-semibold text-gray-900">{getPageTitle(activeSection)}</h1>
-              <p className="text-gray-600">{task.name}</p>
-            </div>
+    <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
+      <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
+            {pageSubtitle && <p className="text-gray-600 dark:text-gray-400">{pageSubtitle}</p>}
           </div>
-        </header>
-
-        <div className="flex flex-1 overflow-hidden">
-          <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} onLogout={handleLogout} activeSection={activeSection} />
-
-          <main className="flex-1 overflow-auto">{children}</main>
         </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} onLogout={handleLogout} activeSection={activeSection} />
+
+        <main className="flex-1 overflow-auto">
+          {loading && (
+            <div className="py-6 px-6">
+              <TaskLoadingState />
+            </div>
+          )}
+          {error && !loading && (
+            <div className="py-6 px-6">
+              <TaskErrorState error={error} onBackToDashboard={handleBack} />
+            </div>
+          )}
+          {!task && !loading && !error && (
+            <div className="py-6 px-6">
+              <TaskNotFoundState onBackToDashboard={handleBack} />
+            </div>
+          )}
+          {task && (
+            <TaskProvider task={task}>
+              <Outlet />
+            </TaskProvider>
+          )}
+        </main>
       </div>
-    </TaskProvider>
+    </div>
   );
 };
