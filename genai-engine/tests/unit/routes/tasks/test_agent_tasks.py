@@ -429,7 +429,7 @@ def test_get_agent_tasks_performance_no_n_plus_1(client: GenaiEngineTestClientBa
         task_ids.append(task.id)
 
     # Get all agent tasks - should work efficiently
-    status_code, enriched_tasks = client.get_agent_tasks(is_agentic=True)
+    status_code, enriched_tasks = client.get_agent_tasks()
     assert status_code == 200
 
     # Verify all tasks are returned
