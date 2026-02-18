@@ -72,7 +72,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
-from schemas.internal_schemas import AgenticAnnotation
+from schemas.internal_schemas import AgenticAnnotation, EnrichedTaskResponse
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
@@ -345,6 +345,36 @@ class GenaiEngineTestClientBase(httpx.Client):
                 TaskResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
+            ),
+        )
+
+    def get_agent_tasks(
+        self, is_agentic: bool = None
+    ) -> tuple[int, list[EnrichedTaskResponse]]:
+        """Get tasks with enriched agent metadata.
+
+        Args:
+            is_agentic: Optional filter for agentic status
+
+        Returns:
+            Tuple of (status_code, list of EnrichedTaskResponse)
+        """
+        path = "api/v2/agent-tasks"
+        params = {}
+        if is_agentic is not None:
+            params["is_agentic"] = is_agentic
+
+        resp = self.base_client.get(
+            path, headers=self.authorized_user_api_key_headers, params=params
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                [EnrichedTaskResponse.model_validate(task) for task in resp.json()]
+                if resp.status_code == 200
+                else []
             ),
         )
 

@@ -133,6 +133,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchVersionTag,
 )
 from db_models.transform_models import DatabaseTraceTransform
+from schemas.agent_discovery_schemas import SubAgent, Tool
 from schemas.agentic_experiment_schemas import (
     AgenticEvalRef,
     AgenticExperimentSummary,
@@ -714,6 +715,95 @@ class Task(BaseModel):
             rules=response_rules,
             metrics=response_metrics,
         )
+
+
+# Creation Source Schemas for Agent-Tasks Endpoint
+class GCPCreationSource(BaseModel):
+    """Creation source for GCP-discovered agents."""
+
+    type: Literal["GCP"] = "GCP"
+    gcp_project_id: str = Field(description="GCP project ID")
+    gcp_region: str = Field(description="GCP region")
+    gcp_reasoning_engine_id: str = Field(
+        description="GCP Vertex AI Reasoning Engine ID"
+    )
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="List of service names that send traces to this task",
+    )
+    last_fetched: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp of last successful trace fetch",
+    )
+
+
+class OTELCreationSource(BaseModel):
+    """Creation source for OTEL-discovered agents (auto-created from traces)."""
+
+    type: Literal["OTEL"] = "OTEL"
+    service_name: str = Field(description="Service name from OTEL trace")
+
+
+class ManualCreationSource(BaseModel):
+    """Creation source for manually created tasks."""
+
+    type: Literal["manual"] = "manual"
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="List of service names that send traces to this task",
+    )
+
+
+# Union type for creation source (discriminated by 'type' field)
+CreationSource = Union[GCPCreationSource, OTELCreationSource, ManualCreationSource]
+
+
+class EnrichedTaskResponse(BaseModel):
+    """Response model for agent-tasks endpoint with enriched metadata."""
+
+    id: str = Field(description="Task ID")
+    name: str = Field(description="Task name")
+    created_at: datetime = Field(description="Task creation timestamp")
+    updated_at: datetime = Field(description="Task last update timestamp")
+    is_agentic: bool = Field(
+        default=False, description="Whether this is an agentic task"
+    )
+    is_autocreated: bool = Field(
+        default=False,
+        description="Whether this task was auto-created (vs manually created)",
+    )
+    infrastructure: Optional[str] = Field(
+        default=None,
+        description="Infrastructure where agent is running (e.g., 'GCP', 'AWS')",
+    )
+    creation_source: Optional[CreationSource] = Field(
+        default=None,
+        description="Information about how this task/agent was created",
+    )
+    tools: Optional[List[Tool]] = Field(
+        default=None,
+        description="Tools used by this agent (computed from spans)",
+    )
+    sub_agents: Optional[List[SubAgent]] = Field(
+        default=None,
+        description="Sub-agents used by this agent (computed from spans)",
+    )
+    models: Optional[List[str]] = Field(
+        default=None,
+        description="Models used by this agent (computed from spans)",
+    )
+    num_spans: Optional[int] = Field(
+        default=None,
+        description="Number of spans associated with this task",
+    )
+    rules: List[RuleResponse] = Field(
+        default_factory=list,
+        description="Rules associated with this task",
+    )
+    metrics: List[MetricResponse] = Field(
+        default_factory=list,
+        description="Metrics associated with this task",
+    )
 
 
 class AgenticAnnotation(BaseModel):
