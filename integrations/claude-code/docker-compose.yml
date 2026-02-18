@@ -1,0 +1,37 @@
+services:
+  litellm-proxy-claude:
+    image: aowen14/litellm-oauth-fix:latest
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm_config_claude_code.yaml:/app/config.yaml
+    environment:
+      # For fail mode when OAuth passthough is not available
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+      # GenAI Engine: HTTP trace URL (full path). arize_phoenix reads these at callback init.
+      - PHOENIX_COLLECTOR_HTTP_ENDPOINT=${GENAI_ENGINE_TRACE_ENDPOINT:-https://engine.development.arthur.ai/api/v1/traces}
+      - PHOENIX_COLLECTOR_ENDPOINT=${GENAI_ENGINE_TRACE_ENDPOINT:-https://engine.development.arthur.ai/api/v1/traces}
+      - PHOENIX_API_KEY=${GENAI_ENGINE_API_KEY}
+      - PHOENIX_PROJECT_NAME=arthur-engine-gateway
+
+      # OTLP export; Bearer required by GenAI Engine
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${GENAI_ENGINE_TRACE_ENDPOINT:-https://engine.development.arthur.ai/api/v1/traces}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer ${GENAI_ENGINE_API_KEY}
+
+      # Resource attributes: service/project + arthur.task (from GENAI_ENGINE_TASK_ID) so traces land in the right task
+      - OTEL_SERVICE_NAME=arthur-engine-gateway
+      - OTEL_RESOURCE_ATTRIBUTES=arthur.task=${GENAI_ENGINE_TASK_ID:-}
+
+      - LITELLM_LOG=info
+    env_file:
+      - .env
+    command:
+      ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

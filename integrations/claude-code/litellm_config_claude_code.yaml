@@ -1,0 +1,26 @@
+# LiteLLM configuration for Claude Code - allows Claude Code to select any model while maintaining observability
+model_list:
+  # Anthropic models
+  - model_name: "anthropic/*"
+    litellm_params:
+      model: "anthropic/*"
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # Claude models
+  - model_name: "claude-*"
+    litellm_params:
+      model: "claude-*"
+      api_key: os.environ/ANTHROPIC_API_KEY
+      custom_llm_provider: "anthropic"
+
+litellm_settings:
+  callbacks: ["arize_phoenix"]
+  disable_auth: true
+  drop_params: false
+  pass_through_params: true
+
+router_settings:
+  allowed_fails: 1000
+  enable_pre_call_checks: false
+  disable_cooldowns: true
+  routing_strategy: "simple-shuffle"

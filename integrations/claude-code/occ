@@ -1,0 +1,83 @@
+#!/bin/bash
+
+PROXY_URL=""
+CLAUDE_ARGS=()
+
+print_usage() {
+    cat << EOF
+Observable Cloud Code -- run Claude Code through a LiteLLM proxy
+
+Usage:
+  ./occ [--proxy-url URL] [--help] [claude args...]
+
+Proxy URL resolution (highest to lowest precedence):
+  1. --proxy-url URL          command-line flag
+  2. CLAUDE_CODE_PROXY_URL environment variable
+  3. http://localhost:4000    built-in default
+
+Other environment:
+  GENAI_ENGINE_TASK_ID        sets CLAUDE_GATEWAY_PROJECT
+
+Examples:
+  ./occ
+  ./occ --proxy-url http://remote-server:4000
+  CLAUDE_CODE_PROXY_URL=http://remote:4000 ./occ
+
+All unrecognized arguments are forwarded to Claude Code.
+EOF
+}
+
+check_url_format() {
+    local url="$1"
+    if [[ ! "$url" =~ ^https?://[^[:space:]]+$ ]]; then
+        echo "error: invalid URL -- $url" >&2
+        echo "       URL must begin with http:// or https://" >&2
+        return 1
+    fi
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --proxy-url)
+            if [[ -n "$2" && "$2" != --* ]]; then
+                PROXY_URL="$2"
+                shift 2
+            else
+                echo "error: --proxy-url requires a URL argument" >&2
+                exit 1
+            fi
+            ;;
+        --help|-h)
+            print_usage
+            exit 0
+            ;;
+        *)
+            CLAUDE_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ -n "$PROXY_URL" ]]; then
+    FINAL_PROXY_URL="$PROXY_URL"
+    echo "proxy: $FINAL_PROXY_URL (from --proxy-url)"
+elif [[ -n "$CLAUDE_CODE_PROXY_URL" ]]; then
+    FINAL_PROXY_URL="$CLAUDE_CODE_PROXY_URL"
+    echo "proxy: $FINAL_PROXY_URL (from CLAUDE_CODE_PROXY_URL)"
+else
+    FINAL_PROXY_URL="http://localhost:4000"
+    echo "proxy: $FINAL_PROXY_URL (default)"
+fi
+
+check_url_format "$FINAL_PROXY_URL" || exit 1
+
+echo "checking LiteLLM proxy at $FINAL_PROXY_URL ..."
+if ! curl -s "$FINAL_PROXY_URL/health" >/dev/null; then
+    echo "error: proxy not reachable at $FINAL_PROXY_URL" >&2
+    echo "       start it with: docker-compose up -d" >&2
+    exit 1
+fi
+
+echo "proxy ok -- launching Claude Code"
+export ANTHROPIC_BASE_URL="$FINAL_PROXY_URL"
+claude "${CLAUDE_ARGS[@]}"
