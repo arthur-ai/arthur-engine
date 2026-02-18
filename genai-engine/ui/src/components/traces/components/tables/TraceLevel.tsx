@@ -1,4 +1,5 @@
-import { Alert, Box, Stack } from "@mui/material";
+import { Search } from "@mui/icons-material";
+import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -14,11 +15,10 @@ import { buildThresholdsFromSample } from "../../utils/duration";
 import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
 import { DurationCellWithBucket } from "../DurationCell";
-import { FilterRow } from "../filtering/FilterRow";
-import { IncomingFilter } from "../filtering/mapper";
-import { TRACE_FIELDS } from "../filtering/trace-fields";
+import { TextOperators } from "../filtering/types";
 import { TraceContentCell } from "../TraceContentCell";
 
+import { TracingFilterModal } from "./components/TracingFilterModal";
 import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
@@ -43,6 +43,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
+  const [searchInput, setSearchInput] = useState("");
 
   const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
@@ -112,50 +113,61 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   const setFilters = useFilterStore((state) => state.setFilters);
 
-  const handleFiltersChange = useCallback(
-    (newFilters: IncomingFilter[]) => {
-      setFilters(newFilters);
-    },
-    [setFilters]
-  );
-
-  const dynamicEnumArgMap = useMemo(
-    () => ({
-      trace_ids: { taskId: task?.id ?? "", api },
-      session_ids: { taskId: task?.id ?? "", api },
-      user_ids: { taskId: task?.id ?? "", api },
-      span_ids: { taskId: task?.id ?? "", api },
-    }),
-    [task?.id, api]
-  );
+  const handleSearch = useCallback(() => {
+    if (searchInput.trim()) {
+      const existingFilters = filters.filter((f) => f.name !== "span_name");
+      setFilters([
+        ...existingFilters,
+        {
+          name: "span_name",
+          operator: TextOperators.CONTAINS,
+          value: searchInput.trim(),
+        },
+      ]);
+    } else {
+      // Clear the span_name filter if search is empty
+      setFilters(filters.filter((f) => f.name !== "span_name"));
+    }
+  }, [searchInput, filters, setFilters]);
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces?.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
-  if (error) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Alert severity="error">There was an error fetching traces.</Alert>
-      </Box>
-    );
-  }
-
   const hasData = Boolean(data?.traces?.length);
 
   return (
     <Stack gap={1} height="100%" overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
-        {/* Only show FilterRow if we have traces or if filters are active */}
-        {(hasData || hasActiveFilters) && (
-          <FilterRow
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            fieldConfig={TRACE_FIELDS}
-            dynamicEnumArgMap={dynamicEnumArgMap}
-            onTrack={track}
-          />
+        {/* Search bar and filter button */}
+        {(hasData || hasActiveFilters || error) && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                size="small"
+                placeholder="Search by span name"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                sx={{ width: 300 }}
+              />
+              <Button variant="outlined" startIcon={<Search />} onClick={handleSearch}>
+                Search
+              </Button>
+              <TracingFilterModal />
+            </Stack>
+          </Paper>
+        )}
+
+        {error && (
+          <Box sx={{ p: 2 }}>
+            <Alert severity="error">There was an error fetching traces.</Alert>
+          </Box>
         )}
 
         {hasData && (
