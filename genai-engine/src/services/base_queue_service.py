@@ -141,7 +141,7 @@ class BaseQueueService(ABC, Generic[JobType]):
                     f"{self.service_name} is not initialized. Start the {self.service_name} first.",
                 )
 
-            self.executor.submit(self._execute_job_wrapper, job)
+            self.executor.submit(self._submit_job, job, wait_time)
         except Exception as e:
             # Executor might be shutting down or have other issues
             logger.error(

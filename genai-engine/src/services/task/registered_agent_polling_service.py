@@ -140,6 +140,7 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
             enqueued_count = 0
             for agent_data in registered_agent_polling_data:
                 # Create a job to poll for new data
+                # skips execution delay and executes immediately
                 job = AgentPollingJob(
                     agent_polling_data_id=agent_data.id,
                 )
