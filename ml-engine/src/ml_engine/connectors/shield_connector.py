@@ -141,6 +141,13 @@ class ShieldBaseConnector(Connector, ABC):
         may return less than page_size rows if there is not enough data in the query.
         Starts from end_time and works backward.
         """
+        # Shield datasets are always time-series — static datasets are not supported
+        if dataset.is_static:
+            raise ValueError(
+                "Static datasets are not supported by the Shield connector. "
+                "Shield datasets must have a time dimension.",
+            )
+
         if not dataset.dataset_locator:
             raise ValueError(
                 f"Dataset {dataset.id} has no dataset locator, cannot read from Shield.",
