@@ -20,7 +20,7 @@ export const IncludeOptions: React.FC<IncludeOptionsProps> = React.memo(
               id="includeMetadata"
               checked={includeMetadata}
               onChange={(e) => onIncludeMetadataChange(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
               disabled={isExecuting}
             />
             <label htmlFor="includeMetadata" className="ml-2 text-sm text-gray-900 dark:text-gray-100">
@@ -34,7 +34,7 @@ export const IncludeOptions: React.FC<IncludeOptionsProps> = React.memo(
               id="includeVector"
               checked={includeVector}
               onChange={(e) => onIncludeVectorChange(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
               disabled={isExecuting}
             />
             <label htmlFor="includeVector" className="ml-2 text-sm text-gray-900 dark:text-gray-100">

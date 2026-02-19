@@ -95,25 +95,25 @@ const SpanNode: React.FC<SpanNodeProps> = ({ span, level, onSpanClick, selectedS
   const getSpanTypeColor = (spanType: string | null) => {
     switch (spanType) {
       case OpenInferenceSpanKind.LLM:
-        return "text-blue-600";
+        return "text-blue-600 dark:text-blue-400";
       case OpenInferenceSpanKind.RETRIEVER:
-        return "text-green-600";
+        return "text-green-600 dark:text-green-400";
       case OpenInferenceSpanKind.EMBEDDING:
-        return "text-purple-600";
+        return "text-purple-600 dark:text-purple-400";
       case OpenInferenceSpanKind.CHAIN:
-        return "text-orange-600";
+        return "text-orange-600 dark:text-orange-400";
       case OpenInferenceSpanKind.AGENT:
-        return "text-red-600";
+        return "text-red-600 dark:text-red-400";
       case OpenInferenceSpanKind.TOOL:
-        return "text-yellow-600";
+        return "text-yellow-600 dark:text-yellow-400";
       case OpenInferenceSpanKind.RERANKER:
-        return "text-indigo-600";
+        return "text-indigo-600 dark:text-indigo-400";
       case OpenInferenceSpanKind.GUARDRAIL:
-        return "text-red-700";
+        return "text-red-700 dark:text-red-400";
       case OpenInferenceSpanKind.EVALUATOR:
-        return "text-green-700";
+        return "text-green-700 dark:text-green-400";
       default:
-        return "text-gray-600";
+        return "text-gray-600 dark:text-gray-400";
     }
   };
 
@@ -501,7 +501,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({ trace, isO
                       ))}
                     </div>
                   ) : (
-                    <div className="text-gray-400">No trace data available</div>
+                    <div className="text-gray-400 dark:text-gray-500">No trace data available</div>
                   )}
                 </div>
               </div>

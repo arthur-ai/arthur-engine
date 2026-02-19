@@ -23,6 +23,7 @@ import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
+import { alpha } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -1527,8 +1528,8 @@ const PromptsPlayground = () => {
                               <Box
                                 key={idx}
                                 sx={{
-                                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(33,150,243,0.12)" : "#e3f2fd"),
-                                  borderLeft: "3px solid #2196f3",
+                                  backgroundColor: (theme) => alpha(theme.palette.info.main, 0.12),
+                                  borderLeft: (theme) => `3px solid ${theme.palette.info.main}`,
                                   px: 1.5,
                                   py: 1,
                                   borderRadius: 0.5,
@@ -1547,7 +1548,7 @@ const PromptsPlayground = () => {
                                     {mapping.variable_name}
                                   </Box>
                                   {" → Dataset column: "}
-                                  <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
+                                  <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "info.main" }}>
                                     {mapping.source?.dataset_column?.name}
                                   </Box>
                                 </Typography>
@@ -1599,14 +1600,9 @@ const PromptsPlayground = () => {
                                         key={mapIdx}
                                         sx={{
                                           backgroundColor: (theme) =>
-                                            theme.palette.mode === "dark"
-                                              ? isDatasetColumn
-                                                ? "rgba(33,150,243,0.12)"
-                                                : "rgba(255,152,0,0.12)"
-                                              : isDatasetColumn
-                                                ? "#e3f2fd"
-                                                : "#fff3e0",
-                                          borderLeft: isDatasetColumn ? "3px solid #2196f3" : "3px solid #ff9800",
+                                            alpha(isDatasetColumn ? theme.palette.info.main : theme.palette.warning.main, 0.12),
+                                          borderLeft: (theme) =>
+                                            `3px solid ${isDatasetColumn ? theme.palette.info.main : theme.palette.warning.main}`,
                                           px: 1.5,
                                           py: 1,
                                           borderRadius: 0.5,
@@ -1628,7 +1624,7 @@ const PromptsPlayground = () => {
                                           {isDatasetColumn && mapping.source?.type === "dataset_column" ? (
                                             <>
                                               Dataset column:{" "}
-                                              <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#1976d2" }}>
+                                              <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "info.main" }}>
                                                 {mapping.source.dataset_column?.name}
                                               </Box>
                                             </>
@@ -1639,7 +1635,7 @@ const PromptsPlayground = () => {
                                                 <>
                                                   {" "}
                                                   (path:{" "}
-                                                  <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "#f57c00" }}>
+                                                  <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 600, color: "warning.main" }}>
                                                     {mapping.source.experiment_output.json_path}
                                                   </Box>
                                                   )
@@ -1684,17 +1680,11 @@ const PromptsPlayground = () => {
                                   borderRadius: 1,
                                   overflow: "hidden",
                                   backgroundColor: (theme) =>
-                                    theme.palette.mode === "dark"
-                                      ? isCompleted
-                                        ? "rgba(16,185,129,0.08)"
-                                        : isFailed
-                                          ? "rgba(239,68,68,0.08)"
-                                          : "background.paper"
-                                      : isCompleted
-                                        ? "#f1f8f4"
-                                        : isFailed
-                                          ? "#fef3f2"
-                                          : "background.paper",
+                                    isCompleted
+                                      ? alpha(theme.palette.success.main, 0.08)
+                                      : isFailed
+                                        ? alpha(theme.palette.error.main, 0.08)
+                                        : "background.paper",
                                 }}
                               >
                                 <Box
@@ -1726,8 +1716,22 @@ const PromptsPlayground = () => {
                                         px: 0.75,
                                         py: 0.25,
                                         borderRadius: 0.5,
-                                        backgroundColor: isCompleted ? "#10b981" : isFailed ? "#ef4444" : isRunning ? "#f59e0b" : "#6b7280",
-                                        color: "white",
+                                        backgroundColor: (theme) =>
+                                          isCompleted
+                                            ? theme.palette.success.main
+                                            : isFailed
+                                              ? theme.palette.error.main
+                                              : isRunning
+                                                ? theme.palette.warning.main
+                                                : theme.palette.text.secondary,
+                                        color: (theme) =>
+                                          isCompleted
+                                            ? theme.palette.success.contrastText
+                                            : isFailed
+                                              ? theme.palette.error.contrastText
+                                              : isRunning
+                                                ? theme.palette.warning.contrastText
+                                                : theme.palette.common.white,
                                         fontWeight: 600,
                                         textTransform: "uppercase",
                                       }}

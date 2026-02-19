@@ -60,8 +60,9 @@ export const EndpointSetup = withFieldGroup({
                     Headers
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Add custom HTTP headers. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code> for dynamic
-                    values.
+                    Add custom HTTP headers. Use{" "}
+                    <code className="text-blue-500 dark:text-blue-400 bg-neutral-50 dark:bg-neutral-800 px-1 rounded-md">{`{{ variable }}`}</code> for
+                    dynamic values.
                   </Typography>
                 </Stack>
                 <Button
@@ -126,7 +127,7 @@ export const EndpointSetup = withFieldGroup({
                     </Stack>
                   ))
                 ) : (
-                  <div className="flex items-center justify-center py-8 border border-dashed border-neutral-200 rounded-md">
+                  <div className="flex items-center justify-center py-8 border border-dashed border-neutral-200 dark:border-neutral-700 rounded-md">
                     <Typography variant="body2" color="text.secondary">
                       No headers added yet
                     </Typography>
@@ -153,7 +154,8 @@ export const EndpointSetup = withFieldGroup({
                     Request Body
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Define the request body as a string. Use <code className="text-blue-500 bg-neutral-50 px-1 rounded-md">{`{{ variable }}`}</code>{" "}
+                    Define the request body as a string. Use{" "}
+                    <code className="text-blue-500 dark:text-blue-400 bg-neutral-50 dark:bg-neutral-800 px-1 rounded-md">{`{{ variable }}`}</code>{" "}
                     placeholders for dataset values. The body will be sent as-is after variable substitution.
                   </Typography>
                 </Stack>

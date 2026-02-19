@@ -830,7 +830,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       />
 
       {/* Prompt Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box className="border border-gray-300 dark:border-gray-600 rounded p-4">
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Prompt Versions *
@@ -940,7 +940,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       </Box>
 
       {/* Dataset Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box className="border border-gray-300 dark:border-gray-600 rounded p-4">
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Dataset *
@@ -1116,7 +1116,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       </Box>
 
       {/* Evaluator Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box className="border border-gray-300 dark:border-gray-600 rounded p-4">
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Evaluators *
@@ -1324,7 +1324,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             </strong>{" "}
             to either a dataset column or the experiment output.
           </Typography>
-          <Box className="p-3 bg-blue-50 border border-blue-200 rounded">
+          <Box className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded">
             <Typography variant="body2" className="text-gray-800 dark:text-gray-200">
               <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference
               text, ground truth labels).

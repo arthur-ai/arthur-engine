@@ -16,6 +16,7 @@ import {
   TextField,
   InputAdornment,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -223,11 +224,11 @@ export const PromptExperimentsView: React.FC = () => {
         <Box className="overflow-auto min-h-0">
           {isLoading ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-gray-600">Loading experiments...</p>
+              <p className="text-gray-600 dark:text-gray-400">Loading experiments...</p>
             </Box>
           ) : error ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-red-600">{error.message}</p>
+              <p className="text-red-600 dark:text-red-400">{error.message}</p>
             </Box>
           ) : experiments.length === 0 ? (
             <PromptExperimentsEmptyState onCreateExperiment={handleCreateExperiment} />
@@ -253,7 +254,7 @@ export const PromptExperimentsView: React.FC = () => {
             <Typography variant="h6" className="font-semibold mb-1">
               Select an Existing Experiment
             </Typography>
-            <Typography variant="body2" className="text-gray-600">
+            <Typography variant="body2" color="text.secondary">
               Choose an experiment to use as a template. All settings will be copied to your new experiment.
             </Typography>
           </Box>
@@ -302,7 +303,7 @@ export const PromptExperimentsView: React.FC = () => {
             if (filteredExperiments.length === 0) {
               return (
                 <Box className="py-8 text-center">
-                  <Typography variant="body2" className="text-gray-500 italic">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                     {experiments.length === 0 ? "No experiments available to clone." : "No experiments match your search."}
                   </Typography>
                 </Box>
@@ -338,13 +339,13 @@ export const PromptExperimentsView: React.FC = () => {
                           secondary={
                             <Box>
                               {experiment.description && (
-                                <Typography variant="body2" className="text-gray-700 mb-2">
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                   {experiment.description}
                                 </Typography>
                               )}
                               <Box className="flex flex-col gap-2">
                                 <Box className="flex flex-wrap gap-1">
-                                  <Typography variant="caption" className="text-gray-600 mr-2">
+                                  <Typography variant="caption" color="text.secondary" className="mr-2">
                                     <strong>Prompts:</strong>
                                   </Typography>
                                   {experiment.prompt_configs?.map((config: PromptConfig, idx: number) => (
@@ -356,24 +357,18 @@ export const PromptExperimentsView: React.FC = () => {
                                         height: "20px",
                                         fontSize: "0.688rem",
                                         backgroundColor: (theme) =>
-                                          config.type === "saved"
-                                            ? theme.palette.mode === "dark"
-                                              ? "rgba(33, 150, 243, 0.15)"
-                                              : "#e3f2fd"
-                                            : theme.palette.mode === "dark"
-                                              ? "rgba(255, 152, 0, 0.15)"
-                                              : "#fff3e0",
+                                          config.type === "saved" ? alpha(theme.palette.info.main, 0.12) : alpha(theme.palette.warning.main, 0.12),
                                         borderColor: config.type === "saved" ? "primary.main" : "warning.main",
                                       }}
                                     />
                                   ))}
                                 </Box>
                                 <Box className="flex gap-4 text-sm">
-                                  <Typography variant="caption" className="text-gray-600">
+                                  <Typography variant="caption" color="text.secondary">
                                     <strong>Rows:</strong> {experiment.total_rows}
                                   </Typography>
                                   {experiment.total_cost && (
-                                    <Typography variant="caption" className="text-gray-600">
+                                    <Typography variant="caption" color="text.secondary">
                                       <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
                                     </Typography>
                                   )}

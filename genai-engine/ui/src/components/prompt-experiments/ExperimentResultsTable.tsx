@@ -249,8 +249,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                               <>
                                 <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
                                 {promptResult.output.tool_calls && promptResult.output.tool_calls.length > 0 && (
-                                  <Box className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
-                                    <Typography variant="caption" className="font-medium text-purple-700">
+                                  <Box className="mt-2 p-2 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded">
+                                    <Typography variant="caption" className="font-medium text-purple-700 dark:text-purple-300">
                                       Tool Calls: {promptResult.output.tool_calls.length}
                                     </Typography>
                                   </Box>
@@ -275,7 +275,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                           </Typography>
                           <Box className="space-y-2">
                             {promptResult.evals.map((evalItem, evalIndex) => (
-                              <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
+                              <Box key={evalIndex} className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded">
                                 <Box className="flex items-center justify-between mb-2">
                                   <Box className="flex items-center gap-2">
                                     <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
@@ -780,16 +780,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
 
   return (
     <Box>
-      <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }}>
+      <TableContainer component={Paper} elevation={1} sx={{ flexGrow: 0, flexShrink: 1 }}>
         {isLoading && <LinearProgress />}
         <Table stickyHeader size="small" aria-label="experiment results table">
           <TableHead>
             {/* Top header row: Prompt versions and Totals */}
             <TableRow>
-              <TableCell
-                rowSpan={2}
-                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderRight: 1, borderColor: "divider" }}
-              >
+              <TableCell rowSpan={2} sx={{ borderRight: 1, borderColor: "divider" }}>
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
@@ -804,7 +801,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                     colSpan={group.evalCount}
                     align="center"
                     sx={{
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                       borderRight: index === promptGroups.length - 1 ? 3 : 1,
                       borderColor: "divider",
                     }}
@@ -819,7 +815,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                 colSpan={evalGroups.length}
                 align="center"
                 sx={{
-                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                   borderRight: 3,
                   borderColor: "divider",
                 }}
@@ -828,20 +823,12 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Totals
                 </Box>
               </TableCell>
-              <TableCell
-                rowSpan={2}
-                align="right"
-                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
-              >
+              <TableCell rowSpan={2} align="right" sx={{ borderLeft: 1, borderColor: "divider" }}>
                 <Box component="span" className="font-semibold">
                   Cost
                 </Box>
               </TableCell>
-              <TableCell
-                rowSpan={2}
-                align="center"
-                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
-              >
+              <TableCell rowSpan={2} align="center" sx={{ borderLeft: 1, borderColor: "divider" }}>
                 <Box component="span" className="font-semibold">
                   View Data
                 </Box>
@@ -861,7 +848,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                     key={`${col.promptName}-${col.promptVersion}-${col.evalName}-${col.evalVersion}`}
                     align="center"
                     sx={{
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                       borderRight: isLastInGroup ? (index === promptEvalColumns.length - 1 ? 3 : 1) : 0,
                       borderColor: "divider",
                       fontSize: "0.75rem",
@@ -879,7 +865,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   key={`total-header-${evalGroup.evalName}-${evalGroup.evalVersion}`}
                   align="center"
                   sx={{
-                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                     borderRight: index === evalGroups.length - 1 ? 3 : 0,
                     borderColor: "divider",
                     fontSize: "0.75rem",

@@ -13,6 +13,25 @@ export const lightTheme = createTheme({
     },
   },
   typography: commonTypography,
+  components: {
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#ffffff",
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        head: {
+          backgroundColor: "#f1f5f9",
+        },
+        stickyHeader: {
+          backgroundColor: "#f1f5f9",
+        },
+      },
+    },
+  },
 });
 
 export const darkTheme = createTheme({
@@ -24,4 +43,23 @@ export const darkTheme = createTheme({
     },
   },
   typography: commonTypography,
+  components: {
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#111827",
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        head: {
+          backgroundColor: "#1e293b",
+        },
+        stickyHeader: {
+          backgroundColor: "#1e293b",
+        },
+      },
+    },
+  },
 });

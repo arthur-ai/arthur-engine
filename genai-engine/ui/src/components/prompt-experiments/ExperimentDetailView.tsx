@@ -367,7 +367,7 @@ export const ExperimentDetailView: React.FC = () => {
 
           {/* Dataset Row Filter Section */}
           {experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 && (
-            <Box className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <Box className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded">
               <Box className="flex items-center gap-2 mb-2">
                 <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                   Dataset Row Filter Applied
