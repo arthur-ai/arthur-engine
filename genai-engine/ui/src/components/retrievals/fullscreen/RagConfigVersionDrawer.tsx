@@ -30,6 +30,7 @@ interface RagConfigVersionDrawerProps {
   latestVersion: number | null;
   onSelectVersion: (version: number) => void;
   onDelete?: (version: number) => Promise<void>;
+  isDeleting?: boolean;
 }
 
 const RagConfigVersionDrawer = ({
@@ -41,11 +42,11 @@ const RagConfigVersionDrawer = ({
   latestVersion,
   onSelectVersion,
   onDelete,
+  isDeleting = false,
 }: RagConfigVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, error } = useRagConfigVersions(configId, {
     sort: sortOrder,
@@ -76,16 +77,9 @@ const RagConfigVersionDrawer = ({
   const handleDeleteConfirm = useCallback(async () => {
     if (versionToDelete === null || !onDelete) return;
 
-    try {
-      setIsDeleting(true);
-      await onDelete(versionToDelete);
-      setDeleteDialogOpen(false);
-      setVersionToDelete(null);
-    } catch (err) {
-      console.error("Failed to delete RAG config version:", err);
-    } finally {
-      setIsDeleting(false);
-    }
+    await onDelete(versionToDelete);
+    setDeleteDialogOpen(false);
+    setVersionToDelete(null);
   }, [versionToDelete, onDelete]);
 
   const handleDeleteCancel = useCallback(() => {

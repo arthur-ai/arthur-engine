@@ -77,6 +77,7 @@ const RagConfigFullScreenView = ({ configId, initialVersion, onClose }: RagConfi
         latestVersion={latestVersion}
         onSelectVersion={handleSelectVersion}
         onDelete={handleDeleteVersion}
+        isDeleting={deleteMutation.isPending}
       />
       <Box
         sx={{
