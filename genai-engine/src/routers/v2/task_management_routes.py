@@ -106,8 +106,6 @@ def create_task(
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
         response = task._to_response_model()
         return response
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -136,8 +134,6 @@ def get_all_tasks(
         tasks = tasks_repo.get_all_tasks()
 
         return [task._to_response_model() for task in tasks]
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -165,8 +161,6 @@ def archive_task(
         tasks_repo.archive_task(str(task_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -193,8 +187,6 @@ def get_task(
         )
         task = task_repo.get_task_by_id(str(task_id))
         return task._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -297,8 +289,6 @@ def get_agent_tasks(
             enriched_responses.append(enriched_response)
 
         return enriched_responses
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -360,8 +350,6 @@ def search_tasks(
             tasks=[task._to_response_model() for task in tasks],
             count=count,
         )
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -412,8 +400,6 @@ def create_task_rule(
         response_rule.enabled = True
         send_telemetry_event_for_task_rule_create_completed(new_rule.type)
         return response_rule
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -444,8 +430,6 @@ def update_task_rules(
         updated_task = task_repo.get_task_by_id(str(task_id))
 
         return updated_task._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -499,8 +483,6 @@ def archive_task_rule(
             rule_repo.archive_rule(str(rule_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -541,8 +523,6 @@ def create_task_metric(
         task_repo.link_metric_to_task(task.id, created_metric.id)
 
         return created_metric._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -571,8 +551,6 @@ def update_task_metric(
         task_repo.toggle_task_metric_enabled(str(task_id), str(metric_id), body.enabled)
         updated_task = task_repo.get_task_by_id(str(task_id))
         return updated_task._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -616,8 +594,5 @@ def archive_task_metric(
         metric_repo.archive_metric(str(metric_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    except:
-        raise
     finally:
         db_session.close()
