@@ -1,5 +1,8 @@
 import AddIcon from "@mui/icons-material/Add";
-import MenuIcon from "@mui/icons-material/Menu";
+import AppsOutlined from "@mui/icons-material/AppsOutlined";
+import KeyOutlined from "@mui/icons-material/KeyOutlined";
+import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
+import SettingsIcon from "@mui/icons-material/Settings";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -148,15 +151,9 @@ export const AllTasks: React.FC = () => {
                 <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
               </div>
               <div className="flex items-center space-x-4">
-                {tasks.length > 0 && (
-                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                    Create Task
-                  </Button>
-                )}
-                &nbsp;
                 <div className="relative">
                   <IconButton
-                    aria-label="menu"
+                    aria-label="settings"
                     onClick={() => setIsMenuOpen((prev) => !prev)}
                     sx={{
                       bgcolor: "background.paper",
@@ -168,16 +165,48 @@ export const AllTasks: React.FC = () => {
                       height: "40px",
                     }}
                   >
-                    <MenuIcon />
+                    <SettingsIcon />
                   </IconButton>
                   {/* Dropdown menu */}
                   {isMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">
-                      <div className="px-4 py-2">
+                      <div>
+                        <Button
+                          variant="text"
+                          fullWidth
+                          startIcon={<AppsOutlined />}
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            navigate("/settings/model-providers");
+                          }}
+                          sx={{ color: "text.primary", justifyContent: "flex-start", textTransform: "none" }}
+                        >
+                          Model Providers
+                        </Button>
+                        <Button
+                          variant="text"
+                          fullWidth
+                          startIcon={<KeyOutlined />}
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            navigate("/settings/api-keys");
+                          }}
+                          sx={{ color: "text.primary", justifyContent: "flex-start", textTransform: "none" }}
+                        >
+                          API Keys
+                        </Button>
+                      </div>
+                      <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1 px-4 py-2">
                         <ThemeToggle />
                       </div>
                       <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
-                        <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "text.primary" }}>
+                        <Button
+                          variant="text"
+                          fullWidth
+                          startIcon={<LogoutOutlined />}
+                          onClick={handleLogout}
+                          sx={{ color: "text.primary", justifyContent: "flex-start", textTransform: "none" }}
+                        >
                           Logout
                         </Button>
                       </div>
@@ -215,14 +244,19 @@ export const AllTasks: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className="mb-4">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Tasks ({tasks.length})</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {filteredTasks.length < tasks.length
-                      ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
-                      : "Click on any task to open the toolkit"}
-                  </p>
-                </div>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                  <div>
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Tasks ({tasks.length})</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {filteredTasks.length < tasks.length
+                        ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                        : "Click on any task to open the toolkit"}
+                    </p>
+                  </div>
+                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                    Task
+                  </Button>
+                </Box>
 
                 {/* Filter & Sort Toolbar */}
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
