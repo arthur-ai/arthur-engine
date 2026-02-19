@@ -29,9 +29,9 @@ from clients.telemetry.telemetry_client import (
 )
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session
-from repositories.agent_polling_repository import AgentPollingRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
+from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
@@ -95,10 +95,8 @@ def create_task(
 
         if request.is_agentic and request.agent_metadata is not None:
             try:
-                agent_polling_repo = AgentPollingRepository(db_session)
-                agent_polling_repo.start_polling_for_agent(
-                    task.id,
-                )
+                polling_state_repo = TaskPollingStateRepository(db_session)
+                polling_state_repo.get_or_create(task.id)
             except Exception as e:
                 tasks_repo.archive_task(task.id)
                 raise e
@@ -248,16 +246,19 @@ def get_agent_tasks(
             page=0,
         )
 
-        # Convert to Task objects
+        # Convert to Task objects and enrich with service names
         tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
+        tasks = tasks_repo._enrich_tasks_with_service_names(tasks)
 
         # Build enriched responses
+        polling_state_repo = TaskPollingStateRepository(db_session)
         enriched_responses = []
         for task in tasks:
-            # Map old task_metadata to new creation_source format
-            infrastructure, creation_source = (
-                tasks_repo._map_task_metadata_to_creation_source(task)
-            )
+            creation_source = tasks_repo._get_task_creation_source(task)
+
+            # Get last_fetched from task_polling_state
+            polling_state = polling_state_repo.get_by_task_id(task.id)
+            last_fetched = polling_state.last_fetched if polling_state else None
 
             # Extract agent metadata if task is agentic
             tools = None
@@ -286,8 +287,9 @@ def get_agent_tasks(
                 updated_at=task.updated_at,
                 is_agentic=task.is_agentic,
                 is_autocreated=task.is_autocreated,
-                infrastructure=infrastructure,
                 creation_source=creation_source,
+                service_names=task.service_names,
+                last_fetched=last_fetched,
                 tools=tools,
                 sub_agents=sub_agents,
                 models=models,

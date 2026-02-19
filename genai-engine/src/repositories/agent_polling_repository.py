@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from arthur_common.models.enums import AgentPollingStatus, RegisteredAgentProvider
+from arthur_common.models.enums import AgentPollingStatus
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -11,7 +11,7 @@ from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.internal_schemas import AgentPollingData
+from schemas.internal_schemas import AgentPollingData, GCPCreationSource
 from services.task.registered_agent_polling_service import (
     AgentPollingJob,
     get_registered_agent_polling_service,
@@ -62,16 +62,10 @@ class AgentPollingRepository:
             )
 
         # Validate task is a GCP agent with required metadata
-        if task.task_metadata.provider != RegisteredAgentProvider.GCP:
+        if not isinstance(task.task_metadata.creation_source, GCPCreationSource):
             raise HTTPException(
                 status_code=400,
                 detail=f"Task {task_id} is not a GCP agent. Only GCP agents support polling.",
-            )
-
-        if task.task_metadata.gcp_metadata is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Task {task_id} does not have GCP metadata. Polling requires project_id, region, and resource_id.",
             )
 
         agent_polling_data = AgentPollingData.from_task_id(
@@ -152,16 +146,10 @@ class AgentPollingRepository:
             )
 
         # Validate task is a GCP agent with required metadata
-        if task.task_metadata.provider != RegisteredAgentProvider.GCP:
+        if not isinstance(task.task_metadata.creation_source, GCPCreationSource):
             raise HTTPException(
                 status_code=400,
                 detail=f"Task {task_id} is not a GCP agent. Only GCP agents support polling.",
-            )
-
-        if task.task_metadata.gcp_metadata is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Task {task_id} does not have GCP metadata. Polling requires project_id, region, and resource_id.",
             )
 
         if db_agent_polling_data.status != AgentPollingStatus.ERROR.value:

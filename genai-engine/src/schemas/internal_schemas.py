@@ -47,6 +47,7 @@ from arthur_common.models.response_schemas import (
     ExternalInferencePrompt,
     ExternalInferenceResponse,
     ExternalRuleResult,
+    GCPAgentMetadataResponse,
     HallucinationClaimResponse,
     HallucinationDetailsResponse,
     InferenceFeedbackResponse,
@@ -574,31 +575,47 @@ class TaskToMetricLink(BaseModel):
         )
 
 
-class RegisteredGCPAgentCredentials(BaseModel):
-    """
-    Credentials required for polling registered GCP agents.
-    """
+# Creation Source Schemas (used by TaskMetadata and agent-tasks endpoint)
+class GCPCreationSource(BaseModel):
+    """Creation source for GCP-discovered agents."""
 
-    region: str
-    project_id: str
-    resource_id: str
+    type: Literal["GCP"] = "GCP"
+    gcp_project_id: str = Field(description="GCP project ID")
+    gcp_region: str = Field(description="GCP region")
+    gcp_reasoning_engine_id: str = Field(
+        description="GCP Vertex AI Reasoning Engine ID"
+    )
+
+
+class OTELCreationSource(BaseModel):
+    """Creation source for OTEL-discovered agents (auto-created from traces)."""
+
+    type: Literal["OTEL"] = "OTEL"
+    service_name: str = Field(description="Service name from OTEL trace")
+
+
+class ManualCreationSource(BaseModel):
+    """Creation source for manually created tasks."""
+
+    type: Literal["MANUAL"] = "MANUAL"
+
+
+# Union type for creation source (discriminated by 'type' field)
+CreationSource = Union[GCPCreationSource, OTELCreationSource, ManualCreationSource]
 
 
 class TaskMetadata(BaseModel):
     """
-    Metadata for a task.
+    Metadata for a task. Stored as JSON in tasks.task_metadata column.
+
+    Post-migration format: {"creation_source": {"type": "GCP", ...}}
+    Infrastructure is derived from creation_source.type.
+    Service names are looked up from service_name_task_mappings at query time.
     """
 
-    provider: RegisteredAgentProvider = Field(
-        description="Provider of the registered agent.",
-    )
-    gcp_metadata: Optional[RegisteredGCPAgentCredentials] = Field(
+    creation_source: Optional[CreationSource] = Field(
         default=None,
-        description="Metadata for a registered GCP agent.",
-    )
-    service_names: Optional[List[str]] = Field(
-        default=None,
-        description="List of service names that send traces to this task",
+        description="Information about how this task/agent was created",
     )
 
 
@@ -611,28 +628,34 @@ class Task(BaseModel):
     is_autocreated: bool = False
     is_system_task: bool = False
     task_metadata: Optional[TaskMetadata] = None
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="Service names from service_name_task_mappings (populated at query time)",
+    )
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
     def _from_request_model(x: NewTaskRequest) -> "Task":
-        # Convert AgentMetadata to dict for database storage
+        # Convert AgentMetadata request to new TaskMetadata format for DB storage
         task_metadata = None
         if x.agent_metadata:
-            gcp_metadata = None
+            creation_source: Optional[CreationSource] = None
+
             if x.agent_metadata.provider == RegisteredAgentProvider.GCP:
                 if x.agent_metadata.gcp_metadata is None:
                     raise ValueError("GCP metadata is required when provider is GCP.")
 
-                gcp_metadata = RegisteredGCPAgentCredentials(
-                    region=x.agent_metadata.gcp_metadata.region,
-                    project_id=x.agent_metadata.gcp_metadata.project_id,
-                    resource_id=x.agent_metadata.gcp_metadata.resource_id,
+                creation_source = GCPCreationSource(
+                    gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
+                    gcp_region=x.agent_metadata.gcp_metadata.region,
+                    gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
                 )
+            else:
+                creation_source = ManualCreationSource()
 
             task_metadata = TaskMetadata(
-                provider=x.agent_metadata.provider,
-                gcp_metadata=gcp_metadata,
+                creation_source=creation_source,
             )
 
         return Task(
@@ -696,12 +719,26 @@ class Task(BaseModel):
             response_metric.enabled = metric_link.enabled
             response_metrics.append(response_metric)
 
-        # Convert dict back to AgentMetadataResponse
+        # Convert new TaskMetadata format to old AgentMetadataResponse format
         agent_metadata_response = None
-        if self.task_metadata:
-            agent_metadata_response = AgentMetadataResponse(
-                **self.task_metadata.model_dump(exclude_none=True),
-            )
+        if self.task_metadata and self.task_metadata.creation_source:
+            cs = self.task_metadata.creation_source
+            svc_names = self.service_names or None
+            if isinstance(cs, GCPCreationSource):
+                agent_metadata_response = AgentMetadataResponse(
+                    provider=RegisteredAgentProvider.GCP,
+                    gcp_metadata=GCPAgentMetadataResponse(
+                        project_id=cs.gcp_project_id,
+                        region=cs.gcp_region,
+                        resource_id=cs.gcp_reasoning_engine_id,
+                    ),
+                    service_names=svc_names,
+                )
+            else:
+                agent_metadata_response = AgentMetadataResponse(
+                    provider=RegisteredAgentProvider.EXTERNAL,
+                    service_names=svc_names,
+                )
 
         return TaskResponse(
             id=self.id,
@@ -715,47 +752,6 @@ class Task(BaseModel):
             rules=response_rules,
             metrics=response_metrics,
         )
-
-
-# Creation Source Schemas for Agent-Tasks Endpoint
-class GCPCreationSource(BaseModel):
-    """Creation source for GCP-discovered agents."""
-
-    type: Literal["GCP"] = "GCP"
-    gcp_project_id: str = Field(description="GCP project ID")
-    gcp_region: str = Field(description="GCP region")
-    gcp_reasoning_engine_id: str = Field(
-        description="GCP Vertex AI Reasoning Engine ID"
-    )
-    service_names: List[str] = Field(
-        default_factory=list,
-        description="List of service names that send traces to this task",
-    )
-    last_fetched: Optional[datetime] = Field(
-        default=None,
-        description="Timestamp of last successful trace fetch",
-    )
-
-
-class OTELCreationSource(BaseModel):
-    """Creation source for OTEL-discovered agents (auto-created from traces)."""
-
-    type: Literal["OTEL"] = "OTEL"
-    service_name: str = Field(description="Service name from OTEL trace")
-
-
-class ManualCreationSource(BaseModel):
-    """Creation source for manually created tasks."""
-
-    type: Literal["manual"] = "manual"
-    service_names: List[str] = Field(
-        default_factory=list,
-        description="List of service names that send traces to this task",
-    )
-
-
-# Union type for creation source (discriminated by 'type' field)
-CreationSource = Union[GCPCreationSource, OTELCreationSource, ManualCreationSource]
 
 
 class AgentMetadata(TypedDict):
@@ -781,13 +777,17 @@ class EnrichedTaskResponse(BaseModel):
         default=False,
         description="Whether this task was auto-created (vs manually created)",
     )
-    infrastructure: Optional[str] = Field(
-        default=None,
-        description="Infrastructure where agent is running (e.g., 'GCP', 'AWS')",
-    )
     creation_source: Optional[CreationSource] = Field(
         default=None,
         description="Information about how this task/agent was created",
+    )
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="Service names associated with this task",
+    )
+    last_fetched: Optional[datetime] = Field(
+        default=None,
+        description="Last time traces were fetched for this task (from task_polling_state)",
     )
     tools: Optional[List[Tool]] = Field(
         default=None,

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -69,9 +71,9 @@ class ExternalTraceRetrievalService:
         self,
         task_id: str,
         project_id: str,
-        resource_id: str,
-        start_time: datetime,
-        end_time: datetime,
+        reasoning_engine_id: str,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
         max_traces: Optional[int] = None,
         timeout: float = 300.0,
     ) -> List[Dict[str, Any]]:
@@ -81,30 +83,33 @@ class ExternalTraceRetrievalService:
         Args:
             task_id: Task ID to associate traces with
             project_id: GCP project ID
-            resource_id: GCP resource ID
+            reasoning_engine_id: GCP Reasoning Engine ID used as Cloud Trace service.name filter
             start_time: Start time for trace query
             end_time: End time for trace query
             max_traces: Optional maximum number of traces to fetch
-            verbose: Enable verbose output
             timeout: Timeout in seconds for API calls
 
         Returns:
             List of traces in GenAI Engine format
         """
+
+        if start_time is None or end_time is None:
+            raise ValueError("start_time and end_time are required")
+
         logger.debug(
-            f"Fetching traces from Cloud Trace for Project: {project_id} with Resource ID: {resource_id}",
+            f"Fetching traces from Cloud Trace for Project: {project_id} with Reasoning Engine ID: {reasoning_engine_id}",
         )
 
         try:
             # Initialize Cloud Trace client
             trace_client = trace_v1.TraceServiceClient()
 
-            # List all traces (Cloud Trace API filtering is unreliable, so we fetch all and filter client-side)
+            # List all traces filtered by reasoning engine ID
             request = trace_v1.ListTracesRequest(
                 project_id=project_id,
                 start_time=start_time,
                 end_time=end_time,
-                filter=f"+service.name:{resource_id}",
+                filter=f"+service.name:{reasoning_engine_id}",
             )
 
             trace_ids = []

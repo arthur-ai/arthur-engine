@@ -21,7 +21,10 @@ if TYPE_CHECKING:
 
 class DatabaseAgentPollingData(Base):
     """
-    Database model for the registered agent polling system
+    Database model for the registered agent polling system.
+
+    DEPRECATED: Being replaced by DatabaseTaskPollingState.
+    Kept temporarily for migration support.
     """
 
     __tablename__ = "agent_polling_data"
@@ -59,3 +62,39 @@ class DatabaseAgentPollingData(Base):
 
     # Relationships
     task: Mapped["DatabaseTask"] = relationship(back_populates="agent_polling_data")
+
+
+class DatabaseTaskPollingState(Base):
+    """
+    Simplified polling state for agent tasks.
+
+    Tracks only when a task was last successfully polled.
+    No error state — polling always continues. Errors are logged for
+    observability but do not block future polls.
+    """
+
+    __tablename__ = "task_polling_state"
+
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    last_fetched: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP,
+        default=None,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+
+    # Relationships
+    task: Mapped["DatabaseTask"] = relationship(back_populates="task_polling_state")

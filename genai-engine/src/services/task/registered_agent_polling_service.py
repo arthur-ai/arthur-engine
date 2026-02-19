@@ -15,7 +15,7 @@ from repositories.rules_repository import RuleRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.internal_schemas import AgentPollingData
+from schemas.internal_schemas import AgentPollingData, GCPCreationSource
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from services.trace.external_trace_retrieval_service import (
     ExternalTraceRetrievalService,
@@ -243,26 +243,23 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
 
             # Check provider and call appropriate polling method
             traces = []
-            if task.task_metadata.provider == RegisteredAgentProvider.GCP:
+            creation_source = task.task_metadata.creation_source
+            if isinstance(creation_source, GCPCreationSource):
                 logger.info(
                     f"Polling GCP agent {job.agent_polling_data_id} for traces between {start_time} and {now}",
                 )
 
-                if task.task_metadata.gcp_metadata is None:
-                    raise ValueError(
-                        "GCP metadata are required for GCP provider",
-                    )
                 traces = external_trace_retrieval_service.fetch_traces_from_cloud_trace(
                     task_id=task.id,
-                    project_id=task.task_metadata.gcp_metadata.project_id,
-                    resource_id=task.task_metadata.gcp_metadata.resource_id,
+                    project_id=creation_source.gcp_project_id,
+                    reasoning_engine_id=creation_source.gcp_reasoning_engine_id,
                     start_time=start_time,
                     end_time=now,
                     timeout=60,  # 1 minute timeout
                 )
             else:
                 logger.warning(
-                    f"Unsupported provider '{task.task_metadata.provider}', skipping polling",
+                    f"Unsupported creation source type '{type(creation_source).__name__}', skipping polling",
                 )
 
             if len(traces) == 0:
@@ -290,7 +287,7 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
             )
             span_repository.convert_and_send_traces_from_external_provider(
                 traces=traces,
-                provider=task.task_metadata.provider,
+                provider=RegisteredAgentProvider.GCP,  # Only GCP supported; validated above
                 task_id=task.id,
             )
 
