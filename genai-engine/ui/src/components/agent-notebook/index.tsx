@@ -1,4 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
   Box,
   Button,
@@ -146,11 +147,36 @@ export const AgentNotebook = () => {
           </div>
           <ButtonGroup size="small" variant="contained" disableElevation>
             <Button startIcon={<AddIcon />} onClick={handleCreateNotebook}>
-              New Notebook
+              Notebook
             </Button>
           </ButtonGroup>
         </Box>
-        <MaterialReactTable table={table} />
+        {!isLoading && (data?.data?.length ?? 0) === 0 ? (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              textAlign: "center",
+              py: 8,
+            }}
+          >
+            <MenuBookOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+              No notebooks yet
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Get started by creating your first agentic notebook
+            </Typography>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreateNotebook} size="large">
+              Notebook
+            </Button>
+          </Box>
+        ) : (
+          <MaterialReactTable table={table} />
+        )}
       </Stack>
 
       <Dialog open={newDialogOpen} onClose={handleCloseCreateNotebook} fullWidth>

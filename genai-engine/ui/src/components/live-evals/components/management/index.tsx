@@ -1,5 +1,6 @@
 import { Search } from "@mui/icons-material";
 import AddIcon from "@mui/icons-material/Add";
+import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import {
   Button,
   Paper,
@@ -13,6 +14,7 @@ import {
   Box,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
@@ -26,7 +28,6 @@ import { EditFormDialog } from "../edit-form";
 import { FilterModal } from "./components/FilterModal";
 
 import { TextOperators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
@@ -114,19 +115,34 @@ export const Management = () => {
         <FilterModal />
       </Stack>
       {data.evals.length === 0 ? (
-        <Box sx={{ p: 2 }}>
-          <TracesEmptyState title="No continuous evals found">
-            <Button
-              disableElevation
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              to={`/tasks/${task?.id}/continuous-evals/new`}
-              component={Link}
-            >
-              Create Continuous Eval
-            </Button>
-          </TracesEmptyState>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            textAlign: "center",
+            py: 8,
+          }}
+        >
+          <LiveTvOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+            No continuous evals yet
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Get started by creating your first continuous eval
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            to={`/tasks/${task?.id}/continuous-evals/new`}
+            component={Link}
+            size="large"
+          >
+            Continuous Eval
+          </Button>
         </Box>
       ) : (
         <>
