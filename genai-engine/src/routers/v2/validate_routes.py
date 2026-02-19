@@ -57,8 +57,6 @@ def default_validate_prompt(
             scorer_client=scorer_client,
             rules=default_rules,
         )
-    except Exception as e:
-        raise e
     finally:
         db_session.close()
 
@@ -96,9 +94,6 @@ def default_validate_response(
             scorer_client=scorer_client,
             rules=default_rules,
         )
-
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -136,8 +131,6 @@ def validate_prompt_endpoint(
             scorer_client=scorer_client,
             rules=rules,
         )
-    except Exception as err:
-        raise
     finally:
         db_session.close()
 
@@ -178,7 +171,5 @@ def validate_response_endpoint(
             scorer_client=scorer_client,
             rules=rules,
         )
-    except Exception as err:
-        raise err
     finally:
         db_session.close()
