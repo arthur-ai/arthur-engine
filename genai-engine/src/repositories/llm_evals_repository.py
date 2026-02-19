@@ -29,6 +29,13 @@ from schemas.response_schemas import (
 )
 from services.prompt.chat_completion_service import ChatCompletionService
 
+llm_eval_system_instructions = """
+You are a helpful assistant that adheres exactly to the following instructions.
+
+You will be given a set of instructions and respond with a boolean score and a reason for your score.
+The detail for how and what you should score will be provided in the instructions.
+"""
+
 
 class LLMEvalsRepository(
     BaseLLMRepository[DatabaseLLMEval, DatabaseLLMEvalVersionTag, CreateEvalRequest],
@@ -92,7 +99,11 @@ class LLMEvalsRepository(
         response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
     ) -> AgenticPrompt:
         messages = [
-            OpenAIMessage(role=MessageRole.SYSTEM, content=llm_eval.instructions),
+            OpenAIMessage(
+                role=MessageRole.SYSTEM,
+                content=llm_eval_system_instructions,
+            ),
+            OpenAIMessage(role=MessageRole.USER, content=llm_eval.instructions),
         ]
 
         config_dict = {}
