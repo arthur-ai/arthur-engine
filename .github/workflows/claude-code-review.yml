@@ -40,22 +40,6 @@ jobs:
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
           claude_args: '--dangerously-skip-permissions'
+          use_sticky_comment: true
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-
-      - name: Post Review Summary as PR Comment
-        if: always() && steps.claude-review.outputs.conclusion != ''
-        uses: actions/github-script@v7
-        env:
-          REVIEW_SUMMARY: ${{ steps.claude-review.outputs.conclusion }}
-        with:
-          script: |
-            const body = process.env.REVIEW_SUMMARY;
-            if (body) {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: body,
-              });
-            }
