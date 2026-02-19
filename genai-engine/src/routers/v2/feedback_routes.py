@@ -152,7 +152,5 @@ def query_feedback(
             total_pages=pagination_parameters.calculate_total_pages(count),
             total_count=count,
         )
-    except Exception as error:
-        raise error
     finally:
         db_session.close()

@@ -59,8 +59,6 @@ def get_token_usage(
             end_time=end_time,
             group_by=group_by,
         )
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -81,8 +79,6 @@ def get_configuration(
         config = config_repo.get_configurations()
 
         return config._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -114,8 +110,6 @@ def update_configuration(
         new_config = config_repo.update_configurations(body)
 
         return new_config._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
