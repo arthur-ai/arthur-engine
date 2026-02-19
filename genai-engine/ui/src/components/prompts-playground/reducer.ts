@@ -253,13 +253,15 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     }
     case "updatePrompt": {
       const { promptId, prompt } = action.payload;
+      // Destructure out `id` so we never overwrite the existing prompt's identity
+      const { id: _incomingId, ...promptWithoutId } = prompt;
       return {
         ...state,
         prompts: state.prompts.map((p) =>
           p.id === promptId
             ? {
                 ...p,
-                ...prompt,
+                ...promptWithoutId,
                 // Ensure required properties are always defined
                 messages: prompt.messages ?? p.messages,
                 tools: prompt.tools ?? p.tools,
