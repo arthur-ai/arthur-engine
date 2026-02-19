@@ -1,3 +1,5 @@
+import AddIcon from "@mui/icons-material/Add";
+import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -8,6 +10,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import TablePagination from "@mui/material/TablePagination";
+import Typography from "@mui/material/Typography";
 import { parseAsString, useQueryState } from "nuqs";
 import React, { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -193,29 +196,24 @@ const TransformsManagement: React.FC = () => {
           <Box
             sx={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              flex: 1,
-              p: 3,
-              minHeight: 400,
+              height: "100%",
+              textAlign: "center",
+              py: 8,
             }}
           >
-            <Box sx={{ textAlign: "center" }}>
-              <Box
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "1.25rem",
-                  color: "text.primary",
-                  mb: 1,
-                }}
-              >
-                No transforms found
-              </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first transform to extract data from traces.</Box>
-              <Button variant="contained" onClick={() => setIsCreateModalOpen(true)} sx={{ mt: 1 }}>
-                Create Transform
-              </Button>
-            </Box>
+            <StorageOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+              No transforms yet
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Get started by creating your first transform
+            </Typography>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsCreateModalOpen(true)} size="large">
+              Transform
+            </Button>
           </Box>
         ) : (
           <TransformsTable
