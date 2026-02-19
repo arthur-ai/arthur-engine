@@ -1,7 +1,9 @@
-import { Add, Storage } from "@mui/icons-material";
+import { Add } from "@mui/icons-material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import HistoryIcon from "@mui/icons-material/History";
-import { Stack } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
+import { InputAdornment } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -57,43 +59,82 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
   };
 
   return (
-    <div className="flex-1 px-4 py-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-3 items-center">
-          <TextField
-            placeholder="Search configurations..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setPage(0); // Reset to first page on search
-            }}
-            size="small"
-            className="flex-1"
-          />
+    <div className="flex-1">
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          px: 3,
+          pt: 3,
+          pb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Box>
+            <Typography variant="h5" fontWeight={600} color="text.primary">
+              RAG Configurations
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Manage your RAG provider configurations
+            </Typography>
+          </Box>
           <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} sx={{ whiteSpace: "nowrap" }}>
-            Create Configuration
+            Configuration
           </Button>
-        </div>
+        </Box>
+        <TextField
+          placeholder="Search configurations..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setPage(0);
+          }}
+          size="small"
+          fullWidth
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+      </Box>
 
+      <Box>
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading configurations...</div>
         ) : configs.length === 0 ? (
-          <Stack gap={2} alignItems="center" justifyContent="center" className="py-12 px-8 text-center">
-            <Storage sx={{ fontSize: 48, color: "text.disabled" }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              {searchQuery ? "No configurations match your search" : "No RAG Configurations Yet"}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              textAlign: "center",
+              py: 8,
+            }}
+          >
+            <StorageOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+              {searchQuery ? "No configurations found" : "No RAG configurations yet"}
             </Typography>
-            <Typography variant="body2" color="text.secondary" className="mb-4 text-center">
-              {searchQuery
-                ? "Try adjusting your search terms."
-                : "RAG configurations define how to search your vector database collections. Create your first configuration to get started."}
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              {searchQuery ? "Try adjusting your search terms" : "Get started by creating your first RAG configuration"}
             </Typography>
             {!searchQuery && (
-              <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)}>
-                Create Configuration
+              <Button variant="contained" color="primary" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} size="large">
+                Configuration
               </Button>
             )}
-          </Stack>
+          </Box>
         ) : (
           <>
             <Table>
@@ -162,7 +203,7 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
             />
           </>
         )}
-      </div>
+      </Box>
 
       {selectedConfig && (
         <ConfigVersionsDrawer
