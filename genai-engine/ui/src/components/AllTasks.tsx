@@ -242,12 +242,12 @@ export const AllTasks: React.FC = () => {
               <>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                   <Box>
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Tasks ({tasks.length})</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <Typography variant="h6">All Tasks ({tasks.length})</Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
                       {filteredTasks.length < tasks.length
                         ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
                         : "Click on any task to open the toolkit"}
-                    </p>
+                    </Typography>
                   </Box>
                   <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
                     Task
