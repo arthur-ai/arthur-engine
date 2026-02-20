@@ -2346,6 +2346,82 @@ export interface DiscoveredAgent {
 }
 
 /**
+ * EnrichedTaskResponse
+ * Response model for agent-tasks endpoint with enriched metadata.
+ */
+export interface EnrichedTaskResponse {
+  /**
+   * Created At
+   * Task creation timestamp
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Creation Source
+   * Information about how this task/agent was created
+   */
+  creation_source?: GCPCreationSource | OTELCreationSource | ManualCreationSource | null;
+  /**
+   * Id
+   * Task ID
+   */
+  id: string;
+  /**
+   * Infrastructure
+   * Infrastructure where agent is running (e.g., 'GCP', 'AWS')
+   */
+  infrastructure?: string | null;
+  /**
+   * Is Agentic
+   * Whether this is an agentic task
+   * @default false
+   */
+  is_agentic?: boolean;
+  /**
+   * Is Autocreated
+   * Whether this task was auto-created (vs manually created)
+   * @default false
+   */
+  is_autocreated?: boolean;
+  /**
+   * Models
+   * Models used by this agent (computed from spans)
+   */
+  models?: string[] | null;
+  /**
+   * Name
+   * Task name
+   */
+  name: string;
+  /**
+   * Num Spans
+   * Number of spans associated with this task
+   */
+  num_spans?: number | null;
+  /**
+   * Rules
+   * Rules associated with this task
+   */
+  rules?: RuleResponse[];
+  /**
+   * Sub Agents
+   * Sub-agents used by this agent (computed from spans)
+   */
+  sub_agents?: SubAgent[] | null;
+  /**
+   * Tools
+   * Tools used by this agent (computed from spans)
+   */
+  tools?: Tool[] | null;
+  /**
+   * Updated At
+   * Task last update timestamp
+   * @format date-time
+   */
+  updated_at: string;
+}
+
+/**
  * EvalExecution
  * Details of an eval execution
  */
@@ -2781,6 +2857,43 @@ export interface GCPAgentMetadataResponse {
   resource_id: string;
 }
 
+/**
+ * GCPCreationSource
+ * Creation source for GCP-discovered agents.
+ */
+export interface GCPCreationSource {
+  /**
+   * Gcp Project Id
+   * GCP project ID
+   */
+  gcp_project_id: string;
+  /**
+   * Gcp Reasoning Engine Id
+   * GCP Vertex AI Reasoning Engine ID
+   */
+  gcp_reasoning_engine_id: string;
+  /**
+   * Gcp Region
+   * GCP region
+   */
+  gcp_region: string;
+  /**
+   * Last Fetched
+   * Timestamp of last successful trace fetch
+   */
+  last_fetched?: string | null;
+  /**
+   * Service Names
+   * List of service names that send traces to this task
+   */
+  service_names?: string[];
+  /**
+   * Type
+   * @default "GCP"
+   */
+  type?: "GCP";
+}
+
 /** GCPServiceAccountCredentialsRequest */
 export interface GCPServiceAccountCredentialsRequest {
   /**
@@ -2857,6 +2970,9 @@ export interface GeneratedVariableSource {
    */
   type: "generated";
 }
+
+/** Response Get Agent Tasks Api V2 Agent Tasks Get */
+export type GetAgentTasksApiV2AgentTasksGetData = EnrichedTaskResponse[];
 
 export type GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetData = AgenticExperimentDetail;
 
@@ -3277,6 +3393,11 @@ export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
    * @default 10
    */
   page_size?: number;
+  /**
+   * Search
+   * Search query to filter rows. Performs case-insensitive search across all column values.
+   */
+  search?: string | null;
   /**
    * Sort the results (asc/desc)
    * @default "desc"
@@ -5747,6 +5868,23 @@ export interface LogitBiasItem {
   token_id: number;
 }
 
+/**
+ * ManualCreationSource
+ * Creation source for manually created tasks.
+ */
+export interface ManualCreationSource {
+  /**
+   * Service Names
+   * List of service names that send traces to this task
+   */
+  service_names?: string[];
+  /**
+   * Type
+   * @default "manual"
+   */
+  type?: "manual";
+}
+
 /** MessageRole */
 export type MessageRole = "developer" | "system" | "user" | "assistant" | "tool";
 
@@ -6435,6 +6573,23 @@ export interface NotebookSummary {
    * ISO timestamp when last updated
    */
   updated_at: string;
+}
+
+/**
+ * OTELCreationSource
+ * Creation source for OTEL-discovered agents (auto-created from traces).
+ */
+export interface OTELCreationSource {
+  /**
+   * Service Name
+   * Service name from OTEL trace
+   */
+  service_name: string;
+  /**
+   * Type
+   * @default "OTEL"
+   */
+  type?: "OTEL";
 }
 
 /**
@@ -12011,7 +12166,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.373
+ * @version 2.1.403
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13396,6 +13551,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetAgenticPromptByTagApiV1TasksTaskIdPromptsPromptNameVersionsTagsTagGetError
       >({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/tags/${tag}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.
+     *
+     * @tags Tasks
+     * @name GetAgentTasksApiV2AgentTasksGet
+     * @summary Get Agent Tasks
+     * @request GET:/api/v2/agent-tasks
+     * @secure
+     */
+    getAgentTasksApiV2AgentTasksGet: (params: RequestParams = {}) =>
+      this.request<GetAgentTasksApiV2AgentTasksGetData, any>({
+        path: `/api/v2/agent-tasks`,
         method: "GET",
         secure: true,
         format: "json",
