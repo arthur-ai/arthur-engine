@@ -17,7 +17,6 @@ from arthur_common.models.common_schemas import (
 )
 from arthur_common.models.enums import (
     AgenticAnnotationType,
-    AgentPollingStatus,
     ComparisonOperatorEnum,
     ContinuousEvalRunStatus,
     InferenceFeedbackTarget,
@@ -88,7 +87,6 @@ from weaviate.types import INCLUDE_VECTOR
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseAgenticNotebook,
-    DatabaseAgentPollingData,
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
@@ -585,13 +583,20 @@ class GCPCreationSource(BaseModel):
     gcp_reasoning_engine_id: str = Field(
         description="GCP Vertex AI Reasoning Engine ID"
     )
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="Service names associated with this agent",
+    )
 
 
 class OTELCreationSource(BaseModel):
     """Creation source for OTEL-discovered agents (auto-created from traces)."""
 
     type: Literal["OTEL"] = "OTEL"
-    service_name: str = Field(description="Service name from OTEL trace")
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="Service names associated with this agent",
+    )
 
 
 class ManualCreationSource(BaseModel):
@@ -760,6 +765,7 @@ class AgentMetadata(TypedDict):
     tools: list[Tool]
     sub_agents: list[SubAgent]
     models: list[str]
+    data_sources: list[str]
     num_spans: int
 
 
@@ -770,9 +776,6 @@ class EnrichedTaskResponse(BaseModel):
     name: str = Field(description="Task name")
     created_at: datetime = Field(description="Task creation timestamp")
     updated_at: datetime = Field(description="Task last update timestamp")
-    is_agentic: bool = Field(
-        default=False, description="Whether this is an agentic task"
-    )
     is_autocreated: bool = Field(
         default=False,
         description="Whether this task was auto-created (vs manually created)",
@@ -780,10 +783,6 @@ class EnrichedTaskResponse(BaseModel):
     creation_source: Optional[CreationSource] = Field(
         default=None,
         description="Information about how this task/agent was created",
-    )
-    service_names: List[str] = Field(
-        default_factory=list,
-        description="Service names associated with this task",
     )
     last_fetched: Optional[datetime] = Field(
         default=None,
@@ -800,6 +799,10 @@ class EnrichedTaskResponse(BaseModel):
     models: Optional[List[str]] = Field(
         default=None,
         description="Models used by this agent (computed from spans)",
+    )
+    data_sources: Optional[List[str]] = Field(
+        default=None,
+        description="Data sources used by this agent (computed from spans)",
     )
     num_spans: Optional[int] = Field(
         default=None,
@@ -4514,73 +4517,3 @@ class AgenticNotebook(BaseModel):
             ]
 
         return state
-
-
-class AgentPollingData(BaseModel):
-    """
-    Data required for polling registered agents.
-    """
-
-    id: uuid.UUID = Field(description="ID of the agent polling data.")
-    task_id: str = Field(description="ID of the parent task.")
-    created_at: datetime = Field(description="Time the agent polling data was created.")
-    updated_at: datetime = Field(
-        description="Time the agent polling data was last updated.",
-    )
-    last_fetched: Optional[datetime] = Field(
-        default=None,
-        description="Time the registered agent was last polled.",
-    )
-    status: AgentPollingStatus = Field(description="Status of the agent polling data.")
-    error_message: Optional[str] = Field(
-        default=None,
-        description="Error message if the agent polling data failed.",
-    )
-    failed_runs: int = Field(
-        default=0,
-        description="Number of times the agent polling data ran into api errors",
-    )
-
-    @staticmethod
-    def from_task_id(
-        task_id: str,
-    ) -> "AgentPollingData":
-        now = datetime.now()
-
-        return AgentPollingData(
-            id=uuid.uuid4(),
-            task_id=task_id,
-            created_at=now,
-            updated_at=now,
-            last_fetched=None,
-            status=AgentPollingStatus.PENDING,
-            error_message=None,
-            failed_runs=0,
-        )
-
-    @staticmethod
-    def from_database_model(
-        db_model: DatabaseAgentPollingData,
-    ) -> "AgentPollingData":
-        return AgentPollingData(
-            id=db_model.id,
-            task_id=db_model.task_id,
-            created_at=db_model.created_at,
-            updated_at=db_model.updated_at,
-            last_fetched=db_model.last_fetched,
-            status=AgentPollingStatus(db_model.status),
-            error_message=db_model.error_message,
-            failed_runs=db_model.failed_runs,
-        )
-
-    def to_database_model(self) -> DatabaseAgentPollingData:
-        return DatabaseAgentPollingData(
-            id=self.id,
-            task_id=self.task_id,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            last_fetched=self.last_fetched,
-            status=self.status.value,
-            error_message=self.error_message,
-            failed_runs=self.failed_runs,
-        )

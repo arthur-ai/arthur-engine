@@ -93,14 +93,6 @@ def create_task(
         task = Task._from_request_model(request)
         task = tasks_repo.create_task(task)
 
-        if request.is_agentic and request.agent_metadata is not None:
-            try:
-                polling_state_repo = TaskPollingStateRepository(db_session)
-                polling_state_repo.get_or_create(task.id)
-            except Exception as e:
-                tasks_repo.archive_task(task.id)
-                raise e
-
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
         response = task._to_response_model()
         return response
@@ -260,18 +252,8 @@ def get_agent_tasks(
             polling_state = polling_state_repo.get_by_task_id(task.id)
             last_fetched = polling_state.last_fetched if polling_state else None
 
-            # Extract agent metadata if task is agentic
-            tools = None
-            sub_agents = None
-            models = None
-            num_spans = None
-
-            if task.is_agentic:
-                agent_metadata = tasks_repo._extract_agent_metadata(task.id)
-                tools = agent_metadata["tools"]
-                sub_agents = agent_metadata["sub_agents"]
-                models = agent_metadata["models"]
-                num_spans = agent_metadata["num_spans"]
+            # Extract agent metadata
+            agent_metadata = tasks_repo._extract_agent_metadata(task.id)
 
             # Convert rule links to response models
             response_rules = []
@@ -285,15 +267,14 @@ def get_agent_tasks(
                 name=task.name,
                 created_at=task.created_at,
                 updated_at=task.updated_at,
-                is_agentic=task.is_agentic,
                 is_autocreated=task.is_autocreated,
                 creation_source=creation_source,
-                service_names=task.service_names,
                 last_fetched=last_fetched,
-                tools=tools,
-                sub_agents=sub_agents,
-                models=models,
-                num_spans=num_spans,
+                tools=agent_metadata["tools"],
+                sub_agents=agent_metadata["sub_agents"],
+                models=agent_metadata["models"],
+                data_sources=agent_metadata["data_sources"],
+                num_spans=agent_metadata["num_spans"],
                 rules=response_rules,
             )
             enriched_responses.append(enriched_response)

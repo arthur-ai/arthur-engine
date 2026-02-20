@@ -65,7 +65,6 @@ def test_get_agent_tasks_manual_task(client: GenaiEngineTestClientBase):
 
     # Verify fields
     assert manual_task.name == task_name
-    assert manual_task.is_agentic is True
     assert manual_task.is_autocreated is False
 
     # Verify creation_source is Manual
@@ -77,6 +76,7 @@ def test_get_agent_tasks_manual_task(client: GenaiEngineTestClientBase):
     assert manual_task.tools == []
     assert manual_task.sub_agents == []
     assert manual_task.models == []
+    assert manual_task.data_sources == []
     assert manual_task.num_spans == 0
 
 
@@ -121,7 +121,6 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
 
         # Verify fields
         assert gcp_task.name == task_name
-        assert gcp_task.is_agentic is True
         assert gcp_task.is_autocreated is False
 
         # Verify creation_source is GCP
@@ -131,6 +130,7 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
         assert gcp_task.creation_source.gcp_project_id == "test-project"
         assert gcp_task.creation_source.gcp_region == "us-central1"
         assert gcp_task.creation_source.gcp_reasoning_engine_id == "12345"
+        assert gcp_task.creation_source.service_names == []
 
     finally:
         db_session.close()
@@ -270,8 +270,8 @@ def test_get_agent_tasks_30_day_lookback(client: GenaiEngineTestClientBase):
         task_with_spans = next((t for t in enriched_tasks if t.id == task.id), None)
         assert task_with_spans is not None
 
-        # Only recent span should be counted
-        assert task_with_spans.num_spans == 1
+        # num_spans counts all spans (all time), tools only counts last 30 days
+        assert task_with_spans.num_spans == 2
         assert len(task_with_spans.tools) == 1
         assert task_with_spans.tools[0].name == "recent_tool"
 
@@ -395,13 +395,12 @@ def test_get_agent_tasks_autocreated_otel_task(client: GenaiEngineTestClientBase
 
         # Verify it's identified as auto-created
         assert otel_task.is_autocreated is True
-        assert otel_task.is_agentic is True
 
         # Verify creation_source is OTEL
         assert otel_task.creation_source is not None
         assert isinstance(otel_task.creation_source, OTELCreationSource)
         assert otel_task.creation_source.type == "OTEL"
-        assert otel_task.creation_source.service_name == task_name
+        assert otel_task.creation_source.service_names == []
 
     finally:
         db_session.close()

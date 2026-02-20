@@ -2,8 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 02/18/2026
-- **CHANGE** for **URL**: /api/v2/agent-tasks  endpoint added
+02/20/2026
+- Added GET /api/v2/agent-tasks — new unified endpoint for listing agentic tasks with enriched metadata (tools, sub-agents, models, data sources, rules, creation source, span counts)
+- Added POST /api/v1/tasks/{task_id}/agent-polling/execute — manual trigger for global polling per task
+- POST /api/v1/discover-agents — deprecated in favor of /api/v2/agent-tasks
+- Removed POST /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} — replaced by the new /execute endpoint
 
 02/12/2026
 

@@ -10,7 +10,7 @@ from arthur_common.models.enums import (
 from fastapi import HTTPException
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 from opentelemetry import trace
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
 
 from db_models import (
@@ -29,6 +29,7 @@ from schemas.internal_schemas import (
     AgentMetadata,
     ApplicationConfiguration,
     CreationSource,
+    GCPCreationSource,
     ManualCreationSource,
     OTELCreationSource,
     Rule,
@@ -125,10 +126,10 @@ class TaskRepository:
         """Extract tools, sub-agents, models, and span count from spans for an agent task.
 
         Queries the spans table for the given task_id and extracts:
-        - Tools: spans where span_kind == TOOL
-        - Sub-agents: spans where span_kind == AGENT
-        - Models: extracted from LLM spans at attributes.llm.model_name
-        - Total number of spans (limited to last 30 days)
+        - Tools: spans where span_kind == TOOL (last 30 days)
+        - Sub-agents: spans where span_kind == AGENT (last 30 days)
+        - Models: extracted from LLM spans at attributes.llm.model_name (last 30 days)
+        - Total number of spans (all time, all span kinds)
 
         Args:
             task_id: UUID of the task to extract metadata for
@@ -136,7 +137,7 @@ class TaskRepository:
         Returns:
             AgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
         """
-        # Query all relevant spans (AGENT, TOOL, LLM) for this task within last 30 days
+        # Query AGENT, TOOL, LLM spans for metadata extraction (last 30 days)
         relevant_span_kinds = [
             OpenInferenceSpanKindValues.AGENT.value,
             OpenInferenceSpanKindValues.TOOL.value,
@@ -153,59 +154,75 @@ class TaskRepository:
             .all()
         )
 
+        # Count all spans for this task (not filtered by span_kind)
+        total_span_count = (
+            self.db_session.query(func.count(DatabaseSpan.id))
+            .filter(DatabaseSpan.task_id == task_id)
+            .scalar()
+        ) or 0
+
         tools_set = set()
         sub_agents_set = set()
         models_set = set()
+        data_sources_set = set()
 
         for span in spans:
-            # Filter by span_kind to categorize
+            raw_data = span.raw_data or {}
+            attributes = raw_data.get("attributes", {})
+
+            # Extract data_source from metadata for all span kinds
+            data_source = get_nested_value(attributes, "metadata.data_source")
+            if data_source:
+                data_sources_set.add(data_source)
+
             if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
-                # Tools: use span name
                 if span.span_name:
                     tools_set.add(span.span_name)
 
             elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
-                # Sub-agents: use span name
                 if span.span_name:
                     sub_agents_set.add(span.span_name)
 
             elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
-                # Models: extract from attributes.llm.model_name
-                raw_data = span.raw_data or {}
-                attributes = raw_data.get("attributes", {})
                 model_name = get_nested_value(attributes, "llm.model_name")
                 if model_name:
                     models_set.add(model_name)
 
-        # Convert sets to sorted lists and create schema objects
         return {
             "tools": [Tool(name=name, arguments=[]) for name in sorted(tools_set)],
             "sub_agents": [SubAgent(name=name) for name in sorted(sub_agents_set)],
             "models": sorted(list(models_set)),
-            "num_spans": len(spans),
+            "data_sources": sorted(list(data_sources_set)),
+            "num_spans": total_span_count,
         }
 
     def _get_task_creation_source(self, task: Task) -> Optional[CreationSource]:
-        """Get creation_source for a task.
+        """Get creation_source for a task, with service_names injected.
 
         Reads creation_source directly from task_metadata.
         For tasks without task_metadata, infers creation source from task properties.
+        Injects task.service_names (from service_name_task_mappings) into the
+        returned GCP/OTEL creation_source.
 
         Args:
-            task: Task object with new-format task_metadata
+            task: Task object with service_names already populated
 
         Returns:
             CreationSource or None
         """
+        service_names = task.service_names or []
+
         if task.task_metadata and task.task_metadata.creation_source:
-            return task.task_metadata.creation_source
+            cs = task.task_metadata.creation_source
+            if isinstance(cs, GCPCreationSource):
+                return cs.model_copy(update={"service_names": service_names})
+            elif isinstance(cs, OTELCreationSource):
+                return cs.model_copy(update={"service_names": service_names})
+            return cs
 
         # No task_metadata — infer from task properties
         if task.is_autocreated:
-            return OTELCreationSource(
-                type="OTEL",
-                service_name=task.name,
-            )
+            return OTELCreationSource(service_names=service_names)
         elif task.is_agentic:
             return ManualCreationSource()
         else:
@@ -318,6 +335,30 @@ class TaskRepository:
         )
 
         return self.create_task(task, with_default_rules=False)
+
+    def find_by_gcp_engine_id(self, engine_id: str) -> Optional[DatabaseTask]:
+        """Find a task by its GCP reasoning engine ID in task_metadata JSON.
+
+        Queries tasks where task_metadata.creation_source.gcp_reasoning_engine_id matches.
+        Uses func.json_extract for SQLite/PostgreSQL compatibility.
+
+        Args:
+            engine_id: The GCP reasoning engine ID to search for
+
+        Returns:
+            The matching DatabaseTask, or None if not found
+        """
+        return (
+            self.db_session.query(DatabaseTask)
+            .filter(
+                func.json_extract(
+                    DatabaseTask.task_metadata,
+                    "$.creation_source.gcp_reasoning_engine_id",
+                )
+                == engine_id
+            )
+            .first()
+        )
 
     def link_rule_to_task(
         self,

@@ -1183,57 +1183,29 @@
                     "Tasks"
                 ],
                 "summary": "Get Agent Tasks",
-                "description": "Get tasks with enriched agent metadata (tools, sub-agents, models). Optionally filter by agentic status.",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.",
                 "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "is_agentic",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "boolean"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Is Agentic"
-                        }
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
                                     "items": {
                                         "$ref": "#/components/schemas/EnrichedTaskResponse"
                                     },
+                                    "type": "array",
                                     "title": "Response Get Agent Tasks Api V2 Agent Tasks Get"
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/task": {
@@ -14482,7 +14454,7 @@
                     "Agent Discovery"
                 ],
                 "summary": "Discover Agents",
-                "description": "Discover agents from infrastructure (e.g., GCP Vertex AI). This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.",
+                "description": "DEPRECATED: Use GET /api/v2/agent-tasks instead. Discovery is now handled automatically by the global polling service.",
                 "operationId": "discover_agents_api_v1_discover_agents_post",
                 "requestBody": {
                     "content": {
@@ -14516,6 +14488,7 @@
                         }
                     }
                 },
+                "deprecated": true,
                 "security": [
                     {
                         "API Key": []
@@ -14523,14 +14496,14 @@
                 ]
             }
         },
-        "/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}": {
+        "/api/v1/tasks/{task_id}/agent-polling/execute": {
             "post": {
                 "tags": [
                     "Agent Discovery"
                 ],
-                "summary": "Retry Agent Polling",
-                "description": "Retry a failed agent polling job for a given agent polling data id.",
-                "operationId": "retry_agent_polling_api_v1_tasks__task_id__agent_polling_retry__agent_polling_data_id__post",
+                "summary": "Execute Agent Polling",
+                "description": "Manually trigger a polling job for a task. Does not require any particular state \u2014 admins can use this to force an immediate poll outside the normal loop cadence.",
+                "operationId": "execute_agent_polling_api_v1_tasks__task_id__agent_polling_execute_post",
                 "security": [
                     {
                         "API Key": []
@@ -14544,16 +14517,6 @@
                         "schema": {
                             "type": "string",
                             "title": "Task Id"
-                        }
-                    },
-                    {
-                        "name": "agent_polling_data_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Agent Polling Data Id"
                         }
                     }
                 ],
@@ -18837,29 +18800,11 @@
                         "title": "Updated At",
                         "description": "Task last update timestamp"
                     },
-                    "is_agentic": {
-                        "type": "boolean",
-                        "title": "Is Agentic",
-                        "description": "Whether this is an agentic task",
-                        "default": false
-                    },
                     "is_autocreated": {
                         "type": "boolean",
                         "title": "Is Autocreated",
                         "description": "Whether this task was auto-created (vs manually created)",
                         "default": false
-                    },
-                    "infrastructure": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Infrastructure",
-                        "description": "Infrastructure where agent is running (e.g., 'GCP', 'AWS')"
                     },
                     "creation_source": {
                         "anyOf": [
@@ -18878,6 +18823,19 @@
                         ],
                         "title": "Creation Source",
                         "description": "Information about how this task/agent was created"
+                    },
+                    "last_fetched": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Fetched",
+                        "description": "Last time traces were fetched for this task (from task_polling_state)"
                     },
                     "tools": {
                         "anyOf": [
@@ -18924,6 +18882,21 @@
                         "title": "Models",
                         "description": "Models used by this agent (computed from spans)"
                     },
+                    "data_sources": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Data Sources",
+                        "description": "Data sources used by this agent (computed from spans)"
+                    },
                     "num_spans": {
                         "anyOf": [
                             {
@@ -18943,14 +18916,6 @@
                         "type": "array",
                         "title": "Rules",
                         "description": "Rules associated with this task"
-                    },
-                    "metrics": {
-                        "items": {
-                            "$ref": "#/components/schemas/MetricResponse"
-                        },
-                        "type": "array",
-                        "title": "Metrics",
-                        "description": "Metrics associated with this task"
                     }
                 },
                 "type": "object",
@@ -19807,20 +19772,7 @@
                         },
                         "type": "array",
                         "title": "Service Names",
-                        "description": "List of service names that send traces to this task"
-                    },
-                    "last_fetched": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Last Fetched",
-                        "description": "Timestamp of last successful trace fetch"
+                        "description": "Service names associated with this agent"
                     }
                 },
                 "type": "object",
@@ -21831,17 +21783,9 @@
                 "properties": {
                     "type": {
                         "type": "string",
-                        "const": "manual",
+                        "const": "MANUAL",
                         "title": "Type",
-                        "default": "manual"
-                    },
-                    "service_names": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Service Names",
-                        "description": "List of service names that send traces to this task"
+                        "default": "MANUAL"
                     }
                 },
                 "type": "object",
@@ -23270,16 +23214,16 @@
                         "title": "Type",
                         "default": "OTEL"
                     },
-                    "service_name": {
-                        "type": "string",
-                        "title": "Service Name",
-                        "description": "Service name from OTEL trace"
+                    "service_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Service Names",
+                        "description": "Service names associated with this agent"
                     }
                 },
                 "type": "object",
-                "required": [
-                    "service_name"
-                ],
                 "title": "OTELCreationSource",
                 "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
             },

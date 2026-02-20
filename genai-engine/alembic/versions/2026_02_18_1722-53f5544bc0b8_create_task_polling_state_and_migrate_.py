@@ -1,4 +1,4 @@
-d"""create task_polling_state and migrate from agent_polling_data
+"""create task_polling_state and migrate from agent_polling_data
 
 Revision ID: 53f5544bc0b8
 Revises: 843e2d3f46d5

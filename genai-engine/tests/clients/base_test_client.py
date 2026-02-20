@@ -4573,13 +4573,12 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
-    def retry_agent_polling_task(
+    def execute_agent_polling(
         self,
         task_id: str,
-        agent_polling_data_id: str,
     ) -> tuple[int, dict]:
-        """Retry an agent polling task"""
-        url = f"/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}"
+        """Manually trigger a polling job for a task."""
+        url = f"/api/v1/tasks/{task_id}/agent-polling/execute"
 
         resp = self.base_client.post(
             url,
