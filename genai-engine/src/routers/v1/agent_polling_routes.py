@@ -8,6 +8,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from services.task.global_agent_polling_service import get_global_agent_polling_service
 from utils.users import permission_checker
 
 agent_polling_routes = APIRouter(
@@ -43,6 +44,42 @@ def execute_agent_polling(
         )
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute polling: {str(e)}",
+        )
+
+
+@agent_polling_routes.post(
+    "/agent-polling/execute-all",
+    description="Manually trigger a full agent discovery and polling cycle. "
+    "Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks.",
+    tags=["Agent Discovery"],
+    status_code=status.HTTP_200_OK,
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def execute_all_agent_polling(
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> JSONResponse:
+    """Manually trigger a full discovery + polling cycle."""
+    polling_service = get_global_agent_polling_service()
+    if not polling_service:
+        raise HTTPException(
+            status_code=503,
+            detail="Global agent polling service is not initialized.",
+        )
+
+    try:
+        result = polling_service._discover_and_poll_agents()
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "completed",
+                "discovered": result["discovered"],
+                "enqueued": result["enqueued"],
+            },
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

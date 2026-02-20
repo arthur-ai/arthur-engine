@@ -4596,6 +4596,20 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json(),
         )
 
+    def execute_all_agent_polling(self) -> tuple[int, dict]:
+        """Manually trigger a full discovery + polling cycle."""
+        resp = self.base_client.post(
+            "/api/v1/agent-polling/execute-all",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
+        )
+
 
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,

@@ -14560,6 +14560,31 @@
                 }
             }
         },
+        "/api/v1/agent-polling/execute-all": {
+            "post": {
+                "tags": [
+                    "Agent Discovery"
+                ],
+                "summary": "Execute All Agent Polling",
+                "description": "Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks.",
+                "operationId": "execute_all_agent_polling_api_v1_agent_polling_execute_all_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -18260,7 +18285,7 @@
                 },
                 "type": "object",
                 "title": "CreationSource",
-                "description": "Source information for how an unregistered agent was created."
+                "description": "Source information for how an unregistered agent was created.\n\n.. deprecated::\n    This flat CreationSource model is deprecated.\n    Use the discriminated union CreationSource from\n    arthur_common.models.agent_governance_schemas instead."
             },
             "DailyAgenticAnnotationStats": {
                 "properties": {
@@ -18312,6 +18337,21 @@
                 ],
                 "title": "DailyAgenticAnnotationStats",
                 "description": "Statistics for a single day of agentic annotations."
+            },
+            "DataSource": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Url",
+                        "description": "URL of the data source."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "url"
+                ],
+                "title": "DataSource",
+                "description": "Data source used by an agent."
             },
             "DatasetColumnSource": {
                 "properties": {
@@ -18701,7 +18741,7 @@
                     "data_plane_id"
                 ],
                 "title": "DiscoverAgentsRequest",
-                "description": "Request to discover agents from infrastructure."
+                "description": "Request to discover agents from infrastructure.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks instead."
             },
             "DiscoverAgentsResponse": {
                 "properties": {
@@ -18725,7 +18765,7 @@
                     "agents"
                 ],
                 "title": "DiscoverAgentsResponse",
-                "description": "Response containing discovered agents."
+                "description": "Response containing discovered agents.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks instead."
             },
             "DiscoveredAgent": {
                 "properties": {
@@ -18792,7 +18832,7 @@
                     "data_plane_id"
                 ],
                 "title": "DiscoveredAgent",
-                "description": "A discovered agent from infrastructure."
+                "description": "A discovered agent from infrastructure.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks with EnrichedTaskResponse instead."
             },
             "EnrichedTaskResponse": {
                 "properties": {
@@ -18889,7 +18929,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "type": "string"
+                                    "$ref": "#/components/schemas/Model"
                                 },
                                 "type": "array"
                             },
@@ -18904,7 +18944,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "type": "string"
+                                    "$ref": "#/components/schemas/DataSource"
                                 },
                                 "type": "array"
                             },
@@ -22016,6 +22056,21 @@
                     "ToolSelection"
                 ],
                 "title": "MetricType"
+            },
+            "Model": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the model."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "Model",
+                "description": "Model used by an agent."
             },
             "ModelProvider": {
                 "type": "string",

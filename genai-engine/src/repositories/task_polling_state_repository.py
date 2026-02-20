@@ -44,7 +44,7 @@ class TaskPollingStateRepository:
         """Update the last_fetched timestamp for a task."""
         state = self.get_or_create(task_id)
         state.last_fetched = timestamp
-        state.updated_at = datetime.now()
+        state.updated_at = timestamp
         self.db_session.commit()
 
     def get_by_task_id(self, task_id: str) -> Optional[DatabaseTaskPollingState]:

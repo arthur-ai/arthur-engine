@@ -91,26 +91,32 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         logger.info(f"Background thread stopped for {self.service_name}")
 
-    def _discover_and_poll_agents(self) -> None:
-        """Run a full discovery + polling cycle."""
-        # Phase 1: Discovery
-        self._discover_gcp_agents()
+    def _discover_and_poll_agents(self) -> dict:
+        """Run a full discovery + polling cycle.
 
-        # Phase 2: Fetch traces
-        self._poll_all_gcp_tasks()
+        Returns:
+            Dict with discovered (new tasks created) and enqueued (polling jobs started).
+        """
+        discovered = self._discover_gcp_agents()
+        enqueued = self._poll_all_gcp_tasks()
+        return {"discovered": discovered, "enqueued": enqueued}
 
-    def _discover_gcp_agents(self) -> None:
+    def _discover_gcp_agents(self) -> int:
         """List Vertex AI agents and create tasks for newly discovered ones.
 
         Skips discovery if GOOGLE_CLOUD_PROJECT is not configured.
+
+        Returns:
+            Number of newly created tasks.
         """
         project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
         location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
         if not project_id:
             logger.debug("GOOGLE_CLOUD_PROJECT not set, skipping GCP agent discovery")
-            return
+            return 0
 
+        created_count = 0
         db_session = next(get_db_session())
         try:
             discovery_service = AgentDiscoveryService(db_session)
@@ -118,7 +124,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
             if not agents:
                 logger.info("No Vertex AI agents found during discovery")
-                return
+                return 0
 
             logger.info(f"Discovered {len(agents)} Vertex AI agent(s)")
 
@@ -187,6 +193,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     # Initialize polling state
                     polling_state_repo.get_or_create(created_task.id)
 
+                    created_count += 1
                     logger.info(
                         f"Created task '{created_task.name}' (id={created_task.id}) "
                         f"for GCP engine {engine_id}"
@@ -204,6 +211,8 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
             logger.error(f"Error during GCP agent discovery: {e}", exc_info=True)
         finally:
             db_session.close()
+
+        return created_count
 
     def _find_task_by_gcp_engine_id(
         self, db_session: Session, engine_id: str
@@ -253,20 +262,24 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         return True
 
-    def _poll_all_gcp_tasks(self) -> None:
+    def _poll_all_gcp_tasks(self) -> int:
         """Enqueue trace-fetch jobs for all eligible GCP tasks.
 
         Finds all GCP tasks, checks eligibility (project/region match),
         and enqueues polling jobs. Failed polls are logged but never block
         future polls.
+
+        Returns:
+            Number of polling jobs enqueued.
         """
         project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
         location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
         if not project_id:
             logger.debug("GOOGLE_CLOUD_PROJECT not set, skipping GCP task polling")
-            return
+            return 0
 
+        enqueued_count = 0
         db_session = next(get_db_session())
         try:
             # Find all tasks with GCP creation_source
@@ -283,13 +296,12 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
             if not gcp_tasks:
                 logger.info("No GCP tasks found for polling")
-                return
+                return 0
 
             logger.info(f"Found {len(gcp_tasks)} GCP task(s), checking eligibility")
 
             # Ensure polling state exists and enqueue eligible tasks
             polling_state_repo = TaskPollingStateRepository(db_session)
-            enqueued_count = 0
             skipped_count = 0
 
             for db_task in gcp_tasks:
@@ -326,6 +338,8 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
             logger.error(f"Error enqueuing GCP polling jobs: {e}", exc_info=True)
         finally:
             db_session.close()
+
+        return enqueued_count
 
     def _execute_job(self, job: AgentPollingJob) -> None:
         """Fetch traces for a single task.

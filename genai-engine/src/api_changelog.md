@@ -2,6 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/data_sources/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/data_sources/anyOf[subschema #1]/items/url' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
 02/20/2026
 - Added GET /api/v2/agent-tasks — new unified endpoint for listing agentic tasks with enriched metadata (tools, sub-agents, models, data sources, rules, creation source, span counts)
 - Added POST /api/v1/tasks/{task_id}/agent-polling/execute — manual trigger for global polling per task

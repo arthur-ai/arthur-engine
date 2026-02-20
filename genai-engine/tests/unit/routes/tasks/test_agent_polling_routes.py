@@ -194,3 +194,40 @@ def test_execute_agent_polling_already_active(
             assert response["status"] == "enqueued"
         finally:
             client.delete_task(task_response.id)
+
+
+@pytest.mark.unit_tests
+def test_execute_all_agent_polling_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that execute-all triggers discovery + polling and returns counts."""
+    mock_polling_service = MagicMock()
+    mock_polling_service._discover_and_poll_agents.return_value = {
+        "discovered": 2,
+        "enqueued": 3,
+    }
+
+    with patch(
+        "routers.v1.agent_polling_routes.get_global_agent_polling_service",
+        return_value=mock_polling_service,
+    ):
+        status_code, response = client.execute_all_agent_polling()
+        assert status_code == 200
+        assert response["status"] == "completed"
+        assert response["discovered"] == 2
+        assert response["enqueued"] == 3
+        mock_polling_service._discover_and_poll_agents.assert_called_once()
+
+
+@pytest.mark.unit_tests
+def test_execute_all_agent_polling_service_not_initialized(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that execute-all returns 503 when service is not initialized."""
+    with patch(
+        "routers.v1.agent_polling_routes.get_global_agent_polling_service",
+        return_value=None,
+    ):
+        status_code, response = client.execute_all_agent_polling()
+        assert status_code == 503
+        assert "not initialized" in response["detail"]
