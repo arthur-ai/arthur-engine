@@ -241,6 +241,10 @@ def get_dataset_version(
         description="ID of the dataset to fetch the version for.",
     ),
     version_number: int = Path(description="Version number to fetch."),
+    search: Optional[str] = Query(
+        None,
+        description="Search query to filter rows. Performs case-insensitive search across all column values.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> DatasetVersionResponse:
@@ -250,6 +254,7 @@ def get_dataset_version(
             dataset_id,
             version_number,
             pagination_parameters,
+            search_query=search,
         ).to_response_model()
     finally:
         db_session.close()
@@ -347,7 +352,7 @@ def generate_synthetic_data(
             "data": [
                 {"column_name": col.column_name, "column_value": col.column_value}
                 for col in row.data
-            ]
+            ],
         }
         for row in dataset_version.rows
     ]
@@ -403,7 +408,7 @@ def send_synthetic_data_message(
             "data": [
                 {"column_name": col.column_name, "column_value": col.column_value}
                 for col in row.data
-            ]
+            ],
         }
         for row in dataset_version.rows
     ]
