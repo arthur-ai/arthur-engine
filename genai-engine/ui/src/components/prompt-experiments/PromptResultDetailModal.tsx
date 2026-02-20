@@ -155,7 +155,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
             <Box className="grid grid-cols-2 gap-4">
               {/* Rendered Prompt Messages */}
               <Box>
-                <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Typography variant="subtitle2" sx={{ fontWeight: 500, color: "text.secondary", mb: 1 }}>
                   Input Messages:
                 </Typography>
                 <Box className="max-h-96 overflow-auto">

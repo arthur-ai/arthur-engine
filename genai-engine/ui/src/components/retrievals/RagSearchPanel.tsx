@@ -199,7 +199,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
                     Provider
                   </label>
                   {isLoadingProviders ? (
-                    <Box className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-500 dark:text-gray-400">
+                    <Box sx={{ px: 1, py: 0.75, border: 1, borderColor: "divider", borderRadius: 1, fontSize: "0.875rem", color: "text.secondary" }}>
                       Loading...
                     </Box>
                   ) : (

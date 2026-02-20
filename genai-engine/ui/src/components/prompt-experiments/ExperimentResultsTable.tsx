@@ -249,8 +249,17 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                               <>
                                 <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
                                 {promptResult.output.tool_calls && promptResult.output.tool_calls.length > 0 && (
-                                  <Box className="mt-2 p-2 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded">
-                                    <Typography variant="caption" className="font-medium text-purple-700 dark:text-purple-300">
+                                  <Box
+                                    sx={{
+                                      mt: 1,
+                                      p: 1,
+                                      bgcolor: "secondary.50",
+                                      border: 1,
+                                      borderColor: "secondary.200",
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    <Typography variant="caption" sx={{ fontWeight: 500, color: "secondary.main" }}>
                                       Tool Calls: {promptResult.output.tool_calls.length}
                                     </Typography>
                                   </Box>

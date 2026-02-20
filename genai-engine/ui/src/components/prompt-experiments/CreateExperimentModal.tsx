@@ -1324,7 +1324,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             </strong>{" "}
             to either a dataset column or the experiment output.
           </Typography>
-          <Box className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded">
+          <Box sx={{ p: 1.5, bgcolor: "info.50", border: 1, borderColor: "info.200", borderRadius: 1 }}>
             <Typography variant="body2" className="text-gray-800 dark:text-gray-200">
               <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference
               text, ground truth labels).
