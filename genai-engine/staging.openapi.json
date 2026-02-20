@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.403"
+        "version": "2.1.404"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -7393,6 +7393,24 @@
                             "title": "Version Number"
                         },
                         "description": "Version number to fetch."
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Search query to filter rows. Performs case-insensitive search across all column values.",
+                            "title": "Search"
+                        },
+                        "description": "Search query to filter rows. Performs case-insensitive search across all column values."
                     },
                     {
                         "name": "sort",

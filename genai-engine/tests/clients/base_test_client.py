@@ -2720,6 +2720,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         version_number: int,
         page: int = None,
         page_size: int = None,
+        search: str = None,
     ) -> tuple[int, DatasetVersionResponse]:
         """Get a dataset version."""
         path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
@@ -2728,6 +2729,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page"] = page
         if page_size is not None:
             params["page_size"] = page_size
+        if search is not None:
+            params["search"] = search
 
         url = path
         if params:
