@@ -96,8 +96,6 @@ def create_task(
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
         response = task._to_response_model()
         return response
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -126,8 +124,6 @@ def get_all_tasks(
         tasks = tasks_repo.get_all_tasks()
 
         return [task._to_response_model() for task in tasks]
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -155,8 +151,6 @@ def archive_task(
         tasks_repo.archive_task(str(task_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -183,8 +177,108 @@ def get_task(
         )
         task = task_repo.get_task_by_id(str(task_id))
         return task._to_response_model()
-    except:
-        raise
+    finally:
+        db_session.close()
+
+
+@task_management_routes.get(
+    "/agent-tasks",
+    description="Get agentic tasks with enriched agent metadata (tools, sub-agents, models). "
+    "Returns only agentic tasks.",
+    response_model=list[EnrichedTaskResponse],
+    tags=["Tasks"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_agent_tasks(
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> list[EnrichedTaskResponse]:
+    """Get agentic tasks with enriched agent metadata.
+
+    Returns tasks with additional metadata computed from spans:
+    - tools: List of tools used by the agent
+    - sub_agents: List of sub-agents used
+    - models: List of models used
+    - num_spans: Total number of spans
+
+    Also includes creation_source information (GCP, OTEL, or manual).
+
+    Args:
+        db_session: Database session
+        application_config: Application configuration
+        current_user: Current authenticated user
+
+    Returns:
+        List of EnrichedTaskResponse objects (agentic tasks only)
+    """
+    try:
+        rules_repo = RuleRepository(db_session)
+        metrics_repo = MetricRepository(db_session)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            metrics_repo,
+            application_config,
+        )
+
+        # Query only agentic tasks
+        db_tasks, _ = tasks_repo.query_tasks(
+            is_agentic=True,
+            include_archived=False,
+            page_size=1000,  # Large page size for now, add pagination later if needed
+            page=0,
+        )
+
+        # Convert to Task objects
+        tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
+
+        # Build enriched responses
+        enriched_responses = []
+        for task in tasks:
+            # Map old task_metadata to new creation_source format
+            infrastructure, creation_source = (
+                tasks_repo._map_task_metadata_to_creation_source(task)
+            )
+
+            # Extract agent metadata if task is agentic
+            tools = None
+            sub_agents = None
+            models = None
+            num_spans = None
+
+            if task.is_agentic:
+                agent_metadata = tasks_repo._extract_agent_metadata(task.id)
+                tools = agent_metadata["tools"]
+                sub_agents = agent_metadata["sub_agents"]
+                models = agent_metadata["models"]
+                num_spans = agent_metadata["num_spans"]
+
+            # Convert rule links to response models
+            response_rules = []
+            for rule_link in task.rule_links or []:
+                response_rule = rule_link.rule._to_response_model()
+                response_rule.enabled = rule_link.enabled
+                response_rules.append(response_rule)
+
+            enriched_response = EnrichedTaskResponse(
+                id=task.id,
+                name=task.name,
+                created_at=task.created_at,
+                updated_at=task.updated_at,
+                is_agentic=task.is_agentic,
+                is_autocreated=task.is_autocreated,
+                infrastructure=infrastructure,
+                creation_source=creation_source,
+                tools=tools,
+                sub_agents=sub_agents,
+                models=models,
+                num_spans=num_spans,
+                rules=response_rules,
+            )
+            enriched_responses.append(enriched_response)
+
+        return enriched_responses
     finally:
         db_session.close()
 
@@ -343,8 +437,6 @@ def search_tasks(
             tasks=[task._to_response_model() for task in tasks],
             count=count,
         )
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -395,8 +487,6 @@ def create_task_rule(
         response_rule.enabled = True
         send_telemetry_event_for_task_rule_create_completed(new_rule.type)
         return response_rule
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -427,8 +517,6 @@ def update_task_rules(
         updated_task = task_repo.get_task_by_id(str(task_id))
 
         return updated_task._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -482,8 +570,6 @@ def archive_task_rule(
             rule_repo.archive_rule(str(rule_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -524,8 +610,6 @@ def create_task_metric(
         task_repo.link_metric_to_task(task.id, created_metric.id)
 
         return created_metric._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -554,8 +638,6 @@ def update_task_metric(
         task_repo.toggle_task_metric_enabled(str(task_id), str(metric_id), body.enabled)
         updated_task = task_repo.get_task_by_id(str(task_id))
         return updated_task._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -599,8 +681,5 @@ def archive_task_metric(
         metric_repo.archive_metric(str(metric_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    except:
-        raise
     finally:
         db_session.close()

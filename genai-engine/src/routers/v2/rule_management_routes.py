@@ -73,8 +73,6 @@ def create_default_rule(
         tasks_repo.update_all_tasks_add_default_rule(rule)
         send_telemetry_event_for_default_rule_create_completed(rule.type)
         return rule._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -96,8 +94,6 @@ def get_default_rules(
         rules, _ = rules_repo.query_rules(rule_scopes=[RuleScope.DEFAULT])
 
         return [rule._to_response_model() for rule in rules]
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -126,8 +122,6 @@ def archive_default_rule(
         task_repo.update_all_tasks_remove_default_rule(str(rule_id))
 
         return Response(status_code=status.HTTP_200_OK)
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -167,7 +161,5 @@ def search_rules(
             count=count,
             rules=[r._to_response_model() for r in rules],
         )
-    except:
-        raise
     finally:
         db_session.close()

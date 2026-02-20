@@ -8,6 +8,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - POST /api/v1/discover-agents — deprecated in favor of /api/v2/agent-tasks
 - Removed POST /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} — replaced by the new /execute endpoint
 
+
 02/12/2026
 
 CHANGE for multiple endpoints: Added new 'external' enum value to 'agent_metadata/provider' in responses and requests for POST /api/v2/tasks, GET /api/v2/tasks/{task_id}, and PATCH /api/v2/tasks/{task_id}/metrics/{metric_id}

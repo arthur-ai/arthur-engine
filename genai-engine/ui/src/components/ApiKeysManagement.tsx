@@ -255,259 +255,274 @@ export const ApiKeysManagement: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <Box>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          px: 3,
+          pt: 3,
+          pb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
         <Box>
-          <Typography variant="h5" component="h2" gutterBottom color="text.primary" fontWeight="bold">
+          <Typography variant="h5" fontWeight={600} color="text.primary">
             API Keys Management
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Create and manage API keys for accessing the GenAI Engine.
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Create and manage API keys for accessing the GenAI Engine
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<Add />} onClick={handleCreateClick}>
-          Create New Key
+          API Key
         </Button>
       </Box>
 
-      {error && !permissionError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+        {error && !permissionError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
-      <Card>
-        <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-          <TableContainer sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
-            <Table stickyHeader size="small" sx={{ width: "100%" }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-                      width: "30%",
-                    }}
-                  >
-                    Description
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-                      width: "25%",
-                    }}
-                  >
-                    Role
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-                      width: "30%",
-                    }}
-                  >
-                    Created At
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-                      width: "15%",
-                    }}
-                    align="right"
-                  >
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {apiKeys.length === 0 ? (
+        <Card>
+          <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
+            <TableContainer sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
+              <Table stickyHeader size="small" sx={{ width: "100%" }}>
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={4} align="center">
-                      <Box sx={{ py: 4 }}>
-                        <VpnKey sx={{ fontSize: 48, color: "grey.400", mb: 2 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          No API keys found. Create your first key to get started.
-                        </Typography>
-                      </Box>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
+                        width: "30%",
+                      }}
+                    >
+                      Description
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
+                        width: "25%",
+                      }}
+                    >
+                      Role
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
+                        width: "30%",
+                      }}
+                    >
+                      Created At
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
+                        width: "15%",
+                      }}
+                      align="right"
+                    >
+                      Actions
                     </TableCell>
                   </TableRow>
-                ) : (
-                  apiKeys.map((apiKey) => (
-                    <TableRow key={apiKey.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {apiKey.description || "No description"}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          ID: {apiKey.id.substring(0, 8)}...
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {apiKey.roles && apiKey.roles.length > 0 ? apiKey.roles.map(getRoleDisplayName).join(", ") : "No role assigned"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{formatDate(apiKey.created_at)}</Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(apiKey)} title="Delete API key">
-                          <Delete />
-                        </IconButton>
+                </TableHead>
+                <TableBody>
+                  {apiKeys.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        <Box sx={{ py: 4 }}>
+                          <VpnKey sx={{ fontSize: 48, color: "grey.400", mb: 2 }} />
+                          <Typography variant="body2" color="text.secondary">
+                            No API keys found. Create your first key to get started.
+                          </Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
+                  ) : (
+                    apiKeys.map((apiKey) => (
+                      <TableRow key={apiKey.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="medium">
+                            {apiKey.description || "No description"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            ID: {apiKey.id.substring(0, 8)}...
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {apiKey.roles && apiKey.roles.length > 0 ? apiKey.roles.map(getRoleDisplayName).join(", ") : "No role assigned"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{formatDate(apiKey.created_at)}</Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <IconButton size="small" color="error" onClick={() => handleDeleteClick(apiKey)} title="Delete API key">
+                            <Delete />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
 
-      {/* Create API Key Modal */}
-      <Dialog open={createModal} onClose={handleCreateCancel} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              mb: 2,
-            }}
-          >
+        {/* Create API Key Modal */}
+        <Dialog open={createModal} onClose={handleCreateCancel} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
             <Box
               sx={{
-                width: 48,
-                height: 48,
-                borderRadius: "50%",
-                bgcolor: "primary.light",
                 display: "flex",
-                alignItems: "center",
                 justifyContent: "center",
+                mb: 2,
               }}
             >
-              <VpnKey sx={{ color: "primary.main", fontSize: 24 }} />
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  bgcolor: "primary.light",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <VpnKey sx={{ color: "primary.main", fontSize: 24 }} />
+              </Box>
             </Box>
-          </Box>
-          Create New API Key
-        </DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="dense" required>
-            <InputLabel id="role-select-label">Role</InputLabel>
-            <Select
-              labelId="role-select-label"
-              id="role-select"
-              value={selectedRole}
-              label="Role"
-              onChange={(e) => setSelectedRole(e.target.value as APIKeysRolesEnum)}
+            Create New API Key
+          </DialogTitle>
+          <DialogContent>
+            <FormControl fullWidth margin="dense" required>
+              <InputLabel id="role-select-label">Role</InputLabel>
+              <Select
+                labelId="role-select-label"
+                id="role-select"
+                value={selectedRole}
+                label="Role"
+                onChange={(e) => setSelectedRole(e.target.value as APIKeysRolesEnum)}
+                disabled={isCreating}
+              >
+                <MenuItem value="VALIDATION-USER">Validation User</MenuItem>
+                <MenuItem value="TASK-ADMIN">Task Admin</MenuItem>
+                <MenuItem value="DEFAULT-RULE-ADMIN">Default Rule Admin</MenuItem>
+                <MenuItem value="ORG-AUDITOR">Organization Auditor</MenuItem>
+                <MenuItem value="ORG-ADMIN">Organization Admin</MenuItem>
+              </Select>
+              <FormHelperText>Select the role that will be assigned to this API key</FormHelperText>
+            </FormControl>
+            <TextField
+              margin="dense"
+              id="description"
+              label="Description (Optional)"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter a description for this key..."
               disabled={isCreating}
+              helperText="Add a description to help identify this key later"
+            />
+          </DialogContent>
+          <DialogActions sx={{ p: 3 }}>
+            <Button onClick={handleCreateCancel} disabled={isCreating} variant="outlined">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateConfirm}
+              disabled={isCreating}
+              variant="contained"
+              startIcon={isCreating ? <CircularProgress size={16} /> : <Add />}
             >
-              <MenuItem value="VALIDATION-USER">Validation User</MenuItem>
-              <MenuItem value="TASK-ADMIN">Task Admin</MenuItem>
-              <MenuItem value="DEFAULT-RULE-ADMIN">Default Rule Admin</MenuItem>
-              <MenuItem value="ORG-AUDITOR">Organization Auditor</MenuItem>
-              <MenuItem value="ORG-ADMIN">Organization Admin</MenuItem>
-            </Select>
-            <FormHelperText>Select the role that will be assigned to this API key</FormHelperText>
-          </FormControl>
-          <TextField
-            margin="dense"
-            id="description"
-            label="Description (Optional)"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Enter a description for this key..."
-            disabled={isCreating}
-            helperText="Add a description to help identify this key later"
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={handleCreateCancel} disabled={isCreating} variant="outlined">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreateConfirm}
-            disabled={isCreating}
-            variant="contained"
-            startIcon={isCreating ? <CircularProgress size={16} /> : <Add />}
-          >
-            {isCreating ? "Creating..." : "Create Key"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+              {isCreating ? "Creating..." : "Create Key"}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-      {/* Created Key Display Modal */}
-      <Dialog open={showCreatedKeyModal} onClose={handleCloseCreatedKeyModal} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>API Key Created Successfully</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mt: 2, mb: 3 }}>
-            <Typography variant="body2">Make sure to copy your API key now. You won't be able to see it again!</Typography>
-          </Alert>
-          <Box
-            sx={{
-              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-              borderRadius: 2,
-              p: 2.5,
-              border: "1px solid",
-              borderColor: "divider",
-              fontFamily: "monospace",
-              fontSize: "0.875rem",
-              wordBreak: "break-all",
-              textAlign: "left",
-              lineHeight: 1.6,
-            }}
-          >
-            {createdKey || ""}
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={handleCopyKey} variant="outlined" disabled={copied}>
-            {copied ? "Copied!" : "Copy to Clipboard"}
-          </Button>
-          <Button onClick={handleCloseCreatedKeyModal} variant="contained">
-            Done
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {/* Created Key Display Modal */}
+        <Dialog open={showCreatedKeyModal} onClose={handleCloseCreatedKeyModal} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ textAlign: "center", pb: 1 }}>API Key Created Successfully</DialogTitle>
+          <DialogContent>
+            <Alert severity="warning" sx={{ mt: 2, mb: 3 }}>
+              <Typography variant="body2">Make sure to copy your API key now. You won't be able to see it again!</Typography>
+            </Alert>
+            <Box
+              sx={{
+                backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
+                borderRadius: 2,
+                p: 2.5,
+                border: "1px solid",
+                borderColor: "divider",
+                fontFamily: "monospace",
+                fontSize: "0.875rem",
+                wordBreak: "break-all",
+                textAlign: "left",
+                lineHeight: 1.6,
+              }}
+            >
+              {createdKey || ""}
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 3 }}>
+            <Button onClick={handleCopyKey} variant="outlined" disabled={copied}>
+              {copied ? "Copied!" : "Copy to Clipboard"}
+            </Button>
+            <Button onClick={handleCloseCreatedKeyModal} variant="contained">
+              Done
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      <Dialog open={deleteModal.isOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          <ErrorIcon sx={{ color: "error.main" }} />
-          Delete API Key
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Are you sure you want to delete this API key? This action cannot be undone. Any applications using this key will lose access immediately.
-          </Typography>
-          {deleteModal.apiKey?.description && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Description:{" "}
-              <Typography component="span" fontWeight="bold">
-                {deleteModal.apiKey.description}
-              </Typography>
+        {/* Delete Confirmation Modal */}
+        <Dialog open={deleteModal.isOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+            <ErrorIcon sx={{ color: "error.main" }} />
+            Delete API Key
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Are you sure you want to delete this API key? This action cannot be undone. Any applications using this key will lose access
+              immediately.
             </Typography>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={handleDeleteCancel} disabled={isDeleting} variant="outlined">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            disabled={isDeleting}
-            color="error"
-            variant="contained"
-            startIcon={isDeleting ? <CircularProgress size={16} /> : <Delete />}
-          >
-            {isDeleting ? "Deleting..." : "Delete"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+            {deleteModal.apiKey?.description && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Description:{" "}
+                <Typography component="span" fontWeight="bold">
+                  {deleteModal.apiKey.description}
+                </Typography>
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 3 }}>
+            <Button onClick={handleDeleteCancel} disabled={isDeleting} variant="outlined">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              color="error"
+              variant="contained"
+              startIcon={isDeleting ? <CircularProgress size={16} /> : <Delete />}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </Box>
   );
 };

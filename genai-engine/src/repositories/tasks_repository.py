@@ -37,6 +37,7 @@ from schemas.internal_schemas import (
     Task,
     Tool,
 )
+from services.agent_discovery_service import parse_gcp_resource_path
 from utils import constants
 from utils.trace import get_nested_value
 

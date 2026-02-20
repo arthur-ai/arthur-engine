@@ -28,7 +28,7 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
   - [Integration Tests](#integration-tests)
   - [Performance Tests](#performance-tests)
   - [Generate Changelog](#generate-changelog)
-  - [Generate a new Alembic Migration](#generate-a-new-alembic-migration)
+  - [Running the engine with the guardrail feature disabled](#running-the-engine-with-the-guardrail-feature-disabled)
 
 ## Getting Started
 
@@ -327,3 +327,10 @@ export PYTHONPATH="src:$PYTHONPATH"
 If you can't install torch on your computer and want to generate the changelog from a container, run
 `docker compose up -d changelog-generator` from the genai-engine directory instead.
 
+## Running the engine with the guardrail feature disabled
+The guardrail feature requires the engine application to load large model binaries. This can significantly increase server startup time while the models are being loaded.
+
+If you are not using the guardrail feature, you can skip the model loading process by setting the environment variable:
+```
+GENAI_ENGINE_SKIP_MODEL_LOADING=true
+```

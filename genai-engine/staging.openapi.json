@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.389"
+        "version": "2.1.403"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -18800,12 +18800,36 @@
                         "title": "Updated At",
                         "description": "Task last update timestamp"
                     },
+<<<<<<< HEAD
+=======
+                    "is_agentic": {
+                        "type": "boolean",
+                        "title": "Is Agentic",
+                        "description": "Whether this is an agentic task",
+                        "default": false
+                    },
+>>>>>>> dev
                     "is_autocreated": {
                         "type": "boolean",
                         "title": "Is Autocreated",
                         "description": "Whether this task was auto-created (vs manually created)",
                         "default": false
                     },
+<<<<<<< HEAD
+=======
+                    "infrastructure": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Infrastructure",
+                        "description": "Infrastructure where agent is running (e.g., 'GCP', 'AWS')"
+                    },
+>>>>>>> dev
                     "creation_source": {
                         "anyOf": [
                             {
@@ -18824,6 +18848,7 @@
                         "title": "Creation Source",
                         "description": "Information about how this task/agent was created"
                     },
+<<<<<<< HEAD
                     "last_fetched": {
                         "anyOf": [
                             {
@@ -18837,6 +18862,8 @@
                         "title": "Last Fetched",
                         "description": "Last time traces were fetched for this task (from task_polling_state)"
                     },
+=======
+>>>>>>> dev
                     "tools": {
                         "anyOf": [
                             {
@@ -18882,6 +18909,7 @@
                         "title": "Models",
                         "description": "Models used by this agent (computed from spans)"
                     },
+<<<<<<< HEAD
                     "data_sources": {
                         "anyOf": [
                             {
@@ -18897,6 +18925,8 @@
                         "title": "Data Sources",
                         "description": "Data sources used by this agent (computed from spans)"
                     },
+=======
+>>>>>>> dev
                     "num_spans": {
                         "anyOf": [
                             {
@@ -19772,7 +19802,24 @@
                         },
                         "type": "array",
                         "title": "Service Names",
+<<<<<<< HEAD
                         "description": "Service names associated with this agent"
+=======
+                        "description": "List of service names that send traces to this task"
+                    },
+                    "last_fetched": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Fetched",
+                        "description": "Timestamp of last successful trace fetch"
+>>>>>>> dev
                     }
                 },
                 "type": "object",
@@ -21783,9 +21830,23 @@
                 "properties": {
                     "type": {
                         "type": "string",
+<<<<<<< HEAD
                         "const": "MANUAL",
                         "title": "Type",
                         "default": "MANUAL"
+=======
+                        "const": "manual",
+                        "title": "Type",
+                        "default": "manual"
+                    },
+                    "service_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Service Names",
+                        "description": "List of service names that send traces to this task"
+>>>>>>> dev
                     }
                 },
                 "type": "object",
@@ -23214,6 +23275,7 @@
                         "title": "Type",
                         "default": "OTEL"
                     },
+<<<<<<< HEAD
                     "service_names": {
                         "items": {
                             "type": "string"
@@ -23224,6 +23286,18 @@
                     }
                 },
                 "type": "object",
+=======
+                    "service_name": {
+                        "type": "string",
+                        "title": "Service Name",
+                        "description": "Service name from OTEL trace"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "service_name"
+                ],
+>>>>>>> dev
                 "title": "OTELCreationSource",
                 "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
             },
