@@ -123,3 +123,11 @@ class DiscoverAgentsResponse(BaseModel):
         default_factory=dict,
         description="Discovery metadata (e.g., traces processed, errors)",
     )
+
+
+class DiscoverAndPollResponse(BaseModel):
+    """Response model for the execute-all agent polling endpoint."""
+
+    status: str = Field(description="Status of the operation")
+    discovered: int = Field(description="Number of new agent tasks created")
+    enqueued: int = Field(description="Number of polling jobs enqueued")
