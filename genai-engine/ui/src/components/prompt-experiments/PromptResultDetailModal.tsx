@@ -179,7 +179,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
               {/* Output */}
               <Box>
                 <Box className="flex items-center justify-between mb-2">
-                  <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300">
+                  <Typography variant="subtitle2" sx={{ fontWeight: 500, color: "text.secondary" }}>
                     Output Message:
                   </Typography>
                   {canUpdateDataset && (

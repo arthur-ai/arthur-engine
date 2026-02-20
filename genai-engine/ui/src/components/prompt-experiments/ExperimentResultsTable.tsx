@@ -26,6 +26,7 @@ import {
   Button,
   Snackbar,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
@@ -250,14 +251,13 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                 <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
                                 {promptResult.output.tool_calls && promptResult.output.tool_calls.length > 0 && (
                                   <Box
-                                    sx={{
+                                    sx={(theme) => ({
                                       mt: 1,
                                       p: 1,
-                                      bgcolor: "secondary.50",
-                                      border: 1,
-                                      borderColor: "secondary.200",
+                                      bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
                                       borderRadius: 1,
-                                    }}
+                                    })}
                                   >
                                     <Typography variant="caption" sx={{ fontWeight: 500, color: "secondary.main" }}>
                                       Tool Calls: {promptResult.output.tool_calls.length}

@@ -26,6 +26,7 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -1324,12 +1325,19 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             </strong>{" "}
             to either a dataset column or the experiment output.
           </Typography>
-          <Box sx={{ p: 1.5, bgcolor: "info.50", border: 1, borderColor: "info.200", borderRadius: 1 }}>
-            <Typography variant="body2" className="text-gray-800 dark:text-gray-200">
+          <Box
+            sx={(theme) => ({
+              p: 1.5,
+              bgcolor: alpha(theme.palette.info.main, 0.08),
+              border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+              borderRadius: 1,
+            })}
+          >
+            <Typography variant="body2" sx={{ color: "text.primary" }}>
               <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference
               text, ground truth labels).
             </Typography>
-            <Typography variant="body2" className="text-gray-800 dark:text-gray-200 mt-1">
+            <Typography variant="body2" sx={{ color: "text.primary", mt: 0.5 }}>
               <strong>Experiment Output:</strong> Use this when the evaluator needs to assess the prompt's generated response (e.g., to check
               accuracy, relevance, or quality of the output).
             </Typography>
