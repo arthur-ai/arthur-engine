@@ -224,11 +224,15 @@ export const PromptExperimentsView: React.FC = () => {
         <Box className="overflow-auto min-h-0">
           {isLoading ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-gray-600 dark:text-gray-400">Loading experiments...</p>
+              <Typography variant="body2" color="text.secondary">
+                Loading experiments...
+              </Typography>
             </Box>
           ) : error ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-red-600 dark:text-red-400">{error.message}</p>
+              <Typography variant="body2" color="error.main">
+                {error.message}
+              </Typography>
             </Box>
           ) : experiments.length === 0 ? (
             <PromptExperimentsEmptyState onCreateExperiment={handleCreateExperiment} />

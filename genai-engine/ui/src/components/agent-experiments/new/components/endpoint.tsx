@@ -1,6 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { z } from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
@@ -61,8 +61,8 @@ export const EndpointSetup = withFieldGroup({
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Add custom HTTP headers. Use{" "}
-                    <code className="text-blue-500 dark:text-blue-400 bg-neutral-50 dark:bg-neutral-800 px-1 rounded-md">{`{{ variable }}`}</code> for
-                    dynamic values.
+                    <Box component="code" sx={{ color: "primary.main", bgcolor: "action.hover", px: 0.5, borderRadius: 0.5 }}>{`{{ variable }}`}</Box>{" "}
+                    for dynamic values.
                   </Typography>
                 </Stack>
                 <Button
@@ -127,11 +127,21 @@ export const EndpointSetup = withFieldGroup({
                     </Stack>
                   ))
                 ) : (
-                  <div className="flex items-center justify-center py-8 border border-dashed border-neutral-200 dark:border-neutral-700 rounded-md">
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      py: 4,
+                      border: "1px dashed",
+                      borderColor: "divider",
+                      borderRadius: 1,
+                    }}
+                  >
                     <Typography variant="body2" color="text.secondary">
                       No headers added yet
                     </Typography>
-                  </div>
+                  </Box>
                 )}
               </Stack>
             </Stack>
@@ -155,7 +165,7 @@ export const EndpointSetup = withFieldGroup({
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Define the request body as a string. Use{" "}
-                    <code className="text-blue-500 dark:text-blue-400 bg-neutral-50 dark:bg-neutral-800 px-1 rounded-md">{`{{ variable }}`}</code>{" "}
+                    <Box component="code" sx={{ color: "primary.main", bgcolor: "action.hover", px: 0.5, borderRadius: 0.5 }}>{`{{ variable }}`}</Box>{" "}
                     placeholders for dataset values. The body will be sent as-is after variable substitution.
                   </Typography>
                 </Stack>

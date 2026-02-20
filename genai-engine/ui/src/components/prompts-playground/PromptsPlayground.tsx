@@ -1723,7 +1723,7 @@ const PromptsPlayground = () => {
                                               ? theme.palette.error.main
                                               : isRunning
                                                 ? theme.palette.warning.main
-                                                : theme.palette.text.secondary,
+                                                : theme.palette.grey[600],
                                         color: (theme) =>
                                           isCompleted
                                             ? theme.palette.success.contrastText

@@ -125,7 +125,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
       <EmptyStateContainer>
         <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-4 max-w-md w-full">
           <div className="flex">
-            <ErrorOutline className="h-5 w-5 text-red-400 dark:text-red-500" fontSize="small" />
+            <ErrorOutline fontSize="small" sx={{ fontSize: 20, color: "error.light" }} />
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Search Error</h3>
               <div className="mt-2 text-sm text-red-700 dark:text-red-400">
@@ -142,7 +142,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
     return (
       <EmptyStateContainer>
         <div className="text-center">
-          <Search className="mx-auto text-gray-400 dark:text-gray-500" sx={{ fontSize: 48 }} />
+          <Search sx={{ fontSize: 48, color: "text.secondary", mx: "auto" }} />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No results yet</h3>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Execute a search query to see results here.</p>
         </div>
@@ -172,7 +172,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
       {results.objects.length === 0 ? (
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
-            <SearchOff className="mx-auto text-gray-400 dark:text-gray-500" sx={{ fontSize: 48 }} />
+            <SearchOff sx={{ fontSize: 48, color: "text.secondary", mx: "auto" }} />
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No results found</h3>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Try adjusting your search query or settings.</p>
           </div>
@@ -250,8 +250,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                       )}
 
                       <ExpandMore
-                        className={`text-gray-400 dark:text-gray-500 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                        className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
                         fontSize="small"
+                        sx={{ color: "text.secondary" }}
                       />
                     </div>
                   </div>
