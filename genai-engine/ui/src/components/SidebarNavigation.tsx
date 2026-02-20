@@ -11,7 +11,7 @@ import {
   LiveTvOutlined,
   InsightsOutlined,
 } from "@mui/icons-material";
-import { Typography } from "@mui/material";
+import { Box, Button, Divider, Typography } from "@mui/material";
 import React from "react";
 
 interface SidebarNavigationProps {
@@ -149,19 +149,28 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
       </div>
 
       {/* Task Details at the bottom */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-        <button
+      <Box sx={{ p: 2, flexShrink: 0 }}>
+        <Divider sx={{ mb: 2 }} />
+        <Button
+          variant="text"
+          fullWidth
+          startIcon={<TuneOutlined fontSize="small" />}
           onClick={() => onNavigate("task-details")}
-          className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-2 ${
-            activeSection === "task-details"
-              ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
-              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-          }`}
+          sx={{
+            justifyContent: "flex-start",
+            textTransform: "none",
+            px: 1.5,
+            py: 1,
+            color: activeSection === "task-details" ? "primary.main" : "text.secondary",
+            bgcolor: activeSection === "task-details" ? "primary.50" : "transparent",
+            "&:hover": {
+              bgcolor: activeSection === "task-details" ? "primary.50" : "action.hover",
+            },
+          }}
         >
-          <TuneOutlined fontSize="small" />
-          <span>Task Details</span>
-        </button>
-      </div>
+          Task Details
+        </Button>
+      </Box>
     </nav>
   );
 };
