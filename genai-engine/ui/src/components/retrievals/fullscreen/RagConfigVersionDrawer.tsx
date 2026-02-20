@@ -1,0 +1,303 @@
+import DeleteIcon from "@mui/icons-material/Delete";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import Typography from "@mui/material/Typography";
+import { useMemo, useState, useCallback } from "react";
+
+import { useRagConfigVersions } from "@/hooks/rag-search-settings/useRagConfigVersions";
+import { formatDate } from "@/utils/formatters";
+
+interface RagConfigVersionDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  configId: string;
+  configName: string;
+  selectedVersion: number | null;
+  latestVersion: number | null;
+  onSelectVersion: (version: number) => void;
+  onDelete?: (version: number) => Promise<void>;
+  isDeleting?: boolean;
+}
+
+const RagConfigVersionDrawer = ({
+  open,
+  onClose,
+  configId,
+  configName,
+  selectedVersion,
+  latestVersion,
+  onSelectVersion,
+  onDelete,
+  isDeleting = false,
+}: RagConfigVersionDrawerProps) => {
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
+
+  const { data, isLoading, error } = useRagConfigVersions(configId, {
+    sort: sortOrder,
+  });
+
+  const sortedVersions = useMemo(() => {
+    const versions = data?.versions ?? [];
+    return [...versions].sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
+    });
+  }, [data?.versions, sortOrder]);
+
+  const handleVersionClick = useCallback(
+    (version: number) => {
+      onSelectVersion(version);
+    },
+    [onSelectVersion]
+  );
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent, version: number) => {
+    e.stopPropagation();
+    setVersionToDelete(version);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (versionToDelete === null || !onDelete) return;
+
+    await onDelete(versionToDelete);
+    setDeleteDialogOpen(false);
+    setVersionToDelete(null);
+  }, [versionToDelete, onDelete]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteDialogOpen(false);
+    setVersionToDelete(null);
+  }, []);
+
+  return (
+    <Drawer
+      variant="permanent"
+      anchor="left"
+      open={open}
+      onClose={onClose}
+      sx={{
+        width: 400,
+        flexShrink: 0,
+        position: "relative",
+        "& .MuiDrawer-paper": {
+          width: 400,
+          boxSizing: "border-box",
+          position: "relative",
+          height: "100%",
+          borderRight: "1px solid",
+          borderColor: "divider",
+          overflow: "visible",
+        },
+      }}
+    >
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+          Versions: {configName}
+        </Typography>
+
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+          <Chip
+            label={`Sort: ${sortOrder === "asc" ? "Oldest First" : "Newest First"}`}
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            clickable
+            size="small"
+          />
+        </Box>
+
+        <Divider sx={{ mb: 2 }} />
+
+        {isLoading && (
+          <Box sx={{ p: 2, textAlign: "center" }}>
+            <Typography variant="body2" color="text.secondary">
+              Loading versions...
+            </Typography>
+          </Box>
+        )}
+
+        {error && (
+          <Box sx={{ p: 2 }}>
+            <Typography variant="body2" color="error">
+              Error loading versions: {error.message}
+            </Typography>
+          </Box>
+        )}
+
+        {!isLoading && !error && sortedVersions.length === 0 && (
+          <Box sx={{ p: 2, textAlign: "center" }}>
+            <Typography variant="body2" color="text.secondary">
+              No versions found
+            </Typography>
+          </Box>
+        )}
+
+        {!isLoading && !error && sortedVersions.length > 0 && (
+          <List sx={{ flex: 1, overflow: "auto" }}>
+            {sortedVersions.map((version) => {
+              const isSelected = selectedVersion === version.version_number;
+              const isDeleted = !!version.deleted_at;
+              const isLatest = version.version_number === latestVersion && !isDeleted;
+
+              const displayTags: Array<{ label: string; type: "latest" | "other" }> = [];
+
+              if (!isDeleted) {
+                if (isLatest) displayTags.push({ label: "Latest", type: "latest" });
+
+                const tags = version.tags || [];
+                const remainingSlots = 3 - displayTags.length;
+                tags.slice(0, remainingSlots).forEach((tag) => {
+                  displayTags.push({ label: tag, type: "other" });
+                });
+              }
+
+              return (
+                <ListItem key={version.version_number} disablePadding>
+                  <ListItemButton
+                    selected={isSelected}
+                    onClick={() => !isDeleted && handleVersionClick(version.version_number)}
+                    disabled={isDeleted}
+                    sx={{
+                      backgroundColor: isSelected ? "action.selected" : "transparent",
+                      "&:hover": {
+                        backgroundColor: isDeleted ? "transparent" : "action.hover",
+                      },
+                      "&.Mui-disabled": {
+                        opacity: 1,
+                      },
+                      cursor: isDeleted ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 500,
+                              color: isDeleted ? "text.disabled" : "text.primary",
+                              textDecoration: isDeleted ? "line-through" : "none",
+                            }}
+                          >
+                            Version {version.version_number}
+                          </Typography>
+                          {displayTags.map((tag, idx) => {
+                            const color: "default" | "primary" = tag.type === "latest" ? "default" : "primary";
+                            const variant: "filled" | "outlined" = tag.type === "latest" ? "filled" : "outlined";
+
+                            return (
+                              <Chip
+                                key={`${tag.label}-${idx}`}
+                                label={tag.label}
+                                size="small"
+                                color={color}
+                                variant={variant}
+                                sx={{ height: 18, fontSize: "0.7rem" }}
+                              />
+                            );
+                          })}
+                        </Box>
+                      }
+                      secondary={
+                        <Box component="span" sx={{ mt: 0.5, display: "block" }}>
+                          <Typography variant="caption" component="span" sx={{ color: isDeleted ? "text.disabled" : "text.secondary" }}>
+                            {version.settings?.search_kind
+                              ? version.settings.search_kind.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                              : "Unknown search method"}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            component="span"
+                            sx={{
+                              display: "block",
+                              mt: 0.5,
+                              color: isDeleted ? "text.disabled" : "text.secondary",
+                            }}
+                          >
+                            {formatDate(new Date(version.created_at).toISOString())}
+                          </Typography>
+                          {isDeleted && version.deleted_at && (
+                            <Typography
+                              variant="caption"
+                              component="span"
+                              sx={{
+                                display: "block",
+                                mt: 0.5,
+                                color: "text.disabled",
+                              }}
+                            >
+                              Deleted at: {formatDate(new Date(version.deleted_at).toISOString())}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                    />
+                    {!isDeleted && (
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleDeleteClick(e, version.version_number)}
+                        sx={{ color: "error.main" }}
+                        aria-label="Delete version"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        )}
+      </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-rag-version-dialog-title"
+        aria-describedby="delete-rag-version-dialog-description"
+      >
+        <DialogTitle id="delete-rag-version-dialog-title">Delete Version?</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-rag-version-dialog-description">
+            Are you sure you want to delete <strong>Version {versionToDelete}</strong> of <strong>{configName}</strong>?
+          </DialogContentText>
+          <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
+            <strong>Warning:</strong> This version will be soft-deleted. This action cannot be undone.
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleDeleteCancel} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Drawer>
+  );
+};
+
+export default RagConfigVersionDrawer;

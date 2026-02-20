@@ -88,6 +88,8 @@ function App() {
                           <Route path="model-providers" element={<ModelProviders />} />
                           <Route path="api-keys" element={<ApiKeysManagement />} />
                           <Route path="rag-configurations" element={<RagConfigurationsPage />} />
+                          <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
+                          <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
                           <Route path="agent-experiments">
                             <Route index element={<AgentExperiments />} />

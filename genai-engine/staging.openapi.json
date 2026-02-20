@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Arthur GenAI Engine",
-    "version": "2.1.390"
+    "version": "2.1.403"
   },
   "paths": {
     "/api/v2/usage/tokens": {
@@ -32091,5 +32091,67 @@
         "scheme": "bearer"
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Rules",
+      "description": "Endpoints to manage rules"
+    },
+    {
+      "name": "Tasks",
+      "description": "Endpoints to manage tasks and their rules"
+    },
+    {
+      "name": "Default Validation",
+      "description": "Endpoints to validate prompt and response on default rules"
+    },
+    {
+      "name": "Task Based Validation",
+      "description": "Endpoints to validate prompt and response for a task"
+    },
+    {
+      "name": "Feedback",
+      "description": "Endpoints to manage user feedback on inferences"
+    },
+    {
+      "name": "Usage",
+      "description": "Endpoints for retrieving token usage"
+    },
+    {
+      "name": "Inferences",
+      "description": "Endpoints for querying past inferences"
+    },
+    {
+      "name": "API Keys",
+      "description": "Endpoints for API keys management"
+    },
+    {
+      "name": "Secrets",
+      "description": "Endpoints for secrets management"
+    },
+    {
+      "name": "Model Providers",
+      "description": "Endpoints for model provider management"
+    },
+    {
+      "name": "RAG Settings",
+      "description": "Endpoints for RAG setting management"
+    },
+    {
+      "name": "RAG Providers",
+      "description": "Endpoints for RAG provider management"
+    },
+    {
+      "name": "Prompt Experiments",
+      "description": "Endpoints for managing prompt experiments"
+    },
+    {
+      "name": "RAG Experiments",
+      "description": "Endpoints for managing RAG experiments"
+    },
+    {
+      "name": "Notebooks",
+      "description": "Endpoints for managing experiment notebooks"
+    }
+  ]
 }

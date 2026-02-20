@@ -1,8 +1,11 @@
+import AddIcon from "@mui/icons-material/Add";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
+import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -155,28 +158,24 @@ const PromptsManagement: React.FC = () => {
           <Box
             sx={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              flex: 1,
-              p: 3,
+              height: "100%",
+              textAlign: "center",
+              py: 8,
             }}
           >
-            <Box sx={{ textAlign: "center" }}>
-              <Box
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "1.25rem",
-                  color: "text.primary",
-                  mb: 1,
-                }}
-              >
-                No prompts found
-              </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first prompt to get started.</Box>
-              <Button variant="contained" onClick={handleCreatePrompt} sx={{ mt: 1 }}>
-                Create Prompt
-              </Button>
-            </Box>
+            <DescriptionOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+              No prompts yet
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Get started by creating your first prompt
+            </Typography>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreatePrompt} size="large">
+              Prompt
+            </Button>
           </Box>
         ) : (
           <PromptsTable
