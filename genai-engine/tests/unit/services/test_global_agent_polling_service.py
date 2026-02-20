@@ -6,9 +6,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from db_models import DatabaseTask
+from db_models.agent_polling_models import DatabaseTaskPollingState
+from schemas.internal_schemas import (
+    GCPCreationSource,
+    ManualCreationSource,
+    Task,
+    TaskMetadata,
+)
 from services.task.global_agent_polling_service import (
     AgentPollingJob,
     GlobalAgentPollingService,
+    get_global_agent_polling_service,
+    initialize_global_agent_polling_service,
+    shutdown_global_agent_polling_service,
 )
 
 
@@ -70,7 +81,6 @@ def test_poll_all_gcp_tasks_skips_when_no_project(mock_getenv, mock_get_db):
 @pytest.mark.unit_tests
 def test_is_task_eligible_matching_project_and_region():
     """Task is eligible when project and region match."""
-    from schemas.internal_schemas import GCPCreationSource
 
     service = GlobalAgentPollingService()
     creation_source = GCPCreationSource(
@@ -87,7 +97,6 @@ def test_is_task_eligible_matching_project_and_region():
 @pytest.mark.unit_tests
 def test_is_task_eligible_mismatched_project():
     """Task is ineligible when project doesn't match."""
-    from schemas.internal_schemas import GCPCreationSource
 
     service = GlobalAgentPollingService()
     creation_source = GCPCreationSource(
@@ -104,7 +113,6 @@ def test_is_task_eligible_mismatched_project():
 @pytest.mark.unit_tests
 def test_is_task_eligible_mismatched_region():
     """Task is ineligible when region doesn't match."""
-    from schemas.internal_schemas import GCPCreationSource
 
     service = GlobalAgentPollingService()
     creation_source = GCPCreationSource(
@@ -140,9 +148,6 @@ def test_execute_job_success(
     mock_get_db,
 ):
     """Test successful trace fetch and ingestion for a GCP task."""
-    from db_models.agent_polling_models import DatabaseTaskPollingState
-    from schemas.internal_schemas import GCPCreationSource, Task, TaskMetadata
-
     task_id = str(uuid.uuid4())
 
     mock_task = MagicMock(spec=Task)
@@ -215,9 +220,6 @@ def test_execute_job_failure_does_not_update_polling_state(
     mock_get_db,
 ):
     """Test that a failed poll does NOT update last_fetched (will retry next loop)."""
-    from db_models.agent_polling_models import DatabaseTaskPollingState
-    from schemas.internal_schemas import GCPCreationSource, Task, TaskMetadata
-
     task_id = str(uuid.uuid4())
 
     mock_task = MagicMock(spec=Task)
@@ -279,9 +281,6 @@ def test_execute_job_no_traces_still_updates_last_fetched(
     mock_get_db,
 ):
     """Test that when no traces are found, last_fetched is still updated."""
-    from db_models.agent_polling_models import DatabaseTaskPollingState
-    from schemas.internal_schemas import GCPCreationSource, Task, TaskMetadata
-
     task_id = str(uuid.uuid4())
 
     mock_task = MagicMock(spec=Task)
@@ -335,8 +334,6 @@ def test_execute_job_skips_non_gcp_task(
     mock_get_db,
 ):
     """Test that _execute_job skips tasks that are not GCP."""
-    from schemas.internal_schemas import ManualCreationSource, Task, TaskMetadata
-
     task_id = str(uuid.uuid4())
 
     mock_task = MagicMock(spec=Task)
@@ -363,8 +360,6 @@ def test_execute_job_skips_non_gcp_task(
 @pytest.mark.unit_tests
 def test_find_task_by_gcp_engine_id_found():
     """Test the JSON query for finding tasks by engine ID."""
-    from db_models import DatabaseTask
-
     mock_task = MagicMock(spec=DatabaseTask)
     mock_session = MagicMock()
     mock_session.query.return_value.filter.return_value.first.return_value = mock_task
@@ -389,8 +384,6 @@ def test_find_task_by_gcp_engine_id_not_found():
 
     service = GlobalAgentPollingService()
 
-    from db_models import DatabaseTask
-
     with patch.object(
         DatabaseTask, "task_metadata", create=True, new_callable=MagicMock
     ):
@@ -401,12 +394,6 @@ def test_find_task_by_gcp_engine_id_not_found():
 
 @pytest.mark.unit_tests
 def test_initialize_and_shutdown():
-    from services.task.global_agent_polling_service import (
-        get_global_agent_polling_service,
-        initialize_global_agent_polling_service,
-        shutdown_global_agent_polling_service,
-    )
-
     # Ensure clean state
     shutdown_global_agent_polling_service()
     assert get_global_agent_polling_service() is None
@@ -424,12 +411,6 @@ def test_initialize_and_shutdown():
 
 @pytest.mark.unit_tests
 def test_initialize_is_idempotent():
-    from services.task.global_agent_polling_service import (
-        get_global_agent_polling_service,
-        initialize_global_agent_polling_service,
-        shutdown_global_agent_polling_service,
-    )
-
     shutdown_global_agent_polling_service()
 
     initialize_global_agent_polling_service(num_workers=1)

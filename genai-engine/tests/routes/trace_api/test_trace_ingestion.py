@@ -750,11 +750,16 @@ def test_resolve_task_id_matches_gcp_task_via_cloud_resource_id():
             "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
         }
 
-        resolved_id = service._resolve_task_id(
-            explicit_task_id=None,
-            service_name=service_name,
-            resource_attributes=resource_attributes,
-        )
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
 
         assert resolved_id == gcp_task.id
     finally:
@@ -776,11 +781,16 @@ def test_resolve_task_id_creates_mapping_after_gcp_match():
             "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
         }
 
-        resolved_id = service._resolve_task_id(
-            explicit_task_id=None,
-            service_name=service_name,
-            resource_attributes=resource_attributes,
-        )
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
         assert resolved_id == gcp_task.id
 
         # Verify mapping was created for future cache hits
@@ -811,14 +821,19 @@ def test_resolve_task_id_uses_cached_mapping_on_subsequent_calls():
         }
 
         # First call: matches via cloud.resource_id, creates mapping
-        first_id = service._resolve_task_id(
-            explicit_task_id=None,
-            service_name=service_name,
-            resource_attributes=resource_attributes,
-        )
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            first_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
         assert first_id == gcp_task.id
 
-        # Second call: should use cached mapping (step 3)
+        # Second call: should use cached mapping (step 3), no mock needed
         second_id = service._resolve_task_id(
             explicit_task_id=None,
             service_name=service_name,
@@ -874,11 +889,16 @@ def test_resolve_task_id_auto_creates_when_resource_id_doesnt_match():
     created_task_id = None
 
     try:
-        resolved_id = service._resolve_task_id(
-            explicit_task_id=None,
-            service_name=service_name,
-            resource_attributes=resource_attributes,
-        )
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=None,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
 
         assert resolved_id is not None
         created_task_id = resolved_id

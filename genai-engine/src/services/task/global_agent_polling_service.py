@@ -293,19 +293,15 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
             skipped_count = 0
 
             for db_task in gcp_tasks:
-                # Parse creation_source from task_metadata JSON
-                task_metadata_dict = db_task.task_metadata or {}
-                creation_source_dict = task_metadata_dict.get("creation_source", {})
-                task_project_id = creation_source_dict.get("gcp_project_id", "")
-                task_region = creation_source_dict.get("gcp_region", "")
-
-                creation_source = GCPCreationSource(
-                    gcp_project_id=task_project_id,
-                    gcp_region=task_region,
-                    gcp_reasoning_engine_id=creation_source_dict.get(
-                        "gcp_reasoning_engine_id", ""
-                    ),
+                metadata = (
+                    TaskMetadata.model_validate(db_task.task_metadata)
+                    if db_task.task_metadata
+                    else None
                 )
+                creation_source = metadata.creation_source if metadata else None
+                if not isinstance(creation_source, GCPCreationSource):
+                    skipped_count += 1
+                    continue
 
                 if not self._is_task_eligible_for_polling(
                     db_task.id, creation_source, project_id, location

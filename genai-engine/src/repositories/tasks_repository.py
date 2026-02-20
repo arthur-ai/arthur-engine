@@ -339,9 +339,6 @@ class TaskRepository:
     def find_by_gcp_engine_id(self, engine_id: str) -> Optional[DatabaseTask]:
         """Find a task by its GCP reasoning engine ID in task_metadata JSON.
 
-        Queries tasks where task_metadata.creation_source.gcp_reasoning_engine_id matches.
-        Uses func.json_extract for SQLite/PostgreSQL compatibility.
-
         Args:
             engine_id: The GCP reasoning engine ID to search for
 
@@ -351,10 +348,9 @@ class TaskRepository:
         return (
             self.db_session.query(DatabaseTask)
             .filter(
-                func.json_extract(
-                    DatabaseTask.task_metadata,
-                    "$.creation_source.gcp_reasoning_engine_id",
-                )
+                DatabaseTask.task_metadata["creation_source"][
+                    "gcp_reasoning_engine_id"
+                ].astext
                 == engine_id
             )
             .first()
