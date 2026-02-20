@@ -42,7 +42,9 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
     const totalResults = passedCount + failedCount + erroredCount + skippedCount;
     if (totalResults === 0) return "var(--color-gray-600)"; // No continuous eval results
 
-    if (failedCount + erroredCount + skippedCount === 0) {
+    if (failedCount + erroredCount === 0 && passedCount === 0) {
+      return "var(--color-gray-600)"; // All skipped
+    } else if (failedCount + erroredCount === 0) {
       return "var(--color-green-700)"; // All passed
     } else if (passedCount === 0) {
       return "var(--color-red-700)"; // All failed or errored
