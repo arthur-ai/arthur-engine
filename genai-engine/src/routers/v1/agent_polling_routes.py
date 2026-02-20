@@ -76,8 +76,8 @@ def execute_all_agent_polling(
             status_code=200,
             content={
                 "status": "completed",
-                "discovered": result["discovered"],
-                "enqueued": result["enqueued"],
+                "discovered": result.discovered,
+                "enqueued": result.enqueued,
             },
         )
     except Exception as e:
