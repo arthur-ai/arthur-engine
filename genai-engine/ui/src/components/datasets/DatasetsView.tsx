@@ -110,6 +110,9 @@ export const DatasetsView: React.FC = () => {
     >
       <Box
         sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
           px: 3,
           pt: 3,
           pb: 2,

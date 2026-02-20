@@ -42,10 +42,10 @@ export const PromptExperimentsViewHeader: React.FC<PromptExperimentsViewHeaderPr
     <Box className="flex flex-col gap-4">
       <Box className="flex justify-between items-center">
         <Box>
-          <Typography variant="h5" className="font-semibold mb-1 text-gray-900 dark:text-gray-100">
+          <Typography variant="h5" fontWeight={600} color="text.primary">
             Prompt Experiments
           </Typography>
-          <Typography variant="body2" className="text-gray-600 dark:text-gray-400">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Test and compare different prompt variations and their effectiveness
           </Typography>
         </Box>
@@ -59,7 +59,7 @@ export const PromptExperimentsViewHeader: React.FC<PromptExperimentsViewHeaderPr
           aria-haspopup="true"
           aria-expanded={open ? "true" : undefined}
         >
-          Create Experiment
+          Experiment
         </Button>
         <Menu
           id="create-experiment-menu"

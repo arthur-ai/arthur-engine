@@ -36,7 +36,12 @@ AGENTIC_POLLING_INTERVAL_SECONDS: int = int(
 
 
 class AgentPollingJob(BaseQueueJob):
-    """Represents a registered agent polling job to be executed."""
+    """
+    Represents a registered agent polling job to be executed.
+
+    *Note: The delay_seconds is not currently used for this job. It is kept for compatibility with the base class
+    and for potential future use cases that may require a delay to be implemented.
+    """
 
     def __init__(
         self,
@@ -114,11 +119,13 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
         db_session = next(get_db_session())
         try:
             # Get all agent polling data where last_fetched is not null and status is IDLE
+            # Use FOR UPDATE SKIP LOCKED to prevent race conditions when multiple nodes poll
             registered_agent_polling_data = (
                 db_session.query(DatabaseAgentPollingData)
                 .filter(
                     DatabaseAgentPollingData.status == AgentPollingStatus.IDLE,
                 )
+                .with_for_update(skip_locked=True)
                 .all()
             )
 
@@ -133,6 +140,7 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
             enqueued_count = 0
             for agent_data in registered_agent_polling_data:
                 # Create a job to poll for new data
+                # skips execution delay and executes immediately
                 job = AgentPollingJob(
                     agent_polling_data_id=agent_data.id,
                 )
@@ -156,6 +164,7 @@ class RegisteredAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         except Exception as e:
             logger.error(f"Error polling registered agents: {e}", exc_info=True)
+            db_session.rollback()
         finally:
             db_session.close()
 
