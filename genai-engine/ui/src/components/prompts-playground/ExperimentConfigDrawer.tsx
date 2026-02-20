@@ -6,6 +6,7 @@ import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import { alpha } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import { useNavigate } from "react-router-dom";
 
@@ -155,7 +156,7 @@ export default function ExperimentConfigDrawer({
                         <Box
                           key={idx}
                           sx={{
-                            backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(33,150,243,0.12)" : "primary.50"),
+                            backgroundColor: (theme) => (theme.palette.mode === "dark" ? alpha(theme.palette.primary.main, 0.12) : "primary.50"),
                             borderLeft: "3px solid",
                             borderLeftColor: "primary.main",
                             px: 1.5,
@@ -229,8 +230,8 @@ export default function ExperimentConfigDrawer({
                                     backgroundColor: (theme) =>
                                       theme.palette.mode === "dark"
                                         ? isDatasetColumn
-                                          ? "rgba(33,150,243,0.12)"
-                                          : "rgba(255,152,0,0.12)"
+                                          ? alpha(theme.palette.primary.main, 0.12)
+                                          : alpha(theme.palette.warning.main, 0.12)
                                         : isDatasetColumn
                                           ? "primary.50"
                                           : "warning.50",
@@ -314,9 +315,9 @@ export default function ExperimentConfigDrawer({
                             backgroundColor: (theme) =>
                               theme.palette.mode === "dark"
                                 ? isCompleted
-                                  ? "rgba(16,185,129,0.08)"
+                                  ? alpha(theme.palette.success.main, 0.08)
                                   : isFailed
-                                    ? "rgba(239,68,68,0.08)"
+                                    ? alpha(theme.palette.error.main, 0.08)
                                     : "background.paper"
                                 : isCompleted
                                   ? "success.50"
@@ -361,7 +362,7 @@ export default function ExperimentConfigDrawer({
                                       : isRunning
                                         ? "warning.main"
                                         : "text.secondary",
-                                  color: "white",
+                                  color: "common.white",
                                   fontWeight: 600,
                                   textTransform: "uppercase",
                                 }}
@@ -386,7 +387,8 @@ export default function ExperimentConfigDrawer({
                                 borderColor: "divider",
                                 px: 1.5,
                                 py: 1.5,
-                                backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"),
+                                backgroundColor: (theme) =>
+                                  theme.palette.mode === "dark" ? alpha(theme.palette.common.white, 0.02) : alpha(theme.palette.common.black, 0.02),
                               }}
                             >
                               <Stack spacing={1.5}>

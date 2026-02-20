@@ -162,30 +162,45 @@ const PromptDetailView = ({
 
       if (existingNotebook && existingNotebook.name === notebookName) {
         targetNotebookId = existingNotebook.id;
+
+        const existingStateResponse = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(targetNotebookId);
+        const existingState = existingStateResponse.data;
+
+        const alreadyHasPrompt = existingState.prompt_configs?.some(
+          (p: { type?: string; name?: string; version?: number }) => p.type === "saved" && p.name === promptName && p.version === version
+        );
+
+        if (!alreadyHasPrompt) {
+          await setNotebookStateMutation.mutateAsync({
+            notebookId: targetNotebookId,
+            request: {
+              state: {
+                ...existingState,
+                prompt_configs: [...(existingState.prompt_configs ?? []), { type: "saved" as const, name: promptName, version }],
+              },
+            },
+          });
+        }
       } else {
-        // Create a new notebook with a descriptive name
         const notebook = await createNotebookMutation.mutateAsync({
           name: notebookName,
           description: `Playground for prompt ${promptName} version ${version}`,
         });
         targetNotebookId = notebook.id;
-      }
 
-      // Write the target prompt to notebook state before navigating.
-      // This ensures the playground always loads the correct prompt, even for reused notebooks.
-      // Fetch existing state first to preserve any experiment config (dataset, evals, mappings).
-      const existingStateResponse = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(targetNotebookId);
-      const existingState = existingStateResponse.data;
+        const existingStateResponse = await apiClient.api.getNotebookStateApiV1NotebooksNotebookIdStateGet(targetNotebookId);
+        const existingState = existingStateResponse.data;
 
-      await setNotebookStateMutation.mutateAsync({
-        notebookId: targetNotebookId,
-        request: {
-          state: {
-            ...existingState,
-            prompt_configs: [{ type: "saved" as const, name: promptName, version }],
+        await setNotebookStateMutation.mutateAsync({
+          notebookId: targetNotebookId,
+          request: {
+            state: {
+              ...existingState,
+              prompt_configs: [{ type: "saved" as const, name: promptName, version }],
+            },
           },
-        },
-      });
+        });
+      }
 
       // Navigate with prompt params so the playground can also fetch the prompt directly
       const url = `/tasks/${taskId}/playgrounds/prompts?notebookId=${targetNotebookId}&promptName=${encodeURIComponent(promptName)}&version=${version}`;

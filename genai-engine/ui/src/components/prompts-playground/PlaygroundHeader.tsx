@@ -79,7 +79,7 @@ export default function PlaygroundHeader({
   };
 
   return (
-    <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 bg-gray-300 dark:bg-gray-900 shrink-0">
+    <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 shrink-0" sx={{ backgroundColor: "background.default" }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
         <Stack direction="row" alignItems="center" spacing={2}>
           {notebookId && (
@@ -97,6 +97,7 @@ export default function PlaygroundHeader({
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {isRenaming ? (
                   <TextField
+                    variant="filled"
                     size="small"
                     value={newNotebookName}
                     onChange={(e) => setNewNotebookName(e.target.value)}

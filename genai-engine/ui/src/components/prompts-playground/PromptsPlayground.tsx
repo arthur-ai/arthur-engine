@@ -189,7 +189,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
       runningExperimentId={execution.runningExperimentId}
       lastCompletedExperimentId={execution.lastCompletedExperimentId}
     >
-      <Box className="flex flex-col h-full bg-gray-300 dark:bg-gray-900" sx={{ position: "relative" }}>
+      <Box className="flex flex-col h-full" sx={{ position: "relative", backgroundColor: "background.default" }}>
         <PlaygroundHeader
           notebookId={notebookId}
           isRenaming={autoSave.isRenaming}
