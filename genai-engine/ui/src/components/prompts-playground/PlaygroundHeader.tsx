@@ -9,6 +9,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
@@ -133,7 +134,15 @@ export default function PlaygroundHeader({
                             }
                           }}
                           disabled={saveStatus !== "unsaved"}
-                          startIcon={saveStatus === "saved" ? <CheckIcon /> : <SaveIcon />}
+                          startIcon={
+                            saveStatus === "saving" ? (
+                              <CircularProgress size={14} color="inherit" />
+                            ) : saveStatus === "saved" ? (
+                              <CheckIcon />
+                            ) : (
+                              <SaveIcon />
+                            )
+                          }
                           sx={{
                             minWidth: "auto",
                             px: 1.5,

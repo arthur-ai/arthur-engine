@@ -1,6 +1,6 @@
 import { PromptType } from "../types";
 
-import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
+import { ModelProvider, SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
 
 /**
  * Converts a playground prompt to an experiment prompt config
@@ -72,24 +72,16 @@ export const toExperimentPromptConfig = (
     config.response_format = prompt.responseFormat;
   }
 
-  // Generate an auto_name for the unsaved prompt
-  // Use the prompt name if available, otherwise use the prompt ID as a unique identifier
-  // Note: Don't add "unsaved_" prefix since the type and prompt key already indicate it's unsaved
   const auto_name = prompt.name || prompt.id;
-
-  // Validate modelProvider is not empty string
-  if (!prompt.modelProvider) {
-    throw new Error("Model provider is required for unsaved prompts");
-  }
 
   return {
     type: "unsaved",
     auto_name,
     messages,
-    model_name: prompt.modelName,
-    model_provider: prompt.modelProvider,
+    model_name: prompt.modelName || "",
+    model_provider: (prompt.modelProvider || "") as ModelProvider,
     config: Object.keys(config).length > 0 ? config : undefined,
     tools,
-    variables: undefined, // Let backend auto-detect variables
+    variables: undefined,
   };
 };

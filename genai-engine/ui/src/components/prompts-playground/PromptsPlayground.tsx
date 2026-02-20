@@ -188,6 +188,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
       isRunningExperiment={execution.isRunningExperiment}
       runningExperimentId={execution.runningExperimentId}
       lastCompletedExperimentId={execution.lastCompletedExperimentId}
+      triggerNotebookSave={autoSave.requestImmediateSave}
     >
       <Box className="flex flex-col h-full" sx={{ position: "relative", backgroundColor: "background.default" }}>
         <PlaygroundHeader

@@ -15,6 +15,7 @@ interface PromptProviderProps {
   isRunningExperiment?: boolean;
   runningExperimentId?: string | null;
   lastCompletedExperimentId?: string | null;
+  triggerNotebookSave?: () => void;
 }
 
 const PromptContext = createContext<{
@@ -27,6 +28,7 @@ const PromptContext = createContext<{
   isRunningExperiment?: boolean;
   runningExperimentId?: string | null;
   lastCompletedExperimentId?: string | null;
+  triggerNotebookSave?: () => void;
 } | null>(null);
 
 export const usePromptContext = () => {
@@ -46,6 +48,7 @@ export const PromptProvider = ({
   isRunningExperiment,
   runningExperimentId,
   lastCompletedExperimentId,
+  triggerNotebookSave,
 }: PromptProviderProps) => {
   return (
     <PromptContext.Provider
@@ -59,6 +62,7 @@ export const PromptProvider = ({
         isRunningExperiment,
         runningExperimentId,
         lastCompletedExperimentId,
+        triggerNotebookSave,
       }}
     >
       {children}

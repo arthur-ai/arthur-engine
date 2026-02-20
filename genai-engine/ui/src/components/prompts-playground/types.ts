@@ -156,6 +156,8 @@ type PromptType = {
   running?: boolean; // Whether the prompt is running
   version?: number | null; // Unsaved prompts have no version
   isDirty?: boolean; // Whether the prompt has been modified from its saved version
+  needsSave?: boolean; // Whether the prompt needs to be saved (dirty or new with user content)
+  savedSnapshot: string | null; // JSON snapshot of saveable fields at last save/load; null = never saved
 };
 
 interface PromptPlaygroundState {

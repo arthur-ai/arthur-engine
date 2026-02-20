@@ -54,6 +54,7 @@ export function useNotebookAutoSave({
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const periodicSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef<string>(initialBaseline);
+  const immediateSaveRef = useRef(false);
 
   // Sync notebook name from server (e.g. rename by another tab)
   useEffect(() => {
@@ -109,16 +110,21 @@ export function useNotebookAutoSave({
     const currentStateStr = JSON.stringify(serializePlaygroundState(state, experimentConfig));
 
     if (currentStateStr !== lastSavedStateRef.current) {
-      hasUnsavedChangesRef.current = true;
-      setSaveStatus("unsaved");
-
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
 
-      autoSaveTimeoutRef.current = setTimeout(() => {
+      if (immediateSaveRef.current) {
+        immediateSaveRef.current = false;
         autoSaveNotebookState();
-      }, 5000);
+      } else {
+        hasUnsavedChangesRef.current = true;
+        setSaveStatus("unsaved");
+
+        autoSaveTimeoutRef.current = setTimeout(() => {
+          autoSaveNotebookState();
+        }, 5000);
+      }
     }
 
     return () => {
@@ -145,6 +151,10 @@ export function useNotebookAutoSave({
       }
     };
   }, [notebookId, autoSaveNotebookState, hasUnsavedChangesRef]);
+
+  const requestImmediateSave = useCallback(() => {
+    immediateSaveRef.current = true;
+  }, []);
 
   const handleStartRename = useCallback(() => {
     setNewNotebookName(notebookName);
@@ -185,6 +195,7 @@ export function useNotebookAutoSave({
     newNotebookName,
     setNewNotebookName,
     autoSaveNotebookState,
+    requestImmediateSave,
     handleStartRename,
     handleCancelRename,
     handleSaveRename,
