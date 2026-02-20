@@ -14,6 +14,7 @@ import {
   LiveTvOutlined,
   InsightsOutlined,
 } from "@mui/icons-material";
+import { Typography } from "@mui/material";
 import React from "react";
 
 interface SidebarNavigationProps {
@@ -21,6 +22,7 @@ interface SidebarNavigationProps {
   onNavigate: (sectionId: string) => void;
   onLogout?: () => void;
   activeSection?: string;
+  taskName?: string;
 }
 
 interface NavigationSection {
@@ -89,7 +91,13 @@ const navigationSections: NavigationSection[] = [
   },
 ];
 
-export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, onLogout, activeSection = "overview" }) => {
+export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
+  onBackToDashboard,
+  onNavigate,
+  onLogout,
+  activeSection = "overview",
+  taskName,
+}) => {
   return (
     <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
       <div className="p-4 overflow-y-auto flex-1 min-h-0">
@@ -101,6 +109,11 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
             <ArrowBackOutlined fontSize="small" />
             <span>Back to All Tasks</span>
           </button>
+          {taskName && (
+            <Typography variant="subtitle1" sx={{ fontWeight: "bold", px: 1.5, pt: 2, pb: 1, color: "text.primary" }}>
+              {taskName}
+            </Typography>
+          )}
         </div>
 
         <div className="space-y-1">
