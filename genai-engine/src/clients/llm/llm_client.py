@@ -162,6 +162,16 @@ class LLMClient:
 
         try:
             response = litellm.completion(*args, **kwargs)
+        except litellm.BadRequestError as e:
+            if "requires at least one non-system message" in str(e):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Provider '{self.provider}' requires at least one non-system message.",
+                )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bad request to provider '{self.provider}': {str(e)}",
+            )
         except litellm.NotFoundError as e:
             # Model not found or not available
             error_msg = str(e)
@@ -258,6 +268,16 @@ class LLMClient:
                 **kwargs,
             )
             return response
+        except litellm.BadRequestError as e:
+            if "requires at least one non-system message" in str(e):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Provider '{self.provider}' requires at least one non-system message.",
+                )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bad request to provider '{self.provider}': {str(e)}",
+            )
         except litellm.NotFoundError as e:
             # Model not found or not available
             error_msg = str(e)
