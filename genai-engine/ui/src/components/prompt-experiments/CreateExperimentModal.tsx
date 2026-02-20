@@ -831,7 +831,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       />
 
       {/* Prompt Selection */}
-      <Box className="border border-gray-300 dark:border-gray-600 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Prompt Versions *
@@ -941,7 +941,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       </Box>
 
       {/* Dataset Selection */}
-      <Box className="border border-gray-300 dark:border-gray-600 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Dataset *
@@ -1117,7 +1117,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       </Box>
 
       {/* Evaluator Selection */}
-      <Box className="border border-gray-300 dark:border-gray-600 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Evaluators *
