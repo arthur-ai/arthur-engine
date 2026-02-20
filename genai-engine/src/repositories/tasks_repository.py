@@ -4,6 +4,7 @@ from typing import Optional
 
 from arthur_common.models.agent_governance_schemas import (
     CreationSource,
+    EnrichedAgentMetadata,
     GCPCreationSource,
     ManualCreationSource,
     OTELCreationSource,
