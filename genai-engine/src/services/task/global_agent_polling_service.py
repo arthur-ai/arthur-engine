@@ -4,6 +4,10 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Hashable, Optional
 
+from arthur_common.models.agent_governance_schemas import (
+    GCPCreationSource,
+    TaskMetadata,
+)
 from arthur_common.models.enums import RegisteredAgentProvider
 from sqlalchemy.orm import Session
 
@@ -17,11 +21,7 @@ from repositories.span_repository import SpanRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.internal_schemas import (
-    GCPCreationSource,
-    Task,
-    TaskMetadata,
-)
+from schemas.internal_schemas import Task
 from services.agent_discovery_service import (
     AgentDiscoveryService,
     parse_gcp_resource_path,

@@ -1,5 +1,6 @@
 import logging
 
+from arthur_common.models.agent_governance_schemas import GCPCreationSource
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -7,7 +8,6 @@ from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.internal_schemas import GCPCreationSource
 from services.task.global_agent_polling_service import (
     AgentPollingJob,
     get_global_agent_polling_service,

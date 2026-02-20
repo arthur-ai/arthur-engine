@@ -8,7 +8,7 @@ import pytest
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 
 from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
-from schemas.internal_schemas import (
+from arthur_common.models.agent_governance_schemas import (
     GCPCreationSource,
     ManualCreationSource,
     OTELCreationSource,

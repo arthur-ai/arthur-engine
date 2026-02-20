@@ -1,14 +1,31 @@
-"""Schemas for agent discovery functionality."""
+"""Schemas for agent discovery functionality.
 
+.. deprecated::
+    The /api/v1/discover-agents endpoint is deprecated.
+    Use GET /api/v2/agent-tasks instead.
+    Shared schemas (Tool, SubAgent, ToolArgument) have moved to
+    arthur_common.models.agent_governance_schemas.
+"""
+
+import warnings
 from typing import Any
 from uuid import UUID
 
+from arthur_common.models.agent_governance_schemas import (  # noqa: F401
+    SubAgent,
+    Tool,
+    ToolArgument,
+)
 from pydantic import BaseModel, Field
 
 
 # Request Schemas
 class DiscoverAgentsRequest(BaseModel):
-    """Request to discover agents from infrastructure."""
+    """Request to discover agents from infrastructure.
+
+    .. deprecated::
+        Use GET /api/v2/agent-tasks instead.
+    """
 
     data_plane_id: UUID = Field(
         description="UUID of the data plane to discover agents from"
@@ -18,10 +35,24 @@ class DiscoverAgentsRequest(BaseModel):
         description="Number of hours to look back for traces (default 30 days)",
     )
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        warnings.warn(
+            "DiscoverAgentsRequest is deprecated. Use GET /api/v2/agent-tasks instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init_subclass__(**kwargs)
+
 
 # Component Schemas
 class CreationSource(BaseModel):
-    """Source information for how an unregistered agent was created."""
+    """Source information for how an unregistered agent was created.
+
+    .. deprecated::
+        This flat CreationSource model is deprecated.
+        Use the discriminated union CreationSource from
+        arthur_common.models.agent_governance_schemas instead.
+    """
 
     task_id: UUID | None = Field(
         default=None,
@@ -45,38 +76,13 @@ class CreationSource(BaseModel):
     )
 
 
-class ToolArgument(BaseModel):
-    """Argument definition for a tool."""
-
-    name: str = Field(description="Name of the tool argument.")
-    type_: str = Field(
-        alias="type",
-        description="Type of the tool argument.",
-    )
-
-    class Config:
-        populate_by_name = True
-
-
-class Tool(BaseModel):
-    """Tool definition with arguments."""
-
-    name: str = Field(description="Name of the tool.")
-    arguments: list[ToolArgument] = Field(
-        default_factory=list,
-        description="List of arguments for this tool.",
-    )
-
-
-class SubAgent(BaseModel):
-    """Sub-agent definition."""
-
-    name: str = Field(description="Name of the sub-agent.")
-
-
 # Response Schemas
 class DiscoveredAgent(BaseModel):
-    """A discovered agent from infrastructure."""
+    """A discovered agent from infrastructure.
+
+    .. deprecated::
+        Use GET /api/v2/agent-tasks with EnrichedTaskResponse instead.
+    """
 
     name: str = Field(description="Name of the agent.")
     creation_source: CreationSource = Field(
@@ -106,7 +112,11 @@ class DiscoveredAgent(BaseModel):
 
 
 class DiscoverAgentsResponse(BaseModel):
-    """Response containing discovered agents."""
+    """Response containing discovered agents.
+
+    .. deprecated::
+        Use GET /api/v2/agent-tasks instead.
+    """
 
     agents: list[DiscoveredAgent] = Field(description="List of discovered agents")
     metadata: dict[str, Any] = Field(

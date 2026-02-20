@@ -2,6 +2,14 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
+from arthur_common.models.agent_governance_schemas import (
+    CreationSource,
+    GCPCreationSource,
+    ManualCreationSource,
+    OTELCreationSource,
+    SubAgent,
+    Tool,
+)
 from arthur_common.models.enums import (
     PaginationSortMethod,
     RuleScope,
@@ -26,16 +34,9 @@ from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
 from schemas.internal_schemas import (
-    AgentMetadata,
     ApplicationConfiguration,
-    CreationSource,
-    GCPCreationSource,
-    ManualCreationSource,
-    OTELCreationSource,
     Rule,
-    SubAgent,
     Task,
-    Tool,
 )
 from utils import constants
 from utils.trace import get_nested_value
@@ -122,7 +123,7 @@ class TaskRepository:
 
         return task
 
-    def _extract_agent_metadata(self, task_id: str) -> AgentMetadata:
+    def _extract_agent_metadata(self, task_id: str) -> EnrichedAgentMetadata:
         """Extract tools, sub-agents, models, and span count from spans for an agent task.
 
         Queries the spans table for the given task_id and extracts:
@@ -135,7 +136,7 @@ class TaskRepository:
             task_id: UUID of the task to extract metadata for
 
         Returns:
-            AgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
+            EnrichedAgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
         """
         # Query AGENT, TOOL, LLM spans for metadata extraction (last 30 days)
         relevant_span_kinds = [

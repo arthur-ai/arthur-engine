@@ -9,7 +9,7 @@ from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 
 from db_models import DatabaseServiceNameTaskMapping, DatabaseSpan, DatabaseTask
-from schemas.internal_schemas import GCPCreationSource, TaskMetadata
+from arthur_common.models.agent_governance_schemas import GCPCreationSource, TaskMetadata
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,

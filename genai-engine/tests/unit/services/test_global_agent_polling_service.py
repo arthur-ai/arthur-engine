@@ -8,12 +8,12 @@ import pytest
 
 from db_models import DatabaseTask
 from db_models.agent_polling_models import DatabaseTaskPollingState
-from schemas.internal_schemas import (
+from arthur_common.models.agent_governance_schemas import (
     GCPCreationSource,
     ManualCreationSource,
-    Task,
     TaskMetadata,
 )
+from schemas.internal_schemas import Task
 from services.task.global_agent_polling_service import (
     AgentPollingJob,
     GlobalAgentPollingService,

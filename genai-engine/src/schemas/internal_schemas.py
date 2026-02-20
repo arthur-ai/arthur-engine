@@ -2,8 +2,14 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
+from arthur_common.models.agent_governance_schemas import (
+    CreationSource,
+    GCPCreationSource,
+    ManualCreationSource,
+    TaskMetadata,
+)
 from arthur_common.models.common_schemas import (
     AuthUserRole,
     ExampleConfig,
@@ -132,7 +138,6 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchVersionTag,
 )
 from db_models.transform_models import DatabaseTraceTransform
-from schemas.agent_discovery_schemas import SubAgent, Tool
 from schemas.agentic_experiment_schemas import (
     AgenticEvalRef,
     AgenticExperimentSummary,
@@ -573,57 +578,6 @@ class TaskToMetricLink(BaseModel):
         )
 
 
-# Creation Source Schemas (used by TaskMetadata and agent-tasks endpoint)
-class GCPCreationSource(BaseModel):
-    """Creation source for GCP-discovered agents."""
-
-    type: Literal["GCP"] = "GCP"
-    gcp_project_id: str = Field(description="GCP project ID")
-    gcp_region: str = Field(description="GCP region")
-    gcp_reasoning_engine_id: str = Field(
-        description="GCP Vertex AI Reasoning Engine ID"
-    )
-    service_names: List[str] = Field(
-        default_factory=list,
-        description="Service names associated with this agent",
-    )
-
-
-class OTELCreationSource(BaseModel):
-    """Creation source for OTEL-discovered agents (auto-created from traces)."""
-
-    type: Literal["OTEL"] = "OTEL"
-    service_names: List[str] = Field(
-        default_factory=list,
-        description="Service names associated with this agent",
-    )
-
-
-class ManualCreationSource(BaseModel):
-    """Creation source for manually created tasks."""
-
-    type: Literal["MANUAL"] = "MANUAL"
-
-
-# Union type for creation source (discriminated by 'type' field)
-CreationSource = Union[GCPCreationSource, OTELCreationSource, ManualCreationSource]
-
-
-class TaskMetadata(BaseModel):
-    """
-    Metadata for a task. Stored as JSON in tasks.task_metadata column.
-
-    Post-migration format: {"creation_source": {"type": "GCP", ...}}
-    Infrastructure is derived from creation_source.type.
-    Service names are looked up from service_name_task_mappings at query time.
-    """
-
-    creation_source: Optional[CreationSource] = Field(
-        default=None,
-        description="Information about how this task/agent was created",
-    )
-
-
 class Task(BaseModel):
     id: str
     name: str
@@ -757,61 +711,6 @@ class Task(BaseModel):
             rules=response_rules,
             metrics=response_metrics,
         )
-
-
-class AgentMetadata(TypedDict):
-    """Type definition for agent metadata extracted from spans."""
-
-    tools: list[Tool]
-    sub_agents: list[SubAgent]
-    models: list[str]
-    data_sources: list[str]
-    num_spans: int
-
-
-class EnrichedTaskResponse(BaseModel):
-    """Response model for agent-tasks endpoint with enriched metadata."""
-
-    id: str = Field(description="Task ID")
-    name: str = Field(description="Task name")
-    created_at: datetime = Field(description="Task creation timestamp")
-    updated_at: datetime = Field(description="Task last update timestamp")
-    is_autocreated: bool = Field(
-        default=False,
-        description="Whether this task was auto-created (vs manually created)",
-    )
-    creation_source: Optional[CreationSource] = Field(
-        default=None,
-        description="Information about how this task/agent was created",
-    )
-    last_fetched: Optional[datetime] = Field(
-        default=None,
-        description="Last time traces were fetched for this task (from task_polling_state)",
-    )
-    tools: Optional[List[Tool]] = Field(
-        default=None,
-        description="Tools used by this agent (computed from spans)",
-    )
-    sub_agents: Optional[List[SubAgent]] = Field(
-        default=None,
-        description="Sub-agents used by this agent (computed from spans)",
-    )
-    models: Optional[List[str]] = Field(
-        default=None,
-        description="Models used by this agent (computed from spans)",
-    )
-    data_sources: Optional[List[str]] = Field(
-        default=None,
-        description="Data sources used by this agent (computed from spans)",
-    )
-    num_spans: Optional[int] = Field(
-        default=None,
-        description="Number of spans associated with this task",
-    )
-    rules: List[RuleResponse] = Field(
-        default_factory=list,
-        description="Rules associated with this task",
-    )
 
 
 class AgenticAnnotation(BaseModel):

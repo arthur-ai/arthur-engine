@@ -1,6 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import (
@@ -40,7 +41,6 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import (
     ApplicationConfiguration,
-    EnrichedTaskResponse,
     Metric,
     Rule,
     Task,

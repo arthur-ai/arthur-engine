@@ -72,7 +72,8 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
-from schemas.internal_schemas import AgenticAnnotation, EnrichedTaskResponse
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
+from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
