@@ -284,7 +284,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                           </Typography>
                           <Box className="space-y-2">
                             {promptResult.evals.map((evalItem, evalIndex) => (
-                              <Box key={evalIndex} className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded">
+                              <Box key={evalIndex} sx={(theme) => ({ p: 1.5, backgroundColor: alpha(theme.palette.info.main, 0.08), border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`, borderRadius: 1 })}>
                                 <Box className="flex items-center justify-between mb-2">
                                   <Box className="flex items-center gap-2">
                                     <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
