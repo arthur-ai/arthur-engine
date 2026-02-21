@@ -10,7 +10,7 @@
       "Bash(GENAI_ENGINE_SECRET_STORE_KEY=\"test_key\" PYTHONPATH=src poetry run python:*)",
       "Bash(yarn type-check:*)",
       "Bash(yarn install:*)",
-      "Bash(yarn generate-api:clean)",
+      "Bash(yarn generate-api:*)",
       "Bash(PYTHONPATH=\"src:$PYTHONPATH\" GENAI_ENGINE_SECRET_STORE_KEY=\"test_key\" python:*)",
       "Bash(yarn lint:*)",
       "Bash(PYTHONPATH=\"src:$PYTHONPATH\" GENAI_ENGINE_SECRET_STORE_KEY=\"test_key\" poetry run pytest:*)",
