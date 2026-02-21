@@ -38,7 +38,15 @@
       "Bash(poetry update:*)",
       "Bash(PYTHONPATH=src GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key poetry run generate_changelog:*)",
       "Bash(PYTHONPATH=src poetry run mypy:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(sleep:*)",
+      "Bash(python3:*)",
+      "Bash(docker ps:*)",
+      "Bash(poetry run serve:*)",
+      "Bash(yarn dev:*)",
+      "Bash(source:*)",
+      "Bash(poetry --version:*)",
+      "Bash(set -a:*)"
     ]
   }
 }
