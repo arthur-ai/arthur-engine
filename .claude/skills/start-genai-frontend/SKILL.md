@@ -1,6 +1,6 @@
 ---
 name: start-genai-frontend
-description: Start the GenAI Engine frontend UI dev server. Use when you need to launch the React app at localhost:5173.
+description: Start the GenAI Engine frontend UI dev server. Use when you need to launch the React app locally.
 allowed-tools: Bash, Task
 ---
 
@@ -24,14 +24,14 @@ cd genai-engine/ui && yarn install
 
 **Step 3 — Generate API client bindings:**
 ```bash
-cd genai-engine/ui && yarn generate-api
+cd genai-engine/ui && yarn generate-api:clean
 ```
 
-**Step 4 — Start the dev server in the background:**
+**Step 4 — Start the dev server and capture the URL:**
 ```bash
-cd genai-engine/ui && yarn dev &
+cd genai-engine/ui && yarn dev 2>&1 | tee /tmp/vite-fe.log &
+sleep 3 && grep -m1 "Local:" /tmp/vite-fe.log
 ```
 
-Report when done:
-- Frontend: http://localhost:5173
+Report the Local URL that Vite printed (e.g. `http://localhost:3000`). If the default port was taken, Vite will have chosen a different one.
 ---

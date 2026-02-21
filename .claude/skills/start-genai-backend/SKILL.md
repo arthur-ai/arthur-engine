@@ -1,6 +1,6 @@
 ---
 name: start-genai-backend
-description: Start the GenAI Engine backend server and frontend UI. Use when you need to launch the API server at localhost:3030 and the frontend at localhost:5173.
+description: Start the GenAI Engine backend server and frontend UI. Use when you need to launch the API server at localhost:3030 and the frontend locally.
 allowed-tools: Bash, Read, Task
 ---
 
@@ -56,13 +56,14 @@ poetry run serve &
 sleep 5 && curl -s -H "Authorization: Bearer changeme123" http://localhost:3030/health
 ```
 
-**Step 4 — Start the frontend in the background:**
+**Step 4 — Start the frontend and capture the URL:**
 ```bash
-cd genai-engine/ui && yarn install && yarn dev &
+cd genai-engine/ui && yarn install && yarn dev 2>&1 | tee /tmp/vite-fe.log &
+sleep 3 && grep -m1 "Local:" /tmp/vite-fe.log
 ```
 
 Report the following when done:
 - Backend API: http://localhost:3030/docs
-- Frontend: http://localhost:5173
+- Frontend: the Local URL that Vite printed (default port 3000, but may differ if already in use)
 - Auth header: `Authorization: Bearer changeme123`
 ---
