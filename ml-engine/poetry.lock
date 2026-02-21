@@ -852,14 +852,14 @@ pyarrow = ["pyarrow (>=14.0.1) ; python_version >= \"3.8\" and python_version < 
 
 [[package]]
 name = "databricks-sqlalchemy"
-version = "2.0.8"
+version = "2.0.9"
 description = "Databricks SQLAlchemy plugin for Python"
 optional = false
 python-versions = "<4.0.0,>=3.8.0"
 groups = ["main"]
 files = [
-    {file = "databricks_sqlalchemy-2.0.8-py3-none-any.whl", hash = "sha256:755b6f9dc2aaabfdc1243064f4054b8dc325da342bc9939b84988e00938b3c56"},
-    {file = "databricks_sqlalchemy-2.0.8.tar.gz", hash = "sha256:2d3e3c2f3336d98d5e11aa289bdc94e69b4df288dcc776a4af06c0fddbd59f15"},
+    {file = "databricks_sqlalchemy-2.0.9-py3-none-any.whl", hash = "sha256:b2569084942591b91eff749ca3f5cdb101845245d36a665d70fc8ad12005dab9"},
+    {file = "databricks_sqlalchemy-2.0.9.tar.gz", hash = "sha256:9975830df92541485c0560998ee90f1ac0f76d9d3de4940582e951c09b49b9ed"},
 ]
 
 [package.dependencies]
