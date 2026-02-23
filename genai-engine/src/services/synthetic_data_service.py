@@ -30,6 +30,7 @@ from clients.llm.llm_client import LLMClient, LLMModelResponse
 from dependencies import get_db_session
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import (
     LLMRequestConfigSettings,
     SyntheticDataColumnDescription,
@@ -112,10 +113,13 @@ class SyntheticDataService:
         try:
             with self.db_session.no_autoflush:
                 prompt_repo = AgenticPromptRepository(self.db_session)
-                prompt = prompt_repo.get_llm_item_by_tag(
-                    SYNTHETIC_DATASET_TASK_ID, prompt_name, PRODUCTION_TAG
+                prompt = cast(
+                    AgenticPrompt,
+                    prompt_repo.get_llm_item_by_tag(
+                        SYNTHETIC_DATASET_TASK_ID, prompt_name, PRODUCTION_TAG
+                    ),
                 )
-            return prompt.messages[0].content  # type: ignore[return-value]
+            return str(prompt.messages[0].content)
         except Exception as e:
             logger.warning(
                 f"Could not load prompt template '{prompt_name}' from DB, "
@@ -229,7 +233,7 @@ class SyntheticDataService:
 
     def _emit_trace(
         self,
-        messages: List[Dict[str, Any]],
+        messages: List[OpenAIMessage],
         response: LLMModelResponse,
         model_name: str,
         session_id: str,
@@ -264,16 +268,18 @@ class SyntheticDataService:
 
         # Input messages
         for i, msg in enumerate(messages):
+            role_str = msg.role if isinstance(msg.role, str) else msg.role.value
+            content_str = str(msg.content) if msg.content is not None else ""
             attrs.append(
                 KeyValue(
                     key=f"llm.input_messages.{i}.message.role",
-                    value=AnyValue(string_value=str(msg.get("role", ""))),
+                    value=AnyValue(string_value=role_str),
                 )
             )
             attrs.append(
                 KeyValue(
                     key=f"llm.input_messages.{i}.message.content",
-                    value=AnyValue(string_value=str(msg.get("content", ""))),
+                    value=AnyValue(string_value=content_str),
                 )
             )
 
@@ -282,7 +288,10 @@ class SyntheticDataService:
         output_content = ""
         try:
             if hasattr(raw, "choices") and raw.choices:
-                output_content = raw.choices[0].message.content or ""
+                choice = raw.choices[0]
+                output_content = str(
+                    getattr(getattr(choice, "message", None), "content", "") or ""
+                )
         except Exception:
             pass
         attrs.append(
@@ -326,8 +335,16 @@ class SyntheticDataService:
         )
 
         # input.value / output.value — required for the UI Input/Output boxes
-        user_messages = [m for m in messages if m.get("role") == "user"]
-        input_value = user_messages[-1].get("content", "") if user_messages else ""
+        user_messages = [
+            m
+            for m in messages
+            if (m.role if isinstance(m.role, str) else m.role.value) == "user"
+        ]
+        input_value = (
+            str(user_messages[-1].content)
+            if user_messages and user_messages[-1].content
+            else ""
+        )
         attrs.append(
             KeyValue(
                 key="input.value",
@@ -419,9 +436,9 @@ class SyntheticDataService:
         ).render(num_rows=request.num_rows)
 
         # Build messages
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+        messages: List[OpenAIMessage] = [
+            OpenAIMessage(role=MessageRole.SYSTEM, content=system_prompt),
+            OpenAIMessage(role=MessageRole.USER, content=user_prompt),
         ]
 
         # Build config kwargs
@@ -431,7 +448,7 @@ class SyntheticDataService:
         llm_start_ns = int(time.time() * 1e9)
         response = client.completion(
             model=request.model_name,
-            messages=messages,
+            messages=[m.model_dump(exclude_none=True) for m in messages],
             response_format=SyntheticDataLLMOutput,
             **config_kwargs,
         )
@@ -540,23 +557,25 @@ class SyntheticDataService:
         )
 
         # Build messages including conversation history
-        messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
+        messages: List[OpenAIMessage] = [
+            OpenAIMessage(role=MessageRole.SYSTEM, content=system_prompt)
+        ]
 
         # Add conversation history
         for msg in request.conversation_history:
             messages.append(
-                {
-                    "role": msg.role if isinstance(msg.role, str) else msg.role.value,
-                    "content": (
+                OpenAIMessage(
+                    role=msg.role,
+                    content=(
                         msg.content
                         if isinstance(msg.content, str)
                         else str(msg.content)
                     ),
-                }
+                )
             )
 
         # Add current user message
-        messages.append({"role": "user", "content": user_prompt})
+        messages.append(OpenAIMessage(role=MessageRole.USER, content=user_prompt))
 
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
@@ -565,7 +584,7 @@ class SyntheticDataService:
         llm_start_ns = int(time.time() * 1e9)
         response = client.completion(
             model=request.model_name,
-            messages=messages,
+            messages=[m.model_dump(exclude_none=True) for m in messages],
             response_format=SyntheticDataLLMOutput,
             **config_kwargs,
         )

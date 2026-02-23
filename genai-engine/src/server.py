@@ -31,6 +31,7 @@ from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemet
 from config.config import Config
 from config.extra_features import extra_feature_config
 from dependencies import (
+    db_session_context,
     get_db_engine,
     get_db_session,
     get_keycloak_client,
@@ -200,14 +201,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except HTTPException as e:
         raise ConnectionError(f"Error connecting to database: {e}") from None
 
-    db_gen = get_db_session()
     try:
-        db = next(db_gen)
-        initialize_system_tasks(db)
+        with db_session_context() as init_db:
+            initialize_system_tasks(init_db)
     except Exception as e:
         logger.error(f"Error initializing system tasks: {e}")
-    finally:
-        db_gen.close()
 
     keycloak_settings = get_keycloak_settings()
     if keycloak_settings.ENABLED:
