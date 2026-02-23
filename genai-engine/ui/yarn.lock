@@ -174,13 +174,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^3.10.0":
-  version: 3.10.0
-  resolution: "@arthur/shared-components@npm:3.10.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.10.0.tgz"
+"@arthur/shared-components@npm:^3.11.0":
+  version: 3.11.0
+  resolution: "@arthur/shared-components@npm:3.11.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.11.0.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.33.3"
     "@arthur/unify-types": "npm:^3.2.0"
-    "@base-ui-components/react": "npm:^1.0.0-beta.6"
+    "@base-ui/react": "npm:^1.2.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -213,7 +213,7 @@ __metadata:
     react-dom: ^18.0.0 || ^19.1.0
     react-error-boundary: ^4.0.0
     react-i18next: ^16.5.3
-  checksum: 10c0/e732af9d8906ef6ac056b49f091b2ae23a3219ab90f973c231cfb7b13e3f19e9b3a1f83689b72cc54a3fbc6083e0c66df6394518f59d33889730a29b24f366bc
+  checksum: 10c0/bcdf8fe3e815554c971be3afd5cb658ccaeb4ec97b6f41f6c6529acd53dd4ff2c1d35ffdbf76bdff45cb8c46f573b3b98ca0d7a12baa038392d6fb51371a886c
   languageName: node
   linkType: hard
 
@@ -525,47 +525,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@base-ui-components/react@npm:^1.0.0-beta.6":
-  version: 1.0.0-rc.0
-  resolution: "@base-ui-components/react@npm:1.0.0-rc.0"
-  dependencies:
-    "@babel/runtime": "npm:^7.28.4"
-    "@base-ui-components/utils": "npm:0.2.2"
-    "@floating-ui/react-dom": "npm:^2.1.6"
-    "@floating-ui/utils": "npm:^0.2.10"
-    reselect: "npm:^5.1.1"
-    tabbable: "npm:^6.3.0"
-    use-sync-external-store: "npm:^1.6.0"
-  peerDependencies:
-    "@types/react": ^17 || ^18 || ^19
-    react: ^17 || ^18 || ^19
-    react-dom: ^17 || ^18 || ^19
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/eb4dffd6da0372faeea2ebbf2bca892e65db9e1967c6edba51c15d4c0c82d127c0ed70ad0e4d07ddcac921f82122197b5163fa5676e97a3e5ac9ee10095d1f22
-  languageName: node
-  linkType: hard
-
-"@base-ui-components/utils@npm:0.2.2":
-  version: 0.2.2
-  resolution: "@base-ui-components/utils@npm:0.2.2"
-  dependencies:
-    "@babel/runtime": "npm:^7.28.4"
-    "@floating-ui/utils": "npm:^0.2.10"
-    reselect: "npm:^5.1.1"
-    use-sync-external-store: "npm:^1.6.0"
-  peerDependencies:
-    "@types/react": ^17 || ^18 || ^19
-    react: ^17 || ^18 || ^19
-    react-dom: ^17 || ^18 || ^19
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/16ca5f0226879969501549d5e875ed8eadf484fd76e39a451083fe21f5da87842bdf1f512ee3319d0dacdf717ff4ad990e133713673eb69ce48490d644754f6d
-  languageName: node
-  linkType: hard
-
 "@base-ui/react@npm:^1.0.0":
   version: 1.0.0
   resolution: "@base-ui/react@npm:1.0.0"
@@ -588,6 +547,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@base-ui/react@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "@base-ui/react@npm:1.2.0"
+  dependencies:
+    "@babel/runtime": "npm:^7.28.6"
+    "@base-ui/utils": "npm:0.2.5"
+    "@floating-ui/react-dom": "npm:^2.1.6"
+    "@floating-ui/utils": "npm:^0.2.10"
+    tabbable: "npm:^6.4.0"
+    use-sync-external-store: "npm:^1.6.0"
+  peerDependencies:
+    "@types/react": ^17 || ^18 || ^19
+    react: ^17 || ^18 || ^19
+    react-dom: ^17 || ^18 || ^19
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/4571e86c43d05bf2a667f826d35a9e1b2c6a06e33093cf82ecd7380c5691b12c43a236d6be6d099e7507601956d94670f03022f2da7d4b862025f8a43b76c5a3
+  languageName: node
+  linkType: hard
+
 "@base-ui/utils@npm:0.2.3":
   version: 0.2.3
   resolution: "@base-ui/utils@npm:0.2.3"
@@ -604,6 +584,25 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/5a75102851e8096402a4185d7b4182a7579069869f3f6f09ec46ce6b5318192f5e8e07ada67af370cf85a055fb0e9693bcaa224dffc51c9d432cf57e05b58144
+  languageName: node
+  linkType: hard
+
+"@base-ui/utils@npm:0.2.5":
+  version: 0.2.5
+  resolution: "@base-ui/utils@npm:0.2.5"
+  dependencies:
+    "@babel/runtime": "npm:^7.28.6"
+    "@floating-ui/utils": "npm:^0.2.10"
+    reselect: "npm:^5.1.1"
+    use-sync-external-store: "npm:^1.6.0"
+  peerDependencies:
+    "@types/react": ^17 || ^18 || ^19
+    react: ^17 || ^18 || ^19
+    react-dom: ^17 || ^18 || ^19
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/c871763ab132f6373895eef41477ff5a263330bc926317ed625226909ccb230109b1282556913eebd692094342644d7447a6f7bcb61aa8d6b0c60965ad3724a7
   languageName: node
   linkType: hard
 
@@ -8287,6 +8286,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tabbable@npm:^6.4.0":
+  version: 6.4.0
+  resolution: "tabbable@npm:6.4.0"
+  checksum: 10c0/d931427f4a96b801fd8801ba296a702119e06f70ad262fed8abc5271225c9f1ca51b89fdec4fb2f22e1d35acb3d2881db0a17cedc758272e9ecb540d00299d76
+  languageName: node
+  linkType: hard
+
 "tagged-tag@npm:^1.0.0":
   version: 1.0.0
   resolution: "tagged-tag@npm:1.0.0"
@@ -8529,7 +8535,7 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@arthur/shared-components": "npm:^3.10.0"
+    "@arthur/shared-components": "npm:^3.11.0"
     "@base-ui/react": "npm:^1.0.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
