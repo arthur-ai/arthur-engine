@@ -72,7 +72,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
-from schemas.internal_schemas import AgenticAnnotation
+from schemas.internal_schemas import AgenticAnnotation, EnrichedTaskResponse
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
@@ -345,6 +345,32 @@ class GenaiEngineTestClientBase(httpx.Client):
                 TaskResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
+            ),
+        )
+
+    def get_agent_tasks(
+        self,
+    ) -> tuple[int, list[EnrichedTaskResponse]]:
+        """Get agentic tasks with enriched agent metadata.
+
+        Returns only agentic tasks.
+
+        Returns:
+            Tuple of (status_code, list of EnrichedTaskResponse)
+        """
+        path = "api/v2/agent-tasks"
+
+        resp = self.base_client.get(
+            path, headers=self.authorized_user_api_key_headers
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                [EnrichedTaskResponse.model_validate(task) for task in resp.json()]
+                if resp.status_code == 200
+                else []
             ),
         )
 
@@ -2694,6 +2720,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         version_number: int,
         page: int = None,
         page_size: int = None,
+        search: str = None,
     ) -> tuple[int, DatasetVersionResponse]:
         """Get a dataset version."""
         path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
@@ -2702,6 +2729,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page"] = page
         if page_size is not None:
             params["page_size"] = page_size
+        if search is not None:
+            params["search"] = search
 
         url = path
         if params:

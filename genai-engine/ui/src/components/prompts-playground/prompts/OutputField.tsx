@@ -11,7 +11,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useState } from "react";
@@ -211,7 +211,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
             sx={{
               ...(highlightCost && runResponse?.cost
                 ? {
-                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(255,235,59,0.2)" : "#ffeb3b"),
+                    backgroundColor: (theme) => alpha(theme.palette.warning.light, theme.palette.mode === "dark" ? 0.2 : 0.4),
                     borderRadius: 1,
                     padding: "4px 8px",
                   }

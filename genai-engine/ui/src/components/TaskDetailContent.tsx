@@ -1,5 +1,11 @@
 "use client";
 
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
 import React from "react";
 
 import { useTask } from "@/hooks/useTask";
@@ -9,57 +15,88 @@ export const TaskDetailContent: React.FC = () => {
 
   if (!task) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: 256 }}>
+        <CircularProgress />
+      </Box>
     );
   }
   return (
-    <div className="py-6 px-6">
-      <div className="bg-white dark:bg-gray-900 shadow dark:shadow-gray-900/50 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">{task.name || "Untitled Task"}</h2>
-            <div className="flex items-center space-x-2">
-              {task.is_agentic && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                  Agentic
-                </span>
+    <Box>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          px: 3,
+          pt: 3,
+          pb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <Box>
+          <Typography variant="h5" fontWeight={600} color="text.primary">
+            Task Details
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            View task configuration and metadata
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box sx={{ p: 3 }}>
+        <Paper variant="outlined">
+          <Box sx={{ px: 3, py: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+              {task.name || "Untitled Task"}
+            </Typography>
+            {task.is_agentic && <Chip label="Agentic" size="small" color="primary" variant="outlined" />}
+          </Box>
+          <Divider />
+          <Box sx={{ px: 3, py: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 3 }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                  Task ID
+                </Typography>
+                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5, fontFamily: "monospace" }}>
+                  {task.id}
+                </Typography>
+              </Box>
+
+              {task.is_agentic !== undefined && (
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                    Type
+                  </Typography>
+                  <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                    {task.is_agentic ? "Agentic Task" : "Standard Task"}
+                  </Typography>
+                </Box>
               )}
-            </div>
-          </div>
-        </div>
 
-        <div className="px-6 py-4">
-          <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Task ID</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100 font-mono">{task.id}</dd>
-            </div>
+              <Box>
+                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                  Created At
+                </Typography>
+                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                  {task.created_at ? new Date(task.created_at).toLocaleString() : "Not available"}
+                </Typography>
+              </Box>
 
-            {task.is_agentic !== undefined && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{task.is_agentic ? "Agentic Task" : "Standard Task"}</dd>
-              </div>
-            )}
-
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Created At</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                {task.created_at ? new Date(task.created_at).toLocaleString() : "Not available"}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Updated At</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                {task.updated_at ? new Date(task.updated_at).toLocaleString() : "Not available"}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-    </div>
+              <Box>
+                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                  Updated At
+                </Typography>
+                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                  {task.updated_at ? new Date(task.updated_at).toLocaleString() : "Not available"}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
+      </Box>
+    </Box>
   );
 };

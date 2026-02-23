@@ -13,19 +13,18 @@ export const DatasetsViewHeader: React.FC<DatasetsViewHeaderProps> = ({ onCreate
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        mb: 2,
       }}
     >
       <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5, color: "text.primary" }}>
+        <Typography variant="h5" fontWeight={600} color="text.primary">
           Datasets
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Manage and organize your training and evaluation datasets
         </Typography>
       </Box>
       <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={onCreateDataset}>
-        Create Dataset
+        Dataset
       </Button>
     </Box>
   );

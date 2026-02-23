@@ -2,6 +2,7 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import Typography from "@mui/material/Typography";
 
 import { Level, type TimeRange } from "../constants";
 
@@ -28,6 +29,24 @@ export const TracesViewLayout = ({ level, timeRange, onLevelChange, onTimeRangeC
         overflow: "hidden",
       }}
     >
+      <Box
+        sx={{
+          px: 3,
+          pt: 3,
+          pb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <Typography variant="h5" fontWeight={600} color="text.primary">
+          Traces
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Monitor and analyze inference traces
+        </Typography>
+      </Box>
+
       <Box
         sx={{
           display: "flex",

@@ -90,6 +90,7 @@ class AgentPollingRepository:
             raise
 
         # Enqueue the first polling job
+        # skips execution delay and executes immediately
         job = AgentPollingJob(
             agent_polling_data_id=db_model.id,
         )
@@ -173,6 +174,7 @@ class AgentPollingRepository:
         db_agent_polling_data.error_message = None
         db_agent_polling_data.failed_runs = 0
 
+        # skips execution delay and executes immediately
         job = AgentPollingJob(
             agent_polling_data_id=agent_polling_data_id,
         )

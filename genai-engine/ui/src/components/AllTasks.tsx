@@ -1,9 +1,28 @@
 import AddIcon from "@mui/icons-material/Add";
-import MenuIcon from "@mui/icons-material/Menu";
+import AppsOutlined from "@mui/icons-material/AppsOutlined";
+import KeyOutlined from "@mui/icons-material/KeyOutlined";
+import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
+import SettingsIcon from "@mui/icons-material/Settings";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import React, { useState, useEffect } from "react";
+import SortIcon from "@mui/icons-material/Sort";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import {
+  Box,
+  Button,
+  Divider,
+  FormControl,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Select,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ArthurLogo } from "./common/ArthurLogo";
@@ -14,6 +33,7 @@ import { TaskCard } from "./TaskCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -22,8 +42,30 @@ export const AllTasks: React.FC = () => {
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
+
+  const filteredTasks = useMemo(() => {
+    let result = [...tasks];
+
+    if (hideSystemTasks) {
+      result = result.filter((t) => !t.is_system_task);
+    }
+
+    if (inactiveDays > 0) {
+      const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
+      result = result.filter((t) => t.updated_at >= cutoff);
+    }
+
+    result.sort((a, b) => {
+      const field = sortBy === "updated" ? "updated_at" : "created_at";
+      return b[field] - a[field];
+    });
+
+    return result;
+  }, [tasks, hideSystemTasks, sortBy, inactiveDays]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -57,22 +99,9 @@ export const AllTasks: React.FC = () => {
     }
   }, [api]);
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isMenuOpen) {
-        const target = event.target as Element;
-        if (!target.closest(".relative")) {
-          setIsMenuOpen(false);
-        }
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isMenuOpen]);
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
 
   const handleLogout = () => {
     logout();
@@ -123,44 +152,64 @@ export const AllTasks: React.FC = () => {
               <div className="flex flex-col items-start">
                 <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
               </div>
-              <div className="flex items-center space-x-4">
-                {tasks.length > 0 && (
-                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                    Create Task
-                  </Button>
-                )}
-                &nbsp;
-                <div className="relative">
-                  <IconButton
-                    aria-label="menu"
-                    onClick={() => setIsMenuOpen((prev) => !prev)}
-                    sx={{
-                      bgcolor: "background.paper",
-                      border: 1,
-                      borderColor: "divider",
-                      borderRadius: "4px",
-                      padding: "8px",
-                      width: "40px",
-                      height: "40px",
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <IconButton
+                  aria-label="settings"
+                  onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+                  sx={{
+                    bgcolor: "background.paper",
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    width: "40px",
+                    height: "40px",
+                  }}
+                >
+                  <SettingsIcon />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchorEl}
+                  open={isMenuOpen}
+                  onClose={handleMenuClose}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      handleMenuClose();
+                      navigate("/settings/model-providers");
                     }}
                   >
-                    <MenuIcon />
-                  </IconButton>
-                  {/* Dropdown menu */}
-                  {isMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">
-                      <div className="px-4 py-2">
-                        <ThemeToggle />
-                      </div>
-                      <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
-                        <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "text.primary" }}>
-                          Logout
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                    <ListItemIcon>
+                      <AppsOutlined />
+                    </ListItemIcon>
+                    <ListItemText>Model Providers</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      handleMenuClose();
+                      navigate("/settings/api-keys");
+                    }}
+                  >
+                    <ListItemIcon>
+                      <KeyOutlined />
+                    </ListItemIcon>
+                    <ListItemText>API Keys</ListItemText>
+                  </MenuItem>
+                  <Divider />
+                  <Box sx={{ px: 2, py: 1 }}>
+                    <ThemeToggle />
+                  </Box>
+                  <Divider />
+                  <MenuItem onClick={handleLogout}>
+                    <ListItemIcon>
+                      <LogoutOutlined />
+                    </ListItemIcon>
+                    <ListItemText>Logout</ListItemText>
+                  </MenuItem>
+                </Menu>
+              </Box>
             </div>
           </div>
         </header>
@@ -191,18 +240,82 @@ export const AllTasks: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className="mb-4">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Tasks ({tasks.length})</h2>
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Click on any task to open the toolkit</p>
-                    <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                      <ShowChartIcon sx={{ fontSize: 18, mr: 0.5 }} />
-                      <span>Metrics from last 7 days</span>
-                    </div>
-                  </div>
-                </div>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6">All Tasks ({tasks.length})</Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      {filteredTasks.length < tasks.length
+                        ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                        : "Click on any task to open the toolkit"}
+                    </Typography>
+                  </Box>
+                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                    Task
+                  </Button>
+                </Box>
+
+                {/* Filter & Sort Toolbar */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                      <FormControl size="small" variant="standard">
+                        <Select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as SortBy)}
+                          disableUnderline
+                          sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+                        >
+                          <MenuItem value="updated">Recently updated</MenuItem>
+                          <MenuItem value="created">Recently created</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <FormControl size="small" variant="standard">
+                        <Select
+                          value={inactiveDays}
+                          onChange={(e) => setInactiveDays(e.target.value as InactiveDays)}
+                          disableUnderline
+                          sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+                        >
+                          <MenuItem value={0}>All time</MenuItem>
+                          <MenuItem value={7}>Active in last 7 days</MenuItem>
+                          <MenuItem value={14}>Active in last 14 days</MenuItem>
+                          <MenuItem value={30}>Active in last 30 days</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Stack>
+
+                    <Tooltip title={hideSystemTasks ? "Show system tasks" : "Hide system tasks"}>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        alignItems="center"
+                        onClick={() => setHideSystemTasks(!hideSystemTasks)}
+                        sx={{ cursor: "pointer", "&:hover": { opacity: 0.7 } }}
+                      >
+                        {hideSystemTasks ? (
+                          <VisibilityOffIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        ) : (
+                          <VisibilityIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        )}
+                        <Typography variant="body2" color="text.secondary">
+                          {hideSystemTasks ? "System tasks hidden" : "System tasks visible"}
+                        </Typography>
+                      </Stack>
+                    </Tooltip>
+                  </Stack>
+
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Metrics from last 7 days
+                    </Typography>
+                  </Stack>
+                </Box>
+
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {tasks.map((task) => (
+                  {filteredTasks.map((task) => (
                     <TaskCard key={task.id} task={task} />
                   ))}
                 </div>

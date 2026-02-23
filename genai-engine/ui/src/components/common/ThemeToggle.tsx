@@ -20,7 +20,7 @@ export function ThemeToggle() {
 
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+      <Typography variant="body2" sx={{ mb: 0.5, display: "block", color: "text.primary" }}>
         Preferences ({modeLabels[mode]})
       </Typography>
       <ToggleButtonGroup
