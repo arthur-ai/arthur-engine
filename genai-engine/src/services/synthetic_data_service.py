@@ -12,6 +12,8 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, cast
 
+from jinja2 import Template
+
 from arthur_common.models.llm_model_providers import (
     MessageRole,
     ModelProvider,
@@ -404,13 +406,15 @@ class SyntheticDataService:
         existing_rows_dicts = self._convert_existing_rows_to_dicts(existing_rows)
 
         # Build prompts using DB-loaded templates
-        system_prompt = self._system_prompt_template.format(
+        system_prompt = Template(self._system_prompt_template).render(
             dataset_purpose=request.dataset_purpose,
             column_definitions=format_column_definitions(column_desc_dicts),
             reference_examples=format_reference_examples(existing_rows_dicts, column_names),
         )
 
-        user_prompt = self._initial_user_prompt_template.format(num_rows=request.num_rows)
+        user_prompt = Template(self._initial_user_prompt_template).render(
+            num_rows=request.num_rows
+        )
 
         # Build messages
         messages = [
@@ -491,7 +495,7 @@ class SyntheticDataService:
         existing_rows_dicts = self._convert_existing_rows_to_dicts(existing_rows)
 
         # Build system prompt using DB-loaded template
-        system_prompt = self._system_prompt_template.format(
+        system_prompt = Template(self._system_prompt_template).render(
             dataset_purpose=request.dataset_purpose,
             column_definitions=format_column_definitions(column_desc_dicts),
             reference_examples=format_reference_examples(existing_rows_dicts, column_names),
@@ -518,7 +522,7 @@ class SyntheticDataService:
             current_row_ids.add(row_id)
 
         # Build conversation user prompt using DB-loaded template
-        user_prompt = self._conversation_user_prompt_template.format(
+        user_prompt = Template(self._conversation_user_prompt_template).render(
             current_rows=format_current_rows_for_prompt(current_rows_internal, column_names),
             user_message=request.message,
         )

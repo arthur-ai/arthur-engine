@@ -7,17 +7,19 @@ for generating synthetic dataset rows via LLM.
 
 from typing import Any, Dict, List
 
+from jinja2 import Template
+
 SYSTEM_PROMPT_TEMPLATE = """You are an expert at generating realistic, diverse synthetic data for datasets.
 Your task is to generate or modify dataset rows based on the user's instructions.
 
 Dataset Purpose:
-{dataset_purpose}
+{{ dataset_purpose }}
 
 Column Definitions:
-{column_definitions}
+{{ column_definitions }}
 
 Reference Examples (existing data from the dataset):
-{reference_examples}
+{{ reference_examples }}
 
 Guidelines:
 1. Generate data that is realistic and consistent with the dataset purpose
@@ -31,31 +33,31 @@ IMPORTANT: You must respond with valid JSON containing:
 - "message": A brief explanation of what you did
 
 Example response format:
-{{
+{
     "rows": [
-        {{
+        {
             "id": "row_1",
             "data": [
-                {{"column_name": "col1", "column_value": "value1"}},
-                {{"column_name": "col2", "column_value": "value2"}}
+                {"column_name": "col1", "column_value": "value1"},
+                {"column_name": "col2", "column_value": "value2"}
             ]
-        }}
+        }
     ],
     "message": "Generated 5 new rows with diverse values..."
-}}"""
+}"""
 
 
-INITIAL_GENERATION_USER_PROMPT_TEMPLATE = """Generate {num_rows} new rows for this dataset.
+INITIAL_GENERATION_USER_PROMPT_TEMPLATE = """Generate {{ num_rows }} new rows for this dataset.
 
 Make sure each row is unique, realistic, and follows the column descriptions provided.
 Assign each row a unique ID starting with "row_" followed by a number (e.g., "row_1", "row_2", etc.)."""
 
 
 CONVERSATION_USER_PROMPT_TEMPLATE = """Current Generated Data:
-{current_rows}
+{{ current_rows }}
 
 User Request:
-{user_message}
+{{ user_message }}
 
 Please update the data based on the user's request. You can:
 - Add new rows (assign IDs like "row_N" where N continues from the highest existing number)
@@ -137,7 +139,7 @@ def build_system_prompt(
     column_names: List[str],
 ) -> str:
     """Build the complete system prompt for synthetic data generation."""
-    return SYSTEM_PROMPT_TEMPLATE.format(
+    return Template(SYSTEM_PROMPT_TEMPLATE).render(
         dataset_purpose=dataset_purpose,
         column_definitions=format_column_definitions(column_descriptions),
         reference_examples=format_reference_examples(existing_rows, column_names),
@@ -146,7 +148,7 @@ def build_system_prompt(
 
 def build_initial_generation_prompt(num_rows: int) -> str:
     """Build the user prompt for initial data generation."""
-    return INITIAL_GENERATION_USER_PROMPT_TEMPLATE.format(num_rows=num_rows)
+    return Template(INITIAL_GENERATION_USER_PROMPT_TEMPLATE).render(num_rows=num_rows)
 
 
 def build_conversation_prompt(
@@ -155,7 +157,7 @@ def build_conversation_prompt(
     column_names: List[str],
 ) -> str:
     """Build the user prompt for conversation-based refinement."""
-    return CONVERSATION_USER_PROMPT_TEMPLATE.format(
+    return Template(CONVERSATION_USER_PROMPT_TEMPLATE).render(
         current_rows=format_current_rows_for_prompt(current_rows, column_names),
         user_message=user_message,
     )
