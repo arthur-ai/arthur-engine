@@ -9,6 +9,7 @@ from arthur_common.models.agent_governance_schemas import (
     TaskMetadata,
 )
 from arthur_common.models.enums import RegisteredAgentProvider
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseTask
@@ -158,6 +159,9 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                         continue
 
                     # Check if a task already exists for this engine ID
+                    logger.info(
+                        f"Checking for existing task with engine_id={engine_id}"
+                    )
                     existing_task = self._find_task_by_gcp_engine_id(
                         db_session, engine_id
                     )
@@ -226,9 +230,11 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         return (
             db_session.query(DatabaseTask)
             .filter(
-                DatabaseTask.task_metadata["creation_source"][
-                    "gcp_reasoning_engine_id"
-                ].astext
+                func.json_extract_path_text(
+                    DatabaseTask.task_metadata,
+                    "creation_source",
+                    "gcp_reasoning_engine_id",
+                )
                 == engine_id
             )
             .first()
@@ -290,7 +296,11 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                 .filter(
                     DatabaseTask.is_agentic == True,
                     DatabaseTask.archived == False,
-                    DatabaseTask.task_metadata["creation_source"]["type"].astext
+                    func.json_extract_path_text(
+                        DatabaseTask.task_metadata,
+                        "creation_source",
+                        "type",
+                    )
                     == "GCP",
                 )
                 .all()
@@ -394,44 +404,42 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     f"from {start_time} to {now}"
                 )
 
-            # Fetch traces
+            # Fetch and ingest traces page by page
             external_trace_service = ExternalTraceRetrievalService()
-            traces = external_trace_service.fetch_traces_from_cloud_trace(
-                task_id=task.id,
-                project_id=creation_source.gcp_project_id,
-                reasoning_engine_id=creation_source.gcp_reasoning_engine_id,
-                start_time=start_time,
-                end_time=now,
-                timeout=60,
-            )
-
-            if not traces:
-                logger.info(
-                    f"No traces found for task {task.id} ({task.name}) "
-                    f"between {start_time} and {now}"
-                )
-                # Still update last_fetched so we don't re-query the same window
-                polling_state_repo.update_last_fetched(task.id, now)
-                return
-
-            # Ingest traces
             tasks_metrics_repository = TasksMetricsRepository(db_session)
             span_repository = SpanRepository(
                 db_session,
                 tasks_metrics_repository,
                 metric_repository,
             )
-            span_repository.convert_and_send_traces_from_external_provider(
-                traces=traces,
-                provider=RegisteredAgentProvider.GCP,
-                task_id=task.id,
-            )
 
-            # Update polling state
+            total_trace_count = 0
+            for page_traces in external_trace_service.fetch_traces_from_cloud_trace(
+                task_id=task.id,
+                project_id=creation_source.gcp_project_id,
+                reasoning_engine_id=creation_source.gcp_reasoning_engine_id,
+                start_time=start_time,
+                end_time=now,
+                timeout=60,
+            ):
+                span_repository.convert_and_send_traces_from_external_provider(
+                    traces=page_traces,
+                    provider=RegisteredAgentProvider.GCP,
+                    task_id=task.id,
+                )
+                total_trace_count += len(page_traces)
+
+            if total_trace_count == 0:
+                logger.info(
+                    f"No traces found for task {task.id} ({task.name}) "
+                    f"between {start_time} and {now}"
+                )
+
+            # Update polling state (whether traces were found or not)
             polling_state_repo.update_last_fetched(task.id, now)
             logger.info(
                 f"Polling completed for task {task.id} ({task.name}), "
-                f"processed {len(traces)} trace(s)"
+                f"processed {total_trace_count} trace(s)"
             )
 
         except Exception as e:

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 from google.cloud import trace_v1
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_PAGE_SIZE = 25
 
 
 class ExternalTraceRetrievalService:
@@ -67,6 +69,47 @@ class ExternalTraceRetrievalService:
 
         return gcp_trace
 
+    def _fetch_and_convert_page(
+        self,
+        trace_client: trace_v1.TraceServiceClient,
+        project_id: str,
+        trace_ids: List[str],
+        task_id: str,
+        timeout: float,
+    ) -> List[Dict[str, Any]]:
+        """Fetch complete traces by ID and convert them to GenAI format.
+
+        Args:
+            trace_client: Initialized GCP TraceServiceClient
+            project_id: GCP project ID
+            trace_ids: List of trace IDs to fetch
+            task_id: Task ID to associate with traces
+            timeout: Timeout for each get_trace call
+
+        Returns:
+            List of traces in GenAI Engine format
+        """
+        genai_traces = []
+
+        for trace_id in trace_ids:
+            get_request = trace_v1.GetTraceRequest(
+                project_id=project_id,
+                trace_id=trace_id,
+            )
+            try:
+                trace = trace_client.get_trace(request=get_request, timeout=timeout)
+                genai_trace = self._convert_gcp_trace_to_genai_format(trace, task_id)
+                genai_traces.append(genai_trace)
+            except Exception as e:
+                logger.debug(f"  Could not fetch trace {trace_id}: {e}")
+                continue
+
+        logger.debug(
+            f"  Fetched and converted {len(genai_traces)}/{len(trace_ids)} "
+            f"trace(s) in page"
+        )
+        return genai_traces
+
     def fetch_traces_from_cloud_trace(
         self,
         task_id: str,
@@ -75,10 +118,15 @@ class ExternalTraceRetrievalService:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         max_traces: Optional[int] = None,
+        page_size: int = DEFAULT_PAGE_SIZE,
         timeout: float = 300.0,
-    ) -> List[Dict[str, Any]]:
+    ) -> Iterator[List[Dict[str, Any]]]:
         """
-        Fetch traces from Google Cloud Trace.
+        Fetch traces from Google Cloud Trace, yielding pages of converted traces.
+
+        Each yielded value is a list of traces (one page worth) in GenAI Engine
+        format. The caller should iterate and process each page independently
+        to avoid holding all traces in memory at once.
 
         Args:
             task_id: Task ID to associate traces with
@@ -86,74 +134,75 @@ class ExternalTraceRetrievalService:
             reasoning_engine_id: GCP Reasoning Engine ID used as Cloud Trace service.name filter
             start_time: Start time for trace query
             end_time: End time for trace query
-            max_traces: Optional maximum number of traces to fetch
+            max_traces: Optional maximum total number of traces to fetch across all pages
+            page_size: Number of traces per page (default: DEFAULT_PAGE_SIZE = 100).
+                Controls both the GCP ListTracesRequest page_size and the
+                internal batch size for fetching and yielding traces.
             timeout: Timeout in seconds for API calls
 
-        Returns:
-            List of traces in GenAI Engine format
+        Yields:
+            List of traces in GenAI Engine format, one page at a time
         """
 
         if start_time is None or end_time is None:
             raise ValueError("start_time and end_time are required")
 
         logger.debug(
-            f"Fetching traces from Cloud Trace for Project: {project_id} with Reasoning Engine ID: {reasoning_engine_id}",
+            f"Fetching traces from Cloud Trace for Project: {project_id} "
+            f"with Reasoning Engine ID: {reasoning_engine_id}",
         )
 
         try:
             # Initialize Cloud Trace client
             trace_client = trace_v1.TraceServiceClient()
 
-            # List all traces filtered by reasoning engine ID
+            # List traces filtered by reasoning engine ID
             request = trace_v1.ListTracesRequest(
                 project_id=project_id,
                 start_time=start_time,
                 end_time=end_time,
                 filter=f"+service.name:{reasoning_engine_id}",
+                page_size=page_size,
             )
 
-            trace_ids = []
             page_result = trace_client.list_traces(request=request, timeout=timeout)
+
+            total_fetched = 0
+            current_page_ids: List[str] = []
+
             for trace in page_result:
-                trace_ids.append(trace.trace_id)
+                if max_traces and total_fetched >= max_traces:
+                    break
 
-            logger.debug(f"  Found {len(trace_ids)} total trace ID(s)")
+                current_page_ids.append(trace.trace_id)
+                total_fetched += 1
 
-            if max_traces:
-                trace_ids = trace_ids[:max_traces]
+                # When we have a full page, fetch and yield
+                if len(current_page_ids) >= page_size:
+                    page_traces = self._fetch_and_convert_page(
+                        trace_client=trace_client,
+                        project_id=project_id,
+                        trace_ids=current_page_ids,
+                        task_id=task_id,
+                        timeout=timeout,
+                    )
+                    if page_traces:
+                        yield page_traces
+                    current_page_ids = []
 
-            if not trace_ids:
-                return []
-
-            # Fetch complete traces
-            traces = []
-            for i, trace_id in enumerate(trace_ids, 1):
-                if i % 10 == 0:
-                    logger.debug(f"  Fetching trace {i}/{len(trace_ids)}...")
-
-                get_request = trace_v1.GetTraceRequest(
+            # Yield any remaining traces in the final partial page
+            if current_page_ids:
+                page_traces = self._fetch_and_convert_page(
+                    trace_client=trace_client,
                     project_id=project_id,
-                    trace_id=trace_id,
+                    trace_ids=current_page_ids,
+                    task_id=task_id,
+                    timeout=timeout,
                 )
+                if page_traces:
+                    yield page_traces
 
-                try:
-                    trace = trace_client.get_trace(request=get_request, timeout=timeout)
-                    traces.append(trace)
-                except Exception as e:
-                    logger.debug(f"  Could not fetch trace {trace_id}: {e}")
-                    continue
-
-            logger.debug(f"  ✓ Fetched {len(traces)} complete trace(s)")
-
-            # Convert traces to GenAI format
-            genai_traces = []
-            for i, trace in enumerate(traces, 1):
-                logger.debug(f"  Sending trace {i}/{len(traces)}: {trace.trace_id}")
-
-                genai_trace = self._convert_gcp_trace_to_genai_format(trace, task_id)
-                genai_traces.append(genai_trace)
-
-            return genai_traces
+            logger.debug(f"  Fetched {total_fetched} total trace ID(s)")
 
         except Exception as e:
             logger.error(f"  ✗ Failed to fetch traces: {e}")

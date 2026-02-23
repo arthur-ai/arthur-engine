@@ -165,9 +165,10 @@ def test_execute_job_success(
     mock_polling_state.last_fetched = None
 
     mock_trace_service = MagicMock()
-    mock_trace_service.fetch_traces_from_cloud_trace.return_value = [
-        {"traceId": "trace-1", "spans": []}
-    ]
+    # Return an iterator of pages (each page is a list of traces)
+    mock_trace_service.fetch_traces_from_cloud_trace.return_value = iter([
+        [{"traceId": "trace-1", "spans": []}]
+    ])
     mock_trace_service_cls.return_value = mock_trace_service
 
     mock_session = MagicMock()
@@ -195,7 +196,7 @@ def test_execute_job_success(
     assert call_kwargs.kwargs["reasoning_engine_id"] == "12345"
     assert call_kwargs.kwargs["task_id"] == task_id
 
-    # Verify traces were ingested
+    # Verify traces were ingested (once per page)
     mock_span_repo.convert_and_send_traces_from_external_provider.assert_called_once()
 
     # Verify last_fetched was updated
@@ -207,13 +208,17 @@ def test_execute_job_success(
 @patch("services.task.global_agent_polling_service.ExternalTraceRetrievalService")
 @patch("services.task.global_agent_polling_service.TaskRepository")
 @patch("services.task.global_agent_polling_service.TaskPollingStateRepository")
+@patch("services.task.global_agent_polling_service.SpanRepository")
 @patch("services.task.global_agent_polling_service.RuleRepository")
 @patch("services.task.global_agent_polling_service.MetricRepository")
 @patch("services.task.global_agent_polling_service.ConfigurationRepository")
+@patch("services.task.global_agent_polling_service.TasksMetricsRepository")
 def test_execute_job_failure_does_not_update_polling_state(
+    mock_tasks_metrics_repo_cls,
     mock_config_repo_cls,
     mock_metric_repo_cls,
     mock_rule_repo_cls,
+    mock_span_repo_cls,
     mock_polling_repo_cls,
     mock_task_repo_cls,
     mock_trace_service_cls,
@@ -268,13 +273,17 @@ def test_execute_job_failure_does_not_update_polling_state(
 @patch("services.task.global_agent_polling_service.ExternalTraceRetrievalService")
 @patch("services.task.global_agent_polling_service.TaskRepository")
 @patch("services.task.global_agent_polling_service.TaskPollingStateRepository")
+@patch("services.task.global_agent_polling_service.SpanRepository")
 @patch("services.task.global_agent_polling_service.RuleRepository")
 @patch("services.task.global_agent_polling_service.MetricRepository")
 @patch("services.task.global_agent_polling_service.ConfigurationRepository")
+@patch("services.task.global_agent_polling_service.TasksMetricsRepository")
 def test_execute_job_no_traces_still_updates_last_fetched(
+    mock_tasks_metrics_repo_cls,
     mock_config_repo_cls,
     mock_metric_repo_cls,
     mock_rule_repo_cls,
+    mock_span_repo_cls,
     mock_polling_repo_cls,
     mock_task_repo_cls,
     mock_trace_service_cls,
@@ -298,7 +307,8 @@ def test_execute_job_no_traces_still_updates_last_fetched(
     mock_polling_state.last_fetched = datetime.now() - timedelta(hours=1)
 
     mock_trace_service = MagicMock()
-    mock_trace_service.fetch_traces_from_cloud_trace.return_value = []
+    # Return an empty iterator (no pages yielded)
+    mock_trace_service.fetch_traces_from_cloud_trace.return_value = iter([])
     mock_trace_service_cls.return_value = mock_trace_service
 
     mock_session = MagicMock()
