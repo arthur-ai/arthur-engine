@@ -1250,9 +1250,9 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
               const sourceType = mapping?.sourceType || "dataset_column";
 
               return (
-                <Box key={varName} className="border border-gray-300 dark:border-gray-600 rounded p-3">
+                <Box key={varName} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
                   <Box className="flex items-center justify-between mb-3">
-                    <Typography variant="subtitle2" className="font-medium">
+                    <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
                       {varName} *
                     </Typography>
 
