@@ -16,8 +16,3 @@ export function formatFullValue(value: unknown): string {
   if (typeof value === "object") return JSON.stringify(value, null, 2);
   return String(value);
 }
-
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-}
