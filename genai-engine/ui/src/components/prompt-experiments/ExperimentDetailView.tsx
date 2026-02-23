@@ -521,7 +521,7 @@ export const ExperimentDetailView: React.FC = () => {
                           })}
                         </Box>
 
-                        {/* Open in Notebook button in lower left corner - only for saved prompts */}
+                        {/* Open in Playground button in lower left corner - only for saved prompts */}
                         {(promptSummary.prompt_type === "saved" || !promptSummary.prompt_type) &&
                           promptSummary.prompt_name &&
                           promptSummary.prompt_version && (
@@ -541,7 +541,7 @@ export const ExperimentDetailView: React.FC = () => {
                                 },
                               }}
                             >
-                              Open in Notebook
+                              Open in Playground
                             </Button>
                           )}
 

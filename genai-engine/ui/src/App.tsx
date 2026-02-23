@@ -27,7 +27,7 @@ import Notebooks from "./components/notebooks/Notebooks";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
-import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
+import PromptsPlayground from "./components/prompts-playground/PromptsPlaygroundWrapper";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
 import { RagNotebooks } from "./components/retrievals/notebooks";
