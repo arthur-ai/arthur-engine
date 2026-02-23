@@ -352,9 +352,11 @@ class TaskRepository:
         return (
             self.db_session.query(DatabaseTask)
             .filter(
-                DatabaseTask.task_metadata["creation_source"][
-                    "gcp_reasoning_engine_id"
-                ].astext
+                func.json_extract_path_text(
+                    DatabaseTask.task_metadata,
+                    "creation_source",
+                    "gcp_reasoning_engine_id",
+                )
                 == engine_id
             )
             .first()

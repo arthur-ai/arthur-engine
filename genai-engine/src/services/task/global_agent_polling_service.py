@@ -10,7 +10,6 @@ from arthur_common.models.agent_governance_schemas import (
 )
 from arthur_common.models.enums import RegisteredAgentProvider
 from sqlalchemy import func, text
-from sqlalchemy.orm import Session
 
 from db_models import DatabaseTask
 from dependencies import get_db_session
@@ -114,15 +113,12 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
                 while not self.shutdown_event.is_set():
                     try:
-                        if self.shutdown_event.wait(
-                            timeout=AGENTIC_POLLING_INTERVAL_SECONDS
-                        ):
-                            break
-
                         self._discover_and_poll_agents()
-
                     except Exception as e:
                         logger.error(f"Error in background loop: {e}", exc_info=True)
+
+                    if self.shutdown_event.wait(timeout=AGENTIC_POLLING_INTERVAL_SECONDS):
+                        break
 
             except Exception as e:
                 logger.error(f"Error acquiring polling leader lock: {e}", exc_info=True)
@@ -203,9 +199,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     logger.info(
                         f"Checking for existing task with engine_id={engine_id}"
                     )
-                    existing_task = self._find_task_by_gcp_engine_id(
-                        db_session, engine_id
-                    )
+                    existing_task = task_repository.find_by_gcp_engine_id(engine_id)
                     if existing_task:
                         continue
 
@@ -260,26 +254,6 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
             db_session.close()
 
         return created_count
-
-    def _find_task_by_gcp_engine_id(
-        self, db_session: Session, engine_id: str
-    ) -> Optional[DatabaseTask]:
-        """Find a task by its GCP reasoning engine ID in task_metadata JSON.
-
-        Queries tasks where task_metadata.creation_source.gcp_reasoning_engine_id matches.
-        """
-        return (
-            db_session.query(DatabaseTask)
-            .filter(
-                func.json_extract_path_text(
-                    DatabaseTask.task_metadata,
-                    "creation_source",
-                    "gcp_reasoning_engine_id",
-                )
-                == engine_id
-            )
-            .first()
-        )
 
     def _is_task_eligible_for_polling(
         self,

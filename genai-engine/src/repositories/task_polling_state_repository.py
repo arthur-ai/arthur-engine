@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db_models.agent_polling_models import DatabaseTaskPollingState
@@ -37,7 +38,15 @@ class TaskPollingStateRepository:
             updated_at=now,
         )
         self.db_session.add(state)
-        self.db_session.commit()
+        try:
+            self.db_session.commit()
+        except IntegrityError:
+            self.db_session.rollback()
+            state = (
+                self.db_session.query(DatabaseTaskPollingState)
+                .filter(DatabaseTaskPollingState.task_id == task_id)
+                .one()
+            )
         return state
 
     def update_last_fetched(self, task_id: str, timestamp: datetime) -> None:

@@ -135,7 +135,7 @@ class ExternalTraceRetrievalService:
             start_time: Start time for trace query
             end_time: End time for trace query
             max_traces: Optional maximum total number of traces to fetch across all pages
-            page_size: Number of traces per page (default: DEFAULT_PAGE_SIZE = 100).
+            page_size: Number of traces per page (default: DEFAULT_PAGE_SIZE = 25).
                 Controls both the GCP ListTracesRequest page_size and the
                 internal batch size for fetching and yielding traces.
             timeout: Timeout in seconds for API calls
