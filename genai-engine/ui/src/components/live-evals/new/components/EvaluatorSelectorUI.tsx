@@ -1,14 +1,17 @@
-import { Autocomplete, Stack, TextField, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { Autocomplete, Button, Stack, TextField, Typography } from "@mui/material";
 
 type EvaluatorSelectorUIProps = {
-  evaluators: string[]; // Just names
-  versions: string[]; // Version numbers as strings
+  evaluators: string[];
+  versions: string[];
   selectedName: string | null;
   selectedVersion: string | null;
   onNameChange: (name: string | null) => void;
   onVersionChange: (version: string | null) => void;
   isVersionsLoading: boolean;
   title?: string;
+  onCreateNew?: () => void;
+  isCreateLoading?: boolean;
 };
 
 export const EvaluatorSelectorUI = ({
@@ -20,12 +23,31 @@ export const EvaluatorSelectorUI = ({
   onVersionChange,
   isVersionsLoading,
   title = "Evaluator and Version",
+  onCreateNew,
+  isCreateLoading,
 }: EvaluatorSelectorUIProps) => {
   return (
     <Stack gap={2}>
-      <Typography variant="h6" color="text.primary" fontWeight="bold">
-        {title}
-      </Typography>
+      <Stack direction="row" gap={2} width="100%" alignItems="center">
+        <Typography variant="h6" color="text.primary" fontWeight="bold">
+          {title}
+        </Typography>
+        {onCreateNew && (
+          <Button
+            loading={isCreateLoading}
+            variant="contained"
+            disableElevation
+            size="small"
+            color="primary"
+            startIcon={<AddIcon />}
+            type="button"
+            onClick={onCreateNew}
+            sx={{ ml: "auto" }}
+          >
+            Create New
+          </Button>
+        )}
+      </Stack>
       <Stack direction="row" gap={2} width="100%">
         <Autocomplete
           sx={{ flex: 1 }}
