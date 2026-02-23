@@ -2,7 +2,7 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 02/20/2026
+# 02/23/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/data_sources/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
 - **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added

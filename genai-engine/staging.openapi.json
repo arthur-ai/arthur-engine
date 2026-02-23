@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.404"
+        "version": "2.1.407"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -14543,7 +14543,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExecutePollingResponse"
+                                }
                             }
                         }
                     },
@@ -14573,7 +14575,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/DiscoverAndPollResponse"
+                                }
                             }
                         }
                     }
@@ -18767,6 +18771,33 @@
                 "title": "DiscoverAgentsResponse",
                 "description": "Response containing discovered agents.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks instead."
             },
+            "DiscoverAndPollResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "Status of the operation"
+                    },
+                    "discovered": {
+                        "type": "integer",
+                        "title": "Discovered",
+                        "description": "Number of new agent tasks created"
+                    },
+                    "enqueued": {
+                        "type": "integer",
+                        "title": "Enqueued",
+                        "description": "Number of polling jobs enqueued"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "discovered",
+                    "enqueued"
+                ],
+                "title": "DiscoverAndPollResponse",
+                "description": "Response model for the execute-all agent polling endpoint."
+            },
             "DiscoveredAgent": {
                 "properties": {
                     "name": {
@@ -19282,6 +19313,27 @@
                     ],
                     "hint": "specific individual's blood type"
                 }
+            },
+            "ExecutePollingResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "Status of the operation"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID that was enqueued"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "task_id"
+                ],
+                "title": "ExecutePollingResponse",
+                "description": "Response model for the single-task agent polling endpoint."
             },
             "ExperimentOutputSource": {
                 "properties": {
