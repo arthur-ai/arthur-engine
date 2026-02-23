@@ -1,8 +1,13 @@
 """Initializes built-in system tasks on engine startup."""
+
 import logging
 from datetime import datetime
 
-from arthur_common.models.llm_model_providers import MessageRole, ModelProvider, OpenAIMessage
+from arthur_common.models.llm_model_providers import (
+    MessageRole,
+    ModelProvider,
+    OpenAIMessage,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -118,7 +123,7 @@ def _ensure_prompt_with_production_tag(
             db_session.flush()
         except IntegrityError:
             db_session.rollback()
-            return
+            # Prompt already exists (race condition) — fall through to create the tag
 
     # Add the production tag
     tag = DatabaseAgenticPromptVersionTag(
@@ -130,6 +135,8 @@ def _ensure_prompt_with_production_tag(
     db_session.add(tag)
     try:
         db_session.commit()
-        logger.info(f"Seeded prompt '{prompt_name}' with production tag for system task")
+        logger.info(
+            f"Seeded prompt '{prompt_name}' with production tag for system task"
+        )
     except IntegrityError:
         db_session.rollback()

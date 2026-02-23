@@ -12,13 +12,12 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, cast
 
-from jinja2 import Template
-
 from arthur_common.models.llm_model_providers import (
     MessageRole,
     ModelProvider,
     OpenAIMessage,
 )
+from jinja2.sandbox import SandboxedEnvironment
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
@@ -28,6 +27,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
+from dependencies import get_db_session
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.request_schemas import (
@@ -42,11 +42,14 @@ from schemas.response_schemas import (
     SyntheticDataRowResponse,
 )
 from services.synthetic_data_prompts import (
+    CONVERSATION_USER_PROMPT_TEMPLATE,
+    INITIAL_GENERATION_USER_PROMPT_TEMPLATE,
+    SYSTEM_PROMPT_TEMPLATE,
     format_column_definitions,
     format_current_rows_for_prompt,
     format_reference_examples,
 )
-from dependencies import get_db_session
+from services.trace.trace_ingestion_service import TraceIngestionService
 from utils.constants import (
     PRODUCTION_TAG,
     SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME,
@@ -88,9 +91,12 @@ class SyntheticDataLLMOutput(BaseModel):
 class SyntheticDataService:
     """Service for generating and refining synthetic dataset rows."""
 
-    def __init__(self, model_provider_repo: ModelProviderRepository, db_session: Session):
+    def __init__(
+        self, model_provider_repo: ModelProviderRepository, db_session: Session
+    ):
         self.model_provider_repo = model_provider_repo
         self.db_session = db_session
+        self._jinja_env = SandboxedEnvironment(autoescape=False)
         self._system_prompt_template = self._load_prompt_template(
             SYNTHETIC_DATA_SYSTEM_PROMPT_NAME
         )
@@ -115,13 +121,6 @@ class SyntheticDataService:
                 f"Could not load prompt template '{prompt_name}' from DB, "
                 f"falling back to built-in template: {e}"
             )
-            # Import fallbacks inline to avoid circular dependencies
-            from services.synthetic_data_prompts import (
-                CONVERSATION_USER_PROMPT_TEMPLATE,
-                INITIAL_GENERATION_USER_PROMPT_TEMPLATE,
-                SYSTEM_PROMPT_TEMPLATE,
-            )
-
             fallbacks = {
                 SYNTHETIC_DATA_SYSTEM_PROMPT_NAME: SYSTEM_PROMPT_TEMPLATE,
                 SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME: INITIAL_GENERATION_USER_PROMPT_TEMPLATE,
@@ -234,10 +233,9 @@ class SyntheticDataService:
         response: LLMModelResponse,
         model_name: str,
         session_id: str,
+        start_time_ns: int,
     ) -> None:
         """Build and ingest an OpenInference-formatted trace for this LLM interaction."""
-        from services.trace.trace_ingestion_service import TraceIngestionService
-
         trace_id = os.urandom(16)
         span_id = os.urandom(8)
         now_ns = int(time.time() * 1e9)
@@ -246,7 +244,7 @@ class SyntheticDataService:
         span.trace_id = trace_id
         span.span_id = span_id
         span.name = "synthetic-data-generation"
-        span.start_time_unix_nano = now_ns - int(1e9)  # approximate 1s duration
+        span.start_time_unix_nano = start_time_ns
         span.end_time_unix_nano = now_ns
 
         attrs: list[KeyValue] = [
@@ -406,15 +404,19 @@ class SyntheticDataService:
         existing_rows_dicts = self._convert_existing_rows_to_dicts(existing_rows)
 
         # Build prompts using DB-loaded templates
-        system_prompt = Template(self._system_prompt_template).render(
+        system_prompt = self._jinja_env.from_string(
+            self._system_prompt_template
+        ).render(
             dataset_purpose=request.dataset_purpose,
             column_definitions=format_column_definitions(column_desc_dicts),
-            reference_examples=format_reference_examples(existing_rows_dicts, column_names),
+            reference_examples=format_reference_examples(
+                existing_rows_dicts, column_names
+            ),
         )
 
-        user_prompt = Template(self._initial_user_prompt_template).render(
-            num_rows=request.num_rows
-        )
+        user_prompt = self._jinja_env.from_string(
+            self._initial_user_prompt_template
+        ).render(num_rows=request.num_rows)
 
         # Build messages
         messages = [
@@ -426,6 +428,7 @@ class SyntheticDataService:
         config_kwargs = self._build_config_kwargs(request.config)
 
         # Call LLM with structured outputs
+        llm_start_ns = int(time.time() * 1e9)
         response = client.completion(
             model=request.model_name,
             messages=messages,
@@ -456,6 +459,7 @@ class SyntheticDataService:
             response=response,
             model_name=request.model_name,
             session_id=session_id,
+            start_time_ns=llm_start_ns,
         )
 
         return SyntheticDataGenerationResponse(
@@ -495,10 +499,14 @@ class SyntheticDataService:
         existing_rows_dicts = self._convert_existing_rows_to_dicts(existing_rows)
 
         # Build system prompt using DB-loaded template
-        system_prompt = Template(self._system_prompt_template).render(
+        system_prompt = self._jinja_env.from_string(
+            self._system_prompt_template
+        ).render(
             dataset_purpose=request.dataset_purpose,
             column_definitions=format_column_definitions(column_desc_dicts),
-            reference_examples=format_reference_examples(existing_rows_dicts, column_names),
+            reference_examples=format_reference_examples(
+                existing_rows_dicts, column_names
+            ),
         )
 
         # Convert current rows to internal format for the prompt
@@ -522,8 +530,12 @@ class SyntheticDataService:
             current_row_ids.add(row_id)
 
         # Build conversation user prompt using DB-loaded template
-        user_prompt = Template(self._conversation_user_prompt_template).render(
-            current_rows=format_current_rows_for_prompt(current_rows_internal, column_names),
+        user_prompt = self._jinja_env.from_string(
+            self._conversation_user_prompt_template
+        ).render(
+            current_rows=format_current_rows_for_prompt(
+                current_rows_internal, column_names
+            ),
             user_message=request.message,
         )
 
@@ -550,6 +562,7 @@ class SyntheticDataService:
         config_kwargs = self._build_config_kwargs(request.config)
 
         # Call LLM with structured outputs
+        llm_start_ns = int(time.time() * 1e9)
         response = client.completion(
             model=request.model_name,
             messages=messages,
@@ -580,6 +593,7 @@ class SyntheticDataService:
             response=response,
             model_name=request.model_name,
             session_id=session_id,
+            start_time_ns=llm_start_ns,
         )
 
         return SyntheticDataGenerationResponse(

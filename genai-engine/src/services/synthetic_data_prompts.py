@@ -7,7 +7,9 @@ for generating synthetic dataset rows via LLM.
 
 from typing import Any, Dict, List
 
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
+
+_jinja_env = SandboxedEnvironment(autoescape=False)
 
 SYSTEM_PROMPT_TEMPLATE = """You are an expert at generating realistic, diverse synthetic data for datasets.
 Your task is to generate or modify dataset rows based on the user's instructions.
@@ -139,7 +141,7 @@ def build_system_prompt(
     column_names: List[str],
 ) -> str:
     """Build the complete system prompt for synthetic data generation."""
-    return Template(SYSTEM_PROMPT_TEMPLATE).render(
+    return _jinja_env.from_string(SYSTEM_PROMPT_TEMPLATE).render(
         dataset_purpose=dataset_purpose,
         column_definitions=format_column_definitions(column_descriptions),
         reference_examples=format_reference_examples(existing_rows, column_names),
@@ -148,7 +150,9 @@ def build_system_prompt(
 
 def build_initial_generation_prompt(num_rows: int) -> str:
     """Build the user prompt for initial data generation."""
-    return Template(INITIAL_GENERATION_USER_PROMPT_TEMPLATE).render(num_rows=num_rows)
+    return _jinja_env.from_string(INITIAL_GENERATION_USER_PROMPT_TEMPLATE).render(
+        num_rows=num_rows
+    )
 
 
 def build_conversation_prompt(
@@ -157,7 +161,7 @@ def build_conversation_prompt(
     column_names: List[str],
 ) -> str:
     """Build the user prompt for conversation-based refinement."""
-    return Template(CONVERSATION_USER_PROMPT_TEMPLATE).render(
+    return _jinja_env.from_string(CONVERSATION_USER_PROMPT_TEMPLATE).render(
         current_rows=format_current_rows_for_prompt(current_rows, column_names),
         user_message=user_message,
     )

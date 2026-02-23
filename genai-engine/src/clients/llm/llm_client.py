@@ -6,13 +6,14 @@ from typing import Any, List, Optional, Union
 import httpx
 import litellm
 from arthur_common.models.llm_model_providers import ModelProvider
-
-litellm.drop_params = True
 from fastapi import HTTPException
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel, ConfigDict, Field
+
+# Drop unsupported params (e.g. temperature) silently for models that don't support them
+litellm.drop_params = True
 
 logger = logging.getLogger(__name__)
 
