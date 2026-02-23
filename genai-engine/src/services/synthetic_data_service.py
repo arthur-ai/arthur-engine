@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
-from dependencies import get_db_session
+from dependencies import db_session_context
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -383,13 +383,9 @@ class SyntheticDataService:
         export_request.resource_spans.append(resource_span)
 
         try:
-            trace_db_gen = get_db_session()
-            trace_db = next(trace_db_gen)
-            try:
+            with db_session_context() as trace_db:
                 svc = TraceIngestionService(trace_db)
                 svc.process_trace_data(export_request.SerializeToString())
-            finally:
-                trace_db_gen.close()
         except Exception as e:
             logger.warning(f"Failed to emit synthetic data trace: {e}")
 
