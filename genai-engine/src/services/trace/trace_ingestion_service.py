@@ -25,7 +25,6 @@ from repositories.resource_metadata_repository import ResourceMetadataRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
 )
-from services.agent_discovery_service import parse_gcp_resource_path
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
 from utils.constants import (
@@ -37,6 +36,7 @@ from utils.constants import (
     UNMAPPED_TASK_ID,
     USER_ID_KEY,
 )
+from utils.gcp import parse_gcp_resource_path
 from utils.token_count import safe_add
 
 logger = logging.getLogger(__name__)

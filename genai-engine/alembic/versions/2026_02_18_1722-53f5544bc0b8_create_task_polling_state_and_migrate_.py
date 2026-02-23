@@ -10,7 +10,7 @@ import json
 from alembic import op
 import sqlalchemy as sa
 
-from services.agent_discovery_service import parse_gcp_resource_path
+from utils.gcp import parse_gcp_resource_path
 
 
 # revision identifiers, used by Alembic.
@@ -153,7 +153,14 @@ def downgrade() -> None:
                 'gcp_metadata', jsonb_build_object(
                     'project_id', COALESCE(task_metadata->'creation_source'->>'gcp_project_id', ''),
                     'region', COALESCE(task_metadata->'creation_source'->>'gcp_region', ''),
-                    'resource_id', COALESCE(task_metadata->'creation_source'->>'gcp_reasoning_engine_id', '')
+                    'resource_id', CONCAT(
+                        'projects/',
+                        COALESCE(task_metadata->'creation_source'->>'gcp_project_id', ''),
+                        '/locations/',
+                        COALESCE(task_metadata->'creation_source'->>'gcp_region', ''),
+                        '/reasoningEngines/',
+                        COALESCE(task_metadata->'creation_source'->>'gcp_reasoning_engine_id', '')
+                    )
                 )
             )
             WHERE task_metadata IS NOT NULL

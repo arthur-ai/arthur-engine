@@ -19,6 +19,22 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
 
 # 02/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+# 02/23/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/data_sources/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
 - **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added

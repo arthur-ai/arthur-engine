@@ -4,8 +4,6 @@
     This module is deprecated. Agent discovery is now handled by
     GlobalAgentPollingService in services.task.global_agent_polling_service.
 
-    - ``parse_gcp_resource_path`` is still used by other modules and will be
-      moved to a shared utils module.
     - ``AgentDiscoveryService._list_vertex_ai_agents`` is used by
       GlobalAgentPollingService and will be inlined there.
     - The ``/api/v1/discover-agents`` endpoint that calls this service is
@@ -30,68 +28,9 @@ from schemas.agent_discovery_schemas import (
     SubAgent,
     Tool,
 )
+from utils.gcp import parse_gcp_resource_path
 
 logger = logging.getLogger(__name__)
-
-
-def parse_gcp_resource_path(
-    resource_id: str,
-) -> tuple[str | None, str | None, str | None]:
-    """Parse GCP resource path to extract project_id, region, and reasoning_engine_id.
-
-    Handles multiple resource path formats:
-    - projects/{project}/locations/{location}/reasoningEngines/{id}
-    - projects/{project}/locations/{location}/agentEngines/{id}
-    - //aiplatform.googleapis.com/projects/{project}/locations/{location}/reasoningEngines/{id}
-
-    Args:
-        resource_id: GCP resource path string
-
-    Returns:
-        Tuple of (gcp_project_id, gcp_region, gcp_reasoning_engine_id) or (None, None, None) if parsing fails
-    """
-    try:
-        # Strip any leading protocol/host prefix (e.g., //aiplatform.googleapis.com/)
-        resource_path = resource_id
-        if resource_path.startswith("//"):
-            # Remove protocol and host, keeping just the path
-            path_parts = resource_path.split(
-                "/", 3
-            )  # Split into ['', '', 'host', 'path...']
-            if len(path_parts) > 3:
-                resource_path = path_parts[3]  # Get everything after the host
-
-        parts = resource_path.split("/")
-
-        gcp_project_id = None
-        gcp_region = None
-        gcp_reasoning_engine_id = None
-
-        # Find the 'projects' segment
-        if "projects" in parts:
-            project_idx = parts.index("projects")
-            if len(parts) > project_idx + 1:
-                gcp_project_id = parts[project_idx + 1]
-
-        # Find the 'locations' segment
-        if "locations" in parts:
-            location_idx = parts.index("locations")
-            if len(parts) > location_idx + 1:
-                gcp_region = parts[location_idx + 1]
-
-        # Find the engine type and ID
-        for engine_type in ("reasoningEngines", "agentEngines"):
-            if engine_type in parts:
-                engine_idx = parts.index(engine_type)
-                if len(parts) > engine_idx + 1:
-                    gcp_reasoning_engine_id = parts[engine_idx + 1]
-                    break
-
-        return gcp_project_id, gcp_region, gcp_reasoning_engine_id
-
-    except (IndexError, ValueError) as e:
-        logger.warning(f"Failed to parse GCP resource path '{resource_id}': {str(e)}")
-        return None, None, None
 
 
 def list_vertex_ai_agents(project_id: str, location: str) -> list[Any]:

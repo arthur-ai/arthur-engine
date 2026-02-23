@@ -272,8 +272,6 @@ def get_agent_tasks(
             enriched_responses.append(enriched_response)
 
         return enriched_responses
-    except:
-        raise
     finally:
         db_session.close()
 
