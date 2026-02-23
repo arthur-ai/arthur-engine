@@ -1,17 +1,21 @@
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Popover } from "@base-ui/react/popover";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { Breadcrumbs, Button, IconButton, List, ListItemButton, ListItemText, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Breadcrumbs, Button, IconButton, List, ListItemButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
 import { useMemo, useState } from "react";
 
+import { getSpanInput, getSpanModel, getSpanOutput, getSpanType } from "../../utils/spans";
 import { withForm } from "../filtering/hooks/form";
 
 import { addToDatasetFormOptions } from "./form/shared";
 import { useSpanSelector } from "./hooks/useSpanSelector";
 
+import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
+import { truncateText } from "@/utils/formatters";
 
 const listButtonSx = {
   justifyContent: "flex-start",
@@ -129,22 +133,76 @@ type SpanListProps = {
   onSelectSpan: (spanId: string) => void;
 };
 
+const MAX_PREVIEW_LENGTH = 80;
+
+function spanMatchesSearch(span: NestedSpanWithMetricsResponse, query: string): boolean {
+  const q = query.toLowerCase();
+
+  if (span.span_name?.toLowerCase().includes(q)) return true;
+  if (span.span_id.toLowerCase().includes(q)) return true;
+
+  const kind = getSpanType(span);
+  if (kind?.toLowerCase().includes(q)) return true;
+
+  const model = getSpanModel(span);
+  if (model?.toLowerCase().includes(q)) return true;
+
+  const input = getSpanInput(span);
+  if (input?.toLowerCase().includes(q)) return true;
+
+  const output = getSpanOutput(span);
+  if (output?.toLowerCase().includes(q)) return true;
+
+  return false;
+}
+
 const SpanList = ({ spans, onSelectSpan }: SpanListProps) => {
   const [search, setSearch] = useState("");
 
   const filteredSpans = useMemo(() => {
-    return spans.filter((span) => (span.span_name?.toLowerCase().includes(search.toLowerCase()) || span.span_id.includes(search)) ?? false);
+    if (!search.trim()) return spans;
+    return spans.filter((span) => spanMatchesSearch(span, search));
   }, [spans, search]);
 
   return (
     <Stack className="overflow-auto max-h-[50vh]" sx={{ p: 1 }}>
-      <TextField size="small" label="Search for a span" value={search} onChange={(e) => setSearch(e.target.value)} sx={{ m: 1 }} />
+      <TextField
+        size="small"
+        label="Search by name, type, model, or content"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        sx={{ m: 1 }}
+      />
       <List dense>
-        {filteredSpans.map((span) => (
-          <ListItemButton key={span.id} onClick={() => onSelectSpan(span.span_id)} sx={listButtonSx}>
-            <ListItemText primary={span.span_name} secondary={span.span_id} />
-          </ListItemButton>
-        ))}
+        {filteredSpans.map((span) => {
+          const kind = getSpanType(span) ?? OpenInferenceSpanKind.AGENT;
+          const model = getSpanModel(span);
+          const input = getSpanInput(span);
+          const output = getSpanOutput(span);
+          const contentPreview = input ? truncateText(input, MAX_PREVIEW_LENGTH) : output ? truncateText(output, MAX_PREVIEW_LENGTH) : null;
+
+          return (
+            <ListItemButton key={span.id} onClick={() => onSelectSpan(span.span_id)} sx={{ ...listButtonSx, py: 1 }}>
+              <Stack direction="row" alignItems="flex-start" gap={1} width="100%">
+                <TypeChip type={kind} />
+                <Stack flex={1} minWidth={0}>
+                  <Typography variant="body2" fontWeight={500}>
+                    {span.span_name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {kind}
+                    {model ? ` · ${model}` : ""}
+                  </Typography>
+                  {contentPreview && (
+                    <Typography variant="caption" color="text.disabled" noWrap>
+                      {contentPreview}
+                    </Typography>
+                  )}
+                </Stack>
+              </Stack>
+            </ListItemButton>
+          );
+        })}
       </List>
     </Stack>
   );
