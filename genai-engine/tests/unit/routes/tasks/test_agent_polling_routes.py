@@ -6,6 +6,7 @@ import pytest
 from arthur_common.models.enums import RegisteredAgentProvider
 from arthur_common.models.request_schemas import AgentMetadata, GCPAgentMetadata
 
+from schemas.agent_discovery_schemas import DiscoverAndPollResponse
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -202,10 +203,11 @@ def test_execute_all_agent_polling_success(
 ):
     """Test that execute-all triggers discovery + polling and returns counts."""
     mock_polling_service = MagicMock()
-    mock_polling_service._discover_and_poll_agents.return_value = {
-        "discovered": 2,
-        "enqueued": 3,
-    }
+    mock_polling_service._discover_and_poll_agents.return_value = DiscoverAndPollResponse(
+        status="completed",
+        discovered=2,
+        enqueued=3,
+    )
 
     with patch(
         "routers.v1.agent_polling_routes.get_global_agent_polling_service",

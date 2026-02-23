@@ -1,11 +1,20 @@
 """Agent Discovery Service for GenAI Engine.
 
-This service handles discovering agents from infrastructure providers (currently GCP).
-Uses Google Application Default Credentials (ADC) for authentication.
+.. deprecated::
+    This module is deprecated. Agent discovery is now handled by
+    GlobalAgentPollingService in services.task.global_agent_polling_service.
+
+    - ``parse_gcp_resource_path`` is still used by other modules and will be
+      moved to a shared utils module.
+    - ``AgentDiscoveryService._list_vertex_ai_agents`` is used by
+      GlobalAgentPollingService and will be inlined there.
+    - The ``/api/v1/discover-agents`` endpoint that calls this service is
+      already marked deprecated; use ``GET /api/v2/agent-tasks`` instead.
 """
 
 import logging
 import os
+import warnings
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -85,8 +94,30 @@ def parse_gcp_resource_path(
         return None, None, None
 
 
+def list_vertex_ai_agents(project_id: str, location: str) -> list[Any]:
+    """List all deployed Vertex AI agent engines.
+
+    Uses Google Application Default Credentials (ADC) for authentication.
+
+    Args:
+        project_id: GCP project ID
+        location: GCP location
+
+    Returns:
+        List of Vertex AI agent engine objects
+    """
+    vertexai.init(project=project_id, location=location)
+    client = vertexai.Client(project=project_id, location=location)
+    return list(client.agent_engines.list())
+
+
 class AgentDiscoveryService:
-    """Service for discovering agents from infrastructure using GCP ADC."""
+    """Service for discovering agents from infrastructure using GCP ADC.
+
+    .. deprecated::
+        Use GlobalAgentPollingService instead. This class will be removed
+        once the migration to the global polling service is complete.
+    """
 
     def __init__(self, db_session: Session):
         """Initialize the agent discovery service.
@@ -94,6 +125,12 @@ class AgentDiscoveryService:
         Args:
             db_session: Database session (for future use if needed)
         """
+        warnings.warn(
+            "AgentDiscoveryService is deprecated. "
+            "Use GlobalAgentPollingService instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.db_session = db_session
 
     def discover_agents(

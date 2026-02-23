@@ -212,7 +212,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
 
         assert task_with_spans.models is not None
         assert len(task_with_spans.models) == 1
-        assert task_with_spans.models[0] == "gpt-4"
+        assert task_with_spans.models[0].name == "gpt-4"
 
         assert task_with_spans.num_spans == 3
 

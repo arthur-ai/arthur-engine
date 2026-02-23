@@ -24,7 +24,7 @@ from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import DiscoverAndPollResponse
 from schemas.internal_schemas import Task
 from services.agent_discovery_service import (
-    AgentDiscoveryService,
+    list_vertex_ai_agents,
     parse_gcp_resource_path,
 )
 from services.base_queue_service import BaseQueueJob, BaseQueueService
@@ -124,8 +124,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         created_count = 0
         db_session = next(get_db_session())
         try:
-            discovery_service = AgentDiscoveryService(db_session)
-            agents = discovery_service._list_vertex_ai_agents(project_id, location)
+            agents = list_vertex_ai_agents(project_id, location)
 
             if not agents:
                 logger.info("No Vertex AI agents found during discovery")
