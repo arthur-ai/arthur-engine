@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session
 from repositories.agent_polling_repository import AgentPollingRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.agent_discovery_schemas import (
+    DiscoverAndPollResponse,
+    ExecutePollingResponse,
+)
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from services.task.global_agent_polling_service import get_global_agent_polling_service
@@ -22,6 +25,7 @@ agent_polling_routes = APIRouter(
     description="Manually trigger a polling job for a task. "
     "Does not require any particular state — admins can use this "
     "to force an immediate poll outside the normal loop cadence.",
+    response_model=ExecutePollingResponse,
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
 )
@@ -30,18 +34,12 @@ def execute_agent_polling(
     task_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> JSONResponse:
+) -> ExecutePollingResponse:
     """Manually trigger a polling job for a task."""
     try:
         agent_polling_repository = AgentPollingRepository(db_session)
         agent_polling_repository.execute_polling_job(task_id)
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "enqueued",
-                "task_id": task_id,
-            },
-        )
+        return ExecutePollingResponse(status="enqueued", task_id=task_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -55,13 +53,14 @@ def execute_agent_polling(
     "/agent-polling/execute-all",
     description="Manually trigger a full agent discovery and polling cycle. "
     "Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks.",
+    response_model=DiscoverAndPollResponse,
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def execute_all_agent_polling(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> JSONResponse:
+) -> DiscoverAndPollResponse:
     """Manually trigger a full discovery + polling cycle."""
     polling_service = get_global_agent_polling_service()
     if not polling_service:
@@ -72,14 +71,7 @@ def execute_all_agent_polling(
 
     try:
         result = polling_service._discover_and_poll_agents()
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "completed",
-                "discovered": result.discovered,
-                "enqueued": result.enqueued,
-            },
-        )
+        return DiscoverAndPollResponse(status="completed", **result)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

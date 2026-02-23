@@ -125,6 +125,13 @@ class DiscoverAgentsResponse(BaseModel):
     )
 
 
+class ExecutePollingResponse(BaseModel):
+    """Response model for the single-task agent polling endpoint."""
+
+    status: str = Field(description="Status of the operation")
+    task_id: str = Field(description="Task ID that was enqueued")
+
+
 class DiscoverAndPollResponse(BaseModel):
     """Response model for the execute-all agent polling endpoint."""
 
