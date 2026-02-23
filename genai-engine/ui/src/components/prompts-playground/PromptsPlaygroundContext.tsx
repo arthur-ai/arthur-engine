@@ -2,27 +2,33 @@ import { ReactNode, createContext, useContext } from "react";
 
 import { PromptPlaygroundState, PromptAction } from "./types";
 
-import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import type { ModelProvider, PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 interface PromptProviderProps {
   children: ReactNode;
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
+  enabledProviders: ModelProvider[];
+  availableModels: Map<ModelProvider, string[]>;
   experimentConfig?: Partial<PromptExperimentDetail> | null;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
   isRunningExperiment?: boolean;
   runningExperimentId?: string | null;
   lastCompletedExperimentId?: string | null;
+  triggerNotebookSave?: () => void;
 }
 
 const PromptContext = createContext<{
   state: PromptPlaygroundState;
   dispatch: (action: PromptAction) => void;
+  enabledProviders: ModelProvider[];
+  availableModels: Map<ModelProvider, string[]>;
   experimentConfig?: Partial<PromptExperimentDetail> | null;
   handleRunSingleWithConfig?: (promptId: string) => Promise<void>;
   isRunningExperiment?: boolean;
   runningExperimentId?: string | null;
   lastCompletedExperimentId?: string | null;
+  triggerNotebookSave?: () => void;
 } | null>(null);
 
 export const usePromptContext = () => {
@@ -35,22 +41,28 @@ export const PromptProvider = ({
   children,
   state,
   dispatch,
+  enabledProviders,
+  availableModels,
   experimentConfig,
   handleRunSingleWithConfig,
   isRunningExperiment,
   runningExperimentId,
   lastCompletedExperimentId,
+  triggerNotebookSave,
 }: PromptProviderProps) => {
   return (
     <PromptContext.Provider
       value={{
         state,
         dispatch,
+        enabledProviders,
+        availableModels,
         experimentConfig,
         handleRunSingleWithConfig,
         isRunningExperiment,
         runningExperimentId,
         lastCompletedExperimentId,
+        triggerNotebookSave,
       }}
     >
       {children}

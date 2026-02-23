@@ -14,6 +14,7 @@ import IconButton from "@mui/material/IconButton";
 import Modal from "@mui/material/Modal";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
+import { alpha, useTheme } from "@mui/material/styles";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -42,18 +43,48 @@ interface Message {
 }
 
 const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
-  const roleColors: Record<string, string> = {
-    system: "bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700",
-    user: "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700",
-    assistant: "bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700",
+  const theme = useTheme();
+
+  const getRoleStyles = (role: string) => {
+    const styleMap: Record<string, { bgColor: string; borderColor: string }> = {
+      system: {
+        bgColor: alpha(theme.palette.secondary.main, 0.12),
+        borderColor: theme.palette.secondary.main,
+      },
+      user: {
+        bgColor: alpha(theme.palette.info.main, 0.12),
+        borderColor: theme.palette.info.main,
+      },
+      assistant: {
+        bgColor: alpha(theme.palette.success.main, 0.12),
+        borderColor: theme.palette.success.main,
+      },
+    };
+    return (
+      styleMap[role] || {
+        bgColor: theme.palette.action.hover,
+        borderColor: theme.palette.divider,
+      }
+    );
   };
 
+  const styles = getRoleStyles(message.role);
+
   return (
-    <Box className={`p-3 border rounded mb-2 ${roleColors[message.role] || "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600"}`}>
-      <Typography variant="caption" className="font-medium uppercase text-gray-600 dark:text-gray-400 mb-1 block">
+    <Box
+      sx={{
+        p: 1.5,
+        border: 1,
+        borderColor: styles.borderColor,
+        borderRadius: 1,
+        mb: 1,
+        backgroundColor: styles.bgColor,
+      }}
+    >
+      <Typography variant="caption" sx={{ fontWeight: 500, textTransform: "uppercase", color: "text.secondary", mb: 0.5, display: "block" }}>
         {message.role}
       </Typography>
-      <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
         {message.content}
       </Typography>
     </Box>
@@ -167,8 +198,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                             return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                           } catch {
                             return (
-                              <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                                <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                              <Box
+                                sx={{
+                                  p: 1.5,
+                                  backgroundColor: "action.hover",
+                                  border: 1,
+                                  borderColor: "divider",
+                                  borderRadius: 1,
+                                }}
+                              >
+                                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
                                   {promptResult.rendered_prompt}
                                 </Typography>
                               </Box>
@@ -176,8 +215,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                           }
                         })()
                       ) : (
-                        <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                          <Typography variant="body2" className="text-gray-500 dark:text-gray-400 italic">
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                             No input messages available
                           </Typography>
                         </Box>
@@ -207,8 +254,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                       {promptResult?.output?.content ? (
                         <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
                       ) : (
-                        <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                          <Typography variant="body2" className="text-gray-500 dark:text-gray-400 italic">
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                             No output available
                           </Typography>
                         </Box>
@@ -386,11 +441,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
       ) : (
         <TableContainer
           component={Paper}
+          elevation={1}
           sx={{
             flex: 1,
             overflow: "auto",
-            backgroundColor: "background.default",
-            boxShadow: 1,
           }}
         >
           <Table stickyHeader size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
@@ -400,7 +454,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   sx={{
                     fontWeight: 600,
                     width: `${100 / (2 + evals.length)}%`,
-                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.200"),
                     borderBottom: "2px solid",
                     borderColor: "divider",
                   }}
@@ -411,7 +464,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   sx={{
                     fontWeight: 600,
                     width: `${100 / (2 + evals.length)}%`,
-                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.200"),
                     borderBottom: "2px solid",
                     borderColor: "divider",
                   }}
@@ -426,7 +478,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                       fontWeight: 600,
                       width: `${100 / (2 + evals.length)}%`,
                       padding: "6px 8px",
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.200"),
                       borderBottom: "2px solid",
                       borderColor: "divider",
                     }}

@@ -1,4 +1,5 @@
 import { Autocomplete, Box, Stack, TextField, Typography } from "@mui/material";
+import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 
 import { withFieldGroup } from "../../filtering/hooks/form";
@@ -10,6 +11,20 @@ import { getNestedValue } from "@/components/traces/utils/spans";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { DatasetVersionMetadataResponse, NestedSpanWithMetricsResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
+
+const getStatusPalette = (theme: Theme, status: MatchStatus) => {
+  const palette = {
+    "full-match": theme.palette.success,
+    partial: theme.palette.warning,
+    "no-match": theme.palette.error,
+  }[status];
+
+  return {
+    backgroundColor: alpha(palette.main, 0.12),
+    borderColor: alpha(palette.main, 0.4),
+    color: palette.main,
+  };
+};
 
 export const TransformSelector = withFieldGroup({
   ...addToDatasetFormOptions,
@@ -138,19 +153,11 @@ export const TransformSelector = withFieldGroup({
   },
 });
 
-const STATUS_CONFIG: Record<MatchStatus, { backgroundColor: string; borderColor: string; color: string }> = {
-  "full-match": { backgroundColor: "var(--color-green-50)", borderColor: "var(--color-green-200)", color: "var(--color-green-700)" },
-  partial: { backgroundColor: "var(--color-amber-50)", borderColor: "var(--color-amber-200)", color: "var(--color-amber-700)" },
-  "no-match": { backgroundColor: "var(--color-red-50)", borderColor: "var(--color-red-200)", color: "var(--color-red-700)" },
-};
-
 const SelectorOption = ({ option, dataset }: { option: TraceTransformResponse; dataset: DatasetVersionMetadataResponse | undefined }) => {
   const { matchCount, matchStatus, unmatchedTransform } = useMatchingVariables({
     columnNames: dataset?.column_names ?? [],
     variables: option.definition.variables ?? [],
   });
-
-  const config = STATUS_CONFIG[matchStatus];
 
   return (
     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
@@ -167,37 +174,41 @@ const SelectorOption = ({ option, dataset }: { option: TraceTransformResponse; d
       <Stack direction="row" gap={0.5} alignItems="center">
         <Box
           component="span"
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            px: 1,
-            py: 0.25,
-            borderRadius: 1,
-            "--background-color": config.backgroundColor,
-            "--border-color": config.borderColor,
-            "--color": config.color,
+          sx={(theme) => {
+            const config = getStatusPalette(theme, matchStatus);
+            return {
+              display: "inline-flex",
+              alignItems: "center",
+              px: 1,
+              py: 0.25,
+              borderRadius: 1,
+              backgroundColor: config.backgroundColor,
+              border: `1px solid ${config.borderColor}`,
+              color: config.color,
+            };
           }}
-          className="bg-(--background-color) border-(--border-color) border"
         >
-          <Typography variant="caption" fontWeight={500} className="text-(--color)">
+          <Typography variant="caption" fontWeight={500} color="inherit">
             {matchCount} of {option.definition.variables.length} match
           </Typography>
         </Box>
         {unmatchedTransform.length > 0 && (
           <Box
             component="span"
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              px: 1,
-              py: 0.25,
-              borderRadius: 1,
-              "--background-color": config.borderColor,
-              "--color": config.color,
+            sx={(theme) => {
+              const config = getStatusPalette(theme, matchStatus);
+              return {
+                display: "inline-flex",
+                alignItems: "center",
+                px: 1,
+                py: 0.25,
+                borderRadius: 1,
+                backgroundColor: alpha(config.color, 0.2),
+                color: config.color,
+              };
             }}
-            className="bg-(--background-color)"
           >
-            <Typography variant="caption" fontWeight={500} className="text-(--color)">
+            <Typography variant="caption" fontWeight={500} color="inherit">
               +{unmatchedTransform.length} new
             </Typography>
           </Box>

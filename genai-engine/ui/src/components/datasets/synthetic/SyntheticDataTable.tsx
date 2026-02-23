@@ -4,6 +4,7 @@ import {
   Button,
   Checkbox,
   IconButton,
+  Paper,
   Table,
   TableBody,
   TableCell,
@@ -157,7 +158,7 @@ export const SyntheticDataTable: React.FC<SyntheticDataTableProps> = ({
       </Box>
 
       {/* Table */}
-      <TableContainer sx={{ flex: 1, overflow: "auto" }}>
+      <TableContainer component={Paper} elevation={1} sx={{ flex: 1, overflow: "auto" }}>
         {rows.length === 0 ? (
           <Box
             sx={{

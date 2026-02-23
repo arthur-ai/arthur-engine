@@ -14,6 +14,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
@@ -28,6 +29,8 @@ type Props = {
 
 export const EvalsCell = ({ traceId, className }: Props) => {
   const [open, setOpen] = useState(false);
+  const theme = useTheme();
+  const color = theme.palette.success.main;
 
   const data = useMockEvalsResults(traceId);
 
@@ -46,11 +49,12 @@ export const EvalsCell = ({ traceId, className }: Props) => {
   return (
     <>
       <motion.button
-        className={cn(
-          "bg-[color-mix(in_oklab,var(--color)_20%,white)] border border-(--color)/50 text-(--color) rounded-md text-nowrap overflow-hidden cursor-pointer group",
-          className
-        )}
-        style={{ "--color": "var(--color-green-700)" } as React.CSSProperties}
+        className={cn("rounded-md text-nowrap overflow-hidden cursor-pointer group", className)}
+        style={{
+          backgroundColor: alpha(color, 0.12),
+          border: `1px solid ${alpha(color, 0.4)}`,
+          color,
+        }}
         animate={{ width: "auto" }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}

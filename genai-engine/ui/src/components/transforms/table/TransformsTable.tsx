@@ -1,6 +1,6 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Box, Tooltip, TableSortLabel } from "@mui/material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Box, Tooltip, TableSortLabel, Paper } from "@mui/material";
 
 import { TransformsTableProps } from "../types";
 
@@ -14,7 +14,7 @@ export const TransformsTable: React.FC<TransformsTableProps> = ({ transforms, so
   };
 
   return (
-    <TableContainer>
+    <TableContainer component={Paper} elevation={1} sx={{ overflow: "auto", height: "100%" }}>
       <Table>
         <TableHead>
           <TableRow>

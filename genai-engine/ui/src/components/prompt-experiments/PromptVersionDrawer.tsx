@@ -295,7 +295,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Button>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Created At
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
@@ -303,7 +303,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Model
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -311,7 +311,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Provider
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
@@ -319,7 +319,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Messages
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
@@ -556,7 +556,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                 </Typography>
                 <Box className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded">
                   <Box>
-                    <Typography variant="caption" className="text-gray-500 font-medium">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                       Model
                     </Typography>
                     <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -564,7 +564,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                     </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" className="text-gray-500 font-medium">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                       Provider
                     </Typography>
                     <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -573,7 +573,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Box>
                   {prompt.config?.temperature !== undefined && (
                     <Box>
-                      <Typography variant="caption" className="text-gray-500 font-medium">
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                         Temperature
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -583,7 +583,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   )}
                   {prompt.config?.max_tokens !== undefined && (
                     <Box>
-                      <Typography variant="caption" className="text-gray-500 font-medium">
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                         Max Tokens
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">

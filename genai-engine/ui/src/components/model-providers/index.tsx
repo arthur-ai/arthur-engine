@@ -140,7 +140,6 @@ export const ModelProviders: React.FC = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                           width: "33.33%",
                         }}
                       >
@@ -149,7 +148,6 @@ export const ModelProviders: React.FC = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                           width: "33.33%",
                         }}
                         align="center"
@@ -159,7 +157,6 @@ export const ModelProviders: React.FC = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                           width: "33.33%",
                         }}
                         align="right"
