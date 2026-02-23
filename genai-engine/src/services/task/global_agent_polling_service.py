@@ -91,7 +91,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         logger.info(f"Background thread stopped for {self.service_name}")
 
-    def _discover_and_poll_agents(self) -> dict:
+    def _discover_and_poll_agents(self) -> dict[str, int]:
         """Run a full discovery + polling cycle.
 
         Returns:
