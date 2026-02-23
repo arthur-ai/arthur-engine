@@ -386,11 +386,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
       ) : (
         <TableContainer
           component={Paper}
+          elevation={1}
           sx={{
             flex: 1,
             overflow: "auto",
-            backgroundColor: "background.default",
-            boxShadow: 1,
           }}
         >
           <Table stickyHeader size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
@@ -400,7 +399,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   sx={{
                     fontWeight: 600,
                     width: `${100 / (2 + evals.length)}%`,
-                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.200"),
                     borderBottom: "2px solid",
                     borderColor: "divider",
                   }}
@@ -411,7 +409,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   sx={{
                     fontWeight: 600,
                     width: `${100 / (2 + evals.length)}%`,
-                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.200"),
                     borderBottom: "2px solid",
                     borderColor: "divider",
                   }}
@@ -426,7 +423,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                       fontWeight: 600,
                       width: `${100 / (2 + evals.length)}%`,
                       padding: "6px 8px",
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.200"),
                       borderBottom: "2px solid",
                       borderColor: "divider",
                     }}
