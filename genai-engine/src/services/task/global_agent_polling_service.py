@@ -9,7 +9,7 @@ from arthur_common.models.agent_governance_schemas import (
     TaskMetadata,
 )
 from arthur_common.models.enums import RegisteredAgentProvider
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseTask
@@ -36,6 +36,10 @@ from utils import constants
 from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
+
+# PostgreSQL session-level advisory lock key for polling leader election.
+# Any stable int64 works; this value is unique to Arthur GenAI Engine polling.
+POLLING_ADVISORY_LOCK_KEY = 17449340
 
 # Time interval between polling loop iterations (defaults to 1 hour)
 AGENTIC_POLLING_INTERVAL_SECONDS: int = int(
@@ -78,18 +82,53 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         return job.task_id
 
     def _background_loop(self) -> None:
-        """Background thread that runs discovery + polling at regular intervals."""
+        """Background thread that runs discovery + polling at regular intervals.
+
+        Uses a PostgreSQL session-level advisory lock to elect a single leader
+        across all replicas. Only the replica that acquires the lock runs the
+        discovery and polling loop. Non-leaders wait and retry each interval so
+        they can take over if the leader crashes (the lock is released
+        automatically when the leader's DB session closes).
+        """
         logger.info(f"Background thread started for {self.service_name}")
 
         while not self.shutdown_event.is_set():
+            leader_session = None
             try:
-                if self.shutdown_event.wait(timeout=AGENTIC_POLLING_INTERVAL_SECONDS):
-                    break
+                leader_session = next(get_db_session())
+                acquired = leader_session.execute(
+                    text("SELECT pg_try_advisory_lock(:key)"),
+                    {"key": POLLING_ADVISORY_LOCK_KEY},
+                ).scalar()
 
-                self._discover_and_poll_agents()
+                if not acquired:
+                    logger.info(
+                        "Another replica holds the polling leader lock, standing by"
+                    )
+                    self.shutdown_event.wait(timeout=AGENTIC_POLLING_INTERVAL_SECONDS)
+                    continue
+
+                logger.info(
+                    "Acquired polling leader lock, running discovery + polling loop"
+                )
+
+                while not self.shutdown_event.is_set():
+                    try:
+                        if self.shutdown_event.wait(
+                            timeout=AGENTIC_POLLING_INTERVAL_SECONDS
+                        ):
+                            break
+
+                        self._discover_and_poll_agents()
+
+                    except Exception as e:
+                        logger.error(f"Error in background loop: {e}", exc_info=True)
 
             except Exception as e:
-                logger.error(f"Error in background loop: {e}", exc_info=True)
+                logger.error(f"Error acquiring polling leader lock: {e}", exc_info=True)
+            finally:
+                if leader_session is not None:
+                    leader_session.close()
 
         logger.info(f"Background thread stopped for {self.service_name}")
 

@@ -20,6 +20,7 @@ from services.task.global_agent_polling_service import (
     get_global_agent_polling_service,
     initialize_global_agent_polling_service,
     shutdown_global_agent_polling_service,
+    POLLING_ADVISORY_LOCK_KEY,
 )
 
 
@@ -417,6 +418,102 @@ def test_initialize_and_shutdown():
     # Shutdown
     shutdown_global_agent_polling_service()
     assert get_global_agent_polling_service() is None
+
+
+@pytest.mark.unit_tests
+@patch("services.task.global_agent_polling_service.get_db_session")
+def test_background_loop_leader_acquires_lock_and_polls(mock_get_db):
+    """Leader replica acquires the advisory lock and runs the polling loop."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = True  # lock acquired
+    mock_get_db.return_value = iter([mock_session])
+
+    service = GlobalAgentPollingService()
+
+    def run_once_then_shutdown():
+        service.shutdown_event.set()
+
+    with patch.object(
+        service, "_discover_and_poll_agents", side_effect=run_once_then_shutdown
+    ) as mock_dap:
+        with patch.object(service.shutdown_event, "wait", return_value=False):
+            service._background_loop()
+
+    mock_dap.assert_called_once()
+    mock_session.close.assert_called_once()
+    # Verify advisory lock was requested with the correct key
+    call_args = mock_session.execute.call_args
+    assert call_args.args[1] == {"key": POLLING_ADVISORY_LOCK_KEY}
+
+
+@pytest.mark.unit_tests
+@patch("services.task.global_agent_polling_service.get_db_session")
+def test_background_loop_standby_does_not_poll(mock_get_db):
+    """Non-leader replica skips the polling loop when lock is held by another replica."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = False  # lock not acquired
+    mock_get_db.return_value = iter([mock_session])
+
+    service = GlobalAgentPollingService()
+
+    def wait_then_shutdown(timeout=None):
+        service.shutdown_event.set()
+
+    with patch.object(
+        service, "_discover_and_poll_agents"
+    ) as mock_dap:
+        with patch.object(service.shutdown_event, "wait", side_effect=wait_then_shutdown):
+            service._background_loop()
+
+    mock_dap.assert_not_called()
+    mock_session.close.assert_called_once()
+
+
+@pytest.mark.unit_tests
+@patch("services.task.global_agent_polling_service.get_db_session")
+def test_background_loop_leader_closes_session_on_shutdown(mock_get_db):
+    """Leader session is closed (releasing the lock) when shutdown is signalled mid-loop."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = True  # lock acquired
+    mock_get_db.return_value = iter([mock_session])
+
+    service = GlobalAgentPollingService()
+
+    # Inner wait() sets the shutdown event and returns True, causing the inner loop to
+    # break. is_set() then returns True so the outer loop also exits.
+    def wait_then_shutdown(timeout=None):
+        service.shutdown_event.set()
+        return True
+
+    with patch.object(service, "_discover_and_poll_agents") as mock_dap:
+        with patch.object(service.shutdown_event, "wait", side_effect=wait_then_shutdown):
+            service._background_loop()
+
+    mock_dap.assert_not_called()
+    mock_session.close.assert_called_once()
+
+
+@pytest.mark.unit_tests
+@patch("services.task.global_agent_polling_service.get_db_session")
+def test_background_loop_closes_session_on_db_error(mock_get_db):
+    """Session is closed even if the advisory lock query itself raises."""
+    mock_session = MagicMock()
+
+    # execute() raises and also sets the shutdown event so the outer loop exits cleanly
+    def execute_with_error(*args, **kwargs):
+        service.shutdown_event.set()
+        raise Exception("DB connection error")
+
+    mock_session.execute.side_effect = execute_with_error
+    mock_get_db.return_value = iter([mock_session])
+
+    service = GlobalAgentPollingService()
+
+    with patch.object(service, "_discover_and_poll_agents") as mock_dap:
+        service._background_loop()
+
+    mock_dap.assert_not_called()
+    mock_session.close.assert_called_once()
 
 
 @pytest.mark.unit_tests
