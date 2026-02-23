@@ -205,7 +205,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                     id="provider-select"
                     value={selectedProviderId}
                     onChange={handleProviderChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select a provider</option>
                     {providers.map((provider) => (
@@ -228,7 +228,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                         value={selectedCollection?.identifier ?? ""}
                         onChange={handleCollectionChange}
                         disabled={isLoadingCollections}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800"
                       >
                         {isLoadingCollections ? (
                           <option value="">Loading collections...</option>
@@ -260,7 +260,7 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                       id="method-select"
                       value={searchMethod}
                       onChange={handleMethodChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="nearText">Near Text (Vector)</option>
                       <option value="bm25">BM25 (Keyword)</option>

@@ -123,7 +123,7 @@ const ModelParamsDialog = ({
               name="temperature"
               defaultValue={modelParameters.temperature ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="number"
               slotProps={{
                 htmlInput: {
@@ -144,7 +144,7 @@ const ModelParamsDialog = ({
               name="top_p"
               defaultValue={modelParameters.top_p ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="number"
               slotProps={{
                 htmlInput: {
@@ -165,7 +165,7 @@ const ModelParamsDialog = ({
               name="timeout"
               defaultValue={modelParameters.timeout ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="number"
               slotProps={{
                 htmlInput: {
@@ -204,7 +204,7 @@ const ModelParamsDialog = ({
               name="max_tokens"
               defaultValue={modelParameters.max_tokens ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="number"
               slotProps={{
                 htmlInput: {
@@ -223,7 +223,7 @@ const ModelParamsDialog = ({
               name="max_completion_tokens"
               defaultValue={modelParameters.max_completion_tokens ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="number"
               slotProps={{
                 htmlInput: {
@@ -242,7 +242,7 @@ const ModelParamsDialog = ({
               name="frequency_penalty"
               defaultValue={modelParameters.frequency_penalty ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="number"
               slotProps={{
                 htmlInput: {
@@ -263,7 +263,7 @@ const ModelParamsDialog = ({
               name="presence_penalty"
               defaultValue={modelParameters.presence_penalty ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="number"
               slotProps={{
                 htmlInput: {
@@ -278,29 +278,13 @@ const ModelParamsDialog = ({
             <InputLabel htmlFor="stop" className="w-3/5">
               Stop
             </InputLabel>
-            <TextField
-              key="stop"
-              id="stop"
-              name="stop"
-              defaultValue={modelParameters.stop ?? ""}
-              size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
-              type="text"
-            />
+            <TextField key="stop" id="stop" name="stop" defaultValue={modelParameters.stop ?? ""} size="small" className="w-2/5" type="text" />
           </div>
           <div className="flex items-center gap-2">
             <InputLabel htmlFor="seed" className="w-3/5">
               Seed
             </InputLabel>
-            <TextField
-              key="seed"
-              id="seed"
-              name="seed"
-              defaultValue={modelParameters.seed ?? ""}
-              size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
-              type="number"
-            />
+            <TextField key="seed" id="seed" name="seed" defaultValue={modelParameters.seed ?? ""} size="small" className="w-2/5" type="number" />
           </div>
           <div className="flex items-center gap-2">
             <InputLabel htmlFor="reasoning_effort" className="w-3/5">
@@ -312,7 +296,7 @@ const ModelParamsDialog = ({
               name="reasoning_effort"
               defaultValue={modelParameters.reasoning_effort ?? ""}
               size="small"
-              className="w-2/5 border-gray-300 border-2 rounded-md"
+              className="w-2/5"
               type="text"
             >
               {(Object.values(EFFORT_OPTIONS) as string[]).map((effort) => (

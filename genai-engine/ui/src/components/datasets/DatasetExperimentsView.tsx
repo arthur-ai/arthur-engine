@@ -252,11 +252,15 @@ export const DatasetExperimentsView: React.FC = () => {
         <Box className="overflow-auto min-h-0">
           {isLoading ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-gray-600 dark:text-gray-400">Loading experiments...</p>
+              <Typography variant="body2" color="text.secondary">
+                Loading experiments...
+              </Typography>
             </Box>
           ) : error ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-red-600">{error.message}</p>
+              <Typography variant="body2" color="error.main">
+                {error.message}
+              </Typography>
             </Box>
           ) : experiments.length === 0 ? (
             <PromptExperimentsEmptyState onCreateExperiment={handleCreateExperiment} />
@@ -282,7 +286,7 @@ export const DatasetExperimentsView: React.FC = () => {
             <Typography variant="h6" className="font-semibold mb-1">
               Select an Existing Experiment
             </Typography>
-            <Typography variant="body2" className="text-gray-600">
+            <Typography variant="body2" color="text.secondary">
               Choose an experiment to use as a template. All settings will be copied to your new experiment.
             </Typography>
           </Box>
@@ -322,7 +326,7 @@ export const DatasetExperimentsView: React.FC = () => {
             if (filteredExperiments.length === 0) {
               return (
                 <Box className="py-8 text-center">
-                  <Typography variant="body2" className="text-gray-500 italic">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                     {experiments.length === 0 ? "No experiments available to clone." : "No experiments match your search."}
                   </Typography>
                 </Box>
@@ -358,22 +362,22 @@ export const DatasetExperimentsView: React.FC = () => {
                           secondary={
                             <Box>
                               {experiment.description && (
-                                <Typography variant="body2" className="text-gray-700 mb-2">
+                                <Typography variant="body2" color="text.secondary" className="mb-2">
                                   {experiment.description}
                                 </Typography>
                               )}
                               <Box className="flex gap-4 text-sm">
-                                <Typography variant="caption" className="text-gray-600">
+                                <Typography variant="caption" color="text.secondary">
                                   <strong>Prompt:</strong>{" "}
                                   {experiment.prompt_configs?.[0]?.type === "saved"
                                     ? experiment.prompt_configs[0].name
                                     : experiment.prompt_configs?.[0]?.auto_name || "N/A"}
                                 </Typography>
-                                <Typography variant="caption" className="text-gray-600">
+                                <Typography variant="caption" color="text.secondary">
                                   <strong>Rows:</strong> {experiment.total_rows}
                                 </Typography>
                                 {experiment.total_cost && (
-                                  <Typography variant="caption" className="text-gray-600">
+                                  <Typography variant="caption" color="text.secondary">
                                     <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
                                   </Typography>
                                 )}

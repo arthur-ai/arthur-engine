@@ -10,6 +10,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
+import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -65,7 +66,7 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
 
   return (
     <>
-      <TableContainer sx={{ height: "100%" }}>
+      <TableContainer component={Paper} elevation={1} sx={{ overflow: "auto", height: "100%" }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>

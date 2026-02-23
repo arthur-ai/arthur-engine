@@ -1,5 +1,6 @@
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import { Stack, Typography } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 
@@ -14,10 +15,10 @@ function defaultFormatDuration(durationMs: number): string {
     .replace(/\b0[hmst]\b/g, "");
 }
 
-export const BUCKET_COLORS = {
-  ok: "var(--color-green-700)",
-  warning: "var(--color-amber-700)",
-  bad: "var(--color-red-800)",
+const BUCKET_PALETTE = {
+  ok: "success",
+  warning: "warning",
+  bad: "error",
 } as const;
 
 type Props = {
@@ -27,9 +28,10 @@ type Props = {
 };
 
 export const DurationCell = ({ duration, bucketer, formatDuration }: Props) => {
+  const theme = useTheme();
   const b = bucketer ?? defaultBucketer;
   const bucket = duration ? b(duration) : "ok";
-  const color = BUCKET_COLORS[bucket];
+  const color = theme.palette[BUCKET_PALETTE[bucket]].main;
   const formatted = (formatDuration ?? defaultFormatDuration)(duration);
 
   return (
@@ -37,12 +39,18 @@ export const DurationCell = ({ duration, bucketer, formatDuration }: Props) => {
       gap={0.5}
       direction="row"
       alignItems="center"
-      color={color}
-      className="px-1 bg-[color-mix(in_oklab,var(--bucket-color)_20%,white)] w-fit border border-(--bucket-color)/50 rounded-md text-nowrap"
-      style={{ "--bucket-color": color } as React.CSSProperties}
+      sx={{
+        color,
+        px: 1,
+        backgroundColor: alpha(color, 0.12),
+        width: "fit-content",
+        border: `1px solid ${alpha(color, 0.4)}`,
+        borderRadius: 1,
+        whiteSpace: "nowrap",
+      }}
     >
       <AccessTimeOutlinedIcon sx={{ fontSize: 12 }} />
-      <Typography variant="caption" color={color} fontWeight={500} className="select-none">
+      <Typography variant="caption" sx={{ color }} fontWeight={500} className="select-none">
         {formatted}
       </Typography>
     </Stack>

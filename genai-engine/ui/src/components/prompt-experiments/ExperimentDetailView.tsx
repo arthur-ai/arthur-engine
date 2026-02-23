@@ -20,6 +20,7 @@ import {
   DialogActions,
   Link,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
@@ -367,7 +368,15 @@ export const ExperimentDetailView: React.FC = () => {
 
           {/* Dataset Row Filter Section */}
           {experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 && (
-            <Box className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <Box
+              sx={(theme) => ({
+                mt: 2,
+                p: 1.5,
+                bgcolor: alpha(theme.palette.info.main, 0.08),
+                border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                borderRadius: 1,
+              })}
+            >
               <Box className="flex items-center gap-2 mb-2">
                 <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                   Dataset Row Filter Applied

@@ -218,7 +218,7 @@ export const LiveEvalDetail = () => {
                   </Typography>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
+                      <TableRow>
                         <TableCell sx={{ fontWeight: 600 }}>Eval Variable</TableCell>
                         <TableCell sx={{ width: 40 }} />
                         <TableCell sx={{ fontWeight: 600 }}>Transform Variable</TableCell>
