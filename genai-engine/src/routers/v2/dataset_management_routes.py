@@ -358,7 +358,7 @@ def generate_synthetic_data(
     ]
 
     # Create the synthetic data service and generate data
-    synthetic_service = SyntheticDataService(model_provider_repo)
+    synthetic_service = SyntheticDataService(model_provider_repo, db_session)
     return synthetic_service.generate_initial(
         request=request,
         existing_rows=existing_rows,
@@ -414,7 +414,7 @@ def send_synthetic_data_message(
     ]
 
     # Create the synthetic data service and continue conversation
-    synthetic_service = SyntheticDataService(model_provider_repo)
+    synthetic_service = SyntheticDataService(model_provider_repo, db_session)
     return synthetic_service.continue_conversation(
         request=request,
         existing_rows=existing_rows,

@@ -411,6 +411,16 @@ MAX_DATASET_ROWS = 250
 
 ##################################################################
 
+# System Tasks
+SYNTHETIC_DATASET_TASK_ID = "00000000-da7a-0000-0000-000000000001"
+SYNTHETIC_DATASET_TASK_NAME = "Synthetic Dataset Generation"
+SYNTHETIC_DATA_SYSTEM_PROMPT_NAME = "synthetic-data-system-prompt"
+SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME = "synthetic-data-initial-user-prompt"
+SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME = "synthetic-data-conversation-user-prompt"
+PRODUCTION_TAG = "production"
+
+##################################################################
+
 # Agent Experiment constants
 AGENT_EXPERIMENT_SESSION_PREFIX = "arthur-exp"
 

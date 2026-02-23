@@ -6,6 +6,8 @@ from typing import Any, List, Optional, Union
 import httpx
 import litellm
 from arthur_common.models.llm_model_providers import ModelProvider
+
+litellm.drop_params = True
 from fastapi import HTTPException
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper

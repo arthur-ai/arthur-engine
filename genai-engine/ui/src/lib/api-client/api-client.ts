@@ -9912,6 +9912,11 @@ export interface SyntheticDataConversationRequest {
   model_name: string;
   /** Provider of the LLM model to use for generation. */
   model_provider: ModelProvider;
+  /**
+   * Session Id
+   * Session ID from the initial generation response, used to link traces across conversation turns.
+   */
+  session_id?: string | null;
 }
 
 /**
@@ -9975,6 +9980,11 @@ export interface SyntheticDataGenerationResponse {
    * IDs of rows that were removed in this response.
    */
   rows_removed?: string[];
+  /**
+   * Session Id
+   * Session ID linking all LLM calls in this generation session for trace visibility.
+   */
+  session_id: string;
 }
 
 /**
@@ -12166,7 +12176,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.403
+ * @version 2.1.404
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

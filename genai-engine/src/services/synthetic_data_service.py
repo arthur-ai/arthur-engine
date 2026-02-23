@@ -6,6 +6,9 @@ This module provides the SyntheticDataService class which handles:
 2. Conversational refinement of generated data
 """
 
+import logging
+import os
+import time
 import uuid
 from typing import Any, Dict, List, Optional, cast
 
@@ -14,9 +17,16 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
+    ExportTraceServiceRequest,
+)
+from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
+from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from clients.llm.llm_client import LLMClient
+from clients.llm.llm_client import LLMClient, LLMModelResponse
+from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.request_schemas import (
     LLMRequestConfigSettings,
@@ -30,10 +40,20 @@ from schemas.response_schemas import (
     SyntheticDataRowResponse,
 )
 from services.synthetic_data_prompts import (
-    build_conversation_prompt,
-    build_initial_generation_prompt,
-    build_system_prompt,
+    format_column_definitions,
+    format_current_rows_for_prompt,
+    format_reference_examples,
 )
+from dependencies import get_db_session
+from utils.constants import (
+    PRODUCTION_TAG,
+    SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME,
+    SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME,
+    SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
+    SYNTHETIC_DATASET_TASK_ID,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class SyntheticDataColumn(BaseModel):
@@ -66,12 +86,51 @@ class SyntheticDataLLMOutput(BaseModel):
 class SyntheticDataService:
     """Service for generating and refining synthetic dataset rows."""
 
-    def __init__(self, model_provider_repo: ModelProviderRepository):
+    def __init__(self, model_provider_repo: ModelProviderRepository, db_session: Session):
         self.model_provider_repo = model_provider_repo
+        self.db_session = db_session
+        self._system_prompt_template = self._load_prompt_template(
+            SYNTHETIC_DATA_SYSTEM_PROMPT_NAME
+        )
+        self._initial_user_prompt_template = self._load_prompt_template(
+            SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME
+        )
+        self._conversation_user_prompt_template = self._load_prompt_template(
+            SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME
+        )
+
+    def _load_prompt_template(self, prompt_name: str) -> str:
+        """Fetch the 'production' tagged prompt from the system task and return its content."""
+        try:
+            with self.db_session.no_autoflush:
+                prompt_repo = AgenticPromptRepository(self.db_session)
+                prompt = prompt_repo.get_llm_item_by_tag(
+                    SYNTHETIC_DATASET_TASK_ID, prompt_name, PRODUCTION_TAG
+                )
+            return prompt.messages[0].content  # type: ignore[return-value]
+        except Exception as e:
+            logger.warning(
+                f"Could not load prompt template '{prompt_name}' from DB, "
+                f"falling back to built-in template: {e}"
+            )
+            # Import fallbacks inline to avoid circular dependencies
+            from services.synthetic_data_prompts import (
+                CONVERSATION_USER_PROMPT_TEMPLATE,
+                INITIAL_GENERATION_USER_PROMPT_TEMPLATE,
+                SYSTEM_PROMPT_TEMPLATE,
+            )
+
+            fallbacks = {
+                SYNTHETIC_DATA_SYSTEM_PROMPT_NAME: SYSTEM_PROMPT_TEMPLATE,
+                SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME: INITIAL_GENERATION_USER_PROMPT_TEMPLATE,
+                SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME: CONVERSATION_USER_PROMPT_TEMPLATE,
+            }
+            return fallbacks[prompt_name]
 
     def _get_llm_client(self, provider: ModelProvider) -> LLMClient:
         """Get configured LLM client from the model provider repository."""
-        return self.model_provider_repo.get_model_provider_client(provider)
+        with self.db_session.no_autoflush:
+            return self.model_provider_repo.get_model_provider_client(provider)
 
     def _convert_column_descriptions_to_dicts(
         self,
@@ -167,6 +226,156 @@ class SyntheticDataService:
 
         return kwargs
 
+    def _emit_trace(
+        self,
+        messages: List[Dict[str, Any]],
+        response: LLMModelResponse,
+        model_name: str,
+        session_id: str,
+    ) -> None:
+        """Build and ingest an OpenInference-formatted trace for this LLM interaction."""
+        from services.trace.trace_ingestion_service import TraceIngestionService
+
+        trace_id = os.urandom(16)
+        span_id = os.urandom(8)
+        now_ns = int(time.time() * 1e9)
+
+        span = Span()
+        span.trace_id = trace_id
+        span.span_id = span_id
+        span.name = "synthetic-data-generation"
+        span.start_time_unix_nano = now_ns - int(1e9)  # approximate 1s duration
+        span.end_time_unix_nano = now_ns
+
+        attrs: list[KeyValue] = [
+            KeyValue(
+                key="openinference.span.kind",
+                value=AnyValue(string_value="LLM"),
+            ),
+            KeyValue(
+                key="arthur_span_version",
+                value=AnyValue(string_value="arthur_span_v1"),
+            ),
+            KeyValue(
+                key="llm.model_name",
+                value=AnyValue(string_value=model_name),
+            ),
+        ]
+
+        # Input messages
+        for i, msg in enumerate(messages):
+            attrs.append(
+                KeyValue(
+                    key=f"llm.input_messages.{i}.message.role",
+                    value=AnyValue(string_value=str(msg.get("role", ""))),
+                )
+            )
+            attrs.append(
+                KeyValue(
+                    key=f"llm.input_messages.{i}.message.content",
+                    value=AnyValue(string_value=str(msg.get("content", ""))),
+                )
+            )
+
+        # Output message
+        raw = response.response
+        output_content = ""
+        try:
+            if hasattr(raw, "choices") and raw.choices:
+                output_content = raw.choices[0].message.content or ""
+        except Exception:
+            pass
+        attrs.append(
+            KeyValue(
+                key="llm.output_messages.0.message.role",
+                value=AnyValue(string_value="assistant"),
+            )
+        )
+        attrs.append(
+            KeyValue(
+                key="llm.output_messages.0.message.content",
+                value=AnyValue(string_value=output_content),
+            )
+        )
+
+        # Token counts
+        try:
+            if hasattr(raw, "usage") and raw.usage:
+                attrs += [
+                    KeyValue(
+                        key="llm.token_count.prompt",
+                        value=AnyValue(int_value=raw.usage.prompt_tokens or 0),
+                    ),
+                    KeyValue(
+                        key="llm.token_count.completion",
+                        value=AnyValue(int_value=raw.usage.completion_tokens or 0),
+                    ),
+                    KeyValue(
+                        key="llm.token_count.total",
+                        value=AnyValue(int_value=raw.usage.total_tokens or 0),
+                    ),
+                ]
+        except Exception:
+            pass
+
+        attrs.append(
+            KeyValue(
+                key="session.id",
+                value=AnyValue(string_value=session_id),
+            )
+        )
+
+        # input.value / output.value — required for the UI Input/Output boxes
+        user_messages = [m for m in messages if m.get("role") == "user"]
+        input_value = user_messages[-1].get("content", "") if user_messages else ""
+        attrs.append(
+            KeyValue(
+                key="input.value",
+                value=AnyValue(string_value=str(input_value)),
+            )
+        )
+        attrs.append(
+            KeyValue(
+                key="output.value",
+                value=AnyValue(string_value=output_content),
+            )
+        )
+
+        span.attributes.extend(attrs)
+
+        scope_span = ScopeSpans()
+        scope_span.scope.name = "synthetic-data-service"
+        scope_span.spans.append(span)
+
+        resource_span = ResourceSpans()
+        resource_span.resource.attributes.extend(
+            [
+                KeyValue(
+                    key="arthur.task",
+                    value=AnyValue(string_value=SYNTHETIC_DATASET_TASK_ID),
+                ),
+                KeyValue(
+                    key="service.name",
+                    value=AnyValue(string_value="synthetic-dataset-generation"),
+                ),
+            ]
+        )
+        resource_span.scope_spans.append(scope_span)
+
+        export_request = ExportTraceServiceRequest()
+        export_request.resource_spans.append(resource_span)
+
+        try:
+            trace_db_gen = get_db_session()
+            trace_db = next(trace_db_gen)
+            try:
+                svc = TraceIngestionService(trace_db)
+                svc.process_trace_data(export_request.SerializeToString())
+            finally:
+                trace_db_gen.close()
+        except Exception as e:
+            logger.warning(f"Failed to emit synthetic data trace: {e}")
+
     def generate_initial(
         self,
         request: SyntheticDataGenerationRequest,
@@ -194,15 +403,14 @@ class SyntheticDataService:
         # Convert existing rows to simple dict format
         existing_rows_dicts = self._convert_existing_rows_to_dicts(existing_rows)
 
-        # Build prompts
-        system_prompt = build_system_prompt(
+        # Build prompts using DB-loaded templates
+        system_prompt = self._system_prompt_template.format(
             dataset_purpose=request.dataset_purpose,
-            column_descriptions=column_desc_dicts,
-            existing_rows=existing_rows_dicts,
-            column_names=column_names,
+            column_definitions=format_column_definitions(column_desc_dicts),
+            reference_examples=format_reference_examples(existing_rows_dicts, column_names),
         )
 
-        user_prompt = build_initial_generation_prompt(num_rows=request.num_rows)
+        user_prompt = self._initial_user_prompt_template.format(num_rows=request.num_rows)
 
         # Build messages
         messages = [
@@ -235,12 +443,24 @@ class SyntheticDataService:
             content=llm_output.message,
         )
 
+        # Generate session ID for trace linkage
+        session_id = str(uuid.uuid4())
+
+        # Emit trace (best-effort)
+        self._emit_trace(
+            messages=messages,
+            response=response,
+            model_name=request.model_name,
+            session_id=session_id,
+        )
+
         return SyntheticDataGenerationResponse(
             rows=rows,
             assistant_message=assistant_message,
             rows_added=rows_added,
             rows_modified=rows_modified,
             rows_removed=rows_removed,
+            session_id=session_id,
         )
 
     def continue_conversation(
@@ -270,12 +490,11 @@ class SyntheticDataService:
         # Convert existing rows to simple dict format
         existing_rows_dicts = self._convert_existing_rows_to_dicts(existing_rows)
 
-        # Build system prompt (same as initial)
-        system_prompt = build_system_prompt(
+        # Build system prompt using DB-loaded template
+        system_prompt = self._system_prompt_template.format(
             dataset_purpose=request.dataset_purpose,
-            column_descriptions=column_desc_dicts,
-            existing_rows=existing_rows_dicts,
-            column_names=column_names,
+            column_definitions=format_column_definitions(column_desc_dicts),
+            reference_examples=format_reference_examples(existing_rows_dicts, column_names),
         )
 
         # Convert current rows to internal format for the prompt
@@ -298,21 +517,20 @@ class SyntheticDataService:
             current_rows_internal.append({"id": row_id, "data": row_data})
             current_row_ids.add(row_id)
 
-        # Build conversation user prompt
-        user_prompt = build_conversation_prompt(
+        # Build conversation user prompt using DB-loaded template
+        user_prompt = self._conversation_user_prompt_template.format(
+            current_rows=format_current_rows_for_prompt(current_rows_internal, column_names),
             user_message=request.message,
-            current_rows=current_rows_internal,
-            column_names=column_names,
         )
 
         # Build messages including conversation history
-        messages = [{"role": "system", "content": system_prompt}]
+        messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
 
         # Add conversation history
         for msg in request.conversation_history:
             messages.append(
                 {
-                    "role": msg.role.value,
+                    "role": msg.role if isinstance(msg.role, str) else msg.role.value,
                     "content": (
                         msg.content
                         if isinstance(msg.content, str)
@@ -349,10 +567,22 @@ class SyntheticDataService:
             content=llm_output.message,
         )
 
+        # Use existing session_id if provided, otherwise generate a new one
+        session_id = request.session_id or str(uuid.uuid4())
+
+        # Emit trace (best-effort)
+        self._emit_trace(
+            messages=messages,
+            response=response,
+            model_name=request.model_name,
+            session_id=session_id,
+        )
+
         return SyntheticDataGenerationResponse(
             rows=rows,
             assistant_message=assistant_message,
             rows_added=rows_added,
             rows_modified=rows_modified,
             rows_removed=rows_removed,
+            session_id=session_id,
         )

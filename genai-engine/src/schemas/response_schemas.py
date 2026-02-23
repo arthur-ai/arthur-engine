@@ -806,6 +806,9 @@ class SyntheticDataGenerationResponse(BaseModel):
         default_factory=list,
         description="IDs of rows that were removed in this response.",
     )
+    session_id: str = Field(
+        description="Session ID linking all LLM calls in this generation session for trace visibility.",
+    )
 
 
 class DailyAgenticAnnotationStats(BaseModel):

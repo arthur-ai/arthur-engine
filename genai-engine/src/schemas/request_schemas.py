@@ -1351,3 +1351,7 @@ class SyntheticDataConversationRequest(BaseModel):
         default=None,
         description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
     )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Session ID from the initial generation response, used to link traces across conversation turns.",
+    )

@@ -110,6 +110,7 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
   const [conversation, setConversation] = useState<OpenAIMessageInput[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const startGeneration = useCallback(
     async (config: GenerationConfig, existingRowsSample?: DatasetVersionRowResponse[]) => {
@@ -154,6 +155,9 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
 
           const newRows = apiRowsToSyntheticRows(response.data.rows, response.data.rows_added ?? [], response.data.rows_modified ?? [], []);
           setRows(newRows);
+
+          // Capture session ID for trace linkage
+          setSessionId(response.data.session_id ?? null);
 
           // Initialize conversation with the assistant's response
           setConversation([
@@ -209,6 +213,7 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
             model_provider: config.modelProvider,
             model_name: config.modelName,
             config: config.temperature ? { temperature: config.temperature } : undefined,
+            session_id: sessionId ?? undefined,
           }
         );
 
@@ -254,7 +259,7 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
         setIsLoading(false);
       }
     },
-    [api, datasetId, versionNumber, rows, conversation]
+    [api, datasetId, versionNumber, rows, conversation, sessionId]
   );
 
   const updateRow = useCallback((id: string, data: Record<string, string>) => {
@@ -283,6 +288,7 @@ export function useSyntheticDataSession(datasetId: string, versionNumber: number
     setRows([]);
     setConversation([]);
     setError(null);
+    setSessionId(null);
   }, []);
 
   return {

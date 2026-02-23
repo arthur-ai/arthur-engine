@@ -78,6 +78,7 @@ from services.currency import (
     initialize_currency_conversion_service,
     shutdown_currency_conversion_service,
 )
+from services.system_tasks_service import initialize_system_tasks
 from services.task import (
     initialize_global_agent_polling_service,
     shutdown_global_agent_polling_service,
@@ -198,6 +199,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         db.close()
     except HTTPException as e:
         raise ConnectionError(f"Error connecting to database: {e}") from None
+
+    db_gen = get_db_session()
+    try:
+        db = next(db_gen)
+        initialize_system_tasks(db)
+    except Exception as e:
+        logger.error(f"Error initializing system tasks: {e}")
+    finally:
+        db_gen.close()
 
     keycloak_settings = get_keycloak_settings()
     if keycloak_settings.ENABLED:
