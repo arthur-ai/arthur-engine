@@ -532,13 +532,18 @@ class SpanRepository:
                 )
 
                 # Extract span kind from attributes
-                span_kind = attributes.get(
+                # Use get_nested_value because convert_gcp_labels_to_openinference
+                # explodes dotted keys into nested dicts, so flat .get() won't find them.
+                span_kind = trace_utils.get_nested_value(
+                    attributes,
                     SpanAttributes.OPENINFERENCE_SPAN_KIND,
-                    "LLM",
+                    default="LLM",
                 )
 
                 # Extract session_id and user_id if present
-                session_id = attributes.get(SpanAttributes.SESSION_ID)
+                session_id = trace_utils.get_nested_value(
+                    attributes, SpanAttributes.SESSION_ID
+                )
                 user_id = None  # GCP doesn't typically have user_id in labels
 
                 # Build raw_data dict (similar to what would come from OTLP)
