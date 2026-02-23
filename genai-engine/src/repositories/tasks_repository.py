@@ -180,12 +180,19 @@ class TaskRepository:
                 data_sources_set.add(data_source)
 
             if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
-                if span.span_name:
-                    tools_set.add(span.span_name)
+                tool_name = (
+                    get_nested_value(attributes, "tool_call.function.name")
+                    or span.span_name
+                )
+                if tool_name:
+                    tools_set.add(tool_name)
 
             elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
-                if span.span_name:
-                    sub_agents_set.add(span.span_name)
+                agent_name = (
+                    get_nested_value(attributes, "agent.name") or span.span_name
+                )
+                if agent_name:
+                    sub_agents_set.add(agent_name)
 
             elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
                 model_name = get_nested_value(attributes, "llm.model_name")
