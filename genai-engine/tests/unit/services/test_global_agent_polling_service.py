@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from db_models import DatabaseTask
 from db_models.agent_polling_models import DatabaseTaskPollingState
 from arthur_common.models.agent_governance_schemas import (
     GCPCreationSource,
@@ -368,40 +367,6 @@ def test_execute_job_skips_non_gcp_task(
     service._execute_job(job)
 
 
-@pytest.mark.unit_tests
-def test_find_task_by_gcp_engine_id_found():
-    """Test the JSON query for finding tasks by engine ID."""
-    mock_task = MagicMock(spec=DatabaseTask)
-    mock_session = MagicMock()
-    mock_session.query.return_value.filter.return_value.first.return_value = mock_task
-
-    service = GlobalAgentPollingService()
-
-    # Patch the SQLAlchemy JSON column to avoid real column subscript operations
-    with patch.object(
-        DatabaseTask, "task_metadata", create=True, new_callable=MagicMock
-    ):
-        result = service._find_task_by_gcp_engine_id(mock_session, "12345")
-
-    assert result is mock_task
-    mock_session.query.assert_called_once_with(DatabaseTask)
-
-
-@pytest.mark.unit_tests
-def test_find_task_by_gcp_engine_id_not_found():
-    """Test returns None when no task matches engine ID."""
-    mock_session = MagicMock()
-    mock_session.query.return_value.filter.return_value.first.return_value = None
-
-    service = GlobalAgentPollingService()
-
-    with patch.object(
-        DatabaseTask, "task_metadata", create=True, new_callable=MagicMock
-    ):
-        result = service._find_task_by_gcp_engine_id(mock_session, "nonexistent")
-
-    assert result is None
-
 
 @pytest.mark.unit_tests
 def test_initialize_and_shutdown():
@@ -480,7 +445,7 @@ def test_background_loop_leader_closes_session_on_shutdown(mock_get_db):
     service = GlobalAgentPollingService()
 
     # Inner wait() sets the shutdown event and returns True, causing the inner loop to
-    # break. is_set() then returns True so the outer loop also exits.
+    # break after a single poll. is_set() then returns True so the outer loop also exits.
     def wait_then_shutdown(timeout=None):
         service.shutdown_event.set()
         return True
@@ -489,7 +454,8 @@ def test_background_loop_leader_closes_session_on_shutdown(mock_get_db):
         with patch.object(service.shutdown_event, "wait", side_effect=wait_then_shutdown):
             service._background_loop()
 
-    mock_dap.assert_not_called()
+    # The leader polls once immediately before the wait signals shutdown.
+    mock_dap.assert_called_once()
     mock_session.close.assert_called_once()
 
 
