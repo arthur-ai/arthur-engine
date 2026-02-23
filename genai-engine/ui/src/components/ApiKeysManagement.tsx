@@ -298,7 +298,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "30%",
                       }}
                     >
@@ -307,7 +306,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "25%",
                       }}
                     >
@@ -316,7 +314,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "30%",
                       }}
                     >
@@ -325,7 +322,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "15%",
                       }}
                       align="right"

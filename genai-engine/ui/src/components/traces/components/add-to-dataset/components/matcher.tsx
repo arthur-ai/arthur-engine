@@ -1,6 +1,7 @@
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
+import { alpha, Theme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 
 import { withFieldGroup } from "../../filtering/hooks/form";
@@ -9,10 +10,18 @@ import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 
-const STATUS_CONFIG: Record<MatchStatus, { backgroundColor: string; borderColor: string; color: string }> = {
-  "full-match": { backgroundColor: "var(--color-green-50)", borderColor: "var(--color-green-200)", color: "var(--color-green-700)" },
-  partial: { backgroundColor: "var(--color-amber-50)", borderColor: "var(--color-amber-200)", color: "var(--color-amber-700)" },
-  "no-match": { backgroundColor: "var(--color-red-50)", borderColor: "var(--color-red-200)", color: "var(--color-red-700)" },
+const getStatusConfig = (theme: Theme, status: MatchStatus) => {
+  const palette = {
+    "full-match": theme.palette.success,
+    partial: theme.palette.warning,
+    "no-match": theme.palette.error,
+  }[status];
+
+  return {
+    backgroundColor: alpha(palette.main, 0.12),
+    borderColor: alpha(palette.main, 0.4),
+    color: palette.main,
+  };
 };
 
 export const Matcher = withFieldGroup({
@@ -35,35 +44,35 @@ export const Matcher = withFieldGroup({
     // We only show the matcher if a transform is selected
     if (!transformId) return null;
 
-    const config = STATUS_CONFIG[matchStatus];
     const totalTransformVars = transform?.definition.variables?.length ?? 0;
 
     return (
       <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          px: 2,
-          py: 1,
-          borderRadius: 1,
-          "--background-color": config.backgroundColor,
-          "--border-color": config.borderColor,
-          "--color": config.color,
+        sx={(theme) => {
+          const config = getStatusConfig(theme, matchStatus);
+          return {
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            px: 2,
+            py: 1,
+            borderRadius: 1,
+            backgroundColor: config.backgroundColor,
+            border: `1px solid ${config.borderColor}`,
+          };
         }}
-        className="bg-(--background-color) border-(--border-color) border"
       >
         {matchStatus === "full-match" ? (
-          <CheckCircleOutlineIcon sx={{ fontSize: 20 }} className="text-(--color)" />
+          <CheckCircleOutlineIcon sx={(theme) => ({ fontSize: 20, color: getStatusConfig(theme, matchStatus).color })} />
         ) : (
-          <ErrorOutlineIcon sx={{ fontSize: 20 }} className="text-(--color)" />
+          <ErrorOutlineIcon sx={(theme) => ({ fontSize: 20, color: getStatusConfig(theme, matchStatus).color })} />
         )}
 
         <Stack direction="row" gap={1} alignItems="center" flex={1}>
           <Typography variant="body2" color="text.secondary">
             Column match:
           </Typography>
-          <Typography variant="body2" fontWeight={600} className="text-(--color)">
+          <Typography variant="body2" fontWeight={600} sx={(theme) => ({ color: getStatusConfig(theme, matchStatus).color })}>
             {matchCount} of {totalTransformVars}
           </Typography>
 
@@ -115,14 +124,18 @@ export const Matcher = withFieldGroup({
             arrow
           >
             <Box
-              className="bg-(--border-color) rounded-md"
-              sx={{
-                px: 0.5,
-                py: 0,
-                borderRadius: 1,
+              sx={(theme) => {
+                const config = getStatusConfig(theme, matchStatus);
+                return {
+                  px: 0.5,
+                  py: 0,
+                  borderRadius: 1,
+                  backgroundColor: alpha(theme.palette.mode === "dark" ? config.color : config.borderColor, 0.3),
+                  color: config.color,
+                };
               }}
             >
-              <Typography variant="caption" sx={{ cursor: "help", fontSize: 12 }} className="text-(--color)">
+              <Typography variant="caption" sx={{ cursor: "help", fontSize: 12 }}>
                 +{unmatchedTransform.length} new
               </Typography>
             </Box>
