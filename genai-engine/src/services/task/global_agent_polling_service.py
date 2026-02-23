@@ -22,6 +22,7 @@ from repositories.span_repository import SpanRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
+from schemas.agent_discovery_schemas import DiscoverAndPollResponse
 from schemas.internal_schemas import Task
 from services.agent_discovery_service import (
     list_vertex_ai_agents,
@@ -92,18 +93,19 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         logger.info(f"Background thread stopped for {self.service_name}")
 
-    def _discover_and_poll_agents(self) -> dict[str, int]:
+    def _discover_and_poll_agents(self) -> DiscoverAndPollResponse:
         """Run a full discovery + polling cycle.
 
         Returns:
-            Dict with discovered and enqueued counts.
+            DiscoverAndPollResponse with discovered and enqueued counts.
         """
         discovered = self._discover_gcp_agents()
         enqueued = self._poll_all_gcp_tasks()
-        return {
-            "discovered": discovered,
-            "enqueued": enqueued,
-        }
+        return DiscoverAndPollResponse(
+            status="completed",
+            discovered=discovered,
+            enqueued=enqueued,
+        )
 
     def _discover_gcp_agents(self) -> int:
         """List Vertex AI agents and create tasks for newly discovered ones.

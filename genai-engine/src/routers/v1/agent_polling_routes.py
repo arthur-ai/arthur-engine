@@ -70,8 +70,7 @@ def execute_all_agent_polling(
         )
 
     try:
-        result = polling_service._discover_and_poll_agents()
-        return DiscoverAndPollResponse(status="completed", **result)
+        return polling_service._discover_and_poll_agents()
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
