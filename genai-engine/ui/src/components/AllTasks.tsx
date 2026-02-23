@@ -1,10 +1,27 @@
 import AddIcon from "@mui/icons-material/Add";
-import MenuIcon from "@mui/icons-material/Menu";
+import AppsOutlined from "@mui/icons-material/AppsOutlined";
+import KeyOutlined from "@mui/icons-material/KeyOutlined";
+import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
+import SettingsIcon from "@mui/icons-material/Settings";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import { Box, Button, FormControl, IconButton, MenuItem, Select, Stack, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Divider,
+  FormControl,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Select,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -25,7 +42,8 @@ export const AllTasks: React.FC = () => {
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
 
@@ -81,22 +99,9 @@ export const AllTasks: React.FC = () => {
     }
   }, [api]);
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isMenuOpen) {
-        const target = event.target as Element;
-        if (!target.closest(".relative")) {
-          setIsMenuOpen(false);
-        }
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isMenuOpen]);
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
 
   const handleLogout = () => {
     logout();
@@ -147,44 +152,64 @@ export const AllTasks: React.FC = () => {
               <div className="flex flex-col items-start">
                 <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
               </div>
-              <div className="flex items-center space-x-4">
-                {tasks.length > 0 && (
-                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                    Create Task
-                  </Button>
-                )}
-                &nbsp;
-                <div className="relative">
-                  <IconButton
-                    aria-label="menu"
-                    onClick={() => setIsMenuOpen((prev) => !prev)}
-                    sx={{
-                      bgcolor: "background.paper",
-                      border: 1,
-                      borderColor: "divider",
-                      borderRadius: "4px",
-                      padding: "8px",
-                      width: "40px",
-                      height: "40px",
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <IconButton
+                  aria-label="settings"
+                  onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+                  sx={{
+                    bgcolor: "background.paper",
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    width: "40px",
+                    height: "40px",
+                  }}
+                >
+                  <SettingsIcon />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchorEl}
+                  open={isMenuOpen}
+                  onClose={handleMenuClose}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      handleMenuClose();
+                      navigate("/settings/model-providers");
                     }}
                   >
-                    <MenuIcon />
-                  </IconButton>
-                  {/* Dropdown menu */}
-                  {isMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">
-                      <div className="px-4 py-2">
-                        <ThemeToggle />
-                      </div>
-                      <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
-                        <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "text.primary" }}>
-                          Logout
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                    <ListItemIcon>
+                      <AppsOutlined />
+                    </ListItemIcon>
+                    <ListItemText>Model Providers</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      handleMenuClose();
+                      navigate("/settings/api-keys");
+                    }}
+                  >
+                    <ListItemIcon>
+                      <KeyOutlined />
+                    </ListItemIcon>
+                    <ListItemText>API Keys</ListItemText>
+                  </MenuItem>
+                  <Divider />
+                  <Box sx={{ px: 2, py: 1 }}>
+                    <ThemeToggle />
+                  </Box>
+                  <Divider />
+                  <MenuItem onClick={handleLogout}>
+                    <ListItemIcon>
+                      <LogoutOutlined />
+                    </ListItemIcon>
+                    <ListItemText>Logout</ListItemText>
+                  </MenuItem>
+                </Menu>
+              </Box>
             </div>
           </div>
         </header>
@@ -215,14 +240,19 @@ export const AllTasks: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className="mb-4">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">All Tasks ({tasks.length})</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {filteredTasks.length < tasks.length
-                      ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
-                      : "Click on any task to open the toolkit"}
-                  </p>
-                </div>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6">All Tasks ({tasks.length})</Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      {filteredTasks.length < tasks.length
+                        ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                        : "Click on any task to open the toolkit"}
+                    </Typography>
+                  </Box>
+                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                    Task
+                  </Button>
+                </Box>
 
                 {/* Filter & Sort Toolbar */}
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>

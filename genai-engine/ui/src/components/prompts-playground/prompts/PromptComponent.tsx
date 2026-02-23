@@ -32,9 +32,13 @@ import useSnackbar from "@/hooks/useSnackbar";
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
 const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = false }: PromptComponentProps) => {
-  // This name value updates when an existing prompt is selected
+  // Sync local name state with external prompt.name changes
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
-  const [nameInputValue, setNameInputValue] = useState("");
+  const prevPromptNameRef = useRef(prompt.name);
+  if (prompt.name !== prevPromptNameRef.current) {
+    prevPromptNameRef.current = prompt.name;
+    setCurrentPromptName(prompt.name || "");
+  }
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState<boolean>(false);
   const [responseSchemaDialogOpen, setResponseSchemaDialogOpen] = useState<boolean>(false);
@@ -74,10 +78,6 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
   };
 
   useEffect(() => {
-    setNameInputValue(currentPromptName);
-  }, [currentPromptName]);
-
-  useEffect(() => {
     if (prompt.running && !hasTriggeredRunRef.current) {
       hasTriggeredRunRef.current = true;
       runPrompt();
@@ -86,9 +86,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
     }
   }, [prompt.running, runPrompt]);
 
-  // Extract variables from prompt messages when they change
   useEffect(() => {
-    // React Query handles debouncing and caching automatically
     if (variablesQuery.data !== undefined) {
       dispatch({
         type: "extractPromptVariables",
@@ -232,7 +230,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
           </div>
         </div>
       </Container>
-      <SavePromptDialog open={savePromptOpen} setOpen={setSavePromptOpen} prompt={prompt} initialName={nameInputValue} />
+      <SavePromptDialog open={savePromptOpen} setOpen={setSavePromptOpen} prompt={prompt} initialName={currentPromptName} />
       <ToolsDialog open={toolsDialogOpen} setOpen={setToolsDialogOpen} prompt={prompt} />
       <Snackbar {...snackbarProps}>
         <Alert {...alertProps} />

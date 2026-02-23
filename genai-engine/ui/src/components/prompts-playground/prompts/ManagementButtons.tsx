@@ -110,8 +110,8 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   // In config mode, disable if experiment is running. In normal mode, disable if prompt is running
   const runDisabled = !hasModelConfig || hasUnsetVariables || (experimentConfig ? isRunningExperiment : prompt.running);
   const previewDisabled = !hasModelConfig || hasUnsetVariables;
-  const isDirty = prompt.isDirty;
-  const saveTooltip = isDirty ? "Save changes as new version" : "Save Prompt";
+  const needsSave = prompt.needsSave;
+  const saveTooltip = needsSave ? (prompt.version ? "Save changes as new version" : "Save as new prompt") : "Save Prompt";
 
   // Determine the run button tooltip based on disabled state
   let runTooltip = experimentConfig ? "Run Experiment with this Prompt" : "Run Prompt";
@@ -184,15 +184,15 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
           aria-label="save"
           onClick={handleSavePromptOpen}
           sx={{
-            ...(isDirty && {
-              backgroundColor: "#f97316",
+            ...(needsSave && {
+              backgroundColor: "warning.main",
               "&:hover": {
-                backgroundColor: "#ea580c",
+                backgroundColor: "warning.dark",
               },
             }),
           }}
         >
-          <SaveIcon sx={{ color: isDirty ? "white" : undefined }} color={isDirty ? undefined : "primary"} />
+          <SaveIcon sx={{ color: needsSave ? "white" : undefined }} color={needsSave ? undefined : "primary"} />
         </IconButton>
       </Tooltip>
       <Tooltip title="Delete Prompt" placement="top-start" arrow>
