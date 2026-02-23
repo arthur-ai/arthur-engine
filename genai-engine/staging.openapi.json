@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.410"
+        "version": "2.1.411"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -18960,7 +18960,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/Model"
+                                    "$ref": "#/components/schemas/LLMModel"
                                 },
                                 "type": "array"
                             },
@@ -21057,6 +21057,21 @@
                 ],
                 "title": "LLMGetAllMetadataResponse"
             },
+            "LLMModel": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the model."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "LLMModel",
+                "description": "Model used by an agent."
+            },
             "LLMPromptRequestConfigSettings": {
                 "properties": {
                     "timeout": {
@@ -22108,21 +22123,6 @@
                     "ToolSelection"
                 ],
                 "title": "MetricType"
-            },
-            "Model": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the model."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name"
-                ],
-                "title": "Model",
-                "description": "Model used by an agent."
             },
             "ModelProvider": {
                 "type": "string",
