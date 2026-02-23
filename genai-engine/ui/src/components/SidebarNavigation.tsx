@@ -5,22 +5,18 @@ import {
   ScienceOutlined,
   BalanceOutlined,
   TableChartOutlined,
-  SettingsOutlined,
-  AppsOutlined,
-  KeyOutlined,
   StorageOutlined,
+  TuneOutlined,
   ArrowBackOutlined,
-  LogoutOutlined,
   LiveTvOutlined,
   InsightsOutlined,
 } from "@mui/icons-material";
-import { Typography } from "@mui/material";
+import { Box, Button, Divider, Typography } from "@mui/material";
 import React from "react";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
   onNavigate: (sectionId: string) => void;
-  onLogout?: () => void;
   activeSection?: string;
   taskName?: string;
 }
@@ -80,24 +76,9 @@ const navigationSections: NavigationSection[] = [
       { id: "agentic-notebooks", label: "Agentic Notebooks", icon: <MenuBookOutlined /> },
     ],
   },
-  {
-    id: "settings",
-    label: "Settings",
-    items: [
-      { id: "task-details", label: "Task Details", icon: <SettingsOutlined /> },
-      { id: "model-providers", label: "Model Providers", icon: <AppsOutlined /> },
-      { id: "api-keys", label: "API Keys", icon: <KeyOutlined /> },
-    ],
-  },
 ];
 
-export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
-  onBackToDashboard,
-  onNavigate,
-  onLogout,
-  activeSection = "overview",
-  taskName,
-}) => {
+export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, activeSection = "overview", taskName }) => {
   return (
     <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
       <div className="p-4 overflow-y-auto flex-1 min-h-0">
@@ -167,18 +148,29 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
         </div>
       </div>
 
-      {/* Logout at the bottom */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-200 flex items-center gap-2"
-          >
-            <LogoutOutlined fontSize="small" />
-            <span>Logout</span>
-          </button>
-        )}
-      </div>
+      {/* Task Details at the bottom */}
+      <Box sx={{ p: 2, flexShrink: 0 }}>
+        <Divider sx={{ mb: 2 }} />
+        <Button
+          variant="text"
+          fullWidth
+          startIcon={<TuneOutlined fontSize="small" />}
+          onClick={() => onNavigate("task-details")}
+          sx={{
+            justifyContent: "flex-start",
+            textTransform: "none",
+            px: 1.5,
+            py: 1,
+            color: activeSection === "task-details" ? "primary.main" : "text.secondary",
+            bgcolor: activeSection === "task-details" ? "primary.50" : "transparent",
+            "&:hover": {
+              bgcolor: activeSection === "task-details" ? "primary.50" : "action.hover",
+            },
+          }}
+        >
+          Task Details
+        </Button>
+      </Box>
     </nav>
   );
 };
