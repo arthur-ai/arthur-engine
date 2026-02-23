@@ -168,7 +168,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
         <Box className="p-6">
           {/* Input Variables Section */}
           <Box className="mb-6">
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
               Input Variables
             </Typography>
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -180,7 +180,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
           {/* Prompt Results Section */}
           <Box>
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
               Prompt Results
             </Typography>
             <Box className="space-y-4">
@@ -216,8 +216,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                               } catch {
                                 // If not JSON, display as plain text
                                 return (
-                                  <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                                    <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                                  <Box
+                                    sx={{
+                                      p: 1.5,
+                                      backgroundColor: "action.hover",
+                                      border: 1,
+                                      borderColor: "divider",
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
                                       {promptResult.rendered_prompt}
                                     </Typography>
                                   </Box>
@@ -266,8 +274,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                 )}
                               </>
                             ) : (
-                              <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                                <Typography variant="body2" className="text-gray-500 italic">
+                              <Box
+                                sx={{
+                                  p: 1.5,
+                                  backgroundColor: "action.hover",
+                                  border: 1,
+                                  borderColor: "divider",
+                                  borderRadius: 1,
+                                }}
+                              >
+                                <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                                   No output available
                                 </Typography>
                               </Box>

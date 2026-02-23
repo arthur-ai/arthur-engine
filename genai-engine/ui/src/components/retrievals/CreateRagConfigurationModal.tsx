@@ -10,6 +10,9 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
+import FormControl from "@mui/material/FormControl";
+import MenuItem from "@mui/material/MenuItem";
+import Select, { type SelectChangeEvent } from "@mui/material/Select";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -133,20 +136,20 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
     onClose();
   }, [form, resetLocalState, onClose]);
 
-  const handleProviderChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleProviderChange = useCallback((e: SelectChangeEvent<string>) => {
     setSelectedProviderId(e.target.value);
     setSelectedCollection(null);
   }, []);
 
   const handleCollectionChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
+    (e: SelectChangeEvent<string>) => {
       const collection = collections.find((c) => c.identifier === e.target.value);
       setSelectedCollection(collection ?? null);
     },
     [collections]
   );
 
-  const handleMethodChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleMethodChange = useCallback((e: SelectChangeEvent<SearchMethod>) => {
     setSearchMethod(e.target.value as SearchMethod);
   }, []);
 
@@ -194,57 +197,71 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                 {/* Provider Selection */}
                 <Box>
                   <Box className="flex items-center justify-between mb-1">
-                    <label htmlFor="provider-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: "text.primary" }}>
                       Provider
-                    </label>
+                    </Typography>
                     <Button size="small" startIcon={<Add />} onClick={() => setCreateProviderModalOpen(true)} sx={{ textTransform: "none" }}>
                       Add Provider
                     </Button>
                   </Box>
-                  <select
-                    id="provider-select"
-                    value={selectedProviderId}
-                    onChange={handleProviderChange}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select a provider</option>
-                    {providers.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.name}
-                      </option>
-                    ))}
-                  </select>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      id="provider-select"
+                      value={selectedProviderId}
+                      onChange={handleProviderChange}
+                      displayEmpty
+                      sx={{ fontSize: "0.875rem" }}
+                    >
+                      <MenuItem value="">
+                        <em>Select a provider</em>
+                      </MenuItem>
+                      {providers.map((provider) => (
+                        <MenuItem key={provider.id} value={provider.id}>
+                          {provider.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Box>
 
                 {/* Collection Selection */}
                 {selectedProviderId && (
                   <Box>
-                    <label htmlFor="collection-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: "text.primary", mb: 0.5 }}>
                       Collection
-                    </label>
+                    </Typography>
                     <Box className="flex items-center gap-2">
-                      <select
-                        id="collection-select"
-                        value={selectedCollection?.identifier ?? ""}
-                        onChange={handleCollectionChange}
-                        disabled={isLoadingCollections}
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800"
-                      >
-                        {isLoadingCollections ? (
-                          <option value="">Loading collections...</option>
-                        ) : collections.length === 0 ? (
-                          <option value="">No collections available</option>
-                        ) : (
-                          <>
-                            <option value="">Select a collection</option>
-                            {collections.map((collection) => (
-                              <option key={collection.identifier} value={collection.identifier}>
-                                {collection.identifier}
-                              </option>
-                            ))}
-                          </>
-                        )}
-                      </select>
+                      <FormControl fullWidth size="small">
+                        <Select
+                          id="collection-select"
+                          value={selectedCollection?.identifier ?? ""}
+                          onChange={handleCollectionChange}
+                          disabled={isLoadingCollections}
+                          displayEmpty
+                          sx={{ fontSize: "0.875rem" }}
+                        >
+                          {isLoadingCollections ? (
+                            <MenuItem value="">
+                              <em>Loading collections...</em>
+                            </MenuItem>
+                          ) : collections.length === 0 ? (
+                            <MenuItem value="">
+                              <em>No collections available</em>
+                            </MenuItem>
+                          ) : (
+                            <>
+                              <MenuItem value="">
+                                <em>Select a collection</em>
+                              </MenuItem>
+                              {collections.map((collection) => (
+                                <MenuItem key={collection.identifier} value={collection.identifier}>
+                                  {collection.identifier}
+                                </MenuItem>
+                              ))}
+                            </>
+                          )}
+                        </Select>
+                      </FormControl>
                       {isLoadingCollections && <CircularProgress size={20} />}
                     </Box>
                   </Box>
@@ -253,19 +270,16 @@ export const CreateRagConfigurationModal: React.FC<CreateRagConfigurationModalPr
                 {/* Search Method */}
                 {hasRequiredSelections && (
                   <Box>
-                    <label htmlFor="method-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: "text.primary", mb: 0.5 }}>
                       Search Method
-                    </label>
-                    <select
-                      id="method-select"
-                      value={searchMethod}
-                      onChange={handleMethodChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="nearText">Near Text (Vector)</option>
-                      <option value="bm25">BM25 (Keyword)</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
+                    </Typography>
+                    <FormControl fullWidth size="small">
+                      <Select id="method-select" value={searchMethod} onChange={handleMethodChange} sx={{ fontSize: "0.875rem" }}>
+                        <MenuItem value="nearText">Near Text (Vector)</MenuItem>
+                        <MenuItem value="bm25">BM25 (Keyword)</MenuItem>
+                        <MenuItem value="hybrid">Hybrid</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Box>
                 )}
 
