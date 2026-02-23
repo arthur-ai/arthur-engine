@@ -7,8 +7,8 @@ from arthur_common.models.agent_governance_schemas import (
     DataSource,
     EnrichedAgentMetadata,
     GCPCreationSource,
+    LLMModel,
     ManualCreationSource,
-    Model,
     OTELCreationSource,
     SubAgent,
     Tool,
@@ -202,7 +202,7 @@ class TaskRepository:
         return {
             "tools": [Tool(name=name, arguments=[]) for name in sorted(tools_set)],
             "sub_agents": [SubAgent(name=name) for name in sorted(sub_agents_set)],
-            "models": [Model(name=name) for name in sorted(models_set)],
+            "models": [LLMModel(name=name) for name in sorted(models_set)],
             "data_sources": [DataSource(url=url) for url in sorted(data_sources_set)],
             "num_spans": total_span_count,
         }
