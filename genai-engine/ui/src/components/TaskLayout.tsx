@@ -5,7 +5,6 @@ import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
-import { useAuth } from "@/contexts/AuthContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
@@ -14,7 +13,6 @@ export const TaskLayout: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
   const api = useApi();
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,10 +64,6 @@ export const TaskLayout: React.FC = () => {
     fetchTask();
   }, [api, taskId]);
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const handleBack = () => {
     navigate("/");
   };
@@ -81,13 +75,7 @@ export const TaskLayout: React.FC = () => {
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
-        <SidebarNavigation
-          onBackToDashboard={handleBack}
-          onNavigate={handleNavigate}
-          onLogout={handleLogout}
-          activeSection={activeSection}
-          taskName={task?.name}
-        />
+        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 
         <main className="flex-1 overflow-auto">
           {loading && (

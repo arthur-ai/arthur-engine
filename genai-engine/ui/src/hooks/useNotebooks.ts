@@ -159,7 +159,11 @@ export function useSetNotebookStateMutation(onSuccess?: () => void) {
       return response.data;
     },
     onSuccess,
-    invalidateQueries: [{ queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] }, { queryKey: ["getNotebookStateApiV1NotebooksNotebookIdStateGet"] }],
+    invalidateQueries: [
+      { queryKey: ["getNotebookApiV1NotebooksNotebookIdGet"] },
+      { queryKey: ["getNotebookStateApiV1NotebooksNotebookIdStateGet"] },
+      { queryKey: ["notebookDeserialized"] },
+    ],
   });
 }
 
