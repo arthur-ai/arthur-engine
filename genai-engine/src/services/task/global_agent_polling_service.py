@@ -117,7 +117,9 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     except Exception as e:
                         logger.error(f"Error in background loop: {e}", exc_info=True)
 
-                    if self.shutdown_event.wait(timeout=AGENTIC_POLLING_INTERVAL_SECONDS):
+                    if self.shutdown_event.wait(
+                        timeout=AGENTIC_POLLING_INTERVAL_SECONDS
+                    ):
                         break
 
             except Exception as e:
