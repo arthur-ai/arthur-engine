@@ -1,6 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from arthur_common.models.request_schemas import (
@@ -29,9 +30,9 @@ from clients.telemetry.telemetry_client import (
 )
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session
-from repositories.agent_polling_repository import AgentPollingRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
+from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
@@ -40,7 +41,6 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import (
     ApplicationConfiguration,
-    EnrichedTaskResponse,
     Metric,
     Rule,
     Task,
@@ -92,16 +92,6 @@ def create_task(
         )
         task = Task._from_request_model(request)
         task = tasks_repo.create_task(task)
-
-        if request.is_agentic and request.agent_metadata is not None:
-            try:
-                agent_polling_repo = AgentPollingRepository(db_session)
-                agent_polling_repo.start_polling_for_agent(
-                    task.id,
-                )
-            except Exception as e:
-                tasks_repo.archive_task(task.id)
-                raise e
 
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
         response = task._to_response_model()
@@ -240,29 +230,22 @@ def get_agent_tasks(
             page=0,
         )
 
-        # Convert to Task objects
+        # Convert to Task objects and enrich with service names
         tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
+        tasks = tasks_repo._enrich_tasks_with_service_names(tasks)
 
         # Build enriched responses
+        polling_state_repo = TaskPollingStateRepository(db_session)
         enriched_responses = []
         for task in tasks:
-            # Map old task_metadata to new creation_source format
-            infrastructure, creation_source = (
-                tasks_repo._map_task_metadata_to_creation_source(task)
-            )
+            creation_source = tasks_repo._get_task_creation_source(task)
 
-            # Extract agent metadata if task is agentic
-            tools = None
-            sub_agents = None
-            models = None
-            num_spans = None
+            # Get last_fetched from task_polling_state
+            polling_state = polling_state_repo.get_by_task_id(task.id)
+            last_fetched = polling_state.last_fetched if polling_state else None
 
-            if task.is_agentic:
-                agent_metadata = tasks_repo._extract_agent_metadata(task.id)
-                tools = agent_metadata["tools"]
-                sub_agents = agent_metadata["sub_agents"]
-                models = agent_metadata["models"]
-                num_spans = agent_metadata["num_spans"]
+            # Extract agent metadata
+            agent_metadata = tasks_repo._extract_agent_metadata(task.id)
 
             # Convert rule links to response models
             response_rules = []
@@ -276,14 +259,14 @@ def get_agent_tasks(
                 name=task.name,
                 created_at=task.created_at,
                 updated_at=task.updated_at,
-                is_agentic=task.is_agentic,
                 is_autocreated=task.is_autocreated,
-                infrastructure=infrastructure,
                 creation_source=creation_source,
-                tools=tools,
-                sub_agents=sub_agents,
-                models=models,
-                num_spans=num_spans,
+                last_fetched=last_fetched,
+                tools=agent_metadata["tools"],
+                sub_agents=agent_metadata["sub_agents"],
+                models=agent_metadata["models"],
+                data_sources=agent_metadata["data_sources"],
+                num_spans=agent_metadata["num_spans"],
                 rules=response_rules,
             )
             enriched_responses.append(enriched_response)

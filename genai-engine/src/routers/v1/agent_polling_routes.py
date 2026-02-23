@@ -1,15 +1,17 @@
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session
 from repositories.agent_polling_repository import AgentPollingRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.agent_discovery_schemas import (
+    DiscoverAndPollResponse,
+    ExecutePollingResponse,
+)
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from services.task.global_agent_polling_service import get_global_agent_polling_service
 from utils.users import permission_checker
 
 agent_polling_routes = APIRouter(
@@ -19,33 +21,58 @@ agent_polling_routes = APIRouter(
 
 
 @agent_polling_routes.post(
-    "/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}",
-    description="Retry a failed agent polling job for a given agent polling data id.",
+    "/tasks/{task_id}/agent-polling/execute",
+    description="Manually trigger a polling job for a task. "
+    "Does not require any particular state — admins can use this "
+    "to force an immediate poll outside the normal loop cadence.",
+    response_model=ExecutePollingResponse,
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def retry_agent_polling(
+def execute_agent_polling(
     task_id: str,
-    agent_polling_data_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> JSONResponse:
-    """Retry a failed agent polling job for a given agent polling data id"""
+) -> ExecutePollingResponse:
+    """Manually trigger a polling job for a task."""
     try:
         agent_polling_repository = AgentPollingRepository(db_session)
-        agent_polling_repository.retry_agent_polling_job(task_id, agent_polling_data_id)
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": f"Successfully enqueued retry job for agent {agent_polling_data_id}",
-            },
-        )
-    except HTTPException as e:
+        agent_polling_repository.execute_polling_job(task_id)
+        return ExecutePollingResponse(status="enqueued", task_id=task_id)
+    except HTTPException:
         raise
     except Exception as e:
-        # Unexpected error during discovery
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Agent discovery failed: {str(e)}",
+            detail=f"Failed to execute polling: {str(e)}",
+        )
+
+
+@agent_polling_routes.post(
+    "/agent-polling/execute-all",
+    description="Manually trigger a full agent discovery and polling cycle. "
+    "Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks.",
+    response_model=DiscoverAndPollResponse,
+    tags=["Agent Discovery"],
+    status_code=status.HTTP_200_OK,
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def execute_all_agent_polling(
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DiscoverAndPollResponse:
+    """Manually trigger a full discovery + polling cycle."""
+    polling_service = get_global_agent_polling_service()
+    if not polling_service:
+        raise HTTPException(
+            status_code=503,
+            detail="Global agent polling service is not initialized.",
+        )
+
+    try:
+        return polling_service._discover_and_poll_agents()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute polling: {str(e)}",
         )
