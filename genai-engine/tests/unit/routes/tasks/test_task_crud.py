@@ -1,11 +1,10 @@
 import random
-from unittest.mock import MagicMock, patch
 
 import pytest
 from arthur_common.models.enums import RegisteredAgentProvider, RuleScope, RuleType
 from arthur_common.models.request_schemas import AgentMetadata, GCPAgentMetadata
 
-from db_models.agent_polling_models import DatabaseAgentPollingData
+from db_models import DatabaseTask
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -151,52 +150,46 @@ def test_search_tasks_by_agentic_status(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_create_task_with_agent_metadata_creates_agent_polling_data(
+def test_create_task_with_agent_metadata_stores_creation_source(
     client: GenaiEngineTestClientBase,
 ):
-    """Test that creating a task with agent metadata creates agent polling data"""
-    # Mock the polling service to avoid 503 error
-    mock_polling_service = MagicMock()
-    mock_polling_service.enqueue.return_value = True
-
-    with patch(
-        "repositories.agent_polling_repository.get_registered_agent_polling_service",
-        return_value=mock_polling_service,
-    ):
-        task_name = str(random.random())
-        status_code, task_response = client.create_task(
-            task_name,
-            is_agentic=True,
-            agent_metadata=AgentMetadata(
-                provider=RegisteredAgentProvider.GCP,
-                gcp_metadata=GCPAgentMetadata(
-                    project_id="test-project",
-                    region="test-region",
-                    resource_id="test-resource",
-                ),
+    """Test that creating a task with agent metadata stores GCP creation_source in task_metadata."""
+    task_name = str(random.random())
+    status_code, task_response = client.create_task(
+        task_name,
+        is_agentic=True,
+        agent_metadata=AgentMetadata(
+            provider=RegisteredAgentProvider.GCP,
+            gcp_metadata=GCPAgentMetadata(
+                project_id="test-project",
+                region="test-region",
+                resource_id="test-resource",
             ),
-        )
-        assert status_code == 200
-
-    # Query the database to verify agent polling data was created
-    db_session = override_get_db_session()
-    agent_polling_data = (
-        db_session.query(DatabaseAgentPollingData)
-        .filter(DatabaseAgentPollingData.task_id == task_response.id)
-        .first()
+        ),
     )
+    assert status_code == 200
 
-    assert agent_polling_data is not None
-    assert agent_polling_data.task_id == task_response.id
-    assert agent_polling_data.failed_runs == 0
+    # Verify the response has agent_metadata (backward-compatible format)
     assert task_response.agent_metadata.provider == RegisteredAgentProvider.GCP.value
     assert task_response.agent_metadata.gcp_metadata.project_id == "test-project"
     assert task_response.agent_metadata.gcp_metadata.region == "test-region"
     assert task_response.agent_metadata.gcp_metadata.resource_id == "test-resource"
 
-    # Clean up - delete agent polling data from db and task
-    db_session.delete(agent_polling_data)
-    db_session.commit()
+    # Verify task_metadata in DB has new creation_source format
+    db_session = override_get_db_session()
+    db_task = (
+        db_session.query(DatabaseTask)
+        .filter(DatabaseTask.id == task_response.id)
+        .first()
+    )
+    assert db_task is not None
+    assert db_task.task_metadata is not None
+    creation_source = db_task.task_metadata.get("creation_source", {})
+    assert creation_source.get("type") == "GCP"
+    assert creation_source.get("gcp_project_id") == "test-project"
+    assert creation_source.get("gcp_region") == "test-region"
+    assert creation_source.get("gcp_reasoning_engine_id") == "test-resource"
 
+    # Clean up
     status_code = client.delete_task(task_response.id)
     assert status_code == 204

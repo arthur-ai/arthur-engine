@@ -79,8 +79,8 @@ from services.currency import (
     shutdown_currency_conversion_service,
 )
 from services.task import (
-    initialize_registered_agent_polling_service,
-    shutdown_registered_agent_polling_service,
+    initialize_global_agent_polling_service,
+    shutdown_global_agent_polling_service,
 )
 from utils import constants as constants
 from utils import model_load
@@ -232,11 +232,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         initialize_currency_conversion_service()
     except Exception as e:
         logger.error(f"Error initializing currency conversion service: {e}")
-    # Initialize registered agent polling service
+    # Initialize global agent polling service
     try:
-        initialize_registered_agent_polling_service(num_workers=4)
+        initialize_global_agent_polling_service(num_workers=4)
     except Exception as e:
-        logger.error(f"Error initializing registered agent polling service: {e}")
+        logger.error(f"Error initializing global agent polling service: {e}")
 
     # Conditionally load relevance models
     if relevance_models_enabled():
@@ -256,7 +256,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     cleanup_cuda_cache()
     shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
-    shutdown_registered_agent_polling_service()
+    shutdown_global_agent_polling_service()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
