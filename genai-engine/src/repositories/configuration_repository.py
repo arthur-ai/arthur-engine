@@ -76,6 +76,14 @@ class ConfigurationRepository:
             )
             self.db_session.add(max_llm_rules)
 
+        if request.trace_retention_days is not None:
+            trace_retention = update_or_create_config(
+                ApplicationConfigurations.TRACE_RETENTION_DAYS,
+                str(request.trace_retention_days),
+                existing_configurations,
+            )
+            self.db_session.add(trace_retention)
+
         self.db_session.commit()
         return self.get_configurations()
 

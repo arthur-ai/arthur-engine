@@ -44,6 +44,7 @@ class ApplicationConfigurationResponse(BaseModel):
         None
     )
     max_llm_rules_per_task_count: int
+    trace_retention_days: int
 
 
 class ConversationBaseResponse(BaseModel):

@@ -82,6 +82,10 @@ from services.task import (
     initialize_global_agent_polling_service,
     shutdown_global_agent_polling_service,
 )
+from services.trace_retention_service import (
+    initialize_trace_retention_service,
+    shutdown_trace_retention_service,
+)
 from utils import constants as constants
 from utils import model_load
 from utils.classifiers import get_device
@@ -232,6 +236,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         initialize_currency_conversion_service()
     except Exception as e:
         logger.error(f"Error initializing currency conversion service: {e}")
+
+    # Initialize trace retention service (deletes trace data older than configured retention)
+    try:
+        initialize_trace_retention_service()
+    except Exception as e:
+        logger.error(f"Error initializing trace retention service: {e}")
+
     # Initialize global agent polling service
     try:
         initialize_global_agent_polling_service(num_workers=4)
@@ -254,6 +265,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     cleanup_cuda_cache()
+    shutdown_trace_retention_service()
     shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
     shutdown_global_agent_polling_service()

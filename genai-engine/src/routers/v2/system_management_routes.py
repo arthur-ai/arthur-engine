@@ -67,7 +67,6 @@ def get_token_usage(
     "/configuration",
     description="Get application configuration settings.",
     response_model=ApplicationConfigurationResponse,
-    include_in_schema=False,
 )
 @permission_checker(permissions=PermissionLevelsEnum.APP_CONFIG_READ.value)
 def get_configuration(
@@ -87,7 +86,6 @@ def get_configuration(
     "/configuration",
     description="Update application configuration settings.",
     response_model=ApplicationConfigurationResponse,
-    include_in_schema=False,
 )
 @permission_checker(permissions=PermissionLevelsEnum.APP_CONFIG_WRITE.value)
 def update_configuration(
