@@ -4996,6 +4996,16 @@ export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
    */
   llm_eval_name?: string | null;
   /**
+   * Llm Eval Name Exact
+   * Exact LLM eval name to filter on (case-sensitive exact match).
+   */
+  llm_eval_name_exact?: string | null;
+  /**
+   * Llm Eval Version
+   * LLM eval version to filter on.
+   */
+  llm_eval_version?: number | null;
+  /**
    * Name
    * Name of the continuous eval to filter on.
    */

@@ -1032,6 +1032,14 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="List of continuous eval IDs to filter on",
     )
+    llm_eval_name_exact: Optional[str] = Field(
+        None,
+        description="Exact LLM eval name to filter on (case-sensitive exact match)",
+    )
+    llm_eval_version: Optional[int] = Field(
+        None,
+        description="LLM eval version to filter on",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1059,6 +1067,14 @@ class ContinuousEvalListFilterRequest(BaseModel):
             None,
             description="List of continuous eval IDs to filter on.",
         ),
+        llm_eval_name_exact: Optional[str] = Query(
+            None,
+            description="Exact LLM eval name to filter on (case-sensitive exact match).",
+        ),
+        llm_eval_version: Optional[int] = Query(
+            None,
+            description="LLM eval version to filter on.",
+        ),
     ) -> "ContinuousEvalListFilterRequest":
         """Create a ContinuousEvalListFilterRequest from query parameters."""
         parsed_continuous_eval_ids = None
@@ -1082,6 +1098,8 @@ class ContinuousEvalListFilterRequest(BaseModel):
             ),
             enabled=enabled.lower() == "true" if enabled else None,
             continuous_eval_ids=parsed_continuous_eval_ids,
+            llm_eval_name_exact=llm_eval_name_exact,
+            llm_eval_version=llm_eval_version,
         )
 
 
