@@ -5,16 +5,13 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from arthur_common.models.enums import RegisteredAgentProvider
-from arthur_common.models.request_schemas import AgentMetadata, GCPAgentMetadata
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 
-from db_models import DatabaseAgentPollingData, DatabaseSpan, DatabaseTask
-from schemas.internal_schemas import (
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
+from arthur_common.models.agent_governance_schemas import (
     GCPCreationSource,
     ManualCreationSource,
     OTELCreationSource,
-    RegisteredGCPAgentCredentials,
     TaskMetadata,
 )
 from tests.clients.base_test_client import (
@@ -68,19 +65,18 @@ def test_get_agent_tasks_manual_task(client: GenaiEngineTestClientBase):
 
     # Verify fields
     assert manual_task.name == task_name
-    assert manual_task.is_agentic is True
     assert manual_task.is_autocreated is False
-    assert manual_task.infrastructure is None
 
     # Verify creation_source is Manual
     assert manual_task.creation_source is not None
     assert isinstance(manual_task.creation_source, ManualCreationSource)
-    assert manual_task.creation_source.type == "manual"
+    assert manual_task.creation_source.type == "MANUAL"
 
     # Agent metadata should be present but empty (no spans yet)
     assert manual_task.tools == []
     assert manual_task.sub_agents == []
     assert manual_task.models == []
+    assert manual_task.data_sources == []
     assert manual_task.num_spans == 0
 
 
@@ -93,15 +89,13 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
     # Directly insert GCP task into database (bypassing API to avoid polling service)
     db_session = override_get_db_session()
     try:
-        # Create task with GCP metadata
+        # Create task with GCP metadata (new format)
         task_metadata = TaskMetadata(
-            provider=RegisteredAgentProvider.GCP,
-            gcp_metadata=RegisteredGCPAgentCredentials(
-                project_id="test-project",
-                region="us-central1",
-                resource_id="projects/test-project/locations/us-central1/reasoningEngines/12345",
+            creation_source=GCPCreationSource(
+                gcp_project_id="test-project",
+                gcp_region="us-central1",
+                gcp_reasoning_engine_id="12345",
             ),
-            service_names=["projects/test-project/locations/us-central1/reasoningEngines/12345"],
         )
 
         db_task = DatabaseTask(
@@ -127,9 +121,7 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
 
         # Verify fields
         assert gcp_task.name == task_name
-        assert gcp_task.is_agentic is True
         assert gcp_task.is_autocreated is False
-        assert gcp_task.infrastructure == "GCP"
 
         # Verify creation_source is GCP
         assert gcp_task.creation_source is not None
@@ -138,6 +130,7 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
         assert gcp_task.creation_source.gcp_project_id == "test-project"
         assert gcp_task.creation_source.gcp_region == "us-central1"
         assert gcp_task.creation_source.gcp_reasoning_engine_id == "12345"
+        assert gcp_task.creation_source.service_names == []
 
     finally:
         db_session.close()
@@ -219,7 +212,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
 
         assert task_with_spans.models is not None
         assert len(task_with_spans.models) == 1
-        assert task_with_spans.models[0] == "gpt-4"
+        assert task_with_spans.models[0].name == "gpt-4"
 
         assert task_with_spans.num_spans == 3
 
@@ -277,8 +270,8 @@ def test_get_agent_tasks_30_day_lookback(client: GenaiEngineTestClientBase):
         task_with_spans = next((t for t in enriched_tasks if t.id == task.id), None)
         assert task_with_spans is not None
 
-        # Only recent span should be counted
-        assert task_with_spans.num_spans == 1
+        # num_spans counts all spans (all time), tools only counts last 30 days
+        assert task_with_spans.num_spans == 2
         assert len(task_with_spans.tools) == 1
         assert task_with_spans.tools[0].name == "recent_tool"
 
@@ -296,15 +289,13 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
     # Directly insert GCP task into database (bypassing API to avoid polling service)
     db_session = override_get_db_session()
     try:
-        # Create task with GCP metadata
+        # Create task with GCP metadata (new format)
         task_metadata = TaskMetadata(
-            provider=RegisteredAgentProvider.GCP,
-            gcp_metadata=RegisteredGCPAgentCredentials(
-                project_id="test-project",
-                region="us-central1",
-                resource_id="projects/test-project/locations/us-central1/reasoningEngines/67890",
+            creation_source=GCPCreationSource(
+                gcp_project_id="test-project",
+                gcp_region="us-central1",
+                gcp_reasoning_engine_id="67890",
             ),
-            service_names=["projects/test-project/locations/us-central1/reasoningEngines/67890"],
         )
 
         db_task = DatabaseTask(
@@ -319,34 +310,34 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
         )
         db_session.add(db_task)
 
-        # Add polling data with last_fetched
-        polling_data = DatabaseAgentPollingData(
-            id=uuid4(),
+        # Add polling state with last_fetched (new table)
+        polling_state = DatabaseTaskPollingState(
             task_id=task_id,
-            status="IDLE",
             last_fetched=last_fetched_time,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        db_session.add(polling_data)
+        db_session.add(polling_state)
         db_session.commit()
 
-        # Get agent tasks - should include last_fetched from polling data
+        # Get agent tasks - should include last_fetched from polling state
         status_code, enriched_tasks = client.get_agent_tasks()
         assert status_code == 200
 
         gcp_task = next((t for t in enriched_tasks if t.id == task_id), None)
         assert gcp_task is not None
 
-        # Verify GCP creation_source with last_fetched
+        # Verify GCP creation_source
         assert isinstance(gcp_task.creation_source, GCPCreationSource)
         assert gcp_task.creation_source.type == "GCP"
         assert gcp_task.creation_source.gcp_project_id == "test-project"
         assert gcp_task.creation_source.gcp_region == "us-central1"
         assert gcp_task.creation_source.gcp_reasoning_engine_id == "67890"
-        assert gcp_task.creation_source.last_fetched is not None
+
+        # Verify last_fetched is on the enriched response (from task_polling_state)
+        assert gcp_task.last_fetched is not None
         # Allow for some time delta in comparison
-        assert abs((gcp_task.creation_source.last_fetched - last_fetched_time).total_seconds()) < 2
+        assert abs((gcp_task.last_fetched - last_fetched_time).total_seconds()) < 2
 
     finally:
         db_session.close()
@@ -404,14 +395,12 @@ def test_get_agent_tasks_autocreated_otel_task(client: GenaiEngineTestClientBase
 
         # Verify it's identified as auto-created
         assert otel_task.is_autocreated is True
-        assert otel_task.is_agentic is True
-        assert otel_task.infrastructure is None
 
         # Verify creation_source is OTEL
         assert otel_task.creation_source is not None
         assert isinstance(otel_task.creation_source, OTELCreationSource)
         assert otel_task.creation_source.type == "OTEL"
-        assert otel_task.creation_source.service_name == task_name
+        assert otel_task.creation_source.service_names == []
 
     finally:
         db_session.close()

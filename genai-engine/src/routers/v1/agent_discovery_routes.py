@@ -36,12 +36,13 @@ logger = logging.getLogger(__name__)
 
 @agent_discovery_routes.post(
     "/discover-agents",
-    description="Discover agents from infrastructure (e.g., GCP Vertex AI). "
-    "This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.",
+    description="DEPRECATED: Use GET /api/v2/agent-tasks instead. "
+    "Discovery is now handled automatically by the global polling service.",
     response_model=DiscoverAgentsResponse,
     response_model_exclude_none=False,
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def discover_agents(
