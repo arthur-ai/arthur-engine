@@ -1,12 +1,13 @@
+import { createSpanLevelColumns, TextOperators, TracesTable } from "@arthur/shared-components";
 import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createSpanLevelColumns } from "../../data/create-span-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
@@ -14,13 +15,11 @@ import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
 import { DurationCellWithBucket } from "../DurationCell";
-import { TextOperators } from "../filtering/types";
 import { SpanStatusBadge } from "../span-status-badge";
 import { isValidStatusCode } from "../StatusCode";
 import { TraceContentCell } from "../TraceContentCell";
 
 import { TracingFilterModal } from "./components/TracingFilterModal";
-import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
 import { TypeChip } from "@/components/common/span/TypeChip";
@@ -109,7 +108,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
         isValidStatusCode,
-      }),
+      }) as unknown as MRT_ColumnDef<SpanMetadataResponse, unknown>[],
     []
   );
 

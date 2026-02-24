@@ -1,7 +1,6 @@
+import { SessionDrawerBody } from "@arthur/shared-components";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useEffectEvent } from "react";
-
-import { SessionDrawerBody } from "./drawer/SessionDrawerBody";
 
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
@@ -32,5 +31,5 @@ export const SessionDrawerContent = ({ id }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.traces]);
 
-  return <SessionDrawerBody session={session} />;
+  return <SessionDrawerBody session={session as unknown as Record<string, unknown>} />;
 };

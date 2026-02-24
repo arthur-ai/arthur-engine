@@ -1,12 +1,13 @@
+import { createTraceLevelColumns, TextOperators, TracesTable } from "@arthur/shared-components";
 import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
-import { memo, useCallback, useMemo, useState } from "react";
+import type { MRT_ColumnDef } from "material-react-table";
+import React, { memo, useCallback, useMemo, useState } from "react";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
@@ -15,17 +16,15 @@ import { buildThresholdsFromSample } from "../../utils/duration";
 import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
 import { DurationCellWithBucket } from "../DurationCell";
-import { TextOperators } from "../filtering/types";
 import { TraceContentCell } from "../TraceContentCell";
 
 import { TracingFilterModal } from "./components/TracingFilterModal";
-import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
-import { TraceMetadataResponse } from "@/lib/api-client/api-client";
+import type { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
@@ -102,12 +101,15 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
         Chip: CopyableChip,
         DurationCell: DurationCellWithBucket,
         TraceContentCell,
-        AnnotationCell,
+        AnnotationCell: AnnotationCell as unknown as React.ComponentType<{
+          annotations: { [key: string]: unknown }[];
+          traceId: string;
+        }>,
         SpanStatusBadge: () => null, // Not used in trace columns
         TypeChip: () => null, // Not used in trace columns
         TokenCountTooltip,
         TokenCostTooltip,
-      }),
+      }) as unknown as MRT_ColumnDef<TraceMetadataResponse, unknown>[],
     []
   );
 

@@ -1,23 +1,26 @@
+import {
+  createSessionLevelColumns,
+  createTraceLevelColumns,
+  FilterRow,
+  Operators,
+  TimeRangeSelect,
+  TracesEmptyState,
+  TracesTable,
+} from "@arthur/shared-components";
 import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
+import type { MRT_ColumnDef } from "material-react-table";
 import { Suspense, useCallback, useMemo } from "react";
 
 import type { TimeRange } from "../../constants";
 import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createSessionLevelColumns } from "../../data/create-session-level-columns";
-import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { FilterStoreProvider, useFilterStore } from "../../stores/filter.store";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { filterFields } from "../filtering/fields";
-import { FilterRow } from "../filtering/FilterRow";
 import { IncomingFilter } from "../filtering/mapper";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
-import { Operators } from "../filtering/types";
-import { TracesTable } from "../tables/TracesTable";
-import { TimeRangeSelect } from "../TimeRangeSelect";
-import { TracesEmptyState } from "../TracesEmptyState";
 
 import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
@@ -155,7 +158,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TypeChip: () => null,
         TokenCountTooltip,
         TokenCostTooltip,
-      }),
+      }) as unknown as MRT_ColumnDef<TraceMetadataResponse, unknown>[],
     []
   );
 
@@ -258,7 +261,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TypeChip: () => null,
         TokenCountTooltip,
         TokenCostTooltip,
-      }),
+      }) as unknown as MRT_ColumnDef<SessionMetadataResponse, unknown>[],
     []
   );
 

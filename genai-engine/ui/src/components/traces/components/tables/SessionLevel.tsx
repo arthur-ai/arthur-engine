@@ -1,16 +1,16 @@
+import { createSessionLevelColumns, TracesTable } from "@arthur/shared-components";
 import { Alert, Box, Paper, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { useCallback, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createSessionLevelColumns } from "../../data/create-session-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
 
 import { SessionsFilterModal } from "./components/SessionsFilterModal";
-import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
@@ -86,7 +86,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
         TypeChip: () => null, // Not used in session columns
         TokenCountTooltip,
         TokenCostTooltip,
-      }),
+      }) as unknown as MRT_ColumnDef<SessionMetadataResponse, unknown>[],
     []
   );
 

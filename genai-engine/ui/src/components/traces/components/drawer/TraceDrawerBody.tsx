@@ -1,3 +1,4 @@
+import { DrawerPagination, SpanTree } from "@arthur/shared-components";
 import { Menu } from "@base-ui/react/menu";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -15,10 +16,8 @@ import { buildThresholdsFromSample } from "../../utils/duration";
 import { flattenSpans, getSpanDuration } from "../../utils/spans";
 import { AddToDatasetDrawer } from "../add-to-dataset/Drawer";
 import { AnnotationCell } from "../AnnotationCell";
-import { DrawerPagination } from "../DrawerPagination";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
 import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "../SpanDetails";
-import { SpanTree } from "../SpanTree";
 
 import { CopyableChip } from "@/components/common";
 import { TraceResponse } from "@/lib/api-client/api-client";
@@ -193,7 +192,13 @@ export const TraceDrawerBody = ({
               maxHeight: "100%",
             }}
           >
-            {trace?.root_spans && <SpanTree spans={trace.root_spans} selectedSpanId={selectedSpanId} onSelectSpan={onSelectSpan} />}
+            {trace?.root_spans && (
+              <SpanTree
+                spans={trace.root_spans as unknown as { span_id: string; children?: unknown[]; [key: string]: unknown }[]}
+                selectedSpanId={selectedSpanId}
+                onSelectSpan={onSelectSpan}
+              />
+            )}
           </Box>
           <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
             {selectedSpan && (

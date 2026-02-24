@@ -1,11 +1,10 @@
+import { SpanDrawerBody } from "@arthur/shared-components";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 import { usePaginationContext } from "../stores/pagination-context";
-
-import { SpanDrawerBody } from "./drawer/SpanDrawerBody";
 
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
@@ -96,7 +95,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
 
   return (
     <SpanDrawerBody
-      span={span}
+      span={span as unknown as Record<string, unknown>}
       spanId={id}
       onRefreshMetrics={handleRefreshMetrics}
       isRefreshingMetrics={refreshMetrics.isPending}

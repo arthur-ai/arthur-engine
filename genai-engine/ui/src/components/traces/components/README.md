@@ -44,14 +44,12 @@ These components have been moved to `@arthur/shared-components`:
 
 **Container Components:**
 
-- `TraceDrawerContent.tsx` - Thin fetcher that renders `TraceDrawerBody` from shared-components
-- `SpanDrawerContent.tsx` - Thin fetcher that renders `SpanDrawerBody` from shared-components
-- `SessionDrawerContent.tsx` - Thin fetcher that renders `SessionDrawerBody` from shared-components
-- `UserDrawerContent.tsx` - Thin fetcher that renders `UserDrawerBody` from shared-components
-- `tables/TraceLevel.tsx` - Fetches trace data, creates columns, renders `TracesTable`
-- `tables/SpanLevel.tsx` - Fetches span data, creates columns, renders `TracesTable`
-- `tables/SessionLevel.tsx` - Fetches session data, creates columns, renders `TracesTable`
-- `TracesView.tsx` - Main container component
+- `TraceDrawerContent.tsx` - Fetches trace data, renders local `TraceDrawerBody` (app-specific AddToDatasetDrawer, FeedbackPanel)
+- `SpanDrawerContent.tsx` - Fetches span data, renders `SpanDrawerBody` from `@arthur/shared-components`
+- `SessionDrawerContent.tsx` - Fetches session data, renders `SessionDrawerBody` from `@arthur/shared-components`
+- `UserDrawerContent.tsx` - Fetches user data, renders local `UserDrawerBody` (uses shared FilterRow, TracesTable, column factories)
+- `tables/TraceLevel.tsx`, `SpanLevel.tsx`, `SessionLevel.tsx`, `UserLevel.tsx` - Fetch data, use `TracesTable` and column factories from `@arthur/shared-components`
+- `TracesView.tsx` (parent directory) - Uses `TracesViewLayout`, `LEVELS`, `TIME_RANGES` from `@arthur/shared-components`
 
 **App-Specific Components:**
 
@@ -66,11 +64,11 @@ These components have been moved to `@arthur/shared-components`:
 
 ### Import Strategy
 
-Currently, components in this directory still use **local imports** for the presentational components. The migration plan is:
+Container components now import presentational components from `@arthur/shared-components`:
 
 1. ✅ **Phase 1 (Complete)**: Extract presentational components to `shared-components`
-2. ⏳ **Phase 2 (Future)**: Update imports in this directory to use `@arthur/shared-components`
-3. ⏳ **Phase 3 (Future)**: Remove duplicate components from this directory
+2. ✅ **Phase 2 (Complete)**: Update imports in this directory to use `@arthur/shared-components`
+3. ✅ **Phase 3 (Complete)**: Remove duplicate presentational components from this directory
 
 ### Example: How Container Components Work
 
@@ -121,7 +119,7 @@ Container components in this directory depend on:
 - `react-router-dom` - Routing
 - `@/lib/api-client` - API client
 - `@/services/amplitude` - Analytics
-- `@arthur/shared-components` - Presentational components (future)
+- `@arthur/shared-components` - Presentational components (TracesViewLayout, TracesTable, drawer bodies, FilterRow, DrawerPagination, SpanTree, column factories, etc.)
 
 ## Migration Notes
 
@@ -146,8 +144,8 @@ Container components in this directory depend on:
 ## Next Steps
 
 1. ✅ Presentational components extracted to shared-components
-2. ⏳ Update imports in container components to use `@arthur/shared-components`
-3. ⏳ Remove duplicate presentational components from this directory
+2. ✅ Update imports in container components to use `@arthur/shared-components`
+3. ✅ Remove duplicate presentational components from this directory
 4. ⏳ Test that functionality remains unchanged after import migration
 5. ⏳ Update other applications to use shared-components
 
@@ -155,24 +153,24 @@ Container components in this directory depend on:
 
 ```
 components/
-├── TraceDrawerContent.tsx      # Container - fetches trace, renders TraceDrawerBody
-├── SpanDrawerContent.tsx        # Container - fetches span, renders SpanDrawerBody
-├── SessionDrawerContent.tsx     # Container - fetches session, renders SessionDrawerBody
-├── UserDrawerContent.tsx        # Container - fetches user, renders UserDrawerBody
-├── TracesView.tsx               # Main container component
+├── TraceDrawerContent.tsx      # Container - fetches trace, renders local TraceDrawerBody
+├── SpanDrawerContent.tsx        # Container - fetches span, renders shared SpanDrawerBody
+├── SessionDrawerContent.tsx     # Container - fetches session, renders shared SessionDrawerBody
+├── UserDrawerContent.tsx        # Container - fetches user, renders local UserDrawerBody
 ├── tables/
-│   ├── TraceLevel.tsx           # Container - fetches traces, creates columns, renders TracesTable
-│   ├── SpanLevel.tsx             # Container - fetches spans, creates columns, renders TracesTable
-│   └── SessionLevel.tsx          # Container - fetches sessions, creates columns, renders TracesTable
+│   ├── TraceLevel.tsx           # Container - uses shared TracesTable, createTraceLevelColumns
+│   ├── SpanLevel.tsx            # Container - uses shared TracesTable, createSpanLevelColumns
+│   ├── SessionLevel.tsx         # Container - uses shared TracesTable, createSessionLevelColumns
+│   ├── UserLevel.tsx            # Container - uses shared TracesTable, createUserLevelColumns
+│   └── components/              # Filter modals, etc.
 ├── filtering/
-│   ├── FilterRow.tsx            # ⚠️ Will be removed - use @arthur/shared-components
-│   └── filters-row.tsx           # Backward compatibility - createFilterRow factory
-├── drawer/                       # ⚠️ Will be removed - use @arthur/shared-components
-│   ├── TraceDrawerBody.tsx
-│   ├── SpanDrawerBody.tsx
-│   ├── SessionDrawerBody.tsx
-│   └── UserDrawerBody.tsx
-└── [app-specific components]     # Remain here (AddToDatasetDrawer, FeedbackPanel, etc.)
+│   └── filters-row.tsx          # Backward compatibility - createFilterRow factory
+├── drawer/
+│   ├── TraceDrawerBody.tsx      # Local - app-specific AddToDatasetDrawer, FeedbackPanel; uses shared DrawerPagination, SpanTree
+│   └── UserDrawerBody.tsx       # Local - uses shared FilterRow, TracesTable, column factories, TimeRangeSelect, TracesEmptyState
+├── SpanDetails.tsx              # Local - context + Header/Panels/Widgets (shared has SpanDetails wrapper only)
+├── TracesTable.tsx              # Local - low-level table render (used by add-to-dataset PreviewTable)
+└── [app-specific]               # AddToDatasetDrawer, FeedbackPanel, AnnotationCell, etc.
 ```
 
 ## Important Notes

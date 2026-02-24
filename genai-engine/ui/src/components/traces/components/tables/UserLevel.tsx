@@ -1,15 +1,14 @@
+import { createUserLevelColumns, TracesTable } from "@arthur/shared-components";
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { useCallback, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createUserLevelColumns } from "../../data/create-user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
-
-import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
@@ -84,7 +83,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
         TypeChip: () => null, // Not used in user columns
         TokenCountTooltip,
         TokenCostTooltip,
-      }),
+      }) as unknown as MRT_ColumnDef<TraceUserMetadataResponse, unknown>[],
     []
   );
 
