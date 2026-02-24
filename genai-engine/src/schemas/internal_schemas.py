@@ -5,9 +5,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from arthur_common.models.agent_governance_schemas import (
-    CreationSource,
-    GCPCreationSource,
-    ManualCreationSource,
+    AgentCreationSource,
+    GCPAgentCreationSource,
+    ManualAgentCreationSource,
     TaskMetadata,
 )
 from arthur_common.models.common_schemas import (
@@ -599,19 +599,19 @@ class Task(BaseModel):
         # Convert AgentMetadata request to new TaskMetadata format for DB storage
         task_metadata = None
         if x.agent_metadata:
-            creation_source: Optional[CreationSource] = None
+            creation_source: Optional[AgentCreationSource] = None
 
             if x.agent_metadata.provider == RegisteredAgentProvider.GCP:
                 if x.agent_metadata.gcp_metadata is None:
                     raise ValueError("GCP metadata is required when provider is GCP.")
 
-                creation_source = GCPCreationSource(
+                creation_source = GCPAgentCreationSource(
                     gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
                     gcp_region=x.agent_metadata.gcp_metadata.region,
                     gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
                 )
             else:
-                creation_source = ManualCreationSource()
+                creation_source = ManualAgentCreationSource()
 
             task_metadata = TaskMetadata(
                 creation_source=creation_source,
@@ -683,7 +683,7 @@ class Task(BaseModel):
         if self.task_metadata and self.task_metadata.creation_source:
             cs = self.task_metadata.creation_source
             svc_names = self.service_names or None
-            if isinstance(cs, GCPCreationSource):
+            if isinstance(cs, GCPAgentCreationSource):
                 agent_metadata_response = AgentMetadataResponse(
                     provider=RegisteredAgentProvider.GCP,
                     gcp_metadata=GCPAgentMetadataResponse(

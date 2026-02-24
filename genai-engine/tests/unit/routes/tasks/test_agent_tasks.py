@@ -9,9 +9,9 @@ from openinference.semconv.trace import OpenInferenceSpanKindValues
 
 from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
 from arthur_common.models.agent_governance_schemas import (
-    GCPCreationSource,
-    ManualCreationSource,
-    OTELCreationSource,
+    GCPAgentCreationSource,
+    ManualAgentCreationSource,
+    OTELAgentCreationSource,
     TaskMetadata,
 )
 from tests.clients.base_test_client import (
@@ -69,7 +69,7 @@ def test_get_agent_tasks_manual_task(client: GenaiEngineTestClientBase):
 
     # Verify creation_source is Manual
     assert manual_task.creation_source is not None
-    assert isinstance(manual_task.creation_source, ManualCreationSource)
+    assert isinstance(manual_task.creation_source, ManualAgentCreationSource)
     assert manual_task.creation_source.type == "MANUAL"
 
     # Agent metadata should be present but empty (no spans yet)
@@ -91,7 +91,7 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
     try:
         # Create task with GCP metadata (new format)
         task_metadata = TaskMetadata(
-            creation_source=GCPCreationSource(
+            creation_source=GCPAgentCreationSource(
                 gcp_project_id="test-project",
                 gcp_region="us-central1",
                 gcp_reasoning_engine_id="12345",
@@ -125,7 +125,7 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
 
         # Verify creation_source is GCP
         assert gcp_task.creation_source is not None
-        assert isinstance(gcp_task.creation_source, GCPCreationSource)
+        assert isinstance(gcp_task.creation_source, GCPAgentCreationSource)
         assert gcp_task.creation_source.type == "GCP"
         assert gcp_task.creation_source.gcp_project_id == "test-project"
         assert gcp_task.creation_source.gcp_region == "us-central1"
@@ -291,7 +291,7 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
     try:
         # Create task with GCP metadata (new format)
         task_metadata = TaskMetadata(
-            creation_source=GCPCreationSource(
+            creation_source=GCPAgentCreationSource(
                 gcp_project_id="test-project",
                 gcp_region="us-central1",
                 gcp_reasoning_engine_id="67890",
@@ -328,7 +328,7 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
         assert gcp_task is not None
 
         # Verify GCP creation_source
-        assert isinstance(gcp_task.creation_source, GCPCreationSource)
+        assert isinstance(gcp_task.creation_source, GCPAgentCreationSource)
         assert gcp_task.creation_source.type == "GCP"
         assert gcp_task.creation_source.gcp_project_id == "test-project"
         assert gcp_task.creation_source.gcp_region == "us-central1"
@@ -398,7 +398,7 @@ def test_get_agent_tasks_autocreated_otel_task(client: GenaiEngineTestClientBase
 
         # Verify creation_source is OTEL
         assert otel_task.creation_source is not None
-        assert isinstance(otel_task.creation_source, OTELCreationSource)
+        assert isinstance(otel_task.creation_source, OTELAgentCreationSource)
         assert otel_task.creation_source.type == "OTEL"
         assert otel_task.creation_source.service_names == []
 

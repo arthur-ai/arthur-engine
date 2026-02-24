@@ -1,6 +1,6 @@
 import logging
 
-from arthur_common.models.agent_governance_schemas import GCPCreationSource
+from arthur_common.models.agent_governance_schemas import GCPAgentCreationSource
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -66,7 +66,7 @@ class AgentPollingRepository:
             )
 
         if task.task_metadata is None or not isinstance(
-            task.task_metadata.creation_source, GCPCreationSource
+            task.task_metadata.creation_source, GCPAgentCreationSource
         ):
             raise HTTPException(
                 status_code=400,
