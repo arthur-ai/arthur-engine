@@ -1,11 +1,46 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import Typography from "@mui/material/Typography";
+import { useSnackbar } from "notistack";
+
+import { useApplicationConfiguration } from "@/hooks/useApplicationConfiguration";
 import { useTask } from "@/hooks/useTask";
+
+const TRACE_RETENTION_OPTIONS = [
+  { value: 7, label: "7 days" },
+  { value: 14, label: "14 days" },
+  { value: 30, label: "30 days" },
+  { value: 90, label: "90 days" },
+  { value: 120, label: "120 days" },
+  { value: 365, label: "365 days" },
+] as const;
 
 export const TaskDetailContent: React.FC = () => {
   const { task } = useTask();
+  const { data: config, isLoading: configLoading, updateConfiguration } = useApplicationConfiguration();
+  const [updating, setUpdating] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+
+  const handleRetentionChange = async (days: number) => {
+    try {
+      setUpdating(true);
+      await updateConfiguration({ trace_retention_days: days });
+      enqueueSnackbar("Trace retention updated", { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(err instanceof Error ? err.message : "Failed to update retention", { variant: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   if (!task) {
     return (
@@ -60,6 +95,34 @@ export const TaskDetailContent: React.FC = () => {
           </dl>
         </div>
       </div>
+
+      <Box sx={{ mt: 3 }}>
+        <Card variant="outlined" sx={{ bgcolor: "background.paper" }}>
+          <CardContent>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+              Trace data retention
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Traces older than the selected period are automatically deleted. This setting applies to all tasks.
+            </Typography>
+            <FormControl size="small" variant="filled" sx={{ minWidth: 160 }} disabled={configLoading || updating}>
+              <InputLabel id="trace-retention-label">Retention period</InputLabel>
+              <Select
+                labelId="trace-retention-label"
+                value={config?.trace_retention_days ?? 90}
+                label="Retention period"
+                onChange={(e) => handleRetentionChange(Number(e.target.value))}
+              >
+                {TRACE_RETENTION_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </CardContent>
+        </Card>
+      </Box>
     </div>
   );
 };
