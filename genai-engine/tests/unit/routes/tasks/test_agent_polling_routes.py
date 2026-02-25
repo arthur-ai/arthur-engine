@@ -19,7 +19,7 @@ def test_execute_agent_polling_success(
 ):
     """Test that executing a polling job for a GCP task succeeds."""
     mock_polling_service = MagicMock()
-    mock_polling_service.enqueue.return_value = True
+    mock_polling_service.enqueue.return_value = (True, MagicMock())
 
     with patch(
         "repositories.agent_polling_repository.get_global_agent_polling_service",
@@ -165,8 +165,8 @@ def test_execute_agent_polling_already_active(
 ):
     """Test that executing when job is already active returns 200 (idempotent)."""
     mock_polling_service = MagicMock()
-    # First call returns True (enqueued), subsequent would return False (already active)
-    mock_polling_service.enqueue.return_value = False
+    # First call returns (True, future), subsequent would return (False, None) (already active)
+    mock_polling_service.enqueue.return_value = (False, None)
 
     with patch(
         "repositories.agent_polling_repository.get_global_agent_polling_service",
@@ -206,7 +206,7 @@ def test_execute_all_agent_polling_success(
     mock_polling_service._discover_and_poll_agents.return_value = DiscoverAndPollResponse(
         status="completed",
         discovered=2,
-        enqueued=3,
+        traces_fetched=0,
     )
 
     with patch(
@@ -217,7 +217,7 @@ def test_execute_all_agent_polling_success(
         assert status_code == 200
         assert response["status"] == "completed"
         assert response["discovered"] == 2
-        assert response["enqueued"] == 3
+        assert response["traces_fetched"] == 0
         mock_polling_service._discover_and_poll_agents.assert_called_once()
 
 
