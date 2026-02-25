@@ -337,7 +337,11 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     if db_task.task_metadata
                     else None
                 )
-                creation_source = metadata.creation_source.root if metadata and metadata.creation_source else None
+                creation_source = (
+                    metadata.creation_source.root
+                    if metadata and metadata.creation_source
+                    else None
+                )
                 if not isinstance(creation_source, GCPAgentCreationSource):
                     skipped_count += 1
                     continue
@@ -393,8 +397,12 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                 logger.error(f"Task {job.task_id} not found, skipping poll")
                 return
 
-            if task.task_metadata is None or task.task_metadata.creation_source is None or not isinstance(
-                task.task_metadata.creation_source.root, GCPAgentCreationSource
+            if (
+                task.task_metadata is None
+                or task.task_metadata.creation_source is None
+                or not isinstance(
+                    task.task_metadata.creation_source.root, GCPAgentCreationSource
+                )
             ):
                 logger.warning(f"Task {job.task_id} is not a GCP task, skipping poll")
                 return
