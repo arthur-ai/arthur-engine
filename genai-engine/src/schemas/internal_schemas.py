@@ -681,7 +681,7 @@ class Task(BaseModel):
         # Convert new TaskMetadata format to old AgentMetadataResponse format
         agent_metadata_response = None
         if self.task_metadata and self.task_metadata.creation_source:
-            cs = self.task_metadata.creation_source
+            cs = self.task_metadata.creation_source.root
             svc_names = self.service_names or None
             if isinstance(cs, GCPAgentCreationSource):
                 agent_metadata_response = AgentMetadataResponse(

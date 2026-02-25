@@ -224,7 +224,7 @@ class TaskRepository:
         service_names = task.service_names or []
 
         if task.task_metadata and task.task_metadata.creation_source:
-            cs = task.task_metadata.creation_source
+            cs = task.task_metadata.creation_source.root
             if isinstance(cs, GCPAgentCreationSource):
                 return cs.model_copy(update={"service_names": service_names})
             elif isinstance(cs, OTELAgentCreationSource):

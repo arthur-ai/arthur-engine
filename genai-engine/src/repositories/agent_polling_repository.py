@@ -66,7 +66,7 @@ class AgentPollingRepository:
             )
 
         if task.task_metadata is None or not isinstance(
-            task.task_metadata.creation_source, GCPAgentCreationSource
+            task.task_metadata.creation_source.root, GCPAgentCreationSource
         ):
             raise HTTPException(
                 status_code=400,

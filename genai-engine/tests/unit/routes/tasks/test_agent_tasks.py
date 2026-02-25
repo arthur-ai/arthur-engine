@@ -69,8 +69,8 @@ def test_get_agent_tasks_manual_task(client: GenaiEngineTestClientBase):
 
     # Verify creation_source is Manual
     assert manual_task.creation_source is not None
-    assert isinstance(manual_task.creation_source, ManualAgentCreationSource)
-    assert manual_task.creation_source.type == "MANUAL"
+    assert isinstance(manual_task.creation_source.root, ManualAgentCreationSource)
+    assert manual_task.creation_source.root.type == "MANUAL"
 
     # Agent metadata should be present but empty (no spans yet)
     assert manual_task.tools == []
@@ -125,12 +125,12 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
 
         # Verify creation_source is GCP
         assert gcp_task.creation_source is not None
-        assert isinstance(gcp_task.creation_source, GCPAgentCreationSource)
-        assert gcp_task.creation_source.type == "GCP"
-        assert gcp_task.creation_source.gcp_project_id == "test-project"
-        assert gcp_task.creation_source.gcp_region == "us-central1"
-        assert gcp_task.creation_source.gcp_reasoning_engine_id == "12345"
-        assert gcp_task.creation_source.service_names == []
+        assert isinstance(gcp_task.creation_source.root, GCPAgentCreationSource)
+        assert gcp_task.creation_source.root.type == "GCP"
+        assert gcp_task.creation_source.root.gcp_project_id == "test-project"
+        assert gcp_task.creation_source.root.gcp_region == "us-central1"
+        assert gcp_task.creation_source.root.gcp_reasoning_engine_id == "12345"
+        assert gcp_task.creation_source.root.service_names == []
 
     finally:
         db_session.close()
@@ -328,11 +328,11 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
         assert gcp_task is not None
 
         # Verify GCP creation_source
-        assert isinstance(gcp_task.creation_source, GCPAgentCreationSource)
-        assert gcp_task.creation_source.type == "GCP"
-        assert gcp_task.creation_source.gcp_project_id == "test-project"
-        assert gcp_task.creation_source.gcp_region == "us-central1"
-        assert gcp_task.creation_source.gcp_reasoning_engine_id == "67890"
+        assert isinstance(gcp_task.creation_source.root, GCPAgentCreationSource)
+        assert gcp_task.creation_source.root.type == "GCP"
+        assert gcp_task.creation_source.root.gcp_project_id == "test-project"
+        assert gcp_task.creation_source.root.gcp_region == "us-central1"
+        assert gcp_task.creation_source.root.gcp_reasoning_engine_id == "67890"
 
         # Verify last_fetched is on the enriched response (from task_polling_state)
         assert gcp_task.last_fetched is not None
@@ -398,9 +398,9 @@ def test_get_agent_tasks_autocreated_otel_task(client: GenaiEngineTestClientBase
 
         # Verify creation_source is OTEL
         assert otel_task.creation_source is not None
-        assert isinstance(otel_task.creation_source, OTELAgentCreationSource)
-        assert otel_task.creation_source.type == "OTEL"
-        assert otel_task.creation_source.service_names == []
+        assert isinstance(otel_task.creation_source.root, OTELAgentCreationSource)
+        assert otel_task.creation_source.root.type == "OTEL"
+        assert otel_task.creation_source.root.service_names == []
 
     finally:
         db_session.close()
