@@ -9,7 +9,7 @@ from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 
 from db_models import DatabaseServiceNameTaskMapping, DatabaseSpan, DatabaseTask
-from arthur_common.models.agent_governance_schemas import GCPCreationSource, TaskMetadata
+from arthur_common.models.agent_governance_schemas import GCPAgentCreationSource, TaskMetadata
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
@@ -703,7 +703,7 @@ def _create_gcp_task(db_session, engine_id: str, name: str = None) -> DatabaseTa
     task_id = str(uuid4())
     task_name = name or f"gcp_agent_{random.random()}"
     task_metadata = TaskMetadata(
-        creation_source=GCPCreationSource(
+        creation_source=GCPAgentCreationSource(
             gcp_project_id="test-project",
             gcp_region="us-central1",
             gcp_reasoning_engine_id=engine_id,

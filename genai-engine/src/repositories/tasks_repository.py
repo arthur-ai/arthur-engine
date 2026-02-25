@@ -3,13 +3,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from arthur_common.models.agent_governance_schemas import (
-    CreationSource,
+    AgentCreationSource,
     DataSource,
     EnrichedAgentMetadata,
-    GCPCreationSource,
+    GCPAgentCreationSource,
     LLMModel,
-    ManualCreationSource,
-    OTELCreationSource,
+    ManualAgentCreationSource,
+    OTELAgentCreationSource,
     SubAgent,
     Tool,
 )
@@ -207,7 +207,7 @@ class TaskRepository:
             "num_spans": total_span_count,
         }
 
-    def _get_task_creation_source(self, task: Task) -> Optional[CreationSource]:
+    def _get_task_creation_source(self, task: Task) -> Optional[AgentCreationSource]:
         """Get creation_source for a task, with service_names injected.
 
         Reads creation_source directly from task_metadata.
@@ -219,23 +219,29 @@ class TaskRepository:
             task: Task object with service_names already populated
 
         Returns:
-            CreationSource or None
+            AgentCreationSource or None
         """
         service_names = task.service_names or []
 
         if task.task_metadata and task.task_metadata.creation_source:
-            cs = task.task_metadata.creation_source
-            if isinstance(cs, GCPCreationSource):
-                return cs.model_copy(update={"service_names": service_names})
-            elif isinstance(cs, OTELCreationSource):
-                return cs.model_copy(update={"service_names": service_names})
-            return cs
+            cs = task.task_metadata.creation_source.root
+            if isinstance(cs, GCPAgentCreationSource):
+                return AgentCreationSource(
+                    root=cs.model_copy(update={"service_names": service_names})
+                )
+            elif isinstance(cs, OTELAgentCreationSource):
+                return AgentCreationSource(
+                    root=cs.model_copy(update={"service_names": service_names})
+                )
+            return AgentCreationSource(root=cs)
 
         # No task_metadata — infer from task properties
         if task.is_autocreated:
-            return OTELCreationSource(service_names=service_names)
+            return AgentCreationSource(
+                root=OTELAgentCreationSource(service_names=service_names)
+            )
         elif task.is_agentic:
-            return ManualCreationSource()
+            return AgentCreationSource(root=ManualAgentCreationSource())
         else:
             return None
 

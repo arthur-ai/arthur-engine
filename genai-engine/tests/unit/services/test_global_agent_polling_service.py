@@ -8,8 +8,8 @@ import pytest
 
 from db_models.agent_polling_models import DatabaseTaskPollingState
 from arthur_common.models.agent_governance_schemas import (
-    GCPCreationSource,
-    ManualCreationSource,
+    GCPAgentCreationSource,
+    ManualAgentCreationSource,
     TaskMetadata,
 )
 from schemas.internal_schemas import Task
@@ -83,7 +83,7 @@ def test_is_task_eligible_matching_project_and_region():
     """Task is eligible when project and region match."""
 
     service = GlobalAgentPollingService()
-    creation_source = GCPCreationSource(
+    creation_source = GCPAgentCreationSource(
         gcp_project_id="my-project",
         gcp_region="us-central1",
         gcp_reasoning_engine_id="12345",
@@ -99,7 +99,7 @@ def test_is_task_eligible_mismatched_project():
     """Task is ineligible when project doesn't match."""
 
     service = GlobalAgentPollingService()
-    creation_source = GCPCreationSource(
+    creation_source = GCPAgentCreationSource(
         gcp_project_id="old-project",
         gcp_region="us-central1",
         gcp_reasoning_engine_id="12345",
@@ -115,7 +115,7 @@ def test_is_task_eligible_mismatched_region():
     """Task is ineligible when region doesn't match."""
 
     service = GlobalAgentPollingService()
-    creation_source = GCPCreationSource(
+    creation_source = GCPAgentCreationSource(
         gcp_project_id="my-project",
         gcp_region="us-east1",
         gcp_reasoning_engine_id="12345",
@@ -154,7 +154,7 @@ def test_execute_job_success(
     mock_task.id = task_id
     mock_task.name = "Test GCP Agent"
     mock_task.task_metadata = TaskMetadata(
-        creation_source=GCPCreationSource(
+        creation_source=GCPAgentCreationSource(
             gcp_project_id="test-project",
             gcp_region="us-central1",
             gcp_reasoning_engine_id="12345",
@@ -231,7 +231,7 @@ def test_execute_job_failure_does_not_update_polling_state(
     mock_task.id = task_id
     mock_task.name = "Test GCP Agent"
     mock_task.task_metadata = TaskMetadata(
-        creation_source=GCPCreationSource(
+        creation_source=GCPAgentCreationSource(
             gcp_project_id="test-project",
             gcp_region="us-central1",
             gcp_reasoning_engine_id="12345",
@@ -296,7 +296,7 @@ def test_execute_job_no_traces_still_updates_last_fetched(
     mock_task.id = task_id
     mock_task.name = "Test GCP Agent"
     mock_task.task_metadata = TaskMetadata(
-        creation_source=GCPCreationSource(
+        creation_source=GCPAgentCreationSource(
             gcp_project_id="test-project",
             gcp_region="us-central1",
             gcp_reasoning_engine_id="12345",
@@ -350,7 +350,7 @@ def test_execute_job_skips_non_gcp_task(
     mock_task.id = task_id
     mock_task.name = "Manual Agent"
     mock_task.task_metadata = TaskMetadata(
-        creation_source=ManualCreationSource()
+        creation_source=ManualAgentCreationSource()
     )
 
     mock_session = MagicMock()
