@@ -77,6 +77,8 @@ class DiscoverAgentsExecutor:
             },
         )
 
+        phases_ok = []
+
         # Phases 1-3: discover, filter, publish unregistered agents.
         # Best-effort – failure is logged but does not prevent phase 4.
         try:
@@ -87,6 +89,7 @@ class DiscoverAgentsExecutor:
                 discovered_agents, workspace_id, data_plane_id, project_id
             )
             self._publish_unregistered_agents(workspace_id, filtered_agents)
+            phases_ok.append(True)
         except Exception as e:
             self.logger.error(
                 f"Agent discovery failed for data plane {data_plane_id} (non-fatal): {e}",
@@ -99,11 +102,17 @@ class DiscoverAgentsExecutor:
         try:
             enriched_tasks = self._fetch_enriched_agent_tasks()
             self._publish_to_agents_api(workspace_id, data_plane_id, enriched_tasks)
+            phases_ok.append(True)
         except Exception as e:
             self.logger.error(
                 f"Agents API sync failed for data plane {data_plane_id} (non-fatal): {e}",
                 extra={"data_plane_id": data_plane_id, "error": str(e)},
                 exc_info=True,
+            )
+
+        if not phases_ok:
+            raise RuntimeError(
+                f"All agent discovery phases failed for data plane {data_plane_id}"
             )
 
         self.logger.info(
@@ -259,7 +268,9 @@ class DiscoverAgentsExecutor:
 
         with ApiClient(config) as api_client:
             api = TasksApi(api_client)
-            enriched_tasks = api.get_agent_tasks_api_v2_agent_tasks_get()
+            enriched_tasks: List[EnrichedTaskResponse] = (
+                api.get_agent_tasks_api_v2_agent_tasks_get()
+            )
 
         self.logger.info(
             f"Fetched {len(enriched_tasks)} enriched agent task(s) from GenAI Engine",
