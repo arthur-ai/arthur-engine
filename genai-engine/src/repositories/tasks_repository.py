@@ -370,7 +370,8 @@ class TaskRepository:
                     "creation_source",
                     "gcp_reasoning_engine_id",
                 )
-                == engine_id
+                == engine_id,
+                DatabaseTask.archived == False,
             )
             .first()
         )
