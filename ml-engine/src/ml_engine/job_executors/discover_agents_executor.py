@@ -97,9 +97,12 @@ class DiscoverAgentsExecutor:
                 exc_info=True,
             )
 
-        # Phase 4: fetch enriched tasks and sync to Agents API.
+        # Phase 4: trigger synchronous polling, then fetch enriched tasks and sync to Agents API.
         # Best-effort – failure is logged but does not abort the job.
         try:
+            # Trigger synchronous polling to ensure trace data is up-to-date
+            self._trigger_synchronous_polling()
+
             enriched_tasks = self._fetch_enriched_agent_tasks()
             self._publish_to_agents_api(workspace_id, data_plane_id, enriched_tasks)
             phases_ok.append(True)
@@ -258,6 +261,33 @@ class DiscoverAgentsExecutor:
     # ------------------------------------------------------------------
     # Phase 4 – Fetch enriched tasks and publish to Agents API
     # ------------------------------------------------------------------
+
+    def _trigger_synchronous_polling(self) -> None:
+        """Trigger synchronous polling to ensure trace data is fetched before querying agent-tasks."""
+        self.logger.info("Triggering synchronous agent polling")
+
+        config = Configuration(
+            host=self.genai_engine_url,
+            access_token=self.genai_engine_api_key,
+        )
+
+        with ApiClient(config) as api_client:
+            api = AgentDiscoveryApi(api_client)
+            response = (
+                api.execute_all_agent_polling_api_v1_agent_polling_execute_all_post(
+                    wait_for_completion=True,
+                    timeout=300,  # 5 minute timeout
+                )
+            )
+
+        self.logger.info(
+            f"Synchronous polling completed: discovered={response.discovered}, "
+            f"traces_fetched={response.traces_fetched}",
+            extra={
+                "discovered": response.discovered,
+                "traces_fetched": response.traces_fetched,
+            },
+        )
 
     def _fetch_enriched_agent_tasks(self) -> List[EnrichedTaskResponse]:
         """Fetch enriched agent tasks from the GenAI Engine agent-tasks endpoint."""

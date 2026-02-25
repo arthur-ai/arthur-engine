@@ -14568,8 +14568,41 @@
                     "Agent Discovery"
                 ],
                 "summary": "Execute All Agent Polling",
-                "description": "Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks.",
+                "description": "Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.",
                 "operationId": "execute_all_agent_polling_api_v1_agent_polling_execute_all_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "wait_for_completion",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Wait For Completion"
+                        }
+                    },
+                    {
+                        "name": "timeout",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Timeout"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -14580,13 +14613,18 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
                     }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
+                }
             }
         },
         "/users": {
@@ -18797,17 +18835,17 @@
                         "title": "Discovered",
                         "description": "Number of new agent tasks created"
                     },
-                    "enqueued": {
+                    "traces_fetched": {
                         "type": "integer",
-                        "title": "Enqueued",
-                        "description": "Number of polling jobs enqueued"
+                        "title": "Traces Fetched",
+                        "description": "Total number of traces fetched across all tasks (0 in async mode)"
                     }
                 },
                 "type": "object",
                 "required": [
                     "status",
                     "discovered",
-                    "enqueued"
+                    "traces_fetched"
                 ],
                 "title": "DiscoverAndPollResponse",
                 "description": "Response model for the execute-all agent polling endpoint."
