@@ -276,7 +276,7 @@ class DiscoverAgentsExecutor:
             response = (
                 api.execute_all_agent_polling_api_v1_agent_polling_execute_all_post(
                     wait_for_completion=True,
-                    timeout=120,  # 5 minute timeout
+                    timeout=120,  # 2 minute timeout
                 )
             )
 
