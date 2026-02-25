@@ -63,7 +63,7 @@ def execute_agent_polling(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def execute_all_agent_polling(
     wait_for_completion: bool = False,
-    timeout: Annotated[int | None, Query(gt=0)] = None,
+    timeout: Annotated[int | None, Query(ge=1)] = None,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> DiscoverAndPollResponse:
     """Manually trigger a full discovery + polling cycle.
