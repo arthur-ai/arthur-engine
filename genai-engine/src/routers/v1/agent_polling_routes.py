@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session
@@ -61,7 +63,7 @@ def execute_agent_polling(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def execute_all_agent_polling(
     wait_for_completion: bool = False,
-    timeout: int | None = None,
+    timeout: Annotated[int | None, Query(gt=0)] = None,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> DiscoverAndPollResponse:
     """Manually trigger a full discovery + polling cycle.

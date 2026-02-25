@@ -410,7 +410,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
                 # Log completion summary
                 log_parts = [
-                    f"Synchronous polling completed: {len(done)} succeeded, "
+                    f"Synchronous polling completed: {len(done) - failures} succeeded, "
                     f"{failures} failed"
                 ]
                 if not_done:
