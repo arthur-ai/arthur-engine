@@ -84,6 +84,11 @@ def execute_all_agent_polling(
             wait_for_completion=wait_for_completion,
             timeout=timeout,
         )
+    except TimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=str(e),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

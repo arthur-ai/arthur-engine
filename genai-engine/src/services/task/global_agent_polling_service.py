@@ -422,6 +422,16 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     )
                 logger.info(", ".join(log_parts))
 
+                # Raise timeout error if any jobs didn't complete
+                if not_done:
+                    timed_out_task_ids = [
+                        futures_to_jobs[future].task_id for future in not_done
+                    ]
+                    raise TimeoutError(
+                        f"{len(not_done)} polling job(s) timed out after {timeout}s. "
+                        f"Task IDs: {', '.join(timed_out_task_ids)}"
+                    )
+
                 return total_traces
             else:
                 # Asynchronous mode: enqueue and return (original behavior)
@@ -459,6 +469,11 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         Returns:
             int: Number of traces fetched for this task.
         """
+        # TODO: TESTING TIMEOUT - Remove this sleep after testing timeout functionality
+        import time
+        logger.info(f"[TIMEOUT TEST] Sleeping for 20 seconds for task {job.task_id}")
+        time.sleep(20)
+        logger.info(f"[TIMEOUT TEST] Sleep complete for task {job.task_id}")
 
         db_session = next(get_db_session())
         try:
