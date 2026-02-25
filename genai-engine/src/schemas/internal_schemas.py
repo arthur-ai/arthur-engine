@@ -605,13 +605,15 @@ class Task(BaseModel):
                 if x.agent_metadata.gcp_metadata is None:
                     raise ValueError("GCP metadata is required when provider is GCP.")
 
-                creation_source = GCPAgentCreationSource(
-                    gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
-                    gcp_region=x.agent_metadata.gcp_metadata.region,
-                    gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
+                creation_source = AgentCreationSource(
+                    root=GCPAgentCreationSource(
+                        gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
+                        gcp_region=x.agent_metadata.gcp_metadata.region,
+                        gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
+                    )
                 )
             else:
-                creation_source = ManualAgentCreationSource()
+                creation_source = AgentCreationSource(root=ManualAgentCreationSource())
 
             task_metadata = TaskMetadata(
                 creation_source=creation_source,

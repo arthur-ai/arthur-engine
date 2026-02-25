@@ -226,16 +226,22 @@ class TaskRepository:
         if task.task_metadata and task.task_metadata.creation_source:
             cs = task.task_metadata.creation_source.root
             if isinstance(cs, GCPAgentCreationSource):
-                return cs.model_copy(update={"service_names": service_names})
+                return AgentCreationSource(
+                    root=cs.model_copy(update={"service_names": service_names})
+                )
             elif isinstance(cs, OTELAgentCreationSource):
-                return cs.model_copy(update={"service_names": service_names})
-            return cs
+                return AgentCreationSource(
+                    root=cs.model_copy(update={"service_names": service_names})
+                )
+            return AgentCreationSource(root=cs)
 
         # No task_metadata — infer from task properties
         if task.is_autocreated:
-            return OTELAgentCreationSource(service_names=service_names)
+            return AgentCreationSource(
+                root=OTELAgentCreationSource(service_names=service_names)
+            )
         elif task.is_agentic:
-            return ManualAgentCreationSource()
+            return AgentCreationSource(root=ManualAgentCreationSource())
         else:
             return None
 

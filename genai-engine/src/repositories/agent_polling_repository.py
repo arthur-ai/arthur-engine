@@ -65,8 +65,12 @@ class AgentPollingRepository:
                 detail=f"Task {task_id} is not available for agent polling",
             )
 
-        if task.task_metadata is None or not isinstance(
-            task.task_metadata.creation_source.root, GCPAgentCreationSource
+        if (
+            task.task_metadata is None
+            or task.task_metadata.creation_source is None
+            or not isinstance(
+                task.task_metadata.creation_source.root, GCPAgentCreationSource
+            )
         ):
             raise HTTPException(
                 status_code=400,

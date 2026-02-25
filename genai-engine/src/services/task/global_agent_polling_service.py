@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Hashable, Optional
 
 from arthur_common.models.agent_governance_schemas import (
+    AgentCreationSource,
     GCPAgentCreationSource,
     TaskMetadata,
 )
@@ -208,10 +209,12 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                         getattr(api_resource, "display_name", None) or engine_id
                     )
                     task_metadata = TaskMetadata(
-                        creation_source=GCPAgentCreationSource(
-                            gcp_project_id=project_id,
-                            gcp_region=region or location,
-                            gcp_reasoning_engine_id=engine_id,
+                        creation_source=AgentCreationSource(
+                            root=GCPAgentCreationSource(
+                                gcp_project_id=project_id,
+                                gcp_region=region or location,
+                                gcp_reasoning_engine_id=engine_id,
+                            )
                         ),
                     )
 
