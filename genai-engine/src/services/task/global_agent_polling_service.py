@@ -393,7 +393,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                 logger.error(f"Task {job.task_id} not found, skipping poll")
                 return
 
-            if task.task_metadata is None of task.task_metadata.creation_source is None or not isinstance(
+            if task.task_metadata is None or task.task_metadata.creation_source is None or not isinstance(
                 task.task_metadata.creation_source.root, GCPAgentCreationSource
             ):
                 logger.warning(f"Task {job.task_id} is not a GCP task, skipping poll")
