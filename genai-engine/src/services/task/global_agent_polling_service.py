@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from concurrent.futures import wait
 from datetime import datetime, timedelta
 from typing import Hashable, Optional
 
@@ -375,8 +376,6 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
             # Execute based on mode
             if wait_for_completion:
                 # Synchronous mode: enqueue and wait for all jobs
-                from concurrent.futures import wait
-
                 futures_to_jobs = {}
                 for job in jobs_to_enqueue:
                     enqueued, future = self.enqueue(job)
@@ -401,7 +400,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     job = futures_to_jobs[future]
                     try:
                         trace_count = future.result()
-                        total_traces += trace_count
+                        total_traces += trace_count or 0
                     except Exception as e:
                         failures += 1
                         logger.error(

@@ -91,15 +91,10 @@ class BaseQueueService(ABC, Generic[JobType]):
         if self.shutdown_event.wait(wait_time):
             return None
 
-        if not self.executor:
-            logger.error(
-                f"Cannot submit job: executor is not initialized",
-            )
-            return None
-
-        # Submit the actual job and block until it completes, returning its result
-        future = self.executor.submit(self._execute_job_wrapper, job)
-        return future.result()  # Block and return the result from the job
+        # Run the job directly on this thread — it is already executing inside the
+        # executor, so re-submitting to the same pool would cause a deadlock when
+        # all worker threads are occupied waiting on their own inner futures.
+        return self._execute_job_wrapper(job)
 
     def _execute_job_wrapper(self, job: JobType) -> Any:
         """Wrapper that tracks job execution and removes from active set when done."""
