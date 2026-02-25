@@ -137,4 +137,6 @@ class DiscoverAndPollResponse(BaseModel):
 
     status: str = Field(description="Status of the operation")
     discovered: int = Field(description="Number of new agent tasks created")
-    enqueued: int = Field(description="Number of polling jobs enqueued")
+    traces_fetched: int = Field(
+        description="Total number of traces fetched across all tasks (0 in async mode)"
+    )

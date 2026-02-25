@@ -3,6 +3,13 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 02/25/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  removed the required property 'enqueued' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'timeout'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'wait_for_completion'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the non-success response with the status '422'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the required property 'traces_fetched' to the response with the '200' status
+
+# 02/25/2026
 - **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/AgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
 
