@@ -15280,6 +15280,20 @@
                 ],
                 "title": "APIKeysRolesEnum"
             },
+            "AgentCreationSource": {
+                "anyOf": [
+                    {
+                        "$ref": "#/components/schemas/GCPAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/OTELAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/ManualAgentCreationSource"
+                    }
+                ],
+                "title": "AgentCreationSource"
+            },
             "AgentMetadata": {
                 "properties": {
                     "provider": {
@@ -18898,19 +18912,12 @@
                     "creation_source": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/GCPAgentCreationSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/OTELAgentCreationSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ManualAgentCreationSource"
+                                "$ref": "#/components/schemas/AgentCreationSource"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Creation Source",
                         "description": "Information about how this task/agent was created"
                     },
                     "last_fetched": {
