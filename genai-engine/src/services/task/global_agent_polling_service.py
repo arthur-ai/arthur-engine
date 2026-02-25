@@ -469,11 +469,6 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         Returns:
             int: Number of traces fetched for this task.
         """
-        # TODO: TESTING TIMEOUT - Remove this sleep after testing timeout functionality
-        import time
-        logger.info(f"[TIMEOUT TEST] Sleeping for 20 seconds for task {job.task_id}")
-        time.sleep(20)
-        logger.info(f"[TIMEOUT TEST] Sleep complete for task {job.task_id}")
 
         db_session = next(get_db_session())
         try:
