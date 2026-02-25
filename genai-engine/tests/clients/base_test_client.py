@@ -4596,11 +4596,21 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json(),
         )
 
-    def execute_all_agent_polling(self) -> tuple[int, dict]:
+    def execute_all_agent_polling(
+        self,
+        wait_for_completion: bool = False,
+        timeout: int | None = None,
+    ) -> tuple[int, dict]:
         """Manually trigger a full discovery + polling cycle."""
+        params: dict = {}
+        if wait_for_completion:
+            params["wait_for_completion"] = wait_for_completion
+        if timeout is not None:
+            params["timeout"] = timeout
         resp = self.base_client.post(
             "/api/v1/agent-polling/execute-all",
             headers=self.authorized_user_api_key_headers,
+            params=params,
         )
 
         log_response(resp)
