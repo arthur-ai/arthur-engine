@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 from typing import Hashable, Optional
 
 from arthur_common.models.agent_governance_schemas import (
-    GCPCreationSource,
+    AgentCreationSource,
+    GCPAgentCreationSource,
     TaskMetadata,
 )
 from arthur_common.models.enums import RegisteredAgentProvider
@@ -208,10 +209,12 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                         getattr(api_resource, "display_name", None) or engine_id
                     )
                     task_metadata = TaskMetadata(
-                        creation_source=GCPCreationSource(
-                            gcp_project_id=project_id,
-                            gcp_region=region or location,
-                            gcp_reasoning_engine_id=engine_id,
+                        creation_source=AgentCreationSource(
+                            root=GCPAgentCreationSource(
+                                gcp_project_id=project_id,
+                                gcp_region=region or location,
+                                gcp_reasoning_engine_id=engine_id,
+                            )
                         ),
                     )
 
@@ -258,7 +261,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
     def _is_task_eligible_for_polling(
         self,
         task_id: str,
-        creation_source: GCPCreationSource,
+        creation_source: GCPAgentCreationSource,
         current_project_id: str,
         current_location: str,
     ) -> bool:
@@ -337,8 +340,12 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                     if db_task.task_metadata
                     else None
                 )
-                creation_source = metadata.creation_source if metadata else None
-                if not isinstance(creation_source, GCPCreationSource):
+                creation_source = (
+                    metadata.creation_source.root
+                    if metadata and metadata.creation_source
+                    else None
+                )
+                if not isinstance(creation_source, GCPAgentCreationSource):
                     skipped_count += 1
                     continue
 
@@ -393,13 +400,17 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                 logger.error(f"Task {job.task_id} not found, skipping poll")
                 return
 
-            if task.task_metadata is None or not isinstance(
-                task.task_metadata.creation_source, GCPCreationSource
+            if (
+                task.task_metadata is None
+                or task.task_metadata.creation_source is None
+                or not isinstance(
+                    task.task_metadata.creation_source.root, GCPAgentCreationSource
+                )
             ):
                 logger.warning(f"Task {job.task_id} is not a GCP task, skipping poll")
                 return
 
-            creation_source = task.task_metadata.creation_source
+            creation_source = task.task_metadata.creation_source.root
 
             # Determine time range
             polling_state_repo = TaskPollingStateRepository(db_session)

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.413"
+        "version": "2.1.418"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -15280,6 +15280,20 @@
                 ],
                 "title": "APIKeysRolesEnum"
             },
+            "AgentCreationSource": {
+                "anyOf": [
+                    {
+                        "$ref": "#/components/schemas/GCPAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/OTELAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/ManualAgentCreationSource"
+                    }
+                ],
+                "title": "AgentCreationSource"
+            },
             "AgentMetadata": {
                 "properties": {
                     "provider": {
@@ -18898,19 +18912,12 @@
                     "creation_source": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/GCPCreationSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/OTELCreationSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ManualCreationSource"
+                                "$ref": "#/components/schemas/AgentCreationSource"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Creation Source",
                         "description": "Information about how this task/agent was created"
                     },
                     "last_fetched": {
@@ -19800,6 +19807,47 @@
                 ],
                 "title": "FileUploadResult"
             },
+            "GCPAgentCreationSource": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "GCP",
+                        "title": "Type",
+                        "default": "GCP"
+                    },
+                    "gcp_project_id": {
+                        "type": "string",
+                        "title": "Gcp Project Id",
+                        "description": "GCP project ID"
+                    },
+                    "gcp_region": {
+                        "type": "string",
+                        "title": "Gcp Region",
+                        "description": "GCP region"
+                    },
+                    "gcp_reasoning_engine_id": {
+                        "type": "string",
+                        "title": "Gcp Reasoning Engine Id",
+                        "description": "GCP Vertex AI Reasoning Engine ID"
+                    },
+                    "service_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Service Names",
+                        "description": "Service names associated with this agent"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "gcp_project_id",
+                    "gcp_region",
+                    "gcp_reasoning_engine_id"
+                ],
+                "title": "GCPAgentCreationSource",
+                "description": "Creation source for GCP-discovered agents."
+            },
             "GCPAgentMetadata": {
                 "properties": {
                     "project_id": {
@@ -19852,47 +19900,6 @@
                 ],
                 "title": "GCPAgentMetadataResponse",
                 "description": "GCP-specific agent metadata for responses."
-            },
-            "GCPCreationSource": {
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "const": "GCP",
-                        "title": "Type",
-                        "default": "GCP"
-                    },
-                    "gcp_project_id": {
-                        "type": "string",
-                        "title": "Gcp Project Id",
-                        "description": "GCP project ID"
-                    },
-                    "gcp_region": {
-                        "type": "string",
-                        "title": "Gcp Region",
-                        "description": "GCP region"
-                    },
-                    "gcp_reasoning_engine_id": {
-                        "type": "string",
-                        "title": "Gcp Reasoning Engine Id",
-                        "description": "GCP Vertex AI Reasoning Engine ID"
-                    },
-                    "service_names": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Service Names",
-                        "description": "Service names associated with this agent"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "gcp_project_id",
-                    "gcp_region",
-                    "gcp_reasoning_engine_id"
-                ],
-                "title": "GCPCreationSource",
-                "description": "Creation source for GCP-discovered agents."
             },
             "GCPServiceAccountCredentialsRequest": {
                 "properties": {
@@ -21904,7 +21911,7 @@
                 ],
                 "title": "LogitBiasItem"
             },
-            "ManualCreationSource": {
+            "ManualAgentCreationSource": {
                 "properties": {
                     "type": {
                         "type": "string",
@@ -21914,7 +21921,7 @@
                     }
                 },
                 "type": "object",
-                "title": "ManualCreationSource",
+                "title": "ManualAgentCreationSource",
                 "description": "Creation source for manually created tasks."
             },
             "MessageRole": {
@@ -23331,7 +23338,7 @@
                 "title": "NotebookSummary",
                 "description": "Summary of a notebook"
             },
-            "OTELCreationSource": {
+            "OTELAgentCreationSource": {
                 "properties": {
                     "type": {
                         "type": "string",
@@ -23349,7 +23356,7 @@
                     }
                 },
                 "type": "object",
-                "title": "OTELCreationSource",
+                "title": "OTELAgentCreationSource",
                 "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
             },
             "OpenAIMessage-Input": {
