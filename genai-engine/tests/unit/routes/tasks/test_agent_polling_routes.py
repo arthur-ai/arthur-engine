@@ -222,6 +222,36 @@ def test_execute_all_agent_polling_success(
 
 
 @pytest.mark.unit_tests
+def test_execute_all_agent_polling_sync_with_traces_fetched(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that execute-all in synchronous mode returns actual traces_fetched count."""
+    mock_polling_service = MagicMock()
+    mock_polling_service._discover_and_poll_agents.return_value = DiscoverAndPollResponse(
+        status="completed",
+        discovered=1,
+        traces_fetched=42,
+    )
+
+    with patch(
+        "routers.v1.agent_polling_routes.get_global_agent_polling_service",
+        return_value=mock_polling_service,
+    ):
+        status_code, response = client.execute_all_agent_polling(
+            wait_for_completion=True,
+            timeout=30,
+        )
+        assert status_code == 200
+        assert response["status"] == "completed"
+        assert response["discovered"] == 1
+        assert response["traces_fetched"] == 42
+        mock_polling_service._discover_and_poll_agents.assert_called_once_with(
+            wait_for_completion=True,
+            timeout=30,
+        )
+
+
+@pytest.mark.unit_tests
 def test_execute_all_agent_polling_service_not_initialized(
     client: GenaiEngineTestClientBase,
 ):
