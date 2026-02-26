@@ -1,6 +1,8 @@
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 
+import { getLocaleForCurrency } from "./currencyLocales";
+
 dayjs.extend(duration);
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -10,9 +12,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function getCurrencyFormatter(currency: string): Intl.NumberFormat {
-  return new Intl.NumberFormat("en-US", {
+  const code = currency || "USD";
+  return new Intl.NumberFormat(getLocaleForCurrency(code), {
     style: "currency",
-    currency: currency || "USD",
+    currency: code,
     minimumFractionDigits: 5,
     maximumFractionDigits: 5,
   });

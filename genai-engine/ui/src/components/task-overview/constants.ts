@@ -1,3 +1,5 @@
+import { getLocaleForCurrency } from "@/utils/currencyLocales";
+
 export const METRIC_COLORS = {
   traces: { main: "#3B82F6", light: "#EFF6FF", dark: "rgba(59,130,246,0.12)", border: "#BFDBFE", darkBorder: "rgba(59,130,246,0.3)" },
   tokens: { main: "#9333EA", light: "#FAF5FF", dark: "rgba(147,51,234,0.12)", border: "#E9D5FF", darkBorder: "rgba(147,51,234,0.3)" },
@@ -17,9 +19,10 @@ export const formatNumber = (num: number): string => {
 };
 
 function getCurrencySymbol(currencyCode: string): string {
-  const parts = new Intl.NumberFormat("en-US", {
+  const code = currencyCode || "USD";
+  const parts = new Intl.NumberFormat(getLocaleForCurrency(code), {
     style: "currency",
-    currency: currencyCode || "USD",
+    currency: code,
   }).formatToParts(0);
   return parts.find((p) => p.type === "currency")?.value ?? "$";
 }
