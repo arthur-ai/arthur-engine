@@ -1177,6 +1177,53 @@
                 }
             }
         },
+        "/api/v2/tasks/{task_id}/unarchive": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Unarchive Task",
+                "description": "Unarchive a previously archived task. Also unarchives all task-scoped rules and metrics that were archived with it.",
+                "operationId": "unarchive_task_api_v2_tasks__task_id__unarchive_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/agent-tasks": {
             "get": {
                 "tags": [
@@ -14593,7 +14640,8 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "integer"
+                                    "type": "integer",
+                                    "minimum": 1
                                 },
                                 {
                                     "type": "null"
@@ -27138,6 +27186,30 @@
                         ],
                         "title": "Is Agentic",
                         "description": "Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks."
+                    },
+                    "include_archived": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include Archived",
+                        "description": "Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks. If only_archived is True, this flag is ignored."
+                    },
+                    "only_archived": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Only Archived",
+                        "description": "Return only archived tasks. True returns exclusively archived tasks, False or None has no effect. Takes precedence over include_archived when both are set."
                     }
                 },
                 "type": "object",
@@ -28231,6 +28303,19 @@
                         ],
                         "title": "Is Autocreated",
                         "description": "Whether this task was automatically created by Arthur",
+                        "default": false
+                    },
+                    "is_archived": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Archived",
+                        "description": "Whether this task is archived",
                         "default": false
                     },
                     "agent_metadata": {

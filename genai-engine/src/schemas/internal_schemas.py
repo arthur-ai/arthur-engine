@@ -586,6 +586,7 @@ class Task(BaseModel):
     is_agentic: bool = False
     is_autocreated: bool = False
     is_system_task: bool = False
+    is_archived: bool = False
     task_metadata: Optional[TaskMetadata] = None
     service_names: List[str] = Field(
         default_factory=list,
@@ -638,6 +639,7 @@ class Task(BaseModel):
             is_agentic=x.is_agentic,
             is_autocreated=x.is_autocreated,
             is_system_task=x.is_system_task,
+            is_archived=x.archived,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -709,6 +711,7 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
+            is_archived=self.is_archived,
             agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,

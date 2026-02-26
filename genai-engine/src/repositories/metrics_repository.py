@@ -38,7 +38,7 @@ class MetricRepository:
         metric_obj_db = self.get_metric_by_id(metric_id)
         return Metric._from_database_model(metric_obj_db)
 
-    def archive_metric(self, metric_id: str) -> None:
+    def archive_metric(self, metric_id: str, commit: bool = True) -> None:
         database_metric = (
             self.db_session.query(DatabaseMetric)
             .filter(DatabaseMetric.id == metric_id)
@@ -48,8 +48,21 @@ class MetricRepository:
             raise ValueError(f"Metric with id {metric_id} not found")
 
         database_metric.archived = True
-        self.db_session.commit()
-        # Clear cache entry after archive
+        if commit:
+            self.db_session.commit()
+        METRICS_CACHE.pop(metric_id, None)
+
+    def unarchive_metric(self, metric_id: str, commit: bool = True) -> None:
+        database_metric = (
+            self.db_session.query(DatabaseMetric)
+            .filter(DatabaseMetric.id == metric_id)
+            .first()
+        )
+        if not database_metric:
+            raise ValueError(f"Metric with id {metric_id} not found")
+        database_metric.archived = False
+        if commit:
+            self.db_session.commit()
         METRICS_CACHE.pop(metric_id, None)
 
     def get_metrics_by_metric_id(self, metric_ids: list[str]) -> list[Metric]:
