@@ -365,11 +365,11 @@ export const AllTasks: React.FC = () => {
                       </Stack>
                     </Box>
 
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
                       {filteredTasks.map((task) => (
                         <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                       ))}
-                    </div>
+                    </Box>
                   </>
                 )}
               </>
@@ -445,11 +445,11 @@ export const AllTasks: React.FC = () => {
                       </Stack>
                     </Box>
 
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
                       {filteredArchivedTasks.map((task) => (
                         <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                       ))}
-                    </div>
+                    </Box>
                   </>
                 )}
               </>

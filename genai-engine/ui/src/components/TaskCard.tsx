@@ -98,7 +98,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
 
   return (
     <Tooltip title={task.is_archived ? "This task is archived. Unarchive it to view its traces." : ""} placement="top" arrow>
-      <span>
+      <Box component="span">
         <Card
           onClick={handleTaskClick}
           sx={{
@@ -386,7 +386,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
             </Stack>
           </CardContent>
         </Card>
-      </span>
+      </Box>
     </Tooltip>
   );
 };
