@@ -12,9 +12,6 @@ from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-# Drop unsupported params (e.g. temperature) silently for models that don't support them
-litellm.drop_params = True
-
 logger = logging.getLogger(__name__)
 
 
@@ -155,6 +152,17 @@ class LLMClient:
 
         return kwargs
 
+    def _filter_unsupported_params(
+        self, model: str, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Drop kwargs that the given model does not support, logging what was removed."""
+        supported = litellm.get_supported_openai_params(model=model) or []
+        filtered = {k: v for k, v in kwargs.items() if k in supported}
+        dropped = set(kwargs) - set(filtered)
+        if dropped:
+            logger.debug(f"Dropping unsupported params for model '{model}': {dropped}")
+        return filtered
+
     def completion(
         self,
         *args: Any,
@@ -162,6 +170,8 @@ class LLMClient:
     ) -> LLMModelResponse:
         # Delegate to the top-level function
         kwargs = self._add_provider_credentials(kwargs)
+        if model := kwargs.get("model"):
+            kwargs = self._filter_unsupported_params(model, kwargs)
 
         try:
             response = litellm.completion(*args, **kwargs)
