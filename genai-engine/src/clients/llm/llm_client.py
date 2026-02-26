@@ -59,6 +59,13 @@ def supported_models() -> dict[str, list[str]]:
 
 SUPPORTED_TEXT_MODELS = supported_models()
 
+# Universe of known LLM generation params (derived from a comprehensive reference model).
+# Infrastructure params (messages, api_key, api_base, model, etc.) are never in this set
+# and will always be passed through unchanged by _filter_unsupported_params.
+_ALL_GENERATION_PARAMS: frozenset[str] = frozenset(
+    litellm.get_supported_openai_params("gpt-4o") or []
+)
+
 
 def refresh_models_periodically() -> None:
     global SUPPORTED_TEXT_MODELS
@@ -155,13 +162,23 @@ class LLMClient:
     def _filter_unsupported_params(
         self, model: str, kwargs: dict[str, Any]
     ) -> dict[str, Any]:
-        """Drop kwargs that the given model does not support, logging what was removed."""
-        supported = litellm.get_supported_openai_params(model=model) or []
-        filtered = {k: v for k, v in kwargs.items() if k in supported}
-        dropped = set(kwargs) - set(filtered)
+        """Drop generation params unsupported by the given model; infrastructure params are always kept.
+
+        Infrastructure params (messages, api_key, api_base, model, etc.) are not in
+        _ALL_GENERATION_PARAMS and are always passed through unchanged. Only params that
+        are known generation params but not supported by this specific model are dropped.
+        """
+        supported = frozenset(litellm.get_supported_openai_params(model=model) or [])
+        result: dict[str, Any] = {}
+        dropped: list[str] = []
+        for k, v in kwargs.items():
+            if k not in _ALL_GENERATION_PARAMS or k in supported:
+                result[k] = v
+            else:
+                dropped.append(k)
         if dropped:
             logger.debug(f"Dropping unsupported params for model '{model}': {dropped}")
-        return filtered
+        return result
 
     def completion(
         self,
