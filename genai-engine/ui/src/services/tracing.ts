@@ -8,20 +8,21 @@ type CommonParams = {
   pageSize: number;
   filters: IncomingFilter[];
   timeRange: TimeRange;
+  sort?: "asc" | "desc";
 };
 
 // Traces
 
 export type GetFilteredTracesParams = CommonParams;
 
-export async function getFilteredTraces(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetFilteredTracesParams) {
+export async function getFilteredTraces(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc" }: GetFilteredTracesParams) {
   const startTime = getStartDate(timeRange);
 
   const response = await api.api.listTracesMetadataApiV1TracesGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
-    sort: "desc",
+    sort,
     start_time: startTime.toISOString(),
     ...mapFiltersToRequest(filters),
   });
@@ -48,11 +49,12 @@ export async function computeTraceMetrics(api: Api<unknown>, { traceId }: GetTra
 
 export type GetFilteredSpansParams = CommonParams;
 
-export async function getFilteredSpans(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetFilteredSpansParams) {
+export async function getFilteredSpans(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc" }: GetFilteredSpansParams) {
   const response = await api.api.listSpansMetadataApiV1TracesSpansGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
+    sort,
     start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });
@@ -78,11 +80,12 @@ export async function computeSpanMetrics(api: Api<unknown>, { spanId }: GetSpanP
 
 export type GetSessionsParams = CommonParams;
 
-export async function getFilteredSessions(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetSessionsParams) {
+export async function getFilteredSessions(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc" }: GetSessionsParams) {
   const response = await api.api.listSessionsMetadataApiV1TracesSessionsGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
+    sort,
     start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });
@@ -105,11 +108,12 @@ export async function getSession(api: Api<unknown>, { sessionId }: GetSessionPar
 
 export type GetUsersParams = CommonParams;
 
-export async function getUsers(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetUsersParams) {
+export async function getUsers(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc" }: GetUsersParams) {
   const response = await api.api.listUsersMetadataApiV1TracesUsersGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
+    sort,
     start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });
