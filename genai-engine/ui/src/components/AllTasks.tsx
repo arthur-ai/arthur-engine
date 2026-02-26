@@ -8,8 +8,10 @@ import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
+  Alert,
   Box,
   Button,
+  CircularProgress,
   Divider,
   FormControl,
   IconButton,
@@ -272,20 +274,11 @@ export const AllTasks: React.FC = () => {
             {activeTab === 0 && (
               <>
                 {isLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
+                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                    <CircularProgress />
+                  </Box>
                 ) : error ? (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
-                    <div className="flex">
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error loading tasks</h3>
-                        <div className="mt-2 text-sm text-red-700 dark:text-red-400">
-                          <p>{error}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <Alert severity="error">{error}</Alert>
                 ) : tasks.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-gray-500 dark:text-gray-400 text-lg font-medium mb-2">No tasks found</div>
@@ -382,25 +375,16 @@ export const AllTasks: React.FC = () => {
             {activeTab === 1 && (
               <>
                 {isLoadingArchived ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
+                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                    <CircularProgress />
+                  </Box>
                 ) : archivedError ? (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
-                    <div className="flex">
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error loading archived tasks</h3>
-                        <div className="mt-2 text-sm text-red-700 dark:text-red-400">
-                          <p>{archivedError}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <Alert severity="error">{archivedError}</Alert>
                 ) : archivedTasks.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-gray-500 dark:text-gray-400 text-lg font-medium mb-2">No archived tasks</div>
-                    <p className="text-gray-400 dark:text-gray-500">Archived tasks will appear here.</p>
-                  </div>
+                  <Box sx={{ textAlign: "center", py: 6 }}>
+                    <Typography variant="h6" color="text.secondary">No archived tasks</Typography>
+                    <Typography variant="body2" color="text.disabled">Archived tasks will appear here.</Typography>
+                  </Box>
                 ) : (
                   <>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
