@@ -81,6 +81,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
   };
 
   const handleTaskClick = () => {
+    if (task.is_archived) return;
     navigate(`/tasks/${task.id}/traces`);
   };
 
@@ -96,21 +97,30 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
   `;
 
   return (
+    <Tooltip
+      title={task.is_archived ? "This task is archived. Unarchive it to view its traces." : ""}
+      placement="top"
+      arrow
+    >
+      <span>
     <Card
       onClick={handleTaskClick}
       sx={{
-        cursor: "pointer",
+        cursor: task.is_archived ? "not-allowed" : "pointer",
         transition: "all 0.2s",
         border: "1px solid",
         borderColor: "divider",
-        "&:hover": {
-          borderColor: "primary.main",
-          boxShadow: 3,
-          background: "linear-gradient(to bottom right, rgba(59, 130, 246, 0.03), transparent)",
-          "& .view-traces-text": {
-            opacity: 1,
+        opacity: task.is_archived ? 0.6 : 1,
+        ...(!task.is_archived && {
+          "&:hover": {
+            borderColor: "primary.main",
+            boxShadow: 3,
+            background: "linear-gradient(to bottom right, rgba(59, 130, 246, 0.03), transparent)",
+            "& .view-traces-text": {
+              opacity: 1,
+            },
           },
-        },
+        }),
       }}
     >
       <CardContent sx={{ p: 2.5, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -377,5 +387,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
         </Stack>
       </CardContent>
     </Card>
+      </span>
+    </Tooltip>
   );
 };
