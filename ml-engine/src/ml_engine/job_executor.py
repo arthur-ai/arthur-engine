@@ -4,6 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 from arthur_client.api_bindings import (
+    AgentsV1Api,
     AlertCheckJobSpec,
     AlertRulesV1Api,
     AlertsV1Api,
@@ -132,6 +133,7 @@ class JobExecutor:
         self.tasks_client = TasksV1Api(client)
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
         self.unregistered_agents_client = UnregisteredAgentsV1Api(client)
+        self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
@@ -372,6 +374,7 @@ class JobExecutor:
 
                         DiscoverAgentsExecutor(
                             self.unregistered_agents_client,
+                            self.agents_client,
                             self.models_client,
                             self.logger,
                             genai_engine_url,

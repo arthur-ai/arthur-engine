@@ -72,7 +72,8 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
-from schemas.internal_schemas import AgenticAnnotation, EnrichedTaskResponse
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
+from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
     ApiKeyRagAuthenticationConfigRequest,
@@ -4576,17 +4577,40 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
-    def retry_agent_polling_task(
+    def execute_agent_polling(
         self,
         task_id: str,
-        agent_polling_data_id: str,
     ) -> tuple[int, dict]:
-        """Retry an agent polling task"""
-        url = f"/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}"
+        """Manually trigger a polling job for a task."""
+        url = f"/api/v1/tasks/{task_id}/agent-polling/execute"
 
         resp = self.base_client.post(
             url,
             headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
+        )
+
+    def execute_all_agent_polling(
+        self,
+        wait_for_completion: bool = False,
+        timeout: int | None = None,
+    ) -> tuple[int, dict]:
+        """Manually trigger a full discovery + polling cycle."""
+        params: dict = {}
+        if wait_for_completion:
+            params["wait_for_completion"] = wait_for_completion
+        if timeout is not None:
+            params["timeout"] = timeout
+        resp = self.base_client.post(
+            "/api/v1/agent-polling/execute-all",
+            headers=self.authorized_user_api_key_headers,
+            params=params,
         )
 
         log_response(resp)
