@@ -280,11 +280,11 @@ export const AllTasks: React.FC = () => {
                 ) : error ? (
                   <Alert severity="error">{error}</Alert>
                 ) : tasks.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-gray-500 dark:text-gray-400 text-lg font-medium mb-2">No tasks found</div>
-                    <p className="text-gray-400 dark:text-gray-500 mb-8">Get started by creating your first agent task.</p>
+                  <Box sx={{ textAlign: "center", py: 6 }}>
+                    <Typography variant="h6" color="text.secondary">No tasks found</Typography>
+                    <Typography variant="body2" color="text.disabled" sx={{ mb: 4 }}>Get started by creating your first agent task.</Typography>
                     <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
-                  </div>
+                  </Box>
                 ) : (
                   <>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
