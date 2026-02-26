@@ -72,6 +72,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
@@ -345,6 +346,32 @@ class GenaiEngineTestClientBase(httpx.Client):
                 TaskResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
+            ),
+        )
+
+    def get_agent_tasks(
+        self,
+    ) -> tuple[int, list[EnrichedTaskResponse]]:
+        """Get agentic tasks with enriched agent metadata.
+
+        Returns only agentic tasks.
+
+        Returns:
+            Tuple of (status_code, list of EnrichedTaskResponse)
+        """
+        path = "api/v2/agent-tasks"
+
+        resp = self.base_client.get(
+            path, headers=self.authorized_user_api_key_headers
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                [EnrichedTaskResponse.model_validate(task) for task in resp.json()]
+                if resp.status_code == 200
+                else []
             ),
         )
 
@@ -2694,6 +2721,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         version_number: int,
         page: int = None,
         page_size: int = None,
+        search: str = None,
     ) -> tuple[int, DatasetVersionResponse]:
         """Get a dataset version."""
         path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
@@ -2702,6 +2730,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page"] = page
         if page_size is not None:
             params["page_size"] = page_size
+        if search is not None:
+            params["search"] = search
 
         url = path
         if params:
@@ -4547,17 +4577,40 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
-    def retry_agent_polling_task(
+    def execute_agent_polling(
         self,
         task_id: str,
-        agent_polling_data_id: str,
     ) -> tuple[int, dict]:
-        """Retry an agent polling task"""
-        url = f"/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}"
+        """Manually trigger a polling job for a task."""
+        url = f"/api/v1/tasks/{task_id}/agent-polling/execute"
 
         resp = self.base_client.post(
             url,
             headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
+        )
+
+    def execute_all_agent_polling(
+        self,
+        wait_for_completion: bool = False,
+        timeout: int | None = None,
+    ) -> tuple[int, dict]:
+        """Manually trigger a full discovery + polling cycle."""
+        params: dict = {}
+        if wait_for_completion:
+            params["wait_for_completion"] = wait_for_completion
+        if timeout is not None:
+            params["timeout"] = timeout
+        resp = self.base_client.post(
+            "/api/v1/agent-polling/execute-all",
+            headers=self.authorized_user_api_key_headers,
+            params=params,
         )
 
         log_response(resp)

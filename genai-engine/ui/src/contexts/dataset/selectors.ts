@@ -16,8 +16,18 @@ export function selectFilteredRows(state: DatasetState): DatasetVersionRowRespon
     return sorted;
   }
 
+  // Server-side rows are already filtered by the backend.
+  // Only apply client-side filtering to pending added rows
+  // that the backend doesn't know about yet.
+  const pendingAddedIds = new Set(state.pendingChanges.added.map((r) => r.id));
   const lower = state.searchQuery.toLowerCase();
-  return sorted.filter((row) => row.data.some((col) => col.column_value?.toLowerCase().includes(lower)));
+
+  return sorted.filter((row) => {
+    if (!pendingAddedIds.has(row.id)) {
+      return true;
+    }
+    return row.data.some((col) => col.column_value?.toLowerCase().includes(lower));
+  });
 }
 
 export function selectHasUnsavedChanges(state: DatasetState): boolean {

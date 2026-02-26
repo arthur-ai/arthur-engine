@@ -81,7 +81,7 @@ class CurrencyConversionService(BaseQueueService[CurrencyRefreshJob]):
             wait_time = min(sleep_seconds, SIX_HOURS_SECONDS)
             if self.shutdown_event.wait(timeout=wait_time):
                 break
-            self.enqueue(CurrencyRefreshJob(delay_seconds=0))
+            self.enqueue(CurrencyRefreshJob(delay_seconds=0))  # Ignore return value
         logger.info(f"Background thread stopped for {self.service_name}")
 
     def convert_usd_to(

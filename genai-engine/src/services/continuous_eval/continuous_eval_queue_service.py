@@ -110,7 +110,8 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     task_id=continuous_eval.task_id,
                     delay_seconds=0,
                 )
-                if self.enqueue(job):
+                enqueued, _ = self.enqueue(job)
+                if enqueued:
                     enqueued_count += 1
 
             if enqueued_count > 0:

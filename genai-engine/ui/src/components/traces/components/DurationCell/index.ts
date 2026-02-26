@@ -1,2 +1,2 @@
-export { BUCKET_COLORS, DurationCell } from "./DurationCell";
+export { DurationCell } from "./DurationCell";
 export { DurationCellWithBucket } from "./DurationCellWithBucket";

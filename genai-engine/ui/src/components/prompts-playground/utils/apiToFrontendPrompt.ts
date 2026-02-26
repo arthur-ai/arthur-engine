@@ -364,6 +364,7 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
     responseFormat: undefined,
     tools,
     toolChoice: tools.length > 0 ? "auto" : undefined,
+    savedSnapshot: null,
   };
 
   return prompt;

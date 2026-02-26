@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
-import { styled } from "@mui/material/styles";
+import { alpha, styled } from "@mui/material/styles";
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
 
 import { VariableChip } from "./VariableChip";
@@ -100,7 +100,7 @@ const EditableDiv = styled("div")(({ theme }) => ({
     backgroundColor: theme.palette.action.disabledBackground,
   },
   "&:focus": {
-    borderColor: "#1976d2",
+    borderColor: theme.palette.primary.main,
     borderWidth: "2px",
     padding: "7.5px 13px", // Adjust padding to compensate for border width
   },
@@ -110,18 +110,20 @@ const EditableDiv = styled("div")(({ theme }) => ({
     pointerEvents: "none",
   },
   "& .nunjucks-var": {
-    color: "#1976d2",
-    fontWeight: 400,
-    backgroundColor: "rgba(180, 190, 165, 0.2)",
-    padding: "2px 4px",
-    borderRadius: "3px",
+    color: theme.palette.primary.main,
+    fontWeight: 500,
+    backgroundColor: alpha(theme.palette.primary.main, 0.16),
+    padding: "2px 6px",
+    borderRadius: "4px",
+    border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
   },
   "& .nunjucks-tag": {
-    color: "#7c3aed",
-    fontWeight: 400,
-    backgroundColor: "rgba(124, 58, 237, 0.12)",
-    padding: "2px 4px",
-    borderRadius: "3px",
+    color: theme.palette.secondary.main,
+    fontWeight: 500,
+    backgroundColor: alpha(theme.palette.secondary.main, 0.16),
+    padding: "2px 6px",
+    borderRadius: "4px",
+    border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
   },
 }));
 
@@ -566,23 +568,24 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
                   label={statement}
                   size="small"
                   onClick={() => highlightToken(statement)}
-                  sx={{
+                  sx={(theme) => ({
                     height: 20,
                     fontSize: "0.7rem",
                     fontFamily: "monospace",
-                    backgroundColor: "rgba(124, 58, 237, 0.12)",
-                    color: "#7c3aed",
-                    fontWeight: 400,
+                    backgroundColor: alpha(theme.palette.secondary.main, 0.16),
+                    color: "secondary.main",
+                    fontWeight: 500,
                     cursor: "pointer",
+                    border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
                     "&:hover": {
-                      backgroundColor: "rgba(124, 58, 237, 0.22)",
+                      backgroundColor: alpha(theme.palette.secondary.main, 0.28),
                     },
                     "& .MuiChip-label": {
                       px: 1,
                       py: 0,
                       lineHeight: "20px",
                     },
-                  }}
+                  })}
                 />
               ))}
             </>

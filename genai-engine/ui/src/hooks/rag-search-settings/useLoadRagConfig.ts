@@ -11,6 +11,7 @@ export interface LoadedConfigData {
   searchKind: "hybrid_search" | "vector_similarity_text_search" | "keyword_search";
   collection: RagProviderCollectionResponse | null;
   settings: ApiSearchSettings;
+  tags: string[];
 }
 
 interface LoadConfigParams {
@@ -53,6 +54,7 @@ async function fetchConfigData(api: ReturnType<typeof useApi>, configId: string,
     searchKind: apiSettings.search_kind!,
     collection: foundCollection,
     settings: apiSettings,
+    tags: version.tags ?? [],
   };
 }
 

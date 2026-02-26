@@ -6,8 +6,9 @@ from uuid import UUID
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import and_, asc, desc
+from sqlalchemy import and_, asc, cast, desc
 from sqlalchemy.orm import Session
+from sqlalchemy.types import Text
 
 from db_models import DatabaseDataset
 from db_models.dataset_models import (
@@ -148,6 +149,7 @@ class DatasetRepository:
         dataset_id: UUID,
         dataset_version: int,
         pagination_params: PaginationParameters,
+        search_query: Optional[str] = None,
     ) -> DatasetVersion:
         base_query = (
             self.db_session.query(DatabaseDatasetVersion, DatabaseDatasetVersionRow)
@@ -165,6 +167,12 @@ class DatasetRepository:
             .filter(DatabaseDatasetVersion.version_number == dataset_version)
         )
 
+        if search_query and search_query.strip():
+            search_term = f"%{search_query.strip()}%"
+            base_query = base_query.filter(
+                cast(DatabaseDatasetVersionRow.data, Text).ilike(search_term),
+            )
+
         # apply pagination
         total_count = base_query.count()
 
@@ -181,6 +189,28 @@ class DatasetRepository:
         )
 
         if not paginated_results:
+            # If a search query was provided and returned no results, the version
+            # still exists — return it with an empty row set instead of 404.
+            if search_query and search_query.strip():
+                db_dataset_version = (
+                    self.db_session.query(DatabaseDatasetVersion)
+                    .filter(DatabaseDatasetVersion.dataset_id == dataset_id)
+                    .filter(DatabaseDatasetVersion.version_number == dataset_version)
+                    .first()
+                )
+                if db_dataset_version is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Dataset version for dataset %s not found." % dataset_id,
+                        headers={"full_stacktrace": "false"},
+                    )
+                db_dataset_version.version_rows = []
+                return DatasetVersion._from_database_model(
+                    db_dataset_version,
+                    total_count,
+                    pagination_params,
+                )
+
             raise HTTPException(
                 status_code=404,
                 detail="Dataset version for dataset %s not found." % dataset_id,

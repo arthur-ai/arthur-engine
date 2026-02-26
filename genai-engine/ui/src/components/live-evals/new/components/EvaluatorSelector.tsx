@@ -1,7 +1,10 @@
 import { useStore } from "@tanstack/react-form";
+import { useState } from "react";
 
 import { EvaluatorSelectorUI } from "./EvaluatorSelectorUI";
 
+import EvalFormModal from "@/components/evaluators/EvalFormModal";
+import { useCreateEvalMutation } from "@/components/evaluators/hooks/useCreateEvalMutation";
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
@@ -23,10 +26,20 @@ export const EvaluatorSelector = withFieldGroup({
   } as EvaluatorFormState,
   props: {} as EvaluatorSelectorProps,
   render: function Render({ group, taskId, onSelectionChange }) {
+    const [openCreateEvalModal, setOpenCreateEvalModal] = useState(false);
+
     const evaluators = useEvals(taskId, {
       page: 0,
       pageSize: 10,
       sort: "desc",
+    });
+
+    const createEval = useCreateEvalMutation(taskId, async (evalData) => {
+      await evaluators.refetch();
+      setOpenCreateEvalModal(false);
+      group.setFieldValue("name", evalData.name);
+      group.setFieldValue("version", evalData.version?.toString() ?? null);
+      onSelectionChange?.();
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,15 +66,27 @@ export const EvaluatorSelector = withFieldGroup({
     };
 
     return (
-      <EvaluatorSelectorUI
-        evaluators={evaluators?.evals.map((evaluator) => evaluator.name) ?? []}
-        versions={versions.versions?.map((version) => version.version.toString()) ?? []}
-        selectedName={name}
-        selectedVersion={version}
-        onNameChange={handleNameChange}
-        onVersionChange={handleVersionChange}
-        isVersionsLoading={versions.isLoading}
-      />
+      <>
+        <EvaluatorSelectorUI
+          evaluators={evaluators?.evals.map((evaluator) => evaluator.name) ?? []}
+          versions={versions.versions?.map((version) => version.version.toString()) ?? []}
+          selectedName={name}
+          selectedVersion={version}
+          onNameChange={handleNameChange}
+          onVersionChange={handleVersionChange}
+          isVersionsLoading={versions.isLoading}
+          onCreateNew={() => setOpenCreateEvalModal(true)}
+          isCreateLoading={createEval.isPending}
+        />
+        <EvalFormModal
+          open={openCreateEvalModal}
+          onClose={() => setOpenCreateEvalModal(false)}
+          onSubmit={async (evalName, data) => {
+            await createEval.mutateAsync({ evalName, data });
+          }}
+          isLoading={createEval.isPending}
+        />
+      </>
     );
   },
 });
