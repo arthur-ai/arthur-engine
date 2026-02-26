@@ -144,9 +144,7 @@ def list_traces_metadata(
             for trace_metadata in trace_metadata_list
         ]
         effective_currency = (
-            "USD"
-            if any(eff == "USD" for eff, _ in results)
-            else requested_currency
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
         )
         traces = [item for _, item in results]
         return TraceListResponse(

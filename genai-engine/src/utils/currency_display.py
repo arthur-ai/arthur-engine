@@ -37,9 +37,7 @@ def convert_cost_for_display(
     return svc.convert_usd_to(amount_usd, target_currency)
 
 
-def apply_currency_to_token_cost_item(
-    item: T, target_currency: str
-) -> tuple[str, T]:
+def apply_currency_to_token_cost_item(item: T, target_currency: str) -> tuple[str, T]:
     """Convert token cost fields to target_currency; returns (effective_currency, item)."""
     target = (target_currency or "USD").strip().upper()
     if target == "USD":
