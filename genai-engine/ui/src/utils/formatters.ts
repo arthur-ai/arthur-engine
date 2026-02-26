@@ -16,14 +16,14 @@ function getCurrencyFormatter(currency: string): Intl.NumberFormat {
   return new Intl.NumberFormat(getLocaleForCurrency(code), {
     style: "currency",
     currency: code,
-    minimumFractionDigits: 5,
-    maximumFractionDigits: 5,
+    minimumFractionDigits: 6,
+    maximumFractionDigits: 6,
   });
 }
 
 export function formatCurrency(amount: number, currencyCode: string = "USD"): string {
   const formatter = getCurrencyFormatter(currencyCode);
-  const smallThreshold = 0.00001;
+  const smallThreshold = 0.000001;
   if (amount < smallThreshold) {
     return `< ${formatter.format(smallThreshold)}`;
   }

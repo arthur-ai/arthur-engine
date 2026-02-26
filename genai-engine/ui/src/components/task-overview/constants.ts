@@ -32,9 +32,6 @@ export const formatCostAxisValue = (value: number, currencyCode: string = "USD")
   if (value >= 1000) {
     return `${symbol}${(value / 1000).toFixed(1)}K`;
   }
-  if (value >= 1) {
-    return `${symbol}${value.toFixed(2)}`;
-  }
   if (value >= 0.01) {
     return `${symbol}${value.toFixed(2)}`;
   }
@@ -43,6 +40,12 @@ export const formatCostAxisValue = (value: number, currencyCode: string = "USD")
   }
   if (value >= 0.0001) {
     return `${symbol}${value.toFixed(4)}`;
+  }
+  if (value >= 0.00001) {
+    return `${symbol}${value.toFixed(5)}`;
+  }
+  if (value >= 0.000001) {
+    return `${symbol}${value.toFixed(6)}`;
   }
   if (value === 0) {
     return `${symbol}0`;
