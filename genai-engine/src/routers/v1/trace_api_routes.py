@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Annotated, cast
+from typing import Annotated
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -136,15 +136,21 @@ def list_traces_metadata(
             include_spans=include_spans,
         )
 
-        display_currency = get_display_currency(application_config)
-        traces = [
+        requested_currency = get_display_currency(application_config)
+        results = [
             apply_currency_to_token_cost_item(
-                trace_metadata._to_metadata_response_model(), display_currency
+                trace_metadata._to_metadata_response_model(), requested_currency
             )
             for trace_metadata in trace_metadata_list
         ]
+        effective_currency = (
+            "USD"
+            if any(eff == "USD" for eff, _ in results)
+            else requested_currency
+        )
+        traces = [item for _, item in results]
         return TraceListResponse(
-            count=count, display_currency=display_currency, traces=traces
+            count=count, display_currency=effective_currency, traces=traces
         )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
@@ -198,15 +204,21 @@ def list_spans_metadata(
             filters=trace_query,  # Enables comprehensive filtering
         )
 
-        display_currency = get_display_currency(application_config)
-        metadata_spans = [
+        requested_currency = get_display_currency(application_config)
+        results = [
             apply_currency_to_token_cost_item(
-                span._to_metadata_response_model(), display_currency
+                span._to_metadata_response_model(), requested_currency
             )
             for span in spans
         ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        metadata_spans = [item for _, item in results]
         return SpanListResponse(
-            count=total_count, display_currency=display_currency, spans=metadata_spans
+            count=total_count,
+            display_currency=effective_currency,
+            spans=metadata_spans,
         )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
@@ -405,15 +417,19 @@ def list_sessions_metadata(
             include_experiment_sessions=include_experiment_sessions,
         )
 
-        display_currency = get_display_currency(application_config)
-        sessions = [
+        requested_currency = get_display_currency(application_config)
+        results = [
             apply_currency_to_token_cost_item(
-                session_metadata._to_metadata_response_model(), display_currency
+                session_metadata._to_metadata_response_model(), requested_currency
             )
             for session_metadata in session_metadata_list
         ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        sessions = [item for _, item in results]
         return SessionListResponse(
-            count=count, display_currency=display_currency, sessions=sessions
+            count=count, display_currency=effective_currency, sessions=sessions
         )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
@@ -570,15 +586,19 @@ def list_users_metadata(
             pagination_parameters=pagination_parameters,
         )
 
-        display_currency = get_display_currency(application_config)
-        users = [
+        requested_currency = get_display_currency(application_config)
+        results = [
             apply_currency_to_token_cost_item(
-                user_metadata._to_metadata_response_model(), display_currency
+                user_metadata._to_metadata_response_model(), requested_currency
             )
             for user_metadata in user_metadata_list
         ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        users = [item for _, item in results]
         return TraceUserListResponse(
-            count=count, display_currency=display_currency, users=users
+            count=count, display_currency=effective_currency, users=users
         )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
@@ -627,13 +647,11 @@ def get_user_details(
                 detail=f"User {user_id} not found or has no data",
             )
 
-        display_currency = get_display_currency(application_config)
-        return cast(
-            TraceUserMetadataResponse,
-            apply_currency_to_token_cost_item(
-                user_details._to_metadata_response_model(), display_currency
-            ),
+        requested_currency = get_display_currency(application_config)
+        _effective_currency, user_item = apply_currency_to_token_cost_item(
+            user_details._to_metadata_response_model(), requested_currency
         )
+        return user_item
     except HTTPException:
         raise
     except Exception as e:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeVar
 
 from config.currency_config import currency_config
 from services.currency import get_currency_conversion_service
@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 _COST_FIELDS = ("prompt_token_cost", "completion_token_cost", "total_token_cost")
 
+T = TypeVar("T")
+
 
 def get_display_currency(application_config: ApplicationConfiguration) -> str:
     """Return the display currency code (e.g. USD, EUR). App config > env > USD."""
@@ -20,7 +22,7 @@ def get_display_currency(application_config: ApplicationConfiguration) -> str:
         or (currency_config.DEFAULT_CURRENCY or "")
         or "USD"
     )
-    return (raw or "USD").strip().upper()
+    return raw.strip().upper()
 
 
 def convert_cost_for_display(
@@ -35,18 +37,24 @@ def convert_cost_for_display(
     return svc.convert_usd_to(amount_usd, target_currency)
 
 
-def apply_currency_to_token_cost_item(item: Any, target_currency: str) -> Any:
-    """Return a copy of the item with token cost fields converted to target_currency. Uses model_copy if available."""
-    if not target_currency or target_currency.upper() == "USD":
-        return item
+def apply_currency_to_token_cost_item(
+    item: T, target_currency: str
+) -> tuple[str, T]:
+    """Convert token cost fields to target_currency; returns (effective_currency, item)."""
+    target = (target_currency or "USD").strip().upper()
+    if target == "USD":
+        return ("USD", item)
     update: dict[str, float] = {}
+    effective_currency = target
     for field in _COST_FIELDS:
         val = getattr(item, field, None)
         if val is not None:
-            converted, _ = convert_cost_for_display(float(val), target_currency)
+            converted, actual_code = convert_cost_for_display(float(val), target)
             update[field] = converted
+            if actual_code == "USD":
+                effective_currency = "USD"
     if not update:
-        return item
+        return (target, item)
     if hasattr(item, "model_copy"):
-        return item.model_copy(update=update)
-    return item
+        return (effective_currency, item.model_copy(update=update))
+    return (effective_currency, item)
