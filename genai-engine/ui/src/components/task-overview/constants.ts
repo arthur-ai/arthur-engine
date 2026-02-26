@@ -44,9 +44,6 @@ export const formatCostAxisValue = (value: number, currencyCode: string = "USD")
   if (value >= 0.00001) {
     return `${symbol}${value.toFixed(5)}`;
   }
-  if (value >= 0.000001) {
-    return `${symbol}${value.toFixed(6)}`;
-  }
   if (value === 0) {
     return `${symbol}0`;
   }
