@@ -52,6 +52,18 @@ class MetricRepository:
         # Clear cache entry after archive
         METRICS_CACHE.pop(metric_id, None)
 
+    def unarchive_metric(self, metric_id: str) -> None:
+        database_metric = (
+            self.db_session.query(DatabaseMetric)
+            .filter(DatabaseMetric.id == metric_id)
+            .first()
+        )
+        if not database_metric:
+            raise ValueError(f"Metric with id {metric_id} not found")
+        database_metric.archived = False
+        self.db_session.commit()
+        METRICS_CACHE.pop(metric_id, None)
+
     def get_metrics_by_metric_id(self, metric_ids: list[str]) -> list[Metric]:
         """
         Get metrics by IDs with caching to reduce database lookups.

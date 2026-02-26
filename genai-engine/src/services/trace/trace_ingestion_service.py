@@ -18,7 +18,7 @@ from sqlalchemy.dialects.sqlite import (
 )
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from db_models import DatabaseSpan, DatabaseTraceMetadata
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
 from dependencies import get_task_repository
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.resource_metadata_repository import ResourceMetadataRepository
@@ -250,6 +250,17 @@ class TraceIngestionService:
         # Step 1: If explicit_task_id (arthur.task) present → use it
         if explicit_task_id:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
+            task = (
+                self.db_session.query(DatabaseTask)
+                .filter(DatabaseTask.id == explicit_task_id)
+                .first()
+            )
+            if task and task.archived:
+                logger.warning(
+                    f"Trace received with explicit task ID '{explicit_task_id}' which is archived. "
+                    "Traces are still being written to this task. "
+                    "Unarchive the task to resume normal operation."
+                )
             return explicit_task_id
 
         # Step 2: If no task_id but service.name present → lookup in mapping
@@ -262,6 +273,18 @@ class TraceIngestionService:
                 logger.debug(
                     f"Found existing mapping: {service_name} → {existing_task_id}"
                 )
+                # Check if the mapped task is archived — warn but still route to it
+                mapped_task = (
+                    self.db_session.query(DatabaseTask)
+                    .filter(DatabaseTask.id == existing_task_id)
+                    .first()
+                )
+                if mapped_task and mapped_task.archived:
+                    logger.warning(
+                        f"Service name '{service_name}' is mapped to archived task "
+                        f"{existing_task_id}. Traces are still being written to this task. "
+                        "Unarchive the task to resume normal operation."
+                    )
                 return existing_task_id
 
             # Step 4: Check resource attributes for GCP cloud.resource_id
@@ -276,6 +299,13 @@ class TraceIngestionService:
                             task_repo = get_task_repository(self.db_session, app_config)
                             existing_task = task_repo.find_by_gcp_engine_id(engine_id)
                             if existing_task:
+                                if existing_task.archived:
+                                    logger.warning(
+                                        f"Service name '{service_name}' matched GCP task "
+                                        f"'{existing_task.name}' ({existing_task.id}) which is archived. "
+                                        "Traces are still being written to this task. "
+                                        "Unarchive the task to resume normal operation."
+                                    )
                                 # Step 5: Create service_name mapping for future speed
                                 mapping_repo.create_mapping(
                                     service_name, existing_task.id

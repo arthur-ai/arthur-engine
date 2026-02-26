@@ -155,6 +155,32 @@ def archive_task(
         db_session.close()
 
 
+@task_management_routes.post(
+    "/tasks/{task_id}/unarchive",
+    description="Unarchive a previously archived task. Also unarchives all task-scoped rules and metrics that were archived with it.",
+    tags=["Tasks"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def unarchive_task(
+    task_id: UUID,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    try:
+        rules_repo = RuleRepository(db_session)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
+        )
+        tasks_repo.unarchive_task(str(task_id))
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    finally:
+        db_session.close()
+
+
 @task_management_routes.get(
     "/tasks/{task_id}",
     description="Get tasks.",
@@ -324,6 +350,7 @@ def search_tasks(
             ids=request.task_ids,
             task_name=request.task_name,
             is_agentic=request.is_agentic,
+            include_archived=request.include_archived is True,
             sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,

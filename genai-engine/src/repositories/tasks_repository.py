@@ -307,6 +307,31 @@ class TaskRepository:
         db_task.archived = True
         self.db_session.commit()
 
+    def unarchive_task(self, task_id: str) -> None:
+        db_task = (
+            self.db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == task_id)
+            .first()
+        )
+        if not db_task:
+            raise HTTPException(status_code=404, detail="Task %s not found." % task_id)
+        if not db_task.archived:
+            raise HTTPException(
+                status_code=400, detail="Task %s is not archived." % task_id
+            )
+        if db_task.is_system_task:
+            raise HTTPException(status_code=400, detail="Cannot unarchive system tasks")
+
+        for link in db_task.rule_links:
+            if link.rule.scope == RuleScope.TASK:
+                self.rule_repository.unarchive_rule(link.rule_id)
+
+        for metric_link in db_task.metric_links:
+            self.metric_repository.unarchive_metric(metric_link.metric_id)
+
+        db_task.archived = False
+        self.db_session.commit()
+
     def create_task(self, task: Task, with_default_rules: bool = True) -> Task:
         db_task = task._to_database_model()
 
@@ -371,7 +396,6 @@ class TaskRepository:
                     "gcp_reasoning_engine_id",
                 )
                 == engine_id,
-                DatabaseTask.archived == False,
             )
             .first()
         )
