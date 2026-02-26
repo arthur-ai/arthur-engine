@@ -1,3 +1,4 @@
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckIcon from "@mui/icons-material/Check";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -5,7 +6,8 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import { Box, Card, CardContent, Chip, Stack, Tooltip, Typography } from "@mui/material";
+import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
+import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { keyframes } from "@mui/system";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -13,15 +15,19 @@ import { useNavigate } from "react-router-dom";
 import { CopyableChip } from "./common";
 
 import { useTaskMetrics } from "@/hooks/tasks/useTaskMetrics";
+import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
 
 interface TaskCardProps {
   task: TaskResponse;
+  onArchiveToggle?: () => void;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => {
   const navigate = useNavigate();
+  const api = useApi();
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   const { data: metrics = { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null } } = useTaskMetrics(task.id);
 
@@ -53,6 +59,25 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? "" : "s"} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
     return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+  };
+
+  const handleArchiveToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!api || isArchiving) return;
+
+    try {
+      setIsArchiving(true);
+      if (task.is_archived) {
+        await api.api.unarchiveTaskApiV2TasksTaskIdUnarchivePost(task.id);
+      } else {
+        await api.api.archiveTaskApiV2TasksTaskIdDelete(task.id);
+      }
+      onArchiveToggle?.();
+    } catch (err) {
+      console.error("Failed to toggle archive status:", err);
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   const handleTaskClick = () => {
@@ -271,13 +296,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               color="primary"
               sx={{
                 fontWeight: 500,
-                opacity: 0,
+                opacity: task.is_archived ? 0 : undefined,
                 transition: "opacity 0.15s",
               }}
             >
-              View traces →
+              {task.is_archived ? "" : "View traces →"}
             </Typography>
-            <Box sx={{ position: "relative" }}>
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <Box sx={{ position: "relative" }}>
               {copiedTaskId === task.id ? (
                 <Box
                   sx={{
@@ -324,7 +350,29 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   }}
                 />
               )}
-            </Box>
+              </Box>
+              {!task.is_system_task && (
+                <Tooltip title={task.is_archived ? "Unarchive task" : "Archive task"} arrow placement="top">
+                  <IconButton
+                    size="small"
+                    onClick={handleArchiveToggle}
+                    disabled={isArchiving}
+                    sx={{
+                      color: "text.disabled",
+                      "&:hover": { color: task.is_archived ? "success.main" : "error.main" },
+                    }}
+                  >
+                    {isArchiving ? (
+                      <CircularProgress size={16} />
+                    ) : task.is_archived ? (
+                      <UnarchiveOutlinedIcon sx={{ fontSize: 18 }} />
+                    ) : (
+                      <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Stack>
           </Box>
         </Stack>
       </CardContent>

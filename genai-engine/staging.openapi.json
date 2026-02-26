@@ -27197,7 +27197,19 @@
                             }
                         ],
                         "title": "Include Archived",
-                        "description": "Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks."
+                        "description": "Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks. If only_archived is True, this flag is ignored."
+                    },
+                    "only_archived": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Only Archived",
+                        "description": "Return only archived tasks. True returns exclusively archived tasks, False or None has no effect. Takes precedence over include_archived when both are set."
                     }
                 },
                 "type": "object",

@@ -20,6 +20,9 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
+/** AgentCreationSource */
+export type AgentCreationSource = GCPAgentCreationSource | OTELAgentCreationSource | ManualAgentCreationSource;
+
 /** AgentMetadata */
 export interface AgentMetadata {
   /** Metadata for the agent. */
@@ -1853,6 +1856,11 @@ export type CreateUserUsersPostError = HTTPValidationError;
 /**
  * CreationSource
  * Source information for how an unregistered agent was created.
+ *
+ * .. deprecated::
+ *     This flat CreationSource model is deprecated.
+ *     Use the discriminated union CreationSource from
+ *     arthur_common.models.agent_governance_schemas instead.
  */
 export interface CreationSource {
   /**
@@ -1922,6 +1930,18 @@ export interface DailyAgenticAnnotationStats {
    * Total annotations for the day
    */
   total_count: number;
+}
+
+/**
+ * DataSource
+ * Data source used by an agent.
+ */
+export interface DataSource {
+  /**
+   * Url
+   * URL of the data source.
+   */
+  url: string;
 }
 
 /**
@@ -2267,6 +2287,9 @@ export type DiscoverAgentsApiV1DiscoverAgentsPostError = HTTPValidationError;
 /**
  * DiscoverAgentsRequest
  * Request to discover agents from infrastructure.
+ *
+ * .. deprecated::
+ *     Use GET /api/v2/agent-tasks instead.
  */
 export interface DiscoverAgentsRequest {
   /**
@@ -2286,6 +2309,9 @@ export interface DiscoverAgentsRequest {
 /**
  * DiscoverAgentsResponse
  * Response containing discovered agents.
+ *
+ * .. deprecated::
+ *     Use GET /api/v2/agent-tasks instead.
  */
 export interface DiscoverAgentsResponse {
   /**
@@ -2301,8 +2327,33 @@ export interface DiscoverAgentsResponse {
 }
 
 /**
+ * DiscoverAndPollResponse
+ * Response model for the execute-all agent polling endpoint.
+ */
+export interface DiscoverAndPollResponse {
+  /**
+   * Discovered
+   * Number of new agent tasks created
+   */
+  discovered: number;
+  /**
+   * Status
+   * Status of the operation
+   */
+  status: string;
+  /**
+   * Traces Fetched
+   * Total number of traces fetched across all tasks (0 in async mode)
+   */
+  traces_fetched: number;
+}
+
+/**
  * DiscoveredAgent
  * A discovered agent from infrastructure.
+ *
+ * .. deprecated::
+ *     Use GET /api/v2/agent-tasks with EnrichedTaskResponse instead.
  */
 export interface DiscoveredAgent {
   /** Information about how this agent was created. */
@@ -2356,27 +2407,18 @@ export interface EnrichedTaskResponse {
    * @format date-time
    */
   created_at: string;
+  /** Information about how this task/agent was created */
+  creation_source?: AgentCreationSource | null;
   /**
-   * Creation Source
-   * Information about how this task/agent was created
+   * Data Sources
+   * Data sources used by this agent (computed from spans)
    */
-  creation_source?: GCPCreationSource | OTELCreationSource | ManualCreationSource | null;
+  data_sources?: DataSource[] | null;
   /**
    * Id
    * Task ID
    */
   id: string;
-  /**
-   * Infrastructure
-   * Infrastructure where agent is running (e.g., 'GCP', 'AWS')
-   */
-  infrastructure?: string | null;
-  /**
-   * Is Agentic
-   * Whether this is an agentic task
-   * @default false
-   */
-  is_agentic?: boolean;
   /**
    * Is Autocreated
    * Whether this task was auto-created (vs manually created)
@@ -2384,10 +2426,15 @@ export interface EnrichedTaskResponse {
    */
   is_autocreated?: boolean;
   /**
+   * Last Fetched
+   * Last time traces were fetched for this task (from task_polling_state)
+   */
+  last_fetched?: string | null;
+  /**
    * Models
    * Models used by this agent (computed from spans)
    */
-  models?: string[] | null;
+  models?: LLMModel[] | null;
   /**
    * Name
    * Task name
@@ -2618,6 +2665,24 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
+export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData = ExecutePollingResponse;
+
+export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError = HTTPValidationError;
+
+export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData = DiscoverAndPollResponse;
+
+export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError = HTTPValidationError;
+
+export interface ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams {
+  /** Timeout */
+  timeout?: number | null;
+  /**
+   * Wait For Completion
+   * @default false
+   */
+  wait_for_completion?: boolean;
+}
+
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError = HTTPValidationError;
@@ -2625,6 +2690,23 @@ export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
+
+/**
+ * ExecutePollingResponse
+ * Response model for the single-task agent polling endpoint.
+ */
+export interface ExecutePollingResponse {
+  /**
+   * Status
+   * Status of the operation
+   */
+  status: string;
+  /**
+   * Task Id
+   * Task ID that was enqueued
+   */
+  task_id: string;
+}
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData = RagProviderQueryResponse;
 
@@ -2816,6 +2898,38 @@ export interface FileUploadResult {
   word_count: number;
 }
 
+/**
+ * GCPAgentCreationSource
+ * Creation source for GCP-discovered agents.
+ */
+export interface GCPAgentCreationSource {
+  /**
+   * Gcp Project Id
+   * GCP project ID
+   */
+  gcp_project_id: string;
+  /**
+   * Gcp Reasoning Engine Id
+   * GCP Vertex AI Reasoning Engine ID
+   */
+  gcp_reasoning_engine_id: string;
+  /**
+   * Gcp Region
+   * GCP region
+   */
+  gcp_region: string;
+  /**
+   * Service Names
+   * Service names associated with this agent
+   */
+  service_names?: string[];
+  /**
+   * Type
+   * @default "GCP"
+   */
+  type?: "GCP";
+}
+
 /** GCPAgentMetadata */
 export interface GCPAgentMetadata {
   /**
@@ -2855,43 +2969,6 @@ export interface GCPAgentMetadataResponse {
    * Resource ID of the agent.
    */
   resource_id: string;
-}
-
-/**
- * GCPCreationSource
- * Creation source for GCP-discovered agents.
- */
-export interface GCPCreationSource {
-  /**
-   * Gcp Project Id
-   * GCP project ID
-   */
-  gcp_project_id: string;
-  /**
-   * Gcp Reasoning Engine Id
-   * GCP Vertex AI Reasoning Engine ID
-   */
-  gcp_reasoning_engine_id: string;
-  /**
-   * Gcp Region
-   * GCP region
-   */
-  gcp_region: string;
-  /**
-   * Last Fetched
-   * Timestamp of last successful trace fetch
-   */
-  last_fetched?: string | null;
-  /**
-   * Service Names
-   * List of service names that send traces to this task
-   */
-  service_names?: string[];
-  /**
-   * Type
-   * @default "GCP"
-   */
-  type?: "GCP";
 }
 
 /** GCPServiceAccountCredentialsRequest */
@@ -4513,6 +4590,18 @@ export interface LLMGetAllMetadataResponse {
   versions: number;
 }
 
+/**
+ * LLMModel
+ * Model used by an agent.
+ */
+export interface LLMModel {
+  /**
+   * Name
+   * Name of the model.
+   */
+  name: string;
+}
+
 /** LLMPromptRequestConfigSettings */
 export interface LLMPromptRequestConfigSettings {
   /**
@@ -5869,20 +5958,15 @@ export interface LogitBiasItem {
 }
 
 /**
- * ManualCreationSource
+ * ManualAgentCreationSource
  * Creation source for manually created tasks.
  */
-export interface ManualCreationSource {
-  /**
-   * Service Names
-   * List of service names that send traces to this task
-   */
-  service_names?: string[];
+export interface ManualAgentCreationSource {
   /**
    * Type
-   * @default "manual"
+   * @default "MANUAL"
    */
-  type?: "manual";
+  type?: "MANUAL";
 }
 
 /** MessageRole */
@@ -6576,15 +6660,15 @@ export interface NotebookSummary {
 }
 
 /**
- * OTELCreationSource
+ * OTELAgentCreationSource
  * Creation source for OTEL-discovered agents (auto-created from traces).
  */
-export interface OTELCreationSource {
+export interface OTELAgentCreationSource {
   /**
-   * Service Name
-   * Service name from OTEL trace
+   * Service Names
+   * Service names associated with this agent
    */
-  service_name: string;
+  service_names?: string[];
   /**
    * Type
    * @default "OTEL"
@@ -9044,10 +9128,6 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
-export type RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostData = any;
-
-export type RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostError = HTTPValidationError;
-
 export type RotateSecretsApiV1SecretsRotationPostData = any;
 
 /** RuleResponse */
@@ -9348,10 +9428,20 @@ export interface SearchTasksApiV2TasksSearchPostParams {
 /** SearchTasksRequest */
 export interface SearchTasksRequest {
   /**
+   * Include Archived
+   * Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks. If only_archived is True, this flag is ignored.
+   */
+  include_archived?: boolean | null;
+  /**
    * Is Agentic
    * Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.
    */
   is_agentic?: boolean | null;
+  /**
+   * Only Archived
+   * Return only archived tasks. True returns exclusively archived tasks, False or None has no effect. Takes precedence over include_archived when both are set.
+   */
+  only_archived?: boolean | null;
   /**
    * Task Ids
    * List of tasks to query for.
@@ -10013,6 +10103,12 @@ export interface TaskResponse {
    * Whether the task is agentic or not
    */
   is_agentic?: boolean | null;
+  /**
+   * Is Archived
+   * Whether this task is archived
+   * @default false
+   */
+  is_archived?: boolean | null;
   /**
    * Is Autocreated
    * Whether this task was automatically created by Arthur
@@ -10798,6 +10894,10 @@ export interface TransformVariableExperimentOutputSource {
    */
   type?: "transform_variable";
 }
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostData = any;
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostError = HTTPValidationError;
 
 /**
  * UnregisteredRootSpanGroup
@@ -12166,7 +12266,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.403
+ * @version 2.1.418
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13245,12 +13345,13 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Discover agents from infrastructure (e.g., GCP Vertex AI). This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.
+     * @description DEPRECATED: Use GET /api/v2/agent-tasks instead. Discovery is now handled automatically by the global polling service.
      *
      * @tags Agent Discovery
      * @name DiscoverAgentsApiV1DiscoverAgentsPost
      * @summary Discover Agents
      * @request POST:/api/v1/discover-agents
+     * @deprecated
      * @secure
      */
     discoverAgentsApiV1DiscoverAgentsPost: (data: DiscoverAgentsRequest, params: RequestParams = {}) =>
@@ -13260,6 +13361,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Manually trigger a polling job for a task. Does not require any particular state — admins can use this to force an immediate poll outside the normal loop cadence.
+     *
+     * @tags Agent Discovery
+     * @name ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePost
+     * @summary Execute Agent Polling
+     * @request POST:/api/v1/tasks/{task_id}/agent-polling/execute
+     * @secure
+     */
+    executeAgentPollingApiV1TasksTaskIdAgentPollingExecutePost: (taskId: string, params: RequestParams = {}) =>
+      this.request<ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData, ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError>({
+        path: `/api/v1/tasks/${taskId}/agent-polling/execute`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.
+     *
+     * @tags Agent Discovery
+     * @name ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPost
+     * @summary Execute All Agent Polling
+     * @request POST:/api/v1/agent-polling/execute-all
+     * @secure
+     */
+    executeAllAgentPollingApiV1AgentPollingExecuteAllPost: (
+      query: ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData, ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError>({
+        path: `/api/v1/agent-polling/execute-all`,
+        method: "POST",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -15127,31 +15268,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Retry a failed agent polling job for a given agent polling data id.
-     *
-     * @tags Agent Discovery
-     * @name RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPost
-     * @summary Retry Agent Polling
-     * @request POST:/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}
-     * @secure
-     */
-    retryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPost: (
-      taskId: string,
-      agentPollingDataId: string,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostData,
-        RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostError
-      >({
-        path: `/api/v1/tasks/${taskId}/agent-polling/retry/${agentPollingDataId}`,
-        method: "POST",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows: First: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'. Second: call this endpoint - all secrets will be re-encrypted with 'new-key'. Third: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'. At this point all existing and new secrets will be managed by 'new-key'.
      *
      * @tags Secrets
@@ -15496,6 +15612,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Unarchive a previously archived task. Also unarchives all task-scoped rules and metrics that were archived with it.
+     *
+     * @tags Tasks
+     * @name UnarchiveTaskApiV2TasksTaskIdUnarchivePost
+     * @summary Unarchive Task
+     * @request POST:/api/v2/tasks/{task_id}/unarchive
+     * @secure
+     */
+    unarchiveTaskApiV2TasksTaskIdUnarchivePost: (taskId: string, params: RequestParams = {}) =>
+      this.request<UnarchiveTaskApiV2TasksTaskIdUnarchivePostData, UnarchiveTaskApiV2TasksTaskIdUnarchivePostError>({
+        path: `/api/v2/tasks/${taskId}/unarchive`,
+        method: "POST",
+        secure: true,
         format: "json",
         ...params,
       }),

@@ -329,6 +329,7 @@ def search_tasks(
         task_name=request.task_name,
         is_agentic=request.is_agentic,
         include_archived=request.include_archived is True,
+        only_archived=request.only_archived is True,
         sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
         page=pagination_parameters.page,
         page_size=pagination_parameters.page_size,

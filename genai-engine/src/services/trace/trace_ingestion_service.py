@@ -262,7 +262,9 @@ class TraceIngestionService:
                         "Unarchive the task to resume normal operation."
                     )
             except Exception as e:
-                logger.debug(f"Could not check archived status for task '{explicit_task_id}': {e}")
+                logger.debug(
+                    f"Could not check archived status for task '{explicit_task_id}': {e}"
+                )
             return explicit_task_id
 
         # Step 2: If no task_id but service.name present → lookup in mapping
@@ -285,7 +287,9 @@ class TraceIngestionService:
                             "Unarchive the task to resume normal operation."
                         )
                 except Exception as e:
-                    logger.debug(f"Could not check archived status for task '{existing_task_id}': {e}")
+                    logger.debug(
+                        f"Could not check archived status for task '{existing_task_id}': {e}"
+                    )
                 return existing_task_id
 
             # Step 4: Check resource attributes for GCP cloud.resource_id
@@ -295,7 +299,9 @@ class TraceIngestionService:
                     try:
                         _, _, engine_id = parse_gcp_resource_path(cloud_resource_id)
                         if engine_id:
-                            existing_task = self.task_repo.find_by_gcp_engine_id(engine_id)
+                            existing_task = self.task_repo.find_by_gcp_engine_id(
+                                engine_id
+                            )
                             if existing_task:
                                 if existing_task.archived:
                                     logger.warning(

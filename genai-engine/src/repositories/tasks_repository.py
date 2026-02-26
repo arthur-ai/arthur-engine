@@ -74,6 +74,7 @@ class TaskRepository:
         task_name: Optional[str] = None,
         is_agentic: Optional[bool] = None,
         include_archived: bool = False,
+        only_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
         page: int = 0,
@@ -85,7 +86,9 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.name.ilike(f"%{task_name}%"))
         if is_agentic is not None:
             stmt = stmt.where(DatabaseTask.is_agentic == is_agentic)
-        if not include_archived:
+        if only_archived:
+            stmt = stmt.where(DatabaseTask.archived == True)
+        elif not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
         if sort == PaginationSortMethod.DESCENDING:
             stmt = stmt.order_by(desc(DatabaseTask.created_at))
