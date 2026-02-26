@@ -254,7 +254,9 @@ class TraceIngestionService:
         if explicit_task_id:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
             try:
-                task = self.task_repo.get_db_task_by_id(explicit_task_id)
+                task = self.task_repo.get_db_task_by_id(
+                    explicit_task_id, include_archived=True
+                )
                 if task.archived:
                     logger.warning(
                         f"Trace received with explicit task ID '{explicit_task_id}' which is archived. "
@@ -279,7 +281,9 @@ class TraceIngestionService:
                 )
                 # Check if the mapped task is archived — warn but still route to it
                 try:
-                    mapped_task = self.task_repo.get_db_task_by_id(existing_task_id)
+                    mapped_task = self.task_repo.get_db_task_by_id(
+                        existing_task_id, include_archived=True
+                    )
                     if mapped_task.archived:
                         logger.warning(
                             f"Service name '{service_name}' is mapped to archived task "

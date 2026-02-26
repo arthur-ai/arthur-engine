@@ -104,11 +104,13 @@ class TaskRepository:
 
         return results, count
 
-    def get_db_task_by_id(self, id: str) -> DatabaseTask:
+    def get_db_task_by_id(
+        self, id: str, include_archived: bool = False
+    ) -> DatabaseTask:
         db_task = (
             self.db_session.query(DatabaseTask).filter(DatabaseTask.id == id).first()
         )
-        if not db_task:
+        if not db_task or (not include_archived and db_task.archived):
             raise HTTPException(
                 status_code=404,
                 detail="Task %s not found." % id,
@@ -303,10 +305,11 @@ class TaskRepository:
 
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
-                self.rule_repository.archive_rule(link.rule_id)
+                self.rule_repository.archive_rule(link.rule_id, commit=False)
 
         for metric_link in db_task.metric_links:
-            self.metric_repository.archive_metric(metric_link.metric_id)
+            self.metric_repository.archive_metric(metric_link.metric_id, commit=False)
+
         db_task.archived = True
         self.db_session.commit()
 
@@ -327,10 +330,10 @@ class TaskRepository:
 
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
-                self.rule_repository.unarchive_rule(link.rule_id)
+                self.rule_repository.unarchive_rule(link.rule_id, commit=False)
 
         for metric_link in db_task.metric_links:
-            self.metric_repository.unarchive_metric(metric_link.metric_id)
+            self.metric_repository.unarchive_metric(metric_link.metric_id, commit=False)
 
         db_task.archived = False
         self.db_session.commit()
