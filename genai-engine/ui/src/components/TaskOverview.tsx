@@ -248,7 +248,7 @@ export const TaskOverview: React.FC = () => {
               <LineChart
                 height={256}
                 xAxis={sharedXAxis}
-                yAxis={[{ valueFormatter: (v: number) => formatCostAxisValue(v) }]}
+                yAxis={[{ valueFormatter: (v: number) => formatCostAxisValue(v, defaultCurrency) }]}
                 series={[
                   {
                     data: costValues,
@@ -256,7 +256,7 @@ export const TaskOverview: React.FC = () => {
                     area: true,
                     showMark: true,
                     label: "Cost",
-                    valueFormatter: (v: number | null) => (v != null ? formatCostAxisValue(v) : ""),
+                    valueFormatter: (v: number | null) => (v != null ? formatCostAxisValue(v, defaultCurrency) : ""),
                   },
                 ]}
                 grid={{ horizontal: true }}

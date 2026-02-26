@@ -24,6 +24,7 @@ import { Link } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
@@ -34,6 +35,7 @@ type Props = {
 
 export const AnnotationsTable = ({ annotations }: Props) => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const container = useRef<HTMLDivElement>(null);
 
   const columns = useMemo(
@@ -41,8 +43,9 @@ export const AnnotationsTable = ({ annotations }: Props) => {
       createColumns({
         taskId: task!.id,
         container,
+        defaultCurrency,
       }),
-    [task]
+    [task, defaultCurrency]
   );
 
   const table = useReactTable({
@@ -81,7 +84,15 @@ export const AnnotationsTable = ({ annotations }: Props) => {
 
 const columnHelper = createColumnHelper<Annotation>();
 
-const createColumns = ({ taskId, container }: { taskId: string; container: React.RefObject<HTMLDivElement | null> }) => [
+const createColumns = ({
+  taskId,
+  container,
+  defaultCurrency,
+}: {
+  taskId: string;
+  container: React.RefObject<HTMLDivElement | null>;
+  defaultCurrency: string;
+}) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
     cell: ({ getValue }) => {
@@ -137,7 +148,7 @@ const createColumns = ({ taskId, container }: { taskId: string; container: React
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return;
 
-      return <span className="text-nowrap">{formatCurrency(row.original.cost ?? 0)}</span>;
+      return <span className="text-nowrap">{formatCurrency(row.original.cost ?? 0, defaultCurrency)}</span>;
     },
   }),
   columnHelper.display({

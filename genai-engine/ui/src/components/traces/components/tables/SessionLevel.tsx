@@ -13,6 +13,7 @@ import { SessionsFilterModal } from "./components/SessionsFilterModal";
 import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -21,7 +22,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredSessions } from "@/services/tracing";
-import { formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 
 interface SessionLevelProps {
   welcomeDismissed: boolean;
@@ -32,6 +33,7 @@ const DEFAULT_DATA: SessionMetadataResponse[] = [];
 export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
 
@@ -72,11 +74,13 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     [setDrawerTarget, task?.id]
   );
 
+  const displayCurrency = data?.display_currency ?? defaultCurrency;
+
   const columns = useMemo(
     () =>
       createSessionLevelColumns({
         formatDate,
-        formatCurrency: () => "", // Not used in session columns but required by type
+        formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
         onTrack: track,
         Chip: CopyableChip,
         DurationCell: () => null, // Not used in session columns
@@ -87,7 +91,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    []
+    [displayCurrency]
   );
 
   // Check if any filters are active

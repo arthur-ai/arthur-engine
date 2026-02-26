@@ -22,6 +22,7 @@ import { TracingFilterModal } from "./components/TracingFilterModal";
 import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -40,6 +41,7 @@ interface TraceLevelProps {
 
 export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
@@ -93,11 +95,13 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
 
+  const displayCurrency = data?.display_currency ?? defaultCurrency;
+
   const columns = useMemo(
     () =>
       createTraceLevelColumns({
         formatDate,
-        formatCurrency,
+        formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
         onTrack: track,
         Chip: CopyableChip,
         DurationCell: DurationCellWithBucket,
@@ -108,7 +112,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    []
+    [displayCurrency]
   );
 
   const setFilters = useFilterStore((state) => state.setFilters);

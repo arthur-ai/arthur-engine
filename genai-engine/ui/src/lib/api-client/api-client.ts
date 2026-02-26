@@ -2346,6 +2346,18 @@ export interface DiscoveredAgent {
 }
 
 /**
+ * DisplaySettingsResponse
+ * Public display settings (e.g. default currency for cost formatting).
+ */
+export interface DisplaySettingsResponse {
+  /**
+   * Default Currency
+   * @default "USD"
+   */
+  default_currency?: string;
+}
+
+/**
  * EnrichedTaskResponse
  * Response model for agent-tasks endpoint with enriched metadata.
  */

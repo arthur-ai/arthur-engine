@@ -24,6 +24,7 @@ import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
 import { TypeChip } from "@/components/common/span/TypeChip";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -32,7 +33,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredSpans } from "@/services/tracing";
-import { formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
@@ -43,6 +44,7 @@ interface SpanLevelProps {
 export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const [, setDrawerTarget] = useDrawerTarget();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
   const [searchInput, setSearchInput] = useState("");
@@ -94,11 +96,13 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     [data?.spans, setContext, setDrawerTarget, task?.id]
   );
 
+  const displayCurrency = data?.display_currency ?? defaultCurrency;
+
   const columns = useMemo(
     () =>
       createSpanLevelColumns({
         formatDate,
-        formatCurrency: () => "", // Not used in span columns but required by type
+        formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
         onTrack: track,
         Chip: CopyableChip,
         DurationCell: DurationCellWithBucket,
@@ -110,7 +114,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
         TokenCostTooltip,
         isValidStatusCode,
       }),
-    []
+    [displayCurrency]
   );
 
   const setFilters = useFilterStore((state) => state.setFilters);

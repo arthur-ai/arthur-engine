@@ -31,9 +31,10 @@ import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailM
 
 import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";
-import { formatUTCTimestamp } from "@/utils/formatters";
+import { formatCurrency, formatUTCTimestamp } from "@/utils/formatters";
 
 interface EvalResult {
   eval_name: string;
@@ -83,6 +84,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   datasetId,
   datasetVersion,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -502,7 +504,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                             </TableCell>
                             <TableCell align="right">
                               <Typography variant="body2" className="font-mono text-xs">
-                                ${result.total_cost || "0.00"}
+                                {formatCurrency(parseFloat(result.total_cost || "0"), defaultCurrency)}
                               </Typography>
                             </TableCell>
                           </TableRow>

@@ -16,30 +16,35 @@ export const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-export const formatCurrency = (amount: number): string => {
-  return `$${amount.toFixed(2)}`;
-};
+function getCurrencySymbol(currencyCode: string): string {
+  const parts = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currencyCode || "USD",
+  }).formatToParts(0);
+  return parts.find((p) => p.type === "currency")?.value ?? "$";
+}
 
-export const formatCostAxisValue = (value: number): string => {
+export const formatCostAxisValue = (value: number, currencyCode: string = "USD"): string => {
+  const symbol = getCurrencySymbol(currencyCode);
   if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
+    return `${symbol}${(value / 1000).toFixed(1)}K`;
   }
   if (value >= 1) {
-    return `$${value.toFixed(2)}`;
+    return `${symbol}${value.toFixed(2)}`;
   }
   if (value >= 0.01) {
-    return `$${value.toFixed(2)}`;
+    return `${symbol}${value.toFixed(2)}`;
   }
   if (value >= 0.001) {
-    return `$${value.toFixed(3)}`;
+    return `${symbol}${value.toFixed(3)}`;
   }
   if (value >= 0.0001) {
-    return `$${value.toFixed(4)}`;
+    return `${symbol}${value.toFixed(4)}`;
   }
   if (value === 0) {
-    return "$0";
+    return `${symbol}0`;
   }
-  return `$${value.toExponential(1)}`;
+  return `${symbol}${value.toExponential(1)}`;
 };
 
 export const formatPercentValue = (value: number): string => {

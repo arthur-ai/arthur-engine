@@ -5,6 +5,7 @@ import { Box, Chip, DialogContent, Paper, Stack, Typography } from "@mui/materia
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
 import { CopyableChip } from "@/components/common";
 import { Highlight } from "@/components/common/Highlight";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticTestCase, EvalExecution, InputVariable } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 import { tryFormatJson } from "@/utils/llm";
@@ -14,12 +15,13 @@ type Props = {
 };
 
 export const TestCaseDetails = ({ testCase }: Props) => {
+  const { defaultCurrency } = useDisplaySettings();
   const { status, dataset_row_id, total_cost, template_input_variables, agentic_result } = testCase;
   const { request_url, request_headers, request_body, output, evals } = agentic_result;
 
   return (
     <DialogContent dividers className="space-y-6">
-      <HeaderSection status={status} totalCost={total_cost} datasetRowId={dataset_row_id} />
+      <HeaderSection status={status} totalCost={total_cost} datasetRowId={dataset_row_id} defaultCurrency={defaultCurrency} />
 
       {template_input_variables.length > 0 && <InputVariablesSection variables={template_input_variables} />}
 
@@ -36,10 +38,12 @@ const HeaderSection = ({
   status,
   totalCost,
   datasetRowId,
+  defaultCurrency,
 }: {
   status: AgenticTestCase["status"];
   totalCost: string | null | undefined;
   datasetRowId: string;
+  defaultCurrency: string;
 }) => (
   <Stack direction="column" gap={2}>
     <Stack direction="row" gap={3} alignItems="center" flexWrap="wrap">
@@ -55,7 +59,7 @@ const HeaderSection = ({
           Total Cost:
         </Typography>
         <Typography variant="body2" fontWeight={600}>
-          {totalCost ? formatCurrency(parseFloat(totalCost)) : "N/A"}
+          {totalCost ? formatCurrency(parseFloat(totalCost), defaultCurrency) : "N/A"}
         </Typography>
       </Stack>
     </Stack>
@@ -188,6 +192,7 @@ const EvaluationsSection = ({ evals }: { evals: EvalExecution[] }) => (
 );
 
 const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const { eval_name, eval_version, eval_results, eval_input_variables } = evalItem;
   const hasResults = !!eval_results;
   const isPass = hasResults && eval_results.score === 1;
@@ -203,7 +208,7 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
 
           {hasResults ? (
             <>
-              <Chip label={`Cost: ${formatCurrency(parseFloat(eval_results.cost))}`} size="small" variant="outlined" />
+              <Chip label={`Cost: ${formatCurrency(parseFloat(eval_results.cost), defaultCurrency)}`} size="small" variant="outlined" />
               <StatusBadge status={isPass ? "completed" : "failed"} />
             </>
           ) : (

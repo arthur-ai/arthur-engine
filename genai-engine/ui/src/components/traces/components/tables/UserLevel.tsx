@@ -12,6 +12,7 @@ import { DataContentGate } from "../DataContentGate";
 import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -20,7 +21,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getUsers } from "@/services/tracing";
-import { formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 
 interface UserLevelProps {
   welcomeDismissed: boolean;
@@ -31,6 +32,7 @@ const DEFAULT_DATA: TraceUserMetadataResponse[] = [];
 export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const [, setDrawerTarget] = useDrawerTarget();
 
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -70,11 +72,13 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     [setDrawerTarget, task?.id]
   );
 
+  const displayCurrency = data?.display_currency ?? defaultCurrency;
+
   const columns = useMemo(
     () =>
       createUserLevelColumns({
         formatDate,
-        formatCurrency: () => "", // Not used in user columns but required by type
+        formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
         onTrack: track,
         Chip: CopyableChip,
         DurationCell: () => null, // Not used in user columns
@@ -85,7 +89,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    []
+    [displayCurrency]
   );
 
   if (error) {

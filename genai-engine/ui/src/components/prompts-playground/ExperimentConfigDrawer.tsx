@@ -10,6 +10,7 @@ import { alpha } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import { useNavigate } from "react-router-dom";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import type {
   PromptExperimentDetail,
@@ -20,6 +21,7 @@ import type {
   PromptEvalResultSummaries,
   EvalResultSummary,
 } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
 
 export interface ExperimentConfigDrawerProps {
   open: boolean;
@@ -48,6 +50,7 @@ export default function ExperimentConfigDrawer({
 }: ExperimentConfigDrawerProps) {
   const navigate = useNavigate();
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
 
   return (
     <Drawer
@@ -375,7 +378,7 @@ export default function ExperimentConfigDrawer({
                             </Typography>
                             {run.total_cost && (
                               <Typography variant="body2" sx={{ fontSize: "0.75rem", color: "text.secondary", mt: 0.25 }}>
-                                Cost: ${run.total_cost}
+                                Cost: {formatCurrency(parseFloat(run.total_cost), defaultCurrency)}
                               </Typography>
                             )}
                           </Box>
