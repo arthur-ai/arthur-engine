@@ -2,6 +2,22 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/26/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for Component/Schema:  removed the schema 'GCPCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'ManualCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'OTELCreationSource'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/AgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPCreationSource, #/components/schemas/OTELCreationSource, #/components/schemas/ManualCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
 # 02/25/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  removed the required property 'enqueued' from the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'timeout'
