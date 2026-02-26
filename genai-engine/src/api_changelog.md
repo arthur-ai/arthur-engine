@@ -1,7 +1,7 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
-# 02/26/2026
+# 02/27/2026
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_archived' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_archived' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'include_archived'

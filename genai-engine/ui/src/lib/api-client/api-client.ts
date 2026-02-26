@@ -12305,11 +12305,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
-<<<<<<< HEAD
- * @version 2.1.419
-=======
- * @version 2.1.420
->>>>>>> dev
+ * @version 2.1.421
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
