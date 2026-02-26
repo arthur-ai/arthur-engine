@@ -382,8 +382,12 @@ export const AllTasks: React.FC = () => {
                   <Alert severity="error">{archivedError}</Alert>
                 ) : archivedTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
-                    <Typography variant="h6" color="text.secondary">No archived tasks</Typography>
-                    <Typography variant="body2" color="text.disabled">Archived tasks will appear here.</Typography>
+                    <Typography variant="h6" color="text.secondary">
+                      No archived tasks
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled">
+                      Archived tasks will appear here.
+                    </Typography>
                   </Box>
                 ) : (
                   <>

@@ -304,52 +304,52 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
             </Typography>
             <Stack direction="row" spacing={0.5} alignItems="center">
               <Box sx={{ position: "relative" }}>
-              {copiedTaskId === task.id ? (
-                <Box
-                  sx={{
-                    bgcolor: (theme) => (theme.palette.mode === "dark" ? "rgba(34, 197, 94, 0.1)" : "success.50"),
-                    border: 1,
-                    borderColor: "success.light",
-                    borderRadius: 1,
-                    px: 1.5,
-                    py: 0.5,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                    animation: `${fadeIn} 0.2s ease-in`,
-                  }}
-                >
-                  <CheckIcon sx={{ fontSize: 14, color: "success.main" }} />
-                  <Typography variant="caption" sx={{ color: "success.dark", fontWeight: 500 }}>
-                    Copied!
-                  </Typography>
-                </Box>
-              ) : (
-                <CopyableChip
-                  label={task.id}
-                  size="small"
-                  onCopy={() => {
-                    setCopiedTaskId(task.id);
-                    setTimeout(() => setCopiedTaskId(null), 2000);
-                  }}
-                  sx={{
-                    maxWidth: "140px",
-                    height: "24px",
-                    fontSize: "0.6875rem",
-                    bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
-                    "& .MuiChip-label": {
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      px: 1,
-                    },
-                    "& .MuiChip-icon": {
-                      fontSize: "0.875rem",
-                      ml: 0.5,
-                    },
-                  }}
-                />
-              )}
+                {copiedTaskId === task.id ? (
+                  <Box
+                    sx={{
+                      bgcolor: (theme) => (theme.palette.mode === "dark" ? "rgba(34, 197, 94, 0.1)" : "success.50"),
+                      border: 1,
+                      borderColor: "success.light",
+                      borderRadius: 1,
+                      px: 1.5,
+                      py: 0.5,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.75,
+                      animation: `${fadeIn} 0.2s ease-in`,
+                    }}
+                  >
+                    <CheckIcon sx={{ fontSize: 14, color: "success.main" }} />
+                    <Typography variant="caption" sx={{ color: "success.dark", fontWeight: 500 }}>
+                      Copied!
+                    </Typography>
+                  </Box>
+                ) : (
+                  <CopyableChip
+                    label={task.id}
+                    size="small"
+                    onCopy={() => {
+                      setCopiedTaskId(task.id);
+                      setTimeout(() => setCopiedTaskId(null), 2000);
+                    }}
+                    sx={{
+                      maxWidth: "140px",
+                      height: "24px",
+                      fontSize: "0.6875rem",
+                      bgcolor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
+                      "& .MuiChip-label": {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        px: 1,
+                      },
+                      "& .MuiChip-icon": {
+                        fontSize: "0.875rem",
+                        ml: 0.5,
+                      },
+                    }}
+                  />
+                )}
               </Box>
               {!task.is_system_task && (
                 <Tooltip title={task.is_archived ? "Unarchive task" : "Archive task"} arrow placement="top">
