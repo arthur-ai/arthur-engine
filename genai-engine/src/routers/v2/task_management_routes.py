@@ -75,29 +75,25 @@ def create_task(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TaskResponse:
-    try:
-        send_telemetry_event(TelemetryEventTypes.TASK_CREATE_INITIATED)
-        if len(request.name.strip()) == 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Task names cannot contain only white space characters",
-            )
-
-        rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(
-            db_session,
-            rules_repo,
-            MetricRepository(db_session),
-            application_config,
+    send_telemetry_event(TelemetryEventTypes.TASK_CREATE_INITIATED)
+    if len(request.name.strip()) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Task names cannot contain only white space characters",
         )
-        task = Task._from_request_model(request)
-        task = tasks_repo.create_task(task)
 
-        send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
-        response = task._to_response_model()
-        return response
-    finally:
-        db_session.close()
+    rules_repo = RuleRepository(db_session)
+    tasks_repo = TaskRepository(
+        db_session,
+        rules_repo,
+        MetricRepository(db_session),
+        application_config,
+    )
+    task = Task._from_request_model(request)
+    task = tasks_repo.create_task(task)
+
+    send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
+    return task._to_response_model()
 
 
 @task_management_routes.get(
@@ -113,19 +109,15 @@ def get_all_tasks(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> list[TaskResponse]:
-    try:
-        rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(
-            db_session,
-            rules_repo,
-            MetricRepository(db_session),
-            application_config,
-        )
-        tasks = tasks_repo.get_all_tasks()
-
-        return [task._to_response_model() for task in tasks]
-    finally:
-        db_session.close()
+    rules_repo = RuleRepository(db_session)
+    tasks_repo = TaskRepository(
+        db_session,
+        rules_repo,
+        MetricRepository(db_session),
+        application_config,
+    )
+    tasks = tasks_repo.get_all_tasks()
+    return [task._to_response_model() for task in tasks]
 
 
 @task_management_routes.delete(
@@ -140,19 +132,15 @@ def archive_task(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
-    try:
-        rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(
-            db_session,
-            rules_repo,
-            MetricRepository(db_session),
-            application_config,
-        )
-        tasks_repo.archive_task(str(task_id))
-
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    finally:
-        db_session.close()
+    rules_repo = RuleRepository(db_session)
+    tasks_repo = TaskRepository(
+        db_session,
+        rules_repo,
+        MetricRepository(db_session),
+        application_config,
+    )
+    tasks_repo.archive_task(str(task_id))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @task_management_routes.post(
@@ -167,18 +155,15 @@ def unarchive_task(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
-    try:
-        rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(
-            db_session,
-            rules_repo,
-            MetricRepository(db_session),
-            application_config,
-        )
-        tasks_repo.unarchive_task(str(task_id))
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    finally:
-        db_session.close()
+    rules_repo = RuleRepository(db_session)
+    tasks_repo = TaskRepository(
+        db_session,
+        rules_repo,
+        MetricRepository(db_session),
+        application_config,
+    )
+    tasks_repo.unarchive_task(str(task_id))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @task_management_routes.get(
@@ -194,17 +179,14 @@ def get_task(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TaskResponse:
-    try:
-        task_repo = TaskRepository(
-            db_session,
-            RuleRepository(db_session),
-            MetricRepository(db_session),
-            application_config,
-        )
-        task = task_repo.get_task_by_id(str(task_id))
-        return task._to_response_model()
-    finally:
-        db_session.close()
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    task = task_repo.get_task_by_id(str(task_id))
+    return task._to_response_model()
 
 
 @task_management_routes.get(
@@ -238,68 +220,65 @@ def get_agent_tasks(
     Returns:
         List of EnrichedTaskResponse objects (agentic tasks only)
     """
-    try:
-        rules_repo = RuleRepository(db_session)
-        metrics_repo = MetricRepository(db_session)
-        tasks_repo = TaskRepository(
-            db_session,
-            rules_repo,
-            metrics_repo,
-            application_config,
+    rules_repo = RuleRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    tasks_repo = TaskRepository(
+        db_session,
+        rules_repo,
+        metrics_repo,
+        application_config,
+    )
+
+    # Query only agentic tasks
+    db_tasks, _ = tasks_repo.query_tasks(
+        is_agentic=True,
+        include_archived=False,
+        page_size=1000,  # Large page size for now, add pagination later if needed
+        page=0,
+    )
+
+    # Convert to Task objects and enrich with service names
+    tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
+    tasks = tasks_repo._enrich_tasks_with_service_names(tasks)
+
+    # Build enriched responses
+    polling_state_repo = TaskPollingStateRepository(db_session)
+    enriched_responses = []
+    for task in tasks:
+        creation_source = tasks_repo._get_task_creation_source(task)
+
+        # Get last_fetched from task_polling_state
+        polling_state = polling_state_repo.get_by_task_id(task.id)
+        last_fetched = polling_state.last_fetched if polling_state else None
+
+        # Extract agent metadata
+        agent_metadata = tasks_repo._extract_agent_metadata(task.id)
+
+        # Convert rule links to response models
+        response_rules = []
+        for rule_link in task.rule_links or []:
+            response_rule = rule_link.rule._to_response_model()
+            response_rule.enabled = rule_link.enabled
+            response_rules.append(response_rule)
+
+        enriched_response = EnrichedTaskResponse(
+            id=task.id,
+            name=task.name,
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            is_autocreated=task.is_autocreated,
+            creation_source=creation_source,
+            last_fetched=last_fetched,
+            tools=agent_metadata["tools"],
+            sub_agents=agent_metadata["sub_agents"],
+            models=agent_metadata["models"],
+            data_sources=agent_metadata["data_sources"],
+            num_spans=agent_metadata["num_spans"],
+            rules=response_rules,
         )
+        enriched_responses.append(enriched_response)
 
-        # Query only agentic tasks
-        db_tasks, _ = tasks_repo.query_tasks(
-            is_agentic=True,
-            include_archived=False,
-            page_size=1000,  # Large page size for now, add pagination later if needed
-            page=0,
-        )
-
-        # Convert to Task objects and enrich with service names
-        tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
-        tasks = tasks_repo._enrich_tasks_with_service_names(tasks)
-
-        # Build enriched responses
-        polling_state_repo = TaskPollingStateRepository(db_session)
-        enriched_responses = []
-        for task in tasks:
-            creation_source = tasks_repo._get_task_creation_source(task)
-
-            # Get last_fetched from task_polling_state
-            polling_state = polling_state_repo.get_by_task_id(task.id)
-            last_fetched = polling_state.last_fetched if polling_state else None
-
-            # Extract agent metadata
-            agent_metadata = tasks_repo._extract_agent_metadata(task.id)
-
-            # Convert rule links to response models
-            response_rules = []
-            for rule_link in task.rule_links or []:
-                response_rule = rule_link.rule._to_response_model()
-                response_rule.enabled = rule_link.enabled
-                response_rules.append(response_rule)
-
-            enriched_response = EnrichedTaskResponse(
-                id=task.id,
-                name=task.name,
-                created_at=task.created_at,
-                updated_at=task.updated_at,
-                is_autocreated=task.is_autocreated,
-                creation_source=creation_source,
-                last_fetched=last_fetched,
-                tools=agent_metadata["tools"],
-                sub_agents=agent_metadata["sub_agents"],
-                models=agent_metadata["models"],
-                data_sources=agent_metadata["data_sources"],
-                num_spans=agent_metadata["num_spans"],
-                rules=response_rules,
-            )
-            enriched_responses.append(enriched_response)
-
-        return enriched_responses
-    finally:
-        db_session.close()
+    return enriched_responses
 
 
 @task_management_routes.post(
@@ -337,31 +316,28 @@ def search_tasks(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SearchTasksResponse:
-    try:
-        rules_repo = RuleRepository(db_session)
-        metrics_repo = MetricRepository(db_session)
-        tasks_repo = TaskRepository(
-            db_session,
-            rules_repo,
-            metrics_repo,
-            application_config,
-        )
-        db_tasks, count = tasks_repo.query_tasks(
-            ids=request.task_ids,
-            task_name=request.task_name,
-            is_agentic=request.is_agentic,
-            include_archived=request.include_archived is True,
-            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
-            page=pagination_parameters.page,
-            page_size=pagination_parameters.page_size,
-        )
-        tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
-        return SearchTasksResponse(
-            tasks=[task._to_response_model() for task in tasks],
-            count=count,
-        )
-    finally:
-        db_session.close()
+    rules_repo = RuleRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    tasks_repo = TaskRepository(
+        db_session,
+        rules_repo,
+        metrics_repo,
+        application_config,
+    )
+    db_tasks, count = tasks_repo.query_tasks(
+        ids=request.task_ids,
+        task_name=request.task_name,
+        is_agentic=request.is_agentic,
+        include_archived=request.include_archived is True,
+        sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
+        page=pagination_parameters.page,
+        page_size=pagination_parameters.page_size,
+    )
+    tasks = [Task._from_database_model(db_task) for db_task in db_tasks]
+    return SearchTasksResponse(
+        tasks=[task._to_response_model() for task in tasks],
+        count=count,
+    )
 
 
 #####################################
@@ -390,28 +366,25 @@ def create_task_rule(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> RuleResponse:
-    try:
-        send_telemetry_event(TelemetryEventTypes.TASK_RULE_CREATE_INITIATED)
-        task_repo = TaskRepository(
-            db_session,
-            RuleRepository(db_session),
-            MetricRepository(db_session),
-            application_config,
-        )
-        rule_repo = RuleRepository(db_session)
-        task = task_repo.get_task_by_id(str(task_id))
+    send_telemetry_event(TelemetryEventTypes.TASK_RULE_CREATE_INITIATED)
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    rule_repo = RuleRepository(db_session)
+    task = task_repo.get_task_by_id(str(task_id))
 
-        new_rule = rule_repo.create_rule(
-            Rule._from_request_model(request, scope=RuleScope.TASK),
-        )
-        task_repo.link_rule_to_task(task.id, new_rule.id, new_rule.type)
+    new_rule = rule_repo.create_rule(
+        Rule._from_request_model(request, scope=RuleScope.TASK),
+    )
+    task_repo.link_rule_to_task(task.id, new_rule.id, new_rule.type)
 
-        response_rule = new_rule._to_response_model()
-        response_rule.enabled = True
-        send_telemetry_event_for_task_rule_create_completed(new_rule.type)
-        return response_rule
-    finally:
-        db_session.close()
+    response_rule = new_rule._to_response_model()
+    response_rule.enabled = True
+    send_telemetry_event_for_task_rule_create_completed(new_rule.type)
+    return response_rule
 
 
 @task_management_routes.patch(
@@ -429,19 +402,15 @@ def update_task_rules(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TaskResponse:
-    try:
-        task_repo = TaskRepository(
-            db_session,
-            RuleRepository(db_session),
-            MetricRepository(db_session),
-            application_config,
-        )
-        task_repo.toggle_task_rule_enabled(str(task_id), str(rule_id), body.enabled)
-        updated_task = task_repo.get_task_by_id(str(task_id))
-
-        return updated_task._to_response_model()
-    finally:
-        db_session.close()
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    task_repo.toggle_task_rule_enabled(str(task_id), str(rule_id), body.enabled)
+    updated_task = task_repo.get_task_by_id(str(task_id))
+    return updated_task._to_response_model()
 
 
 @task_management_routes.delete(
@@ -457,44 +426,41 @@ def archive_task_rule(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
-    try:
-        rule_repo = RuleRepository(db_session)
-        rule = rule_repo.get_rule_by_id(str(rule_id))
+    rule_repo = RuleRepository(db_session)
+    rule = rule_repo.get_rule_by_id(str(rule_id))
 
-        if rule.scope == RuleScope.DEFAULT:
-            raise HTTPException(
-                status_code=400,
-                detail=constants.ERROR_CANNOT_DELETE_DEFAULT_RULE,
-            )
-
-        tasks_rules_repo = TasksRulesRepository(db_session)
-        task_rules = tasks_rules_repo._get_task_rules_ids(
-            str(task_id),
-            only_enabled=False,
-        )
-        if str(rule_id) not in task_rules:
-            raise HTTPException(
-                status_code=400,
-                detail=constants.ERROR_UNRELATED_TASK_RULE,
-            )
-
-        task_repo = TaskRepository(
-            db_session,
-            rule_repo,
-            MetricRepository(db_session),
-            application_config,
+    if rule.scope == RuleScope.DEFAULT:
+        raise HTTPException(
+            status_code=400,
+            detail=constants.ERROR_CANNOT_DELETE_DEFAULT_RULE,
         )
 
-        task_repo.delete_rule_link(str(task_id), str(rule_id))
+    tasks_rules_repo = TasksRulesRepository(db_session)
+    task_rules = tasks_rules_repo._get_task_rules_ids(
+        str(task_id),
+        only_enabled=False,
+    )
+    if str(rule_id) not in task_rules:
+        raise HTTPException(
+            status_code=400,
+            detail=constants.ERROR_UNRELATED_TASK_RULE,
+        )
 
-        rules, _ = rule_repo.query_rules(rule_ids=[str(rule_id)])
-        rule = rules[0]
-        if rule.scope == RuleScope.TASK:
-            rule_repo.archive_rule(str(rule_id))
+    task_repo = TaskRepository(
+        db_session,
+        rule_repo,
+        MetricRepository(db_session),
+        application_config,
+    )
 
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    finally:
-        db_session.close()
+    task_repo.delete_rule_link(str(task_id), str(rule_id))
+
+    rules, _ = rule_repo.query_rules(rule_ids=[str(rule_id)])
+    rule = rules[0]
+    if rule.scope == RuleScope.TASK:
+        rule_repo.archive_rule(str(rule_id))
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 #############################
@@ -519,22 +485,18 @@ def create_task_metric(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> MetricResponse:
-    try:
-        metric_repo = MetricRepository(db_session)
-        task_repo = TaskRepository(
-            db_session,
-            RuleRepository(db_session),
-            metric_repo,
-            application_config,
-        )
-        task = task_repo.get_task_by_id(str(task_id))
-        metric = Metric._from_request_model(request)
-        created_metric = metric_repo.create_metric(metric)
-        task_repo.link_metric_to_task(task.id, created_metric.id)
-
-        return created_metric._to_response_model()
-    finally:
-        db_session.close()
+    metric_repo = MetricRepository(db_session)
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        metric_repo,
+        application_config,
+    )
+    task = task_repo.get_task_by_id(str(task_id))
+    metric = Metric._from_request_model(request)
+    created_metric = metric_repo.create_metric(metric)
+    task_repo.link_metric_to_task(task.id, created_metric.id)
+    return created_metric._to_response_model()
 
 
 @task_management_routes.patch(
@@ -551,18 +513,15 @@ def update_task_metric(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TaskResponse:
-    try:
-        task_repo = TaskRepository(
-            db_session,
-            RuleRepository(db_session),
-            MetricRepository(db_session),
-            application_config,
-        )
-        task_repo.toggle_task_metric_enabled(str(task_id), str(metric_id), body.enabled)
-        updated_task = task_repo.get_task_by_id(str(task_id))
-        return updated_task._to_response_model()
-    finally:
-        db_session.close()
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    task_repo.toggle_task_metric_enabled(str(task_id), str(metric_id), body.enabled)
+    updated_task = task_repo.get_task_by_id(str(task_id))
+    return updated_task._to_response_model()
 
 
 @task_management_routes.delete(
@@ -578,31 +537,26 @@ def archive_task_metric(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> Response:
-    try:
-        metric_repo = MetricRepository(db_session)
-        task_repo = TaskRepository(
-            db_session,
-            RuleRepository(db_session),
-            metric_repo,
-            application_config,
+    metric_repo = MetricRepository(db_session)
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        metric_repo,
+        application_config,
+    )
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+
+    task_metrics = tasks_metrics_repo._get_task_metrics_ids(
+        str(task_id),
+        only_enabled=False,
+    )
+    if str(metric_id) not in task_metrics:
+        raise HTTPException(
+            status_code=400,
+            detail=constants.ERROR_UNRELATED_TASK_METRIC,
         )
-        tasks_metrics_repo = TasksMetricsRepository(db_session)
-        # task_repo.archive_metric_link(str(task_id), str(metric_id))
-        # return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-        task_metrics = tasks_metrics_repo._get_task_metrics_ids(
-            str(task_id),
-            only_enabled=False,
-        )
-        if str(metric_id) not in task_metrics:
-            raise HTTPException(
-                status_code=400,
-                detail=constants.ERROR_UNRELATED_TASK_METRIC,
-            )
+    task_repo.archive_metric_link(str(task_id), str(metric_id))
+    metric_repo.archive_metric(str(metric_id))
 
-        task_repo.archive_metric_link(str(task_id), str(metric_id))
-        metric_repo.archive_metric(str(metric_id))
-
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    finally:
-        db_session.close()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

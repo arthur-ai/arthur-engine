@@ -105,7 +105,7 @@ class TaskRepository:
         db_task = (
             self.db_session.query(DatabaseTask).filter(DatabaseTask.id == id).first()
         )
-        if not db_task or db_task.archived:
+        if not db_task:
             raise HTTPException(
                 status_code=404,
                 detail="Task %s not found." % id,
