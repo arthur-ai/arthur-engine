@@ -41,6 +41,10 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const [, setDrawerTarget] = useDrawerTarget();
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: "earliest_start_time", desc: true }]);
+
+  const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
   const params = useMemo(
     () => ({
       taskId: task?.id ?? "",
@@ -48,8 +52,9 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
       pageSize: pagination.pageSize,
       filters,
       timeRange,
+      sort,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -58,8 +63,6 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredSessions(api, params),
   });
-
-  const [sorting] = useState<SortingState>([{ id: "earliest_start_time", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: { session_id: string }) => {
@@ -128,6 +131,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
               isLoading={isLoading}
               onRowClick={handleRowClick}
               sorting={sorting}
+              onSortingChange={setSorting}
             />
           </>
         )}

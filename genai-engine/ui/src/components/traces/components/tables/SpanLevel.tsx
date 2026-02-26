@@ -57,6 +57,10 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+
+  const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
   const params = useMemo(
     () => ({
       taskId: task?.id ?? "",
@@ -64,8 +68,9 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
       pageSize: pagination.pageSize,
       filters,
       timeRange,
+      sort,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -74,8 +79,6 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredSpans(api, params),
   });
-
-  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: SpanMetadataResponse) => {
@@ -188,6 +191,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
                 isLoading={isLoading}
                 onRowClick={handleRowClick}
                 sorting={sorting}
+                onSortingChange={setSorting}
               />
             </BucketProvider>
           </>
