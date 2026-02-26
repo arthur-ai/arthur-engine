@@ -1,6 +1,15 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'include_archived'
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/unarchive  endpoint added
 
 # 02/26/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the optional property 'display_currency' to the response with the '200' status
@@ -10,6 +19,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'display_currency' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/users  added the optional property 'display_currency' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/display-settings  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
 
 # 02/25/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  removed the required property 'enqueued' from the response with the '200' status

@@ -9442,10 +9442,20 @@ export interface SearchTasksApiV2TasksSearchPostParams {
 /** SearchTasksRequest */
 export interface SearchTasksRequest {
   /**
+   * Include Archived
+   * Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks. If only_archived is True, this flag is ignored.
+   */
+  include_archived?: boolean | null;
+  /**
    * Is Agentic
    * Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.
    */
   is_agentic?: boolean | null;
+  /**
+   * Only Archived
+   * Return only archived tasks. True returns exclusively archived tasks, False or None has no effect. Takes precedence over include_archived when both are set.
+   */
+  only_archived?: boolean | null;
   /**
    * Task Ids
    * List of tasks to query for.
@@ -10122,6 +10132,12 @@ export interface TaskResponse {
    * Whether the task is agentic or not
    */
   is_agentic?: boolean | null;
+  /**
+   * Is Archived
+   * Whether this task is archived
+   * @default false
+   */
+  is_archived?: boolean | null;
   /**
    * Is Autocreated
    * Whether this task was automatically created by Arthur
@@ -10917,6 +10933,10 @@ export interface TransformVariableExperimentOutputSource {
    */
   type?: "transform_variable";
 }
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostData = any;
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostError = HTTPValidationError;
 
 /**
  * UnregisteredRootSpanGroup
@@ -12285,7 +12305,11 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
+<<<<<<< HEAD
  * @version 2.1.419
+=======
+ * @version 2.1.420
+>>>>>>> dev
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15647,6 +15671,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Unarchive a previously archived task. Also unarchives all task-scoped rules and metrics that were archived with it.
+     *
+     * @tags Tasks
+     * @name UnarchiveTaskApiV2TasksTaskIdUnarchivePost
+     * @summary Unarchive Task
+     * @request POST:/api/v2/tasks/{task_id}/unarchive
+     * @secure
+     */
+    unarchiveTaskApiV2TasksTaskIdUnarchivePost: (taskId: string, params: RequestParams = {}) =>
+      this.request<UnarchiveTaskApiV2TasksTaskIdUnarchivePostData, UnarchiveTaskApiV2TasksTaskIdUnarchivePostError>({
+        path: `/api/v2/tasks/${taskId}/unarchive`,
+        method: "POST",
+        secure: true,
         format: "json",
         ...params,
       }),
