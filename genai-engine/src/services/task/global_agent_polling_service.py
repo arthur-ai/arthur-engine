@@ -5,6 +5,7 @@ from concurrent.futures import wait
 from datetime import datetime, timedelta
 from typing import Hashable, Optional
 
+import vertexai
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
     GCPAgentCreationSource,
@@ -25,7 +26,6 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.agent_discovery_schemas import DiscoverAndPollResponse
 from schemas.internal_schemas import Task
-from services.agent_discovery_service import list_vertex_ai_agents
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from services.trace.external_trace_retrieval_service import (
     ExternalTraceRetrievalService,
@@ -168,7 +168,12 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
         created_count = 0
         db_session = next(get_db_session())
         try:
-            agents = list_vertex_ai_agents(project_id, location)
+            vertexai.init(project=project_id, location=location)
+            agents = list(
+                vertexai.Client(
+                    project=project_id, location=location
+                ).agent_engines.list()
+            )
 
             if not agents:
                 logger.info("No Vertex AI agents found during discovery")
