@@ -44,7 +44,7 @@ const navigationSections: NavigationSection[] = [
   {
     id: "prompts",
     label: "Prompts",
-    items: [{ id: "prompts", label: "Prompts", icon: <DescriptionOutlined /> }],
+    items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined /> }],
   },
   {
     id: "rag",
