@@ -74,6 +74,7 @@ class TaskRepository:
         task_name: Optional[str] = None,
         is_agentic: Optional[bool] = None,
         include_archived: bool = False,
+        only_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
         page: int = 0,
@@ -85,7 +86,9 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.name.ilike(f"%{task_name}%"))
         if is_agentic is not None:
             stmt = stmt.where(DatabaseTask.is_agentic == is_agentic)
-        if not include_archived:
+        if only_archived:
+            stmt = stmt.where(DatabaseTask.archived == True)
+        elif not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
         if sort == PaginationSortMethod.DESCENDING:
             stmt = stmt.order_by(desc(DatabaseTask.created_at))
@@ -101,11 +104,13 @@ class TaskRepository:
 
         return results, count
 
-    def get_db_task_by_id(self, id: str) -> DatabaseTask:
+    def get_db_task_by_id(
+        self, id: str, include_archived: bool = False
+    ) -> DatabaseTask:
         db_task = (
             self.db_session.query(DatabaseTask).filter(DatabaseTask.id == id).first()
         )
-        if not db_task or db_task.archived:
+        if not db_task or (not include_archived and db_task.archived):
             raise HTTPException(
                 status_code=404,
                 detail="Task %s not found." % id,
@@ -300,11 +305,37 @@ class TaskRepository:
 
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
-                self.rule_repository.archive_rule(link.rule_id)
+                self.rule_repository.archive_rule(link.rule_id, commit=False)
 
         for metric_link in db_task.metric_links:
-            self.metric_repository.archive_metric(metric_link.metric_id)
+            self.metric_repository.archive_metric(metric_link.metric_id, commit=False)
+
         db_task.archived = True
+        self.db_session.commit()
+
+    def unarchive_task(self, task_id: str) -> None:
+        db_task = (
+            self.db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == task_id)
+            .first()
+        )
+        if not db_task:
+            raise HTTPException(status_code=404, detail="Task %s not found." % task_id)
+        if not db_task.archived:
+            raise HTTPException(
+                status_code=400, detail="Task %s is not archived." % task_id
+            )
+        if db_task.is_system_task:
+            raise HTTPException(status_code=400, detail="Cannot unarchive system tasks")
+
+        for link in db_task.rule_links:
+            if link.rule.scope == RuleScope.TASK:
+                self.rule_repository.unarchive_rule(link.rule_id, commit=False)
+
+        for metric_link in db_task.metric_links:
+            self.metric_repository.unarchive_metric(metric_link.metric_id, commit=False)
+
+        db_task.archived = False
         self.db_session.commit()
 
     def create_task(self, task: Task, with_default_rules: bool = True) -> Task:
@@ -370,7 +401,7 @@ class TaskRepository:
                     "creation_source",
                     "gcp_reasoning_engine_id",
                 )
-                == engine_id
+                == engine_id,
             )
             .first()
         )

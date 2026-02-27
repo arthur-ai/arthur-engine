@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session
@@ -52,16 +54,26 @@ def execute_agent_polling(
 @agent_polling_routes.post(
     "/agent-polling/execute-all",
     description="Manually trigger a full agent discovery and polling cycle. "
-    "Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks.",
+    "Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. "
+    "Use wait_for_completion=true to block until all polling jobs finish.",
     response_model=DiscoverAndPollResponse,
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def execute_all_agent_polling(
+    wait_for_completion: bool = False,
+    timeout: Annotated[int | None, Query(ge=1)] = None,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> DiscoverAndPollResponse:
-    """Manually trigger a full discovery + polling cycle."""
+    """Manually trigger a full discovery + polling cycle.
+
+    Args:
+        wait_for_completion: If true, block until all polling jobs complete.
+                            If false (default), return immediately after enqueuing.
+        timeout: Maximum seconds to wait for jobs to complete (only used with wait_for_completion=true).
+                Default: None (no timeout)
+    """
     polling_service = get_global_agent_polling_service()
     if not polling_service:
         raise HTTPException(
@@ -70,7 +82,15 @@ def execute_all_agent_polling(
         )
 
     try:
-        return polling_service._discover_and_poll_agents()
+        return polling_service._discover_and_poll_agents(
+            wait_for_completion=wait_for_completion,
+            timeout=timeout,
+        )
+    except TimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=str(e),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

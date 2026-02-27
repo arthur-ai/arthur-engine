@@ -76,8 +76,11 @@ class TraceIngestionService:
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
-
         self.span_normalizer = SpanNormalizationService()
+
+        config_repo = ConfigurationRepository(db_session)
+        app_config = config_repo.get_configurations()
+        self.task_repo = get_task_repository(db_session, app_config)
 
     def process_trace_data(
         self,
@@ -250,6 +253,20 @@ class TraceIngestionService:
         # Step 1: If explicit_task_id (arthur.task) present → use it
         if explicit_task_id:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
+            try:
+                task = self.task_repo.get_db_task_by_id(
+                    explicit_task_id, include_archived=True
+                )
+                if task.archived:
+                    logger.warning(
+                        f"Trace received with explicit task ID '{explicit_task_id}' which is archived. "
+                        "Traces are still being written to this task. "
+                        "Unarchive the task to resume normal operation."
+                    )
+            except Exception as e:
+                logger.debug(
+                    f"Could not check archived status for task '{explicit_task_id}': {e}"
+                )
             return explicit_task_id
 
         # Step 2: If no task_id but service.name present → lookup in mapping
@@ -262,6 +279,21 @@ class TraceIngestionService:
                 logger.debug(
                     f"Found existing mapping: {service_name} → {existing_task_id}"
                 )
+                # Check if the mapped task is archived — warn but still route to it
+                try:
+                    mapped_task = self.task_repo.get_db_task_by_id(
+                        existing_task_id, include_archived=True
+                    )
+                    if mapped_task.archived:
+                        logger.warning(
+                            f"Service name '{service_name}' is mapped to archived task "
+                            f"{existing_task_id}. Traces are still being written to this task. "
+                            "Unarchive the task to resume normal operation."
+                        )
+                except Exception as e:
+                    logger.debug(
+                        f"Could not check archived status for task '{existing_task_id}': {e}"
+                    )
                 return existing_task_id
 
             # Step 4: Check resource attributes for GCP cloud.resource_id
@@ -271,11 +303,17 @@ class TraceIngestionService:
                     try:
                         _, _, engine_id = parse_gcp_resource_path(cloud_resource_id)
                         if engine_id:
-                            config_repo = ConfigurationRepository(self.db_session)
-                            app_config = config_repo.get_configurations()
-                            task_repo = get_task_repository(self.db_session, app_config)
-                            existing_task = task_repo.find_by_gcp_engine_id(engine_id)
+                            existing_task = self.task_repo.find_by_gcp_engine_id(
+                                engine_id
+                            )
                             if existing_task:
+                                if existing_task.archived:
+                                    logger.warning(
+                                        f"Service name '{service_name}' matched GCP task "
+                                        f"'{existing_task.name}' ({existing_task.id}) which is archived. "
+                                        "Traces are still being written to this task. "
+                                        "Unarchive the task to resume normal operation."
+                                    )
                                 # Step 5: Create service_name mapping for future speed
                                 mapping_repo.create_mapping(
                                     service_name, existing_task.id
@@ -296,11 +334,7 @@ class TraceIngestionService:
             )
 
             try:
-                config_repo = ConfigurationRepository(self.db_session)
-                app_config = config_repo.get_configurations()
-                task_repo = get_task_repository(self.db_session, app_config)
-
-                new_task = task_repo.create_auto_task(service_name)
+                new_task = self.task_repo.create_auto_task(service_name)
 
                 mapping_repo.create_mapping(service_name, new_task.id)
 

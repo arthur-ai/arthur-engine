@@ -2,9 +2,9 @@ import logging
 import threading
 import time
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
-from typing import Generic, Hashable, Optional, Type, TypeVar
+from typing import Any, Generic, Hashable, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -82,34 +82,38 @@ class BaseQueueService(ABC, Generic[JobType]):
         """Get a hashable key for a job to prevent duplicate enqueueing."""
         raise NotImplementedError
 
-    def _submit_job(self, job: JobType, wait_time: float) -> None:
-        """Submit a job to the executor after the wait time."""
+    def _submit_job(self, job: JobType, wait_time: float) -> Any:
+        """Submit a job to the executor after the wait time and return its result."""
         if self.shutdown_event.is_set():
             logger.warning(f"Skipping job due to shutdown")
-            return
+            return None
 
         if self.shutdown_event.wait(wait_time):
-            return
+            return None
 
-        if not self.executor:
-            logger.error(
-                f"Cannot submit job: executor is not initialized",
-            )
-            return
+        # Run the job directly on this thread — it is already executing inside the
+        # executor, so re-submitting to the same pool would cause a deadlock when
+        # all worker threads are occupied waiting on their own inner futures.
+        return self._execute_job_wrapper(job)
 
-        self.executor.submit(self._execute_job_wrapper, job)
-
-    def _execute_job_wrapper(self, job: JobType) -> None:
+    def _execute_job_wrapper(self, job: JobType) -> Any:
         """Wrapper that tracks job execution and removes from active set when done."""
         job_key = self._get_job_key(job)
         try:
-            self._execute_job(job)
+            result = self._execute_job(job)
+            return result
         finally:
             with self.active_jobs_lock:
                 self.active_jobs.discard(job_key)
 
-    def enqueue(self, job: JobType) -> bool:
-        """Schedule a job to be executed. Returns True if enqueued, False if already active."""
+    def enqueue(self, job: JobType) -> tuple[bool, Optional[Future[Any]]]:
+        """Schedule a job to be executed.
+
+        Returns:
+            Tuple of (was_enqueued: bool, future: Optional[Future[Any]])
+            - was_enqueued: True if enqueued, False if already active
+            - future: Future object if enqueued, None otherwise
+        """
         job_key = self._get_job_key(job)
 
         try:
@@ -119,7 +123,7 @@ class BaseQueueService(ABC, Generic[JobType]):
                     logger.debug(
                         f"Job with key {job_key} is already active, skipping enqueue",
                     )
-                    return False
+                    return False, None
                 self.active_jobs.add(job_key)
 
             if self.override_execution_delay is not None:
@@ -141,7 +145,7 @@ class BaseQueueService(ABC, Generic[JobType]):
                     f"{self.service_name} is not initialized. Start the {self.service_name} first.",
                 )
 
-            self.executor.submit(self._submit_job, job, wait_time)
+            future = self.executor.submit(self._submit_job, job, wait_time)
         except Exception as e:
             # Executor might be shutting down or have other issues
             logger.error(
@@ -152,7 +156,7 @@ class BaseQueueService(ABC, Generic[JobType]):
                 self.active_jobs.discard(job_key)
             raise e
 
-        return True
+        return True, future
 
     @abstractmethod
     def _background_loop(self) -> None:
@@ -160,6 +164,6 @@ class BaseQueueService(ABC, Generic[JobType]):
         raise NotImplementedError
 
     @abstractmethod
-    def _execute_job(self, job: JobType) -> None:
-        """Execute a single job."""
+    def _execute_job(self, job: JobType) -> Any:
+        """Execute a single job. Subclasses may return a value (e.g., trace count)."""
         raise NotImplementedError

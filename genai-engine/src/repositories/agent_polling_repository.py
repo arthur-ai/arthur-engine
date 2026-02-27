@@ -78,7 +78,8 @@ class AgentPollingRepository:
             )
 
         job = AgentPollingJob(task_id=task.id)
-        if polling_service.enqueue(job):
+        enqueued, _ = polling_service.enqueue(job)
+        if enqueued:
             logger.info(f"Enqueued manual polling job for task {task_id}")
         else:
             logger.info(f"Polling job for task {task_id} is already active")

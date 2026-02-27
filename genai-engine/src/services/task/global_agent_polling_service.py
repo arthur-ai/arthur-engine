@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from concurrent.futures import wait
 from datetime import datetime, timedelta
 from typing import Hashable, Optional
 
@@ -129,18 +130,24 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         logger.info(f"Background thread stopped for {self.service_name}")
 
-    def _discover_and_poll_agents(self) -> DiscoverAndPollResponse:
+    def _discover_and_poll_agents(
+        self, wait_for_completion: bool = False, timeout: Optional[float] = None
+    ) -> DiscoverAndPollResponse:
         """Run a full discovery + polling cycle.
 
+        Args:
+            wait_for_completion: If True, block until all polling jobs complete.
+            timeout: Maximum seconds to wait for jobs (only used if wait_for_completion=True).
+
         Returns:
-            DiscoverAndPollResponse with discovered and enqueued counts.
+            DiscoverAndPollResponse with discovered and traces_fetched counts.
         """
         discovered = self._discover_gcp_agents()
-        enqueued = self._poll_all_gcp_tasks()
+        traces_fetched = self._poll_all_gcp_tasks(wait_for_completion, timeout)
         return DiscoverAndPollResponse(
             status="completed",
             discovered=discovered,
-            enqueued=enqueued,
+            traces_fetched=traces_fetched,
         )
 
     def _discover_gcp_agents(self) -> int:
@@ -288,15 +295,21 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
         return True
 
-    def _poll_all_gcp_tasks(self) -> int:
+    def _poll_all_gcp_tasks(
+        self, wait_for_completion: bool = False, timeout: Optional[float] = None
+    ) -> int:
         """Enqueue trace-fetch jobs for all eligible GCP tasks.
 
         Finds all GCP tasks, checks eligibility (project/region match),
         and enqueues polling jobs. Failed polls are logged but never block
         future polls.
 
+        Args:
+            wait_for_completion: If True, block until all jobs complete.
+            timeout: Maximum seconds to wait (only used if wait_for_completion=True).
+
         Returns:
-            Number of polling jobs enqueued.
+            Number of traces fetched (0 for async mode, actual count for sync mode).
         """
         project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
         location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
@@ -330,9 +343,10 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
             logger.info(f"Found {len(gcp_tasks)} GCP task(s), checking eligibility")
 
-            # Ensure polling state exists and enqueue eligible tasks
+            # Ensure polling state exists and collect eligible jobs
             polling_state_repo = TaskPollingStateRepository(db_session)
             skipped_count = 0
+            jobs_to_enqueue = []
 
             for db_task in gcp_tasks:
                 metadata = (
@@ -357,31 +371,104 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
 
                 polling_state_repo.get_or_create(db_task.id)
                 job = AgentPollingJob(task_id=db_task.id)
-                if self.enqueue(job):
-                    enqueued_count += 1
+                jobs_to_enqueue.append(job)
 
-            log_parts = [f"Enqueued {enqueued_count} polling jobs"]
-            already_active = len(gcp_tasks) - enqueued_count - skipped_count
-            if skipped_count > 0:
-                log_parts.append(f"{skipped_count} skipped (ineligible)")
-            if already_active > 0:
-                log_parts.append(f"{already_active} already active")
-            logger.info(", ".join(log_parts))
+            # Execute based on mode
+            if wait_for_completion:
+                # Synchronous mode: enqueue and wait for all jobs
+                futures_to_jobs = {}
+                for job in jobs_to_enqueue:
+                    enqueued, future = self.enqueue(job)
+                    if enqueued and future:
+                        futures_to_jobs[future] = job
+
+                if not futures_to_jobs:
+                    # All jobs were skipped (already active)
+                    logger.info(
+                        f"All {len(jobs_to_enqueue)} jobs skipped (already active), "
+                        f"{skipped_count} ineligible"
+                    )
+                    return 0
+
+                # Wait for all futures to complete
+                done, not_done = wait(futures_to_jobs.keys(), timeout=timeout)
+
+                # Aggregate trace counts from completed jobs
+                total_traces = 0
+                failures = 0
+                for future in done:
+                    job = futures_to_jobs[future]
+                    try:
+                        trace_count = future.result()
+                        total_traces += trace_count or 0
+                    except Exception as e:
+                        failures += 1
+                        logger.error(
+                            f"Polling failed for task {job.task_id}: {e}",
+                            exc_info=True,
+                        )
+
+                # Log completion summary
+                log_parts = [
+                    f"Synchronous polling completed: {len(done) - failures} succeeded, "
+                    f"{failures} failed"
+                ]
+                if not_done:
+                    log_parts.append(f"{len(not_done)} timed out")
+                if skipped_count > 0:
+                    log_parts.append(
+                        f"{skipped_count} skipped (ineligible or already active)"
+                    )
+                logger.info(", ".join(log_parts))
+
+                # Raise timeout error if any jobs didn't complete
+                if not_done:
+                    timed_out_task_ids = [
+                        futures_to_jobs[future].task_id for future in not_done
+                    ]
+                    raise TimeoutError(
+                        f"{len(not_done)} polling job(s) timed out after {timeout}s. "
+                        f"Task IDs: {', '.join(timed_out_task_ids)}"
+                    )
+
+                return total_traces
+            else:
+                # Asynchronous mode: enqueue and return (original behavior)
+                enqueued_count = 0
+                for job in jobs_to_enqueue:
+                    enqueued, _ = self.enqueue(job)
+                    if enqueued:
+                        enqueued_count += 1
+
+                log_parts = [f"Enqueued {enqueued_count} polling jobs"]
+                already_active = len(jobs_to_enqueue) - enqueued_count
+                if skipped_count > 0:
+                    log_parts.append(f"{skipped_count} skipped (ineligible)")
+                if already_active > 0:
+                    log_parts.append(f"{already_active} already active")
+                logger.info(", ".join(log_parts))
+
+                return 0  # Unknown trace count for async mode
 
         except Exception as e:
             logger.error(f"Error enqueuing GCP polling jobs: {e}", exc_info=True)
+            if wait_for_completion:
+                raise
+            return 0
         finally:
             db_session.close()
 
-        return enqueued_count
-
-    def _execute_job(self, job: AgentPollingJob) -> None:
+    def _execute_job(self, job: AgentPollingJob) -> int:
         """Fetch traces for a single task.
 
         On success: updates last_fetched.
         On failure: logs the error for observability but does NOT
         update polling state — the next loop iteration will retry automatically.
+
+        Returns:
+            int: Number of traces fetched for this task.
         """
+
         db_session = next(get_db_session())
         try:
             # Get the task
@@ -398,7 +485,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
             task = task_repository.get_task_by_id(job.task_id)
             if not task:
                 logger.error(f"Task {job.task_id} not found, skipping poll")
-                return
+                return 0
 
             if (
                 task.task_metadata is None
@@ -408,7 +495,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                 )
             ):
                 logger.warning(f"Task {job.task_id} is not a GCP task, skipping poll")
-                return
+                return 0
 
             creation_source = task.task_metadata.creation_source.root
 
@@ -468,6 +555,8 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                 f"processed {total_trace_count} trace(s)"
             )
 
+            return total_trace_count
+
         except Exception as e:
             # Log for observability — do not persist error state.
             # The next polling loop iteration will retry this task automatically.
@@ -476,6 +565,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                 exc_info=True,
                 extra={"task_id": job.task_id},
             )
+            return 0
         finally:
             db_session.close()
 

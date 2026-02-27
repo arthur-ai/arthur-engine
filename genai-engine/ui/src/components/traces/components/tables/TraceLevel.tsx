@@ -54,6 +54,10 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   const api = useApi()!;
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+
+  const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
   const params = useMemo(
     () => ({
       taskId: task?.id ?? "",
@@ -61,8 +65,9 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       pageSize: pagination.pageSize,
       filters,
       timeRange,
+      sort,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -71,8 +76,6 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredTraces(api, params),
   });
-
-  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: TraceMetadataResponse) => {
@@ -184,6 +187,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
                 isLoading={isLoading}
                 onRowClick={handleRowClick}
                 sorting={sorting}
+                onSortingChange={setSorting}
               />
             </BucketProvider>
           </>
