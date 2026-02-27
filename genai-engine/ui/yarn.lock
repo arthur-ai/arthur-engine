@@ -167,19 +167,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arizeai/openinference-semantic-conventions@npm:^2.1.1":
+"@arizeai/openinference-semantic-conventions@npm:^2.1.0, @arizeai/openinference-semantic-conventions@npm:^2.1.1":
   version: 2.1.7
   resolution: "@arizeai/openinference-semantic-conventions@npm:2.1.7"
   checksum: 10c0/dedd8643aa8b42c9dbed42bc936bd08067213cdb77220ec77b6c5452e2b5e684323aae32bd4dd2823fa29b2b3b19915614dec037148b219391fd5dff12da2e7a
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^3.11.1":
-  version: 3.11.1
-  resolution: "@arthur/shared-components@npm:3.11.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.11.1.tgz"
+"@arthur/shared-components@npm:^3.11.4":
+  version: 3.11.4
+  resolution: "@arthur/shared-components@npm:3.11.4::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.11.4.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.33.3"
-    "@arthur/unify-types": "npm:^3.2.0"
+    "@arizeai/openinference-semantic-conventions": "npm:^2.1.0"
+    "@arthur/unify-types": "npm:^3.11.4"
     "@base-ui/react": "npm:^1.2.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -213,16 +214,16 @@ __metadata:
     react-dom: ^18.0.0 || ^19.1.0
     react-error-boundary: ^4.0.0
     react-i18next: ^16.5.3
-  checksum: 10c0/271ab624ace9287b4f906e471adee3e8b8806baa2d73c5e28a2d7002abfe82d36131e095a987f9c79e0d75e568c5db88c6ec01447da4b95f954e8ef1e82d83c7
+  checksum: 10c0/c4fc1ed876dd55ae93caa2f17fae3b4ad48f90505f49afc71a08d9db38bf32a9e5b97f63d15144cabfdd5e583e6d1bef9819f883821efaa16ab60e4d851efc2f
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^3.2.0":
-  version: 3.2.0
-  resolution: "@arthur/unify-types@npm:3.2.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.2.0.tgz"
+"@arthur/unify-types@npm:^3.11.4":
+  version: 3.11.4
+  resolution: "@arthur/unify-types@npm:3.11.4::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.11.4.tgz"
   dependencies:
-    react: "npm:^18.3.1"
-  checksum: 10c0/33e2f1d0bab94e7bbdb4bb1c22fe019b61c69bc755eae3b423c2d79a008b415d4dc63b021b3d5e498fda52a79609842291520bb4b0bcd8b908b4dee01465d028
+    react: "npm:^19.1.1"
+  checksum: 10c0/b29580a776688668343a8e6f9a9dac30cf960695eb34f63c08a59c4463bf7b56b53e3eb55be8674f5406a15c5648ba97a56d7f173b1f20e50a9cab299104c2d0
   languageName: node
   linkType: hard
 
@@ -5854,7 +5855,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"loose-envify@npm:^1.1.0, loose-envify@npm:^1.4.0":
+"loose-envify@npm:^1.4.0":
   version: 1.4.0
   resolution: "loose-envify@npm:1.4.0"
   dependencies:
@@ -7491,15 +7492,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:^18.3.1":
-  version: 18.3.1
-  resolution: "react@npm:18.3.1"
-  dependencies:
-    loose-envify: "npm:^1.1.0"
-  checksum: 10c0/283e8c5efcf37802c9d1ce767f302dd569dd97a70d9bb8c7be79a789b9902451e0d16334b05d73299b20f048cbc3c7d288bbbde10b701fa194e2089c237dbea3
-  languageName: node
-  linkType: hard
-
 "react@npm:^19.1.1":
   version: 19.2.4
   resolution: "react@npm:19.2.4"
@@ -8535,7 +8527,7 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.31.1"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@arthur/shared-components": "npm:^3.11.1"
+    "@arthur/shared-components": "npm:^3.11.4"
     "@base-ui/react": "npm:^1.0.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
