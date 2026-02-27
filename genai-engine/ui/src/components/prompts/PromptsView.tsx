@@ -25,7 +25,7 @@ const TAB_SUBTITLES: Record<string, string> = {
 export const PromptsView = () => {
   const [activeTab, setActiveTab] = useQueryState(
     "tab",
-    parseAsStringEnum(["notebooks", "prompts-management", "prompt-experiments"]).withDefault("notebooks")
+    parseAsStringEnum(["prompts-management", "notebooks", "prompt-experiments"]).withDefault("prompts-management")
   );
 
   const [experimentsMenuAnchor, setExperimentsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -132,8 +132,8 @@ export const PromptsView = () => {
         onChange={(_, value) => setActiveTab(value)}
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="Notebooks" value="notebooks" />
         <Tab label="Prompts" value="prompts-management" />
+        <Tab label="Notebooks" value="notebooks" />
         <Tab label="Experiments" value="prompt-experiments" />
       </Tabs>
 
