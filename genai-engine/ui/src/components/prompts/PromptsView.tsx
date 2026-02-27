@@ -11,9 +11,9 @@ import PromptsManagement from "../prompts-management/PromptsManagement";
 import { getContentHeight } from "@/constants/layout";
 
 const TAB_TITLES: Record<string, string> = {
-  notebooks: "Prompt Notebooks",
-  "prompts-management": "Prompts Management",
-  "prompt-experiments": "Prompt Experiments",
+  notebooks: "Notebooks",
+  "prompts-management": "Prompts",
+  "prompt-experiments": "Experiments",
 };
 
 const TAB_SUBTITLES: Record<string, string> = {
@@ -132,9 +132,9 @@ export const PromptsView = () => {
         onChange={(_, value) => setActiveTab(value)}
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="Prompt Notebooks" value="notebooks" />
-        <Tab label="Prompt Management" value="prompts-management" />
-        <Tab label="Prompt Experiments" value="prompt-experiments" />
+        <Tab label="Notebooks" value="notebooks" />
+        <Tab label="Prompts" value="prompts-management" />
+        <Tab label="Experiments" value="prompt-experiments" />
       </Tabs>
 
       <Box sx={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
