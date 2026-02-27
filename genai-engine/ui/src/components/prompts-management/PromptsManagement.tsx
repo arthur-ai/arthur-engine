@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import PromptFullScreenView from "./fullscreen/PromptFullScreenView";
@@ -20,7 +20,11 @@ import { useTask } from "@/hooks/useTask";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const PromptsManagement: React.FC = () => {
+interface PromptsManagementProps {
+  onRegisterCreate?: (fn: () => void) => void;
+}
+
+const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate }) => {
   const { task } = useTask();
   const { id: taskId, promptName: urlPromptName, version: urlVersion } = useParams<{ id: string; promptName?: string; version?: string }>();
   const navigate = useNavigate();
@@ -59,6 +63,11 @@ const PromptsManagement: React.FC = () => {
     // Navigate to prompts playground
     window.location.href = `/tasks/${task?.id}/playgrounds/prompts`;
   }, [task?.id]);
+
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleCreatePrompt);
+  }, [handleCreatePrompt]);
 
   const handleExpandToFullScreen = useCallback(
     (promptName: string) => {
@@ -140,7 +149,7 @@ const PromptsManagement: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      <PromptsManagementHeader onCreatePrompt={handleCreatePrompt} />
+      {!onRegisterCreate && <PromptsManagementHeader onCreatePrompt={handleCreatePrompt} />}
 
       {error && prompts.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
