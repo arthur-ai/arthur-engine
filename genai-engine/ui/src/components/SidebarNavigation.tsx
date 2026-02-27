@@ -9,6 +9,7 @@ import {
   ArrowBackOutlined,
   LiveTvOutlined,
   InsightsOutlined,
+  ChevronRightOutlined,
 } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import React from "react";
@@ -38,7 +39,7 @@ const navigationSections: NavigationSection[] = [
   {
     id: "observability",
     label: "Observability",
-    items: [{ id: "traces", label: "Traces", icon: <TrendingUpOutlined /> }],
+    items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined /> }],
   },
   {
     id: "prompts",
@@ -119,15 +120,15 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                 <InsightsOutlined />
               </span>
               <span>Analyze</span>
-              <svg className="ml-auto h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              {activeSection === "overview" && <ChevronRightOutlined sx={{ ml: "auto", fontSize: 16 }} />}
             </Link>
           </div>
 
           {navigationSections.map((section) => (
             <div key={section.id} className="mb-4">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{section.label}</div>
+              {section.id !== "observability" && (
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{section.label}</div>
+              )}
 
               <ul className="mt-1 space-y-1">
                 {section.items.map((item) => {
@@ -150,6 +151,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                       >
                         <span className="shrink-0">{item.icon}</span>
                         <span>{item.label}</span>
+                        {isActive && <ChevronRightOutlined sx={{ ml: "auto", fontSize: 16 }} />}
                       </Link>
                     </li>
                   );
