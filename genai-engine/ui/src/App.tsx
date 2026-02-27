@@ -26,6 +26,7 @@ import { ModelProviders } from "./components/model-providers";
 import Notebooks from "./components/notebooks/Notebooks";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
+import { PromptsView } from "./components/prompts/PromptsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlaygroundWrapper";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -142,6 +143,8 @@ function App() {
                           <Route path="prompts-management" element={<PromptsManagement />} />
                           <Route path="prompts/:promptName" element={<PromptsManagement />} />
                           <Route path="prompts/:promptName/versions/:version" element={<PromptsManagement />} />
+
+                          <Route path="prompts" element={<PromptsView />} />
 
                           <Route path="notebooks" element={<Notebooks />} />
                           <Route path="playgrounds/prompts" element={<PromptsPlayground />} />
