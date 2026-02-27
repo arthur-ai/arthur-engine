@@ -10,7 +10,7 @@ import {
   LiveTvOutlined,
   InsightsOutlined,
 } from "@mui/icons-material";
-import { Typography } from "@mui/material";
+import { Link, Typography } from "@mui/material";
 import React from "react";
 import { useParams } from "react-router-dom";
 
@@ -102,8 +102,9 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
         <div className="space-y-1">
           {/* Overview item - appears at the top */}
           <div className="mb-4">
-            <a
+            <Link
               href={`/tasks/${id}/overview`}
+              underline="none"
               onClick={(e) => {
                 e.preventDefault();
                 onNavigate("overview");
@@ -121,7 +122,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
               <svg className="ml-auto h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-            </a>
+            </Link>
           </div>
 
           {navigationSections.map((section) => (
@@ -134,8 +135,9 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
 
                   return (
                     <li key={item.id}>
-                      <a
+                      <Link
                         href={`/tasks/${id}/${item.id}`}
+                        underline="none"
                         onClick={(e) => {
                           e.preventDefault();
                           onNavigate(item.id);
@@ -148,7 +150,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                       >
                         <span className="shrink-0">{item.icon}</span>
                         <span>{item.label}</span>
-                      </a>
+                      </Link>
                     </li>
                   );
                 })}
