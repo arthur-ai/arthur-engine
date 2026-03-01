@@ -22,28 +22,56 @@ Traces are linked to a task in Arthur Engine via the `arthur.task` resource attr
 
 ## Local setup
 
-**1. Install**
+The installer supports two modes. Use **global** to trace all your Claude Code sessions with one install, or **per-project** to scope tracing to a specific project with its own credentials.
+
+---
+
+### Option A — Global install (trace all projects)
 
 ```bash
 cd integrations/claude-code
-./install.sh --project-dir path/to/project
+
+# Optional but recommended: add credentials so the installer writes the config for you
+cp .env.example .env   # or create .env manually (see below)
+
+./install.sh
 ```
 
-This installs the OTel dependencies, copies the tracer to `~/.claude/hooks/`, registers the hooks in `~/.claude/settings.json`, and (if `.env` exists in the project or this folder) writes `.claude/arthur_config.json` in your project directory.
+What this does:
 
-Restart Claude Code after running for the first time.
+1. `pip install -r requirements.txt`
+2. Copies tracer to `~/.claude/hooks/`
+3. Registers hooks in `~/.claude/settings.json` (fires in every Claude Code session)
+4. Writes `~/.claude/arthur_config.json` from `.env` (if present)
 
-**Troubleshooting:** If you see `pyenv: cannot rehash` or pip errors, install dependencies yourself then re-run the script: `python3 -m pip install -r requirements.txt` (or use a virtualenv), then run `./install.sh --project-dir path/to/project` again.
+Restart Claude Code after the first install.
 
-**2. Configure credentials**
+---
 
-The tracer picks up credentials in this priority order:
+### Option B — Per-project install (scoped to one project)
 
-1. Environment variables
-2. `<project>/.claude/arthur_config.json`
-3. `~/.claude/arthur_config.json`
+```bash
+cd integrations/claude-code
+./install.sh --project-dir path/to/your/project
+```
 
-The easiest approach is to populate `.env` in this folder before running `install.sh`:
+What this does:
+
+1. `pip install -r requirements.txt`
+2. Copies tracer to `<project>/.claude/hooks/`
+3. Registers hooks in `<project>/.claude/settings.local.json` (gitignored — fires only in this project)
+4. Writes `<project>/.claude/arthur_config.json` from `.env` (project dir or this dir)
+5. Adds `.claude/arthur_config.json` to `<project>/.gitignore`
+
+Restart Claude Code after the first install.
+
+> **Note:** `settings.local.json` uses `$CLAUDE_PROJECT_DIR` to locate the tracer at runtime, so the same hook registration also works in CI (as long as the tracer is copied into the project — the install step handles this).
+
+---
+
+### Credentials
+
+Populate `.env` in this directory before running `install.sh` and the config file will be written automatically:
 
 ```bash
 # integrations/claude-code/.env
@@ -52,11 +80,15 @@ GENAI_ENGINE_TASK_ID=<your-task-id>
 GENAI_ENGINE_TRACE_ENDPOINT=https://<your-arthur-engine-host>/api/v1/traces
 ```
 
-Or write the config manually:
+The tracer resolves credentials in this priority order:
+
+1. Environment variables (`GENAI_ENGINE_API_KEY`, `GENAI_ENGINE_TASK_ID`, `GENAI_ENGINE_TRACE_ENDPOINT`)
+2. `<project>/.claude/arthur_config.json`
+3. `~/.claude/arthur_config.json`
+
+You can also write either config file manually:
 
 ```json
-// .claude/arthur_config.json  (project-level)
-// ~/.claude/arthur_config.json  (global)
 {
   "api_key": "<your-api-key>",
   "task_id": "<your-task-id>",
@@ -66,9 +98,11 @@ Or write the config manually:
 
 If none of the above are configured, the tracer silently does nothing — safe to install in shared projects.
 
-**3. Re-run install.sh to update**
+---
 
-`install.sh` is idempotent. Re-running it updates the tracer binary and refreshes the project config without duplicating hook entries.
+### Re-running install.sh
+
+`install.sh` is idempotent. Re-running updates the tracer binary and config without duplicating hook entries.
 
 ---
 
