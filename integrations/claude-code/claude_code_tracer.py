@@ -97,7 +97,10 @@ STATE_MAX_AGE_S = 48 * 3600
 
 def _state_path(session_id: str) -> Path:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    return STATE_DIR / f"{session_id}.json"
+    path = (STATE_DIR / f"{session_id}.json").resolve()
+    if not path.is_relative_to(STATE_DIR.resolve()):
+        raise ValueError(f"Invalid session_id: {session_id!r}")
+    return path
 
 
 def _load_state(session_id: str) -> dict:
@@ -159,7 +162,10 @@ def _session_lock(session_id: str):
     which causes multiple PostToolUse hook processes to fire concurrently.
     """
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    lock_path = STATE_DIR / f"{session_id}.lock"
+    lock_path = (STATE_DIR / f"{session_id}.lock").resolve()
+    if not lock_path.is_relative_to(STATE_DIR.resolve()):
+        raise ValueError(f"Invalid session_id: {session_id!r}")
+
     with open(lock_path, "w") as fh:
         fcntl.flock(fh, fcntl.LOCK_EX)
         try:
