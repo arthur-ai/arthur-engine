@@ -137,7 +137,7 @@ function App() {
 
                           <Route path="continuous-evals">
                             {/* Legacy redirect: /continuous-evals → /evaluate?section=continuous-evals */}
-                            <Route index element={<Navigate to="../evaluate?section=continuous-evals" replace />} />
+                            <Route index element={<Navigate to="../evaluate?section=ce-management" replace />} />
                             <Route path="new" element={<LiveEvalsNew />} />
                             <Route path=":evalId" element={<LiveEvalDetail />} />
                           </Route>
