@@ -16,7 +16,7 @@ import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { ConfigVersionsDrawer } from "./ConfigVersionsDrawer";
 import { CreateRagConfigurationModal } from "./CreateRagConfigurationModal";
@@ -28,9 +28,10 @@ import type { RagSearchSettingConfigurationResponse } from "@/lib/api-client/api
 interface ConfigurationsListViewProps {
   onConfigDelete: (configId: string) => void;
   onConfigClick?: (configId: string) => void;
+  onRegisterCreate?: (fn: () => void) => void;
 }
 
-export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ onConfigDelete, onConfigClick }) => {
+export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ onConfigDelete, onConfigClick, onRegisterCreate }) => {
   const { task } = useTask();
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -38,6 +39,15 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
   const [versionsDrawerOpen, setVersionsDrawerOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<RagSearchSettingConfigurationResponse | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  const handleOpenCreateModal = useCallback(() => {
+    setCreateModalOpen(true);
+  }, []);
+
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleOpenCreateModal);
+  }, [handleOpenCreateModal]);
 
   // Fetch with filters
   const { data, isLoading, refetch } = useRagSearchSettings(task?.id, {
@@ -66,27 +76,30 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
           flexDirection: "column",
           gap: 2,
           px: 3,
-          pt: 3,
+          pt: onRegisterCreate ? 2 : 3,
           pb: 2,
           borderBottom: 1,
           borderColor: "divider",
           backgroundColor: "background.paper",
         }}
       >
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Box>
-            <Typography variant="h5" fontWeight={600} color="text.primary">
-              RAG Configurations
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Manage your RAG provider configurations
-            </Typography>
+        {!onRegisterCreate && (
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Box>
+              <Typography variant="h5" fontWeight={600} color="text.primary">
+                RAG Configurations
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Manage your RAG provider configurations
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<Add />} onClick={handleOpenCreateModal} sx={{ whiteSpace: "nowrap" }}>
+              Configuration
+            </Button>
           </Box>
-          <Button variant="contained" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} sx={{ whiteSpace: "nowrap" }}>
-            Configuration
-          </Button>
-        </Box>
+        )}
         <TextField
+          variant="filled"
           placeholder="Search configurations..."
           value={searchQuery}
           onChange={(e) => {
@@ -130,7 +143,7 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
               {searchQuery ? "Try adjusting your search terms" : "Get started by creating your first RAG configuration"}
             </Typography>
             {!searchQuery && (
-              <Button variant="contained" color="primary" startIcon={<Add />} onClick={() => setCreateModalOpen(true)} size="large">
+              <Button variant="contained" color="primary" startIcon={<Add />} onClick={handleOpenCreateModal} size="large">
                 Configuration
               </Button>
             )}

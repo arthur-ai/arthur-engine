@@ -1,5 +1,6 @@
-import { Box } from "@mui/material";
-import React, { useState, useCallback } from "react";
+import SearchIcon from "@mui/icons-material/Search";
+import { Box, InputAdornment, TextField } from "@mui/material";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { RagExperimentsEmptyState } from "./RagExperimentsEmptyState";
@@ -13,7 +14,11 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRagExperimentsWithPolling } from "@/hooks/useRagExperiments";
 import type { CreateRagExperimentRequest, RagExperimentSummary } from "@/lib/api-client/api-client";
 
-export const RagExperimentsListView: React.FC = () => {
+interface RagExperimentsListViewProps {
+  onRegisterCreate?: (fn: () => void) => void;
+}
+
+export const RagExperimentsListView: React.FC<RagExperimentsListViewProps> = ({ onRegisterCreate }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const api = useApi();
@@ -31,9 +36,14 @@ export const RagExperimentsListView: React.FC = () => {
     refetch,
   } = useRagExperimentsWithPolling(taskId, page, rowsPerPage, debouncedSearchText || undefined);
 
-  const handleCreateExperiment = () => {
+  const handleCreateExperiment = useCallback(() => {
     setCreateModalOpen(true);
-  };
+  }, []);
+
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleCreateExperiment);
+  }, [handleCreateExperiment]);
 
   const handleCreateExperimentSubmit = useCallback(
     async (request: CreateRagExperimentRequest): Promise<{ id: string }> => {
@@ -73,9 +83,31 @@ export const RagExperimentsListView: React.FC = () => {
   return (
     <>
       <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
-        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-          <RagExperimentsViewHeader onCreateExperiment={handleCreateExperiment} searchValue={searchText} onSearchChange={handleSearchChange} />
-        </Box>
+        {onRegisterCreate ? (
+          <Box sx={{ px: 3, pt: 2, pb: 2, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}>
+            <TextField
+              variant="filled"
+              placeholder="Search experiments by name, description, or dataset..."
+              value={searchText}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              fullWidth
+              size="small"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+        ) : (
+          <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+            <RagExperimentsViewHeader onCreateExperiment={handleCreateExperiment} searchValue={searchText} onSearchChange={handleSearchChange} />
+          </Box>
+        )}
 
         <Box className="overflow-auto min-h-0">
           {showLoading && (
