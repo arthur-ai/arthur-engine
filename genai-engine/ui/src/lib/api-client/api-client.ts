@@ -713,8 +713,11 @@ export interface AgenticPrompt {
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
   model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Name
    * Name of the agentic prompt
@@ -791,8 +794,11 @@ export interface AgenticPromptVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -4773,8 +4779,11 @@ export interface LLMVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Tags
    * List of tags for the llm asset

@@ -12,7 +12,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
   name: backendPrompt.name,
   created_at: backendPrompt.created_at || undefined,
   modelName: backendPrompt.model_name,
-  modelProvider: backendPrompt.model_provider,
+  modelProvider: backendPrompt.model_provider === "empty" ? "" : backendPrompt.model_provider,
   messages: backendPrompt.messages.map((msg) => ({
     id: `msg-${uuidv4()}`,
     role: msg.role,

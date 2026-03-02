@@ -2,6 +2,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SettingsIcon from "@mui/icons-material/Settings";
 import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -262,6 +263,12 @@ const PromptDetailView = ({
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
             Metadata
           </Typography>
+          {promptData.model_provider === "empty" && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <AlertTitle>Model not configured</AlertTitle>
+              This prompt is using the <strong>Empty</strong> placeholder model. Update the model provider and model name before running this prompt.
+            </Alert>
+          )}
           <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "flex-start" }}>
             <Box>
               <Typography variant="caption" color="text.secondary">

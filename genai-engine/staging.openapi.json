@@ -16463,8 +16463,17 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
                         "type": "integer",
@@ -16665,7 +16674,16 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
                         "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {
@@ -21630,7 +21648,16 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
                         "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {

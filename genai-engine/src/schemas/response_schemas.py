@@ -683,7 +683,7 @@ class LLMVersionResponse(BaseModel):
     deleted_at: Optional[datetime] = Field(
         description="Timestamp when the llm eval version was deleted (None if not deleted)",
     )
-    model_provider: ModelProvider = Field(
+    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
         description="Model provider chosen for this version of the llm eval",
     )
     model_name: str = Field(

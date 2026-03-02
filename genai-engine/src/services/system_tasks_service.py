@@ -96,7 +96,18 @@ def _ensure_prompt_with_production_tag(
         .first()
     )
     if existing_tag:
-        return  # already seeded
+        # Prompt is already seeded; update content if the template has changed
+        existing_prompt = db_session.get(
+            DatabaseAgenticPrompt,
+            (SYNTHETIC_DATASET_TASK_ID, prompt_name, 1),
+        )
+        if existing_prompt:
+            stored_content = existing_prompt.messages[0].get("content", "") if existing_prompt.messages else ""
+            if stored_content != content:
+                existing_prompt.messages = [OpenAIMessage(role=role, content=content).model_dump()]
+                db_session.commit()
+                logger.info(f"Updated content for prompt '{prompt_name}' (template changed)")
+        return
 
     # Check if version 1 already exists
     existing_prompt = db_session.get(
