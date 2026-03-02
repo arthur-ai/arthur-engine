@@ -141,7 +141,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const hasData = Boolean(data?.traces?.length);
 
   return (
-    <Stack gap={1} height="100%" overflow="hidden">
+    <Stack gap={1} height="100%" overflow={welcomeDismissed ? "hidden" : "auto"}>
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
         {/* Search bar and filter button */}
         {(hasData || hasActiveFilters || error) && (

@@ -143,7 +143,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const hasData = Boolean(data?.spans?.length);
 
   return (
-    <Stack gap={1} overflow="hidden">
+    <Stack gap={1} overflow={welcomeDismissed ? "hidden" : "auto"}>
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
         {/* Search bar and filter button */}
         {(hasData || hasActiveFilters || error) && (

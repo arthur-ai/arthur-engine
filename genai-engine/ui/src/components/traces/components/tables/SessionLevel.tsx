@@ -107,7 +107,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const hasData = Boolean(data?.sessions?.length);
 
   return (
-    <Stack gap={1} overflow="hidden">
+    <Stack gap={1} overflow={welcomeDismissed ? "hidden" : "auto"}>
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
         {/* Filter button */}
         {(hasData || hasActiveFilters || error) && (

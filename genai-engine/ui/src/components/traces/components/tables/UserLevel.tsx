@@ -102,7 +102,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const hasData = Boolean(data?.users?.length);
 
   return (
-    <Stack gap={1} overflow="hidden">
+    <Stack gap={1} overflow={welcomeDismissed ? "hidden" : "auto"}>
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={false} dataType="users">
         {hasData && (
           <TracesTable
