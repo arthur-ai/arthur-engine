@@ -313,6 +313,9 @@ export const AllTasks: React.FC = () => {
             {inactiveDays === "archived" ? (
               /* Archived Tasks View */
               <>
+                {/* Filter toolbar always visible so the user can switch back */}
+                <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>{filterToolbar}</Box>
+
                 {isLoadingArchived ? (
                   <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
                     <CircularProgress />
@@ -340,8 +343,6 @@ export const AllTasks: React.FC = () => {
                         </Typography>
                       </Box>
                     </Box>
-
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>{filterToolbar}</Box>
 
                     <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
                       {filteredArchivedTasks.map((task) => (
