@@ -34,7 +34,6 @@ import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
-import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
 import { TracesView } from "./components/TracesView";
@@ -98,23 +97,22 @@ function App() {
                             }
                           />
 
-                          {/* Task layout route: single layout with nested section routes */}
-                          <Route
-                            path="/tasks/:id"
-                            element={
-                              <ProtectedRoute>
-                                <TaskLayout />
-                              </ProtectedRoute>
-                            }
-                          >
-                            <Route index element={<Navigate to="overview" replace />} />
-                            <Route path="overview" element={<TaskOverview />} />
-                            <Route path="task-details" element={<TaskDetailContent />} />
-                            <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
-                            <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
-                            <Route path="rag-configurations" element={<RagConfigurationsPage />} />
-                            <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
-                            <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
+                        {/* Task layout route: single layout with nested section routes */}
+                        <Route
+                          path="/tasks/:id"
+                          element={
+                            <ProtectedRoute>
+                              <TaskLayout />
+                            </ProtectedRoute>
+                          }
+                        >
+                          <Route index element={<Navigate to="overview" replace />} />
+                          <Route path="overview" element={<TaskOverview />} />
+                          <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
+                          <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
+                          <Route path="rag-configurations" element={<RagConfigurationsPage />} />
+                          <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
+                          <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
                             <Route path="agent-experiments">
                               <Route index element={<AgentExperiments />} />

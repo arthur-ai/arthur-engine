@@ -2936,13 +2936,13 @@ __metadata:
   linkType: hard
 
 "axios@npm:^1.12.2":
-  version: 1.13.5
-  resolution: "axios@npm:1.13.5"
+  version: 1.13.6
+  resolution: "axios@npm:1.13.6"
   dependencies:
     follow-redirects: "npm:^1.15.11"
     form-data: "npm:^4.0.5"
     proxy-from-env: "npm:^1.1.0"
-  checksum: 10c0/abf468c34f2d145f3dc7dbc0f1be67e520630624307bda69a41bbe8d386bd672d87b4405c4ee77f9ff54b235ab02f96a9968fb00e75b13ce64706e352a3068fd
+  checksum: 10c0/51fb5af055c3b85662fa97df17d986ae2c37d13bf86d50b6bb36b6b3a2dec6966a1d3a14ab3774b71707b155ae3597ed9b7babdf1a1a863d1a31840cb8e7ec71
   languageName: node
   linkType: hard
 
@@ -6418,8 +6418,8 @@ __metadata:
   linkType: hard
 
 "nuqs@npm:^2.8.0":
-  version: 2.8.8
-  resolution: "nuqs@npm:2.8.8"
+  version: 2.8.9
+  resolution: "nuqs@npm:2.8.9"
   dependencies:
     "@standard-schema/spec": "npm:1.0.0"
   peerDependencies:
@@ -6440,7 +6440,7 @@ __metadata:
       optional: true
     react-router-dom:
       optional: true
-  checksum: 10c0/d3a5503268d5a297c5b5acbd0c6f362f7462f67fea31f88264748ccab7788343bd428b49b7e63f5c5be08afcb22a2ee569fd36b6d0b8f95b8cfca7013ea700e3
+  checksum: 10c0/1de53ba6cca7af326b17cd6c92501c6cfcd0abbe7e399319b228b07644b24e57bf3bba63fbf1cabaa27f77e40bcf15d5a3792e7767c800161903ef2e09b3ad85
   languageName: node
   linkType: hard
 
