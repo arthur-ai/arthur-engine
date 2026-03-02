@@ -310,99 +310,97 @@ export const AllTasks: React.FC = () => {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-3 sm:px-6 lg:px-8">
           <div className="px-4 py-3 sm:px-0">
-            {inactiveDays === "archived" ? (
-              /* Archived Tasks View */
+            {isLoading && inactiveDays !== "archived" ? (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                <CircularProgress />
+              </Box>
+            ) : error && inactiveDays !== "archived" ? (
+              <Alert severity="error">{error}</Alert>
+            ) : tasks.length === 0 && inactiveDays !== "archived" ? (
+              <Box sx={{ textAlign: "center", py: 6 }}>
+                <Typography variant="h6" color="text.secondary">
+                  No tasks found
+                </Typography>
+                <Typography variant="body2" color="text.disabled" sx={{ mb: 4 }}>
+                  Get started by creating your first agent task.
+                </Typography>
+                <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
+              </Box>
+            ) : (
               <>
-                {/* Filter toolbar always visible so the user can switch back */}
-                <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>{filterToolbar}</Box>
+                {/* Title + CTA — always visible */}
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6">
+                      {inactiveDays === "archived" ? `Archived Tasks (${archivedTasks.length})` : `Active Tasks (${tasks.length})`}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      {inactiveDays === "archived"
+                        ? filteredArchivedTasks.length < archivedTasks.length
+                          ? `Showing ${filteredArchivedTasks.length} of ${archivedTasks.length} tasks`
+                          : "Unarchive a task to resume normal operation"
+                        : filteredTasks.length < tasks.length
+                          ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                          : "Click on any task to open the toolkit"}
+                    </Typography>
+                  </Box>
+                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                    Task
+                  </Button>
+                </Box>
 
-                {isLoadingArchived ? (
-                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : archivedError ? (
-                  <Alert severity="error">{archivedError}</Alert>
-                ) : archivedTasks.length === 0 ? (
-                  <Box sx={{ textAlign: "center", py: 6 }}>
-                    <Typography variant="h6" color="text.secondary">
-                      No archived tasks
-                    </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      Archived tasks will appear here.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6">Archived Tasks ({archivedTasks.length})</Typography>
-                        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                          {filteredArchivedTasks.length < archivedTasks.length
-                            ? `Showing ${filteredArchivedTasks.length} of ${archivedTasks.length} tasks`
-                            : "Unarchive a task to resume normal operation"}
-                        </Typography>
-                      </Box>
+                {/* Filter toolbar — always visible */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+                  {filterToolbar}
+                  {inactiveDays !== "archived" && (
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Metrics from last 7 days
+                      </Typography>
+                    </Stack>
+                  )}
+                </Box>
+
+                {/* Task grid — switches based on filter */}
+                {inactiveDays === "archived" ? (
+                  isLoadingArchived ? (
+                    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                      <CircularProgress />
                     </Box>
-
+                  ) : archivedError ? (
+                    <Alert severity="error">{archivedError}</Alert>
+                  ) : archivedTasks.length === 0 ? (
+                    <Box sx={{ textAlign: "center", py: 6 }}>
+                      <Typography variant="h6" color="text.secondary">
+                        No archived tasks
+                      </Typography>
+                      <Typography variant="body2" color="text.disabled">
+                        Archived tasks will appear here.
+                      </Typography>
+                    </Box>
+                  ) : (
                     <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
                       {filteredArchivedTasks.map((task) => (
                         <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                       ))}
                     </Box>
-                  </>
-                )}
-              </>
-            ) : (
-              /* Active Tasks View */
-              <>
-                {isLoading ? (
-                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : error ? (
-                  <Alert severity="error">{error}</Alert>
-                ) : tasks.length === 0 ? (
+                  )
+                ) : filteredTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
                     <Typography variant="h6" color="text.secondary">
-                      No tasks found
+                      No tasks active in the last {inactiveDays} days
                     </Typography>
-                    <Typography variant="body2" color="text.disabled" sx={{ mb: 4 }}>
-                      Get started by creating your first agent task.
+                    <Typography variant="body2" color="text.disabled">
+                      Try expanding the time range or selecting "All time".
                     </Typography>
-                    <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
                   </Box>
                 ) : (
-                  <>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6">Active Tasks ({tasks.length})</Typography>
-                        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                          {filteredTasks.length < tasks.length
-                            ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
-                            : "Click on any task to open the toolkit"}
-                        </Typography>
-                      </Box>
-                      <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                        Task
-                      </Button>
-                    </Box>
-
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-                      {filterToolbar}
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                        <Typography variant="body2" color="text.secondary">
-                          Metrics from last 7 days
-                        </Typography>
-                      </Stack>
-                    </Box>
-
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
-                      {filteredTasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
-                      ))}
-                    </Box>
-                  </>
+                  <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
+                    {filteredTasks.map((task) => (
+                      <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
+                    ))}
+                  </Box>
                 )}
               </>
             )}
