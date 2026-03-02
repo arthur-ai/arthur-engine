@@ -13,7 +13,7 @@ import { getContentHeight } from "@/constants/layout";
 const TAB_TITLES: Record<string, string> = {
   notebooks: "Notebooks",
   "prompts-management": "Prompts",
-  "prompt-experiments": "Experiments",
+  "prompt-experiments": "Runs",
 };
 
 const TAB_SUBTITLES: Record<string, string> = {
@@ -134,7 +134,7 @@ export const PromptsView = () => {
       >
         <Tab label="Notebooks" value="notebooks" />
         <Tab label="Prompts" value="prompts-management" />
-        <Tab label="Experiments" value="prompt-experiments" />
+        <Tab label="Runs" value="prompt-experiments" />
       </Tabs>
 
       <Box sx={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
