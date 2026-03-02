@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
 export type SortBy = "updated" | "created";
-export type InactiveDays = 0 | 7 | 14 | 30 | "archived";
+export type InactiveDays = 0 | 7 | 14 | 30;
 
 interface TaskListState {
   hideSystemTasks: boolean;

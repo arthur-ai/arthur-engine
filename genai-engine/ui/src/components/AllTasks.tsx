@@ -1,5 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import AppsOutlined from "@mui/icons-material/AppsOutlined";
+import CloseIcon from "@mui/icons-material/Close";
+import InventoryIcon from "@mui/icons-material/Inventory";
 import KeyOutlined from "@mui/icons-material/KeyOutlined";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -11,7 +13,11 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControl,
   IconButton,
@@ -48,6 +54,7 @@ export const AllTasks: React.FC = () => {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -60,7 +67,7 @@ export const AllTasks: React.FC = () => {
       result = result.filter((t) => !t.is_system_task);
     }
 
-    if (inactiveDays !== "archived" && inactiveDays > 0) {
+    if (inactiveDays > 0) {
       const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
       result = result.filter((t) => t.updated_at >= cutoff);
     }
@@ -145,10 +152,10 @@ export const AllTasks: React.FC = () => {
 
   const handleArchiveToggle = useCallback(async () => {
     await fetchActiveTasks();
-    if (archivedLoaded) {
+    if (archivedDialogOpen || archivedLoaded) {
       await fetchArchivedTasks();
     }
-  }, [fetchActiveTasks, fetchArchivedTasks, archivedLoaded]);
+  }, [fetchActiveTasks, fetchArchivedTasks, archivedDialogOpen, archivedLoaded]);
 
   useEffect(() => {
     if (api) {
@@ -156,11 +163,12 @@ export const AllTasks: React.FC = () => {
     }
   }, [api, fetchActiveTasks]);
 
+  // Lazy-load archived tasks the first time the dialog is opened
   useEffect(() => {
-    if (api && inactiveDays === "archived" && !archivedLoaded) {
+    if (api && archivedDialogOpen && !archivedLoaded) {
       fetchArchivedTasks();
     }
-  }, [api, inactiveDays, archivedLoaded, fetchArchivedTasks]);
+  }, [api, archivedDialogOpen, archivedLoaded, fetchArchivedTasks]);
 
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
@@ -202,8 +210,6 @@ export const AllTasks: React.FC = () => {
             <MenuItem value={7}>Active in last 7 days</MenuItem>
             <MenuItem value={14}>Active in last 14 days</MenuItem>
             <MenuItem value={30}>Active in last 30 days</MenuItem>
-            <Divider />
-            <MenuItem value="archived">Archived</MenuItem>
           </Select>
         </FormControl>
       </Stack>
@@ -231,12 +237,6 @@ export const AllTasks: React.FC = () => {
 
   return (
     <>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* Header */}
         <header className="bg-white dark:bg-gray-900 shadow">
@@ -310,13 +310,13 @@ export const AllTasks: React.FC = () => {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-3 sm:px-6 lg:px-8">
           <div className="px-4 py-3 sm:px-0">
-            {isLoading && inactiveDays !== "archived" ? (
+            {isLoading ? (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
                 <CircularProgress />
               </Box>
-            ) : error && inactiveDays !== "archived" ? (
+            ) : error ? (
               <Alert severity="error">{error}</Alert>
-            ) : tasks.length === 0 && inactiveDays !== "archived" ? (
+            ) : tasks.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 6 }}>
                 <Typography variant="h6" color="text.secondary">
                   No tasks found
@@ -328,20 +328,14 @@ export const AllTasks: React.FC = () => {
               </Box>
             ) : (
               <>
-                {/* Title + CTA — always visible */}
+                {/* Title + CTA */}
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                   <Box>
-                    <Typography variant="h6">
-                      {inactiveDays === "archived" ? `Archived Tasks (${archivedTasks.length})` : `Active Tasks (${tasks.length})`}
-                    </Typography>
+                    <Typography variant="h6">Tasks ({tasks.length})</Typography>
                     <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                      {inactiveDays === "archived"
-                        ? filteredArchivedTasks.length < archivedTasks.length
-                          ? `Showing ${filteredArchivedTasks.length} of ${archivedTasks.length} tasks`
-                          : "Unarchive a task to resume normal operation"
-                        : filteredTasks.length < tasks.length
-                          ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
-                          : "Click on any task to open the toolkit"}
+                      {filteredTasks.length < tasks.length
+                        ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                        : "Click on any task to open the toolkit"}
                     </Typography>
                   </Box>
                   <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
@@ -349,44 +343,26 @@ export const AllTasks: React.FC = () => {
                   </Button>
                 </Box>
 
-                {/* Filter toolbar — always visible */}
+                {/* Filter toolbar */}
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
                   {filterToolbar}
-                  {inactiveDays !== "archived" && (
+                  <Stack direction="row" spacing={1.5} alignItems="center">
                     <Stack direction="row" spacing={0.5} alignItems="center">
                       <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
                       <Typography variant="body2" color="text.secondary">
                         Metrics from last 7 days
                       </Typography>
                     </Stack>
-                  )}
+                    <Tooltip title="View archived tasks">
+                      <IconButton size="small" onClick={() => setArchivedDialogOpen(true)} sx={{ color: "text.disabled" }}>
+                        <InventoryIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
                 </Box>
 
-                {/* Task grid — switches based on filter */}
-                {inactiveDays === "archived" ? (
-                  isLoadingArchived ? (
-                    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                      <CircularProgress />
-                    </Box>
-                  ) : archivedError ? (
-                    <Alert severity="error">{archivedError}</Alert>
-                  ) : archivedTasks.length === 0 ? (
-                    <Box sx={{ textAlign: "center", py: 6 }}>
-                      <Typography variant="h6" color="text.secondary">
-                        No archived tasks
-                      </Typography>
-                      <Typography variant="body2" color="text.disabled">
-                        Archived tasks will appear here.
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
-                      {filteredArchivedTasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
-                      ))}
-                    </Box>
-                  )
-                ) : filteredTasks.length === 0 ? (
+                {/* Active task grid */}
+                {filteredTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
                     <Typography variant="h6" color="text.secondary">
                       No tasks active in the last {inactiveDays} days
@@ -406,6 +382,52 @@ export const AllTasks: React.FC = () => {
             )}
           </div>
         </main>
+
+        {/* Archived Tasks Dialog */}
+        <Dialog open={archivedDialogOpen} onClose={() => setArchivedDialogOpen(false)} maxWidth="lg" fullWidth>
+          <DialogTitle sx={{ pb: 1 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <InventoryIcon sx={{ fontSize: 20, color: "text.secondary" }} />
+                  <Typography variant="h6">Archived Tasks</Typography>
+                  {!isLoadingArchived && archivedTasks.length > 0 && <Chip label={filteredArchivedTasks.length} size="small" variant="outlined" />}
+                </Stack>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Unarchive a task to restore it to your active list
+                </Typography>
+              </Box>
+              <IconButton onClick={() => setArchivedDialogOpen(false)} size="small" sx={{ mt: -0.5 }}>
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+          </DialogTitle>
+          <DialogContent dividers>
+            {isLoadingArchived ? (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
+                <CircularProgress />
+              </Box>
+            ) : archivedError ? (
+              <Alert severity="error">{archivedError}</Alert>
+            ) : filteredArchivedTasks.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 6 }}>
+                <InventoryIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
+                <Typography variant="h6" color="text.secondary">
+                  No archived tasks
+                </Typography>
+                <Typography variant="body2" color="text.disabled">
+                  Tasks you archive will appear here. Unarchive any task to restore it.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
+                {filteredArchivedTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
+                ))}
+              </Box>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Create Task Modal */}
         <CreateTaskForm
