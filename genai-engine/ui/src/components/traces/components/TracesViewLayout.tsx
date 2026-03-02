@@ -66,7 +66,7 @@ export const TracesViewLayout = ({ level, timeRange, onLevelChange, onTimeRangeC
         </Tabs>
       )}
 
-      <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>{children}</Box>
+      <Box sx={{ flex: 1, overflow: welcomeDismissed ? "hidden" : "auto", display: "flex", flexDirection: "column" }}>{children}</Box>
     </Box>
   );
 };
