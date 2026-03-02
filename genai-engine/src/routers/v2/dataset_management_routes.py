@@ -7,6 +7,10 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
+from db_models.agentic_prompt_models import (
+    DatabaseAgenticPrompt,
+    DatabaseAgenticPromptVersionTag,
+)
 from dependencies import get_db_session, get_validated_task
 from repositories.datasets_repository import DatasetRepository
 from repositories.model_provider_repository import ModelProviderRepository
@@ -29,8 +33,16 @@ from schemas.response_schemas import (
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
     SyntheticDataGenerationResponse,
+    SyntheticDataPromptStatus,
 )
 from services.synthetic_data_service import SyntheticDataService
+from utils.constants import (
+    EMPTY_MODEL_NAME,
+    EMPTY_MODEL_PROVIDER,
+    PRODUCTION_TAG,
+    SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
+    SYNTHETIC_DATASET_TASK_ID,
+)
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -302,6 +314,56 @@ def get_dataset_version_row(
 ###########################################
 #### Synthetic Data Generation Routes ####
 ###########################################
+
+
+@dataset_management_routes.get(
+    "/datasets/synthetic-data/prompt-status",
+    summary="Get the model configuration stored in the SDG system prompt.",
+    tags=[datasets_router_tag],
+    response_model=SyntheticDataPromptStatus,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def get_synthetic_data_prompt_status(
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> SyntheticDataPromptStatus:
+    tag_row = (
+        db_session.query(DatabaseAgenticPromptVersionTag)
+        .filter(
+            DatabaseAgenticPromptVersionTag.task_id == SYNTHETIC_DATASET_TASK_ID,
+            DatabaseAgenticPromptVersionTag.name == SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
+            DatabaseAgenticPromptVersionTag.tag == PRODUCTION_TAG,
+        )
+        .first()
+    )
+    if tag_row is None:
+        # Not bootstrapped yet
+        return SyntheticDataPromptStatus(
+            model_provider=EMPTY_MODEL_PROVIDER,
+            model_name=EMPTY_MODEL_NAME,
+            is_placeholder=True,
+        )
+
+    prompt = db_session.get(
+        DatabaseAgenticPrompt,
+        (SYNTHETIC_DATASET_TASK_ID, SYNTHETIC_DATA_SYSTEM_PROMPT_NAME, tag_row.version),
+    )
+    if prompt is None:
+        return SyntheticDataPromptStatus(
+            model_provider=EMPTY_MODEL_PROVIDER,
+            model_name=EMPTY_MODEL_NAME,
+            is_placeholder=True,
+        )
+
+    is_placeholder = (
+        str(prompt.model_provider) == EMPTY_MODEL_PROVIDER
+        or str(prompt.model_name) == EMPTY_MODEL_NAME
+    )
+    return SyntheticDataPromptStatus(
+        model_provider=str(prompt.model_provider),
+        model_name=str(prompt.model_name),
+        is_placeholder=is_placeholder,
+    )
 
 
 @dataset_management_routes.post(

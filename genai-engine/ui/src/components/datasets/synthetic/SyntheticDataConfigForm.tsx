@@ -1,4 +1,7 @@
 import {
+  Alert,
+  AlertTitle,
+  Autocomplete,
   Box,
   Button,
   CircularProgress,
@@ -11,8 +14,6 @@ import {
   Switch,
   TextField,
   Typography,
-  Autocomplete,
-  Alert,
 } from "@mui/material";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -51,6 +52,9 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
   const [modelName, setModelName] = useState<string | null>(null);
   const [editExisting, setEditExisting] = useState(false);
 
+  // Placeholder model warning state
+  const [isPlaceholderModel, setIsPlaceholderModel] = useState(false);
+
   // Provider/model loading state
   const [providers, setProviders] = useState<ModelProviderResponse[]>([]);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -82,6 +86,15 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
     };
 
     fetchProviders();
+  }, [api]);
+
+  // Fetch prompt status on mount to show placeholder warning
+  useEffect(() => {
+    if (!api) return;
+    api.api
+      .getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet()
+      .then((res) => setIsPlaceholderModel(res.data.is_placeholder))
+      .catch(() => {}); // best-effort; don't block the form
   }, [api]);
 
   // Load models when provider changes
@@ -152,6 +165,14 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3, py: 1 }}>
       {error && <Alert severity="error">{error}</Alert>}
+
+      {isPlaceholderModel && (
+        <Alert severity="warning">
+          <AlertTitle>Prompts not configured</AlertTitle>
+          The Synthetic Dataset Generation system prompts are currently using the <strong>Empty</strong> placeholder model. Select a real model
+          provider and model below to generate data.
+        </Alert>
+      )}
 
       {/* Dataset Purpose */}
       <TextField

@@ -15,6 +15,7 @@ from schemas.enums import SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
 from schemas.request_schemas import PutModelProviderCredentials
 from schemas.response_schemas import ModelProviderResponse
+from utils.constants import EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +238,14 @@ class ModelProviderRepository:
 
     def get_model_provider_client(self, provider: ModelProvider) -> LLMClient:
         """Returns an authenticated LiteLLM client instance for the provider"""
+        if str(provider) == EMPTY_MODEL_PROVIDER:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The 'empty' model provider is a placeholder and cannot be used for LLM calls. "
+                    "Please configure a real model provider."
+                ),
+            )
         secret = (
             self.db_session.query(DatabaseSecretStorage)
             .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)
