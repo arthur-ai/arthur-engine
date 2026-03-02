@@ -8,7 +8,6 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import React, { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { BucketProvider } from "../../context/bucket-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
@@ -21,6 +20,7 @@ import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets }
 import { SpanTree } from "../SpanTree";
 
 import { CopyableChip } from "@/components/common";
+import { CreateContinuousEvalDialog } from "@/components/live-evals/components/create-form";
 import { TraceResponse } from "@/lib/api-client/api-client";
 
 type TraceDrawerBodyProps = {
@@ -63,6 +63,7 @@ export const TraceDrawerBody = ({
 }: TraceDrawerBodyProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
+  const [createEvalOpen, setCreateEvalOpen] = useState(false);
 
   const name =
     trace?.root_spans?.length === 1
@@ -81,6 +82,11 @@ export const TraceDrawerBody = ({
   const handleAddToDataset = () => {
     onAddToDataset?.();
     setAddToDatasetOpen(true);
+  };
+
+  const handleCreateContinuousEval = () => {
+    if (taskId) onOpenContinuousEvals?.(traceId, taskId);
+    setCreateEvalOpen(true);
   };
 
   return (
@@ -134,15 +140,7 @@ export const TraceDrawerBody = ({
                     </Menu.Item>
                     <Menu.Separator />
                     {taskId && onOpenContinuousEvals && (
-                      <Menu.Item
-                        render={
-                          <ListItemButton
-                            to={`/tasks/${taskId}/continuous-evals/new?traceId=${traceId}`}
-                            component={Link}
-                            onClick={() => onOpenContinuousEvals(traceId, taskId)}
-                          />
-                        }
-                      >
+                      <Menu.Item render={<ListItemButton onClick={handleCreateContinuousEval} />}>
                         <TroubleshootIcon sx={{ mr: 1, fontSize: 16 }} />
                         <ListItemText primary="Evaluate Traces Like This" secondary="Evaluate traces that are similar to this one" />
                       </Menu.Item>
@@ -208,6 +206,7 @@ export const TraceDrawerBody = ({
       </Stack>
 
       <AddToDatasetDrawer traceId={traceId} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
+      {taskId && <CreateContinuousEvalDialog open={createEvalOpen} onClose={() => setCreateEvalOpen(false)} taskId={taskId} />}
     </BucketProvider>
   );
 };
