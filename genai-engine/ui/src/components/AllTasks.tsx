@@ -21,8 +21,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Tab,
-  Tabs,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -50,7 +48,6 @@ export const AllTasks: React.FC = () => {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [archivedLoaded, setArchivedLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<0 | 1>(0);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -63,7 +60,7 @@ export const AllTasks: React.FC = () => {
       result = result.filter((t) => !t.is_system_task);
     }
 
-    if (inactiveDays > 0) {
+    if (inactiveDays !== "archived" && inactiveDays > 0) {
       const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
       result = result.filter((t) => t.updated_at >= cutoff);
     }
@@ -160,10 +157,10 @@ export const AllTasks: React.FC = () => {
   }, [api, fetchActiveTasks]);
 
   useEffect(() => {
-    if (api && activeTab === 1 && !archivedLoaded) {
+    if (api && inactiveDays === "archived" && !archivedLoaded) {
       fetchArchivedTasks();
     }
-  }, [api, activeTab, archivedLoaded, fetchArchivedTasks]);
+  }, [api, inactiveDays, archivedLoaded, fetchArchivedTasks]);
 
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
@@ -178,9 +175,59 @@ export const AllTasks: React.FC = () => {
     navigate(`/tasks/${taskId}/overview`);
   };
 
-  const handleTabChange = (_: React.SyntheticEvent, newValue: 0 | 1) => {
-    setActiveTab(newValue);
-  };
+  const filterToolbar = (
+    <Stack direction="row" spacing={1.5} alignItems="center">
+      <Stack direction="row" spacing={0.5} alignItems="center">
+        <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+        <FormControl size="small" variant="standard">
+          <Select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            disableUnderline
+            sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+          >
+            <MenuItem value="updated">Recently updated</MenuItem>
+            <MenuItem value="created">Recently created</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" variant="standard">
+          <Select
+            value={inactiveDays}
+            onChange={(e) => setInactiveDays(e.target.value as InactiveDays)}
+            disableUnderline
+            sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+          >
+            <MenuItem value={0}>All time</MenuItem>
+            <MenuItem value={7}>Active in last 7 days</MenuItem>
+            <MenuItem value={14}>Active in last 14 days</MenuItem>
+            <MenuItem value={30}>Active in last 30 days</MenuItem>
+            <Divider />
+            <MenuItem value="archived">Archived</MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
+
+      <Tooltip title={hideSystemTasks ? "Show system tasks" : "Hide system tasks"}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          alignItems="center"
+          onClick={() => setHideSystemTasks(!hideSystemTasks)}
+          sx={{ cursor: "pointer", "&:hover": { opacity: 0.7 } }}
+        >
+          {hideSystemTasks ? (
+            <VisibilityOffIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+          ) : (
+            <VisibilityIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+          )}
+          <Typography variant="body2" color="text.secondary">
+            {hideSystemTasks ? "System tasks hidden" : "System tasks visible"}
+          </Typography>
+        </Stack>
+      </Tooltip>
+    </Stack>
+  );
 
   return (
     <>
@@ -263,15 +310,49 @@ export const AllTasks: React.FC = () => {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-3 sm:px-6 lg:px-8">
           <div className="px-4 py-3 sm:px-0">
-            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-              <Tabs value={activeTab} onChange={handleTabChange}>
-                <Tab label="Active" />
-                <Tab label="Archived" />
-              </Tabs>
-            </Box>
+            {inactiveDays === "archived" ? (
+              /* Archived Tasks View */
+              <>
+                {isLoadingArchived ? (
+                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : archivedError ? (
+                  <Alert severity="error">{archivedError}</Alert>
+                ) : archivedTasks.length === 0 ? (
+                  <Box sx={{ textAlign: "center", py: 6 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      No archived tasks
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled">
+                      Archived tasks will appear here.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                      <Box>
+                        <Typography variant="h6">Archived Tasks ({archivedTasks.length})</Typography>
+                        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                          {filteredArchivedTasks.length < archivedTasks.length
+                            ? `Showing ${filteredArchivedTasks.length} of ${archivedTasks.length} tasks`
+                            : "Unarchive a task to resume normal operation"}
+                        </Typography>
+                      </Box>
+                    </Box>
 
-            {/* Active Tasks Tab */}
-            {activeTab === 0 && (
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>{filterToolbar}</Box>
+
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
+                      {filteredArchivedTasks.map((task) => (
+                        <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
+                      ))}
+                    </Box>
+                  </>
+                )}
+              </>
+            ) : (
+              /* Active Tasks View */
               <>
                 {isLoading ? (
                   <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
@@ -305,58 +386,8 @@ export const AllTasks: React.FC = () => {
                       </Button>
                     </Box>
 
-                    {/* Filter & Sort Toolbar */}
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
-                          <FormControl size="small" variant="standard">
-                            <Select
-                              value={sortBy}
-                              onChange={(e) => setSortBy(e.target.value as SortBy)}
-                              disableUnderline
-                              sx={{ fontSize: "0.875rem", color: "text.secondary" }}
-                            >
-                              <MenuItem value="updated">Recently updated</MenuItem>
-                              <MenuItem value="created">Recently created</MenuItem>
-                            </Select>
-                          </FormControl>
-
-                          <FormControl size="small" variant="standard">
-                            <Select
-                              value={inactiveDays}
-                              onChange={(e) => setInactiveDays(e.target.value as InactiveDays)}
-                              disableUnderline
-                              sx={{ fontSize: "0.875rem", color: "text.secondary" }}
-                            >
-                              <MenuItem value={0}>All time</MenuItem>
-                              <MenuItem value={7}>Active in last 7 days</MenuItem>
-                              <MenuItem value={14}>Active in last 14 days</MenuItem>
-                              <MenuItem value={30}>Active in last 30 days</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Stack>
-
-                        <Tooltip title={hideSystemTasks ? "Show system tasks" : "Hide system tasks"}>
-                          <Stack
-                            direction="row"
-                            spacing={0.5}
-                            alignItems="center"
-                            onClick={() => setHideSystemTasks(!hideSystemTasks)}
-                            sx={{ cursor: "pointer", "&:hover": { opacity: 0.7 } }}
-                          >
-                            {hideSystemTasks ? (
-                              <VisibilityOffIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                            ) : (
-                              <VisibilityIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                            )}
-                            <Typography variant="body2" color="text.secondary">
-                              {hideSystemTasks ? "System tasks hidden" : "System tasks visible"}
-                            </Typography>
-                          </Stack>
-                        </Tooltip>
-                      </Stack>
-
+                      {filterToolbar}
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
                         <Typography variant="body2" color="text.secondary">
@@ -367,86 +398,6 @@ export const AllTasks: React.FC = () => {
 
                     <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
                       {filteredTasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
-                      ))}
-                    </Box>
-                  </>
-                )}
-              </>
-            )}
-
-            {/* Archived Tasks Tab */}
-            {activeTab === 1 && (
-              <>
-                {isLoadingArchived ? (
-                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : archivedError ? (
-                  <Alert severity="error">{archivedError}</Alert>
-                ) : archivedTasks.length === 0 ? (
-                  <Box sx={{ textAlign: "center", py: 6 }}>
-                    <Typography variant="h6" color="text.secondary">
-                      No archived tasks
-                    </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      Archived tasks will appear here.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6">Archived Tasks ({archivedTasks.length})</Typography>
-                        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                          {filteredArchivedTasks.length < archivedTasks.length
-                            ? `Showing ${filteredArchivedTasks.length} of ${archivedTasks.length} tasks`
-                            : "Unarchive a task to resume normal operation"}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    {/* Sort Toolbar */}
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
-                          <FormControl size="small" variant="standard">
-                            <Select
-                              value={sortBy}
-                              onChange={(e) => setSortBy(e.target.value as SortBy)}
-                              disableUnderline
-                              sx={{ fontSize: "0.875rem", color: "text.secondary" }}
-                            >
-                              <MenuItem value="updated">Recently updated</MenuItem>
-                              <MenuItem value="created">Recently created</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Stack>
-
-                        <Tooltip title={hideSystemTasks ? "Show system tasks" : "Hide system tasks"}>
-                          <Stack
-                            direction="row"
-                            spacing={0.5}
-                            alignItems="center"
-                            onClick={() => setHideSystemTasks(!hideSystemTasks)}
-                            sx={{ cursor: "pointer", "&:hover": { opacity: 0.7 } }}
-                          >
-                            {hideSystemTasks ? (
-                              <VisibilityOffIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                            ) : (
-                              <VisibilityIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                            )}
-                            <Typography variant="body2" color="text.secondary">
-                              {hideSystemTasks ? "System tasks hidden" : "System tasks visible"}
-                            </Typography>
-                          </Stack>
-                        </Tooltip>
-                      </Stack>
-                    </Box>
-
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
-                      {filteredArchivedTasks.map((task) => (
                         <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                       ))}
                     </Box>
