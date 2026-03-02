@@ -99,7 +99,6 @@ export const ConfigurationsListView: React.FC<ConfigurationsListViewProps> = ({ 
           </Box>
         )}
         <TextField
-          variant="filled"
           placeholder="Search configurations..."
           value={searchQuery}
           onChange={(e) => {

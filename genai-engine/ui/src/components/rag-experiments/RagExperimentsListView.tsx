@@ -86,7 +86,6 @@ export const RagExperimentsListView: React.FC<RagExperimentsListViewProps> = ({ 
         {onRegisterCreate ? (
           <Box sx={{ px: 3, pt: 2, pb: 2, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}>
             <TextField
-              variant="filled"
               placeholder="Search experiments by name, description, or dataset..."
               value={searchText}
               onChange={(e) => handleSearchChange(e.target.value)}
