@@ -68,13 +68,15 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlEvaluatorName]);
 
+  // When searching, fetch all evals (up to API max) so client-side filter spans the full dataset,
+  // not just the current server page.
   const filters = useMemo(
     () => ({
-      page,
-      pageSize,
+      page: debouncedSearchQuery ? 0 : page,
+      pageSize: debouncedSearchQuery ? 5000 : pageSize,
       sort: sortDirection,
     }),
-    [page, pageSize, sortDirection]
+    [page, pageSize, sortDirection, debouncedSearchQuery]
   );
 
   const { evals, count, error, isLoading, refetch } = useEvals(task?.id, filters);
@@ -197,12 +199,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
           backgroundColor: "background.paper",
         }}
       >
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          onClear={() => setSearchQuery("")}
-          placeholder="Search evaluators by name..."
-        />
+        <SearchBar value={searchQuery} onChange={setSearchQuery} onClear={() => setSearchQuery("")} placeholder="Search evaluators by name..." />
       </Box>
 
       {error && evals.length > 0 && (

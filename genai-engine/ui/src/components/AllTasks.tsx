@@ -54,10 +54,7 @@ export const AllTasks: React.FC = () => {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [archivedLoaded, setArchivedLoaded] = useState(false);
-<<<<<<< HEAD
   const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
-=======
->>>>>>> 5fdc098b (feat(ui): move Archived into the filter dropdown on the tasks page)
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -168,17 +165,10 @@ export const AllTasks: React.FC = () => {
 
   // Lazy-load archived tasks the first time the dialog is opened
   useEffect(() => {
-<<<<<<< HEAD
     if (api && archivedDialogOpen && !archivedLoaded) {
       fetchArchivedTasks();
     }
   }, [api, archivedDialogOpen, archivedLoaded, fetchArchivedTasks]);
-=======
-    if (api && inactiveDays === "archived" && !archivedLoaded) {
-      fetchArchivedTasks();
-    }
-  }, [api, inactiveDays, archivedLoaded, fetchArchivedTasks]);
->>>>>>> 5fdc098b (feat(ui): move Archived into the filter dropdown on the tasks page)
 
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
@@ -220,11 +210,6 @@ export const AllTasks: React.FC = () => {
             <MenuItem value={7}>Active in last 7 days</MenuItem>
             <MenuItem value={14}>Active in last 14 days</MenuItem>
             <MenuItem value={30}>Active in last 30 days</MenuItem>
-<<<<<<< HEAD
-=======
-            <Divider />
-            <MenuItem value="archived">Archived</MenuItem>
->>>>>>> 5fdc098b (feat(ui): move Archived into the filter dropdown on the tasks page)
           </Select>
         </FormControl>
       </Stack>
@@ -325,7 +310,6 @@ export const AllTasks: React.FC = () => {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto py-3 sm:px-6 lg:px-8">
           <div className="px-4 py-3 sm:px-0">
-<<<<<<< HEAD
             {isLoading ? (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
                 <CircularProgress />
@@ -343,52 +327,6 @@ export const AllTasks: React.FC = () => {
                 <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
               </Box>
             ) : (
-=======
-            {inactiveDays === "archived" ? (
-              /* Archived Tasks View */
-              <>
-                {/* Filter toolbar always visible so the user can switch back */}
-                <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>{filterToolbar}</Box>
-
-                {isLoadingArchived ? (
-                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : archivedError ? (
-                  <Alert severity="error">{archivedError}</Alert>
-                ) : archivedTasks.length === 0 ? (
-                  <Box sx={{ textAlign: "center", py: 6 }}>
-                    <Typography variant="h6" color="text.secondary">
-                      No archived tasks
-                    </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      Archived tasks will appear here.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6">Archived Tasks ({archivedTasks.length})</Typography>
-                        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                          {filteredArchivedTasks.length < archivedTasks.length
-                            ? `Showing ${filteredArchivedTasks.length} of ${archivedTasks.length} tasks`
-                            : "Unarchive a task to resume normal operation"}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
-                      {filteredArchivedTasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
-                      ))}
-                    </Box>
-                  </>
-                )}
-              </>
-            ) : (
-              /* Active Tasks View */
->>>>>>> 5fdc098b (feat(ui): move Archived into the filter dropdown on the tasks page)
               <>
                 {/* Title + CTA */}
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
@@ -427,12 +365,13 @@ export const AllTasks: React.FC = () => {
                 {filteredTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
                     <Typography variant="h6" color="text.secondary">
-<<<<<<< HEAD
-                      No tasks active in the last {inactiveDays} days
+                      {inactiveDays === 0 ? "No tasks found" : `No tasks active in the last ${inactiveDays} days`}
                     </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      Try expanding the time range or selecting "All time".
-                    </Typography>
+                    {inactiveDays !== 0 && (
+                      <Typography variant="body2" color="text.disabled">
+                        Try expanding the time range or selecting &quot;All time&quot;.
+                      </Typography>
+                    )}
                   </Box>
                 ) : (
                   <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
@@ -440,47 +379,6 @@ export const AllTasks: React.FC = () => {
                       <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                     ))}
                   </Box>
-=======
-                      No tasks found
-                    </Typography>
-                    <Typography variant="body2" color="text.disabled" sx={{ mb: 4 }}>
-                      Get started by creating your first agent task.
-                    </Typography>
-                    <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
-                  </Box>
-                ) : (
-                  <>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6">Active Tasks ({tasks.length})</Typography>
-                        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                          {filteredTasks.length < tasks.length
-                            ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
-                            : "Click on any task to open the toolkit"}
-                        </Typography>
-                      </Box>
-                      <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                        Task
-                      </Button>
-                    </Box>
-
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-                      {filterToolbar}
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                        <Typography variant="body2" color="text.secondary">
-                          Metrics from last 7 days
-                        </Typography>
-                      </Stack>
-                    </Box>
-
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
-                      {filteredTasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
-                      ))}
-                    </Box>
-                  </>
->>>>>>> 5fdc098b (feat(ui): move Archived into the filter dropdown on the tasks page)
                 )}
               </>
             )}
