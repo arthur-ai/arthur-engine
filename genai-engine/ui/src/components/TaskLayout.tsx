@@ -33,6 +33,9 @@ export const TaskLayout: React.FC = () => {
     } else if (section === "prompts") {
       // Map /tasks/:id/prompts/:promptName to prompts-management
       activeSection = "prompts-management";
+    } else if (section === "evaluators" || section === "continuous-evals") {
+      // Map legacy evaluator/continuous-evals paths to the combined Evaluate nav item
+      activeSection = "evaluate";
     } else {
       activeSection = section;
     }

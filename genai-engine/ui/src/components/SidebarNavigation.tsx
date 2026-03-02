@@ -7,7 +7,6 @@ import {
   TableChartOutlined,
   StorageOutlined,
   ArrowBackOutlined,
-  LiveTvOutlined,
   InsightsOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
@@ -61,10 +60,9 @@ const navigationSections: NavigationSection[] = [
   },
   {
     id: "evals",
-    label: "Evals",
+    label: "Evaluate",
     items: [
-      { id: "evaluators", label: "Evals Management", icon: <BalanceOutlined /> },
-      { id: "continuous-evals", label: "Continuous Evals", icon: <LiveTvOutlined /> },
+      { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
       { id: "datasets", label: "Datasets", icon: <TableChartOutlined /> },
       { id: "transforms", label: "Transforms", icon: <StorageOutlined /> },
     ],
