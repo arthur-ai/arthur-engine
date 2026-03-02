@@ -312,6 +312,7 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
               value={modalSearchText}
               onChange={(e) => setModalSearchText(e.target.value)}
               fullWidth
+              variant="filled"
               size="small"
               slotProps={{
                 input: {
