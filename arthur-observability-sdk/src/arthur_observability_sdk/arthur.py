@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
+from openinference.instrumentation import using_attributes, using_session, using_user
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 
 from arthur_observability_sdk._client import ArthurAPIClient
@@ -286,6 +287,61 @@ class Arthur:
             span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 
         return prompt_data
+
+    # ------------------------------------------------------------------
+    # Session / user context helpers
+    # ------------------------------------------------------------------
+
+    def session(self, session_id: str) -> Any:
+        """Context manager **and** decorator that tags all spans in scope with
+        ``session.id``.
+
+        Usage::
+
+            # context manager
+            with arthur.session("abc-123"):
+                agent.invoke(...)
+
+            # decorator
+            @arthur.session("abc-123")
+            def handle_request():
+                agent.invoke(...)
+        """
+        return using_session(session_id=session_id)
+
+    def user(self, user_id: str) -> Any:
+        """Context manager **and** decorator that tags all spans in scope with
+        ``user.id``.
+
+        Usage::
+
+            with arthur.user("user-42"):
+                agent.invoke(...)
+
+            @arthur.user("user-42")
+            def handle_request():
+                agent.invoke(...)
+        """
+        return using_user(user_id=user_id)
+
+    def attributes(self, **kwargs: Any) -> Any:
+        """Context manager **and** decorator that tags all spans in scope with
+        the provided OpenInference attributes.
+
+        Accepted keyword arguments: ``session_id``, ``user_id``, ``metadata``,
+        ``tags``, ``prompt_template``, ``prompt_template_version``,
+        ``prompt_template_variables``.
+
+        Usage::
+
+            with arthur.attributes(session_id="s1", user_id="u1"):
+                agent.invoke(...)
+
+            @arthur.attributes(session_id="s1", user_id="u1")
+            def handle_request():
+                agent.invoke(...)
+        """
+        return using_attributes(**kwargs)
 
     # ------------------------------------------------------------------
     # Shutdown
