@@ -123,6 +123,8 @@ all = [
 
 [tool.poetry.group.dev.dependencies]
 black = "*"
+isort = "*"
+autoflake = "*"
 ruff = "*"
 mypy = "*"
 pytest = "*"
