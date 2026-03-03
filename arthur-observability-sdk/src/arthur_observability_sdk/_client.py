@@ -59,7 +59,7 @@ class ArthurAPIClient:
     def __init__(self, base_url: str, api_key: Optional[str]) -> None:
         config = Configuration(
             host=base_url.rstrip("/"),
-            access_token=api_key or "",
+            access_token=api_key,
         )
         self._api_client = ApiClient(configuration=config)
         self._prompts_api = PromptsApi(api_client=self._api_client)
