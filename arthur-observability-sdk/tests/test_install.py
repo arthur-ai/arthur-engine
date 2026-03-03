@@ -29,19 +29,27 @@ SDK_ROOT = Path(__file__).parent.parent  # arthur-observability-sdk/
 
 
 @pytest.fixture(scope="module")
-def built_wheel() -> Path:
-    """Build the SDK wheel and return its path."""
+def built_wheel(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Build the SDK wheel by calling scripts/build_sdk_wheel.sh.
+
+    Delegates all build logic (including the git-free temp-copy trick) to the
+    script so that the same path is used by both tests and developers running
+    the script manually.
+    """
+    output_dir = tmp_path_factory.mktemp("wheel_output")
+    script = SDK_ROOT / "scripts" / "build_sdk_wheel.sh"
     result = subprocess.run(
-        ["poetry", "build", "-q", "--format", "wheel"],
-        cwd=SDK_ROOT,
+        ["bash", str(script), str(output_dir)],
         capture_output=True,
         text=True,
+        timeout=120,
     )
-    assert result.returncode == 0, f"poetry build failed:\n{result.stderr}"
-    dist_dir = SDK_ROOT / "dist"
-    wheels = sorted(dist_dir.glob("*.whl"), key=lambda p: p.stat().st_mtime, reverse=True)
-    assert wheels, "No wheel found in dist/ after build"
-    return wheels[0]
+    assert result.returncode == 0, (
+        f"build_sdk_wheel.sh failed:\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+    )
+    wheel_path = Path(result.stdout.strip())
+    assert wheel_path.exists(), f"Wheel path from script does not exist: {wheel_path}"
+    return wheel_path
 
 
 @pytest.fixture(scope="module")
