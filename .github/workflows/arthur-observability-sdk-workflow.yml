@@ -55,17 +55,17 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk run isort src tests --profile black --check
+          poetry -C arthur-observability-sdk run isort src/arthur_observability_sdk tests --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src tests
+          poetry -C arthur-observability-sdk run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/arthur_observability_sdk tests
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk run black --check src tests
+          poetry -C arthur-observability-sdk run black --check src/arthur_observability_sdk tests
       - name: Run mypy
         id: mypy
         continue-on-error: true

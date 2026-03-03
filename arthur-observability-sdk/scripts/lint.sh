@@ -4,9 +4,9 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-poetry run black src tests
-poetry run autoflake --remove-all-unused-imports --in-place --recursive --quiet src tests
-poetry run isort src tests --profile black
+poetry run black src/arthur_observability_sdk tests
+poetry run autoflake --remove-all-unused-imports --in-place --recursive --quiet src/arthur_observability_sdk tests
+poetry run isort src/arthur_observability_sdk tests --profile black
 poetry run mypy src/arthur_observability_sdk
 
 YELLOW='\033[1;33m'
