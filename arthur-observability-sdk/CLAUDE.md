@@ -47,7 +47,7 @@ This package is auto-generated from `genai-engine/staging.openapi.json` using Op
 ./scripts/generate_client.sh generate
 ```
 
-`ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. All calls use the `*_with_http_info()` variants, which return an `ApiResponse` whose `.raw_data` is raw JSON bytes — parse with `json.loads(resp.raw_data)`.
+`ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. Call the plain (non-`_with_http_info`) variants — they return typed Pydantic model instances. Convert to a plain dict with `.model_dump()`. Only reach for `*_with_http_info()` / `.raw_data` if you need HTTP headers or status codes that the typed response doesn't expose.
 
 ## Key Patterns
 
@@ -85,8 +85,8 @@ def _make_arthur_with_in_memory_spans(task_id=TASK_ID):
 Mock a generated-client response:
 ```python
 mock_resp = MagicMock()
-mock_resp.raw_data = json.dumps(prompt_data).encode()
-arthur._api_client._prompts_api.some_method_with_http_info.return_value = mock_resp
+mock_resp.model_dump.return_value = prompt_data
+arthur._api_client._prompts_api.some_method.return_value = mock_resp
 ```
 
 `test_install.py` builds the real wheel into a temp venv and runs subprocesses. It also starts an `HTTPServer` on port 0 (OS-assigned) that doubles as both an OTLP collector (`POST /v1/traces`) and a mock OpenAI API (`POST /v1/chat/completions`). These tests run as part of the standard `pytest tests` run.

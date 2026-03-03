@@ -73,6 +73,18 @@ def test_base_url_from_env(monkeypatch):
     arthur.shutdown()
 
 
+def test_base_url_param_overrides_env(monkeypatch):
+    monkeypatch.setenv("ARTHUR_BASE_URL", "http://env-host:9090")
+    arthur = Arthur(
+        service_name="svc",
+        api_key="k",
+        base_url="http://explicit-host:8080",
+        enable_telemetry=False,
+    )
+    assert arthur._base_url == "http://explicit-host:8080"
+    arthur.shutdown()
+
+
 def test_base_url_param_default():
     arthur = Arthur(service_name="svc", api_key="k", enable_telemetry=False)
     assert arthur._base_url == "http://localhost:3030"

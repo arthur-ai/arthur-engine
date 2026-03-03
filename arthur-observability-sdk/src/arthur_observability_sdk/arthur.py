@@ -44,7 +44,7 @@ class Arthur:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        base_url: str = "http://localhost:3030",
+        base_url: Optional[str] = None,
         service_name: Optional[str] = None,
         resource_attributes: Optional[Dict[str, Any]] = None,
         task_id: Optional[str] = None,
@@ -53,7 +53,9 @@ class Arthur:
         otlp_endpoint: Optional[str] = None,
     ) -> None:
         self._api_key: Optional[str] = api_key or os.environ.get("ARTHUR_API_KEY")
-        self._base_url: str = os.environ.get("ARTHUR_BASE_URL", base_url).rstrip("/")
+        self._base_url: str = (
+            base_url or os.environ.get("ARTHUR_BASE_URL") or "http://localhost:3030"
+        ).rstrip("/")
         self._service_name: Optional[str] = service_name
         self._resource_attributes: Dict[str, Any] = resource_attributes or {}
         self._task_id: Optional[str] = task_id
