@@ -600,6 +600,7 @@ export const ExperimentDetailView: React.FC = () => {
           {taskId && experimentId && (
             <ExperimentResultsTable
               experimentId={experimentId}
+              experimentStatus={experiment.status}
               refreshTrigger={refreshTrigger}
               datasetId={experiment.dataset_ref.id}
               datasetVersion={experiment.dataset_ref.version}
