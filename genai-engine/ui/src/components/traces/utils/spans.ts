@@ -5,12 +5,14 @@ import { SPAN_TYPE_ICONS } from "../constants";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 
-export function getSpanInput(span?: NestedSpanWithMetricsResponse) {
-  return getNestedValue<string>(span?.raw_data.attributes, SemanticConventions.INPUT_VALUE) || null;
+export function getSpanInput(span?: NestedSpanWithMetricsResponse): string | null {
+  const value = getNestedValue(span?.raw_data.attributes, SemanticConventions.INPUT_VALUE);
+  return coerceToString(value);
 }
 
-export function getSpanOutput(span?: NestedSpanWithMetricsResponse) {
-  return getNestedValue<string>(span?.raw_data.attributes, SemanticConventions.OUTPUT_VALUE) || null;
+export function getSpanOutput(span?: NestedSpanWithMetricsResponse): string | null {
+  const value = getNestedValue(span?.raw_data.attributes, SemanticConventions.OUTPUT_VALUE);
+  return coerceToString(value);
 }
 
 export function getSpanInputMimeType(span?: NestedSpanWithMetricsResponse) {
@@ -37,8 +39,9 @@ export function flattenSpans(rootSpans: NestedSpanWithMetricsResponse[]): Nested
   return result;
 }
 
-export function getSpanModel(span?: NestedSpanWithMetricsResponse) {
-  return getNestedValue<string>(span?.raw_data.attributes, SemanticConventions.LLM_MODEL_NAME) || null;
+export function getSpanModel(span?: NestedSpanWithMetricsResponse): string | null {
+  const value = getNestedValue(span?.raw_data.attributes, SemanticConventions.LLM_MODEL_NAME);
+  return coerceToString(value);
 }
 
 export function getSpanType(span?: NestedSpanWithMetricsResponse) {
@@ -55,6 +58,13 @@ export function getSpanIcon(span?: NestedSpanWithMetricsResponse) {
 
 export function isSpanOfType(span: NestedSpanWithMetricsResponse, type: OpenInferenceSpanKind) {
   return getSpanType(span) === type;
+}
+
+function coerceToString(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") return value || null;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 export function getNestedValue<Return>(obj: unknown, path: string): Return | undefined {

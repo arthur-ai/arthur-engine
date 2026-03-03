@@ -2,6 +2,37 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'include_archived'
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/unarchive  endpoint added
+
+# 02/25/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  removed the required property 'enqueued' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'timeout'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'wait_for_completion'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the non-success response with the status '422'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the required property 'traces_fetched' to the response with the '200' status
+
+# 02/25/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/AgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
+# 02/24/2026
+- **CHANGE** for Component/Schema:  removed the schema 'GCPCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'ManualCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'OTELCreationSource'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPCreationSource, #/components/schemas/OTELCreationSource, #/components/schemas/ManualCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
 # 02/23/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
 - **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'

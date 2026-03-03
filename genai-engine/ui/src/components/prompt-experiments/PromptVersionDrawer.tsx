@@ -426,8 +426,9 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                       results.map((result, idx) => {
                         // Sort evals by name for consistent ordering across rows
                         const sortedEvals = [...result.evals].sort((a, b) => a.eval_name.localeCompare(b.eval_name));
-                        const passedCount = sortedEvals.filter((e) => e.eval_results && e.eval_results.score >= 0.5).length;
-                        const totalCount = sortedEvals.length;
+                        const evalsWithResults = sortedEvals.filter((e) => e.eval_results);
+                        const passedCount = evalsWithResults.filter((e) => e.eval_results!.score >= 0.5).length;
+                        const totalCount = evalsWithResults.length;
 
                         return (
                           <TableRow key={`${result.dataset_row_id}-${idx}`} hover onClick={() => handleRowClick(idx)} sx={{ cursor: "pointer" }}>
@@ -486,7 +487,18 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                                 </Typography>
                                 <Box className="flex gap-1 flex-wrap justify-center">
                                   {sortedEvals.map((evalExec, eidx) => {
-                                    const passed = evalExec.eval_results && evalExec.eval_results.score >= 0.5;
+                                    if (!evalExec.eval_results) {
+                                      return (
+                                        <Chip
+                                          key={eidx}
+                                          label={`${evalExec.eval_name} (v${evalExec.eval_version})`}
+                                          size="small"
+                                          variant="outlined"
+                                          sx={{ fontSize: "0.65rem", height: "20px", color: "text.secondary", borderColor: "text.secondary" }}
+                                        />
+                                      );
+                                    }
+                                    const passed = evalExec.eval_results.score >= 0.5;
                                     return (
                                       <Chip
                                         key={eidx}

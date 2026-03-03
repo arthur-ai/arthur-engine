@@ -5,9 +5,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from arthur_common.models.agent_governance_schemas import (
-    CreationSource,
-    GCPCreationSource,
-    ManualCreationSource,
+    AgentCreationSource,
+    GCPAgentCreationSource,
+    ManualAgentCreationSource,
     TaskMetadata,
 )
 from arthur_common.models.common_schemas import (
@@ -586,6 +586,7 @@ class Task(BaseModel):
     is_agentic: bool = False
     is_autocreated: bool = False
     is_system_task: bool = False
+    is_archived: bool = False
     task_metadata: Optional[TaskMetadata] = None
     service_names: List[str] = Field(
         default_factory=list,
@@ -599,19 +600,21 @@ class Task(BaseModel):
         # Convert AgentMetadata request to new TaskMetadata format for DB storage
         task_metadata = None
         if x.agent_metadata:
-            creation_source: Optional[CreationSource] = None
+            creation_source: Optional[AgentCreationSource] = None
 
             if x.agent_metadata.provider == RegisteredAgentProvider.GCP:
                 if x.agent_metadata.gcp_metadata is None:
                     raise ValueError("GCP metadata is required when provider is GCP.")
 
-                creation_source = GCPCreationSource(
-                    gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
-                    gcp_region=x.agent_metadata.gcp_metadata.region,
-                    gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
+                creation_source = AgentCreationSource(
+                    root=GCPAgentCreationSource(
+                        gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
+                        gcp_region=x.agent_metadata.gcp_metadata.region,
+                        gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
+                    )
                 )
             else:
-                creation_source = ManualCreationSource()
+                creation_source = AgentCreationSource(root=ManualAgentCreationSource())
 
             task_metadata = TaskMetadata(
                 creation_source=creation_source,
@@ -636,6 +639,7 @@ class Task(BaseModel):
             is_agentic=x.is_agentic,
             is_autocreated=x.is_autocreated,
             is_system_task=x.is_system_task,
+            is_archived=x.archived,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -681,9 +685,9 @@ class Task(BaseModel):
         # Convert new TaskMetadata format to old AgentMetadataResponse format
         agent_metadata_response = None
         if self.task_metadata and self.task_metadata.creation_source:
-            cs = self.task_metadata.creation_source
+            cs = self.task_metadata.creation_source.root
             svc_names = self.service_names or None
-            if isinstance(cs, GCPCreationSource):
+            if isinstance(cs, GCPAgentCreationSource):
                 agent_metadata_response = AgentMetadataResponse(
                     provider=RegisteredAgentProvider.GCP,
                     gcp_metadata=GCPAgentMetadataResponse(
@@ -707,6 +711,7 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
+            is_archived=self.is_archived,
             agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,
