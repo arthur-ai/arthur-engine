@@ -160,7 +160,7 @@ class Arthur:
         """
         resolved_task_id = self._get_task_id(task_id)
         tracer_provider = self._tracer_provider or trace.get_tracer_provider()
-        tracer = tracer_provider.get_tracer("arthur_observability_sdk")
+        tracer = tracer_provider.get_tracer("openinference.instrumentation.arthur")
 
         with tracer.start_as_current_span("get_prompt") as span:
             span.set_attribute(
@@ -235,7 +235,7 @@ class Arthur:
         effective_version = tag if tag else version
 
         tracer_provider = self._tracer_provider or trace.get_tracer_provider()
-        tracer = tracer_provider.get_tracer("arthur_observability_sdk")
+        tracer = tracer_provider.get_tracer("openinference.instrumentation.arthur")
 
         with tracer.start_as_current_span("render_prompt") as span:
             span.set_attribute(
@@ -245,11 +245,20 @@ class Arthur:
             span.set_attribute("arthur.prompt.name", name)
             span.set_attribute("arthur.task.id", resolved_task_id)
             span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VERSION, effective_version)
-            span.set_attribute(
-                SpanAttributes.LLM_PROMPT_TEMPLATE_VARIABLES, json.dumps(variables)
-            )
 
             try:
+                # Fetch the original template (with {{ variable }} markers) so
+                # the span INPUT shows the unrendered prompt + variable values,
+                # not the already-substituted result.
+                if tag:
+                    template_data = self._api_client.get_prompt_by_tag(
+                        task_id=resolved_task_id, name=name, tag=tag
+                    )
+                else:
+                    template_data = self._api_client.get_prompt_by_version(
+                        task_id=resolved_task_id, name=name, version=version
+                    )
+
                 prompt_data = self._api_client.render_prompt(
                     task_id=resolved_task_id,
                     name=name,
@@ -262,8 +271,17 @@ class Arthur:
                 span.set_status(trace.StatusCode.ERROR, str(exc))
                 raise
 
-            messages = prompt_data.get("messages", [])
-            span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE, json.dumps(messages))
+            # INPUT: original template messages (with markers) + variable values
+            template_messages = template_data.get("messages", [])
+            span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE, json.dumps(template_messages))
+            span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VARIABLES, json.dumps(variables))
+            span.set_attribute(
+                SpanAttributes.INPUT_VALUE,
+                json.dumps({"messages": template_messages, "variables": variables}),
+            )
+            span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+
+            # OUTPUT: rendered result (variables substituted)
             span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(prompt_data))
             span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 

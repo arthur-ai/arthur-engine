@@ -223,6 +223,15 @@ const spanDetailsStrategy = [
     widgets: [WIDGETS.LATENCY],
   },
   {
+    // PROMPT is in the OpenInference spec but not the installed JS package version.
+    // Input shows the original template + variable values; Output shows the rendered result.
+    kind: "PROMPT",
+    panels: [PANELS.INPUT, PANELS.OUTPUT],
+    raw: PANELS.RAW_DATA,
+    tabs: [PANELS.RAW_DATA],
+    widgets: [WIDGETS.LATENCY],
+  },
+  {
     kind: "UNKNOWN",
     panels: [PANELS.INPUT, PANELS.OUTPUT],
     raw: PANELS.RAW_DATA,
@@ -234,7 +243,9 @@ const spanDetailsStrategy = [
 export function getSpanDetailsStrategy(kind: OpenInferenceSpanKind) {
   const strategy = spanDetailsStrategy.find((strategy) => strategy.kind === kind);
 
-  return strategy;
+  // Fall back to UNKNOWN for any span kind not explicitly handled so that Raw Data
+  // always renders even for future or unrecognised kinds.
+  return strategy ?? spanDetailsStrategy.find((strategy) => strategy.kind === "UNKNOWN");
 }
 
 export type SpanDetailsStrategy = ReturnType<typeof getSpanDetailsStrategy>;
