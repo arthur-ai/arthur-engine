@@ -11,6 +11,7 @@ import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
@@ -25,7 +26,6 @@ import { TraceContentCell } from "../TraceContentCell";
 
 import { TracingFilterModal } from "./components/TracingFilterModal";
 
-import type { MRT_ColumnDef } from "material-react-table";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -114,7 +114,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       TokenCountTooltip,
       TokenCostTooltip,
     };
-    return createTraceLevelColumns(deps) as MRT_ColumnDef<TraceMetadataResponse, any>[];
+    return createTraceLevelColumns(deps) as MRT_ColumnDef<TraceMetadataResponse, unknown>[];
   }, []);
 
   const setFilters = useFilterStore((state) => state.setFilters);
@@ -181,7 +181,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
             <BucketProvider thresholds={thresholds}>
               <TracesTable
                 data={data?.traces ?? DEFAULT_DATA}
-                columns={columns as any}
+                columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
                 rowCount={data?.count ?? 0}
                 pagination={pagination}
                 onPaginationChange={props.onPaginationChange}

@@ -1,7 +1,6 @@
+import { withFieldGroup } from "@arthur/shared-components";
 import { TextField } from "@mui/material";
 import z from "zod";
-
-import { withFieldGroup } from "@arthur/shared-components";
 
 export const VllmFields = withFieldGroup({
   defaultValues: {

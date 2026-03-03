@@ -1,12 +1,11 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Box, Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { z } from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
-
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
-import { withFieldGroup } from "@arthur/shared-components";
 
 export const EndpointSetup = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "endpoint">,

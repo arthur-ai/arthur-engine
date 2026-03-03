@@ -1,11 +1,11 @@
+import type { IncomingFilter } from "@arthur/shared-components";
+import { EnumOperators, Operators } from "@arthur/shared-components";
 import { Add, Close, FilterList } from "@mui/icons-material";
 import { Autocomplete, Box, Button, Chip, IconButton, Paper, Popover, Stack, TextField, Typography } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import { Dayjs } from "dayjs";
 import { useState } from "react";
 
-import type { IncomingFilter } from "@arthur/shared-components";
-import { EnumOperators, Operators } from "@arthur/shared-components";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 
 interface FilterState {

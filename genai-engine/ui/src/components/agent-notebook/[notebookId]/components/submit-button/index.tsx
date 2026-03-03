@@ -1,12 +1,11 @@
+import { VariableChip } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
 
 import { agentNotebookStateFormOpts } from "../../form";
-
-import { VariableChip } from "@arthur/shared-components";
-import { withForm } from "@arthur/shared-components";
 
 export const SubmitButton = withForm({
   ...agentNotebookStateFormOpts,

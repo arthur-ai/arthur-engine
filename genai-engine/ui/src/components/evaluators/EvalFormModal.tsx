@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -16,7 +17,6 @@ import { isAxiosError } from "axios";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";

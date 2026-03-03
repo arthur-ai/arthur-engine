@@ -1,11 +1,10 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Button, DialogActions, DialogContent, DialogTitle, IconButton, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import z from "zod";
-
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
-import { useAppForm } from "@arthur/shared-components";
 
 const FormSchema = z.object({
   name: z.string().min(1, "Name is required"),

@@ -1,9 +1,9 @@
+import { withFieldGroup } from "@arthur/shared-components";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Alert, Autocomplete, Box, Card, CardContent, Chip, CircularProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useEffect } from "react";
 
-import { withFieldGroup } from "@arthur/shared-components";
 import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type VariableMappingFormState = {

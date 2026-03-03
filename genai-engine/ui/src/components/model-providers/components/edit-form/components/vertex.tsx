@@ -1,10 +1,9 @@
+import { withFieldGroup } from "@arthur/shared-components";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { Button, Link, Stack, styled, TextField, Typography } from "@mui/material";
 import z from "zod";
 
 import { VertexAIFormValues } from "../form";
-
-import { withFieldGroup } from "@arthur/shared-components";
 
 export const VertexAIFields = withFieldGroup({
   defaultValues: {

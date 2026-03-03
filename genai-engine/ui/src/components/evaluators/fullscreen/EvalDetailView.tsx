@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
@@ -23,7 +24,6 @@ import EvalEditModal from "../EvalEditModal";
 import { useAddTagToEvalVersionMutation } from "../hooks/useAddTagToEvalVersionMutation";
 import { useCreateEvalMutation } from "../hooks/useCreateEvalMutation";
 import { useDeleteTagFromEvalVersionMutation } from "../hooks/useDeleteTagFromEvalVersionMutation";
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import type { EvalDetailViewProps } from "../types";
 
 import type { CreateEvalRequest } from "@/lib/api-client/api-client";

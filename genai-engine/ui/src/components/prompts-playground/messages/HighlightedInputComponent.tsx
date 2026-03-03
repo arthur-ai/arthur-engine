@@ -1,6 +1,6 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import React from "react";
 
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 
 export const HighlightedInputComponent = ({

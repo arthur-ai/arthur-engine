@@ -1,20 +1,20 @@
-import { Alert, Box, Stack } from "@mui/material";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { SortingState } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
-
 import {
   CopyableChip as SharedCopyableChip,
   createUserLevelColumns,
   type ColumnDependencies as SharedColumnDependencies,
   TracesTable,
 } from "@arthur/shared-components";
+import { Alert, Box, Stack } from "@mui/material";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
+import { useCallback, useMemo, useState } from "react";
+
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
 
-import type { MRT_ColumnDef } from "material-react-table";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -90,7 +90,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
       TokenCountTooltip,
       TokenCostTooltip,
     };
-    return createUserLevelColumns(deps) as MRT_ColumnDef<TraceUserMetadataResponse, any>[];
+    return createUserLevelColumns(deps) as MRT_ColumnDef<TraceUserMetadataResponse, unknown>[];
   }, []);
 
   if (error) {

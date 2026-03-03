@@ -1,6 +1,5 @@
-import { capitalize } from "@mui/material";
-
 import { createPrimitiveField, EnumOperators, Field, Operators, TextOperators } from "@arthur/shared-components";
+import { capitalize } from "@mui/material";
 
 export const CONTINUOUS_EVAL_FILTER_FIELDS = [
   createPrimitiveField({

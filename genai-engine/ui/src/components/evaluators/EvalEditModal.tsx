@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -12,8 +13,6 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
 
 import { useApi } from "@/hooks/useApi";
 import type { CreateEvalRequest, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";

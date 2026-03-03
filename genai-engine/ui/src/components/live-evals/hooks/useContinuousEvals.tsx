@@ -1,6 +1,6 @@
+import { IncomingFilter, Operators } from "@arthur/shared-components";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { IncomingFilter, Operators } from "@arthur/shared-components";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { Api } from "@/lib/api";

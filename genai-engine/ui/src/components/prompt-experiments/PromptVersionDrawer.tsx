@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -29,7 +30,6 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailModal";
 
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";

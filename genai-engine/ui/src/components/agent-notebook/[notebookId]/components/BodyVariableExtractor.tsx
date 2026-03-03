@@ -1,10 +1,10 @@
+import { withForm } from "@arthur/shared-components";
 import { useStore } from "@tanstack/react-form";
 import { useEffect, useRef } from "react";
 
 import { agentNotebookStateFormOpts } from "../form";
 
 import { extractVariablesFromText } from "@/components/agent-experiments/hooks/useExtractVariables";
-import { withForm } from "@arthur/shared-components";
 import { HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 
 function computeVars(endpoint: { body: string; headers: HttpHeader[] }): string[] {

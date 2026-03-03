@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -25,7 +26,6 @@ import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVers
 import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
 import type { PromptDetailViewProps } from "../types";
 
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { formatDate } from "@/utils/formatters";

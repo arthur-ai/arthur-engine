@@ -152,9 +152,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       renderAfterDrawer={() => (
         <>
           <AddToDatasetDrawer traceId={id} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
-          {task?.id && (
-            <CreateContinuousEvalDialog open={createEvalOpen} onClose={() => setCreateEvalOpen(false)} taskId={task.id} />
-          )}
+          {task?.id && <CreateContinuousEvalDialog open={createEvalOpen} onClose={() => setCreateEvalOpen(false)} taskId={task.id} />}
         </>
       )}
     />

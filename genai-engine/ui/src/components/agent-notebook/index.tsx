@@ -1,3 +1,4 @@
+import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
@@ -18,8 +19,6 @@ import { MaterialReactTable, useMaterialReactTable } from "material-react-table"
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import z from "zod";
-
-import { useAppForm } from "@arthur/shared-components";
 
 import { columns } from "./data/columns";
 import { useAgentNotebooks } from "./hooks/useAgentNotebooks";

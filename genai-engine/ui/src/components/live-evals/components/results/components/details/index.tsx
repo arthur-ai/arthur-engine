@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -20,7 +21,6 @@ import {
 
 import { CopyableChip } from "@/components/common";
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
 import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
 import { useTask } from "@/hooks/useTask";
