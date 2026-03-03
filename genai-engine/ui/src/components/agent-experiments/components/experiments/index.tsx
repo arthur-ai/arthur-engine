@@ -90,7 +90,14 @@ export const Experiments = () => {
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Get started by creating your first agent experiment
         </Typography>
-        <Button variant="contained" color="primary" startIcon={<AddIcon />} to={`/tasks/${taskId}/agent-experiments/new`} component={Link} size="large">
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          to={`/tasks/${taskId}/agent-experiments/new`}
+          component={Link}
+          size="large"
+        >
           Experiment
         </Button>
       </Box>
