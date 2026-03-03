@@ -264,7 +264,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
         )}
       </Box>
 
-      {filteredEvals.length > 0 && (
+      {!debouncedSearchQuery && filteredEvals.length > 0 && (
         <Box
           sx={{
             borderTop: 1,
