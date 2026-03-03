@@ -14,6 +14,8 @@ import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { getCost, getMessages, getOutputMessages, getTokens, tryFormatJson } from "@/utils/llm";
 
+type SpanForLlmUtils = Parameters<typeof getMessages>[0];
+
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
   const mime = getSpanInputMimeType(span);
   let type = "none";
@@ -97,7 +99,7 @@ const spanDetailsStrategy = [
       {
         label: "Input Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
-          const messages = getMessages(span);
+          const messages = getMessages(span as unknown as SpanForLlmUtils);
 
           return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -112,7 +114,7 @@ const spanDetailsStrategy = [
       {
         label: "Output Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
-          const messages = getOutputMessages(span);
+          const messages = getOutputMessages(span as unknown as SpanForLlmUtils);
 
           return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -140,7 +142,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
-          const cost = getCost(span);
+          const cost = getCost(span as unknown as SpanForLlmUtils);
 
           const na = (
             <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
@@ -160,7 +162,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
-          const tokens = getTokens(span);
+          const tokens = getTokens(span as unknown as SpanForLlmUtils);
 
           const na = (
             <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>

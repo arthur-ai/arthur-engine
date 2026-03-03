@@ -18,6 +18,7 @@ import { FeedbackPanel } from "./feedback/FeedbackPanel";
 import { CreateContinuousEvalDialog } from "@/components/live-evals/components/create-form";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
@@ -144,8 +145,8 @@ export const TraceDrawerContent = ({ id }: Props) => {
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
       renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
         <>
-          <AnnotationCell annotations={annotations} traceId={tid} />
-          <FeedbackPanel containerRef={containerRef} annotations={annotations} traceId={tid} />
+          <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
+          <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
         </>
       )}
       renderAfterDrawer={() => (
