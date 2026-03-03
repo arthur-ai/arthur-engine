@@ -5,6 +5,7 @@ import os
 from typing import Any, Dict, Optional
 
 from opentelemetry import trace
+from opentelemetry.context import get_value
 from opentelemetry.sdk.trace import TracerProvider
 from openinference.instrumentation import using_attributes, using_session, using_user
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
@@ -119,6 +120,26 @@ class Arthur:
             "No task_id available. Provide task_id or task_name when initialising Arthur."
         )
 
+    def _apply_openinference_context(self, span: Any) -> None:
+        """Copy OpenInference context attributes onto *span*.
+
+        When callers use ``arthur.session()``, ``arthur.user()``, or
+        ``arthur.attributes()``, the values are stored in the OTel context via
+        ``opentelemetry.context.set_value``.  Auto-instrumented spans (LangChain,
+        OpenAI, …) pick these up via the OpenInference span processor, but PROMPT
+        spans we create manually never go through that processor, so we read and
+        apply the values explicitly here.
+        """
+        for key in (
+            SpanAttributes.SESSION_ID,
+            SpanAttributes.USER_ID,
+            SpanAttributes.METADATA,
+            SpanAttributes.TAG_TAGS,
+        ):
+            value = get_value(key)
+            if value is not None:
+                span.set_attribute(key, value)
+
     def _instrument(self, package: str, extra_name: str, module_path: str, class_name: str) -> Any:
         try:
             mod = importlib.import_module(module_path)
@@ -170,6 +191,7 @@ class Arthur:
             )
             span.set_attribute("arthur.prompt.name", name)
             span.set_attribute("arthur.task.id", resolved_task_id)
+            self._apply_openinference_context(span)
 
             resolved_version = tag if tag else version
             span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VERSION, resolved_version)
@@ -246,6 +268,7 @@ class Arthur:
             span.set_attribute("arthur.prompt.name", name)
             span.set_attribute("arthur.task.id", resolved_task_id)
             span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VERSION, effective_version)
+            self._apply_openinference_context(span)
 
             try:
                 # Fetch the original template (with {{ variable }} markers) so
