@@ -1,0 +1,3 @@
+# Override root gitignore — the generated client requires its models/ directory
+!models/
+!models/**
