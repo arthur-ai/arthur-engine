@@ -81,6 +81,41 @@ jobs:
       - name: Check for new OpenInference instrumentors on PyPI
         run: bash arthur-observability-sdk/scripts/check_new_instrumentors.sh
 
+  check-docs:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect src change without docs update
+        id: check
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          SRC=$(git diff --name-only "$BASE"...HEAD -- \
+                'arthur-observability-sdk/src/arthur_observability_sdk/' | wc -l)
+          DOCS=$(git diff --name-only "$BASE"...HEAD -- \
+                 'arthur-observability-sdk/docs/' | wc -l)
+          if [ "$SRC" -gt 0 ] && [ "$DOCS" -eq 0 ]; then
+            echo "stale=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post docs reminder
+        if: steps.check.outputs.stale == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --body "**Docs reminder:** \`src/arthur_observability_sdk/\` was modified in this PR but \`docs/\` was not updated. Consider running \`scripts/update-docs.sh\` locally (requires the \`claude\` CLI) and committing any resulting changes. This is a reminder only — the PR is not blocked."
+
   claude-code-review:
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate[bot]'
     runs-on: ubuntu-latest

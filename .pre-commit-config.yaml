@@ -111,3 +111,9 @@ repos:
         types: [python]
         pass_filenames: false
         files: ^arthur-observability-sdk/src/arthur_observability_sdk/
+      - id: docs-update-reminder
+        name: "arthur-observability-sdk: docs update reminder"
+        entry: bash arthur-observability-sdk/scripts/check_docs_update.sh
+        language: system
+        pass_filenames: false
+        verbose: true

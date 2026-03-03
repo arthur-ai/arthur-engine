@@ -1,0 +1,7 @@
+{
+  "skills": {
+    "update-docs": {
+      "description": "Update docs/ based on changes to src/arthur_observability_sdk/"
+    }
+  }
+}
