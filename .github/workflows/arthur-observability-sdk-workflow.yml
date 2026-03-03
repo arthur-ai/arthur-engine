@@ -1,12 +1,6 @@
 name: Arthur Observability SDK CI
 
 on:
-  push:
-    branches-ignore:
-      - main
-      - dev
-    paths:
-      - 'arthur-observability-sdk/**'
   pull_request:
     paths:
       - 'arthur-observability-sdk/**'
