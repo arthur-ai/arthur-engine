@@ -8,7 +8,7 @@ import { mapTemplateToForm } from "../../utils/mapper";
 
 import { agentExperimentQueryOptions } from "@/components/agent-experiments/hooks/useAgentExperiment";
 import { useAgentExperiments } from "@/components/agent-experiments/hooks/useAgentExperiments";
-import { useAppForm, withForm } from "@/components/traces/components/filtering/hooks/form";
+import { useAppForm, withForm } from "@arthur/shared-components";
 import { useApi } from "@/hooks/useApi";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 

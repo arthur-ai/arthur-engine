@@ -12,8 +12,8 @@ import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 import { EvaluatorSelector } from "./components/EvaluatorSelector";
 
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { useAppForm, withFieldGroup } from "@arthur/shared-components";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
@@ -191,7 +191,7 @@ export const LiveEvalsNew = () => {
             <Typography variant="body1" color="text.primary" fontWeight="bold" mb={2}>
               Evaluator Instructions
             </Typography>
-            <NunjucksHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
+            <MustacheHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
           </Paper>
         )}
 

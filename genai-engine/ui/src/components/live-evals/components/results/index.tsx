@@ -25,8 +25,7 @@ import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEva
 import { Details } from "./components/details";
 import { FilterModal } from "./components/FilterModal";
 
-import { TextOperators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
+import { TextOperators, TracesEmptyState } from "@arthur/shared-components";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";

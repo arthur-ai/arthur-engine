@@ -29,7 +29,7 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailModal";
 
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";
@@ -612,7 +612,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   Messages
                 </Typography>
                 <Box>
-                  <NunjucksHighlightedTextField
+                  <MustacheHighlightedTextField
                     value={messagesJson}
                     onChange={() => {}} // Read-only, no-op
                     disabled

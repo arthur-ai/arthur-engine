@@ -4,8 +4,8 @@ import { DatePicker } from "@mui/x-date-pickers";
 import { Dayjs } from "dayjs";
 import { useState } from "react";
 
-import type { IncomingFilter } from "@/components/traces/components/filtering/mapper";
-import { EnumOperators, Operators } from "@/components/traces/components/filtering/types";
+import type { IncomingFilter } from "@arthur/shared-components";
+import { EnumOperators, Operators } from "@arthur/shared-components";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 
 interface FilterState {

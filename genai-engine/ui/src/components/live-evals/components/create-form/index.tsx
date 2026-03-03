@@ -10,7 +10,7 @@ import { useCreateContinuousEval } from "../../hooks/useCreateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
 import { VariableMappingSection } from "../variable-mapping";
 
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
+import { useAppForm } from "@arthur/shared-components";
 import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {

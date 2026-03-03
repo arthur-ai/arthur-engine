@@ -1,7 +1,7 @@
 import { DatePicker, DatePickerProps } from "@mui/x-date-pickers/DatePicker";
 import { Dayjs } from "dayjs";
 
-import { useFieldContext } from "@/components/traces/components/filtering/hooks/form-context";
+import { useFieldContext } from "@arthur/shared-components";
 
 export const DatePickerField = ({
   value,

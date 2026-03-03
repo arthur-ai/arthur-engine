@@ -20,7 +20,7 @@ import {
 
 import { CopyableChip } from "@/components/common";
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
 import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
 import { useTask } from "@/hooks/useTask";
@@ -187,7 +187,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                     },
                   }}
                 >
-                  <NunjucksHighlightedTextField
+                  <MustacheHighlightedTextField
                     value={instructions}
                     onChange={() => {}} // Read-only, no-op
                     disabled

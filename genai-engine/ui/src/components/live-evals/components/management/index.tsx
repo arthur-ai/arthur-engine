@@ -27,7 +27,7 @@ import { EditFormDialog } from "../edit-form";
 
 import { FilterModal } from "./components/FilterModal";
 
-import { TextOperators } from "@/components/traces/components/filtering/types";
+import { TextOperators } from "@arthur/shared-components";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";

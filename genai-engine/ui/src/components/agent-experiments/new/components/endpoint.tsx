@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
 
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components";
 
 export const EndpointSetup = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "endpoint">,
@@ -170,7 +170,7 @@ export const EndpointSetup = withFieldGroup({
                   </Typography>
                 </Stack>
                 <Divider sx={{ my: 2 }} />
-                <NunjucksHighlightedTextField
+                <MustacheHighlightedTextField
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="Enter request body..."

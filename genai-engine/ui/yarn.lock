@@ -5,22 +5,7 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@amplitude/analytics-browser@npm:^2.31.1":
-  version: 2.33.5
-  resolution: "@amplitude/analytics-browser@npm:2.33.5"
-  dependencies:
-    "@amplitude/analytics-core": "npm:2.36.1"
-    "@amplitude/plugin-autocapture-browser": "npm:1.18.7"
-    "@amplitude/plugin-network-capture-browser": "npm:1.7.7"
-    "@amplitude/plugin-page-url-enrichment-browser": "npm:0.5.13"
-    "@amplitude/plugin-page-view-tracking-browser": "npm:2.6.10"
-    "@amplitude/plugin-web-vitals-browser": "npm:1.1.8"
-    tslib: "npm:^2.4.1"
-  checksum: 10c0/5558813c8153c632bd5f94332f4949e8a88ddba57f478ee10c837872a447c4ad671e6cd7a94d19df973fdf122f43b39cf398e0c316935ab2bdb5605253dcc6ab
-  languageName: node
-  linkType: hard
-
-"@amplitude/analytics-browser@npm:^2.33.3":
+"@amplitude/analytics-browser@npm:^2.33.3, @amplitude/analytics-browser@npm:^2.36.0":
   version: 2.36.0
   resolution: "@amplitude/analytics-browser@npm:2.36.0"
   dependencies:
@@ -42,17 +27,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/analytics-core@npm:2.36.1":
-  version: 2.36.1
-  resolution: "@amplitude/analytics-core@npm:2.36.1"
-  dependencies:
-    "@amplitude/analytics-connector": "npm:^1.6.4"
-    tslib: "npm:^2.4.1"
-    zen-observable-ts: "npm:^1.1.0"
-  checksum: 10c0/1aa9d54317e17b12ae09c26cc58844ce615ab7c801037be1650dd593f6f98b47425264dbbf3b9a767ff6aa134561a3437f7349f02b3d59825378eef396693b0b
-  languageName: node
-  linkType: hard
-
 "@amplitude/analytics-core@npm:2.41.0":
   version: 2.41.0
   resolution: "@amplitude/analytics-core@npm:2.41.0"
@@ -62,16 +36,6 @@ __metadata:
     tslib: "npm:^2.4.1"
     zen-observable-ts: "npm:^1.1.0"
   checksum: 10c0/0def3b8d1f8bb5849e530b9dce4e9dce76c0076c869c930b41378a3e58f6ce45ad02736eeb3bd6ad807eb216f5416defad80983243ea31ef19874bfa2204dab1
-  languageName: node
-  linkType: hard
-
-"@amplitude/plugin-autocapture-browser@npm:1.18.7":
-  version: 1.18.7
-  resolution: "@amplitude/plugin-autocapture-browser@npm:1.18.7"
-  dependencies:
-    "@amplitude/analytics-core": "npm:2.36.1"
-    tslib: "npm:^2.4.1"
-  checksum: 10c0/f97f85d662b567a02d867bb2299c18d56a4d8069507b04377aa06faf7845be09369495dcf410bfc873aa6e9c2ffc5a664ed02e2d4f170abf46d3c4478d04e2b0
   languageName: node
   linkType: hard
 
@@ -85,16 +49,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-network-capture-browser@npm:1.7.7":
-  version: 1.7.7
-  resolution: "@amplitude/plugin-network-capture-browser@npm:1.7.7"
-  dependencies:
-    "@amplitude/analytics-core": "npm:2.36.1"
-    tslib: "npm:^2.4.1"
-  checksum: 10c0/0575345a54610c3a3f10436865fe5d208cceeb7e96d3f35a320a737d1a41c15794ce9f70124b35c351e7714699e015d1406eca8c94228ee28d18ea09e47b26bd
-  languageName: node
-  linkType: hard
-
 "@amplitude/plugin-network-capture-browser@npm:1.9.0":
   version: 1.9.0
   resolution: "@amplitude/plugin-network-capture-browser@npm:1.9.0"
@@ -105,16 +59,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-page-url-enrichment-browser@npm:0.5.13":
-  version: 0.5.13
-  resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.5.13"
-  dependencies:
-    "@amplitude/analytics-core": "npm:2.36.1"
-    tslib: "npm:^2.4.1"
-  checksum: 10c0/6e5450592e56b02eea0bf2b158ddcefea17b66d542d6e53f3050f54775930f0c6b98fd27b451c34dd8bcc0f547e508c94436eafd091b4ec4b93e68c108a8c6f3
-  languageName: node
-  linkType: hard
-
 "@amplitude/plugin-page-url-enrichment-browser@npm:0.6.4":
   version: 0.6.4
   resolution: "@amplitude/plugin-page-url-enrichment-browser@npm:0.6.4"
@@ -122,16 +66,6 @@ __metadata:
     "@amplitude/analytics-core": "npm:2.41.0"
     tslib: "npm:^2.4.1"
   checksum: 10c0/ad882af466cb3fc6e5cc23b151b71b1532681c4122e09d339cffef73921d3b31b5d07290dfd2ef159e3aa6be023cabc881384eff8f0526db9dfb8ce2e28d2e7d
-  languageName: node
-  linkType: hard
-
-"@amplitude/plugin-page-view-tracking-browser@npm:2.6.10":
-  version: 2.6.10
-  resolution: "@amplitude/plugin-page-view-tracking-browser@npm:2.6.10"
-  dependencies:
-    "@amplitude/analytics-core": "npm:2.36.1"
-    tslib: "npm:^2.4.1"
-  checksum: 10c0/65e4f83657494e1d2238e54d6245899f222b7a9f90b0d26cc786a2e9dafe862840b620dde3481ea06e74bbe68109c2f8250eef6e81e16572d51e6fa688c28be0
   languageName: node
   linkType: hard
 
@@ -156,17 +90,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@amplitude/plugin-web-vitals-browser@npm:1.1.8":
-  version: 1.1.8
-  resolution: "@amplitude/plugin-web-vitals-browser@npm:1.1.8"
-  dependencies:
-    "@amplitude/analytics-core": "npm:2.36.1"
-    tslib: "npm:^2.4.1"
-    web-vitals: "npm:5.1.0"
-  checksum: 10c0/6643f75541c9f42f5d3489f983ce7c935391fbe84e38f6907139e41e3462e99d06153d0694433fd76233cd72f867f95787e6ecb34391cc489d1a80b60baeabf2
-  languageName: node
-  linkType: hard
-
 "@arizeai/openinference-semantic-conventions@npm:^2.1.0, @arizeai/openinference-semantic-conventions@npm:^2.1.1":
   version: 2.1.7
   resolution: "@arizeai/openinference-semantic-conventions@npm:2.1.7"
@@ -174,13 +97,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^3.11.5":
-  version: 3.11.5
-  resolution: "@arthur/shared-components@npm:3.11.5::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.11.5.tgz"
+"@arthur/shared-components@npm:^3.13.1":
+  version: 3.13.1
+  resolution: "@arthur/shared-components@npm:3.13.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.13.1.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.33.3"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.0"
-    "@arthur/unify-types": "npm:^3.11.5"
+    "@arthur/shield-types": "npm:^3.13.1"
+    "@arthur/unify-types": "npm:^3.13.1"
     "@base-ui/react": "npm:^1.2.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -203,9 +127,9 @@ __metadata:
     dayjs: "npm:^1.11.13"
     material-react-table: "npm:^3.2.1"
     prism-react-renderer: "npm:^2.4.1"
-    react-markdown: "npm:^9.0.1"
+    react-markdown: "npm:^10.1.0"
     remark-gfm: "npm:^4.0.0"
-    tailwind-merge: "npm:^2.5.4"
+    tailwind-merge: "npm:^3.5.0"
     uuid: "npm:^13.0.0"
     zod: "npm:^4.3.5"
   peerDependencies:
@@ -214,16 +138,25 @@ __metadata:
     react-dom: ^18.0.0 || ^19.1.0
     react-error-boundary: ^4.0.0
     react-i18next: ^16.5.3
-  checksum: 10c0/00c05485fc15fd41d4743663614cd0039701505d438f433a7c4a232870086ebe55c434f4c3c03b3f2184b0a6a5083e2c762c49be5540fba698f192976cf6270c
+  checksum: 10c0/87ef5bdfbab5a97af1e9350fb66aca0b680540c9434e3d8519620fabf7e2651baffc1d88f39e4c90a41b4519fd7abb8857eb75e2754f47c9823695ae08dafd79
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^3.11.5":
-  version: 3.11.5
-  resolution: "@arthur/unify-types@npm:3.11.5::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.11.5.tgz"
+"@arthur/shield-types@npm:^3.13.1":
+  version: 3.13.1
+  resolution: "@arthur/shield-types@npm:3.13.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.13.1.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/022d9e322fdfffb3b56b412d7212867b4deae7c5c59026fa455c0911bd38a9e162fe16431d6136fb279f467ad091ed0ce80f84932022447fff7c2c31a9b5a7d9
+  checksum: 10c0/4d94f33e5d30b6cf370e2a6929120a7551edb457c236bbf56ce60393706fe5b33c4436f1afab94f33da90657f91d673d550a273329cf7c53c73e8fe9696a8781
+  languageName: node
+  linkType: hard
+
+"@arthur/unify-types@npm:^3.13.1":
+  version: 3.13.1
+  resolution: "@arthur/unify-types@npm:3.13.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.13.1.tgz"
+  dependencies:
+    react: "npm:^19.1.1"
+  checksum: 10c0/1ba67e0babbc5c1e823d5abed4e55ab5b60cf421b8054ba2834c149a4533f956a1761455d7722544dba39594dae8f1eb94886754e02c0b30b9b104a0ddf33be2
   languageName: node
   linkType: hard
 
@@ -526,28 +459,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@base-ui/react@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "@base-ui/react@npm:1.0.0"
-  dependencies:
-    "@babel/runtime": "npm:^7.28.4"
-    "@base-ui/utils": "npm:0.2.3"
-    "@floating-ui/react-dom": "npm:^2.1.6"
-    "@floating-ui/utils": "npm:^0.2.10"
-    reselect: "npm:^5.1.1"
-    tabbable: "npm:^6.3.0"
-    use-sync-external-store: "npm:^1.6.0"
-  peerDependencies:
-    "@types/react": ^17 || ^18 || ^19
-    react: ^17 || ^18 || ^19
-    react-dom: ^17 || ^18 || ^19
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/64f51cb1138fc2236de22d7190fe111ce1141666c6eb1722ec06419ebb368927b29741d3c919fb6dbd1f5776e2635cc24201441d08016d7b0319e40732b88532
-  languageName: node
-  linkType: hard
-
 "@base-ui/react@npm:^1.2.0":
   version: 1.2.0
   resolution: "@base-ui/react@npm:1.2.0"
@@ -566,25 +477,6 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/4571e86c43d05bf2a667f826d35a9e1b2c6a06e33093cf82ecd7380c5691b12c43a236d6be6d099e7507601956d94670f03022f2da7d4b862025f8a43b76c5a3
-  languageName: node
-  linkType: hard
-
-"@base-ui/utils@npm:0.2.3":
-  version: 0.2.3
-  resolution: "@base-ui/utils@npm:0.2.3"
-  dependencies:
-    "@babel/runtime": "npm:^7.28.4"
-    "@floating-ui/utils": "npm:^0.2.10"
-    reselect: "npm:^5.1.1"
-    use-sync-external-store: "npm:^1.6.0"
-  peerDependencies:
-    "@types/react": ^17 || ^18 || ^19
-    react: ^17 || ^18 || ^19
-    react-dom: ^17 || ^18 || ^19
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-  checksum: 10c0/5a75102851e8096402a4185d7b4182a7579069869f3f6f09ec46ce6b5318192f5e8e07ada67af370cf85a055fb0e9693bcaa224dffc51c9d432cf57e05b58144
   languageName: node
   linkType: hard
 
@@ -7391,28 +7283,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-markdown@npm:^9.0.1":
-  version: 9.1.0
-  resolution: "react-markdown@npm:9.1.0"
-  dependencies:
-    "@types/hast": "npm:^3.0.0"
-    "@types/mdast": "npm:^4.0.0"
-    devlop: "npm:^1.0.0"
-    hast-util-to-jsx-runtime: "npm:^2.0.0"
-    html-url-attributes: "npm:^3.0.0"
-    mdast-util-to-hast: "npm:^13.0.0"
-    remark-parse: "npm:^11.0.0"
-    remark-rehype: "npm:^11.0.0"
-    unified: "npm:^11.0.0"
-    unist-util-visit: "npm:^5.0.0"
-    vfile: "npm:^6.0.0"
-  peerDependencies:
-    "@types/react": ">=18"
-    react: ">=18"
-  checksum: 10c0/5bd645d39379f776d64588105f4060c390c3c8e4ff048552c9fa0ad31b756bb3ff7c11081542dc58d840ccf183a6dd4fd4d4edab44d8c24dee8b66551a5fd30d
-  languageName: node
-  linkType: hard
-
 "react-refresh@npm:^0.18.0":
   version: 0.18.0
   resolution: "react-refresh@npm:0.18.0"
@@ -8271,13 +8141,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tabbable@npm:^6.3.0":
-  version: 6.3.0
-  resolution: "tabbable@npm:6.3.0"
-  checksum: 10c0/57ba019d29b5cfa0c862248883bcec0e6d29d8f156ba52a1f425e7cfeca4a0fc701ab8d035c4c86ddf74ecdbd0e9f454a88d9b55d924a51f444038e9cd14d7a0
-  languageName: node
-  linkType: hard
-
 "tabbable@npm:^6.4.0":
   version: 6.4.0
   resolution: "tabbable@npm:6.4.0"
@@ -8292,17 +8155,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwind-merge@npm:^2.5.4":
-  version: 2.6.1
-  resolution: "tailwind-merge@npm:2.6.1"
-  checksum: 10c0/f9b5d7ba37f6c6dc7bb7a090f08252e8d827b5abfc1031bf468c5274ce104409e7952a0075a3e009aab53adda8c6d133bc1dd9d3427e2ae5bc00306f9ce1fbff
-  languageName: node
-  linkType: hard
-
-"tailwind-merge@npm:^3.3.1":
-  version: 3.4.1
-  resolution: "tailwind-merge@npm:3.4.1"
-  checksum: 10c0/0b601ac81673871eb5056dc2e300140d0d7b9998ce5bff2223514126ae1c4275a6537ddc9ae1bc49367b7d1b2d20d609916e5e072a80405947a78b438f06c282
+"tailwind-merge@npm:^3.5.0":
+  version: 3.5.0
+  resolution: "tailwind-merge@npm:3.5.0"
+  checksum: 10c0/4dc588f5b5296ba3f38e1ebb41f02b6d24a8c5bb45e44b33748c118fb4b5767dd0efc464431ca3e75404056b618b5f67bec3708158baa65fed8a2fc9201e0c53
   languageName: node
   linkType: hard
 
@@ -8525,10 +8381,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ui@workspace:."
   dependencies:
-    "@amplitude/analytics-browser": "npm:^2.31.1"
+    "@amplitude/analytics-browser": "npm:^2.36.0"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@arthur/shared-components": "npm:^3.11.5"
-    "@base-ui/react": "npm:^1.0.0"
+    "@arthur/shared-components": "npm:^3.13.1"
+    "@base-ui/react": "npm:^1.2.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -8581,7 +8437,7 @@ __metadata:
     react-use-measure: "npm:^2.1.7"
     remark-gfm: "npm:^4.0.1"
     swagger-typescript-api: "npm:^13.2.13"
-    tailwind-merge: "npm:^3.3.1"
+    tailwind-merge: "npm:^3.5.0"
     tailwindcss: "npm:^4.1.13"
     typescript: "npm:~5.9.0"
     typescript-eslint: "npm:^8.44.0"

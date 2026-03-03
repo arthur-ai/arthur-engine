@@ -16,7 +16,7 @@ import { isAxiosError } from "axios";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
-import NunjucksHighlightedTextField from "./MustacheHighlightedTextField";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";
@@ -404,7 +404,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   Instructions
                 </Typography>
               </FormLabel>
-              <NunjucksHighlightedTextField
+              <MustacheHighlightedTextField
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Enter eval instructions..."

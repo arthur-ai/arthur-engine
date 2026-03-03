@@ -4,8 +4,8 @@ import { Button, DialogActions, DialogContent, DialogTitle, IconButton, Stack, T
 import { useStore } from "@tanstack/react-form";
 import z from "zod";
 
-import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { useAppForm } from "@arthur/shared-components";
 
 const FormSchema = z.object({
   name: z.string().min(1, "Name is required"),

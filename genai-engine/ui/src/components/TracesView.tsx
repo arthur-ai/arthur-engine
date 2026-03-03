@@ -7,8 +7,7 @@ import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
-import { TracesViewLayout } from "./traces/components/TracesViewLayout";
-import { Level, LEVELS, TIME_RANGES } from "./traces/constants";
+import { Level, LEVELS, TIME_RANGES, TracesViewLayout } from "@arthur/shared-components";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
 import { useWelcomeStore } from "./traces/stores/welcome.store";
 

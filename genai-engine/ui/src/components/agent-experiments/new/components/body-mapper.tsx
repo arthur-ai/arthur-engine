@@ -3,7 +3,7 @@ import { useStore } from "@tanstack/react-form";
 
 import { NewAgentExperimentFormData } from "../form";
 
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@arthur/shared-components";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 
 export const BodyMapper = withFieldGroup({

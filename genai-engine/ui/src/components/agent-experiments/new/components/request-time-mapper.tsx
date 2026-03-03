@@ -5,8 +5,8 @@ import { useEffect } from "react";
 
 import { newAgentExperimentFormOpts } from "../form";
 
-import { VariableChip } from "@/components/evaluators/VariableChip";
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { VariableChip } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components";
 import { TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 
 export const RequestTimeMapper = withForm({

@@ -1,6 +1,6 @@
 import React from "react";
 
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 
 export const HighlightedInputComponent = ({
@@ -23,7 +23,7 @@ export const HighlightedInputComponent = ({
   };
 
   return (
-    <NunjucksHighlightedTextField
+    <MustacheHighlightedTextField
       value={stringValue}
       onChange={handleChange}
       placeholder={placeholder}

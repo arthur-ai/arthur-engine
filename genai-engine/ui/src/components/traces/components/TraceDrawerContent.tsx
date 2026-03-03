@@ -1,8 +1,9 @@
+import { TraceDrawerBody } from "@arthur/shared-components";
 import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useMemo } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
@@ -10,8 +11,11 @@ import { useSelection } from "../hooks/useSelection";
 import { usePaginationContext } from "../stores/pagination-context";
 import { flattenSpans } from "../utils/spans";
 
-import { TraceDrawerBody } from "./drawer/TraceDrawerBody";
+import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
+import { AnnotationCell } from "./AnnotationCell";
+import { FeedbackPanel } from "./feedback/FeedbackPanel";
 
+import { CreateContinuousEvalDialog } from "@/components/live-evals/components/create-form";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { queryKeys } from "@/lib/queryKeys";
@@ -110,7 +114,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
       trace_id: traceId,
       source: "trace_actions",
     });
+    setCreateEvalOpen(true);
   };
+
+  const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
+  const [createEvalOpen, setCreateEvalOpen] = useState(false);
 
   if (!trace) return null;
 
@@ -122,7 +130,10 @@ export const TraceDrawerContent = ({ id }: Props) => {
       onSelectSpan={select}
       onRefreshMetrics={handleRefreshMetrics}
       isRefreshingMetrics={refreshMetrics.isPending}
-      onAddToDataset={handleAddToDataset}
+      onAddToDataset={() => {
+        handleAddToDataset();
+        setAddToDatasetOpen(true);
+      }}
       onOpenSpanDrawer={(spanId) => setDrawerTarget({ target: "span", id: spanId })}
       onOpenPlayground={(spanId, taskId) => navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`)}
       taskId={task?.id}
@@ -130,7 +141,21 @@ export const TraceDrawerContent = ({ id }: Props) => {
       currentTarget={current?.target ?? null}
       currentId={current?.id ?? null}
       paginationContext={paginationContext}
-      onNavigate={(target, id) => setDrawerTarget({ target, id })}
+      onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
+      renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
+        <>
+          <AnnotationCell annotations={annotations} traceId={tid} />
+          <FeedbackPanel containerRef={containerRef} annotations={annotations} traceId={tid} />
+        </>
+      )}
+      renderAfterDrawer={() => (
+        <>
+          <AddToDatasetDrawer traceId={id} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
+          {task?.id && (
+            <CreateContinuousEvalDialog open={createEvalOpen} onClose={() => setCreateEvalOpen(false)} taskId={task.id} />
+          )}
+        </>
+      )}
     />
   );
 };

@@ -4,7 +4,7 @@ import z from "zod";
 
 import { VertexAIFormValues } from "../form";
 
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@arthur/shared-components";
 
 export const VertexAIFields = withFieldGroup({
   defaultValues: {

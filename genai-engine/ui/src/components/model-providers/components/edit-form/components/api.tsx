@@ -1,7 +1,7 @@
 import { TextField } from "@mui/material";
 import z from "zod";
 
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@arthur/shared-components";
 
 export const APIKeyFields = withFieldGroup({
   defaultValues: {

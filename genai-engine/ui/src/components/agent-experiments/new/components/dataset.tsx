@@ -6,7 +6,7 @@ import z from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
 
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@arthur/shared-components";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";

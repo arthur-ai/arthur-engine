@@ -3,16 +3,20 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
+import {
+  CopyableChip as SharedCopyableChip,
+  createSessionLevelColumns,
+  type ColumnDependencies as SharedColumnDependencies,
+  TracesTable,
+} from "@arthur/shared-components";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createSessionLevelColumns } from "../../data/create-session-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
 
 import { SessionsFilterModal } from "./components/SessionsFilterModal";
-import { TracesTable } from "./TracesTable";
 
-import { CopyableChip } from "@/components/common";
+import type { MRT_ColumnDef } from "material-react-table";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -75,23 +79,22 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     [setDrawerTarget, task?.id]
   );
 
-  const columns = useMemo(
-    () =>
-      createSessionLevelColumns({
-        formatDate,
-        formatCurrency: () => "", // Not used in session columns but required by type
-        onTrack: track,
-        Chip: CopyableChip,
-        DurationCell: () => null, // Not used in session columns
-        TraceContentCell: () => null, // Not used in session columns
-        AnnotationCell: () => null, // Not used in session columns
-        SpanStatusBadge: () => null, // Not used in session columns
-        TypeChip: () => null, // Not used in session columns
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    []
-  );
+  const columns = useMemo(() => {
+    const deps: SharedColumnDependencies = {
+      formatDate,
+      formatCurrency: () => "",
+      onTrack: track,
+      Chip: SharedCopyableChip,
+      DurationCell: () => null,
+      TraceContentCell: () => null,
+      AnnotationCell: () => null,
+      SpanStatusBadge: () => null,
+      TypeChip: () => null,
+      TokenCountTooltip,
+      TokenCostTooltip,
+    };
+    return createSessionLevelColumns(deps) as MRT_ColumnDef<SessionMetadataResponse, any>[];
+  }, []);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);

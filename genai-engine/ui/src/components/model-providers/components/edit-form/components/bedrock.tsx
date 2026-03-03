@@ -4,7 +4,7 @@ import z from "zod";
 
 import { BedrockFormValues } from "../form";
 
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@arthur/shared-components";
 
 export const BedrockFields = withFieldGroup({
   defaultValues: {

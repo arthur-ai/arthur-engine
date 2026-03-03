@@ -1,13 +1,13 @@
 import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
 
-import { EvaluatorSelectorUI } from "./EvaluatorSelectorUI";
+import { EvaluatorSelectorUI } from "@arthur/shared-components";
 
 import EvalFormModal from "@/components/evaluators/EvalFormModal";
 import { useCreateEvalMutation } from "@/components/evaluators/hooks/useCreateEvalMutation";
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
+import { withFieldGroup } from "@arthur/shared-components";
 
 type EvaluatorFormState = {
   name: string | null;

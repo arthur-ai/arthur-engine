@@ -9,7 +9,7 @@ import { agentNotebookStateFormOpts } from "../../form";
 import { useMetaStore } from "../../store/meta.store";
 import { SubmitButton } from "../submit-button";
 
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { withForm } from "@arthur/shared-components";
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
 

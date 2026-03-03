@@ -21,7 +21,7 @@ import { DatasetSetup } from "@/components/agent-experiments/new/components/data
 import { EndpointSetup } from "@/components/agent-experiments/new/components/endpoint";
 import { EvaluatorMapper } from "@/components/agent-experiments/new/components/evaluator-mapper";
 import { EvaluatorsSelector } from "@/components/agent-experiments/new/components/evaluator-selector";
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
+import { useAppForm } from "@arthur/shared-components";
 import { getContentHeight } from "@/constants/layout";
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
 

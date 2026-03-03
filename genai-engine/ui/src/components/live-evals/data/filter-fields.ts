@@ -1,7 +1,6 @@
 import { capitalize } from "@mui/material";
 
-import { createPrimitiveField, Field } from "@/components/traces/components/filtering/fields";
-import { EnumOperators, Operators, TextOperators } from "@/components/traces/components/filtering/types";
+import { createPrimitiveField, EnumOperators, Field, Operators, TextOperators } from "@arthur/shared-components";
 
 export const CONTINUOUS_EVAL_FILTER_FIELDS = [
   createPrimitiveField({

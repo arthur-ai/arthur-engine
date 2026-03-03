@@ -21,7 +21,7 @@ import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../n
 import { VariableMappingSection } from "../variable-mapping";
 
 import { CopyableChip } from "@/components/common";
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
+import { useAppForm } from "@arthur/shared-components";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {

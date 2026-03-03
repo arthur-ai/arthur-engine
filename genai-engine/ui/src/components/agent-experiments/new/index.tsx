@@ -16,7 +16,7 @@ import { useCopyFromTemplate } from "./hooks/useCopyFromTemplate";
 import { useCreateNewExperiment } from "./hooks/useCreateNewExperiment";
 import { mapFormToRequest, mapTemplateToRequest } from "./utils/mapper";
 
-import { useAppForm, withForm } from "@/components/traces/components/filtering/hooks/form";
+import { useAppForm, withForm } from "@arthur/shared-components";
 import { getContentHeight } from "@/constants/layout";
 import { AgenticExperimentDetail, HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";

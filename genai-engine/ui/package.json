@@ -17,10 +17,10 @@
     "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "^2.31.1",
+    "@amplitude/analytics-browser": "^2.36.0",
     "@arizeai/openinference-semantic-conventions": "^2.1.1",
-    "@arthur/shared-components": "^3.11.5",
-    "@base-ui/react": "^1.0.0",
+    "@arthur/shared-components": "^3.13.1",
+    "@base-ui/react": "^1.2.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -55,7 +55,7 @@
     "react-use-measure": "^2.1.7",
     "remark-gfm": "^4.0.1",
     "swagger-typescript-api": "^13.2.13",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.13",
     "usehooks-ts": "^3.1.1",
     "uuid": "^13.0.0",
