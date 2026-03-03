@@ -28,10 +28,11 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 interface EvaluatorsProps {
   embedded?: boolean;
   isCreateModalOpen?: boolean;
+  onCreateModalOpen?: () => void;
   onCreateModalClose?: () => void;
 }
 
-const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModalOpen: externalOpen, onCreateModalClose }) => {
+const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModalOpen: externalOpen, onCreateModalOpen, onCreateModalClose }) => {
   const { task } = useTask();
   const { id: taskId, evaluatorName: urlEvaluatorName, version: urlVersion } = useParams<{ id: string; evaluatorName?: string; version?: string }>();
   const navigate = useNavigate();
@@ -47,7 +48,8 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
   const isCreateModalOpen = embedded ? (externalOpen ?? false) : internalOpen;
   const setIsCreateModalOpen = (value: boolean) => {
     if (embedded) {
-      if (!value) onCreateModalClose?.();
+      if (value) onCreateModalOpen?.();
+      else onCreateModalClose?.();
     } else {
       setInternalOpen(value);
     }

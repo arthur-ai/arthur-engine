@@ -365,9 +365,13 @@ export const AllTasks: React.FC = () => {
                 {filteredTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
                     <Typography variant="h6" color="text.secondary">
-                      {inactiveDays === 0 ? "No tasks found" : `No tasks active in the last ${inactiveDays} days`}
+                      {inactiveDays === 0
+                        ? "No tasks found"
+                        : inactiveDays === "archived"
+                          ? "No archived tasks found"
+                          : `No tasks active in the last ${inactiveDays} days`}
                     </Typography>
-                    {inactiveDays !== 0 && (
+                    {inactiveDays !== 0 && inactiveDays !== "archived" && (
                       <Typography variant="body2" color="text.disabled">
                         Try expanding the time range or selecting &quot;All time&quot;.
                       </Typography>

@@ -83,7 +83,12 @@ export const EvaluateView = () => {
 
       <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {activeTab === "evals-management" && (
-          <Evaluators embedded isCreateModalOpen={isEvalsModalOpen} onCreateModalClose={() => setIsEvalsModalOpen(false)} />
+          <Evaluators
+            embedded
+            isCreateModalOpen={isEvalsModalOpen}
+            onCreateModalOpen={() => setIsEvalsModalOpen(true)}
+            onCreateModalClose={() => setIsEvalsModalOpen(false)}
+          />
         )}
         {activeTab === "ce-management" && (
           <Suspense
