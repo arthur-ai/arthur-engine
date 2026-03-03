@@ -44,9 +44,9 @@ def built_wheel(tmp_path_factory: pytest.TempPathFactory) -> Path:
         text=True,
         timeout=120,
     )
-    assert result.returncode == 0, (
-        f"build_sdk_wheel.sh failed:\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"build_sdk_wheel.sh failed:\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
     wheel_path = Path(result.stdout.strip())
     assert wheel_path.exists(), f"Wheel path from script does not exist: {wheel_path}"
     return wheel_path

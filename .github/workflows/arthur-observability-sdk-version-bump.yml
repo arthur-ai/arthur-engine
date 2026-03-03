@@ -1,0 +1,50 @@
+name: Arthur Observability SDK - Version Bump
+
+# Manual dispatch only. Run this on the `main` branch to bump the SDK version.
+# The resulting "Bump version: X → Y" commit triggers the release workflow
+# which publishes the new version to PyPI and creates a git tag.
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type (patch / minor / major)"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+
+      - name: Install bump2version
+        run: pip install bump2version
+
+      - name: Bump SDK version
+        working-directory: arthur-observability-sdk
+        run: bump2version ${{ github.event.inputs.bump_type }}
+
+      - name: Push version bump commit
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: git push origin

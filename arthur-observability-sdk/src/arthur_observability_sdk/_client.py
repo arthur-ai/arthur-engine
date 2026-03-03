@@ -67,25 +67,25 @@ class ArthurAPIClient:
 
     def get_prompt_by_version(self, task_id: str, name: str, version: str) -> Dict[str, Any]:
         try:
-            prompt = self._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get(
+            response = self._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info(
                 task_id=task_id,
                 prompt_name=name,
                 prompt_version=version,
             )
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
-        return prompt.model_dump()
+        return json.loads(response.raw_data)
 
     def get_prompt_by_tag(self, task_id: str, name: str, tag: str) -> Dict[str, Any]:
         try:
-            prompt = self._prompts_api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get(
+            response = self._prompts_api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get_with_http_info(
                 task_id=task_id,
                 prompt_name=name,
                 tag=tag,
             )
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
-        return prompt.model_dump()
+        return json.loads(response.raw_data)
 
     def render_prompt(
         self,
@@ -107,7 +107,7 @@ class ArthurAPIClient:
             )
         )
         try:
-            prompt = self._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post(
+            response = self._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info(
                 task_id=task_id,
                 prompt_name=name,
                 prompt_version=version,
@@ -115,7 +115,7 @@ class ArthurAPIClient:
             )
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
-        return prompt.model_dump()
+        return json.loads(response.raw_data)
 
     def resolve_task_id(self, task_name: str) -> str:
         """
