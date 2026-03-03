@@ -50,7 +50,19 @@ This package is auto-generated from `genai-engine/staging.openapi.json` using Op
 ./scripts/generate_openapi_client.sh generate python
 ```
 
-`ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. Call the plain (non-`_with_http_info`) variants — they return typed Pydantic model instances. Convert to a plain dict with `.model_dump()`. Only reach for `*_with_http_info()` / `.raw_data` if you need HTTP headers or status codes that the typed response doesn't expose.
+`ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. **Always call the `*_with_http_info()` variants and parse `response.raw_data` directly:**
+
+```python
+response = self._prompts_api.some_method_with_http_info(...)
+return json.loads(response.raw_data)
+```
+
+Do **not** call the plain variants and use `.model_dump()` or `.to_dict()`. The generated Pydantic models have three serialization bugs that make them unreliable:
+1. **`anyOf` wrappers** (e.g. `Content`, which represents `str | List[OpenAIMessageItem]`) — `model_dump()` returns the wrapper's internal fields (`anyof_schema_1_validator`, `actual_instance`, etc.) instead of the actual value.
+2. **`datetime` fields** — `model_dump()` returns a `datetime` object, not a JSON-serialisable string.
+3. **`Set` fields** — `model_dump()` returns a Python `set`, which `json.dumps` cannot serialise.
+
+Parsing `raw_data` (the raw HTTP response bytes) bypasses all of this — the server already sent valid JSON.
 
 ## Key Patterns
 
@@ -85,11 +97,11 @@ def _make_arthur_with_in_memory_spans(task_id=TASK_ID):
     return arthur, exporter
 ```
 
-Mock a generated-client response:
+Mock a generated-client response (set `raw_data` to JSON bytes, matching what `*_with_http_info()` returns):
 ```python
 mock_resp = MagicMock()
-mock_resp.model_dump.return_value = prompt_data
-arthur._api_client._prompts_api.some_method.return_value = mock_resp
+mock_resp.raw_data = json.dumps(prompt_data).encode()
+arthur._api_client._prompts_api.some_method_with_http_info.return_value = mock_resp
 ```
 
 `test_install.py` builds the real wheel into a temp venv and runs subprocesses. It also starts an `HTTPServer` on port 0 (OS-assigned) that doubles as both an OTLP collector (`POST /v1/traces`) and a mock OpenAI API (`POST /v1/chat/completions`). These tests run as part of the standard `pytest tests` run.
