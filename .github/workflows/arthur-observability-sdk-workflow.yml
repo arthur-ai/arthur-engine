@@ -94,14 +94,14 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: arthur-observability-sdk
-          with-groups: dev
       - uses: actions/download-artifact@v4
         with:
           name: arthur-genai-client
           path: arthur-observability-sdk/src/arthur_genai_client
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: arthur-observability-sdk
+          with-groups: dev
       - name: Run unit tests
         run: |
           poetry -C arthur-observability-sdk run pytest tests -m "unit_tests" -v
@@ -119,14 +119,14 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: arthur-observability-sdk
-          with-groups: dev
       - uses: actions/download-artifact@v4
         with:
           name: arthur-genai-client
           path: arthur-observability-sdk/src/arthur_genai_client
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: arthur-observability-sdk
+          with-groups: dev
       - name: Run integration tests
         run: |
           poetry -C arthur-observability-sdk run pytest tests -m "integration_tests" -v
