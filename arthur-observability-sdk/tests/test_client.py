@@ -37,6 +37,7 @@ def test_generated_client_response_model_is_accessible(model_name):
         f"Regenerate with: ./scripts/generate_openapi_client.sh generate python"
     )
 
+
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
