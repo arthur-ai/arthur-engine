@@ -75,15 +75,11 @@ def get_token_usage(
 )
 @public_endpoint
 def get_display_settings(
-    db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
 ) -> DisplaySettingsResponse:
-    try:
-        return DisplaySettingsResponse(
-            default_currency=get_display_currency(application_config),
-        )
-    finally:
-        db_session.close()
+    return DisplaySettingsResponse(
+        default_currency=get_display_currency(application_config),
+    )
 
 
 @system_management_routes.get(

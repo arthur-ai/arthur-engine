@@ -475,11 +475,18 @@ def get_session_traces(
                 detail=f"Session {session_id} not found or has no traces",
             )
 
-        display_currency = get_display_currency(application_config)
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(t, requested_currency) for t in traces
+        ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        traces = [item for _, item in results]
         return SessionTracesResponse(
             session_id=session_id,
             count=count,
-            display_currency=display_currency,
+            display_currency=effective_currency,
             traces=traces,
         )
     except HTTPException:
@@ -524,11 +531,18 @@ def compute_session_metrics(
                 detail=f"Session {session_id} not found or has no traces",
             )
 
-        display_currency = get_display_currency(application_config)
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(t, requested_currency) for t in traces
+        ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        traces = [item for _, item in results]
         return SessionTracesResponse(
             session_id=session_id,
             count=count,
-            display_currency=display_currency,
+            display_currency=effective_currency,
             traces=traces,
         )
     except HTTPException:
