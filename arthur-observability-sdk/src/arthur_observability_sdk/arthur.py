@@ -545,6 +545,14 @@ class Arthur:
             "MistralAIInstrumentor",
         )
 
+    def instrument_monkai_agent(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-monkai-agent",
+            "monkai-agent",
+            "openinference.instrumentation.monkai_agent",
+            "MonkaiAgentInstrumentor",
+        )
+
     def instrument_openai(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-openai",

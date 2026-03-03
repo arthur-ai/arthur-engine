@@ -1,6 +1,9 @@
 """Tests for OTel TracerProvider setup in telemetry.py."""
 
+import pytest
 from unittest.mock import MagicMock, patch
+
+pytestmark = pytest.mark.unit_tests
 
 from opentelemetry.sdk.trace import TracerProvider
 

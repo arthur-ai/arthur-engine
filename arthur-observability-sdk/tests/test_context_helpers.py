@@ -1,8 +1,8 @@
 """Tests for Arthur.session(), Arthur.user(), Arthur.attributes()."""
 
-import json
 from unittest.mock import MagicMock
 
+import pytest
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
 from opentelemetry.context import get_value
@@ -11,6 +11,8 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from arthur_observability_sdk import Arthur, using_attributes, using_session, using_user
+
+pytestmark = pytest.mark.unit_tests
 
 TASK_ID = "task-uuid-ctx-test"
 

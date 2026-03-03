@@ -4,6 +4,8 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
+
+pytestmark = pytest.mark.unit_tests
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor

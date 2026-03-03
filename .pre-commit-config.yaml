@@ -98,7 +98,7 @@ repos:
         files: ^ml-engine/src/
       - id: arthur-observability-sdk-pytest-check
         name: "arthur-observability-sdk: pytest unit tests"
-        entry: poetry -C arthur-observability-sdk run pytest tests
+        entry: poetry -C arthur-observability-sdk run pytest tests -m "unit_tests"
         language: system
         types: [python]
         pass_filenames: false

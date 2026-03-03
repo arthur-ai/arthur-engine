@@ -18,6 +18,8 @@ from typing import Any
 
 import pytest
 
+pytestmark = pytest.mark.integration_tests
+
 SDK_ROOT = Path(__file__).parent.parent  # arthur-observability-sdk/
 
 

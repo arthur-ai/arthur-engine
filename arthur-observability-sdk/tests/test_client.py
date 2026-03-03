@@ -4,6 +4,8 @@ import pytest
 
 from arthur_observability_sdk.arthur import Arthur
 
+pytestmark = pytest.mark.unit_tests
+
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
