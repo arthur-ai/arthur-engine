@@ -5,8 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Install
-poetry install --with dev
+# Generate the API client first (requires Node.js + Java; src/arthur_genai_client/ is gitignored)
+./scripts/generate_openapi_client.sh generate python
+
+# Install (runs poetry install, which picks up the generated client)
+./scripts/generate_openapi_client.sh install python
 
 # Test
 poetry run pytest tests -v          # all tests (includes install/wheel smoke tests)
@@ -26,7 +29,7 @@ poetry run mypy src/arthur_observability_sdk
 poetry build --format wheel
 
 # Regenerate arthur_genai_client from GenAI Engine OpenAPI spec
-./scripts/generate_client.sh generate
+./scripts/generate_openapi_client.sh generate python
 ```
 
 ## Architecture
@@ -41,10 +44,10 @@ The SDK has three layers:
 
 ## Generated Client (`arthur_genai_client`)
 
-This package is auto-generated from `genai-engine/staging.openapi.json` using OpenAPI Generator v7. **Do not hand-edit it.** Regenerate whenever the GenAI Engine API changes:
+This package is auto-generated from `genai-engine/staging.openapi.json` using OpenAPI Generator v7 and is **gitignored** — it is not committed to the repository. It must be generated before running tests or using the SDK locally. **Do not hand-edit it.** Regenerate whenever the GenAI Engine API changes (or after a fresh clone):
 
 ```bash
-./scripts/generate_client.sh generate
+./scripts/generate_openapi_client.sh generate python
 ```
 
 `ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. Call the plain (non-`_with_http_info`) variants — they return typed Pydantic model instances. Convert to a plain dict with `.model_dump()`. Only reach for `*_with_http_info()` / `.raw_data` if you need HTTP headers or status codes that the typed response doesn't expose.

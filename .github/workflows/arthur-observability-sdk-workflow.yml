@@ -7,6 +7,29 @@ on:
   workflow_dispatch:
 
 jobs:
+  generate-client:
+    runs-on: ubuntu-latest
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Generate API client
+        working-directory: arthur-observability-sdk
+        run: ./scripts/generate_openapi_client.sh generate python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/src/arthur_genai_client
+
   run-linter:
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
@@ -54,6 +77,7 @@ jobs:
           exit 1
 
   run-unit-tests:
+    needs: generate-client
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
     env:
@@ -69,11 +93,16 @@ jobs:
         with:
           working-directory: arthur-observability-sdk
           with-groups: dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/src/arthur_genai_client
       - name: Run unit tests
         run: |
           poetry -C arthur-observability-sdk run pytest tests -m "unit_tests" -v
 
   run-integration-tests:
+    needs: generate-client
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
     env:
@@ -89,6 +118,10 @@ jobs:
         with:
           working-directory: arthur-observability-sdk
           with-groups: dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/src/arthur_genai_client
       - name: Run integration tests
         run: |
           poetry -C arthur-observability-sdk run pytest tests -m "integration_tests" -v

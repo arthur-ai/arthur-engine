@@ -2,9 +2,9 @@
 Arthur GenAI Engine API client.
 
 Wraps the auto-generated ``arthur_genai_client`` (produced by
-``scripts/generate_client.sh``).
+``scripts/generate_openapi_client.sh generate python``).
 
-Run ``scripts/generate_client.sh`` before using this module.
+Run ``scripts/generate_openapi_client.sh generate python`` before using this module.
 """
 
 import json

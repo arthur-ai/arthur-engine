@@ -2,9 +2,40 @@
 
 import pytest
 
+import arthur_genai_client.models as _genai_models
 from arthur_observability_sdk.arthur import Arthur
 
 pytestmark = pytest.mark.unit_tests
+
+
+# ---------------------------------------------------------------------------
+# Generated client sanity check
+# ---------------------------------------------------------------------------
+
+# These are the response model classes that api_client.py resolves via
+# getattr(arthur_genai_client.models, klass) during HTTP response
+# deserialization.  If models/__init__.py is empty (e.g. after a failed or
+# partial client regeneration), this lookup silently raises AttributeError at
+# runtime — exactly the failure mode seen when calling get_prompt().
+_REQUIRED_RESPONSE_MODELS = [
+    "AgenticPrompt",
+    "AgenticPromptVersionListResponse",
+    "RenderedPromptResponse",
+]
+
+
+@pytest.mark.parametrize("model_name", _REQUIRED_RESPONSE_MODELS)
+def test_generated_client_response_model_is_accessible(model_name):
+    """arthur_genai_client.models must export response classes used by api_client.py.
+
+    A missing export means models/__init__.py was not properly generated.
+    Fix by running: ./scripts/generate_openapi_client.sh generate python
+    """
+    assert hasattr(_genai_models, model_name), (
+        f"arthur_genai_client.models.{model_name} is not accessible. "
+        f"The generated client's models/__init__.py is likely empty or stale. "
+        f"Regenerate with: ./scripts/generate_openapi_client.sh generate python"
+    )
 
 # ---------------------------------------------------------------------------
 # Validation

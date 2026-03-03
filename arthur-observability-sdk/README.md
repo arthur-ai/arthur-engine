@@ -112,8 +112,17 @@ Install all at once: `pip install "arthur-observability-sdk[all]"`
 
 ```bash
 cd arthur-observability-sdk
-poetry install --with dev
+
+# 1. Generate the API client (requires Node.js and Java)
+./scripts/generate_openapi_client.sh generate python
+
+# 2. Install dependencies (also registers the generated client in the venv)
+./scripts/generate_openapi_client.sh install python
 ```
+
+> **Note:** `src/arthur_genai_client/` is auto-generated and gitignored. You must run
+> `./scripts/generate_openapi_client.sh generate python` after cloning, and again whenever the
+> GenAI Engine API changes. See [Regenerating the API client](#regenerating-the-api-client).
 
 ### Running tests
 
@@ -145,12 +154,15 @@ poetry run mypy src/arthur_observability_sdk
 
 ### Regenerating the API client
 
-The `arthur_genai_client` package is auto-generated from the GenAI Engine OpenAPI spec.
-Regenerate it whenever the API changes:
+`src/arthur_genai_client/` is auto-generated from the GenAI Engine OpenAPI spec
+and is **not committed to the repository**. Regenerate it after cloning or whenever
+the API changes:
 
 ```bash
-./scripts/generate_client.sh generate
+./scripts/generate_openapi_client.sh generate python
 ```
+
+Requires Node.js (any recent LTS) and Java 11+.
 
 ### Building the wheel
 
