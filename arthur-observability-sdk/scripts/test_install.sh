@@ -44,7 +44,8 @@ import arthur_genai_client
 print("  arthur_genai_client ... OK")
 
 # Generated client submodules (these were missing in packaging bugs)
-from arthur_genai_client import ApiClient, Configuration
+from arthur_genai_client.api_client import ApiClient
+from arthur_genai_client.configuration import Configuration
 print("  arthur_genai_client.ApiClient / Configuration ... OK")
 
 from arthur_genai_client.api.prompts_api import PromptsApi
