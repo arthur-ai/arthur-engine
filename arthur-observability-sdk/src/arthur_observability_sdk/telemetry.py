@@ -43,5 +43,7 @@ def setup_telemetry(
     provider.add_span_processor(BatchSpanProcessor(exporter))
 
     trace.set_tracer_provider(provider)
-    logger.debug("OTel TracerProvider configured (endpoint=%s, service=%s)", otlp_endpoint, service_name)
+    logger.debug(
+        "OTel TracerProvider configured (endpoint=%s, service=%s)", otlp_endpoint, service_name
+    )
     return provider

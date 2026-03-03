@@ -1,7 +1,7 @@
 """Tests for Arthur.get_prompt(), Arthur.render_prompt(), and Arthur.start_trace()."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from opentelemetry import trace
@@ -9,9 +9,8 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from arthur_observability_sdk.arthur import Arthur
 from arthur_observability_sdk._client import ArthurAPIError
-
+from arthur_observability_sdk.arthur import Arthur
 
 TASK_ID = "task-uuid-0001"
 PROMPT_NAME = "TestPrompt"
@@ -39,6 +38,7 @@ RENDERED_PROMPT = {
 # ---------------------------------------------------------------------------
 # Test helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_arthur_with_in_memory_spans(task_id=TASK_ID):
     """
@@ -80,19 +80,28 @@ def _setup_render_mocks(arthur, template=MOCK_PROMPT, rendered=RENDERED_PROMPT, 
     """
     api = arthur._api_client._prompts_api
     if tag:
-        api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get_with_http_info.return_value = _mock_prompt_response(template)
+        api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get_with_http_info.return_value = _mock_prompt_response(
+            template
+        )
     else:
-        api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response(template)
-    api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info.return_value = _mock_prompt_response(rendered)
+        api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response(
+            template
+        )
+    api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info.return_value = _mock_prompt_response(
+        rendered
+    )
 
 
 # ---------------------------------------------------------------------------
 # get_prompt() — routing
 # ---------------------------------------------------------------------------
 
+
 def test_get_prompt_by_version():
     arthur, _ = _make_arthur_with_in_memory_spans()
-    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response(MOCK_PROMPT)
+    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response(
+        MOCK_PROMPT
+    )
 
     result = arthur.get_prompt(PROMPT_NAME, version="2")
     assert result["name"] == PROMPT_NAME
@@ -102,7 +111,9 @@ def test_get_prompt_by_version():
 
 def test_get_prompt_default_version_is_latest():
     arthur, _ = _make_arthur_with_in_memory_spans()
-    m = arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info
+    m = (
+        arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info
+    )
     m.return_value = _mock_prompt_response(MOCK_PROMPT)
 
     arthur.get_prompt(PROMPT_NAME)
@@ -113,7 +124,9 @@ def test_get_prompt_default_version_is_latest():
 
 def test_get_prompt_by_tag():
     arthur, _ = _make_arthur_with_in_memory_spans()
-    m = arthur._api_client._prompts_api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get_with_http_info
+    m = (
+        arthur._api_client._prompts_api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get_with_http_info
+    )
     m.return_value = _mock_prompt_response(MOCK_PROMPT)
 
     result = arthur.get_prompt(PROMPT_NAME, tag="latest")
@@ -125,7 +138,9 @@ def test_get_prompt_by_tag():
 
 def test_get_prompt_uses_instance_task_id():
     arthur, _ = _make_arthur_with_in_memory_spans(task_id=TASK_ID)
-    m = arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info
+    m = (
+        arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info
+    )
     m.return_value = _mock_prompt_response(MOCK_PROMPT)
 
     arthur.get_prompt(PROMPT_NAME)
@@ -137,7 +152,9 @@ def test_get_prompt_uses_instance_task_id():
 def test_get_prompt_overrides_task_id():
     override_id = "other-task-uuid"
     arthur, _ = _make_arthur_with_in_memory_spans(task_id=TASK_ID)
-    m = arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info
+    m = (
+        arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info
+    )
     m.return_value = _mock_prompt_response(MOCK_PROMPT)
 
     arthur.get_prompt(PROMPT_NAME, task_id=override_id)
@@ -150,9 +167,12 @@ def test_get_prompt_overrides_task_id():
 # get_prompt() — OTel span
 # ---------------------------------------------------------------------------
 
+
 def test_get_prompt_emits_prompt_span():
     arthur, exporter = _make_arthur_with_in_memory_spans()
-    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response(MOCK_PROMPT)
+    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response(
+        MOCK_PROMPT
+    )
 
     arthur.get_prompt(PROMPT_NAME)
 
@@ -171,7 +191,9 @@ def test_get_prompt_emits_prompt_span():
 
 def test_get_prompt_span_records_version():
     arthur, exporter = _make_arthur_with_in_memory_spans()
-    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response({**MOCK_PROMPT, "version": 3})
+    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_prompt_response(
+        {**MOCK_PROMPT, "version": 3}
+    )
 
     arthur.get_prompt(PROMPT_NAME, version="3")
 
@@ -182,7 +204,9 @@ def test_get_prompt_span_records_version():
 
 def test_get_prompt_span_on_error():
     arthur, exporter = _make_arthur_with_in_memory_spans()
-    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.side_effect = ArthurAPIError(404, "not found")
+    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.side_effect = ArthurAPIError(
+        404, "not found"
+    )
 
     with pytest.raises(ArthurAPIError):
         arthur.get_prompt(PROMPT_NAME)
@@ -196,6 +220,7 @@ def test_get_prompt_span_on_error():
 # get_prompt() — no task_id
 # ---------------------------------------------------------------------------
 
+
 def test_get_prompt_raises_without_task_id():
     arthur = Arthur(service_name="svc", api_key="k", enable_telemetry=False)
     with pytest.raises(ValueError, match="No task_id available"):
@@ -207,12 +232,17 @@ def test_get_prompt_raises_without_task_id():
 # render_prompt() — routing
 # ---------------------------------------------------------------------------
 
+
 def test_render_prompt_by_version():
     arthur, _ = _make_arthur_with_in_memory_spans()
     _setup_render_mocks(arthur)
-    m = arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    m = (
+        arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    )
 
-    result = arthur.render_prompt(PROMPT_NAME, version="2", variables={"topic": "quantum computing"})
+    result = arthur.render_prompt(
+        PROMPT_NAME, version="2", variables={"topic": "quantum computing"}
+    )
     assert result["messages"][0]["content"] == "Hello quantum computing"
     _, kwargs = m.call_args
     assert kwargs["prompt_version"] == "2"
@@ -222,7 +252,9 @@ def test_render_prompt_by_version():
 def test_render_prompt_by_tag_uses_tag_as_version_segment():
     arthur, _ = _make_arthur_with_in_memory_spans()
     _setup_render_mocks(arthur, tag="latest")
-    m = arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    m = (
+        arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    )
 
     arthur.render_prompt(PROMPT_NAME, tag="latest", variables={"topic": "AI"})
     _, kwargs = m.call_args
@@ -233,7 +265,9 @@ def test_render_prompt_by_tag_uses_tag_as_version_segment():
 def test_render_prompt_default_version_is_latest():
     arthur, _ = _make_arthur_with_in_memory_spans()
     _setup_render_mocks(arthur)
-    m = arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    m = (
+        arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    )
 
     arthur.render_prompt(PROMPT_NAME, variables={"topic": "AI"})
     _, kwargs = m.call_args
@@ -244,7 +278,9 @@ def test_render_prompt_default_version_is_latest():
 def test_render_prompt_sends_variables_in_request():
     arthur, _ = _make_arthur_with_in_memory_spans()
     _setup_render_mocks(arthur)
-    m = arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    m = (
+        arthur._api_client._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info
+    )
 
     arthur.render_prompt(PROMPT_NAME, variables={"topic": "climate change"})
 
@@ -260,6 +296,7 @@ def test_render_prompt_sends_variables_in_request():
 # ---------------------------------------------------------------------------
 # render_prompt() — span attributes (INPUT = template+vars, OUTPUT = rendered)
 # ---------------------------------------------------------------------------
+
 
 def test_render_prompt_template_attribute_is_unrendered():
     """llm.prompt_template.template must contain the original {{ variable }} markers."""
@@ -324,6 +361,7 @@ def test_render_prompt_variables_attribute_contains_caller_values():
 # render_prompt() — OTel span (general)
 # ---------------------------------------------------------------------------
 
+
 def test_render_prompt_emits_prompt_span():
     arthur, exporter = _make_arthur_with_in_memory_spans()
     _setup_render_mocks(arthur)
@@ -346,12 +384,12 @@ def test_render_prompt_emits_prompt_span():
 
 def test_render_prompt_span_on_error():
     arthur, exporter = _make_arthur_with_in_memory_spans()
-    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.side_effect = ArthurAPIError(422, "missing variable")
+    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.side_effect = ArthurAPIError(
+        422, "missing variable"
+    )
 
     with pytest.raises(ArthurAPIError):
         arthur.render_prompt(PROMPT_NAME, variables={})
 
     assert exporter.get_finished_spans()[0].status.status_code.name == "ERROR"
     arthur.shutdown()
-
-

@@ -16,29 +16,24 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from arthur_genai_client import (
-    ApiClient,
-    Configuration,
-)
 from arthur_genai_client.api.prompts_api import PromptsApi
 from arthur_genai_client.api.tasks_api import TasksApi
+from arthur_genai_client.api_client import ApiClient
+from arthur_genai_client.configuration import Configuration
+from arthur_genai_client.exceptions import (
+    ApiException,
+)
 from arthur_genai_client.models.saved_prompt_rendering_request import (
     SavedPromptRenderingRequest,
+)
+from arthur_genai_client.models.search_tasks_request import (
+    SearchTasksRequest,
 )
 from arthur_genai_client.models.variable_rendering_request import (
     VariableRenderingRequest,
 )
 from arthur_genai_client.models.variable_template_value import (
     VariableTemplateValue,
-)
-from arthur_genai_client.models.search_tasks_request import (
-    SearchTasksRequest,
-)
-from arthur_genai_client.exceptions import (
-    ApiException,
-    ForbiddenException,
-    NotFoundException,
-    UnauthorizedException,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,7 +47,7 @@ class ArthurAPIError(Exception):
 
 def _api_exception_to_arthur(exc: ApiException) -> ArthurAPIError:
     try:
-        detail = json.loads(exc.body).get("detail", exc.reason)
+        detail = json.loads(exc.body or "{}").get("detail", exc.reason)
     except Exception:
         detail = exc.reason or str(exc)
     return ArthurAPIError(exc.status, str(detail))
@@ -112,10 +107,7 @@ class ArthurAPIClient:
         """
         rendering_request = SavedPromptRenderingRequest(
             completion_request=VariableRenderingRequest(
-                variables=[
-                    VariableTemplateValue(name=k, value=v)
-                    for k, v in variables.items()
-                ],
+                variables=[VariableTemplateValue(name=k, value=v) for k, v in variables.items()],
                 strict=strict,
             )
         )

@@ -1,11 +1,8 @@
 """Tests for Arthur class initialization, validation, and env-var resolution."""
 
-import os
-
 import pytest
 
 from arthur_observability_sdk.arthur import Arthur
-
 
 # ---------------------------------------------------------------------------
 # Validation

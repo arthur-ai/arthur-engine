@@ -4,11 +4,11 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
+from openinference.instrumentation import using_attributes, using_session, using_user
+from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry import trace
 from opentelemetry.context import get_value
 from opentelemetry.sdk.trace import TracerProvider
-from openinference.instrumentation import using_attributes, using_session, using_user
-from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 
 from arthur_observability_sdk._client import ArthurAPIClient
 from arthur_observability_sdk.telemetry import setup_telemetry
@@ -215,9 +215,7 @@ class Arthur:
             variables = prompt_data.get("variables", [])
 
             span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE, template_str)
-            span.set_attribute(
-                SpanAttributes.LLM_PROMPT_TEMPLATE_VARIABLES, json.dumps(variables)
-            )
+            span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VARIABLES, json.dumps(variables))
             span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(prompt_data))
             span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 
