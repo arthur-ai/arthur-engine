@@ -63,6 +63,7 @@ export function capitalize(str: string): string {
 }
 
 export function truncateText(text: string, maxLength: number): string {
+  if (typeof text !== "string") return String(text);
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + "…";
 }
