@@ -1,6 +1,9 @@
 """
 Getting started: send one trace to Arthur.
 
+Install dependencies:
+    pip install -r tutorials/requirements.txt
+
 Fill in the values below, then run:
     python tutorials/getting_started.py
 """
@@ -10,9 +13,9 @@ import openai
 from arthur_observability_sdk import Arthur
 
 # ── Configure these ────────────────────────────────────────────────────────────
-ARTHUR_API_KEY = "your-arthur-api-key"
 ARTHUR_BASE_URL = "http://localhost:3030"   # Arthur GenAI Engine URL
-ARTHUR_TASK_ID = "your-task-id"
+ARTHUR_API_KEY = "your-arthur-api-key"
+# ARTHUR_TASK_ID = "your-task-id" # Optional, will be created if not provided
 
 OPENAI_API_KEY = "your-openai-api-key"
 # ───────────────────────────────────────────────────────────────────────────────
