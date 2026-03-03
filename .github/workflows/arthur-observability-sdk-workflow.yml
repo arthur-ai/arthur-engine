@@ -31,6 +31,7 @@ jobs:
           path: arthur-observability-sdk/src/arthur_genai_client
 
   run-linter:
+    needs: generate-client
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
     env:
@@ -42,6 +43,10 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/src/arthur_genai_client
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: arthur-observability-sdk
