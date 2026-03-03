@@ -7,16 +7,15 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 
 import "./App.css";
-import { AgentExperiments } from "./components/agent-experiments";
 import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";
 import { NewAgentExperiment } from "./components/agent-experiments/new";
-import { AgentNotebook } from "./components/agent-notebook";
 import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
+import { TestView } from "./components/test/TestView";
 import Evaluators from "./components/evaluators/Evaluators";
 import { LiveEvals } from "./components/live-evals";
 import { LiveEvalDetail } from "./components/live-evals/[evalId]";
@@ -112,16 +111,15 @@ function App() {
                           <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
                           <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
-                          <Route path="agent-experiments">
-                            <Route index element={<AgentExperiments />} />
-                            <Route path="new" element={<NewAgentExperiment />} />
-                            <Route path=":experimentId" element={<AgentExperimentDetail />} />
-                          </Route>
+                          <Route path="test" element={<TestView />} />
 
-                          <Route path="agentic-notebooks">
-                            <Route index element={<AgentNotebook />} />
-                            <Route path=":notebookId" element={<AgentNotebookDetail />} />
-                          </Route>
+                          {/* Legacy redirects: old agent routes → /test */}
+                          <Route path="agent-experiments" element={<Navigate to="../test?section=agent-experiments" replace />} />
+                          <Route path="agent-experiments/new" element={<NewAgentExperiment />} />
+                          <Route path="agent-experiments/:experimentId" element={<AgentExperimentDetail />} />
+
+                          <Route path="agentic-notebooks" element={<Navigate to="../test?section=agentic-notebooks" replace />} />
+                          <Route path="agentic-notebooks/:notebookId" element={<AgentNotebookDetail />} />
 
                           <Route path="datasets" element={<DatasetsView />} />
                           <Route path="datasets/:datasetId" element={<DatasetDetailView />} />
