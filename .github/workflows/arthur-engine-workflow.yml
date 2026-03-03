@@ -197,6 +197,8 @@ jobs:
       github.ref != 'refs/heads/dev' &&
       needs.check-genai-engine-changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
+    env:
+      GITLAB_UNIFY_FRONTEND_TOKEN: ${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
     defaults:
       run:
         working-directory: genai-engine/ui
