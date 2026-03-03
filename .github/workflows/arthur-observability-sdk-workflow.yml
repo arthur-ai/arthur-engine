@@ -69,26 +69,9 @@ jobs:
         with:
           working-directory: arthur-observability-sdk
           with-groups: dev
-      - name: Run unit tests
+      - name: Run tests
         run: |
           poetry -C arthur-observability-sdk run pytest tests -v
-
-  run-install-test:
-    runs-on: ubuntu-latest
-    container: python:3.12-bullseye
-    env:
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - name: Install poetry
-        run: pip install poetry
-      - name: Run install test
-        run: bash arthur-observability-sdk/scripts/test_install.sh
 
   check-new-instrumentors:
     runs-on: ubuntu-latest
