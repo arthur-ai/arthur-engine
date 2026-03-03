@@ -256,13 +256,13 @@ def _make_arthur_with_spans():
 
 def _mock_response(data: dict):
     m = MagicMock()
-    m.raw_data = json.dumps(data).encode()
+    m.model_dump.return_value = data
     return m
 
 
 def test_get_prompt_span_includes_session_id():
     arthur, exporter = _make_arthur_with_spans()
-    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_response(
+    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get.return_value = _mock_response(
         _MOCK_PROMPT,
     )
 
@@ -278,10 +278,10 @@ def test_get_prompt_span_includes_session_id():
 def test_render_prompt_span_includes_session_id():
     arthur, exporter = _make_arthur_with_spans()
     api = arthur._api_client._prompts_api
-    api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_response(
+    api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get.return_value = _mock_response(
         _MOCK_PROMPT,
     )
-    api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info.return_value = _mock_response(
+    api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post.return_value = _mock_response(
         _RENDERED_PROMPT,
     )
 
@@ -296,7 +296,7 @@ def test_render_prompt_span_includes_session_id():
 
 def test_prompt_span_has_no_session_when_no_context():
     arthur, exporter = _make_arthur_with_spans()
-    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info.return_value = _mock_response(
+    arthur._api_client._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get.return_value = _mock_response(
         _MOCK_PROMPT,
     )
 

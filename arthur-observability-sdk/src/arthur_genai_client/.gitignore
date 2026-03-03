@@ -1,3 +1,7 @@
 # Override root gitignore — the generated client requires its models/ directory
 !models/
 !models/**
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo

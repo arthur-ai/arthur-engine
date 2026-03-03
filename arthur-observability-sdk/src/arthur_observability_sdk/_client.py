@@ -2,12 +2,7 @@
 Arthur GenAI Engine API client.
 
 Wraps the auto-generated ``arthur_genai_client`` (produced by
-``scripts/generate_client.sh``) using the same pattern as
-``ml-engine/src/ml_engine/connectors/shield_connector.py``:
-
-  Configuration(host=base_url, access_token=api_key)
-  → ApiClient → PromptsApi / TasksApi
-  → *_with_http_info() → resp.raw_data (JSON bytes)
+``scripts/generate_client.sh``).
 
 Run ``scripts/generate_client.sh`` before using this module.
 """
@@ -72,25 +67,25 @@ class ArthurAPIClient:
 
     def get_prompt_by_version(self, task_id: str, name: str, version: str) -> Dict[str, Any]:
         try:
-            resp = self._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get_with_http_info(
+            prompt = self._prompts_api.get_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_get(
                 task_id=task_id,
                 prompt_name=name,
                 prompt_version=version,
             )
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
-        return json.loads(resp.raw_data)
+        return prompt.model_dump()
 
     def get_prompt_by_tag(self, task_id: str, name: str, tag: str) -> Dict[str, Any]:
         try:
-            resp = self._prompts_api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get_with_http_info(
+            prompt = self._prompts_api.get_agentic_prompt_by_tag_api_v1_tasks_task_id_prompts_prompt_name_versions_tags_tag_get(
                 task_id=task_id,
                 prompt_name=name,
                 tag=tag,
             )
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
-        return json.loads(resp.raw_data)
+        return prompt.model_dump()
 
     def render_prompt(
         self,
@@ -112,7 +107,7 @@ class ArthurAPIClient:
             )
         )
         try:
-            resp = self._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post_with_http_info(
+            prompt = self._prompts_api.render_saved_agentic_prompt_api_v1_tasks_task_id_prompts_prompt_name_versions_prompt_version_renders_post(
                 task_id=task_id,
                 prompt_name=name,
                 prompt_version=version,
@@ -120,7 +115,7 @@ class ArthurAPIClient:
             )
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
-        return json.loads(resp.raw_data)
+        return prompt.model_dump()
 
     def resolve_task_id(self, task_name: str) -> str:
         """
@@ -129,17 +124,14 @@ class ArthurAPIClient:
         Raises ``ValueError`` if no matching task is found.
         """
         try:
-            resp = self._tasks_api.search_tasks_api_v2_tasks_search_post_with_http_info(
+            result = self._tasks_api.search_tasks_api_v2_tasks_search_post(
                 search_tasks_request=SearchTasksRequest(task_name=task_name),
             )
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
-        data = json.loads(resp.raw_data)
-        for task in data.get("tasks", []):
-            if isinstance(task, dict) and task.get("name") == task_name:
-                task_id = task.get("id") or task.get("task_id")
-                if task_id:
-                    return str(task_id)
+        for task in result.tasks:
+            if task.name == task_name:
+                return str(task.id)
         raise ValueError(f"No task found with name '{task_name}'")
 
     def close(self) -> None:
