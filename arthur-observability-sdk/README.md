@@ -101,6 +101,7 @@ Pass `--extras` to install any of these alongside the SDK.
 | `smolagents` | SmolAgents | `instrument_smolagents()` |
 | `strands-agents` | Strands Agents | `instrument_strands_agents()` |
 | `vertexai` | Vertex AI | `instrument_vertexai()` |
+| `claude-agent-sdk` | Claude Agent SDK | `instrument_claude_agent_sdk()` |
 
 Install all at once: `pip install "arthur-observability-sdk[all]"`
 

@@ -634,3 +634,11 @@ class Arthur:
             "openinference.instrumentation.vertexai",
             "VertexAIInstrumentor",
         )
+
+    def instrument_claude_agent_sdk(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-claude-agent-sdk",
+            "claude-agent-sdk",
+            "openinference.instrumentation.claude_agent_sdk",
+            "ClaudeAgentSDKInstrumentor",
+        )

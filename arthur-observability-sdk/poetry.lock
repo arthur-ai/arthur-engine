@@ -2139,6 +2139,31 @@ instruments = ["beeai-framework (>=0.1.51)"]
 test = ["beeai-framework (>=0.1.51)", "beeai-framework[duckduckgo]", "opentelemetry-exporter-otlp", "opentelemetry-sdk", "pytest", "pytest-asyncio", "pytest-recording", "vcrpy (>=5.0.0,<8.0.0)"]
 
 [[package]]
+name = "openinference-instrumentation-claude-agent-sdk"
+version = "0.1.0"
+description = "OpenInference Claude Agent SDK Instrumentation"
+optional = true
+python-versions = "<3.15,>=3.10"
+groups = ["main"]
+markers = "extra == \"claude-agent-sdk\" or extra == \"all\""
+files = [
+    {file = "openinference_instrumentation_claude_agent_sdk-0.1.0-py3-none-any.whl", hash = "sha256:1338abd5da7ca5cd7bd69d007e10eb3ad18523074603663f628e83bb2b937c85"},
+    {file = "openinference_instrumentation_claude_agent_sdk-0.1.0.tar.gz", hash = "sha256:468006742000e874031ad834daadbd4d63d814433033728cb82fcccdb191e7b7"},
+]
+
+[package.dependencies]
+openinference-instrumentation = ">=0.1.44"
+openinference-semantic-conventions = ">=0.1.27"
+opentelemetry-api = "*"
+opentelemetry-instrumentation = "*"
+opentelemetry-semantic-conventions = "*"
+typing-extensions = "*"
+wrapt = "*"
+
+[package.extras]
+instruments = ["claude-agent-sdk (>=0.1.45)"]
+
+[[package]]
 name = "openinference-instrumentation-crewai"
 version = "0.1.21"
 description = "OpenInference Crewai Instrumentation"
@@ -2731,14 +2756,14 @@ test = ["opentelemetry-sdk", "vertexai (==1.49.0)"]
 
 [[package]]
 name = "openinference-semantic-conventions"
-version = "0.1.26"
+version = "0.1.27"
 description = "OpenInference Semantic Conventions"
 optional = false
 python-versions = "<3.15,>=3.9"
 groups = ["main"]
 files = [
-    {file = "openinference_semantic_conventions-0.1.26-py3-none-any.whl", hash = "sha256:35b4f487d18ac7d016125c428c0d950dd290e18dafb99787880a9b2e05745f42"},
-    {file = "openinference_semantic_conventions-0.1.26.tar.gz", hash = "sha256:34dae06b40743fb7b846a36fd402810a554b2ec4ee96b9dd8b820663aee4a1f1"},
+    {file = "openinference_semantic_conventions-0.1.27-py3-none-any.whl", hash = "sha256:3871fd2cc9d203bdb444ab66ff2ba9bdbf1013dc48c64c5700dd449d47b338c5"},
+    {file = "openinference_semantic_conventions-0.1.27.tar.gz", hash = "sha256:db0b1bbc1cd66f8108b17f972976fa1833413a01967ff930e2707a77e0f66bd3"},
 ]
 
 [[package]]
@@ -2803,7 +2828,7 @@ description = "Instrumentation Tools & Auto Instrumentation for OpenTelemetry Py
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.11\" and (extra == \"beeai\" or extra == \"all\") or extra == \"agentspec\" or extra == \"all\" or extra == \"agno\" or extra == \"anthropic\" or extra == \"autogen\" or extra == \"autogen-agentchat\" or extra == \"bedrock\" or extra == \"crewai\" or extra == \"dspy\" or extra == \"google-adk\" or extra == \"google-genai\" or extra == \"groq\" or extra == \"guardrails\" or extra == \"haystack\" or extra == \"instructor\" or extra == \"langchain\" or extra == \"litellm\" or extra == \"llama-index\" or extra == \"mcp\" or extra == \"mistralai\" or extra == \"monkai-agent\" or extra == \"openai\" or extra == \"openai-agents\" or extra == \"pipecat\" or extra == \"portkey\" or extra == \"pydantic-ai\" or extra == \"smolagents\" or extra == \"vertexai\""
+markers = "python_version >= \"3.11\" and (extra == \"beeai\" or extra == \"all\") or extra == \"agentspec\" or extra == \"all\" or extra == \"agno\" or extra == \"anthropic\" or extra == \"autogen\" or extra == \"autogen-agentchat\" or extra == \"bedrock\" or extra == \"crewai\" or extra == \"dspy\" or extra == \"google-adk\" or extra == \"google-genai\" or extra == \"groq\" or extra == \"guardrails\" or extra == \"haystack\" or extra == \"instructor\" or extra == \"langchain\" or extra == \"litellm\" or extra == \"llama-index\" or extra == \"mcp\" or extra == \"mistralai\" or extra == \"monkai-agent\" or extra == \"openai\" or extra == \"openai-agents\" or extra == \"pipecat\" or extra == \"portkey\" or extra == \"pydantic-ai\" or extra == \"smolagents\" or extra == \"vertexai\" or extra == \"claude-agent-sdk\""
 files = [
     {file = "opentelemetry_instrumentation-0.60b1-py3-none-any.whl", hash = "sha256:04480db952b48fb1ed0073f822f0ee26012b7be7c3eac1a3793122737c78632d"},
     {file = "opentelemetry_instrumentation-0.60b1.tar.gz", hash = "sha256:57ddc7974c6eb35865af0426d1a17132b88b2ed8586897fee187fd5b8944bd6a"},
@@ -2891,7 +2916,7 @@ files = [
     {file = "packaging-26.0-py3-none-any.whl", hash = "sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529"},
     {file = "packaging-26.0.tar.gz", hash = "sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4"},
 ]
-markers = {main = "python_version >= \"3.11\" and (extra == \"beeai\" or extra == \"all\") or extra == \"agentspec\" or extra == \"all\" or extra == \"agno\" or extra == \"anthropic\" or extra == \"autogen\" or extra == \"autogen-agentchat\" or extra == \"bedrock\" or extra == \"crewai\" or extra == \"dspy\" or extra == \"google-adk\" or extra == \"google-genai\" or extra == \"groq\" or extra == \"guardrails\" or extra == \"haystack\" or extra == \"instructor\" or extra == \"langchain\" or extra == \"litellm\" or extra == \"llama-index\" or extra == \"mcp\" or extra == \"mistralai\" or extra == \"monkai-agent\" or extra == \"openai\" or extra == \"openai-agents\" or extra == \"pipecat\" or extra == \"portkey\" or extra == \"pydantic-ai\" or extra == \"smolagents\" or extra == \"vertexai\""}
+markers = {main = "python_version >= \"3.11\" and (extra == \"beeai\" or extra == \"all\") or extra == \"agentspec\" or extra == \"all\" or extra == \"agno\" or extra == \"anthropic\" or extra == \"autogen\" or extra == \"autogen-agentchat\" or extra == \"bedrock\" or extra == \"crewai\" or extra == \"dspy\" or extra == \"google-adk\" or extra == \"google-genai\" or extra == \"groq\" or extra == \"guardrails\" or extra == \"haystack\" or extra == \"instructor\" or extra == \"langchain\" or extra == \"litellm\" or extra == \"llama-index\" or extra == \"mcp\" or extra == \"mistralai\" or extra == \"monkai-agent\" or extra == \"openai\" or extra == \"openai-agents\" or extra == \"pipecat\" or extra == \"portkey\" or extra == \"pydantic-ai\" or extra == \"smolagents\" or extra == \"vertexai\" or extra == \"claude-agent-sdk\""}
 
 [[package]]
 name = "pathspec"
@@ -4661,12 +4686,13 @@ type = ["pytest-mypy"]
 agent-framework = ["openinference-instrumentation-agent-framework"]
 agentspec = ["openinference-instrumentation-agentspec"]
 agno = ["openinference-instrumentation-agno"]
-all = ["openinference-instrumentation-agent-framework", "openinference-instrumentation-agentspec", "openinference-instrumentation-agno", "openinference-instrumentation-anthropic", "openinference-instrumentation-autogen", "openinference-instrumentation-autogen-agentchat", "openinference-instrumentation-bedrock", "openinference-instrumentation-beeai", "openinference-instrumentation-crewai", "openinference-instrumentation-dspy", "openinference-instrumentation-google-adk", "openinference-instrumentation-google-genai", "openinference-instrumentation-groq", "openinference-instrumentation-guardrails", "openinference-instrumentation-haystack", "openinference-instrumentation-instructor", "openinference-instrumentation-langchain", "openinference-instrumentation-litellm", "openinference-instrumentation-llama-index", "openinference-instrumentation-mcp", "openinference-instrumentation-mistralai", "openinference-instrumentation-monkai-agent", "openinference-instrumentation-openai", "openinference-instrumentation-openai-agents", "openinference-instrumentation-openlit", "openinference-instrumentation-openllmetry", "openinference-instrumentation-pipecat", "openinference-instrumentation-portkey", "openinference-instrumentation-pydantic-ai", "openinference-instrumentation-smolagents", "openinference-instrumentation-strands-agents", "openinference-instrumentation-vertexai"]
+all = ["openinference-instrumentation-agent-framework", "openinference-instrumentation-agentspec", "openinference-instrumentation-agno", "openinference-instrumentation-anthropic", "openinference-instrumentation-autogen", "openinference-instrumentation-autogen-agentchat", "openinference-instrumentation-bedrock", "openinference-instrumentation-beeai", "openinference-instrumentation-claude-agent-sdk", "openinference-instrumentation-crewai", "openinference-instrumentation-dspy", "openinference-instrumentation-google-adk", "openinference-instrumentation-google-genai", "openinference-instrumentation-groq", "openinference-instrumentation-guardrails", "openinference-instrumentation-haystack", "openinference-instrumentation-instructor", "openinference-instrumentation-langchain", "openinference-instrumentation-litellm", "openinference-instrumentation-llama-index", "openinference-instrumentation-mcp", "openinference-instrumentation-mistralai", "openinference-instrumentation-monkai-agent", "openinference-instrumentation-openai", "openinference-instrumentation-openai-agents", "openinference-instrumentation-openlit", "openinference-instrumentation-openllmetry", "openinference-instrumentation-pipecat", "openinference-instrumentation-portkey", "openinference-instrumentation-pydantic-ai", "openinference-instrumentation-smolagents", "openinference-instrumentation-strands-agents", "openinference-instrumentation-vertexai"]
 anthropic = ["openinference-instrumentation-anthropic"]
 autogen = ["openinference-instrumentation-autogen"]
 autogen-agentchat = ["openinference-instrumentation-autogen-agentchat"]
 bedrock = ["openinference-instrumentation-bedrock"]
 beeai = ["openinference-instrumentation-beeai"]
+claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
 crewai = ["openinference-instrumentation-crewai"]
 dspy = ["openinference-instrumentation-dspy"]
 google-adk = ["openinference-instrumentation-google-adk"]
@@ -4695,4 +4721,4 @@ vertexai = ["openinference-instrumentation-vertexai"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "8679a456cb4c9fcc0b54d77f70ae1ad20370719ac1b802cf1398ab1227486d3d"
+content-hash = "a9b5341952f54cbce13bd8f89308b40081f6aa77fc53a5ff59243803588bee05"

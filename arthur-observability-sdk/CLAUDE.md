@@ -78,6 +78,26 @@ Parsing `raw_data` (the raw HTTP response bytes) bypasses all of this — the se
 
 **`enable_telemetry=False`** skips `TracerProvider` creation entirely — useful when only using prompt management without telemetry.
 
+**Adding a new instrumentor** — four files must be updated together:
+
+1. **`src/arthur_observability_sdk/arthur.py`** — add a method after the last `instrument_*` method:
+   ```python
+   def instrument_my_framework(self) -> Any:
+       return self._instrument(
+           "openinference-instrumentation-my-framework",  # PyPI package name
+           "my-framework",                                 # extras key (used in pip install hint)
+           "openinference.instrumentation.my_framework",  # importlib path
+           "MyFrameworkInstrumentor",                      # class name
+       )
+   ```
+2. **`pyproject.toml`** — three additions:
+   - In `[tool.poetry.dependencies]`: `openinference-instrumentation-my-framework = { version = "*", optional = true }`
+   - In `[tool.poetry.extras]`: `my-framework = ["openinference-instrumentation-my-framework"]`
+   - In the `all` extra list: `"openinference-instrumentation-my-framework"`
+3. **`README.md`** — add a row to the "Supported instrumentors" table.
+
+Verify the correct module path and class name from the package's PyPI page before adding.
+
 ## Testing
 
 Unit tests mock at the `OTLPSpanExporter` boundary (patch `arthur_observability_sdk.telemetry.OTLPSpanExporter`) or use `InMemorySpanExporter` with a real `TracerProvider` for span-content assertions.

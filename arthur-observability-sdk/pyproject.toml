@@ -55,6 +55,7 @@ openinference-instrumentation-pydantic-ai = { version = "*", optional = true }
 openinference-instrumentation-smolagents = { version = "*", optional = true }
 openinference-instrumentation-strands-agents = { version = "*", optional = true }
 openinference-instrumentation-vertexai = { version = "*", optional = true }
+openinference-instrumentation-claude-agent-sdk = { version = "*", optional = true }
 
 [tool.poetry.extras]
 agent-framework = ["openinference-instrumentation-agent-framework"]
@@ -89,6 +90,7 @@ pydantic-ai = ["openinference-instrumentation-pydantic-ai"]
 smolagents = ["openinference-instrumentation-smolagents"]
 strands-agents = ["openinference-instrumentation-strands-agents"]
 vertexai = ["openinference-instrumentation-vertexai"]
+claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
 all = [
     "openinference-instrumentation-agent-framework",
     "openinference-instrumentation-agentspec",
@@ -122,6 +124,7 @@ all = [
     "openinference-instrumentation-smolagents",
     "openinference-instrumentation-strands-agents",
     "openinference-instrumentation-vertexai",
+    "openinference-instrumentation-claude-agent-sdk",
 ]
 
 [tool.poetry.group.dev.dependencies]
