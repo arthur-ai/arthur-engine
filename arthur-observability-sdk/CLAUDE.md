@@ -50,19 +50,26 @@ This package is auto-generated from `genai-engine/staging.openapi.json` using Op
 ./scripts/generate_openapi_client.sh generate python
 ```
 
-`ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. **Always call the `*_with_http_info()` variants and parse `response.raw_data` directly:**
+`ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. Two calling styles are acceptable depending on the response shape:
 
+**Use `*_with_http_info()` + `response.raw_data`** when the response contains fields that the generated Pydantic models cannot reliably serialise:
 ```python
 response = self._prompts_api.some_method_with_http_info(...)
 return json.loads(response.raw_data)
 ```
 
-Do **not** call the plain variants and use `.model_dump()` or `.to_dict()`. The generated Pydantic models have three serialization bugs that make them unreliable:
-1. **`anyOf` wrappers** (e.g. `Content`, which represents `str | List[OpenAIMessageItem]`) — `model_dump()` returns the wrapper's internal fields (`anyof_schema_1_validator`, `actual_instance`, etc.) instead of the actual value.
+**Use the plain variant and access model attributes directly** when the response fields are simple scalars (strings, ints, bools) with no serialisation concerns:
+```python
+result = self._tasks_api.some_method(...)
+return result.some_field
+```
+
+The generated Pydantic models have three known serialisation bugs — avoid `.model_dump()` or `.to_dict()` in either case, but direct attribute access on simple fields is safe:
+1. **`anyOf` wrappers** (e.g. `Content`, which represents `str | List[OpenAIMessageItem]`) — `model_dump()` returns internal wrapper fields instead of the actual value.
 2. **`datetime` fields** — `model_dump()` returns a `datetime` object, not a JSON-serialisable string.
 3. **`Set` fields** — `model_dump()` returns a Python `set`, which `json.dumps` cannot serialise.
 
-Parsing `raw_data` (the raw HTTP response bytes) bypasses all of this — the server already sent valid JSON.
+Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, messages, or any `anyOf`/datetime/set fields. Use the plain variant only for responses that are purely simple scalars.
 
 ## Key Patterns
 
