@@ -11,9 +11,9 @@ import PromptsManagement from "../prompts-management/PromptsManagement";
 import { getContentHeight } from "@/constants/layout";
 
 const TAB_TITLES: Record<string, string> = {
-  notebooks: "Notebooks",
+  notebooks: "Prompt Notebooks",
   "prompts-management": "Prompts",
-  "prompt-experiments": "Runs",
+  "prompt-experiments": "Prompt Runs",
 };
 
 const TAB_SUBTITLES: Record<string, string> = {
