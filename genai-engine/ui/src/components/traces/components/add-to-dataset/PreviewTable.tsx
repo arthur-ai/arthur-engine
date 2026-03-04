@@ -4,6 +4,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import { Button, ButtonGroup, Typography } from "@mui/material";
 import { Stack } from "@mui/material";
 import { useField } from "@tanstack/react-form";
+import { useSnackbar } from "notistack";
 import { useMemo } from "react";
 
 import { withForm } from "../filtering/hooks/form";
@@ -22,6 +23,7 @@ export const PreviewTable = withForm({
   },
   render: function Render({ form, onSaveTransform }) {
     const field = useField({ form, name: "columns" as const });
+    const { enqueueSnackbar } = useSnackbar();
 
     const hasData = useMemo(() => field.state.value.some((entry) => !!entry.value), [field.state.value]);
 
@@ -30,6 +32,7 @@ export const PreviewTable = withForm({
     const patchTransformMutation = usePatchTransform(field.state.value, {
       onSuccess: (data) => {
         form.setFieldValue("transform", data.id);
+        enqueueSnackbar("Transform updated", { variant: "success" });
       },
     });
 
