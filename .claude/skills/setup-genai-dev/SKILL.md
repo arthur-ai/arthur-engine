@@ -1,98 +1,62 @@
 ---
 name: setup-genai-dev
 description: Set up the GenAI Engine development environment. Use when starting work on the project for the first time, or when environment needs to be reset. Handles Poetry, PostgreSQL, migrations, and environment variables.
-allowed-tools: Bash, Read, Write
+allowed-tools: Bash, Read, Task
 ---
 
 # Setup GenAI Engine Development Environment
 
-## Prerequisites Check
+## Step 1 — GPT Key Gate
 
-Before setup, verify these are installed:
-1. Python 3.12 (`python3 --version`)
-2. Docker is running (`docker ps`)
-3. Poetry (`poetry --version`)
+Use the Read tool to read `./genai-engine/.env`.
 
-If any are missing, inform the user and stop.
+Check that `GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS` is present and has a non-empty value (not just `GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=` with nothing after the `=`).
 
-## Setup Steps
+If the value is missing or empty:
+- **STOP immediately. Do not proceed to Step 2.**
+- Tell the user: "Setup cannot continue. Please open `genai-engine/.env` and set `GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS` using the format: `MODEL_NAME::ENDPOINT_URL::API_KEY` (e.g. `gpt-4o::https://api.openai.com/::sk-...`). Run the skill again once the key is set."
 
-Execute these steps in order:
+## Step 2 — Delegate Setup to Bash Sub-Agent
 
-### 1. Navigate to Project Directory
+Only proceed here if Step 1 passed. Spawn a Task sub-agent with subagent_type="Bash" and the following self-contained prompt:
+
+---
+Run the following setup steps for the GenAI Engine development environment. Report success or failure for each step and stop immediately if any step fails.
+
+**Step 1 — Prerequisites check:**
 ```bash
-cd ./genai-engine
+python3 --version && docker ps && poetry --version
+```
+If any fail, report which tool is missing and stop.
+
+**Step 2 — Configure Poetry and install dependencies:**
+```bash
+cd genai-engine && poetry env use 3.12 && poetry install --with dev,linters
 ```
 
-### 2. Configure Poetry Environment
+**Step 3 — Start PostgreSQL:**
 ```bash
-poetry env use 3.12
-poetry install --with dev,linters
+cd genai-engine && docker compose up -d db && sleep 5 && docker compose ps
 ```
 
-### 3. Start PostgreSQL Database
+**Step 4 — Run database migrations with all required env vars:**
 ```bash
-docker compose up -d db
+cd genai-engine && \
+set -a && source .env && set +a && \
+export POSTGRES_USER=postgres \
+  POSTGRES_PASSWORD=changeme_pg_password \
+  POSTGRES_URL=localhost \
+  POSTGRES_PORT=5432 \
+  POSTGRES_DB=arthur_genai_engine \
+  POSTGRES_USE_SSL=false \
+  PYTHONPATH="src:$PYTHONPATH" \
+  GENAI_ENGINE_SECRET_STORE_KEY="some_test_key" \
+  GENAI_ENGINE_ENVIRONMENT=local \
+  GENAI_ENGINE_ADMIN_KEY=changeme123 \
+  GENAI_ENGINE_ENABLE_PERSISTENCE=enabled \
+  ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled && \
+poetry run alembic upgrade head && poetry run alembic current
 ```
 
-Wait for healthy status:
-```bash
-sleep 5
-docker compose ps
-```
-
-### 4. Set Environment Variables
-
-Export ALL of these environment variables:
-```bash
-export POSTGRES_USER=postgres
-export POSTGRES_PASSWORD=changeme_pg_password
-export POSTGRES_URL=localhost
-export POSTGRES_PORT=5432
-export POSTGRES_DB=arthur_genai_engine
-export POSTGRES_USE_SSL=false
-export PYTHONPATH="src:$PYTHONPATH"
-export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
-export GENAI_ENGINE_ENVIRONMENT=local
-export GENAI_ENGINE_ADMIN_KEY=changeme123
-export GENAI_ENGINE_INGRESS_URI=http://localhost:3030
-export GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
-export ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
-```
-
-### 5. Run Database Migrations
-```bash
-cd ./genai-engine
-poetry run alembic upgrade head
-```
-
-### 6. Verify Setup
-Check database is running:
-```bash
-docker compose ps
-```
-
-Check migrations applied:
-```bash
-poetry run alembic current
-```
-
-## Output
-
-Report success/failure for each step.
-
-### LLM Configuration
-
-Check for `OPENAI_API_KEY` in the `.env` file in the `./genai-engine` directory. If present, load it:
-```bash
-source ./genai-engine/.env
-export OPENAI_API_KEY
-```
-
-If not present, inform the user they need to add their OpenAI API key to the `.env` file for LLM features to work.
-
-## Troubleshooting
-
-- If Docker fails: ensure Docker Desktop is running
-- If Poetry fails: try `poetry env remove 3.12` then retry
-- If migrations fail: check PostgreSQL is healthy with `docker compose logs db`
+Report the final migration revision that is current after running these steps.
+---

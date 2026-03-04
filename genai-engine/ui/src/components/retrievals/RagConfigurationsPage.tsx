@@ -8,7 +8,11 @@ import RagConfigFullScreenView from "./fullscreen/RagConfigFullScreenView";
 import { getContentHeight } from "@/constants/layout";
 import { useApi } from "@/hooks/useApi";
 
-export const RagConfigurationsPage: React.FC = () => {
+interface RagConfigurationsPageProps {
+  onRegisterCreate?: (fn: () => void) => void;
+}
+
+export const RagConfigurationsPage: React.FC<RagConfigurationsPageProps> = ({ onRegisterCreate }) => {
   const api = useApi();
   const {
     id: taskId,
@@ -54,5 +58,5 @@ export const RagConfigurationsPage: React.FC = () => {
     );
   }
 
-  return <ConfigurationsListView onConfigDelete={handleConfigDelete} onConfigClick={handleConfigClick} />;
+  return <ConfigurationsListView onConfigDelete={handleConfigDelete} onConfigClick={handleConfigClick} onRegisterCreate={onRegisterCreate} />;
 };
