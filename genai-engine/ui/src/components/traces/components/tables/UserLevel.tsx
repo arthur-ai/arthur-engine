@@ -37,6 +37,10 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
+
+  const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
   const params = useMemo(
     () => ({
       taskId: task?.id ?? "",
@@ -44,8 +48,9 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
       pageSize: pagination.pageSize,
       filters: [],
       timeRange,
+      sort,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, timeRange]
+    [task?.id, pagination.pageIndex, pagination.pageSize, timeRange, sort]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -54,8 +59,6 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getUsers(api, params),
   });
-
-  const [sorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: { user_id: string }) => {
@@ -111,6 +114,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
             isLoading={isLoading}
             onRowClick={handleRowClick}
             sorting={sorting}
+            onSortingChange={setSorting}
           />
         )}
       </DataContentGate>

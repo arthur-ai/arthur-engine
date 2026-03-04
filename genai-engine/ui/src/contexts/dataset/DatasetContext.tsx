@@ -8,6 +8,8 @@ import { initialDatasetState } from "./types";
 import { useDatasetMutations } from "./useDatasetMutations";
 import { useDatasetQueries } from "./useDatasetQueries";
 
+import { SEARCH_DEBOUNCE_MS } from "@/constants/datasetConstants";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import useSnackbar from "@/hooks/useSnackbar";
 import type { ColumnDefaults } from "@/types/dataset";
 
@@ -21,12 +23,14 @@ interface DatasetContextProviderProps {
 export function DatasetContextProvider({ datasetId, children }: DatasetContextProviderProps) {
   const [state, dispatch] = useReducer(datasetReducer, initialDatasetState);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+  const debouncedSearchQuery = useDebouncedValue(state.searchQuery, SEARCH_DEBOUNCE_MS);
 
   const queries = useDatasetQueries({
     datasetId,
     selectedVersion: state.selectedVersion,
     page: state.pagination.page,
     rowsPerPage: state.pagination.rowsPerPage,
+    searchQuery: debouncedSearchQuery,
   });
 
   const hasUnsavedChanges = selectHasUnsavedChanges(state);

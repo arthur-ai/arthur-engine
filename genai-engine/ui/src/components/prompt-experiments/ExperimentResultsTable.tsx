@@ -26,6 +26,7 @@ import {
   Button,
   Snackbar,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
@@ -35,7 +36,7 @@ import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal
 import { useApi } from "@/hooks/useApi";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
-import type { TestCase, DatasetVersionRowResponse, EvalExecution } from "@/lib/api-client/api-client";
+import type { TestCase, DatasetVersionRowResponse, EvalExecution, ExperimentStatus } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -46,6 +47,7 @@ interface Message {
 
 interface ExperimentResultsTableProps {
   experimentId: string;
+  experimentStatus?: ExperimentStatus;
   promptSummaries?: Array<{
     prompt_key?: string | null;
     prompt_type?: string | null;
@@ -167,7 +169,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
         <Box className="p-6">
           {/* Input Variables Section */}
           <Box className="mb-6">
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
               Input Variables
             </Typography>
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -179,7 +181,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
 
           {/* Prompt Results Section */}
           <Box>
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
               Prompt Results
             </Typography>
             <Box className="space-y-4">
@@ -215,8 +217,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                               } catch {
                                 // If not JSON, display as plain text
                                 return (
-                                  <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                                    <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                                  <Box
+                                    sx={{
+                                      p: 1.5,
+                                      backgroundColor: "action.hover",
+                                      border: 1,
+                                      borderColor: "divider",
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
                                       {promptResult.rendered_prompt}
                                     </Typography>
                                   </Box>
@@ -249,16 +259,32 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                               <>
                                 <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
                                 {promptResult.output.tool_calls && promptResult.output.tool_calls.length > 0 && (
-                                  <Box className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
-                                    <Typography variant="caption" className="font-medium text-purple-700">
+                                  <Box
+                                    sx={(theme) => ({
+                                      mt: 1,
+                                      p: 1,
+                                      bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
+                                      borderRadius: 1,
+                                    })}
+                                  >
+                                    <Typography variant="caption" sx={{ fontWeight: 500, color: "secondary.main" }}>
                                       Tool Calls: {promptResult.output.tool_calls.length}
                                     </Typography>
                                   </Box>
                                 )}
                               </>
                             ) : (
-                              <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                                <Typography variant="body2" className="text-gray-500 italic">
+                              <Box
+                                sx={{
+                                  p: 1.5,
+                                  backgroundColor: "action.hover",
+                                  border: 1,
+                                  borderColor: "divider",
+                                  borderRadius: 1,
+                                }}
+                              >
+                                <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                                   No output available
                                 </Typography>
                               </Box>
@@ -275,7 +301,15 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                           </Typography>
                           <Box className="space-y-2">
                             {promptResult.evals.map((evalItem, evalIndex) => (
-                              <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
+                              <Box
+                                key={evalIndex}
+                                sx={(theme) => ({
+                                  p: 1.5,
+                                  backgroundColor: alpha(theme.palette.info.main, 0.08),
+                                  border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                                  borderRadius: 1,
+                                })}
+                              >
                                 <Box className="flex items-center justify-between mb-2">
                                   <Box className="flex items-center gap-2">
                                     <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
@@ -290,6 +324,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                         />
                                         <Chip label={`Cost: $${evalItem.eval_results.cost}`} size="small" variant="outlined" />
                                       </>
+                                    ) : testCase.status === "failed" || testCase.status === "completed" ? (
+                                      <Chip label="Not Run" size="small" sx={getPendingChipSx()} />
                                     ) : (
                                       <Chip label="Pending" size="small" sx={getPendingChipSx()} />
                                     )}
@@ -361,11 +397,12 @@ interface RowProps {
   testCase: TestCase;
   promptEvalColumns: PromptEvalColumn[];
   evalGroups: EvalGroup[];
+  experimentStatus?: ExperimentStatus;
   onClick: () => void;
   onViewData?: () => void;
 }
 
-const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick, onViewData }) => {
+const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, experimentStatus, onClick, onViewData }) => {
   return (
     <TableRow hover onClick={onClick} sx={{ cursor: "pointer" }}>
       <TableCell>
@@ -377,6 +414,9 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
 
         const score = evalResult?.eval_results?.score;
         const isPending = !evalResult?.eval_results;
+        const isExperimentTerminal = experimentStatus === "failed" || experimentStatus === "completed";
+        const isActivelyRunning =
+          !isExperimentTerminal && (testCase.status === "running" || testCase.status === "evaluating" || testCase.status === "queued");
 
         // Check if this is the last eval in its prompt group
         const isLastInGroup = index === promptEvalColumns.length - 1 || promptEvalColumns[index + 1].promptKey !== column.promptKey;
@@ -392,7 +432,24 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
             }}
           >
             {isPending ? (
-              <CircularProgress size={16} sx={{ color: "text.secondary" }} />
+              isActivelyRunning ? (
+                <CircularProgress size={16} sx={{ color: "text.secondary" }} />
+              ) : (
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "20px",
+                    height: "20px",
+                    color: "text.disabled",
+                    fontWeight: 600,
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  —
+                </Box>
+              )
             ) : score === 1 ? (
               <Box
                 sx={{
@@ -567,6 +624,7 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
 
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   experimentId,
+  experimentStatus,
   promptSummaries = [],
   refreshTrigger,
   datasetId,
@@ -780,16 +838,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
 
   return (
     <Box>
-      <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }}>
+      <TableContainer component={Paper} elevation={1} sx={{ flexGrow: 0, flexShrink: 1 }}>
         {isLoading && <LinearProgress />}
         <Table stickyHeader size="small" aria-label="experiment results table">
           <TableHead>
             {/* Top header row: Prompt versions and Totals */}
             <TableRow>
-              <TableCell
-                rowSpan={2}
-                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderRight: 1, borderColor: "divider" }}
-              >
+              <TableCell rowSpan={2} sx={{ borderRight: 1, borderColor: "divider" }}>
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
@@ -804,7 +859,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                     colSpan={group.evalCount}
                     align="center"
                     sx={{
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                       borderRight: index === promptGroups.length - 1 ? 3 : 1,
                       borderColor: "divider",
                     }}
@@ -819,7 +873,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                 colSpan={evalGroups.length}
                 align="center"
                 sx={{
-                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                   borderRight: 3,
                   borderColor: "divider",
                 }}
@@ -828,20 +881,12 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Totals
                 </Box>
               </TableCell>
-              <TableCell
-                rowSpan={2}
-                align="right"
-                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
-              >
+              <TableCell rowSpan={2} align="right" sx={{ borderLeft: 1, borderColor: "divider" }}>
                 <Box component="span" className="font-semibold">
                   Cost
                 </Box>
               </TableCell>
-              <TableCell
-                rowSpan={2}
-                align="center"
-                sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"), borderLeft: 1, borderColor: "divider" }}
-              >
+              <TableCell rowSpan={2} align="center" sx={{ borderLeft: 1, borderColor: "divider" }}>
                 <Box component="span" className="font-semibold">
                   View Data
                 </Box>
@@ -861,7 +906,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                     key={`${col.promptName}-${col.promptVersion}-${col.evalName}-${col.evalVersion}`}
                     align="center"
                     sx={{
-                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                       borderRight: isLastInGroup ? (index === promptEvalColumns.length - 1 ? 3 : 1) : 0,
                       borderColor: "divider",
                       fontSize: "0.75rem",
@@ -879,7 +923,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   key={`total-header-${evalGroup.evalName}-${evalGroup.evalVersion}`}
                   align="center"
                   sx={{
-                    backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50"),
                     borderRight: index === evalGroups.length - 1 ? 3 : 0,
                     borderColor: "divider",
                     fontSize: "0.75rem",
@@ -918,6 +961,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   testCase={testCase}
                   promptEvalColumns={promptEvalColumns}
                   evalGroups={evalGroups}
+                  experimentStatus={experimentStatus}
                   onClick={() => handleRowClick(index)}
                   onViewData={datasetId && datasetVersion ? () => handleViewDatasetRow(testCase, datasetId, datasetVersion) : undefined}
                 />

@@ -72,7 +72,7 @@ class RuleRepository:
 
         return Rule._from_database_model(created_rule_db)
 
-    def archive_rule(self, rule_id: str) -> None:
+    def archive_rule(self, rule_id: str, commit: bool = True) -> None:
         rule = self.db_session.get(DatabaseRule, rule_id)
         if not rule:
             raise HTTPException(
@@ -80,7 +80,19 @@ class RuleRepository:
                 detail=constants.ERROR_RULE_NOT_FOUND % rule_id,
             )
         rule.archived = True
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+
+    def unarchive_rule(self, rule_id: str, commit: bool = True) -> None:
+        rule = self.db_session.get(DatabaseRule, rule_id)
+        if not rule:
+            raise HTTPException(
+                status_code=404,
+                detail=constants.ERROR_RULE_NOT_FOUND % rule_id,
+            )
+        rule.archived = False
+        if commit:
+            self.db_session.commit()
 
     def delete_rule(self, rule_id: str) -> None:
         self.db_session.query(DatabaseRule).filter(DatabaseRule.id == rule_id).delete()

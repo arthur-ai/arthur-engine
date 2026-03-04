@@ -62,6 +62,12 @@ export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+export function truncateText(text: string, maxLength: number): string {
+  if (typeof text !== "string") return String(text);
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "…";
+}
+
 /**
  * Formats the duration between two timestamps in a human-readable format.
  *

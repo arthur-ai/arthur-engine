@@ -106,8 +106,12 @@ export const queryKeys = {
   ragSearchSettings: {
     load: (configId: string, versionNumber?: number) => ["loadRagConfig", configId, versionNumber] as const,
   },
+  notebooks: {
+    deserialized: (notebookId: string | undefined, taskId: string | undefined) => ["notebookDeserialized", notebookId, taskId] as const,
+  },
   providers: {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
+    availableModels: (providers: string[]) => ["availableModels", ...providers] as const,
   },
   taskMetrics: {
     all: (taskId: string) => ["taskMetrics", "all", taskId] as const,

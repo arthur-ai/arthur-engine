@@ -449,7 +449,7 @@ class ContinuousEvalsRepository:
                     task_id=task_id,
                     delay_seconds=delay_seconds,
                 )
-                queue_service.enqueue(job)
+                queue_service.enqueue(job)  # Ignore return value
 
             logger.info(
                 f"Enqueued {len(continuous_evals)} continuous eval jobs for trace {trace_id}",
@@ -558,7 +558,7 @@ class ContinuousEvalsRepository:
             task_id=continuous_eval.task_id,
             delay_seconds=delay_seconds,
         )
-        queue_service.enqueue(job)
+        queue_service.enqueue(job)  # Ignore return value
 
         return ContinuousEvalRerunResponse(run_id=run_id, trace_id=annotation.trace_id)
 

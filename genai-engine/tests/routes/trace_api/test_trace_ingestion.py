@@ -1,11 +1,16 @@
 import json
+import random
+from datetime import datetime
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 
-from db_models import DatabaseSpan
+from db_models import DatabaseServiceNameTaskMapping, DatabaseSpan, DatabaseTask
+from arthur_common.models.agent_governance_schemas import GCPAgentCreationSource, TaskMetadata
+from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -686,3 +691,338 @@ def test_trace_api_trace_metadata_root_span_resource_id(
 
     # Verify trace_metadata.root_span_resource_id matches root span's resource_id
     assert trace_metadata.root_span_resource_id == db_parent_span.resource_id
+
+
+# ============================================================================
+# GCP RESOURCE ID DEDUP TESTS (Phase 5)
+# ============================================================================
+
+
+def _create_gcp_task(db_session, engine_id: str, name: str = None) -> DatabaseTask:
+    """Helper to create a GCP task with creation_source metadata."""
+    task_id = str(uuid4())
+    task_name = name or f"gcp_agent_{random.random()}"
+    task_metadata = TaskMetadata(
+        creation_source=GCPAgentCreationSource(
+            gcp_project_id="test-project",
+            gcp_region="us-central1",
+            gcp_reasoning_engine_id=engine_id,
+        ),
+    )
+    db_task = DatabaseTask(
+        id=task_id,
+        name=task_name,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        is_agentic=True,
+        is_autocreated=False,
+        task_metadata=task_metadata.model_dump(mode="json"),
+        archived=False,
+    )
+    db_session.add(db_task)
+    db_session.commit()
+    return db_task
+
+
+def _cleanup_task(db_session, task_id: str):
+    """Helper to clean up a task and its service name mappings."""
+    db_session.query(DatabaseServiceNameTaskMapping).filter(
+        DatabaseServiceNameTaskMapping.task_id == task_id
+    ).delete(synchronize_session=False)
+    db_session.query(DatabaseTask).filter(
+        DatabaseTask.id == task_id
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_matches_gcp_task_via_cloud_resource_id():
+    """Direct OTEL traces with cloud.resource_id should map to existing GCP tasks."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    try:
+        service_name = f"test_service_{random.random()}"
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+
+        assert resolved_id == gcp_task.id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_creates_mapping_after_gcp_match():
+    """After matching via cloud.resource_id, a service_name mapping should be created."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    try:
+        service_name = f"test_service_{random.random()}"
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+        assert resolved_id == gcp_task.id
+
+        # Verify mapping was created for future cache hits
+        mapping = (
+            db_session.query(DatabaseServiceNameTaskMapping)
+            .filter(DatabaseServiceNameTaskMapping.service_name == service_name)
+            .first()
+        )
+        assert mapping is not None
+        assert mapping.task_id == gcp_task.id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_uses_cached_mapping_on_subsequent_calls():
+    """Subsequent traces should use the service_name mapping (cache hit)."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    try:
+        service_name = f"test_service_{random.random()}"
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        # First call: matches via cloud.resource_id, creates mapping
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            first_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+        assert first_id == gcp_task.id
+
+        # Second call: should use cached mapping (step 3), no mock needed
+        second_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes=resource_attributes,
+        )
+        assert second_id == gcp_task.id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_auto_creates_when_no_resource_id():
+    """Traces without cloud.resource_id should auto-create OTEL tasks as before."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    service_name = f"new_otel_service_{random.random()}"
+    created_task_id = None
+
+    try:
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes={},
+        )
+
+        assert resolved_id is not None
+        created_task_id = resolved_id
+
+        db_task = (
+            db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == resolved_id)
+            .first()
+        )
+        assert db_task is not None
+        assert db_task.name == service_name
+        assert db_task.is_autocreated is True
+    finally:
+        if created_task_id:
+            _cleanup_task(db_session, created_task_id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_auto_creates_when_resource_id_doesnt_match():
+    """Traces with cloud.resource_id that doesn't match any GCP task should auto-create."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    service_name = f"unknown_service_{random.random()}"
+    resource_attributes = {
+        "cloud.resource_id": "projects/test-project/locations/us-central1/reasoningEngines/nonexistent_engine",
+    }
+    created_task_id = None
+
+    try:
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=None,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+
+        assert resolved_id is not None
+        created_task_id = resolved_id
+
+        db_task = (
+            db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == resolved_id)
+            .first()
+        )
+        assert db_task is not None
+        assert db_task.name == service_name
+        assert db_task.is_autocreated is True
+    finally:
+        if created_task_id:
+            _cleanup_task(db_session, created_task_id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_explicit_task_id_takes_priority():
+    """Explicit task_id (arthur.task) should take priority over cloud.resource_id."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+    explicit_id = "explicit-task-id-123"
+
+    try:
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=explicit_id,
+            service_name="some_service",
+            resource_attributes=resource_attributes,
+        )
+
+        # Explicit task_id should win
+        assert resolved_id == explicit_id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_existing_mapping_takes_priority_over_resource_id():
+    """Existing service_name mapping should take priority over cloud.resource_id matching."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    # Create a different task with a pre-existing mapping
+    other_task_id = str(uuid4())
+    other_task = DatabaseTask(
+        id=other_task_id,
+        name=f"other_task_{random.random()}",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        is_agentic=True,
+        is_autocreated=True,
+        archived=False,
+    )
+    db_session.add(other_task)
+    db_session.commit()
+
+    service_name = f"mapped_service_{random.random()}"
+    mapping = DatabaseServiceNameTaskMapping(
+        service_name=service_name,
+        task_id=other_task_id,
+        created_at=datetime.now(),
+    )
+    db_session.add(mapping)
+    db_session.commit()
+
+    try:
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes=resource_attributes,
+        )
+
+        # Existing mapping should win over cloud.resource_id
+        assert resolved_id == other_task_id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+        _cleanup_task(db_session, other_task_id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_handles_invalid_resource_id_gracefully():
+    """Invalid cloud.resource_id should not crash; should fall through to auto-create."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    service_name = f"invalid_resource_service_{random.random()}"
+    resource_attributes = {
+        "cloud.resource_id": "not-a-valid-gcp-path",
+    }
+    created_task_id = None
+
+    try:
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes=resource_attributes,
+        )
+
+        # Should fall through to auto-create since parse_gcp_resource_path returns None
+        assert resolved_id is not None
+        created_task_id = resolved_id
+
+        db_task = (
+            db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == resolved_id)
+            .first()
+        )
+        assert db_task is not None
+        assert db_task.is_autocreated is True
+    finally:
+        if created_task_id:
+            _cleanup_task(db_session, created_task_id)
