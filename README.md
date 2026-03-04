@@ -7,7 +7,7 @@
 [![GenAI Engine CI](https://github.com/arthur-ai/arthur-engine/actions/workflows/arthur-engine-workflow.yml/badge.svg)](actions?query=workflow%3A%22%22GenAI+Engine+Workflow%22%22++)
 [![Discord](https://img.shields.io/badge/Discord-Arthur-blue?logo=discord&logoColor=white)](https://discord.gg/tdfUAtaVHz)
 
-[Website](https://arthur.ai) - [Documentation](https://shield.docs.arthur.ai/docs) - [Talk to someone at Arthur](https://www.arthur.ai/arthur-book-a-demo)
+[Website](https://arthur.ai) - [Documentation](https://shield.docs.arthur.ai/docs) - [Talk to someone at Arthur](https://www.arthur.ai/book-demo)
 
 </div>
 
@@ -49,7 +49,7 @@ Key features:
 - Optional on-premises deployment of the entire Arthur Platform
 - Support from the world-class engineering teams at Arthur
 
-To learn more about the enterprise version of the Arthur Platform, [reach out!](https://www.arthur.ai/arthur-book-a-demo)
+To learn more about the enterprise version of the Arthur Platform, [reach out!](https://www.arthur.ai/book-demo)
 
 Performance Comparison between Free vs Enterprise version of Arthur Engine :
 
@@ -98,16 +98,16 @@ OpenInference provides a shared trace and data schema for AI systems. Since Arth
 
 This includes support for many popular frameworks such as:
 
-- LangChain  
-- LangGraph  
-- LlamaIndex  
-- Vercel AI SDK  
-- FastAPI and Flask apps instrumented with OpenInference  
-- OpenAI, Anthropic, Google, and other model providers aligned with the spec  
-- Agent frameworks, orchestration tools, and custom pipelines supported by Phoenix integrations  
+- LangChain
+- LangGraph
+- LlamaIndex
+- Vercel AI SDK
+- FastAPI and Flask apps instrumented with OpenInference
+- OpenAI, Anthropic, Google, and other model providers aligned with the spec
+- Agent frameworks, orchestration tools, and custom pipelines supported by Phoenix integrations
 - And many others
 
-You can view the full and continuously updated list of supported integrations here:  
+You can view the full and continuously updated list of supported integrations here:
 https://github.com/Arize-ai/phoenix?tab=readme-ov-file#tracing-integrations
 
 By adopting OpenInference, Arthur Engine provides a flexible and future proof way to bring traces, spans, metrics, inputs, outputs, and evaluation signals into the Arthur platform. This makes it easy to collect data from diverse Gen AI apps, agents, and services with a single unified integration path.
