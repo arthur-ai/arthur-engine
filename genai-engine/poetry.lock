@@ -250,13 +250,13 @@ trio = ["trio (>=0.31.0)", "trio (>=0.32.0)"]
 
 [[package]]
 name = "arthur-common"
-version = "2.4.51"
+version = "2.4.52"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "arthur_common-2.4.51-py3-none-any.whl", hash = "sha256:5fea2257bd76540ea501f94e61acd4c3040bbdb479903b3cb2d11bdb8321b9b3"},
-    {file = "arthur_common-2.4.51.tar.gz", hash = "sha256:86e00cef5528b17c9e0399c060f9e5e8890e5c7342e7a7435e0a5b6038bb6a3e"},
+    {file = "arthur_common-2.4.52-py3-none-any.whl", hash = "sha256:b68404f64273461b066b24d2a1829d610974e295796165b40353f544ae62d2c6"},
+    {file = "arthur_common-2.4.52.tar.gz", hash = "sha256:b430eeb49a26fcbc201b4a867654d7c9e9cf2301c467eaee021a54bb924e2d35"},
 ]
 
 [package.dependencies]
@@ -4888,13 +4888,13 @@ voice-helpers = ["numpy (>=2.0.2)", "sounddevice (>=0.5.1)"]
 
 [[package]]
 name = "openinference-semantic-conventions"
-version = "0.1.26"
+version = "0.1.27"
 description = "OpenInference Semantic Conventions"
 optional = false
 python-versions = "<3.15,>=3.9"
 files = [
-    {file = "openinference_semantic_conventions-0.1.26-py3-none-any.whl", hash = "sha256:35b4f487d18ac7d016125c428c0d950dd290e18dafb99787880a9b2e05745f42"},
-    {file = "openinference_semantic_conventions-0.1.26.tar.gz", hash = "sha256:34dae06b40743fb7b846a36fd402810a554b2ec4ee96b9dd8b820663aee4a1f1"},
+    {file = "openinference_semantic_conventions-0.1.27-py3-none-any.whl", hash = "sha256:3871fd2cc9d203bdb444ab66ff2ba9bdbf1013dc48c64c5700dd449d47b338c5"},
+    {file = "openinference_semantic_conventions-0.1.27.tar.gz", hash = "sha256:db0b1bbc1cd66f8108b17f972976fa1833413a01967ff930e2707a77e0f66bd3"},
 ]
 
 [[package]]
@@ -9363,4 +9363,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "afffcb901454543e0d3f25717973a4421f1be4b3e618025d449c76667f7fff82"
+content-hash = "8c0a54d89b40329626ae9e3b31ea8f55e84a18597e61d4c97b00009e7db8de0d"
