@@ -23,7 +23,11 @@ OPENAI_API_KEY = "your-openai-api-key"
 arthur = Arthur(
     api_key=ARTHUR_API_KEY,
     base_url=ARTHUR_BASE_URL,
-    task_id=ARTHUR_TASK_ID,
+arthur = Arthur(
+    api_key=ARTHUR_API_KEY,
+    base_url=ARTHUR_BASE_URL,
+    service_name="getting-started",
+)
     service_name="getting-started",
 )
 arthur.instrument_openai()
