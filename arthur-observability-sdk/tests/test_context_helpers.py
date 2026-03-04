@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock
 
+import json
+
 import pytest
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
@@ -256,12 +258,9 @@ def _make_arthur_with_spans():
     return arthur, exporter
 
 
-import json as _json
-
-
 def _mock_response(data: dict):
     m = MagicMock()
-    m.raw_data = _json.dumps(data).encode()
+    m.raw_data = json.dumps(data).encode()
     return m
 
 
