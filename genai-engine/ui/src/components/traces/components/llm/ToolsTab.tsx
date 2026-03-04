@@ -17,6 +17,7 @@ type Props = {
 };
 
 export const ToolsTab = ({ span }: Props) => {
+  // TODO: Fix type error
   const tools = getTools(span as unknown as Parameters<typeof getTools>[0]).map(getToolDefinition);
   const snackbar = useSnackbar({ duration: "short" });
   const { handleCopy } = useCopy({

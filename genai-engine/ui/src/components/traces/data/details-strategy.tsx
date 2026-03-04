@@ -99,6 +99,7 @@ const spanDetailsStrategy = [
       {
         label: "Input Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
+          // TODO: Fix type error
           const messages = getMessages(span as unknown as SpanForLlmUtils);
 
           return (
@@ -114,6 +115,7 @@ const spanDetailsStrategy = [
       {
         label: "Output Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
+          // TODO: Fix type error
           const messages = getOutputMessages(span as unknown as SpanForLlmUtils);
 
           return (
@@ -142,6 +144,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
+          // TODO: Fix type error
           const cost = getCost(span as unknown as SpanForLlmUtils);
 
           const na = (
@@ -162,6 +165,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
+          // TODO: Fix type error
           const tokens = getTokens(span as unknown as SpanForLlmUtils);
 
           const na = (

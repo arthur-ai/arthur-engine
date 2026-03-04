@@ -62,6 +62,10 @@ export const CommonDrawer = () => {
       onClose={handleClose}
       renderContent={({ target, id: contentId }: { target: DrawerTarget; id: string }) => {
         const Content = CONTENT_MAP[target];
+        if (!Content) {
+          console.error(`Unknown drawer target: ${target}`);
+          return null;
+        }
         return <Content id={contentId} />;
       }}
       title={current ? createTitle(`${capitalize(current.target)} Details - ${current.id}`) : undefined}
