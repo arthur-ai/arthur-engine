@@ -30,7 +30,6 @@ from arthur_client.api_bindings import (
     SchemaInspectionJobSpec,
     TasksV1Api,
     TestCustomAggregationJobSpec,
-    UnregisteredAgentsV1Api,
 )
 from arthur_client.auth import (
     ArthurClientCredentialsAPISession,
@@ -132,7 +131,6 @@ class JobExecutor:
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
-        self.unregistered_agents_client = UnregisteredAgentsV1Api(client)
         self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
 
@@ -373,9 +371,7 @@ class JobExecutor:
                             raise ValueError("GenAI Engine configuration missing")
 
                         DiscoverAgentsExecutor(
-                            self.unregistered_agents_client,
                             self.agents_client,
-                            self.models_client,
                             self.logger,
                             genai_engine_url,
                             genai_engine_api_key,
