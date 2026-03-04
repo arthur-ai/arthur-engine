@@ -97,14 +97,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^3.13.4":
-  version: 3.13.4
-  resolution: "@arthur/shared-components@npm:3.13.4::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.13.4.tgz"
+"@arthur/shared-components@npm:^3.13.5":
+  version: 3.13.5
+  resolution: "@arthur/shared-components@npm:3.13.5::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.13.5.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.33.3"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.0"
-    "@arthur/shield-types": "npm:^3.13.4"
-    "@arthur/unify-types": "npm:^3.13.4"
+    "@arthur/shield-types": "npm:^3.13.5"
+    "@arthur/unify-types": "npm:^3.13.5"
     "@base-ui/react": "npm:^1.2.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -125,6 +125,7 @@ __metadata:
     axios: "npm:^1.13.2"
     clsx: "npm:^2.1.1"
     dayjs: "npm:^1.11.13"
+    framer-motion: "npm:^12.35.0"
     material-react-table: "npm:^3.2.1"
     prism-react-renderer: "npm:^2.4.1"
     react-markdown: "npm:^10.1.0"
@@ -138,25 +139,25 @@ __metadata:
     react-dom: ^18.0.0 || ^19.1.0
     react-error-boundary: ^4.0.0
     react-i18next: ^16.5.3
-  checksum: 10c0/95c8bfd179ffecf983b81880bfd720664129d0a00d8c22f814733300b30bafd0531cf562899cc3d749d24f6ad9ce9a1a5870bd2eefe3a7c03bdfd356c3bbfbd1
+  checksum: 10c0/a0b193f683632b9110e7cbf3577b9d4118fcc3f64fc9be6580f534a138428ab6813c95fe104e7f38070816126e5289cbe81fc8595145bc767ebccd32a9b678e4
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^3.13.4":
-  version: 3.13.4
-  resolution: "@arthur/shield-types@npm:3.13.4::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.13.4.tgz"
+"@arthur/shield-types@npm:^3.13.5":
+  version: 3.13.5
+  resolution: "@arthur/shield-types@npm:3.13.5::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.13.5.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/81848a1617fd43696258703a01f62519ec42d2a478e37e7da8d0736d19fab776a3288a38ce184d76a89d02b5b3691261bde9b5481516413d83fe04c735dad581
+  checksum: 10c0/58b58fea930d232ad368aac70dc6119b4aa7c20171bdd467b3cf3d76380d45b1116d6003ef9991b43a89995b7887c1d3b90924d18fec1e06921e4468456e69b7
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^3.13.4":
-  version: 3.13.4
-  resolution: "@arthur/unify-types@npm:3.13.4::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.13.4.tgz"
+"@arthur/unify-types@npm:^3.13.5":
+  version: 3.13.5
+  resolution: "@arthur/unify-types@npm:3.13.5::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.13.5.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/83b64e852eadab5595c86532ae19fafd0a048deccfd89a4bfd5e83bbbe54a40a3aa1394dbcd9e45590aa1286584ecf92922a13238278a936acabb7d1b11b6324
+  checksum: 10c0/bc6affd8da020ff0ebd3381c0ae1a38181a83525902b0b59ae38044eea7058a649f09eb0d973f866820dbeef710a5dcbf116b53f147feba27238f77e7e58867c
   languageName: node
   linkType: hard
 
@@ -4652,6 +4653,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"framer-motion@npm:^12.35.0":
+  version: 12.35.0
+  resolution: "framer-motion@npm:12.35.0"
+  dependencies:
+    motion-dom: "npm:^12.35.0"
+    motion-utils: "npm:^12.29.2"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    "@emotion/is-prop-valid": "*"
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@emotion/is-prop-valid":
+      optional: true
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 10c0/f79e2877d28f8f467bd7e936f2d67a53398c13adce5ac110bd4364da25b8e11b6c3daee7ea533df5d9624bef881ae2b7dd11a8805960bcdffaaee9d2438426f5
+  languageName: node
+  linkType: hard
+
 "fs-minipass@npm:^3.0.0":
   version: 3.0.3
   resolution: "fs-minipass@npm:3.0.3"
@@ -6530,10 +6553,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"motion-dom@npm:^12.35.0":
+  version: 12.35.0
+  resolution: "motion-dom@npm:12.35.0"
+  dependencies:
+    motion-utils: "npm:^12.29.2"
+  checksum: 10c0/0f9491bae66baf2d09c02b57208a45f9bd2bc9292726c8115b8196d2bf65c56f1dd97ac36d5be3f40a581dee815fb2a745ff06c559cee9d5d6d6929fb70b9856
+  languageName: node
+  linkType: hard
+
 "motion-utils@npm:^12.23.6":
   version: 12.23.6
   resolution: "motion-utils@npm:12.23.6"
   checksum: 10c0/c058e8ba6423b3baa63e985bcc669877ee7d9579d938f5348b4e60c5ea1b4b33dd7f4877434436a4a5807f3cf00370d3fd4079a6fdd6309c5c87aa62b311a897
+  languageName: node
+  linkType: hard
+
+"motion-utils@npm:^12.29.2":
+  version: 12.29.2
+  resolution: "motion-utils@npm:12.29.2"
+  checksum: 10c0/8058fbb3467602e8263a8a6df0e5d318d00d30d7148415d2ebc13c78a3c7a1b0cbec0808bb62e82c34714979ecbed15b9fffb91bde654dbf3602c84b7d66a5b6
   languageName: node
   linkType: hard
 
@@ -8383,7 +8422,7 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.36.0"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@arthur/shared-components": "npm:^3.13.4"
+    "@arthur/shared-components": "npm:^3.13.5"
     "@base-ui/react": "npm:^1.2.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"

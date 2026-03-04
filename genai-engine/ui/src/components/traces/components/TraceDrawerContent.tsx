@@ -1,4 +1,4 @@
-import { TraceDrawerBody } from "@arthur/shared-components";
+import { type GetSpanDetailsStrategy, TraceDrawerBody } from "@arthur/shared-components";
 import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -156,7 +156,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
           {task?.id && <CreateContinuousEvalDialog open={createEvalOpen} onClose={() => setCreateEvalOpen(false)} taskId={task.id} />}
         </>
       )}
-      getSpanDetailsStrategy={getSpanDetailsStrategy}
+      getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}
     />
   );
 };

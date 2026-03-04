@@ -1,20 +1,18 @@
+import { CommonDrawer as SharedCommonDrawer } from "@arthur/shared-components";
 import { capitalize } from "@mui/material";
-import { QueryErrorResetBoundary } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
-import { lazy, Suspense } from "react";
-import { ErrorBoundary } from "react-error-boundary";
+import { lazy } from "react";
 
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
-import { Drawer } from "@/components/common/Drawer";
-import { ErrorFallback } from "@/components/common/ErrorFallback";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { createTitle } from "@/utils/title";
 
-const CONTENT_MAP = {
+type DrawerTarget = "trace" | "span" | "session" | "user";
+
+const CONTENT_MAP: Record<DrawerTarget, React.LazyExoticComponent<React.ComponentType<{ id: string }>>> = {
   trace: lazy(() =>
     import("./TraceDrawerContent").then((module) => ({
       default: module.TraceDrawerContent,
@@ -52,47 +50,22 @@ export const CommonDrawer = () => {
     select(null, { history: "replace" });
   };
 
-  const Content = current?.id ? CONTENT_MAP[current?.target] : null;
-
-  const shouldRender = !!Content;
+  const open = !!current?.id;
+  const target = current?.target ?? null;
+  const id = current?.id ?? null;
 
   return (
-    <>
-      {shouldRender && <title>{createTitle(`${capitalize(current.target)} Details - ${current.id}`)}</title>}
-      <Drawer open={shouldRender} onClose={handleClose}>
-        <Drawer.Content
-          slotProps={{
-            paper: {
-              sx: {
-                width: "90%",
-              },
-            },
-          }}
-        >
-          <AnimatePresence mode="popLayout">
-            <motion.div
-              key={current?.id}
-              initial={{ opacity: 0, x: -64, filter: "blur(8px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: 64, filter: "blur(8px)" }}
-              transition={{ type: "spring", duration: 0.3 }}
-              className="w-full flex-1 overflow-y-auto"
-            >
-              {Content && current && (
-                <QueryErrorResetBoundary>
-                  {({ reset }) => (
-                    <ErrorBoundary key={current.id} onReset={reset} FallbackComponent={ErrorFallback}>
-                      <Suspense fallback={<TraceContentSkeleton />}>
-                        <Content id={current.id!} />
-                      </Suspense>
-                    </ErrorBoundary>
-                  )}
-                </QueryErrorResetBoundary>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </Drawer.Content>
-      </Drawer>
-    </>
+    <SharedCommonDrawer
+      open={open}
+      target={target}
+      id={id}
+      onClose={handleClose}
+      renderContent={({ target, id: contentId }: { target: DrawerTarget; id: string }) => {
+        const Content = CONTENT_MAP[target];
+        return <Content id={contentId} />;
+      }}
+      title={current ? createTitle(`${capitalize(current.target)} Details - ${current.id}`) : undefined}
+      skeleton={<TraceContentSkeleton />}
+    />
   );
 };
