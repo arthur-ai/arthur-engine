@@ -15,8 +15,8 @@ import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
+import { EvaluateView } from "./components/evaluate/EvaluateView";
 import Evaluators from "./components/evaluators/Evaluators";
-import { LiveEvals } from "./components/live-evals";
 import { LiveEvalDetail } from "./components/live-evals/[evalId]";
 import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
@@ -24,9 +24,11 @@ import { ModelProviders } from "./components/model-providers";
 import Notebooks from "./components/notebooks/Notebooks";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
+import { PromptsView } from "./components/prompts/PromptsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlaygroundWrapper";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagView } from "./components/rag/RagView";
 import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
 import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
@@ -126,26 +128,33 @@ function App() {
                           <Route path="transforms" element={<TransformsManagement />} />
                           <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
 
-                          <Route path="evaluators" element={<Evaluators />} />
+                          <Route path="evaluate" element={<EvaluateView />} />
+
+                          {/* Legacy redirect: /evaluators → /evaluate */}
+                          <Route path="evaluators" element={<Navigate to="../evaluate" replace />} />
+                          <Route path="evaluators/:evaluatorName" element={<Evaluators />} />
+                          <Route path="evaluators/:evaluatorName/versions/:version" element={<Evaluators />} />
 
                           <Route path="continuous-evals">
-                            <Route index element={<LiveEvals />} />
+                            {/* Legacy redirect: /continuous-evals → /evaluate?section=continuous-evals */}
+                            <Route index element={<Navigate to="../evaluate?section=ce-management" replace />} />
                             <Route path="new" element={<LiveEvalsNew />} />
                             <Route path=":evalId" element={<LiveEvalDetail />} />
                           </Route>
 
-                          <Route path="evaluators/:evaluatorName" element={<Evaluators />} />
-                          <Route path="evaluators/:evaluatorName/versions/:version" element={<Evaluators />} />
-
                           <Route path="prompts-management" element={<PromptsManagement />} />
                           <Route path="prompts/:promptName" element={<PromptsManagement />} />
                           <Route path="prompts/:promptName/versions/:version" element={<PromptsManagement />} />
+
+                          <Route path="prompts" element={<PromptsView />} />
 
                           <Route path="notebooks" element={<Notebooks />} />
                           <Route path="playgrounds/prompts" element={<PromptsPlayground />} />
 
                           <Route path="prompt-experiments" element={<PromptExperimentsView />} />
                           <Route path="prompt-experiments/:experimentId" element={<ExperimentDetailView />} />
+
+                          <Route path="rag" element={<RagView />} />
 
                           <Route path="rag-experiments" element={<RagExperimentsListView />} />
                           <Route path="rag-experiments/:experimentId" element={<RagExperimentDetailView />} />
