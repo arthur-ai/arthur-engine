@@ -1,89 +1,104 @@
-import {
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  FormControlLabel,
-  Stack,
-  Switch,
-  Typography,
-} from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, Stack, Switch, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
+import { useSnackbar } from "notistack";
 import { useId } from "react";
+import { useNavigate } from "react-router-dom";
+import z from "zod";
 
-import { useContinuousEval } from "../../hooks/useContinuousEval";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
-import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
+import { useCreateContinuousEval } from "../../hooks/useCreateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
 import { VariableMappingSection } from "../variable-mapping";
 
-import { CopyableChip } from "@/components/common";
 import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
-import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
+import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
-  continuousEvalId?: string;
+  open: boolean;
   onClose: () => void;
+  taskId: string;
 };
 
-export const EditFormDialog = ({ continuousEvalId, onClose }: Props) => {
-  const query = useContinuousEval(continuousEvalId);
-
+export const CreateContinuousEvalDialog = ({ open, onClose, taskId }: Props) => {
   return (
-    <Dialog open={!!continuousEvalId} onClose={onClose} fullWidth maxWidth="md">
-      {query.isLoading ? (
-        <DialogContent>
-          <CircularProgress size="small" />
-        </DialogContent>
-      ) : query.data ? (
-        <EditForm data={query.data} onClose={onClose} />
-      ) : null}
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      {open && <CreateForm taskId={taskId} onClose={onClose} />}
     </Dialog>
   );
 };
 
-const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: () => void }) => {
-  const id = useId();
-  const updateContinuousEval = useUpdateContinuousEval(data.id);
-
-  const initialMappings: ContinuousEvalTransformVariableMappingRequest[] =
-    data.transform_variable_mapping?.map((m) => ({
-      eval_variable: m.eval_variable,
-      transform_variable: m.transform_variable,
-    })) ?? [];
+const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }) => {
+  const formId = useId();
+  const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
+  const createContinuousEval = useCreateContinuousEval();
 
   const form = useAppForm({
     defaultValues: {
-      name: data.name,
-      description: data.description ?? "",
-      enabled: data.enabled,
-      transform: {
-        transformId: data.transform_id,
-      },
+      name: "",
+      description: "",
+      enabled: true,
       evaluator: {
-        name: data.llm_eval_name,
-        version: data.llm_eval_version.toString(),
+        name: null as string | null,
+        version: null as string | null,
       },
-      variableMappings: initialMappings,
+      transform: {
+        transformId: null as string | null,
+      },
+      variableMappings: [] as ContinuousEvalTransformVariableMappingRequest[],
     },
-    defaultState: {
-      isDirty: true,
+    validators: {
+      onMount: z.object({
+        name: z.string().min(1, "Name is required"),
+        description: z.string(),
+        enabled: z.boolean(),
+        evaluator: z.object({
+          name: z.string().min(1, "Evaluator name is required"),
+          version: z.string().min(1, "Evaluator version is required"),
+        }),
+        transform: z.object({
+          transformId: z.string().min(1, "Transform ID is required"),
+        }),
+        variableMappings: z.array(
+          z.object({
+            eval_variable: z.string(),
+            transform_variable: z.string(),
+          })
+        ),
+      }),
+      onChange: z.object({
+        name: z.string().min(1, "Name is required"),
+        description: z.string(),
+        enabled: z.boolean(),
+        evaluator: z.object({
+          name: z.string().min(1, "Evaluator name is required"),
+          version: z.string().min(1, "Evaluator version is required"),
+        }),
+        transform: z.object({
+          transformId: z.string().min(1, "Transform ID is required"),
+        }),
+        variableMappings: z.array(
+          z.object({
+            eval_variable: z.string(),
+            transform_variable: z.string(),
+          })
+        ),
+      }),
     },
     onSubmit: async ({ value }) => {
-      await updateContinuousEval.mutateAsync({
+      const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
-        transform_id: value.transform.transformId,
-        llm_eval_name: value.evaluator.name,
-        llm_eval_version: value.evaluator.version,
+        llm_eval_name: value.evaluator.name!,
+        llm_eval_version: value.evaluator.version!,
+        transform_id: value.transform.transformId!,
         transform_variable_mapping: value.variableMappings,
       });
 
+      enqueueSnackbar("Continuous eval created successfully", { variant: "success" });
       onClose();
+      navigate(`/tasks/${taskId}/continuous-evals/${id}`);
     },
   });
 
@@ -91,7 +106,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
   const transform = useStore(form.store, (state) => state.values.transform);
 
   const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
-    data.task_id,
+    taskId,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
     evaluator.version ?? undefined
@@ -112,16 +127,18 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
 
   return (
     <>
-      <DialogTitle component={Stack} direction="row" alignItems="center" gap={2}>
+      <DialogTitle>
         <Typography variant="h6" color="text.primary" fontWeight="bold">
-          Edit {data.name}
+          New Continuous Eval
         </Typography>
-        <CopyableChip label={data.id} sx={{ fontFamily: "monospace" }} />
+        <Typography variant="body2" color="text.secondary">
+          Create a new continuous eval to monitor and analyze your model's performance in real-time.
+        </Typography>
       </DialogTitle>
       <DialogContent>
         <Stack
           component="form"
-          id={id}
+          id={formId}
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -152,9 +169,9 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
             </form.Field>
           </Stack>
           <Divider sx={{ my: 2 }} />
-          <EvaluatorSelector form={form} fields="evaluator" taskId={data.task_id} onSelectionChange={handleSelectionChange} />
+          <EvaluatorSelector form={form} fields="evaluator" taskId={taskId} onSelectionChange={handleSelectionChange} />
           <Divider sx={{ my: 2 }} />
-          <TransformSelector form={form} fields="transform" taskId={data.task_id} onSelectionChange={handleSelectionChange} />
+          <TransformSelector form={form} fields="transform" taskId={taskId} onSelectionChange={handleSelectionChange} />
           {canShowVariableMapping && (
             <>
               <Divider sx={{ my: 2 }} />
@@ -172,10 +189,10 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <form.Subscribe selector={(state) => [state.isDirty, state.isSubmitting, state.canSubmit]}>
-          {([isDirty, isSubmitting, canSubmit]) => (
-            <Button type="submit" form={id} disabled={!canSubmit || !isDirty || !allVariablesMapped} loading={isSubmitting}>
-              Save
+        <form.Subscribe selector={(state) => [state.canSubmit, state.isDirty, state.isSubmitting]}>
+          {([canSubmit, isDirty, isSubmitting]) => (
+            <Button type="submit" form={formId} variant="contained" disabled={!canSubmit || !isDirty || !allVariablesMapped} loading={isSubmitting}>
+              Create Continuous Eval
             </Button>
           )}
         </form.Subscribe>

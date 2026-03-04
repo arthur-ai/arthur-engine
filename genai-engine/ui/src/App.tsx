@@ -34,7 +34,6 @@ import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
-import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
 import { TracesView } from "./components/TracesView";
@@ -107,7 +106,6 @@ function App() {
                         >
                           <Route index element={<Navigate to="overview" replace />} />
                           <Route path="overview" element={<TaskOverview />} />
-                          <Route path="task-details" element={<TaskDetailContent />} />
                           <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
                           <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
                           <Route path="rag-configurations" element={<RagConfigurationsPage />} />

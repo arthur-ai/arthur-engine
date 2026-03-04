@@ -1,4 +1,5 @@
 import { ErrorOutline, Search, SearchOff, ExpandMore } from "@mui/icons-material";
+import { useTheme, type Theme } from "@mui/material/styles";
 import React, { useState } from "react";
 
 import type { SearchMethod } from "./types";
@@ -56,6 +57,7 @@ const VectorEmbeddingDisplay: React.FC<VectorEmbeddingDisplayProps> = ({ vector 
 };
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ results, isLoading, error, query, searchMethod }) => {
+  const theme = useTheme();
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
 
   const toggleExpanded = (resultId: string) => {
@@ -85,19 +87,19 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
     }
   };
 
-  const getScoreColor = (score: number | null | undefined, searchMethod: SearchMethod): string => {
-    if (score === undefined || score === null) return "text-gray-500 dark:text-gray-400";
+  const getScoreColor = (theme: Theme, score: number | null | undefined, searchMethod: SearchMethod): string => {
+    if (score === undefined || score === null) return theme.palette.text.secondary;
 
     if (searchMethod === "nearText") {
       // For distance: lower is better
-      if (score < SCORE_THRESHOLDS.nearText.good) return "text-green-600 dark:text-green-400";
-      if (score < SCORE_THRESHOLDS.nearText.medium) return "text-yellow-600 dark:text-yellow-400";
-      return "text-red-600 dark:text-red-400";
+      if (score < SCORE_THRESHOLDS.nearText.good) return theme.palette.success.main;
+      if (score < SCORE_THRESHOLDS.nearText.medium) return theme.palette.warning.main;
+      return theme.palette.error.main;
     } else {
       // For BM25/hybrid: higher is better
-      if (score > SCORE_THRESHOLDS.bm25.good) return "text-green-600 dark:text-green-400";
-      if (score > SCORE_THRESHOLDS.bm25.medium) return "text-yellow-600 dark:text-yellow-400";
-      return "text-red-600 dark:text-red-400";
+      if (score > SCORE_THRESHOLDS.bm25.good) return theme.palette.success.main;
+      if (score > SCORE_THRESHOLDS.bm25.medium) return theme.palette.warning.main;
+      return theme.palette.error.main;
     }
   };
 
@@ -226,10 +228,14 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                         <div className="text-right">
                           <div className="text-xs text-gray-500 dark:text-gray-400">{getScoreLabel(searchMethod)}</div>
                           <div
-                            className={`text-sm font-medium ${getScoreColor(
-                              searchMethod === "nearText" ? result.metadata.distance : result.metadata.score,
-                              searchMethod === "nearText" ? "nearText" : "bm25"
-                            )}`}
+                            className="text-sm font-medium"
+                            style={{
+                              color: getScoreColor(
+                                theme,
+                                searchMethod === "nearText" ? result.metadata.distance : result.metadata.score,
+                                searchMethod === "nearText" ? "nearText" : "bm25"
+                              ),
+                            }}
                           >
                             {(() => {
                               if (searchMethod === "nearText") {
@@ -278,7 +284,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                               {result.metadata.distance !== undefined && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-600 dark:text-gray-400">Distance:</span>
-                                  <span className={`font-medium ${getScoreColor(result.metadata.distance, "nearText")}`}>
+                                  <span className="font-medium" style={{ color: getScoreColor(theme, result.metadata.distance, "nearText") }}>
                                     {typeof result.metadata.distance === "number"
                                       ? result.metadata.distance.toFixed(6)
                                       : (result.metadata.distance ?? "N/A")}
@@ -288,7 +294,10 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                               {result.metadata.certainty !== undefined && result.metadata.certainty !== null && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-600 dark:text-gray-400">Certainty:</span>
-                                  <span className={`font-medium ${getScoreColor(1 - (result.metadata.certainty || 0), "nearText")}`}>
+                                  <span
+                                    className="font-medium"
+                                    style={{ color: getScoreColor(theme, 1 - (result.metadata.certainty || 0), "nearText") }}
+                                  >
                                     {typeof result.metadata.certainty === "number" ? result.metadata.certainty.toFixed(6) : "N/A"}
                                   </span>
                                 </div>
@@ -296,7 +305,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = React.memo(({ resul
                               {result.metadata.score !== undefined && result.metadata.score !== null && result.metadata.score !== 0 && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-600 dark:text-gray-400">Score:</span>
-                                  <span className={`font-medium ${getScoreColor(result.metadata.score, "bm25")}`}>
+                                  <span className="font-medium" style={{ color: getScoreColor(theme, result.metadata.score, "bm25") }}>
                                     {(() => {
                                       const score = result.metadata.score;
                                       if (typeof score === "number") {

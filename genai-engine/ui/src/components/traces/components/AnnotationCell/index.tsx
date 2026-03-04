@@ -43,9 +43,10 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
   const getButtonColor = (t: Theme) => {
     const totalResults = passedCount + failedCount + erroredCount + skippedCount;
     if (totalResults === 0) return t.palette.text.secondary;
-    if (failedCount + erroredCount + skippedCount === 0) return t.palette.success.main;
-    if (passedCount === 0) return t.palette.error.main;
-    return t.palette.warning.main;
+    if (failedCount + erroredCount === 0 && passedCount === 0) return t.palette.text.secondary; // All skipped
+    if (failedCount + erroredCount === 0) return t.palette.success.main; // All passed (or passed+skipped)
+    if (passedCount === 0) return t.palette.error.main; // All failed or errored
+    return t.palette.warning.main; // Mixed
   };
 
   const buttonColor = getButtonColor(theme);
