@@ -75,7 +75,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
     onSubmit: async ({ value }) => {
       await updateContinuousEval.mutateAsync({
         name: value.name,
-        description: value.description,
+        description: value.description?.trim() || undefined,
         enabled: value.enabled,
         transform_id: value.transform.transformId,
         llm_eval_name: value.evaluator.name,
