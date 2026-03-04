@@ -7,7 +7,6 @@ import {
   TableChartOutlined,
   StorageOutlined,
   ArrowBackOutlined,
-  LiveTvOutlined,
   InsightsOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
@@ -53,10 +52,9 @@ const navigationSections: NavigationSection[] = [
   },
   {
     id: "evals",
-    label: "Evals",
+    label: "Evaluate",
     items: [
-      { id: "evaluators", label: "Evals Management", icon: <BalanceOutlined /> },
-      { id: "continuous-evals", label: "Continuous Evals", icon: <LiveTvOutlined /> },
+      { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
       { id: "datasets", label: "Datasets", icon: <TableChartOutlined /> },
       { id: "transforms", label: "Transforms", icon: <StorageOutlined /> },
     ],
@@ -118,7 +116,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
 
           {navigationSections.map((section) => (
             <div key={section.id} className="mb-4">
-              {section.id !== "observability" && section.id !== "prompts" && section.id !== "rag" && (
+              {section.id !== "observability" && section.id !== "prompts" && section.id !== "rag" && section.id !== "evals" && (
                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{section.label}</div>
               )}
 
