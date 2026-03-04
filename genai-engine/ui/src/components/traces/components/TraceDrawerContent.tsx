@@ -6,6 +6,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { getSpanDetailsStrategy } from "../data/details-strategy";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 import { usePaginationContext } from "../stores/pagination-context";
@@ -155,6 +156,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
           {task?.id && <CreateContinuousEvalDialog open={createEvalOpen} onClose={() => setCreateEvalOpen(false)} taskId={task.id} />}
         </>
       )}
+      getSpanDetailsStrategy={getSpanDetailsStrategy}
     />
   );
 };
