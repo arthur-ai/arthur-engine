@@ -1,8 +1,7 @@
 """Tests for Arthur.session(), Arthur.user(), Arthur.attributes()."""
 
-from unittest.mock import MagicMock
-
 import json
+from unittest.mock import MagicMock
 
 import pytest
 from openinference.semconv.trace import SpanAttributes
