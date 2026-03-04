@@ -1,6 +1,5 @@
 import {
   TrendingUpOutlined,
-  MenuBookOutlined,
   DescriptionOutlined,
   ScienceOutlined,
   BalanceOutlined,
@@ -52,20 +51,17 @@ const navigationSections: NavigationSection[] = [
   },
   {
     id: "evals",
-    label: "Evaluate",
+    label: "Evals",
     items: [
       { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
-      { id: "datasets", label: "Datasets", icon: <TableChartOutlined /> },
-      { id: "transforms", label: "Transforms", icon: <StorageOutlined /> },
+      { id: "datasets", label: "Dataset", icon: <TableChartOutlined /> },
+      { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
     ],
   },
   {
     id: "agents",
     label: "Agents",
-    items: [
-      { id: "agent-experiments", label: "Agentic Experiments", icon: <ScienceOutlined /> },
-      { id: "agentic-notebooks", label: "Agentic Notebooks", icon: <MenuBookOutlined /> },
-    ],
+    items: [{ id: "test", label: "Test", icon: <ScienceOutlined /> }],
   },
 ];
 
@@ -90,9 +86,9 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
           )}
         </div>
 
-        <div className="space-y-1">
-          {/* Overview item - appears at the top */}
-          <div className="mb-4">
+        <ul className="space-y-3">
+          {/* Overview / Analyze */}
+          <li>
             <Link
               href={`/tasks/${id}/overview`}
               underline="none"
@@ -112,44 +108,35 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
               <span>Analyze</span>
               {activeSection === "overview" && <ChevronRightOutlined sx={{ ml: "auto", fontSize: 16 }} />}
             </Link>
-          </div>
+          </li>
 
-          {navigationSections.map((section) => (
-            <div key={section.id} className="mb-4">
-              {section.id !== "observability" && section.id !== "prompts" && section.id !== "rag" && section.id !== "evals" && (
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{section.label}</div>
-              )}
-
-              <ul className="mt-1 space-y-1">
-                {section.items.map((item) => {
-                  const isActive = item.id === activeSection;
-
-                  return (
-                    <li key={item.id}>
-                      <Link
-                        href={`/tasks/${id}/${item.id}`}
-                        underline="none"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onNavigate(item.id);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
-                          isActive
-                            ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
-                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-                        }`}
-                      >
-                        <span className="shrink-0">{item.icon}</span>
-                        <span>{item.label}</span>
-                        {isActive && <ChevronRightOutlined sx={{ ml: "auto", fontSize: 16 }} />}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
+          {navigationSections.flatMap((section) =>
+            section.items.map((item) => {
+              const isActive = item.id === activeSection;
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={`/tasks/${id}/${item.id}`}
+                    underline="none"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onNavigate(item.id);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
+                      isActive
+                        ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+                    }`}
+                  >
+                    <span className="shrink-0">{item.icon}</span>
+                    <span>{item.label}</span>
+                    {isActive && <ChevronRightOutlined sx={{ ml: "auto", fontSize: 16 }} />}
+                  </Link>
+                </li>
+              );
+            })
+          )}
+        </ul>
       </div>
     </nav>
   );
