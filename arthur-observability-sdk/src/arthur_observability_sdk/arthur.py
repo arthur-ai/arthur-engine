@@ -371,9 +371,11 @@ class Arthur:
     # ------------------------------------------------------------------
 
     def shutdown(self) -> None:
-        if self._tracer_provider is not None:
-            self._tracer_provider.shutdown()
-        self._api_client.close()
+        try:
+            if self._tracer_provider is not None:
+                self._tracer_provider.shutdown()
+        finally:
+            self._api_client.close()
 
     # ------------------------------------------------------------------
     # Named instrumentation methods (32 frameworks)
