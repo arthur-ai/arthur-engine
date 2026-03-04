@@ -29,6 +29,7 @@ import { PromptExperimentsView } from "./components/prompt-experiments/PromptExp
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlaygroundWrapper";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagView } from "./components/rag/RagView";
 import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
 import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
@@ -148,6 +149,8 @@ function App() {
 
                           <Route path="prompt-experiments" element={<PromptExperimentsView />} />
                           <Route path="prompt-experiments/:experimentId" element={<ExperimentDetailView />} />
+
+                          <Route path="rag" element={<RagView />} />
 
                           <Route path="rag-experiments" element={<RagExperimentsListView />} />
                           <Route path="rag-experiments/:experimentId" element={<RagExperimentDetailView />} />
