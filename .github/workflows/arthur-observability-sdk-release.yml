@@ -4,12 +4,12 @@ name: Arthur Observability SDK - Release
 #
 # Path A — Dev pre-release (any push to `dev` touching arthur-observability-sdk/):
 #   generate-client → build-dev-wheel → publish-test-pypi
-#   Version: {base}.dev{GITHUB_RUN_NUMBER}, published to test.pypi.org.
+#   Version: {base}.dev0, published to test.pypi.org.
 #   The version override is in-workspace only — never committed.
 #
-# Path B — Stable release (push to `main` with a "Bump version: …" commit):
+# Path B — Stable release (push to `main` with an "Increment arthur-engine version to …" commit):
 #   generate-client → build-stable-wheel → publish-pypi → create-git-tag
-#   Version: whatever pyproject.toml says after the bump2version commit.
+#   Version: whatever pyproject.toml says (set by version-workflow.yml).
 #   Published to pypi.org; git tag sdk-v{VERSION} is created after publish.
 #
 # Consumers of dev builds:
@@ -27,7 +27,7 @@ jobs:
   generate-client:
     if: |
       github.ref == 'refs/heads/dev' ||
-      (github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Bump version'))
+      (github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to'))
     runs-on: ubuntu-latest
     env:
       GIT_DEPTH: 100
@@ -83,7 +83,7 @@ jobs:
       - name: Compute dev version and build wheel
         run: |
           BASE_VERSION=$(poetry -C arthur-observability-sdk version --short)
-          DEV_VERSION="${BASE_VERSION}.dev${{ github.run_number }}"
+          DEV_VERSION="${BASE_VERSION}.dev0"
           echo "Building dev version: ${DEV_VERSION}"
           # Override version in workspace only — not committed.
           poetry -C arthur-observability-sdk version "${DEV_VERSION}"
@@ -115,7 +115,7 @@ jobs:
   # ── Path B: stable release ─────────────────────────────────────────────────
   build-stable-wheel:
     needs: generate-client
-    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Bump version')
+    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
     env:
@@ -148,7 +148,7 @@ jobs:
 
   publish-pypi:
     needs: build-stable-wheel
-    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Bump version')
+    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     permissions:
@@ -164,7 +164,7 @@ jobs:
 
   create-git-tag:
     needs: publish-pypi
-    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Bump version')
+    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     steps:
