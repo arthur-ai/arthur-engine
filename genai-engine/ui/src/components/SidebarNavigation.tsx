@@ -49,11 +49,7 @@ const navigationSections: NavigationSection[] = [
   {
     id: "rag",
     label: "RAG",
-    items: [
-      { id: "rag-notebooks", label: "RAG Notebooks", icon: <MenuBookOutlined /> },
-      { id: "rag-experiments", label: "RAG Experiments", icon: <ScienceOutlined /> },
-      { id: "rag-configurations", label: "RAG Configurations", icon: <StorageOutlined /> },
-    ],
+    items: [{ id: "rag", label: "RAG", icon: <StorageOutlined /> }],
   },
   {
     id: "evals",
@@ -122,7 +118,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
 
           {navigationSections.map((section) => (
             <div key={section.id} className="mb-4">
-              {section.id !== "observability" && section.id !== "prompts" && (
+              {section.id !== "observability" && section.id !== "prompts" && section.id !== "rag" && (
                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{section.label}</div>
               )}
 

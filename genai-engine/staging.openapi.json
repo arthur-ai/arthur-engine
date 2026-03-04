@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.424"
+        "version": "2.1.434"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -14513,54 +14513,6 @@
                 }
             }
         },
-        "/api/v1/discover-agents": {
-            "post": {
-                "tags": [
-                    "Agent Discovery"
-                ],
-                "summary": "Discover Agents",
-                "description": "DEPRECATED: Use GET /api/v2/agent-tasks instead. Discovery is now handled automatically by the global polling service.",
-                "operationId": "discover_agents_api_v1_discover_agents_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/DiscoverAgentsRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DiscoverAgentsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "deprecated": true,
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            }
-        },
         "/api/v1/tasks/{task_id}/agent-polling/execute": {
             "post": {
                 "tags": [
@@ -18323,74 +18275,6 @@
                 ],
                 "title": "CreateUserRequest"
             },
-            "CreationSource": {
-                "properties": {
-                    "task_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Task Id",
-                        "description": "Optional UUID of the task that created this agent."
-                    },
-                    "top_level_span_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top Level Span Name",
-                        "description": "Optional top-level span name (legacy field, prefer GCP fields for GCP agents)."
-                    },
-                    "gcp_project_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Gcp Project Id",
-                        "description": "Optional GCP project ID where the agent is running."
-                    },
-                    "gcp_region": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Gcp Region",
-                        "description": "Optional GCP region where the agent is running."
-                    },
-                    "gcp_reasoning_engine_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Gcp Reasoning Engine Id",
-                        "description": "Optional GCP Vertex AI Reasoning Engine ID."
-                    }
-                },
-                "type": "object",
-                "title": "CreationSource",
-                "description": "Source information for how an unregistered agent was created.\n\n.. deprecated::\n    This flat CreationSource model is deprecated.\n    Use the discriminated union CreationSource from\n    arthur_common.models.agent_governance_schemas instead."
-            },
             "DailyAgenticAnnotationStats": {
                 "properties": {
                     "date": {
@@ -18825,52 +18709,6 @@
                 ],
                 "title": "DatasetVersionRowResponse"
             },
-            "DiscoverAgentsRequest": {
-                "properties": {
-                    "data_plane_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Data Plane Id",
-                        "description": "UUID of the data plane to discover agents from"
-                    },
-                    "lookback_hours": {
-                        "type": "integer",
-                        "title": "Lookback Hours",
-                        "description": "Number of hours to look back for traces (default 30 days)",
-                        "default": 720
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "data_plane_id"
-                ],
-                "title": "DiscoverAgentsRequest",
-                "description": "Request to discover agents from infrastructure.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks instead."
-            },
-            "DiscoverAgentsResponse": {
-                "properties": {
-                    "agents": {
-                        "items": {
-                            "$ref": "#/components/schemas/DiscoveredAgent"
-                        },
-                        "type": "array",
-                        "title": "Agents",
-                        "description": "List of discovered agents"
-                    },
-                    "metadata": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Metadata",
-                        "description": "Discovery metadata (e.g., traces processed, errors)"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "agents"
-                ],
-                "title": "DiscoverAgentsResponse",
-                "description": "Response containing discovered agents.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks instead."
-            },
             "DiscoverAndPollResponse": {
                 "properties": {
                     "status": {
@@ -18897,73 +18735,6 @@
                 ],
                 "title": "DiscoverAndPollResponse",
                 "description": "Response model for the execute-all agent polling endpoint."
-            },
-            "DiscoveredAgent": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the agent."
-                    },
-                    "creation_source": {
-                        "$ref": "#/components/schemas/CreationSource",
-                        "description": "Information about how this agent was created."
-                    },
-                    "first_detected": {
-                        "type": "string",
-                        "title": "First Detected",
-                        "description": "ISO 8601 timestamp when agent was first detected."
-                    },
-                    "num_spans": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Num Spans",
-                        "description": "Number of spans associated with this agent."
-                    },
-                    "infrastructure": {
-                        "type": "string",
-                        "title": "Infrastructure",
-                        "description": "Infrastructure where this agent is running (e.g., 'GCP')."
-                    },
-                    "data_plane_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Data Plane Id",
-                        "description": "UUID of the data plane where this agent was detected."
-                    },
-                    "tools": {
-                        "items": {
-                            "$ref": "#/components/schemas/Tool"
-                        },
-                        "type": "array",
-                        "title": "Tools",
-                        "description": "List of tools used by this agent."
-                    },
-                    "sub_agents": {
-                        "items": {
-                            "$ref": "#/components/schemas/SubAgent"
-                        },
-                        "type": "array",
-                        "title": "Sub Agents",
-                        "description": "List of sub-agents used by this agent."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "creation_source",
-                    "first_detected",
-                    "infrastructure",
-                    "data_plane_id"
-                ],
-                "title": "DiscoveredAgent",
-                "description": "A discovered agent from infrastructure.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks with EnrichedTaskResponse instead."
             },
             "EnrichedTaskResponse": {
                 "properties": {

@@ -33,6 +33,9 @@ export const TaskLayout: React.FC = () => {
     } else if (section === "prompts" && pathSegments[taskIndex + 2]) {
       // Map /tasks/:id/prompts/:promptName to prompts-management (legacy routes)
       activeSection = "prompts-management";
+    } else if (section === "rag-notebooks" || section === "rag-experiments" || section === "rag-configurations") {
+      // Legacy RAG sub-page routes highlight the unified "rag" sidebar item
+      activeSection = "rag";
     } else {
       activeSection = section;
     }
