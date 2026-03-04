@@ -36,7 +36,7 @@ import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal
 import { useApi } from "@/hooks/useApi";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
-import type { TestCase, DatasetVersionRowResponse, EvalExecution } from "@/lib/api-client/api-client";
+import type { TestCase, DatasetVersionRowResponse, EvalExecution, ExperimentStatus } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -47,6 +47,7 @@ interface Message {
 
 interface ExperimentResultsTableProps {
   experimentId: string;
+  experimentStatus?: ExperimentStatus;
   promptSummaries?: Array<{
     prompt_key?: string | null;
     prompt_type?: string | null;
@@ -323,6 +324,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                         />
                                         <Chip label={`Cost: $${evalItem.eval_results.cost}`} size="small" variant="outlined" />
                                       </>
+                                    ) : testCase.status === "failed" || testCase.status === "completed" ? (
+                                      <Chip label="Not Run" size="small" sx={getPendingChipSx()} />
                                     ) : (
                                       <Chip label="Pending" size="small" sx={getPendingChipSx()} />
                                     )}
@@ -394,11 +397,12 @@ interface RowProps {
   testCase: TestCase;
   promptEvalColumns: PromptEvalColumn[];
   evalGroups: EvalGroup[];
+  experimentStatus?: ExperimentStatus;
   onClick: () => void;
   onViewData?: () => void;
 }
 
-const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick, onViewData }) => {
+const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, experimentStatus, onClick, onViewData }) => {
   return (
     <TableRow hover onClick={onClick} sx={{ cursor: "pointer" }}>
       <TableCell>
@@ -410,6 +414,9 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
 
         const score = evalResult?.eval_results?.score;
         const isPending = !evalResult?.eval_results;
+        const isExperimentTerminal = experimentStatus === "failed" || experimentStatus === "completed";
+        const isActivelyRunning =
+          !isExperimentTerminal && (testCase.status === "running" || testCase.status === "evaluating" || testCase.status === "queued");
 
         // Check if this is the last eval in its prompt group
         const isLastInGroup = index === promptEvalColumns.length - 1 || promptEvalColumns[index + 1].promptKey !== column.promptKey;
@@ -425,7 +432,24 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
             }}
           >
             {isPending ? (
-              <CircularProgress size={16} sx={{ color: "text.secondary" }} />
+              isActivelyRunning ? (
+                <CircularProgress size={16} sx={{ color: "text.secondary" }} />
+              ) : (
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "20px",
+                    height: "20px",
+                    color: "text.disabled",
+                    fontWeight: 600,
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  —
+                </Box>
+              )
             ) : score === 1 ? (
               <Box
                 sx={{
@@ -600,6 +624,7 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
 
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   experimentId,
+  experimentStatus,
   promptSummaries = [],
   refreshTrigger,
   datasetId,
@@ -936,6 +961,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   testCase={testCase}
                   promptEvalColumns={promptEvalColumns}
                   evalGroups={evalGroups}
+                  experimentStatus={experimentStatus}
                   onClick={() => handleRowClick(index)}
                   onViewData={datasetId && datasetVersion ? () => handleViewDatasetRow(testCase, datasetId, datasetVersion) : undefined}
                 />
