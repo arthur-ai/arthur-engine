@@ -27,6 +27,7 @@ from arthur_common.models.connectors import (
     REST_DATASET_END_TIME_PARAM_FIELD,
     REST_DATASET_ENDPOINT_PATH_FIELD,
     REST_DATASET_HTTP_METHOD_FIELD,
+    REST_DATASET_MAX_PAGES_FIELD,
     REST_DATASET_PAGE_PARAM_FIELD,
     REST_DATASET_PAGE_SIZE_PARAM_FIELD,
     REST_DATASET_START_TIME_FORMAT_FIELD,
@@ -218,6 +219,7 @@ class RestConnector(Connector):
         data_path: Optional[str] = locator.get("data_path")
         page_param: Optional[str] = locator.get("page_param")
         page_size_param: Optional[str] = locator.get("page_size_param")
+        max_pages: int = int(locator.get("max_pages", "1"))
 
         formatted_start = start_time.strftime(time_format)
         formatted_end = end_time.strftime(time_format)
@@ -229,7 +231,7 @@ class RestConnector(Connector):
         # Server-side page size is always fixed; pagination_options controls caller-side slicing only
         server_page_size = _DEFAULT_PAGE_SIZE
 
-        while True:
+        while page <= max_pages:
             time_params = {
                 start_time_param: formatted_start,
                 end_time_param: formatted_end,
@@ -259,7 +261,7 @@ class RestConnector(Connector):
 
             all_records.extend(records)
 
-            # Stop if not paginating, or if the page is not full (no more data)
+            # Stop if not paginating, or if the page is not full (no more data from server)
             if not page_param or len(records) < server_page_size:
                 break
             page += 1
@@ -321,6 +323,10 @@ class RestConnector(Connector):
         page_size_param = locator_fields.get(REST_DATASET_PAGE_SIZE_PARAM_FIELD)
         if page_size_param:
             result["page_size_param"] = page_size_param
+
+        max_pages = locator_fields.get(REST_DATASET_MAX_PAGES_FIELD)
+        if max_pages:
+            result["max_pages"] = max_pages
 
         return result
 

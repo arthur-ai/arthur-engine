@@ -32,6 +32,7 @@ from arthur_common.models.connectors import (
     REST_DATASET_END_TIME_PARAM_FIELD,
     REST_DATASET_ENDPOINT_PATH_FIELD,
     REST_DATASET_HTTP_METHOD_FIELD,
+    REST_DATASET_MAX_PAGES_FIELD,
     REST_DATASET_PAGE_PARAM_FIELD,
     REST_DATASET_PAGE_SIZE_PARAM_FIELD,
     REST_DATASET_START_TIME_PARAM_FIELD,
@@ -447,6 +448,7 @@ class TestRestConnectorRead:
                     key=REST_DATASET_PAGE_SIZE_PARAM_FIELD,
                     value="page_size",
                 ),
+                DatasetLocatorField(key=REST_DATASET_MAX_PAGES_FIELD, value="2"),
             ],
         )
 
@@ -458,12 +460,7 @@ class TestRestConnectorRead:
         responses[1].json.return_value = page2
 
         with patch("requests.get", side_effect=responses) as mock_get:
-            result = connector.read(
-                dataset,
-                _START,
-                _END,
-                pagination_options=ConnectorPaginationOptions(page_size=100),
-            )
+            result = connector.read(dataset, _START, _END)
 
         assert len(result) == 110
         assert mock_get.call_count == 2
@@ -486,18 +483,55 @@ class TestRestConnectorRead:
                 ),
                 DatasetLocatorField(key=REST_DATASET_END_TIME_PARAM_FIELD, value="end"),
                 DatasetLocatorField(key=REST_DATASET_PAGE_PARAM_FIELD, value="page"),
+                DatasetLocatorField(key=REST_DATASET_MAX_PAGES_FIELD, value="2"),
             ],
         )
 
+        # Page 1 returns a full page; page 2 is empty → connector fetches page 2 to confirm end-of-data
         responses = [Mock(), Mock()]
-        responses[0].json.return_value = [{"id": "1"}]
+        responses[0].json.return_value = [{"id": str(i)} for i in range(100)]
         responses[1].json.return_value = []
 
         with patch("requests.get", side_effect=responses) as mock_get:
             result = connector.read(dataset, _START, _END)
 
-        assert len(result) == 1
+        assert len(result) == 100
         assert mock_get.call_count == 2
+
+    def test_read_respects_max_pages(self):
+        """Verify the connector fetches exactly max_pages pages and no more."""
+        spec = _api_key_spec()
+        connector = RestConnector(spec, Mock())
+        dataset = _make_dataset(
+            [
+                DatasetLocatorField(
+                    key=REST_DATASET_HTTP_METHOD_FIELD,
+                    value=RestConnectorHttpMethod.GET,
+                ),
+                DatasetLocatorField(
+                    key=REST_DATASET_START_TIME_PARAM_FIELD,
+                    value="start",
+                ),
+                DatasetLocatorField(key=REST_DATASET_END_TIME_PARAM_FIELD, value="end"),
+                DatasetLocatorField(key=REST_DATASET_PAGE_PARAM_FIELD, value="page"),
+                DatasetLocatorField(
+                    key=REST_DATASET_PAGE_SIZE_PARAM_FIELD,
+                    value="page_size",
+                ),
+                DatasetLocatorField(key=REST_DATASET_MAX_PAGES_FIELD, value="3"),
+            ],
+        )
+
+        # Server always returns full pages — connector must stop at max_pages=3
+        full_page = [{"id": str(i)} for i in range(100)]
+        always_full = Mock()
+        always_full.json.return_value = full_page
+
+        with patch("requests.get", return_value=always_full) as mock_get:
+            result = connector.read(dataset, _START, _END)
+
+        assert mock_get.call_count == 3
+        assert len(result) == 300
 
     def test_read_applies_filters(self):
         spec = _api_key_spec()
