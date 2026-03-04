@@ -56,8 +56,6 @@ def create_api_key(
             "If you reach the maximum limit or lose old keys, you can deactivate an old "
             "key using its ID and create new keys.",
         )
-    except Exception as e:
-        raise e
     finally:
         db_session.close()
 
@@ -77,8 +75,6 @@ def get_api_key(
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.get_api_key_by_id(str(api_key_id))
         return api_key._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -97,8 +93,6 @@ def get_all_active_api_keys(
         api_key_repo = ApiKeyRepository(db_session)
         active_api_keys = api_key_repo.get_all_active_api_keys()
         return [api_key._to_response_model() for api_key in active_api_keys]
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -118,7 +112,5 @@ def deactivate_api_key(
         api_key_repo = ApiKeyRepository(db_session)
         api_key_repo.deactivate_api_key(str(api_key_id))
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except:
-        raise
     finally:
         db_session.close()

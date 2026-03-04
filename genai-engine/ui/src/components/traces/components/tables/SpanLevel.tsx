@@ -1,4 +1,5 @@
-import { Alert, Box, Stack } from "@mui/material";
+import { Search } from "@mui/icons-material";
+import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -13,12 +14,12 @@ import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
 import { DurationCellWithBucket } from "../DurationCell";
-import { FilterRow } from "../filtering/FilterRow";
-import { SPAN_FIELDS } from "../filtering/span-fields";
+import { TextOperators } from "../filtering/types";
 import { SpanStatusBadge } from "../span-status-badge";
 import { isValidStatusCode } from "../StatusCode";
 import { TraceContentCell } from "../TraceContentCell";
 
+import { TracingFilterModal } from "./components/TracingFilterModal";
 import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
@@ -44,6 +45,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
+  const [searchInput, setSearchInput] = useState("");
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -53,6 +55,10 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
   const setContext = usePaginationContext((state) => state.actions.setContext);
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+
+  const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
   const params = useMemo(
     () => ({
       taskId: task?.id ?? "",
@@ -60,8 +66,9 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
       pageSize: pagination.pageSize,
       filters,
       timeRange,
+      sort,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -70,8 +77,6 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredSpans(api, params),
   });
-
-  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: SpanMetadataResponse) => {
@@ -113,50 +118,61 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
   const setFilters = useFilterStore((state) => state.setFilters);
 
-  const handleFiltersChange = useCallback(
-    (newFilters: typeof filters) => {
-      setFilters(newFilters);
-    },
-    [setFilters]
-  );
-
-  const dynamicEnumArgMap = useMemo(
-    () => ({
-      trace_ids: { taskId: task?.id ?? "", api },
-      session_ids: { taskId: task?.id ?? "", api },
-      span_ids: { taskId: task?.id ?? "", api },
-      user_ids: { taskId: task?.id ?? "", api },
-    }),
-    [task?.id, api]
-  );
+  const handleSearch = useCallback(() => {
+    if (searchInput.trim()) {
+      const existingFilters = filters.filter((f) => f.name !== "span_name");
+      setFilters([
+        ...existingFilters,
+        {
+          name: "span_name",
+          operator: TextOperators.CONTAINS,
+          value: searchInput.trim(),
+        },
+      ]);
+    } else {
+      // Clear the span_name filter if search is empty
+      setFilters(filters.filter((f) => f.name !== "span_name"));
+    }
+  }, [searchInput, filters, setFilters]);
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.spans?.map((span) => span.duration_ms) ?? []), [data?.spans]);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
-  if (error) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Alert severity="error">There was an error fetching spans.</Alert>
-      </Box>
-    );
-  }
-
   const hasData = Boolean(data?.spans?.length);
 
   return (
     <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="spans">
-        {/* Only show FilterRow if we have spans or if filters are active */}
-        {(hasData || hasActiveFilters) && (
-          <FilterRow
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            fieldConfig={SPAN_FIELDS}
-            dynamicEnumArgMap={dynamicEnumArgMap}
-            onTrack={track}
-          />
+        {/* Search bar and filter button */}
+        {(hasData || hasActiveFilters || error) && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                size="small"
+                placeholder="Search by span name"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                sx={{ width: 300 }}
+              />
+              <Button variant="outlined" startIcon={<Search />} onClick={handleSearch}>
+                Search
+              </Button>
+              <TracingFilterModal />
+            </Stack>
+          </Paper>
+        )}
+
+        {error && (
+          <Box sx={{ p: 2 }}>
+            <Alert severity="error">There was an error fetching spans.</Alert>
+          </Box>
         )}
 
         {hasData && (
@@ -171,6 +187,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
                 isLoading={isLoading}
                 onRowClick={handleRowClick}
                 sorting={sorting}
+                onSortingChange={setSorting}
               />
             </BucketProvider>
           </>

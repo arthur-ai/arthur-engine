@@ -10,7 +10,8 @@ const TransformsHeader: React.FC<TransformsHeaderProps> = ({ onCreateTransform }
     <Box
       sx={{
         px: 3,
-        py: 2,
+        pt: 3,
+        pb: 2,
         borderBottom: 1,
         borderColor: "divider",
         backgroundColor: "background.paper",
@@ -32,7 +33,7 @@ const TransformsHeader: React.FC<TransformsHeaderProps> = ({ onCreateTransform }
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={onCreateTransform}>
-          Create Transform
+          Transform
         </Button>
       </Box>
     </Box>

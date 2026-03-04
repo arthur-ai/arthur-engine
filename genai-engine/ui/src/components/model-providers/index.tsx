@@ -122,102 +122,101 @@ export const ModelProviders: React.FC = () => {
             backgroundColor: "background.paper",
           }}
         >
-          <Typography variant="h5" color="text.primary" fontWeight="bold">
-            Model Providers Configuration
+          <Typography variant="h5" color="text.primary" fontWeight={600}>
+            Model Providers
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage and configure model providers to use LLM features.
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Manage and configure model providers to use LLM features
           </Typography>
         </Box>
 
-        <Card>
-          <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-            <TableContainer sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}>
-              <Table stickyHeader size="small" sx={{ width: "100%" }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell
-                      sx={{
-                        fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-                        width: "33.33%",
-                      }}
-                    >
-                      Provider
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-                        width: "33.33%",
-                      }}
-                      align="center"
-                    >
-                      Status
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
-                        width: "33.33%",
-                      }}
-                      align="right"
-                    >
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {providers?.length === 0 ? (
+        <Box sx={{ p: 3 }}>
+          <Card variant="outlined">
+            <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
+              <TableContainer sx={{ maxHeight: "calc(100vh - 300px)", overflow: "auto" }}>
+                <Table stickyHeader size="small" sx={{ width: "100%" }}>
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={3} align="center">
-                        <Typography variant="body2" color="text.secondary">
-                          No model providers found
-                        </Typography>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          width: "33.33%",
+                        }}
+                      >
+                        Provider
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          width: "33.33%",
+                        }}
+                        align="center"
+                      >
+                        Status
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          width: "33.33%",
+                        }}
+                        align="right"
+                      >
+                        Actions
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    providers?.map((provider) => (
-                      <TableRow key={provider.provider} hover>
-                        <TableCell>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {getProviderIcon(provider.provider)}
-                            <Typography variant="body2" fontWeight="medium">
-                              {getProviderDisplayName(provider.provider)}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="center">{getStatusBadge(provider.enabled)}</TableCell>
-                        <TableCell align="right">
-                          <Box
-                            sx={{
-                              display: "flex",
-                              gap: 1,
-                              justifyContent: "flex-end",
-                            }}
-                          >
-                            <IconButton size="small" color="primary" onClick={() => handleEditClick(provider)} title="Configure provider">
-                              <Edit />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeleteClick(provider)}
-                              disabled={!provider.enabled}
-                              title={provider.enabled ? "Delete provider" : "Delete provider (disabled - provider not enabled)"}
-                            >
-                              <Delete />
-                            </IconButton>
-                          </Box>
+                  </TableHead>
+                  <TableBody>
+                    {providers?.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center">
+                          <Typography variant="body2" color="text.secondary">
+                            No model providers found
+                          </Typography>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+                    ) : (
+                      providers?.map((provider) => (
+                        <TableRow key={provider.provider} hover>
+                          <TableCell>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              {getProviderIcon(provider.provider)}
+                              <Typography variant="body2" fontWeight="medium">
+                                {getProviderDisplayName(provider.provider)}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell align="center">{getStatusBadge(provider.enabled)}</TableCell>
+                          <TableCell align="right">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                gap: 1,
+                                justifyContent: "flex-end",
+                              }}
+                            >
+                              <IconButton size="small" color="primary" onClick={() => handleEditClick(provider)} title="Configure provider">
+                                <Edit />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteClick(provider)}
+                                disabled={!provider.enabled}
+                                title={provider.enabled ? "Delete provider" : "Delete provider (disabled - provider not enabled)"}
+                              >
+                                <Delete />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+        </Box>
       </Stack>
       {/* Delete Confirmation Modal */}
       <Dialog open={deleteModal.isOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
@@ -317,10 +316,16 @@ const getProviderDisplayName = (provider: string): string => {
   return displayNames[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
 };
 
+const darkModeInvertSx = {
+  width: 20,
+  height: 20,
+  filter: (theme: { palette: { mode: string } }) => (theme.palette.mode === "dark" ? "invert(1)" : "none"),
+};
+
 const getProviderIcon = (provider: string) => {
   const iconMap: Record<string, React.ReactElement> = {
-    anthropic: <img src="/logos/model_providers/anthropic-logo.svg" alt="Anthropic" style={{ width: 20, height: 20 }} />,
-    openai: <img src="/logos/model_providers/openai-logo.svg" alt="OpenAI" style={{ width: 20, height: 20 }} />,
+    anthropic: <Box component="img" src="/logos/model_providers/anthropic-logo.svg" alt="Anthropic" sx={darkModeInvertSx} />,
+    openai: <Box component="img" src="/logos/model_providers/openai-logo.svg" alt="OpenAI" sx={darkModeInvertSx} />,
     gemini: <img src="/logos/model_providers/gemini-logo.svg" alt="Google Gemini" style={{ width: 20, height: 20 }} />,
     vertex_ai: <img src="/logos/model_providers/vertex-logo.svg" alt="Google Vertex AI" style={{ width: 20, height: 20 }} />,
     bedrock: <img src="/logos/model_providers/bedrock-logo.svg" alt="Amazon Bedrock" style={{ width: 20, height: 20 }} />,

@@ -27,13 +27,13 @@ import Notebooks from "./components/notebooks/Notebooks";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
-import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
+import PromptsPlayground from "./components/prompts-playground/PromptsPlaygroundWrapper";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
 import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
-import { TaskDetailContent } from "./components/TaskDetailContent";
+import { SettingsPage } from "./components/settings/SettingsPage";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
 import { TracesView } from "./components/TracesView";
@@ -73,6 +73,28 @@ function App() {
                           }
                         />
 
+                        {/* Settings routes - global/org-level pages */}
+                        <Route
+                          path="/settings/model-providers"
+                          element={
+                            <ProtectedRoute>
+                              <SettingsPage>
+                                <ModelProviders />
+                              </SettingsPage>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/settings/api-keys"
+                          element={
+                            <ProtectedRoute>
+                              <SettingsPage>
+                                <ApiKeysManagement />
+                              </SettingsPage>
+                            </ProtectedRoute>
+                          }
+                        />
+
                         {/* Task layout route: single layout with nested section routes */}
                         <Route
                           path="/tasks/:id"
@@ -84,10 +106,11 @@ function App() {
                         >
                           <Route index element={<Navigate to="overview" replace />} />
                           <Route path="overview" element={<TaskOverview />} />
-                          <Route path="task-details" element={<TaskDetailContent />} />
-                          <Route path="model-providers" element={<ModelProviders />} />
-                          <Route path="api-keys" element={<ApiKeysManagement />} />
+                          <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
+                          <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
                           <Route path="rag-configurations" element={<RagConfigurationsPage />} />
+                          <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
+                          <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
                           <Route path="agent-experiments">
                             <Route index element={<AgentExperiments />} />

@@ -21,7 +21,6 @@ export const serializePlaygroundState = (
   state: PromptPlaygroundState,
   experimentConfig?: Partial<PromptExperimentDetail> | null
 ): NotebookStateInput => {
-  // Convert prompts to experiment prompt configs
   const prompt_configs = state.prompts.map((prompt) => toExperimentPromptConfig(prompt));
 
   // If experimentConfig is provided, include it in the serialized state (Experiment Mode)
@@ -129,6 +128,8 @@ export const deserializeNotebookState = async (
           running: false,
           version: null,
           isDirty: false,
+          needsSave: false,
+          savedSnapshot: null,
         };
 
         prompts.push(frontendPrompt);

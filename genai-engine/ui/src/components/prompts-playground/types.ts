@@ -14,6 +14,8 @@ import {
   Api,
   AgenticPromptRunResponse,
   OpenAIMessageItem,
+  PromptExperimentDetail,
+  PromptExperimentSummary,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -47,14 +49,6 @@ type PromptAction =
   | {
       type: "updateBackendPrompts";
       payload: { prompts: LLMGetAllMetadataResponse[] };
-    }
-  | {
-      type: "updateProviders";
-      payload: { providers: ModelProvider[] };
-    }
-  | {
-      type: "updateAvailableModels";
-      payload: { availableModels: Map<ModelProvider, string[]> };
     }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
@@ -162,15 +156,15 @@ type PromptType = {
   running?: boolean; // Whether the prompt is running
   version?: number | null; // Unsaved prompts have no version
   isDirty?: boolean; // Whether the prompt has been modified from its saved version
+  needsSave?: boolean; // Whether the prompt needs to be saved (dirty or new with user content)
+  savedSnapshot: string | null; // JSON snapshot of saveable fields at last save/load; null = never saved
 };
 
 interface PromptPlaygroundState {
   keywords: Map<string, string>;
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
-  backendPrompts: LLMGetAllMetadataResponse[]; // prompt metadata
-  enabledProviders: ModelProvider[];
-  availableModels: Map<ModelProvider, string[]>; // provider -> models
+  backendPrompts: LLMGetAllMetadataResponse[];
 }
 
 interface MessageComponentProps {
@@ -218,6 +212,40 @@ interface VersionSubmenuProps {
 
 const MESSAGE_ROLE_OPTIONS: MessageRole[] = ["system", "user", "assistant", "tool"];
 
+/**
+ * Data resolved by the wrapper component before the inner playground mounts.
+ * Eliminates the need for hydration useEffects — the inner component
+ * initializes all state directly from this object.
+ */
+interface PlaygroundInitialData {
+  /** Prompts to load into the reducer (empty array = blank playground) */
+  prompts: PromptType[];
+  /** Keyword variable mappings restored from notebook state */
+  keywords: Map<string, string>;
+  /** Display name for the notebook header */
+  notebookName: string;
+  /** Experiment config restored from notebook state or experiment mode params */
+  experimentConfig: Partial<PromptExperimentDetail> | null;
+  /** Matching experiment runs for the history sidebar */
+  experimentRuns: PromptExperimentSummary[];
+  /** Whether experiment config mode is active */
+  isConfigMode: boolean;
+  /** Serialized state string for auto-save dirty detection baseline */
+  autoSaveBaseline: string;
+  /** Source info for the mount-time toast and analytics event */
+  source: {
+    type: "notebook" | "span" | "experiment" | "url-prompt" | "blank";
+    label: string;
+  };
+}
+
+type ExperimentExecutionState =
+  | { status: "idle" }
+  | { status: "starting" }
+  | { status: "running"; experimentId: string }
+  | { status: "completed"; experimentId: string }
+  | { status: "error" };
+
 export {
   MESSAGE_ROLE_OPTIONS,
   MessageComponentProps,
@@ -232,4 +260,6 @@ export {
   SavePromptDialogProps,
   FrontendTool,
   VersionSubmenuProps,
+  PlaygroundInitialData,
+  ExperimentExecutionState,
 };

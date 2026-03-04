@@ -1,4 +1,4 @@
-import { Alert, Box, Stack } from "@mui/material";
+import { Alert, Box, Paper, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
@@ -8,9 +8,8 @@ import { createSessionLevelColumns } from "../../data/create-session-level-colum
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
-import { FilterRow } from "../filtering/FilterRow";
-import { SESSION_FIELDS } from "../filtering/sessions-fields";
 
+import { SessionsFilterModal } from "./components/SessionsFilterModal";
 import { TracesTable } from "./TracesTable";
 
 import { CopyableChip } from "@/components/common";
@@ -40,6 +39,10 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const [, setDrawerTarget] = useDrawerTarget();
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: "earliest_start_time", desc: true }]);
+
+  const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
   const params = useMemo(
     () => ({
       taskId: task?.id ?? "",
@@ -47,8 +50,9 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
       pageSize: pagination.pageSize,
       filters,
       timeRange,
+      sort,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -57,8 +61,6 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredSessions(api, params),
   });
-
-  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: { session_id: string }) => {
@@ -91,22 +93,6 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
     []
   );
 
-  const setFilters = useFilterStore((state) => state.setFilters);
-
-  const handleFiltersChange = useCallback(
-    (newFilters: typeof filters) => {
-      setFilters(newFilters);
-    },
-    [setFilters]
-  );
-
-  const dynamicEnumArgMap = useMemo(
-    () => ({
-      user_ids: { taskId: task?.id ?? "", api },
-    }),
-    [task?.id, api]
-  );
-
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
@@ -123,15 +109,11 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   return (
     <Stack gap={1} overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
-        {/* Only show FilterRow if we have sessions or if filters are active */}
-        {(hasData || hasActiveFilters) && (
-          <FilterRow
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            fieldConfig={SESSION_FIELDS as readonly (typeof SESSION_FIELDS)[number][]}
-            dynamicEnumArgMap={dynamicEnumArgMap}
-            onTrack={track}
-          />
+        {/* Filter button */}
+        {(hasData || hasActiveFilters || error) && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <SessionsFilterModal />
+          </Paper>
         )}
 
         {hasData && (
@@ -145,6 +127,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
               isLoading={isLoading}
               onRowClick={handleRowClick}
               sorting={sorting}
+              onSortingChange={setSorting}
             />
           </>
         )}

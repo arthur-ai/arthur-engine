@@ -13,7 +13,6 @@ and clean up test state after execution.
 """
 
 import random
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -44,81 +43,6 @@ from schemas.prompt_experiment_schemas import (
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.unit.routes.conftest import setup_db_session_context_mock
 
-# Maximum time to wait for experiment completion (in seconds)
-MAX_WAIT_TIME = 30
-# Polling interval (in seconds)
-POLL_INTERVAL = 0.5
-
-
-def wait_for_experiment_completion(
-    client: GenaiEngineTestClientBase,
-    experiment_id: str,
-    max_wait_time: float = MAX_WAIT_TIME,
-    poll_interval: float = POLL_INTERVAL,
-    allow_failure: bool = False,
-) -> PromptExperimentDetail:
-    """
-    Poll the experiment details endpoint until the experiment completes.
-
-    Args:
-        client: Test client instance
-        experiment_id: ID of the experiment to poll
-        max_wait_time: Maximum time to wait (in seconds)
-        poll_interval: Time between polls (in seconds)
-        allow_failure: If True, return the experiment detail even if it failed.
-                       If False (default), raise AssertionError if experiment failed.
-
-    Returns:
-        PromptExperimentDetail: The completed experiment details
-
-    Raises:
-        TimeoutError: If experiment doesn't complete within max_wait_time
-        AssertionError: If experiment failed and allow_failure is False
-    """
-    start_time = time.time()
-    last_status = None
-    while time.time() - start_time < max_wait_time:
-        status_code, experiment_data = client.get_prompt_experiment(experiment_id)
-        assert status_code == 200, f"Failed to get experiment: {experiment_data}"
-
-        experiment_detail = PromptExperimentDetail.model_validate(experiment_data)
-        current_status = experiment_detail.status
-
-        # Log status changes for debugging
-        if current_status != last_status:
-            last_status = current_status
-
-        if current_status in [
-            ExperimentStatus.COMPLETED,
-            ExperimentStatus.FAILED,
-        ]:
-            if current_status == ExperimentStatus.FAILED and not allow_failure:
-                raise AssertionError(
-                    f"Experiment {experiment_id} failed. "
-                    f"Completed rows: {experiment_detail.completed_rows}, "
-                    f"Failed rows: {experiment_detail.failed_rows}",
-                )
-            # Return the experiment detail (either completed or failed if allowed)
-            return experiment_detail
-
-        time.sleep(poll_interval)
-
-    # Get final status for error message
-    status_code, experiment_data = client.get_prompt_experiment(experiment_id)
-    if status_code == 200:
-        experiment_detail = PromptExperimentDetail.model_validate(experiment_data)
-        raise TimeoutError(
-            f"Experiment {experiment_id} did not complete within {max_wait_time} seconds. "
-            f"Final status: {experiment_detail.status}, "
-            f"Completed rows: {experiment_detail.completed_rows}/{experiment_detail.total_rows}, "
-            f"Failed rows: {experiment_detail.failed_rows}",
-        )
-    else:
-        raise TimeoutError(
-            f"Experiment {experiment_id} did not complete within {max_wait_time} seconds. "
-            f"Could not get final status: {experiment_data}",
-        )
-
 
 @pytest.mark.unit_tests
 @patch("services.experiment_executor.db_session_context")
@@ -127,7 +51,12 @@ def wait_for_experiment_completion(
 @patch("clients.llm.llm_client.litellm.completion")
 @patch("services.prompt_experiment_executor.logger")
 @patch("services.experiment_executor.logger")
+@patch(
+    "services.experiment_executor.BaseExperimentExecutor.execute_experiment_async",
+    autospec=True,
+)
 def test_prompt_experiment_routes_happy_path(
+    mock_execute_async,
     mock_experiment_logger,
     mock_prompt_logger,
     mock_completion,
@@ -154,6 +83,10 @@ def test_prompt_experiment_routes_happy_path(
 
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+    # Run experiment synchronously so there's no background thread race
+    mock_execute_async.side_effect = (
+        lambda self, experiment_id, **kwargs: self._execute_experiment(experiment_id)
+    )
 
     # Setup: Create task
     task_name = f"prompt_experiment_task_{random.random()}"
@@ -378,8 +311,10 @@ def test_prompt_experiment_routes_happy_path(
     assert experiment_summary["prompt_configs"][0]["name"] == prompt_name
     assert experiment_summary["prompt_configs"][0]["version"] == prompt_version
 
-    # Test 2: Get prompt experiment details (polling until completion)
-    experiment_detail = wait_for_experiment_completion(client, experiment_id)
+    # Test 2: Get prompt experiment details
+    status_code, experiment_data = client.get_prompt_experiment(experiment_id)
+    assert status_code == 200, f"Failed to get experiment: {experiment_data}"
+    experiment_detail = PromptExperimentDetail.model_validate(experiment_data)
 
     # Validate experiment detail response fields
     assert experiment_detail.id == experiment_id
@@ -605,12 +540,13 @@ def test_prompt_experiment_routes_happy_path(
     ), f"Failed to create failed experiment: {failed_experiment_summary}"
     failed_experiment_id = failed_experiment_summary["id"]
 
-    # Wait for the experiment to complete (should fail)
-    # Pass allow_failure=True since we expect this experiment to fail
-    failed_experiment_detail = wait_for_experiment_completion(
-        client,
+    # Get experiment details (experiment already complete since it ran synchronously)
+    status_code, failed_experiment_data = client.get_prompt_experiment(
         failed_experiment_id,
-        allow_failure=True,
+    )
+    assert status_code == 200, f"Failed to get experiment: {failed_experiment_data}"
+    failed_experiment_detail = PromptExperimentDetail.model_validate(
+        failed_experiment_data,
     )
 
     # Validate that the experiment is marked as failed
@@ -675,7 +611,12 @@ def test_prompt_experiment_routes_happy_path(
 @patch("services.prompt_experiment_executor.logger")
 @patch("services.experiment_executor.logger")
 @patch("repositories.prompt_experiment_repository.logger")
+@patch(
+    "services.experiment_executor.BaseExperimentExecutor.execute_experiment_async",
+    autospec=True,
+)
 def test_prompt_experiment_none_value_conversion(
+    mock_execute_async,
     mock_repo_logger,
     mock_experiment_logger,
     mock_prompt_logger,
@@ -695,6 +636,10 @@ def test_prompt_experiment_none_value_conversion(
     """
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+    # Run experiment synchronously so there's no background thread race
+    mock_execute_async.side_effect = (
+        lambda self, experiment_id, **kwargs: self._execute_experiment(experiment_id)
+    )
 
     # Setup: Create task
     task_name = f"prompt_experiment_none_test_{random.random()}"
@@ -902,8 +847,10 @@ def test_prompt_experiment_none_value_conversion(
     ), f"Failed to create prompt experiment: {experiment_summary}"
     experiment_id = experiment_summary["id"]
 
-    # Wait for experiment to complete
-    experiment_detail = wait_for_experiment_completion(client, experiment_id)
+    # Get experiment details
+    status_code, experiment_data = client.get_prompt_experiment(experiment_id)
+    assert status_code == 200, f"Failed to get experiment: {experiment_data}"
+    experiment_detail = PromptExperimentDetail.model_validate(experiment_data)
 
     # Verify that the experiment completed successfully
     assert experiment_detail.status == ExperimentStatus.COMPLETED
@@ -970,7 +917,12 @@ def test_prompt_experiment_none_value_conversion(
 @patch("clients.llm.llm_client.litellm.completion")
 @patch("services.prompt_experiment_executor.logger")
 @patch("services.experiment_executor.logger")
+@patch(
+    "services.experiment_executor.BaseExperimentExecutor.execute_experiment_async",
+    autospec=True,
+)
 def test_prompt_experiment_unsaved_prompt(
+    mock_execute_async,
     mock_experiment_logger,
     mock_prompt_logger,
     mock_completion,
@@ -986,6 +938,10 @@ def test_prompt_experiment_unsaved_prompt(
     """
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+    # Run experiment synchronously so there's no background thread race
+    mock_execute_async.side_effect = (
+        lambda self, experiment_id, **kwargs: self._execute_experiment(experiment_id)
+    )
 
     # Setup: Create task
     task_name = f"prompt_experiment_unsaved_{random.random()}"
@@ -1152,8 +1108,10 @@ def test_prompt_experiment_unsaved_prompt(
     assert experiment_summary["prompt_configs"][0]["type"] == "unsaved"
     assert "auto_name" in experiment_summary["prompt_configs"][0]
 
-    # Wait for experiment to complete
-    experiment_detail = wait_for_experiment_completion(client, experiment_id)
+    # Get experiment details
+    status_code, experiment_data = client.get_prompt_experiment(experiment_id)
+    assert status_code == 200, f"Failed to get experiment: {experiment_data}"
+    experiment_detail = PromptExperimentDetail.model_validate(experiment_data)
 
     # Verify completion
     assert experiment_detail.status == ExperimentStatus.COMPLETED

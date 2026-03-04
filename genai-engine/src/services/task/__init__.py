@@ -1,15 +1,15 @@
-from services.task.registered_agent_polling_service import (
+from services.task.global_agent_polling_service import (
     AgentPollingJob,
-    RegisteredAgentPollingService,
-    get_registered_agent_polling_service,
-    initialize_registered_agent_polling_service,
-    shutdown_registered_agent_polling_service,
+    GlobalAgentPollingService,
+    get_global_agent_polling_service,
+    initialize_global_agent_polling_service,
+    shutdown_global_agent_polling_service,
 )
 
 __all__ = [
     "AgentPollingJob",
-    "RegisteredAgentPollingService",
-    "get_registered_agent_polling_service",
-    "initialize_registered_agent_polling_service",
-    "shutdown_registered_agent_polling_service",
+    "GlobalAgentPollingService",
+    "get_global_agent_polling_service",
+    "initialize_global_agent_polling_service",
+    "shutdown_global_agent_polling_service",
 ]
