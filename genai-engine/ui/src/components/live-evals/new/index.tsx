@@ -90,7 +90,7 @@ export const LiveEvalsNew = () => {
     onSubmit: async ({ value }) => {
       const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
-        description: value.description,
+        description: value.description?.trim() || undefined,
         enabled: value.enabled,
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
