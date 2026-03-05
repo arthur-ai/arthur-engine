@@ -119,20 +119,36 @@ class ArthurAPIClient:
 
     def resolve_task_id(self, task_name: str) -> str:
         """
-        Finds the first task whose name matches ``task_name`` and returns its id.
+        Finds the most-recently-created task whose name exactly matches
+        ``task_name`` and returns its id.
 
-        Raises ``ValueError`` if no matching task is found.
+        The search API uses substring matching and returns results sorted by
+        ``created_at`` descending (newest first), so this method paginates
+        through all matching pages until an exact match is found.
+
+        Raises ``ValueError`` if no task with an exact name match is found.
         """
-        try:
-            result = self._tasks_api.search_tasks_api_v2_tasks_search_post(
-                search_tasks_request=SearchTasksRequest(task_name=task_name),
-            )
-        except ApiException as exc:
-            raise _api_exception_to_arthur(exc) from exc
-        for task in result.tasks:
-            if task.name == task_name:
-                return str(task.id)
-        raise ValueError(f"No task found with name '{task_name}'")
+        page_size = 50
+        page = 0
+        while True:
+            try:
+                result = self._tasks_api.search_tasks_api_v2_tasks_search_post(
+                    search_tasks_request=SearchTasksRequest(task_name=task_name),
+                    page_size=page_size,
+                    page=page,
+                )
+            except ApiException as exc:
+                raise _api_exception_to_arthur(exc) from exc
+            for task in result.tasks:
+                if task.name == task_name:
+                    return str(task.id)
+            if page_size * (page + 1) >= result.count:
+                break
+            page += 1
+        raise ValueError(
+            f"No task with an exact name match for '{task_name}' was found. "
+            f"Found {result.count} task(s) whose name contains '{task_name}' as a substring."
+        )
 
     def close(self) -> None:
         self._api_client.rest_client.pool_manager.clear()

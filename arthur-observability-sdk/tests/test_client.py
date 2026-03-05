@@ -1,8 +1,11 @@
 """Tests for Arthur class initialization, validation, and env-var resolution."""
 
+from unittest.mock import MagicMock, call
+
 import pytest
 
 import arthur_genai_client.models as _genai_models
+from arthur_observability_sdk._client import ArthurAPIClient
 from arthur_observability_sdk.arthur import Arthur
 
 pytestmark = pytest.mark.unit_tests
@@ -143,6 +146,86 @@ def test_otlp_endpoint_custom():
     )
     assert arthur._otlp_endpoint == "http://otel-collector:4318/v1/traces"
     arthur.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# resolve_task_id pagination
+# ---------------------------------------------------------------------------
+
+
+def _make_task(name: str, task_id: str) -> MagicMock:
+    t = MagicMock()
+    t.name = name
+    t.id = task_id
+    return t
+
+
+def _make_search_result(tasks, count: int) -> MagicMock:
+    r = MagicMock()
+    r.tasks = tasks
+    r.count = count
+    return r
+
+
+def _make_api_client() -> ArthurAPIClient:
+    client = ArthurAPIClient.__new__(ArthurAPIClient)
+    client._tasks_api = MagicMock()
+    return client
+
+
+def test_resolve_task_id_found_on_first_page():
+    client = _make_api_client()
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = (
+        _make_search_result([_make_task("my-task", "uuid-1")], count=1)
+    )
+    assert client.resolve_task_id("my-task") == "uuid-1"
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.assert_called_once()
+
+
+def test_resolve_task_id_skips_substring_matches_on_first_page():
+    """Tasks whose names only contain the target as a substring must be skipped."""
+    client = _make_api_client()
+    # First page: 50 substring matches, no exact match; second page: exact match
+    page1_tasks = [_make_task(f"my-task-{i}", f"uuid-sub-{i}") for i in range(50)]
+    page2_tasks = [_make_task("my-task", "uuid-exact")]
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.side_effect = [
+        _make_search_result(page1_tasks, count=51),
+        _make_search_result(page2_tasks, count=51),
+    ]
+    assert client.resolve_task_id("my-task") == "uuid-exact"
+    assert client._tasks_api.search_tasks_api_v2_tasks_search_post.call_count == 2
+
+
+def test_resolve_task_id_raises_when_not_found():
+    client = _make_api_client()
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = (
+        _make_search_result([_make_task("my-task-v2", "uuid-1")], count=1)
+    )
+    with pytest.raises(ValueError, match="No task with an exact name match"):
+        client.resolve_task_id("my-task")
+
+
+def test_resolve_task_id_raises_includes_substring_count():
+    client = _make_api_client()
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = (
+        _make_search_result([_make_task("my-task-v2", "uuid-1")], count=3)
+    )
+    with pytest.raises(ValueError, match="3 task"):
+        client.resolve_task_id("my-task")
+
+
+def test_resolve_task_id_does_not_fetch_beyond_last_page():
+    """Pagination must stop once all results are exhausted."""
+    client = _make_api_client()
+    # 2 pages of 50; exact match absent
+    page_tasks = [_make_task(f"my-task-{i}", f"uuid-{i}") for i in range(50)]
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.side_effect = [
+        _make_search_result(page_tasks, count=60),
+        _make_search_result(page_tasks[:10], count=60),
+    ]
+    with pytest.raises(ValueError):
+        client.resolve_task_id("my-task")
+    assert client._tasks_api.search_tasks_api_v2_tasks_search_post.call_count == 2
 
 
 # ---------------------------------------------------------------------------

@@ -38,7 +38,7 @@ class Arthur:
         task_name: Arthur task name — resolved lazily to a UUID via the API.
         enable_telemetry: When False, no TracerProvider is created.
         otlp_endpoint: OTLP HTTP traces endpoint.  Defaults to
-            ``{base_url}/v1/traces``.
+            ``{base_url}/api/v1/traces``.
     """
 
     def __init__(
