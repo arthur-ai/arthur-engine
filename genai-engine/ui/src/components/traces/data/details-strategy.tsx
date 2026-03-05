@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
 import { DurationCellWithBucket } from "../components/DurationCell";
-import { ToolsTab } from "../components/llm/ToolsTab";
+import { isSpanWithLlmAttrs, ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
 import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
 
@@ -97,7 +97,7 @@ const spanDetailsStrategy = [
       {
         label: "Input Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
-          const messages = getMessages(span);
+          const messages = isSpanWithLlmAttrs(span) ? getMessages(span) : [];
 
           return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -112,7 +112,7 @@ const spanDetailsStrategy = [
       {
         label: "Output Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
-          const messages = getOutputMessages(span);
+          const messages = isSpanWithLlmAttrs(span) ? getOutputMessages(span) : [];
 
           return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -140,7 +140,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
-          const cost = getCost(span);
+          const cost = isSpanWithLlmAttrs(span) ? getCost(span) : null;
 
           const na = (
             <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
@@ -160,7 +160,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
-          const tokens = getTokens(span);
+          const tokens = isSpanWithLlmAttrs(span) ? getTokens(span) : null;
 
           const na = (
             <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>

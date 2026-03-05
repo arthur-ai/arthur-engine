@@ -1,14 +1,13 @@
+import { EvaluatorsSelectorUI } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components";
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { NewAgentExperimentFormData } from "../form";
 
-import { EvaluatorsSelectorUI } from "./EvaluatorsSelectorUI";
-
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { AgenticEvalRefInput, AgenticEvalVariableMappingInput } from "@/lib/api-client/api-client";

@@ -1,17 +1,20 @@
+import {
+  CopyableChip as SharedCopyableChip,
+  createUserLevelColumns,
+  type ColumnDependencies as SharedColumnDependencies,
+  TracesTable,
+} from "@arthur/shared-components";
 import { Alert, Box, Stack } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { useCallback, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createUserLevelColumns } from "../../data/create-user-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
 
-import { TracesTable } from "./TracesTable";
-
-import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -73,23 +76,22 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     [setDrawerTarget, task?.id]
   );
 
-  const columns = useMemo(
-    () =>
-      createUserLevelColumns({
-        formatDate,
-        formatCurrency: () => "", // Not used in user columns but required by type
-        onTrack: track,
-        Chip: CopyableChip,
-        DurationCell: () => null, // Not used in user columns
-        TraceContentCell: () => null, // Not used in user columns
-        AnnotationCell: () => null, // Not used in user columns
-        SpanStatusBadge: () => null, // Not used in user columns
-        TypeChip: () => null, // Not used in user columns
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    []
-  );
+  const columns = useMemo(() => {
+    const deps: SharedColumnDependencies = {
+      formatDate,
+      formatCurrency: () => "",
+      onTrack: track,
+      Chip: SharedCopyableChip,
+      DurationCell: () => null,
+      TraceContentCell: () => null,
+      AnnotationCell: () => null,
+      SpanStatusBadge: () => null,
+      TypeChip: () => null,
+      TokenCountTooltip,
+      TokenCostTooltip,
+    };
+    return createUserLevelColumns(deps) as MRT_ColumnDef<TraceUserMetadataResponse, unknown>[];
+  }, []);
 
   if (error) {
     return (
