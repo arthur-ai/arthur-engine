@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYPROJECT="$SCRIPT_DIR/../pyproject.toml"
+PYPROJECT="$SCRIPT_DIR/../python/pyproject.toml"
 
 echo "Fetching openinference-instrumentation-* packages from PyPI..."
 PYPI_PACKAGES=$(curl -s "https://pypi.org/simple/" \
