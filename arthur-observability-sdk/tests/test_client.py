@@ -1,6 +1,6 @@
 """Tests for Arthur class initialization, validation, and env-var resolution."""
 
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -175,8 +175,8 @@ def _make_api_client() -> ArthurAPIClient:
 
 def test_resolve_task_id_found_on_first_page():
     client = _make_api_client()
-    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = (
-        _make_search_result([_make_task("my-task", "uuid-1")], count=1)
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = _make_search_result(
+        [_make_task("my-task", "uuid-1")], count=1
     )
     assert client.resolve_task_id("my-task") == "uuid-1"
     client._tasks_api.search_tasks_api_v2_tasks_search_post.assert_called_once()
@@ -198,8 +198,8 @@ def test_resolve_task_id_skips_substring_matches_on_first_page():
 
 def test_resolve_task_id_raises_when_not_found():
     client = _make_api_client()
-    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = (
-        _make_search_result([_make_task("my-task-v2", "uuid-1")], count=1)
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = _make_search_result(
+        [_make_task("my-task-v2", "uuid-1")], count=1
     )
     with pytest.raises(ValueError, match="No task with an exact name match"):
         client.resolve_task_id("my-task")
@@ -207,8 +207,8 @@ def test_resolve_task_id_raises_when_not_found():
 
 def test_resolve_task_id_raises_includes_substring_count():
     client = _make_api_client()
-    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = (
-        _make_search_result([_make_task("my-task-v2", "uuid-1")], count=3)
+    client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = _make_search_result(
+        [_make_task("my-task-v2", "uuid-1")], count=3
     )
     with pytest.raises(ValueError, match="3 task"):
         client.resolve_task_id("my-task")
