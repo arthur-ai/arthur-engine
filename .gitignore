@@ -49,3 +49,4 @@ arthur-engine.code-workspace
 .runtime/
 .claude/commands/
 .logs/
+.beads/
