@@ -135,7 +135,19 @@ type SpanListProps = {
 
 const MAX_PREVIEW_LENGTH = 80;
 
-function spanMatchesSearch(span: NestedSpanWithMetricsResponse, query: string): boolean {
+function collectSearchableText(obj: unknown, depth = 0, maxDepth = 6): string {
+  if (depth > maxDepth || obj == null) return "";
+  if (typeof obj === "string") return obj;
+  if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
+  if (Array.isArray(obj)) return obj.map((item) => collectSearchableText(item, depth + 1, maxDepth)).join(" ");
+  if (typeof obj === "object")
+    return Object.entries(obj)
+      .map(([key, val]) => `${key} ${collectSearchableText(val, depth + 1, maxDepth)}`)
+      .join(" ");
+  return "";
+}
+
+function spanMatchesSearch(span: NestedSpanWithMetricsResponse, query: string, rawDataSearchText?: string): boolean {
   const q = query.toLowerCase();
 
   if (span.span_name?.toLowerCase().includes(q)) return true;
@@ -153,16 +165,20 @@ function spanMatchesSearch(span: NestedSpanWithMetricsResponse, query: string): 
   const output = getSpanOutput(span);
   if (output?.toLowerCase().includes(q)) return true;
 
+  if (rawDataSearchText?.includes(q)) return true;
+
   return false;
 }
 
 const SpanList = ({ spans, onSelectSpan }: SpanListProps) => {
   const [search, setSearch] = useState("");
 
+  const searchIndex = useMemo(() => new Map(spans.map((span) => [span.id, collectSearchableText(span.raw_data).toLowerCase()])), [spans]);
+
   const filteredSpans = useMemo(() => {
     if (!search.trim()) return spans;
-    return spans.filter((span) => spanMatchesSearch(span, search));
-  }, [spans, search]);
+    return spans.filter((span) => spanMatchesSearch(span, search, searchIndex.get(span.id)));
+  }, [spans, search, searchIndex]);
 
   return (
     <Stack className="overflow-auto max-h-[50vh]" sx={{ p: 1 }}>
