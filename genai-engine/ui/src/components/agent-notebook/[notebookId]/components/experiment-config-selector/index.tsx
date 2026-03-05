@@ -1,3 +1,4 @@
+import { useAppForm, withForm } from "@arthur/shared-components";
 import { Autocomplete, Button, DialogActions, DialogContent, DialogTitle, ListItem, Stack, TextField, Typography } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
@@ -8,7 +9,6 @@ import { mapTemplateToForm } from "../../utils/mapper";
 
 import { agentExperimentQueryOptions } from "@/components/agent-experiments/hooks/useAgentExperiment";
 import { useAgentExperiments } from "@/components/agent-experiments/hooks/useAgentExperiments";
-import { useAppForm, withForm } from "@/components/traces/components/filtering/hooks/form";
 import { useApi } from "@/hooks/useApi";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 

@@ -1,6 +1,5 @@
+import { useFieldContext } from "@arthur/shared-components";
 import Autocomplete, { AutocompleteProps } from "@mui/material/Autocomplete";
-
-import { useFieldContext } from "@/components/traces/components/filtering/hooks/form-context";
 
 export const MaterialAutocompleteField = <
   const Value,

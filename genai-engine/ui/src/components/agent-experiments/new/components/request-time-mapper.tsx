@@ -1,3 +1,5 @@
+import { VariableChip } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components";
 import { Box, Divider, Stack, TextField } from "@mui/material";
 import { Paper, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
@@ -5,8 +7,6 @@ import { useEffect } from "react";
 
 import { newAgentExperimentFormOpts } from "../form";
 
-import { VariableChip } from "@/components/evaluators/VariableChip";
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 
 export const RequestTimeMapper = withForm({

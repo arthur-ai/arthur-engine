@@ -17,7 +17,8 @@ type Props = {
 };
 
 export const ToolsTab = ({ span }: Props) => {
-  const tools = getTools(span).map(getToolDefinition);
+  const tools = isSpanWithLlmAttrs(span) ? getTools(span).map(getToolDefinition) : [];
+  console.log("tools", span);
   const snackbar = useSnackbar({ duration: "short" });
   const { handleCopy } = useCopy({
     onCopy: () => {
@@ -74,3 +75,10 @@ export const ToolsTab = ({ span }: Props) => {
     </>
   );
 };
+
+type SpanWithLlmAttrs = Parameters<typeof getTools>[0];
+
+// TODO: Export this to shared-components
+export function isSpanWithLlmAttrs(span: NestedSpanWithMetricsResponse): span is NestedSpanWithMetricsResponse & SpanWithLlmAttrs {
+  return "raw_data" in span && "attributes" in span.raw_data;
+}
