@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
 import { DurationCellWithBucket } from "../components/DurationCell";
-import { ToolsTab } from "../components/llm/ToolsTab";
+import { isSpanWithLlmAttrs, ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
 import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
 
@@ -13,8 +13,6 @@ import { Highlight } from "@/components/common/Highlight";
 import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { getCost, getMessages, getOutputMessages, getTokens, tryFormatJson } from "@/utils/llm";
-
-type SpanForLlmUtils = Parameters<typeof getMessages>[0];
 
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
   const mime = getSpanInputMimeType(span);
@@ -99,8 +97,7 @@ const spanDetailsStrategy = [
       {
         label: "Input Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
-          // TODO: Fix type error
-          const messages = getMessages(span as unknown as SpanForLlmUtils);
+          const messages = isSpanWithLlmAttrs(span) ? getMessages(span) : [];
 
           return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -115,8 +112,7 @@ const spanDetailsStrategy = [
       {
         label: "Output Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
-          // TODO: Fix type error
-          const messages = getOutputMessages(span as unknown as SpanForLlmUtils);
+          const messages = isSpanWithLlmAttrs(span) ? getOutputMessages(span) : [];
 
           return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -144,8 +140,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
-          // TODO: Fix type error
-          const cost = getCost(span as unknown as SpanForLlmUtils);
+          const cost = isSpanWithLlmAttrs(span) ? getCost(span) : null;
 
           const na = (
             <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
@@ -165,8 +160,7 @@ const spanDetailsStrategy = [
       {
         wrapped: true,
         render: (span: NestedSpanWithMetricsResponse) => {
-          // TODO: Fix type error
-          const tokens = getTokens(span as unknown as SpanForLlmUtils);
+          const tokens = isSpanWithLlmAttrs(span) ? getTokens(span) : null;
 
           const na = (
             <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
